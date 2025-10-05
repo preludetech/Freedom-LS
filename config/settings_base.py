@@ -133,15 +133,48 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "accounts.User"
 
+primary_colors = {
+    "Wrend": {
+        "50": "oklch(97.7% .014 308.299)",
+        "100": "oklch(94.6% .033 307.174)",
+        "200": "oklch(90.2% .063 306.703)",
+        "300": "oklch(82.7% .119 306.383)",
+        "400": "oklch(71.4% .203 305.504)",
+        "500": "oklch(62.7% .265 303.9)",
+        "600": "oklch(55.8% .288 302.321)",
+        "700": "oklch(49.6% .265 301.924)",
+        "800": "oklch(43.8% .218 303.724)",
+        "900": "oklch(38.1% .176 304.987)",
+        "950": "oklch(29.1% .149 302.717)",
+    },
+    "UAVI": {
+        "50": "#e0ffe1",
+        "100": "#82ff90",
+        "200": "#49ed66",
+        "300": "#24d64f",
+        "400": "#00be3f",
+        "500": "#00aa12",
+        "600": "#00882a",
+        "700": "#00621c",
+        "800": "#003d0e",
+        "900": "#001f04",
+    },
+}
+
 
 # Unfold Admin Configuration
-def get_environment(request):
-    from django.contrib.sites.shortcuts import get_current_site
-    site = get_current_site(request)
-    return site.name
+def get_unfold_value(key):
+    def get_environment(request):
+        from django.contrib.sites.shortcuts import get_current_site
+
+        site = get_current_site(request)
+        return site.name
+
+    return get_environment
 
 
 UNFOLD = {
-    "SITE_TITLE": get_environment,
-    "SITE_HEADER": get_environment,
+    "SITE_TITLE": get_unfold_value("SITE_TITLE"),
+    "SITE_HEADER": get_unfold_value("SITE_HEADER"),
+    "SHOW_VIEW_ON_SITE": False,
 }
