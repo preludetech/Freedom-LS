@@ -1,16 +1,21 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
-from django.contrib.auth.models import PermissionsMixin
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    BaseUserManager,
+    PermissionsMixin,
+    Permission,
+)
 from django.contrib.sites.models import Site
 from django.contrib.sites.shortcuts import get_current_site
 import uuid
-from system_base.models import _thread_locals
+from system_base.models import _thread_locals, SiteAwareModel
+from django.utils.translation import gettext_lazy as _
 
 
 class UserManager(BaseUserManager):
     def get_queryset(self):
         queryset = super().get_queryset()
-        request = getattr(_thread_locals, 'request', None)
+        request = getattr(_thread_locals, "request", None)
         if request:
             site = get_current_site(request)
             return queryset.filter(sites=site)
@@ -69,3 +74,27 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
     objects = UserManager()
+
+
+# class SiteGroup(SiteAwareModel):
+#     """Custom Group model with site awareness"""
+
+#     name = models.CharField(max_length=150)
+
+#     permissions = models.ManyToManyField(
+#         Permission,
+#         verbose_name=_("permissions"),
+#         blank=True,
+#     )
+
+#     class Meta:
+#         verbose_name = _("group")
+#         verbose_name_plural = _("groups")
+#         constraints = [
+#             models.UniqueConstraint(
+#                 fields=["site_id", "name"], name="unique_group_name_per_site"
+#             )
+#         ]
+
+#     def __str__(self):
+#         return self.name

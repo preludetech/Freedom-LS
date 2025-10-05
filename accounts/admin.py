@@ -1,31 +1,20 @@
-# from django.contrib import admin
-# from unfold.admin import ModelAdmin
-
-# from django.contrib.auth.models import User, Group
-
-# admin.site.unregister(User)
-# admin.site.unregister(Group)
 from unfold.admin import ModelAdmin
-from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
-
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
+from system_base.admin import SiteAwareModelAdmin
 
+from .models import SiteGroup
 
 User = get_user_model()
-# from .models import User
 
-# admin.site.unregister(User)
+# Unregister Django's default Group
 admin.site.unregister(Group)
 
 
-
-
 @admin.register(User)
-class UserAdmin(ModelAdmin):
+class UserAdmin(SiteAwareModelAdmin):
     # Forms loaded from `unfold.forms`
     form = UserChangeForm
     add_form = UserCreationForm
@@ -33,6 +22,8 @@ class UserAdmin(ModelAdmin):
     exclude = ["sites"]
 
 
-@admin.register(Group)
-class GroupAdmin(BaseGroupAdmin, ModelAdmin):
-    pass
+# @admin.register(SiteGroup)
+# class SiteGroupAdmin(SiteAwareModelAdmin):
+#     list_display = ["name"]
+#     search_fields = ["name"]
+#     filter_horizontal = ["permissions"]
