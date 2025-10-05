@@ -18,7 +18,7 @@ class UserManager(BaseUserManager):
         request = getattr(_thread_locals, "request", None)
         if request:
             site = get_current_site(request)
-            return queryset.filter(sites=site)
+            return queryset.filter(site_id=site)
         return queryset
 
     def create_user(
@@ -54,9 +54,7 @@ class UserManager(BaseUserManager):
         return user
 
 
-class User(AbstractBaseUser, PermissionsMixin):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
+class User(SiteAwareModel, AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
 
     first_name = models.CharField(null=True, max_length=200)
@@ -65,8 +63,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
-
-    sites = models.ManyToManyField(Site)
 
     USERNAME_FIELD = "email"
     EMAIL_FIELD = "email"

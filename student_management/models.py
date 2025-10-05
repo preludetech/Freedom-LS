@@ -34,3 +34,6 @@ class Cohort(SiteAwareModel):
 class CohortMembership(SiteAwareModel):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     cohort = models.ForeignKey(Cohort, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return ""
