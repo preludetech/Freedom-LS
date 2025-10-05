@@ -23,5 +23,13 @@ class SiteAwareModel(models.Model):
 
     objects = SiteAwareManager()
 
+    def save(self, *args, **kwargs):
+        # Automatically set site_id if not already set
+        if not self.site_id_id:
+            request = getattr(_thread_locals, 'request', None)
+            if request:
+                self.site_id = get_current_site(request)
+        super().save(*args, **kwargs)
+
     class Meta:
         abstract = True
