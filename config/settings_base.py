@@ -132,3 +132,16 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "accounts.User"
+
+
+# Unfold Admin Configuration
+def get_environment(request):
+    from django.contrib.sites.shortcuts import get_current_site
+    site = get_current_site(request)
+    return site.name
+
+
+UNFOLD = {
+    "SITE_TITLE": get_environment,
+    "SITE_HEADER": get_environment,
+}
