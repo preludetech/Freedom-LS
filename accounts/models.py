@@ -2,10 +2,20 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.sites.models import Site
+from django.contrib.sites.shortcuts import get_current_site
 import uuid
+from system_base.models import _thread_locals
 
 
 class UserManager(BaseUserManager):
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        request = getattr(_thread_locals, 'request', None)
+        if request:
+            site = get_current_site(request)
+            return queryset.filter(sites=site)
+        return queryset
+
     def create_user(
         self,
         email,
