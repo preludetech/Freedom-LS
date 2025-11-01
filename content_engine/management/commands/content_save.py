@@ -94,7 +94,54 @@ def update_file_with_uuid(file_path, item_uuid):
         logger.info(f"Updated {file_path} with UUID: {item_uuid}")
 
 
-def save_with_uuid(model_class, item, site, **fields):
+def update_file_with_option_uuids(file_path, question_uuid, option_uuids):
+    """
+    Update options in a YAML file with their UUIDs.
+
+    Args:
+        file_path: Path to the file
+        question_uuid: UUID of the question containing the options
+        option_uuids: List of (option_index, option_uuid) tuples
+    """
+    if file_path.suffix not in ['.yaml', '.yml']:
+        return
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    sections = content.split('---')
+    if sections and not sections[0].strip():
+        sections = sections[1:]
+
+    sections = [s.strip() for s in sections]
+
+    # Find the question section with matching UUID
+    for idx, section in enumerate(sections):
+        section_data = yaml.safe_load(section)
+        if section_data and section_data.get('uuid') == str(question_uuid):
+            # Update options with UUIDs
+            if 'options' in section_data and section_data['options']:
+                for opt_idx, opt_uuid in option_uuids:
+                    if opt_idx < len(section_data['options']):
+                        section_data['options'][opt_idx]['uuid'] = str(opt_uuid)
+
+                sections[idx] = yaml.dump(
+                    section_data,
+                    Dumper=PreservingDumper,
+                    default_flow_style=False,
+                    allow_unicode=True
+                ).strip()
+                break
+
+    new_content = '---\n' + '\n---\n'.join(sections) + '\n'
+
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(new_content)
+
+    logger.info(f"Updated {file_path} with option UUIDs")
+
+
+def save_with_uuid(model_class, item, site, update_file=True, **fields):
     """Generic save function that handles UUID logic."""
     if item.uuid:
         instance, created = model_class.objects.update_or_create(
@@ -104,7 +151,8 @@ def save_with_uuid(model_class, item, site, **fields):
         )
     else:
         instance = model_class.objects.create(site_id=site, **fields)
-        update_file_with_uuid(item.file_path, instance.id)
+        if update_file:
+            update_file_with_uuid(item.file_path, instance.id)
     return instance
 
 
@@ -185,14 +233,21 @@ def save_form_question(item, form_page, site, order=0):
     )
 
     if item.options:
+        option_uuids = []
         for idx, option in enumerate(item.options):
-            QuestionOption.objects.create(
-                site_id=site,
+            option_obj = save_with_uuid(
+                QuestionOption, option, site,
+                update_file=False,
                 question=question,
                 text=option.text,
                 value=str(option.value),
                 order=idx,
             )
+            option_uuids.append((idx, option_obj.id))
+
+        # Update file with option UUIDs if any options didn't have UUIDs
+        if any(opt.uuid is None for opt in item.options):
+            update_file_with_option_uuids(item.file_path, question.id, option_uuids)
 
     return question
 

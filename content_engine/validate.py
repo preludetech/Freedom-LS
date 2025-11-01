@@ -26,10 +26,14 @@ def get_all_files(path):
     - have names starting with an _ or .
     - are included in directories with names starting with an _ or . (recursive)
     """
+
     def should_skip(file_path, base_path):
         """Check if a file should be skipped based on filtering rules."""
         # Skip README.md
         if file_path.name == "README.md":
+            return True
+
+        if file_path.name == "CLAUDE.md":
             return True
 
         # Skip files starting with _ or .
@@ -41,7 +45,11 @@ def get_all_files(path):
             relative_path = file_path.relative_to(base_path)
             for parent in relative_path.parents:
                 # Skip the root parent (which would be '.')
-                if parent.name and parent.name != "." and (parent.name.startswith("_") or parent.name.startswith(".")):
+                if (
+                    parent.name
+                    and parent.name != "."
+                    and (parent.name.startswith("_") or parent.name.startswith("."))
+                ):
                     return True
         except ValueError:
             # file_path is not relative to base_path
@@ -53,10 +61,11 @@ def get_all_files(path):
         return [path]
     elif path.is_dir():
         # Recursively find all files, excluding those that match skip criteria
-        return sorted([f for f in path.rglob("*") if f.is_file() and not should_skip(f, path)])
+        return sorted(
+            [f for f in path.rglob("*") if f.is_file() and not should_skip(f, path)]
+        )
     else:
         return []
-
 
 
 def validate_yaml_section(data, path, section_num=None):
@@ -77,17 +86,19 @@ def validate_yaml_section(data, path, section_num=None):
         raise ValueError(f"YAML {section_label}{path} is not a valid object")
 
     # Get the content_type field, and figure out which model to use
-    content_type = data.get('content_type')
+    content_type = data.get("content_type")
 
     if content_type is None:
         raise ValueError(f"No content_type field found in {section_label}{path}")
 
     model = SCHEMAS.get(content_type)
     if model is None:
-        raise ValueError(f"Unknown content_type '{content_type}' in {section_label}{path}")
+        raise ValueError(
+            f"Unknown content_type '{content_type}' in {section_label}{path}"
+        )
 
     # Inject the file path into the data
-    data['file_path'] = path
+    data["file_path"] = path
 
     # Use pydantic to validate the data structure and return the instance
     return model.model_validate(data)
@@ -101,11 +112,11 @@ def parse_yaml_file(path):
     Returns:
         list: List of validated pydantic model instances
     """
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         content = f.read()
 
     # Split content by --- to get individual YAML documents
-    sections = [s.strip() for s in content.split('---') if s.strip()]
+    sections = [s.strip() for s in content.split("---") if s.strip()]
 
     if not sections:
         raise ValueError(f"No YAML content found in {path}")
@@ -117,8 +128,12 @@ def parse_yaml_file(path):
     for idx, section in enumerate(sections, start=1):
         data = yaml.safe_load(section)
         if first_model:
-            data['content_type'] = data.get('content_type', first_model.derive_content_type(data))
-        current_model = validate_yaml_section(data, path, section_num=idx if len(sections) > 1 else None)
+            data["content_type"] = data.get(
+                "content_type", first_model.derive_content_type(data)
+            )
+        current_model = validate_yaml_section(
+            data, path, section_num=idx if len(sections) > 1 else None
+        )
         results.append(current_model)
         first_model = first_model or current_model
 
@@ -137,7 +152,7 @@ def parse_markdown_file(path):
     data = post.metadata
 
     # Include the markdown content
-    data['content'] = post.content
+    data["content"] = post.content
 
     # Validate the frontmatter
     model = validate_yaml_section(data, path)
@@ -153,7 +168,7 @@ def parse_single_file(path):
     Returns:
         list: List of validated pydantic model instances
     """
-    if path.suffix in ['.yaml', '.yml']:
+    if path.suffix in [".yaml", ".yml"]:
         return parse_yaml_file(path)
     else:
         return parse_markdown_file(path)
@@ -165,7 +180,9 @@ def validate_yaml_file(path):
     Each file can contain multiple YAML documents separated by ---
     """
     results = parse_yaml_file(path)
-    logger.info(f"✓ {path} validated successfully ({len(results)} section{'s' if len(results) > 1 else ''})")
+    logger.info(
+        f"✓ {path} validated successfully ({len(results)} section{'s' if len(results) > 1 else ''})"
+    )
 
 
 def validate_markdown_file(path):
@@ -182,12 +199,11 @@ def validate_single_file(path):
     - .yaml/.yml files: validate each YAML document (separated by ---)
     - .md files: validate the frontmatter
     """
-    if path.suffix in ['.yaml', '.yml']:
+    if path.suffix in [".yaml", ".yml"]:
         validate_yaml_file(path)
     else:
         validate_markdown_file(path)
 
-    
 
 def validate(path):
     path = Path(path)
@@ -199,12 +215,7 @@ def validate(path):
     # 2. get a list of all the file paths
     all_file_paths = get_all_files(path)
 
-   
-
     # 3. validate each file path (only .md and .yaml files)
     for file_path in all_file_paths:
-        if file_path.suffix in ['.md', '.yaml', '.yml']:
+        if file_path.suffix in [".md", ".yaml", ".yml"]:
             validate_single_file(file_path)
-            
-            
-
