@@ -3,6 +3,7 @@ from unfold.admin import TabularInline
 
 from system_base.admin import SiteAwareModelAdmin
 from .models import Student, Cohort, CohortMembership
+from guardian.admin import GuardedModelAdmin
 
 
 class StudentCohortMembershipInline(TabularInline):
@@ -35,7 +36,7 @@ class CohortMembershipInline(TabularInline):
 
 
 @admin.register(Cohort)
-class CohortAdmin(SiteAwareModelAdmin):
+class CohortAdmin(GuardedModelAdmin):
     list_display = ["name"]
     search_fields = ["name"]
     inlines = [CohortMembershipInline]

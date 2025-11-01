@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "unfold.contrib.location_field",  # optional, if django-location-field package is used
     "unfold.contrib.constance",  # optional, if django-constance package is used
     "django.contrib.admin",  # required
+    "guardian",
 ]
 
 MIDDLEWARE = [
@@ -148,7 +149,7 @@ primary_colors = {
         "900": "oklch(38.1% .176 304.987)",
         "950": "oklch(29.1% .149 302.717)",
     },
-    "UAVI": {
+    "Bloom": {
         "50": "#e0ffe1",
         "100": "#82ff90",
         "200": "#49ed66",
@@ -179,3 +180,9 @@ UNFOLD = {
     "SITE_HEADER": get_unfold_value("SITE_HEADER"),
     "SHOW_VIEW_ON_SITE": False,
 }
+
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'guardian.backends.ObjectPermissionBackend',
+)

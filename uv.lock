@@ -45,6 +45,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b7/19/3671e67b5fcc744c0d9380b0bb6120b7226bc9944bd9affb029b2d510d53/django_allauth-65.11.2.tar.gz", hash = "sha256:7b7e771d3384d0e247d0d6aef31b0cb589f92305b7e975e70056a513525906e7", size = 1916225, upload-time = "2025-09-09T18:37:19.55Z" }
 
 [[package]]
+name = "django-guardian"
+version = "3.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e2/f9/bcff6a931298b9eb55e1550b55ab964fab747f594ba6d2d81cbe19736c5f/django_guardian-3.2.0.tar.gz", hash = "sha256:9e18ecd2e211b665972690c2d03d27bce0ea4932b5efac24a4bb9d526950a69e", size = 99940, upload-time = "2025-09-16T10:35:53.609Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2f/23/63a7d868373a73d25c4a5c2dd3cce3aaeb22fbee82560d42b6e93ba01403/django_guardian-3.2.0-py3-none-any.whl", hash = "sha256:0768565a057988a93fc4a1d93649c4a794abfd7473a8408a079cfbf83c559d77", size = 134674, upload-time = "2025-09-16T10:35:51.69Z" },
+]
+
+[[package]]
 name = "django-ninja"
 version = "1.4.3"
 source = { registry = "https://pypi.org/simple" }
@@ -119,6 +131,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "django" },
     { name = "django-allauth" },
+    { name = "django-guardian" },
     { name = "django-ninja" },
     { name = "django-unfold" },
 ]
@@ -127,6 +140,7 @@ dependencies = [
 requires-dist = [
     { name = "django", specifier = ">=5.2.7" },
     { name = "django-allauth", specifier = ">=65.11.2" },
+    { name = "django-guardian", specifier = ">=3.2.0" },
     { name = "django-ninja", specifier = ">=1.4.3" },
     { name = "django-unfold", specifier = ">=0.67.0" },
 ]
