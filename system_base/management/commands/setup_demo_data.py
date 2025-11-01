@@ -15,7 +15,7 @@ demo_sites = [
         ],
     },
     {
-        "name": "UAVI",
+        "name": "Bloom",
         "domain": "127.0.0.1:8001",
         "cohorts": ["Cohort A", "Cohort B"],
         "students": [
