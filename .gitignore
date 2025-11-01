@@ -1,3 +1,5 @@
+gitignore/
+
 # Python-generated files
 __pycache__/
 *.py[oc]
@@ -10,3 +12,7 @@ db.sqlite3
 
 # Virtual environments
 .venv
+
+# Node stuff 
+node_modules/
+static/vendor/

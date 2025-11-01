@@ -1,9 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{{ form.title }}</title>
-</head>
-<body>
+{% extends '_base.html' %}
+    
+{% block title %} {{ form.title }} {% endblock %}
+    
+{% block content %}
+
     <h1>{{ form.title }}</h1>
     {% if form.subtitle %}
         <h2>{{ form.subtitle }}</h2>
@@ -12,14 +12,10 @@
         {{ form.rendered_content }}
     </div>
 
-    {%for page in form.pages.all %}
-        {{ page.order }}
-    {% endfor %}
-
     {% if first_page %}
         <p>
             <a href="{% url 'content_engine:form_page_detail' first_page.pk %}">Start</a>
         </p>
     {% endif %}
-</body>
-</html>
+
+{% endblock content %}

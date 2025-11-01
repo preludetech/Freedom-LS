@@ -1,9 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{{ topic.title }}</title>
-</head>
-<body>
+{% extends '_base.html' %}
+
+{% block title %} {{ topic.title }} {% endblock %}
+
+{% block content %}
     <h1>{{ topic.title }}</h1>
     {% if topic.subtitle %}
         <h2>{{ topic.subtitle }}</h2>
@@ -11,5 +10,4 @@
     <div>
         {{ topic.rendered_content }}
     </div>
-</body>
-</html>
+{% endblock content %}
