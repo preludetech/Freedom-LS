@@ -7,8 +7,9 @@
     - [ ] Register a cohort or student for a course
 
 - as a superuser I should be able to:
-    - [ ] manage permissions on a per object level (Guardian)
+    - [X] manage permissions on a per object level (Guardian)
     - [ ] manage groups of users and their permissions
+            Requires custom Group model
 
 - as a superuser I should be able to:
     - [ ] Configure Client applications that can use the API 

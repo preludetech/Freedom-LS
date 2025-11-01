@@ -4,11 +4,12 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
     Permission,
+    Group as AuthGroup,
 )
 from django.contrib.sites.models import Site
 from django.contrib.sites.shortcuts import get_current_site
 import uuid
-from system_base.models import _thread_locals, SiteAwareModel
+from system_base.models import _thread_locals, SiteAwareModel, SiteAwareModelBase
 from django.utils.translation import gettext_lazy as _
 
 
@@ -72,25 +73,14 @@ class User(SiteAwareModel, AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
 
-# class SiteGroup(SiteAwareModel):
+# class SiteGroup(SiteAwareModelBase, AuthGroup):
 #     """Custom Group model with site awareness"""
 
-#     name = models.CharField(max_length=150)
-
-#     permissions = models.ManyToManyField(
-#         Permission,
-#         verbose_name=_("permissions"),
-#         blank=True,
-#     )
-
+#     group_name  = models.CharField(null=True, max_length=200)
 #     class Meta:
 #         verbose_name = _("group")
 #         verbose_name_plural = _("groups")
-#         constraints = [
-#             models.UniqueConstraint(
-#                 fields=["site_id", "name"], name="unique_group_name_per_site"
-#             )
-#         ]
+#         unique_together = [['site_id', 'group_name']]
 
 #     def __str__(self):
-#         return self.name
+#         return self.group_name

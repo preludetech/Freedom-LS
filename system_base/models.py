@@ -17,8 +17,7 @@ class SiteAwareManager(models.Manager):
         return queryset
 
 
-class SiteAwareModel(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+class SiteAwareModelBase(models.Model):
     site_id = models.ForeignKey(Site, on_delete=models.PROTECT)
 
     objects = SiteAwareManager()
@@ -31,5 +30,11 @@ class SiteAwareModel(models.Model):
                 self.site_id = get_current_site(request)
         super().save(*args, **kwargs)
 
+    class Meta:
+        abstract = True
+
+
+class SiteAwareModel(SiteAwareModelBase):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     class Meta:
         abstract = True
