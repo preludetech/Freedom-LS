@@ -56,7 +56,19 @@ class TitledContent(BaseContent):
         return self.title
 
 
-class Topic(TitledContent):
+class MarkdownContent(BaseContent):
+    """Base content model with markdown content."""
+    content = models.TextField(
+        null=True,
+        blank=True,
+        help_text=_("Markdown content")
+    )
+
+    class Meta:
+        abstract = True
+
+
+class Topic(TitledContent, MarkdownContent):
     """Topic content item."""
 
 
@@ -67,7 +79,7 @@ class ContentCollection(TitledContent):
         help_text=_("Single directory path or list of content paths")
     )
 
-class Form(TitledContent):
+class Form(TitledContent, MarkdownContent):
     """Form content with scoring strategy."""
     strategy = models.CharField(
         max_length=50,

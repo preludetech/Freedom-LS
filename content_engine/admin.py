@@ -89,7 +89,7 @@ class TopicAdmin(admin.ModelAdmin):
     search_fields = ('title', 'subtitle')
     fieldsets = (
         (None, {
-            'fields': ('title', 'subtitle')
+            'fields': ('title', 'subtitle', 'content')
         }),
         ('Metadata', {
             'fields': ('meta', 'tags'),
@@ -122,7 +122,7 @@ class FormAdmin(admin.ModelAdmin):
     inlines = [FormPageInline]
     fieldsets = (
         (None, {
-            'fields': ('title', 'subtitle', 'strategy')
+            'fields': ('title', 'subtitle', 'content', 'strategy')
         }),
         ('Metadata', {
             'fields': ('meta', 'tags'),

@@ -59,7 +59,11 @@ class BaseContentModel(BaseBaseContentModel):
     subtitle: Optional[str] = Field(None, description="Optional subtitle")
 
 
-class Topic(BaseContentModel, content_type=ContentType.TOPIC):
+class MarkdownContentModel(BaseModel):
+    content: Optional[str] = Field(None, description="Markdown content body")
+
+
+class Topic(BaseContentModel, MarkdownContentModel, content_type=ContentType.TOPIC):
     """Schema for content items.
     title: Required
     subtitle: Optional
@@ -92,7 +96,7 @@ class ContentCollection(BaseContentModel, content_type=ContentType.COLLECTION):
 
 
 
-class Form(BaseContentModel, content_type=ContentType.FORM):
+class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM):
     """
     A form file will be in a directory containing all the different form pages. Ensure that there are form pages in the directory.
 

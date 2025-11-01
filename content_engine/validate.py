@@ -136,6 +136,9 @@ def parse_markdown_file(path):
     post = frontmatter.load(path)
     data = post.metadata
 
+    # Include the markdown content
+    data['content'] = post.content
+
     # Validate the frontmatter
     model = validate_yaml_section(data, path)
     return [model]

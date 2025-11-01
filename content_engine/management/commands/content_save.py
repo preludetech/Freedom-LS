@@ -114,6 +114,7 @@ def save_topic(item, site):
         Topic, item, site,
         title=item.title,
         subtitle=item.subtitle,
+        content=item.content,
         meta=item.meta,
         tags=item.tags,
     )
@@ -137,6 +138,7 @@ def save_form(item, site):
         Form, item, site,
         title=item.title,
         subtitle=item.subtitle,
+        content=item.content,
         strategy=item.strategy,
         meta=item.meta,
         tags=item.tags,
