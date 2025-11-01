@@ -3,13 +3,9 @@ from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
     PermissionsMixin,
-    Permission,
-    Group as AuthGroup,
 )
-from django.contrib.sites.models import Site
 from django.contrib.sites.shortcuts import get_current_site
-import uuid
-from system_base.models import _thread_locals, SiteAwareModel, SiteAwareModelBase
+from system_base.models import _thread_locals, SiteAwareModel
 from django.utils.translation import gettext_lazy as _
 
 
