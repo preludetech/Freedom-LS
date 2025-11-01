@@ -30,4 +30,7 @@ urlpatterns = [
     path('api/', api.urls),
     # path("api/xapi/", include("xapi_learning_record_store.api_urls")),
     # path("api/", api.urls),
+
+    path("__reload__/", include("django_browser_reload.urls")),
+
 ]
