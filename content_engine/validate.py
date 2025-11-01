@@ -15,7 +15,7 @@ from .schema import SCHEMAS
 logger = logging.getLogger(__name__)
 
 
-def _get_all_files(path):
+def get_all_files(path):
     """
     if path points to a regular file, then return it
 
@@ -53,7 +53,7 @@ def _get_all_files(path):
         return [path]
     elif path.is_dir():
         # Recursively find all files, excluding those that match skip criteria
-        return [f for f in path.rglob("*") if f.is_file() and not should_skip(f, path)]
+        return sorted([f for f in path.rglob("*") if f.is_file() and not should_skip(f, path)])
     else:
         return []
 
@@ -197,7 +197,7 @@ def validate(path):
         raise FileNotFoundError(f"Path does not exist: {path}")
 
     # 2. get a list of all the file paths
-    all_file_paths = _get_all_files(path)
+    all_file_paths = get_all_files(path)
 
    
 

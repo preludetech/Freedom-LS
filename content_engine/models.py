@@ -103,6 +103,19 @@ class FormPage(TitledContent):
     )
     order = models.PositiveIntegerField(default=0)
 
+    def children(self):
+        """
+        return an ordered list of FormText and FormQuestion instances
+        """
+        text_items = list(self.text_items.all())
+        questions = list(self.questions.all())
+
+        # Combine and sort by order field
+        all_children = text_items + questions
+        all_children.sort(key=lambda item: item.order)
+
+        return all_children
+
     class Meta:
         ordering = ['order']
 
@@ -118,9 +131,18 @@ class FormText(BaseContent):
     )
     order = models.PositiveIntegerField(default=0)
 
+    def rendered_text(self):
+        from threading import local
+        _thread_locals = local()
+        request = getattr(_thread_locals, 'request', None)
+        return render_markdown(self.text, request)
+
     class Meta:
         ordering = ['order']
 
+    @property
+    def content_type(self):
+        return ContentType.FORM_TEXT
 
     def __str__(self):
         return self.text[:50]
@@ -142,9 +164,34 @@ class FormQuestion(BaseContent):
     )
     order = models.PositiveIntegerField(default=0)
 
+    def rendered_question(self):
+        from threading import local
+        _thread_locals = local()
+        request = getattr(_thread_locals, 'request', None)
+        return render_markdown(self.question, request)
+
+    def question_number(self):
+        """
+        Return 1 for the first question in the Form, 2 for the second etc. Note that this might not be the same as the order attribute because form pages contain more than just questions
+        """
+        form = self.form_page.form
+        question_count = 0
+
+        # Iterate through all pages in order
+        for page in form.pages.all():
+            # Get all questions on this page in order
+            for question in page.questions.all():
+                question_count += 1
+                if question.pk == self.pk:
+                    return question_count
+
+        return None
     class Meta:
         ordering = ['order']
 
+    @property
+    def content_type(self):
+        return ContentType.FORM_QUESTION
 
     def __str__(self):
         return self.question[:50]

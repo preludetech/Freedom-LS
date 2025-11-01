@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ form.title }}</title>
+</head>
+<body>
+    <h1>{{ form.title }}</h1>
+    {% if form.subtitle %}
+        <h2>{{ form.subtitle }}</h2>
+    {% endif %}
+    <div>
+        {{ form.rendered_content }}
+    </div>
+
+    {%for page in form.pages.all %}
+        {{ page.order }}
+    {% endfor %}
+
+    {% if first_page %}
+        <p>
+            <a href="{% url 'content_engine:form_page_detail' first_page.pk %}">Start</a>
+        </p>
+    {% endif %}
+</body>
+</html>

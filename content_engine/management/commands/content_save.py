@@ -15,7 +15,7 @@ from django.db import transaction
 
 import djclick as click
 
-from content_engine.validate import validate, _get_all_files, parse_single_file
+from content_engine.validate import validate, get_all_files, parse_single_file
 from content_engine.schema import ContentType as SchemaContentType
 from content_engine.models import (
     Topic, ContentCollection, Form, FormPage,
@@ -202,16 +202,13 @@ def save_content_to_db(path, site_name):
     """Scan through all validated files and save them to the database."""
     path = Path(path)
 
-    # Get or create the site
-    site, created = Site.objects.get_or_create(
+    # Get the site
+    site = Site.objects.get(
         name=site_name,
-        defaults={'domain': site_name.lower().replace(' ', '')}
     )
-    if created:
-        logger.info(f"Created new site: {site_name}")
-
+   
     # Parse all files using existing validation code
-    all_files = _get_all_files(path)
+    all_files = get_all_files(path)
     all_parsed = []
 
     for file_path in all_files:
@@ -230,9 +227,9 @@ def save_content_to_db(path, site_name):
         logger.info(f"Saved Topic: {topic.title}")
 
     # Save Collections
-    for item in grouped.get(SchemaContentType.COLLECTION, []):
-        collection = save_collection(item, site)
-        logger.info(f"Saved ContentCollection: {collection.title}")
+    # for item in grouped.get(SchemaContentType.COLLECTION, []):
+    #     collection = save_collection(item, site)
+    #     logger.info(f"Saved ContentCollection: {collection.title}")
 
     # Save Forms and track them by directory
     forms_by_dir = {}
@@ -246,35 +243,39 @@ def save_content_to_db(path, site_name):
     for item in grouped.get(SchemaContentType.FORM_PAGE, []):
         pages_by_file[item.file_path].append(item)
 
-    # Save form pages and their content
+    # Group pages by parent form directory
+    pages_by_form = defaultdict(list)
     for file_path, page_items in pages_by_file.items():
         parent_form = forms_by_dir.get(file_path.parent)
+        if parent_form:
+            pages_by_form[parent_form].append((file_path, page_items))
 
-        if not parent_form:
-            logger.warning(f"No parent form found for page: {file_path}")
-            continue
+    # Save form pages and their content in alphabetical order per form
+    for parent_form, form_pages in pages_by_form.items():
+        # Sort pages by file path alphabetically
+        for page_order, (file_path, page_items) in enumerate(sorted(form_pages)):
+            if page_items:
+                page_item = page_items[0]
+                # Pages are processed in alphabetical order by filename
+                # First page gets order=0, second gets order=1, etc.
+                form_page = save_form_page(page_item, parent_form, site, order=page_order)
+                logger.info(f"Saved FormPage: {form_page.title} (order={page_order})")
 
-        if page_items:
-            page_item = page_items[0]
-            form_page = save_form_page(page_item, parent_form, site, order=len(parent_form.pages.all()))
-            logger.info(f"Saved FormPage: {form_page.title}")
+                # Get all content items from this file in the order they appear in the YAML
+                file_content_items = [
+                    item for item in all_parsed
+                    if item.file_path == file_path and
+                    item.content_type in (SchemaContentType.FORM_TEXT, SchemaContentType.FORM_QUESTION)
+                ]
 
-            # Save texts and questions from this file
-            texts = [item for item in grouped.get(SchemaContentType.FORM_TEXT, [])
-                     if item.file_path == file_path]
-            questions = [item for item in grouped.get(SchemaContentType.FORM_QUESTION, [])
-                        if item.file_path == file_path]
-
-            content_order = 0
-            for item in texts:
-                save_form_text(item, form_page, site, order=content_order)
-                content_order += 1
-                logger.info(f"Saved FormText in {form_page.title}")
-
-            for item in questions:
-                save_form_question(item, form_page, site, order=content_order)
-                content_order += 1
-                logger.info(f"Saved FormQuestion in {form_page.title}")
+                # Save texts and questions in the order they appear in the file
+                for content_order, item in enumerate(file_content_items):
+                    if item.content_type == SchemaContentType.FORM_TEXT:
+                        save_form_text(item, form_page, site, order=content_order)
+                        logger.info(f"Saved FormText in {form_page.title} (order={content_order})")
+                    elif item.content_type == SchemaContentType.FORM_QUESTION:
+                        save_form_question(item, form_page, site, order=content_order)
+                        logger.info(f"Saved FormQuestion in {form_page.title} (order={content_order})")
 
     logger.info(f"✓ Successfully saved all content for site: {site_name}")
 

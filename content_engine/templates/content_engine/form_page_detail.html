@@ -1,0 +1,67 @@
+{% partialdef form-question %}
+<div>
+    {{child.question_number}}. {{ child.rendered_question }}
+
+    {% if child.required %} * {% endif %}
+
+    {% if child.type == "multiple_choice" %}
+    
+        {% for option in child.options.all %}
+            <input type="radio" id="{{child.id}}" name="age" value="{{option.id}}">
+            <label for="{{child.id}}">{{option.text}}</label><br>
+
+        {% endfor %}
+
+    {% else %}
+
+    ERROR! UNHANDLED FORM TYPE {{ child.type }}
+    {% endif %}
+</div>
+{% endpartialdef %}
+
+{% partialdef form-text %}
+<div>
+    {{child.rendered_text}}
+</div>
+{% endpartialdef %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ form.title }} - Page {{ current_page_num }}</title>
+</head>
+<body>
+    <h1>{{ form.title }}</h1>
+    {% if form.subtitle %}
+        <h2>{{ form.subtitle }}</h2>
+    {% endif %}
+
+    <p>Page {{ current_page_num }} of {{ total_pages }} ({{ pages_left }} page{{ pages_left|pluralize }} left)</p>
+
+    <h3>{{ form_page.title }}</h3>
+    {% if form_page.subtitle %}
+        <h4>{{ form_page.subtitle }}</h4>
+    {% endif %}
+
+
+    <div>
+        {% for child in form_page.children %}
+            {% if child.content_type == 'FORM_QUESTION' %}
+                {% partial form-question %}
+            {% elif child.content_type == 'FORM_TEXT' %}
+                {% partial form-text %}
+            {% endif %}
+        {% endfor %}
+    </div>
+
+
+    <div>
+        {% if previous_page %}
+            <a href="{% url 'content_engine:form_page_detail' previous_page.pk %}">Back</a>
+        {% endif %}
+        {% if next_page %}
+            <a href="{% url 'content_engine:form_page_detail' next_page.pk %}">Next</a>
+        {% endif %}
+    </div>
+</body>
+</html>
