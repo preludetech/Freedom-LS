@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ topic.title }}</title>
+</head>
+<body>
+    <h1>{{ topic.title }}</h1>
+    {% if topic.subtitle %}
+        <h2>{{ topic.subtitle }}</h2>
+    {% endif %}
+    <div>
+        {{ topic.rendered_content }}
+    </div>
+</body>
+</html>

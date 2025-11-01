@@ -68,7 +68,11 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        # "DIRS": [],
+        "DIRS": [
+            # BASE_DIR / "templates",
+            "/tmp"
+            ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -188,3 +192,7 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'guardian.backends.ObjectPermissionBackend',
 )
+
+
+MARKDOWN_ALLOWED_TAGS = set()
+MARKDOWN_TEMPLATE_RENDER_ON = True

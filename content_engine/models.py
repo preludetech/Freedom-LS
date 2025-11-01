@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from system_base.models import SiteAwareModel
-
+from .markdown_utils import render_markdown
 
 class ContentType(models.TextChoices):
     """Content type enumeration."""
@@ -63,6 +63,12 @@ class MarkdownContent(BaseContent):
         blank=True,
         help_text=_("Markdown content")
     )
+
+    def rendered_content(self):
+        from threading import local
+        _thread_locals = local()
+        request = getattr(_thread_locals, 'request', None)
+        return render_markdown(self.content, request)
 
     class Meta:
         abstract = True
