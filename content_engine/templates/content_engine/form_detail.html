@@ -8,13 +8,13 @@
     {% if form.subtitle %}
         <h2>{{ form.subtitle }}</h2>
     {% endif %}
-    <div>
+    <div class="space-y-4 py-4">
         {{ form.rendered_content }}
     </div>
 
     {% if first_page %}
         <p>
-            <a href="{% url 'content_engine:form_page_detail' first_page.pk %}">Start</a>
+            <a href="{% url 'content_engine:form_page_detail' first_page.pk %}" class="btn btn-primary">Start</a>
         </p>
     {% endif %}
 

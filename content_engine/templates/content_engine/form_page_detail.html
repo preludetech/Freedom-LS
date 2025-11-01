@@ -6,7 +6,7 @@
 
 {% partialdef form-question %}
 <div class="mb-6 p-4 bg-white border border-gray-200 rounded-lg">
-    <div class="mb-3">
+    <div class="mb-3 flex flex-row gap-2">
         <span class="font-semibold text-gray-900">{{child.question_number}}.</span>
         <span class="text-gray-900">{{ child.rendered_question }}</span>
         {% if child.required %}
@@ -41,7 +41,6 @@
 {% block title %} {{ form.title }} - Page {{ current_page_num }} {% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto py-8 px-4">
 
     <!-- Form header -->
     <div class="mb-8">
@@ -97,5 +96,4 @@
             {% endif %}
         </div>
     </div>
-</div>
 {% endblock content %}

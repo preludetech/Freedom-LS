@@ -15,9 +15,12 @@
     {% block body %}
 
     <main class="p-4 flex-grow container mx-auto">
+        <div class="max-w-3xl mx-auto py-8 px-4">
         {% block content %}
-        Replace this in child templates
-        {% endblock content %}
+
+            Replace this in child templates
+            {% endblock content %}
+        </div>
     </main>
     {% endblock body %}
 </body>
