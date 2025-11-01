@@ -28,11 +28,7 @@ class FormStrategy(models.TextChoices):
 
 class BaseContent(SiteAwareModel):
     """Base model for all content types."""
-    content_type = models.CharField(
-        max_length=20,
-        choices=ContentType.choices,
-        db_index=True,
-    )
+    
     meta = models.JSONField(
         null=True,
         blank=True,
@@ -63,9 +59,6 @@ class TitledContent(BaseContent):
 class Topic(TitledContent):
     """Topic content item."""
 
-    def save(self, *args, **kwargs):
-        self.content_type = ContentType.TOPIC
-        super().save(*args, **kwargs)
 
 
 class ContentCollection(TitledContent):
@@ -74,11 +67,6 @@ class ContentCollection(TitledContent):
         help_text=_("Single directory path or list of content paths")
     )
 
-    def save(self, *args, **kwargs):
-        self.content_type = ContentType.COLLECTION
-        super().save(*args, **kwargs)
-
-
 class Form(TitledContent):
     """Form content with scoring strategy."""
     strategy = models.CharField(
@@ -86,9 +74,6 @@ class Form(TitledContent):
         choices=FormStrategy.choices,
     )
 
-    def save(self, *args, **kwargs):
-        self.content_type = ContentType.FORM
-        super().save(*args, **kwargs)
 
 
 class FormPage(TitledContent):
@@ -103,9 +88,6 @@ class FormPage(TitledContent):
     class Meta:
         ordering = ['order']
 
-    def save(self, *args, **kwargs):
-        self.content_type = ContentType.FORM_PAGE
-        super().save(*args, **kwargs)
 
 
 class FormText(BaseContent):
@@ -121,9 +103,6 @@ class FormText(BaseContent):
     class Meta:
         ordering = ['order']
 
-    def save(self, *args, **kwargs):
-        self.content_type = ContentType.FORM_TEXT
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.text[:50]
@@ -148,9 +127,6 @@ class FormQuestion(BaseContent):
     class Meta:
         ordering = ['order']
 
-    def save(self, *args, **kwargs):
-        self.content_type = ContentType.FORM_QUESTION
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.question[:50]

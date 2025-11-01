@@ -4,6 +4,9 @@ python manage.py content_save  ../bloom_content Bloom
 """
 
 import logging
+import uuid
+import frontmatter
+import yaml
 from pathlib import Path
 from collections import defaultdict
 
@@ -22,10 +25,93 @@ from content_engine.models import (
 logger = logging.getLogger(__name__)
 
 
+def represent_str(dumper, data):
+    """Custom string representer that uses literal style for multi-line strings."""
+    if '\n' in data:
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data)
+
+
+# Create custom YAML dumper
+class PreservingDumper(yaml.SafeDumper):
+    pass
+
+
+PreservingDumper.add_representer(str, represent_str)
+
+
+def update_file_with_uuid(file_path, item_uuid):
+    """
+    Update a file's frontmatter or YAML section with a UUID.
+    For multi-document YAML files, finds the first section without a UUID and updates it.
+
+    Args:
+        file_path: Path to the file
+        item_uuid: UUID to add
+    """
+    if file_path.suffix in ['.yaml', '.yml']:
+        # Handle YAML file
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        sections = content.split('---')
+        # Account for leading --- (sections[0] might be empty)
+        if sections and not sections[0].strip():
+            sections = sections[1:]
+
+        # Strip all sections to normalize formatting
+        sections = [s.strip() for s in sections]
+
+        # Find the first section without a UUID
+        for idx, section in enumerate(sections):
+            section_data = yaml.safe_load(section)
+            if section_data and 'uuid' not in section_data:
+                section_data['uuid'] = str(item_uuid)
+                # Re-serialize with literal style for multi-line strings
+                sections[idx] = yaml.dump(
+                    section_data,
+                    Dumper=PreservingDumper,
+                    default_flow_style=False,
+                    allow_unicode=True
+                ).strip()
+                break
+
+        # Reconstruct file with leading --- and proper formatting
+        new_content = '---\n' + '\n---\n'.join(sections) + '\n'
+
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+
+        logger.info(f"Updated {file_path} with UUID: {item_uuid}")
+    else:
+        # Handle markdown file
+        post = frontmatter.load(file_path)
+        post.metadata['uuid'] = str(item_uuid)
+
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(frontmatter.dumps(post))
+
+        logger.info(f"Updated {file_path} with UUID: {item_uuid}")
+
+
+def save_with_uuid(model_class, item, site, **fields):
+    """Generic save function that handles UUID logic."""
+    if item.uuid:
+        instance, created = model_class.objects.update_or_create(
+            id=uuid.UUID(item.uuid),
+            site_id=site,
+            defaults=fields
+        )
+    else:
+        instance = model_class.objects.create(site_id=site, **fields)
+        update_file_with_uuid(item.file_path, instance.id)
+    return instance
+
+
 def save_topic(item, site):
     """Save a Topic to the database."""
-    return Topic.objects.create(
-        site_id=site,
+    return save_with_uuid(
+        Topic, item, site,
         title=item.title,
         subtitle=item.subtitle,
         meta=item.meta,
@@ -47,8 +133,8 @@ def save_collection(item, site):
 
 def save_form(item, site):
     """Save a Form to the database."""
-    return Form.objects.create(
-        site_id=site,
+    return save_with_uuid(
+        Form, item, site,
         title=item.title,
         subtitle=item.subtitle,
         strategy=item.strategy,
@@ -59,8 +145,8 @@ def save_form(item, site):
 
 def save_form_page(item, form, site, order=0):
     """Save a FormPage to the database."""
-    return FormPage.objects.create(
-        site_id=site,
+    return save_with_uuid(
+        FormPage, item, site,
         form=form,
         title=item.title,
         subtitle=item.subtitle,
@@ -72,8 +158,8 @@ def save_form_page(item, form, site, order=0):
 
 def save_form_text(item, form_page, site, order=0):
     """Save FormText to the database."""
-    return FormText.objects.create(
-        site_id=site,
+    return save_with_uuid(
+        FormText, item, site,
         form_page=form_page,
         text=item.text,
         order=order,
@@ -84,8 +170,8 @@ def save_form_text(item, form_page, site, order=0):
 
 def save_form_question(item, form_page, site, order=0):
     """Save FormQuestion and its options to the database."""
-    question = FormQuestion.objects.create(
-        site_id=site,
+    question = save_with_uuid(
+        FormQuestion, item, site,
         form_page=form_page,
         question=item.question,
         type=item.type,
@@ -121,12 +207,6 @@ def save_content_to_db(path, site_name):
     )
     if created:
         logger.info(f"Created new site: {site_name}")
-
-    # Clear existing content for this site
-    logger.info(f"Clearing existing content for site: {site_name}")
-    Topic.objects.filter(site_id=site).delete()
-    ContentCollection.objects.filter(site_id=site).delete()
-    Form.objects.filter(site_id=site).delete()
 
     # Parse all files using existing validation code
     all_files = _get_all_files(path)
