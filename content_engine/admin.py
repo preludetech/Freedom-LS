@@ -84,8 +84,8 @@ class FormPageAdmin(admin.ModelAdmin):
 
 @admin.register(Topic)
 class TopicAdmin(admin.ModelAdmin):
-    list_display = ('title', 'subtitle', 'site_id')
-    list_filter = ('site_id', 'tags')
+    list_display = ('title', 'subtitle')
+    list_filter = ( 'tags',)
     search_fields = ('title', 'subtitle')
     fieldsets = (
         (None, {
@@ -100,8 +100,8 @@ class TopicAdmin(admin.ModelAdmin):
 
 @admin.register(ContentCollection)
 class ContentCollectionAdmin(admin.ModelAdmin):
-    list_display = ('title', 'subtitle', 'site_id')
-    list_filter = ('site_id', 'tags')
+    list_display = ('title', 'subtitle', )
+    list_filter = ( 'tags',)
     search_fields = ('title', 'subtitle')
     fieldsets = (
         (None, {
@@ -116,8 +116,8 @@ class ContentCollectionAdmin(admin.ModelAdmin):
 
 @admin.register(Form)
 class FormAdmin(admin.ModelAdmin):
-    list_display = ('title', 'subtitle', 'strategy', 'site_id')
-    list_filter = ('strategy', 'site_id', 'tags')
+    list_display = ('title', 'subtitle', 'strategy' )
+    list_filter = ('strategy',  'tags')
     search_fields = ('title', 'subtitle')
     inlines = [FormPageInline]
     fieldsets = (
