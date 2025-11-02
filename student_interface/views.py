@@ -67,6 +67,9 @@ def form_fill_page(request, pk, page_number):
     if form_progress.user != request.user:
         return redirect("student_interface:form_start", pk=form_progress.form.pk)
 
+    if request.method == "POST":
+        TODO
+
     # Get the form and all its pages
     form = form_progress.form
     all_pages = list(form.pages.all())

@@ -66,34 +66,53 @@
         {% endif %}
     </div>
 
-    <!-- Form content -->
-    <div class="mb-8">
-        {% for child in form_page.children %}
-            {% if child.content_type == 'FORM_QUESTION' %}
-                {% partial form-question %}
-            {% elif child.content_type == 'FORM_TEXT' %}
-                {% partial form-text %}
-            {% endif %}
-        {% endfor %}
-    </div>
+    <form method="POST">
 
-    <!-- Navigation -->
-    <div class="flex justify-between items-center pt-6 border-t border-gray-300">
-        <div>
-            {% if previous_page %}
+        <!-- Form content -->
+        <div class="mb-8">
+            {% for child in form_page.children %}
+            {% if child.content_type == 'FORM_QUESTION' %}
+            {% partial form-question %}
+            {% elif child.content_type == 'FORM_TEXT' %}
+            {% partial form-text %}
+            {% endif %}
+            {% endfor %}
+        </div>
+        
+        <!-- Navigation -->
+        
+        <div class="flex justify-between items-center pt-6 border-t border-gray-300">
+            <div>
+                {% if previous_page %}
+                {% if preview %}
+                
                 <a href="{% url 'content_engine:form_page_detail' previous_page.pk %}" class="btn btn-secondary">
                     Back
                 </a>
-            {% else %}
-                <div class="w-20"></div>
-            {% endif %}
-        </div>
-        <div>
-            {% if next_page %}
-                <a href="{% url 'content_engine:form_page_detail' next_page.pk %}" class="btn btn-primary">
-                    Next
+                {% else %}
+                <a href="{% url 'student_interface:form_fill_page' form_progress.pk current_page_num|add:'-1' %}" class="btn btn-secondary">
+                    Back
                 </a>
+                {% endif %}
+                {% else %}
+                <div class="w-20"></div>
+                {% endif %}
+            </div>
+            <div>
+                
+            {% if next_page %}
+
+            {% if preview %}
+            <a href="{% url 'content_engine:form_page_detail' next_page.pk %}" class="btn btn-primary">
+                Next
+            </a>
+            {% else %}
+            <button type="submit" class="btn btn-primary">
+                Next
+            </button>
+            {% endif %}
             {% endif %}
         </div>
     </div>
-{% endblock content %}
+</form>
+    {% endblock content %}
