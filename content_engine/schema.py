@@ -17,7 +17,7 @@ class ContentType(str, Enum):
     COLLECTION = "COLLECTION"
     FORM_PAGE = "FORM_PAGE"
     FORM_QUESTION = "FORM_QUESTION"
-    FORM_TEXT = "FORM_TEXT"
+    FORM_CONTENT = "FORM_CONTENT"
 
 
 class QuestionType(str, Enum):
@@ -104,8 +104,8 @@ class FormPage(BaseContentModel, content_type=ContentType.FORM_PAGE):
     """ """
 
     def derive_content_type(self, data):
-        if "text" in data:
-            return ContentType.FORM_TEXT
+        if "content" in data:
+            return ContentType.FORM_CONTENT
         if "question" in data:
             return ContentType.FORM_QUESTION
 
@@ -120,7 +120,7 @@ class QuestionOption(BaseModel):
     uuid: Optional[str] = Field(None, description="Unique identifier for the option")
 
 
-class FormContent(BaseBaseContentModel, content_type=ContentType.FORM_TEXT):
+class FormContent(BaseBaseContentModel, content_type=ContentType.FORM_CONTENT):
     content: str = Field(..., description="Text")
 
 

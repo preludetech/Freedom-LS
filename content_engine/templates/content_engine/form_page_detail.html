@@ -73,7 +73,7 @@
             {% for child in form_page.children %}
             {% if child.content_type == 'FORM_QUESTION' %}
             {% partial form-question %}
-            {% elif child.content_type == 'FORM_TEXT' %}
+            {% elif child.content_type == 'FORM_CONTENT' %}
             {% partial form-text %}
             {% endif %}
             {% endfor %}

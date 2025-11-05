@@ -62,7 +62,7 @@ class Command(BaseCommand):
                     is_staff=True,
                     is_superuser=True,
                     is_active=True,
-                    site_id=site,
+                    site=site,
                 )
                 user.set_password(user_email)
                 user.save()
@@ -81,7 +81,7 @@ class Command(BaseCommand):
             for cohort_name in site_data.get("cohorts", []):
                 cohort, created = Cohort.objects.get_or_create(
                     name=cohort_name,
-                    site_id=site,
+                    site=site,
                 )
                 created_cohorts.append(cohort)
                 if created:
@@ -100,7 +100,7 @@ class Command(BaseCommand):
             for student_data in site_data.get("students", []):
                 student, created = Student.objects.get_or_create(
                     email=student_data["email"],
-                    site_id=site,
+                    site=site,
                     defaults={"full_name": student_data["full_name"]},
                 )
                 created_students.append(student)
@@ -124,7 +124,7 @@ class Command(BaseCommand):
                     membership, created = CohortMembership.objects.get_or_create(
                         student=student,
                         cohort=first_cohort,
-                        site_id=site,
+                        site=site,
                     )
                     if created:
                         self.stdout.write(

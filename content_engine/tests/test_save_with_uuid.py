@@ -88,7 +88,7 @@ options:
   - text: Blue
     value: 2
 ---
-content_type: FORM_TEXT
+content_type: FORM_CONTENT
 content: This is some instructional text
 """
 
@@ -204,7 +204,7 @@ def test_yaml_dump_does_not_add_excessive_whitespace(site, form, make_temp_file)
     """Test that yaml.dump doesn't add blank lines when updating multi-document file with UUIDs."""
 
     # Create original multi-document YAML with specific compact format
-    original_yaml = "---\ncontent_type: FORM_PAGE\ntitle: Test Page\n---\ncontent_type: FORM_TEXT\ncontent: Some text\n"
+    original_yaml = "---\ncontent_type: FORM_PAGE\ntitle: Test Page\n---\ncontent_type: FORM_CONTENT\ncontent: Some text\n"
     temp_file = make_temp_file(suffix=".yaml", content=original_yaml)
 
     # Save to add UUIDs
@@ -222,7 +222,7 @@ def test_yaml_dump_does_not_add_excessive_whitespace(site, form, make_temp_file)
     section2_data = yaml.safe_load(sections[1])
 
     # Expected: compact YAML with no blank lines
-    expected_result = f"---\ncontent_type: FORM_PAGE\ntitle: Test Page\nuuid: {section1_data['uuid']}\n---\ncontent: Some text\ncontent_type: FORM_TEXT\nuuid: {section2_data['uuid']}\n"
+    expected_result = f"---\ncontent_type: FORM_PAGE\ntitle: Test Page\nuuid: {section1_data['uuid']}\n---\ncontent: Some text\ncontent_type: FORM_CONTENT\nuuid: {section2_data['uuid']}\n"
 
     assert result == expected_result, (
         f"YAML formatting incorrect.\nExpected:\n{repr(expected_result)}\nGot:\n{repr(result)}"
@@ -238,7 +238,7 @@ def test_yaml_dump_doesnt_reformat_multi_line_text_fields(site, form, make_temp_
 content_type: FORM_PAGE
 title: Test Page
 ---
-content_type: FORM_TEXT
+content_type: FORM_CONTENT
 content: |
   hello there
   this is a multi-line

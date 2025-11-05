@@ -10,6 +10,10 @@ def get_file_by_path(file_path):
     Template filter to look up a File object by its file_path.
 
     Usage: {{ "path/to/image.jpg"|get_file_by_path }}
+
+    Look at the current url and figure out what entity we are looking at.
+    It will either be a topic or a form
+    The file_path is relative to the entity we are looking at
     """
     if not file_path:
         return None

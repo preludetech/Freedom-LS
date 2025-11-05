@@ -3,26 +3,23 @@ from . import views
 
 app_name = "student_interface"
 
-
-# TODO: Use slugs instead of uuids for topics, collections and forms
-# slugs should be generated against the titles of the different things
-
-
 urlpatterns = [
-    path("topics/<uuid:pk>/", views.topic_detail, name="topic_detail"),
+    path("topics/<slug:topic_slug>/", views.topic_detail, name="topic_detail"),
     path(
-        "collections/<uuid:collection_pk>/topics/<uuid:pk>/",
+        "collections/<slug:collection_slug>/topics/<slug:topic_slug>/",
         views.topic_detail,
         name="topic_detail_in_collection",
     ),
-    path("collections/<uuid:pk>/", views.course_home, name="course_home"),
-    path("forms/<uuid:pk>/", views.form_detail, name="form_detail"),
     path(
-        "collections/<uuid:collection_pk>/forms/<uuid:pk>/",
+        "collections/<slug:collection_slug>/", views.course_home, name="course_home"
+    ),
+    path("forms/<slug:form_slug>/", views.form_detail, name="form_detail"),
+    path(
+        "collections/<slug:collection_slug>/forms/<slug:form_slug>/",
         views.form_detail,
         name="form_detail_in_collection",
     ),
-    path("forms/<uuid:pk>/start/", views.form_start, name="form_start"),
+    path("forms/<slug:form_slug>/start/", views.form_start, name="form_start"),
     path(
         "form_progress/<uuid:pk>/<int:page_number>/",
         views.form_fill_page,

@@ -2,17 +2,17 @@ from django.shortcuts import render, get_object_or_404
 from .models import Topic, ContentCollection, Form, FormPage
 
 
-def topic_detail(request, pk):
+def topic_detail(request, topic_slug):
     """Simple view to display a topic."""
-    topic = get_object_or_404(Topic, pk=pk)
+    topic = get_object_or_404(Topic, slug=topic_slug)
     return render(
         request, "content_engine/topic_detail.html", {"topic": topic, "preview": True}
     )
 
 
-def collection_detail(request, pk):
+def collection_detail(request, collection_slug):
     """Simple view to display a collection."""
-    collection = get_object_or_404(ContentCollection, pk=pk)
+    collection = get_object_or_404(ContentCollection, slug=collection_slug)
     children = collection.children()
     return render(
         request,
@@ -21,9 +21,9 @@ def collection_detail(request, pk):
     )
 
 
-def form_detail(request, pk):
+def form_detail(request, form_slug):
     """Simple view to display a form."""
-    form = get_object_or_404(Form, pk=pk)
+    form = get_object_or_404(Form, slug=form_slug)
     first_page = form.pages.first()
     return render(
         request,

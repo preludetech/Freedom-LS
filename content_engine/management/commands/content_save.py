@@ -14,6 +14,7 @@ from collections import defaultdict
 from django.contrib.sites.models import Site
 from django.core.files import File as DjangoFile
 from django.db import transaction
+from django.utils.text import slugify
 
 import djclick as click
 
@@ -178,6 +179,7 @@ def save_topic(item, site, base_path):
         base_path,
         title=item.title,
         subtitle=item.subtitle,
+        slug=slugify(item.title),
         content=item.content,
         meta=item.meta,
         tags=item.tags,
@@ -193,6 +195,7 @@ def save_collection(item, site, base_path):
         base_path,
         title=item.title,
         subtitle=item.subtitle,
+        slug=slugify(item.title),
         meta=item.meta,
         tags=item.tags,
     )
@@ -207,6 +210,7 @@ def save_form(item, site, base_path):
         base_path,
         title=item.title,
         subtitle=item.subtitle,
+        slug=slugify(item.title),
         content=item.content,
         strategy=item.strategy,
         meta=item.meta,
@@ -430,12 +434,12 @@ def save_content_to_db(path, site_name):
                     for item in all_parsed
                     if item.file_path == file_path
                     and item.content_type
-                    in (SchemaContentType.FORM_TEXT, SchemaContentType.FORM_QUESTION)
+                    in (SchemaContentType.FORM_CONTENT, SchemaContentType.FORM_QUESTION)
                 ]
 
                 # Save texts and questions in the order they appear in the file
                 for content_order, item in enumerate(file_content_items):
-                    if item.content_type == SchemaContentType.FORM_TEXT:
+                    if item.content_type == SchemaContentType.FORM_CONTENT:
                         save_form_content(item, form_page, site, order=content_order)
                         logger.info(
                             f"Saved FormContent in {form_page.title} (order={content_order})"
@@ -455,7 +459,8 @@ def save_content_to_db(path, site_name):
             collection_dir = schema_item.file_path.parent
             # Get all content files in the collection directory (not subdirectories)
             dir_files = [
-                f for f in collection_dir.iterdir()
+                f
+                for f in collection_dir.iterdir()
                 if f.is_file() and f.suffix in [".md", ".yaml", ".yml"]
             ]
             # Also include subdirectories as they might contain collections or forms
@@ -463,8 +468,12 @@ def save_content_to_db(path, site_name):
 
             # Create Child-like objects for directory scanning
             for f in sorted(dir_files):
-                if f != schema_item.file_path:  # Don't include the collection file itself
-                    children_list.append(type('Child', (), {'path': f, 'overrides': None})())
+                if (
+                    f != schema_item.file_path
+                ):  # Don't include the collection file itself
+                    children_list.append(
+                        type("Child", (), {"path": f, "overrides": None})()
+                    )
 
             # For subdirectories, look for main content files (forms or collections)
             for subdir in sorted(dir_subdirs):
@@ -485,14 +494,18 @@ def save_content_to_db(path, site_name):
                             pass
 
                 if main_files:
-                    children_list.append(type('Child', (), {'path': main_files[0], 'overrides': None})())
+                    children_list.append(
+                        type("Child", (), {"path": main_files[0], "overrides": None})()
+                    )
 
         # Create ContentCollectionItem entries for each child
         for order, child in enumerate(children_list):
             child_content = content_by_path.get(child.path)
             if child_content:
                 # Get the Django ContentType for the child
-                child_content_type = DjangoContentType.objects.get_for_model(child_content)
+                child_content_type = DjangoContentType.objects.get_for_model(
+                    child_content
+                )
 
                 # Create or update the ContentCollectionItem
                 ContentCollectionItem.objects.update_or_create(

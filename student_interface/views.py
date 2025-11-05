@@ -27,31 +27,33 @@ def get_navigation_items(collection, current_item):
     return previous_item, next_item
 
 
-def get_item_url(item, collection_pk=None):
+def get_item_url(item, collection_slug=None):
     """Get the URL for a content item (Topic, Form, or Collection)."""
     if isinstance(item, Topic):
-        if collection_pk:
+        if collection_slug:
             return reverse(
                 "student_interface:topic_detail_in_collection",
-                kwargs={"collection_pk": collection_pk, "pk": item.pk},
+                kwargs={"collection_slug": collection_slug, "topic_slug": item.slug},
             )
-        return reverse("student_interface:topic_detail", kwargs={"pk": item.pk})
+        return reverse("student_interface:topic_detail", kwargs={"topic_slug": item.slug})
     elif isinstance(item, Form):
-        if collection_pk:
+        if collection_slug:
             return reverse(
                 "student_interface:form_detail_in_collection",
-                kwargs={"collection_pk": collection_pk, "pk": item.pk},
+                kwargs={"collection_slug": collection_slug, "form_slug": item.slug},
             )
-        return reverse("student_interface:form_detail", kwargs={"pk": item.pk})
+        return reverse("student_interface:form_detail", kwargs={"form_slug": item.slug})
     elif isinstance(item, ContentCollection):
-        return reverse("student_interface:course_home", kwargs={"pk": item.pk})
+        return reverse(
+            "student_interface:course_home", kwargs={"collection_slug": item.slug}
+        )
     return None
 
 
 @login_required
-def topic_detail(request, pk, collection_pk=None):
+def topic_detail(request, topic_slug, collection_slug=None):
     """View to display a topic for students."""
-    topic = get_object_or_404(Topic, pk=pk)
+    topic = get_object_or_404(Topic, slug=topic_slug)
 
     # Track progress
     topic_progress, created = TopicProgress.objects.get_or_create(
@@ -65,28 +67,30 @@ def topic_detail(request, pk, collection_pk=None):
         topic_progress.complete_time = timezone.now()
         topic_progress.save()
 
-        if collection_pk:
-            collection = get_object_or_404(ContentCollection, pk=collection_pk)
+        if collection_slug:
+            collection = get_object_or_404(ContentCollection, slug=collection_slug)
             _, next_item = get_navigation_items(collection, topic)
             if next_item:
-                return redirect(get_item_url(next_item, collection.pk))
-            return redirect("student_interface:course_home", pk=collection.pk)
+                return redirect(get_item_url(next_item, collection.slug))
+            return redirect(
+                "student_interface:course_home", collection_slug=collection.slug
+            )
 
-        return redirect("student_interface:topic_detail", pk=topic.pk)
+        return redirect("student_interface:topic_detail", topic_slug=topic.slug)
 
     # Get navigation items
     collection = None
     previous_url = None
     next_url = None
 
-    if collection_pk:
-        collection = get_object_or_404(ContentCollection, pk=collection_pk)
+    if collection_slug:
+        collection = get_object_or_404(ContentCollection, slug=collection_slug)
         previous_item, next_item = get_navigation_items(collection, topic)
 
         if previous_item:
-            previous_url = get_item_url(previous_item, collection.pk)
+            previous_url = get_item_url(previous_item, collection.slug)
         if next_item:
-            next_url = get_item_url(next_item, collection.pk)
+            next_url = get_item_url(next_item, collection.slug)
 
     return render(
         request,
@@ -102,9 +106,9 @@ def topic_detail(request, pk, collection_pk=None):
 
 
 @login_required
-def form_detail(request, pk, collection_pk=None):
+def form_detail(request, form_slug, collection_slug=None):
     """View to display a form for students."""
-    form = get_object_or_404(Form, pk=pk)
+    form = get_object_or_404(Form, slug=form_slug)
 
     # Try to get existing incomplete form progress (don't create if it doesn't exist)
     form_progress = (
@@ -120,8 +124,8 @@ def form_detail(request, pk, collection_pk=None):
         page_number = form_progress.get_current_page_number()
 
     collection = None
-    if collection_pk:
-        collection = get_object_or_404(ContentCollection, pk=collection_pk)
+    if collection_slug:
+        collection = get_object_or_404(ContentCollection, slug=collection_slug)
 
     return render(
         request,
@@ -136,9 +140,9 @@ def form_detail(request, pk, collection_pk=None):
 
 
 @login_required
-def form_start(request, pk):
+def form_start(request, form_slug):
     """Start or resume a form for the current user."""
-    form = get_object_or_404(Form, pk=pk)
+    form = get_object_or_404(Form, slug=form_slug)
 
     # Create a FormProgress instance if it doesn't yet exist
     form_progress = FormProgress.get_or_create_incomplete(request.user, form)
@@ -160,7 +164,9 @@ def form_fill_page(request, pk, page_number):
 
     # Ensure the form_progress belongs to the current user
     if form_progress.user != request.user:
-        return redirect("student_interface:form_start", pk=form_progress.form.pk)
+        return redirect(
+            "student_interface:form_start", form_slug=form_progress.form.slug
+        )
 
     if request.method == "POST":
         TODO
@@ -196,7 +202,7 @@ def form_fill_page(request, pk, page_number):
     return render(request, "content_engine/form_page_detail.html", context)
 
 
-def course_home(request, pk):
+def course_home(request, collection_slug):
     # TODO: check that the student is registered for the course
 
     BLOCKED = "BLOCKED"
@@ -204,14 +210,14 @@ def course_home(request, pk):
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETE = "COMPLETE"
 
-    collection = get_object_or_404(ContentCollection, pk=pk)
+    collection = get_object_or_404(ContentCollection, slug=collection_slug)
 
     children = [
         # {title, status, url}
     ]
 
     next_status = READY  # First item starts as READY
-    for i, child in enumerate(collection.children()):
+    for _i, child in enumerate(collection.children()):
         # create a list of children dicts
         # status is either blocked, ready, in progress or complete
         # users need to complete things in order, an item is blocked if the previous item has not been completed yet
@@ -224,7 +230,7 @@ def course_home(request, pk):
             title = child.title
             url = reverse(
                 "student_interface:topic_detail_in_collection",
-                kwargs={"collection_pk": collection.pk, "pk": child.pk},
+                kwargs={"collection_slug": collection.slug, "topic_slug": child.slug},
             )
 
             # Check progress
@@ -245,7 +251,7 @@ def course_home(request, pk):
             title = child.title
             url = reverse(
                 "student_interface:form_detail_in_collection",
-                kwargs={"collection_pk": collection.pk, "pk": child.pk},
+                kwargs={"collection_slug": collection.slug, "form_slug": child.slug},
             )
 
             # Check progress
@@ -266,7 +272,9 @@ def course_home(request, pk):
 
         elif isinstance(child, ContentCollection):
             title = child.title
-            url = reverse("student_interface:course_home", kwargs={"pk": child.pk})
+            url = reverse(
+                "student_interface:course_home", kwargs={"collection_slug": child.slug}
+            )
 
             # For collections, check if all direct children are complete
             # TODO: implement proper recursive collection completion checking

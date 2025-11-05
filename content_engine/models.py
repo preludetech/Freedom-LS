@@ -15,7 +15,7 @@ class ContentType(models.TextChoices):
     COLLECTION = "COLLECTION", _("Collection")
     FORM_PAGE = "FORM_PAGE", _("Form Page")
     FORM_QUESTION = "FORM_QUESTION", _("Form Question")
-    FORM_TEXT = "FORM_TEXT", _("Form Text")
+    FORM_CONTENT = "FORM_CONTENT", _("Form Text")
 
 
 class QuestionType(models.TextChoices):
@@ -54,6 +54,10 @@ class TitledContent(BaseContent):
 
     title = models.CharField(max_length=500)
     subtitle = models.CharField(max_length=500, null=True, blank=True)
+    slug = models.SlugField(
+        max_length=500,
+        help_text=_("URL-friendly identifier"),
+    )
 
     class Meta:
         abstract = True
@@ -81,12 +85,18 @@ class MarkdownContent(BaseContent):
 class Topic(TitledContent, MarkdownContent):
     """Topic content item."""
 
+    class Meta:
+        unique_together = ["site", "slug"]
+
     def preview_url(self):
-        return reverse("content_engine:topic_detail", kwargs={"pk": self.id})
+        return reverse("content_engine:topic_detail", kwargs={"topic_slug": self.slug})
 
 
 class ContentCollection(TitledContent):
     """Content collection - contains an ordered list of child content."""
+
+    class Meta:
+        unique_together = ["site", "slug"]
 
     def children(self):
         """Return ordered list of child content items."""
@@ -128,6 +138,9 @@ class Form(TitledContent, MarkdownContent):
         choices=FormStrategy.choices,
     )
 
+    class Meta:
+        unique_together = ["site", "slug"]
+
 
 class FormPage(TitledContent):
     """A page within a form."""
@@ -166,7 +179,7 @@ class FormContent(MarkdownContent):
 
     @property
     def content_type(self):
-        return ContentType.FORM_TEXT
+        return ContentType.FORM_CONTENT
 
     def __str__(self):
         return self.text[:50]
