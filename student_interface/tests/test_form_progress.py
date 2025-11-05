@@ -4,7 +4,7 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
-from content_engine.models import FormPage, FormQuestion, FormText
+from content_engine.models import FormPage, FormQuestion, FormContent
 from student_interface.models import FormProgress, QuestionAnswer
 
 
@@ -103,7 +103,7 @@ def test_get_current_page_number_page_with_text_only(mock_site_context, user, fo
     page2 = FormPage.objects.create(form=form, title="Page 2", order=1)
 
     # Page 1 has only text, no questions
-    FormText.objects.create(form_page=page1, text="Intro text", order=0)
+    FormContent.objects.create(form_page=page1, content="Intro text", order=0)
 
     # Page 2 has a question
     FormQuestion.objects.create(
@@ -130,7 +130,9 @@ def test_get_or_create_incomplete_no_existing(mock_site_context, user, form):
 
 
 @pytest.mark.django_db
-def test_get_or_create_incomplete_returns_existing_incomplete(mock_site_context, user, form):
+def test_get_or_create_incomplete_returns_existing_incomplete(
+    mock_site_context, user, form
+):
     """Test get_or_create_incomplete returns existing incomplete progress."""
 
     # Create an incomplete progress
@@ -144,7 +146,9 @@ def test_get_or_create_incomplete_returns_existing_incomplete(mock_site_context,
 
 
 @pytest.mark.django_db
-def test_get_or_create_incomplete_creates_new_when_completed(mock_site_context, user, form):
+def test_get_or_create_incomplete_creates_new_when_completed(
+    mock_site_context, user, form
+):
     """Test get_or_create_incomplete creates new progress when existing is completed."""
 
     # Create a completed progress
@@ -161,7 +165,9 @@ def test_get_or_create_incomplete_creates_new_when_completed(mock_site_context, 
 
 
 @pytest.mark.django_db
-def test_get_or_create_incomplete_returns_latest_incomplete(mock_site_context, user, form):
+def test_get_or_create_incomplete_returns_latest_incomplete(
+    mock_site_context, user, form
+):
     """Test get_or_create_incomplete returns the latest incomplete when multiple exist."""
 
     # Create an older incomplete progress

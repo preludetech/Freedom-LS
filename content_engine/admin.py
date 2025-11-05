@@ -5,7 +5,7 @@ from .models import (
     ContentCollectionItem,
     Form,
     FormPage,
-    FormText,
+    FormContent,
     FormQuestion,
     QuestionOption,
 )
@@ -27,10 +27,10 @@ class QuestionOptionAdmin(admin.ModelAdmin):
     ordering = ("question", "order")
 
 
-class FormTextInline(admin.StackedInline):
+class FormContentInline(admin.StackedInline):
     """Inline for form text items."""
 
-    model = FormText
+    model = FormContent
     extra = 0
     fields = ("text", "order")
 
@@ -44,8 +44,8 @@ class FormQuestionInline(admin.StackedInline):
     show_change_link = True
 
 
-@admin.register(FormText)
-class FormTextAdmin(admin.ModelAdmin):
+@admin.register(FormContent)
+class FormContentAdmin(admin.ModelAdmin):
     list_display = ("text_preview", "form_page", "order")
     list_filter = ("form_page__form",)
     search_fields = ("text", "form_page__title")
@@ -93,7 +93,7 @@ class FormPageAdmin(admin.ModelAdmin):
     list_filter = ("form",)
     search_fields = ("title", "subtitle", "form__title")
     ordering = ("form", "order")
-    inlines = [FormTextInline, FormQuestionInline]
+    inlines = [FormContentInline, FormQuestionInline]
 
 
 @admin.register(Topic)

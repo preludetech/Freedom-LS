@@ -120,8 +120,8 @@ class QuestionOption(BaseModel):
     uuid: Optional[str] = Field(None, description="Unique identifier for the option")
 
 
-class FormText(BaseBaseContentModel, content_type=ContentType.FORM_TEXT):
-    text: str = Field(..., description="Text")
+class FormContent(BaseBaseContentModel, content_type=ContentType.FORM_TEXT):
+    content: str = Field(..., description="Text")
 
 
 class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION):

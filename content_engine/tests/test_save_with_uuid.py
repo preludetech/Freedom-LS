@@ -1,15 +1,11 @@
 """Test UUID handling in content_save.py"""
 
-import tempfile
 import yaml
 import pytest
-from pathlib import Path
-from django.contrib.sites.models import Site
-
-from content_engine.models import Form, FormPage
+from content_engine.models import FormPage
 from content_engine.management.commands.content_save import (
     save_form_page,
-    save_form_text,
+    save_form_content,
     save_form_question,
 )
 from content_engine.validate import parse_single_file
@@ -40,7 +36,7 @@ def test_form_page_with_uuid_no_duplicates_on_multiple_saves(
 
     # Save to database (should create UUID and update file)
     initial_count = FormPage.objects.count()
-    page1 = save_form_page(item1, form, site, order=0)
+    page1 = save_form_page(item1, form, site, temp_file.parent, order=0)
 
     assert FormPage.objects.count() == initial_count + 1
     created_uuid = page1.id
@@ -61,7 +57,7 @@ def test_form_page_with_uuid_no_duplicates_on_multiple_saves(
     assert item2.uuid == str(created_uuid)
 
     # Save again (should update, not create new)
-    page2 = save_form_page(item2, form, site, order=0)
+    page2 = save_form_page(item2, form, site, temp_file.parent, order=0)
 
     # Assert UUID unchanged and no duplicates
     assert FormPage.objects.count() == initial_count + 1
@@ -93,7 +89,7 @@ options:
     value: 2
 ---
 content_type: FORM_TEXT
-text: This is some instructional text
+content: This is some instructional text
 """
 
     temp_file = make_temp_file(suffix=".yaml", content=original_yaml)
@@ -109,9 +105,9 @@ text: This is some instructional text
 
     # Save to database
 
-    page = save_form_page(parsed[0], form, site, order=0)
+    page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
     question = save_form_question(parsed[1], page, site, order=0)
-    text = save_form_text(parsed[2], page, site, order=1)
+    text = save_form_content(parsed[2], page, site, order=1)
 
     # Read file back
     with open(temp_file, "r") as f:
@@ -138,7 +134,7 @@ text: This is some instructional text
     assert question_data["question"] == "What is your favorite color?"
     assert question_data["type"] == "multiple_choice"
     assert len(question_data["options"]) == 2
-    assert text_data["text"] == "This is some instructional text"
+    assert text_data["content"] == "This is some instructional text"
 
 
 @pytest.mark.django_db
@@ -175,7 +171,7 @@ options:
     assert parsed[1].uuid is None
 
     # Save to database
-    page = save_form_page(parsed[0], form, site, order=0)
+    page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
     question = save_form_question(parsed[1], page, site, order=0)
 
     # Read file back
@@ -208,13 +204,13 @@ def test_yaml_dump_does_not_add_excessive_whitespace(site, form, make_temp_file)
     """Test that yaml.dump doesn't add blank lines when updating multi-document file with UUIDs."""
 
     # Create original multi-document YAML with specific compact format
-    original_yaml = "---\ncontent_type: FORM_PAGE\ntitle: Test Page\n---\ncontent_type: FORM_TEXT\ntext: Some text\n"
+    original_yaml = "---\ncontent_type: FORM_PAGE\ntitle: Test Page\n---\ncontent_type: FORM_TEXT\ncontent: Some text\n"
     temp_file = make_temp_file(suffix=".yaml", content=original_yaml)
 
     # Save to add UUIDs
     parsed = parse_single_file(temp_file)
-    page = save_form_page(parsed[0], form, site, order=0)
-    save_form_text(parsed[1], page, site, order=0)
+    page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
+    save_form_content(parsed[1], page, site, order=0)
 
     # Read back
     with open(temp_file, "r") as f:
@@ -226,7 +222,7 @@ def test_yaml_dump_does_not_add_excessive_whitespace(site, form, make_temp_file)
     section2_data = yaml.safe_load(sections[1])
 
     # Expected: compact YAML with no blank lines
-    expected_result = f"---\ncontent_type: FORM_PAGE\ntitle: Test Page\nuuid: {section1_data['uuid']}\n---\ncontent_type: FORM_TEXT\ntext: Some text\nuuid: {section2_data['uuid']}\n"
+    expected_result = f"---\ncontent_type: FORM_PAGE\ntitle: Test Page\nuuid: {section1_data['uuid']}\n---\ncontent: Some text\ncontent_type: FORM_TEXT\nuuid: {section2_data['uuid']}\n"
 
     assert result == expected_result, (
         f"YAML formatting incorrect.\nExpected:\n{repr(expected_result)}\nGot:\n{repr(result)}"
@@ -243,7 +239,7 @@ content_type: FORM_PAGE
 title: Test Page
 ---
 content_type: FORM_TEXT
-text: |
+content: |
   hello there
   this is a multi-line
   string
@@ -253,8 +249,8 @@ text: |
 
     # Save the content
     parsed = parse_single_file(temp_file)
-    page = save_form_page(parsed[0], form, site, order=0)
-    save_form_text(parsed[1], page, site, order=0)
+    page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
+    save_form_content(parsed[1], page, site, order=0)
 
     # Read back
     with open(temp_file, "r") as f:
@@ -267,19 +263,19 @@ text: |
 
     # Verify multi-line text is preserved (using literal block style, not quoted)
     # Accept both | and |- as valid literal block styles
-    assert "text: |" in result, (
+    assert "content: |" in result, (
         f"Multi-line text should use literal block style (|), got:\n{repr(result)}"
     )
 
     # Verify the parsed content is correct (multi-line text preserved)
     # Note: |- style strips trailing newline, which is acceptable
     assert (
-        section2_data["text"]
+        section2_data["content"]
         in [
             "hello there\nthis is a multi-line\nstring\n",  # | style (keeps trailing newline)
             "hello there\nthis is a multi-line\nstring",  # |- style (strips trailing newline)
         ]
-    ), f"Multi-line text content incorrect: {repr(section2_data['text'])}"
+    ), f"Multi-line text content incorrect: {repr(section2_data['content'])}"
 
     # Verify no extra blank lines were added (should have exactly 2 sections)
     assert len([s for s in sections if s.strip()]) == 2, (

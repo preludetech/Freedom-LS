@@ -21,7 +21,7 @@ from content_engine.models import (
     Topic,
     Form,
     FormPage,
-    FormText,
+    FormContent,
     FormQuestion,
     QuestionOption,
 )
@@ -145,8 +145,13 @@ def update_file_with_option_uuids(file_path, question_uuid, option_uuids):
     logger.info(f"Updated {file_path} with option UUIDs")
 
 
-def save_with_uuid(model_class, item, site, update_file=True, **fields):
+def save_with_uuid(model_class, item, site, base_path, update_file=True, **fields):
     """Generic save function that handles UUID logic."""
+    # Calculate relative path if base_path is provided
+    if base_path:
+        relative_path = str(item.file_path.relative_to(base_path))
+        fields["file_path"] = relative_path
+
     if item.uuid:
         instance, created = model_class.objects.update_or_create(
             id=uuid.UUID(item.uuid), site=site, defaults=fields
@@ -158,12 +163,13 @@ def save_with_uuid(model_class, item, site, update_file=True, **fields):
     return instance
 
 
-def save_topic(item, site):
+def save_topic(item, site, base_path):
     """Save a Topic to the database."""
     return save_with_uuid(
         Topic,
         item,
         site,
+        base_path,
         title=item.title,
         subtitle=item.subtitle,
         content=item.content,
@@ -172,12 +178,13 @@ def save_topic(item, site):
     )
 
 
-def save_form(item, site):
+def save_form(item, site, base_path):
     """Save a Form to the database."""
     return save_with_uuid(
         Form,
         item,
         site,
+        base_path,
         title=item.title,
         subtitle=item.subtitle,
         content=item.content,
@@ -187,12 +194,13 @@ def save_form(item, site):
     )
 
 
-def save_form_page(item, form, site, order=0):
+def save_form_page(item, form, site, base_path, order=0):
     """Save a FormPage to the database."""
     return save_with_uuid(
         FormPage,
         item,
         site,
+        base_path,
         form=form,
         title=item.title,
         subtitle=item.subtitle,
@@ -202,14 +210,15 @@ def save_form_page(item, form, site, order=0):
     )
 
 
-def save_form_text(item, form_page, site, order=0):
-    """Save FormText to the database."""
+def save_form_content(item, form_page, site, order=0):
+    """Save FormContent to the database."""
     return save_with_uuid(
-        FormText,
+        FormContent,
         item,
         site,
+        None,  # No base_path for inline content
         form_page=form_page,
-        text=item.text,
+        content=item.content,
         order=order,
         meta=item.meta,
         tags=item.tags,
@@ -222,6 +231,7 @@ def save_form_question(item, form_page, site, order=0):
         FormQuestion,
         item,
         site,
+        None,  # No base_path for inline content
         form_page=form_page,
         question=item.question,
         type=item.type,
@@ -239,6 +249,7 @@ def save_form_question(item, form_page, site, order=0):
                 QuestionOption,
                 option,
                 site,
+                None,  # No base_path for inline content
                 update_file=False,
                 question=question,
                 text=option.text,
@@ -280,13 +291,13 @@ def save_content_to_db(path, site_name):
 
     # Save Topics
     for item in grouped.get(SchemaContentType.TOPIC, []):
-        topic = save_topic(item, site)
+        topic = save_topic(item, site, path)
         logger.info(f"Saved Topic: {topic.title}")
 
     # Save Forms and track them by directory
     forms_by_dir = {}
     for item in grouped.get(SchemaContentType.FORM, []):
-        form = save_form(item, site)
+        form = save_form(item, site, path)
         forms_by_dir[item.file_path.parent] = form
         logger.info(f"Saved Form: {form.title}")
 
@@ -311,7 +322,7 @@ def save_content_to_db(path, site_name):
                 # Pages are processed in alphabetical order by filename
                 # First page gets order=0, second gets order=1, etc.
                 form_page = save_form_page(
-                    page_item, parent_form, site, order=page_order
+                    page_item, parent_form, site, path, order=page_order
                 )
                 logger.info(f"Saved FormPage: {form_page.title} (order={page_order})")
 
@@ -327,9 +338,9 @@ def save_content_to_db(path, site_name):
                 # Save texts and questions in the order they appear in the file
                 for content_order, item in enumerate(file_content_items):
                     if item.content_type == SchemaContentType.FORM_TEXT:
-                        save_form_text(item, form_page, site, order=content_order)
+                        save_form_content(item, form_page, site, order=content_order)
                         logger.info(
-                            f"Saved FormText in {form_page.title} (order={content_order})"
+                            f"Saved FormContent in {form_page.title} (order={content_order})"
                         )
                     elif item.content_type == SchemaContentType.FORM_QUESTION:
                         save_form_question(item, form_page, site, order=content_order)

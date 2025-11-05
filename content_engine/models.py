@@ -35,6 +35,10 @@ class FormStrategy(models.TextChoices):
 class BaseContent(SiteAwareModel):
     """Base model for all content types."""
 
+    file_path = models.CharField(
+        max_length=500,
+        help_text=_("Relative path to the source file"),
+    )
     meta = models.JSONField(
         null=True, blank=True, help_text=_("Optional metadata as key-value pairs")
     )
@@ -129,7 +133,7 @@ class FormPage(TitledContent):
 
     def children(self):
         """
-        return an ordered list of FormText and FormQuestion instances
+        return an ordered list of FormContent and FormQuestion instances
         """
         text_items = list(self.text_items.all())
         questions = list(self.questions.all())
@@ -144,21 +148,21 @@ class FormPage(TitledContent):
         ordering = ["order"]
 
 
-class FormText(BaseContent):
+class FormContent(BaseContent):
     """Text content within a form page."""
 
-    text = models.TextField()
+    content = models.TextField()
     form_page = models.ForeignKey(
         FormPage, on_delete=models.CASCADE, related_name="text_items"
     )
     order = models.PositiveIntegerField(default=0)
 
-    def rendered_text(self):
+    def rendered_content(self):
         from threading import local
 
         _thread_locals = local()
         request = getattr(_thread_locals, "request", None)
-        return render_markdown(self.text, request)
+        return render_markdown(self.content, request)
 
     class Meta:
         ordering = ["order"]
