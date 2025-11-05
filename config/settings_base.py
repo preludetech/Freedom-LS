@@ -27,7 +27,9 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     # "django.contrib.admin",
-    "template_partials",
+    # "template_partials",
+    "django_cotton.apps.SimpleAppConfig",
+    "template_partials.apps.SimpleAppConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -78,14 +80,32 @@ TEMPLATES = [
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         # "DIRS": [],
         "DIRS": [BASE_DIR / "templates", "/tmp"],
-        "APP_DIRS": True,
+        # "APP_DIRS": True,
         "OPTIONS": {
+            "loaders": [
+                (
+                    "template_partials.loader.Loader",
+                    [
+                        (
+                            "django.template.loaders.cached.Loader",
+                            [
+                                "django_cotton.cotton_loader.Loader",
+                                "django.template.loaders.filesystem.Loader",
+                                "django.template.loaders.app_directories.Loader",
+                            ],
+                        )
+                    ],
+                )
+            ],
             "context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
-            "builtins": ["template_partials.templatetags.partials"],
+            "builtins": [
+                "django_cotton.templatetags.cotton",
+                "template_partials.templatetags.partials",
+            ],
         },
     },
 ]
