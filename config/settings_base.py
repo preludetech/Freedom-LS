@@ -177,13 +177,102 @@ primary_colors = {
 }
 
 
+site_conf = {
+    "Bloom": {
+        "SITE_TITLE": "Bloom",
+        "SITE_HEADER": "Bloom",
+        "COLORS": {
+            "base": {
+                "50": "oklch(98.5% .002 247.839)",
+                "100": "oklch(96.7% .003 264.542)",
+                "200": "oklch(92.8% .006 264.531)",
+                "300": "oklch(87.2% .01 258.338)",
+                "400": "oklch(70.7% .022 261.325)",
+                "500": "oklch(55.1% .027 264.364)",
+                "600": "oklch(44.6% .03 256.802)",
+                "700": "oklch(37.3% .034 259.733)",
+                "800": "oklch(27.8% .033 256.848)",
+                "900": "oklch(21% .034 264.665)",
+                "950": "oklch(13% .028 261.692)",
+            },
+            "primary": {
+                "50": "oklch(97.5% .015 145)",
+                "100": "oklch(94.5% .035 145)",
+                "200": "oklch(89.5% .070 145)",
+                "300": "oklch(82.0% .130 145)",
+                "400": "oklch(70.5% .180 145)",
+                "500": "oklch(62.0% .210 145)",
+                "600": "oklch(54.0% .220 145)",
+                "700": "oklch(46.5% .200 145)",
+                "800": "oklch(40.0% .165 145)",
+                "900": "oklch(34.0% .130 145)",
+                "950": "oklch(26.0% .100 145)",
+            },
+            "font": {
+                "subtle-light": "var(--color-base-500)",  # text-base-500
+                "subtle-dark": "var(--color-base-400)",  # text-base-400
+                "default-light": "var(--color-base-600)",  # text-base-600
+                "default-dark": "var(--color-base-300)",  # text-base-300
+                "important-light": "var(--color-base-900)",  # text-base-900
+                "important-dark": "var(--color-base-100)",  # text-base-100
+            },
+        },
+    },
+    "Prelude": {
+        "SITE_TITLE": "Prelude",
+        "SITE_HEADER": "Prelude",
+    },
+}
+
+
+UNFOLD_DEFAULTS = {
+    "COLORS": {
+        "base": {
+            "50": "oklch(98.5% .002 247.839)",
+            "100": "oklch(96.7% .003 264.542)",
+            "200": "oklch(92.8% .006 264.531)",
+            "300": "oklch(87.2% .01 258.338)",
+            "400": "oklch(70.7% .022 261.325)",
+            "500": "oklch(55.1% .027 264.364)",
+            "600": "oklch(44.6% .03 256.802)",
+            "700": "oklch(37.3% .034 259.733)",
+            "800": "oklch(27.8% .033 256.848)",
+            "900": "oklch(21% .034 264.665)",
+            "950": "oklch(13% .028 261.692)",
+        },
+        "primary": {
+            "50": "oklch(97.7% .014 308.299)",
+            "100": "oklch(94.6% .033 307.174)",
+            "200": "oklch(90.2% .063 306.703)",
+            "300": "oklch(82.7% .119 306.383)",
+            "400": "oklch(71.4% .203 305.504)",
+            "500": "oklch(62.7% .265 303.9)",
+            "600": "oklch(55.8% .288 302.321)",
+            "700": "oklch(49.6% .265 301.924)",
+            "800": "oklch(43.8% .218 303.724)",
+            "900": "oklch(38.1% .176 304.987)",
+            "950": "oklch(29.1% .149 302.717)",
+        },
+        "font": {
+            "subtle-light": "var(--color-base-500)",  # text-base-500
+            "subtle-dark": "var(--color-base-400)",  # text-base-400
+            "default-light": "var(--color-base-600)",  # text-base-600
+            "default-dark": "var(--color-base-300)",  # text-base-300
+            "important-light": "var(--color-base-900)",  # text-base-900
+            "important-dark": "var(--color-base-100)",  # text-base-100
+        },
+    }
+}
+
+
 # Unfold Admin Configuration
 def get_unfold_value(key):
     def get_environment(request):
         from django.contrib.sites.shortcuts import get_current_site
 
-        site = get_current_site(request)
-        return site.name
+        site = get_current_site(request).name
+
+        return site_conf[site].get(key) or UNFOLD_DEFAULTS[key]
 
     return get_environment
 
@@ -192,6 +281,7 @@ UNFOLD = {
     "SITE_TITLE": get_unfold_value("SITE_TITLE"),
     "SITE_HEADER": get_unfold_value("SITE_HEADER"),
     "SHOW_VIEW_ON_SITE": False,
+    "COLORS": get_unfold_value("COLORS"),
 }
 
 
