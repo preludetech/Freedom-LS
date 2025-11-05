@@ -44,9 +44,6 @@
 
 ## Code Quality
 
-### Before Committing
-- **Always run the test suite** to ensure all tests pass: `python -m pytest`
-
 ### Commit Messages
 - Follow the existing style in the repository
 - Use descriptive, imperative mood commit messages
