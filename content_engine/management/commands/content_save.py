@@ -19,12 +19,15 @@ from content_engine.validate import validate, get_all_files, parse_single_file
 from content_engine.schema import ContentType as SchemaContentType
 from content_engine.models import (
     Topic,
+    ContentCollection,
+    ContentCollectionItem,
     Form,
     FormPage,
     FormContent,
     FormQuestion,
     QuestionOption,
 )
+from django.contrib.contenttypes.models import ContentType as DjangoContentType
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +181,20 @@ def save_topic(item, site, base_path):
     )
 
 
+def save_collection(item, site, base_path):
+    """Save a ContentCollection to the database."""
+    return save_with_uuid(
+        ContentCollection,
+        item,
+        site,
+        base_path,
+        title=item.title,
+        subtitle=item.subtitle,
+        meta=item.meta,
+        tags=item.tags,
+    )
+
+
 def save_form(item, site, base_path):
     """Save a Form to the database."""
     return save_with_uuid(
@@ -289,16 +306,29 @@ def save_content_to_db(path, site_name):
     for item in all_parsed:
         grouped[item.content_type].append(item)
 
+    # Mapping of file paths to saved content objects for collection children resolution
+    content_by_path = {}
+
     # Save Topics
     for item in grouped.get(SchemaContentType.TOPIC, []):
         topic = save_topic(item, site, path)
+        content_by_path[item.file_path] = topic
         logger.info(f"Saved Topic: {topic.title}")
+
+    # Save Collections
+    collections_data = []  # Store (collection_obj, schema_item) for later children processing
+    for item in grouped.get(SchemaContentType.COLLECTION, []):
+        collection = save_collection(item, site, path)
+        content_by_path[item.file_path] = collection
+        collections_data.append((collection, item))
+        logger.info(f"Saved ContentCollection: {collection.title}")
 
     # Save Forms and track them by directory
     forms_by_dir = {}
     for item in grouped.get(SchemaContentType.FORM, []):
         form = save_form(item, site, path)
         forms_by_dir[item.file_path.parent] = form
+        content_by_path[item.file_path] = form
         logger.info(f"Saved Form: {form.title}")
 
     # Group form pages by file
@@ -347,6 +377,73 @@ def save_content_to_db(path, site_name):
                         logger.info(
                             f"Saved FormQuestion in {form_page.title} (order={content_order})"
                         )
+
+    # Process collection children
+    for collection, schema_item in collections_data:
+        children_list = schema_item.children if schema_item.children else []
+
+        # If no children specified, scan the directory for all content files
+        if not children_list:
+            collection_dir = schema_item.file_path.parent
+            # Get all content files in the collection directory (not subdirectories)
+            dir_files = [
+                f for f in collection_dir.iterdir()
+                if f.is_file() and f.suffix in [".md", ".yaml", ".yml"]
+            ]
+            # Also include subdirectories as they might contain collections or forms
+            dir_subdirs = [d for d in collection_dir.iterdir() if d.is_dir()]
+
+            # Create Child-like objects for directory scanning
+            for f in sorted(dir_files):
+                if f != schema_item.file_path:  # Don't include the collection file itself
+                    children_list.append(type('Child', (), {'path': f, 'overrides': None})())
+
+            # For subdirectories, look for main content files (forms or collections)
+            for subdir in sorted(dir_subdirs):
+                # Look for a main file in the subdirectory (form or collection)
+                main_files = []
+                for f in subdir.iterdir():
+                    if f.is_file() and f.suffix in [".md", ".yaml", ".yml"]:
+                        # Parse to check if it's a Form or Collection (top-level content)
+                        try:
+                            parsed = parse_single_file(f)
+                            if parsed and parsed[0].content_type in (
+                                SchemaContentType.FORM,
+                                SchemaContentType.COLLECTION,
+                            ):
+                                main_files.append(f)
+                                break  # Found the main file
+                        except:
+                            pass
+
+                if main_files:
+                    children_list.append(type('Child', (), {'path': main_files[0], 'overrides': None})())
+
+        # Create ContentCollectionItem entries for each child
+        for order, child in enumerate(children_list):
+            child_content = content_by_path.get(child.path)
+            if child_content:
+                # Get the Django ContentType for the child
+                child_content_type = DjangoContentType.objects.get_for_model(child_content)
+
+                # Create the ContentCollectionItem
+                ContentCollectionItem.objects.create(
+                    site=site,
+                    collection=collection,
+                    child_type=child_content_type,
+                    child_id=child_content.id,
+                    order=order,
+                    overrides=child.overrides,
+                )
+                logger.info(
+                    f"Added {child_content.__class__.__name__} '{child_content.title}' "
+                    f"to collection '{collection.title}' (order={order})"
+                )
+            else:
+                logger.warning(
+                    f"Could not find content for path {child.path} "
+                    f"in collection '{collection.title}'"
+                )
 
     logger.info(f"✓ Successfully saved all content for site: {site_name}")
 

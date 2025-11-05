@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from .models import Topic, Form, FormPage
+from .models import Topic, ContentCollection, Form, FormPage
 
 
 def topic_detail(request, pk):
@@ -7,6 +7,17 @@ def topic_detail(request, pk):
     topic = get_object_or_404(Topic, pk=pk)
     return render(
         request, "content_engine/topic_detail.html", {"topic": topic, "preview": True}
+    )
+
+
+def collection_detail(request, pk):
+    """Simple view to display a collection."""
+    collection = get_object_or_404(ContentCollection, pk=pk)
+    children = collection.children()
+    return render(
+        request,
+        "content_engine/collection_detail.html",
+        {"collection": collection, "children": children, "preview": True},
     )
 
 

@@ -4,6 +4,7 @@ from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.utils.translation import gettext_lazy as _
 from system_base.models import SiteAwareModel
 from .markdown_utils import render_markdown
+from django.urls import reverse
 
 
 class ContentType(models.TextChoices):
@@ -80,6 +81,9 @@ class MarkdownContent(BaseContent):
 class Topic(TitledContent, MarkdownContent):
     """Topic content item."""
 
+    def preview_url(self):
+        return reverse("content_engine:topic_detail", kwargs={"pk": self.id})
+
 
 class ContentCollection(TitledContent):
     """Content collection - contains an ordered list of child content."""
@@ -148,7 +152,7 @@ class FormPage(TitledContent):
         ordering = ["order"]
 
 
-class FormContent(BaseContent):
+class FormContent(MarkdownContent):
     """Text content within a form page."""
 
     content = models.TextField()
@@ -156,13 +160,6 @@ class FormContent(BaseContent):
         FormPage, on_delete=models.CASCADE, related_name="text_items"
     )
     order = models.PositiveIntegerField(default=0)
-
-    def rendered_content(self):
-        from threading import local
-
-        _thread_locals = local()
-        request = getattr(_thread_locals, "request", None)
-        return render_markdown(self.content, request)
 
     class Meta:
         ordering = ["order"]
