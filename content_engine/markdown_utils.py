@@ -19,11 +19,8 @@ def render_markdown(markdown_text, request, context=None):
     for k, v in allowed_attribute_tags.items():
         attributes[k] = v
 
-    def attribute_filter(tag, attr, value):
-        if tag in allowed_attribute_tags:
-            return value
-
     markdown_text = nh3.clean(markdown_text, tags=allowed_tags, attributes=attributes)
+    # [s for s in markdown_text.split("\n") if "c-p" in s]
 
     if settings.MARKDOWN_TEMPLATE_RENDER_ON:
         temp = tempfile.NamedTemporaryFile(

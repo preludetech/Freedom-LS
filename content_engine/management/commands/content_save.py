@@ -5,12 +5,14 @@ python manage.py content_save  ../bloom_content Bloom
 
 import logging
 import uuid
+import mimetypes
 import frontmatter
 import yaml
 from pathlib import Path
 from collections import defaultdict
 
 from django.contrib.sites.models import Site
+from django.core.files import File as DjangoFile
 from django.db import transaction
 
 import djclick as click
@@ -26,6 +28,7 @@ from content_engine.models import (
     FormContent,
     FormQuestion,
     QuestionOption,
+    File,
 )
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 
@@ -282,6 +285,68 @@ def save_form_question(item, form_page, site, order=0):
     return question
 
 
+def get_file_type_from_extension(file_path):
+    """Determine file type based on file extension."""
+    extension = file_path.suffix.lower()
+
+    image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp"}
+    document_extensions = {".pdf", ".doc", ".docx", ".txt", ".rtf", ".odt"}
+    video_extensions = {".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".mkv"}
+    audio_extensions = {".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac"}
+
+    if extension in image_extensions:
+        return File.FileType.IMAGE
+    elif extension in document_extensions:
+        return File.FileType.DOCUMENT
+    elif extension in video_extensions:
+        return File.FileType.VIDEO
+    elif extension in audio_extensions:
+        return File.FileType.AUDIO
+    else:
+        return File.FileType.OTHER
+
+
+def save_file_to_db(file_path, site, base_path):
+    """Save a single file to the database."""
+    # Calculate relative path
+    relative_path = str(file_path.relative_to(base_path))
+
+    # Determine file type
+    file_type = get_file_type_from_extension(file_path)
+
+    # Get mime type
+    mime_type, _ = mimetypes.guess_type(str(file_path))
+
+    # Get or create the File record (without the file field)
+    file_obj, created = File.objects.get_or_create(
+        site=site,
+        file_path=relative_path,
+        defaults={
+            "file_type": file_type,
+            "original_filename": file_path.name,
+            "mime_type": mime_type or "",
+        },
+    )
+
+    # Update metadata if it's an existing record
+    if not created:
+        file_obj.file_type = file_type
+        file_obj.original_filename = file_path.name
+        file_obj.mime_type = mime_type or ""
+
+    # Always update the actual file
+    with open(file_path, "rb") as f:
+        # Delete old file if it exists to avoid orphaned files
+        if file_obj.file:
+            file_obj.file.delete(save=False)
+
+        # Save new file to proper upload_to location
+        file_obj.file.save(file_path.name, DjangoFile(f), save=True)
+
+    action = "Created" if created else "Updated"
+    logger.info(f"{action} {file_type} file: {relative_path}")
+
+
 @transaction.atomic
 def save_content_to_db(path, site_name):
     """Scan through all validated files and save them to the database."""
@@ -300,6 +365,9 @@ def save_content_to_db(path, site_name):
         if file_path.suffix in [".md", ".yaml", ".yml"]:
             parsed_items = parse_single_file(file_path)
             all_parsed.extend(parsed_items)
+        else:
+            # Save non-content files (images, documents, etc.) to the database
+            save_file_to_db(file_path, site, path)
 
     # Group by content type
     grouped = defaultdict(list)

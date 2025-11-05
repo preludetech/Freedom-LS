@@ -1,10 +1,18 @@
 <c-vars src alt caption="" />
 
+{% load content_tags %}
+
+{% comment %}
+Look up the File object by file_path to get the actual file URL
+{% endcomment %}
+{% with file_obj=src|get_file_by_path %}
+
+{% if file_obj %}
 <div x-data="{ open: false }" class="my-6">
     <!-- Thumbnail Image -->
     <figure class="max-w-4xl mx-auto">
         <img
-            src="{{ src }}"
+            src="{{ file_obj.file.url }}"
             alt="{{ alt }}"
             @click="open = true"
             class="w-full h-auto rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow"
@@ -37,7 +45,7 @@
 
             <!-- Zoomable Image -->
             <img
-                src="{{ src }}"
+                src="{{ file_obj.file.url }}"
                 alt="{{ alt }}"
                 class="max-w-full max-h-screen object-contain"
             />
@@ -50,14 +58,14 @@
         </div>
     </div>
 </div>
+{% else %}
+<div class="my-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+    <p class="text-red-700">Image not found: {{ src }}</p>
+</div>
+{% endif %}
+
+{% endwith %}
 
 <style>
     [x-cloak] { display: none !important; }
 </style>
-
-<!-- 
-<c-picture 
-      src="/static/images/diagram.png" 
-      alt="System architecture diagram"
-      caption="Figure 1: Overview of the system components"
-  /> -->

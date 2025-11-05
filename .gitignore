@@ -13,6 +13,9 @@ db.sqlite3
 # Virtual environments
 .venv
 
+# uploads
+media/
+
 # Node stuff 
 node_modules/
 static/vendor/

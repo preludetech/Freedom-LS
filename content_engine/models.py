@@ -239,12 +239,29 @@ class QuestionOption(SiteAwareModel):
         return self.text
 
 
-# class File(site aware):
-#     file = actual file
-#     file_type = image, document etc
-#     file_path = models.CharField(
-#         max_length=500,
-#         help_text=_("Relative path to the source file"),
-#     )
-# When we use content_save, if there are other files then save them to the db
-# TODO
+class File(SiteAwareModel):
+    """Stores files (images, documents, etc.) referenced in content."""
+
+    class FileType(models.TextChoices):
+        IMAGE = "IMAGE", _("Image")
+        DOCUMENT = "DOCUMENT", _("Document")
+        VIDEO = "VIDEO", _("Video")
+        AUDIO = "AUDIO", _("Audio")
+        OTHER = "OTHER", _("Other")
+
+    file = models.FileField(upload_to="media/content_engine")
+    file_type = models.CharField(
+        max_length=20, choices=FileType.choices, default=FileType.OTHER
+    )
+    file_path = models.CharField(
+        max_length=500,
+        help_text=_("Relative path to the source file"),
+    )
+    original_filename = models.CharField(max_length=255)
+    mime_type = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        unique_together = ["site", "file_path"]
+
+    def __str__(self):
+        return f"{self.original_filename} ({self.get_file_type_display()})"

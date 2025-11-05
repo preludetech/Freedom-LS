@@ -36,6 +36,9 @@ def get_all_files(path):
         if file_path.name == "CLAUDE.md":
             return True
 
+        if file_path.name.endswith("~"):
+            return True
+
         # Skip files starting with _ or .
         if file_path.name.startswith("_") or file_path.name.startswith("."):
             return True

@@ -8,6 +8,7 @@ from .models import (
     FormContent,
     FormQuestion,
     QuestionOption,
+    File,
 )
 
 
@@ -98,7 +99,7 @@ class FormPageAdmin(admin.ModelAdmin):
 
 @admin.register(Topic)
 class TopicAdmin(admin.ModelAdmin):
-    list_display = ("title", "subtitle")
+    list_display = ("title", "subtitle", "file_path")
     list_filter = ("tags",)
     search_fields = ("title", "subtitle")
     fieldsets = (
@@ -145,4 +146,23 @@ class FormAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {"fields": ("title", "subtitle", "content", "strategy")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
+    )
+
+
+@admin.register(File)
+class FileAdmin(admin.ModelAdmin):
+    list_display = (
+        "original_filename",
+        "file_type",
+        "mime_type",
+        "file_path",
+    )
+    list_filter = ("file_type",)
+    search_fields = ("original_filename", "file_path", "mime_type")
+    fieldsets = (
+        (None, {"fields": ("file", "file_type", "original_filename")}),
+        (
+            "File Information",
+            {"fields": ("file_path", "mime_type"), "classes": ("collapse",)},
+        ),
     )
