@@ -237,3 +237,14 @@ class QuestionOption(SiteAwareModel):
 
     def __str__(self):
         return self.text
+
+
+# class File(site aware):
+#     file = actual file
+#     file_type = image, document etc
+#     file_path = models.CharField(
+#         max_length=500,
+#         help_text=_("Relative path to the source file"),
+#     )
+# When we use content_save, if there are other files then save them to the db
+# TODO
