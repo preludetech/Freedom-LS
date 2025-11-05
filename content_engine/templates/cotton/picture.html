@@ -5,7 +5,9 @@
 {% comment %}
 Look up the File object by file_path to get the actual file URL
 {% endcomment %}
-{% with file_obj=src|get_file_by_path %}
+{% with file_obj=src|get_file_by_path:content_instance %}
+
+
 
 {% if file_obj %}
 <div x-data="{ open: false }" class="my-6">

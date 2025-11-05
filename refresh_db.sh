@@ -1,6 +1,7 @@
 #!/bin/sh
 
 rm db.sqlite3
+rm -rf media
 python manage.py makemigrations
 python manage.py migrate
 python manage.py setup_demo_data

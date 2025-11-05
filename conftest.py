@@ -64,6 +64,7 @@ def make_temp_file():
 def mock_site_context(site, mocker):
     """Mock the thread local request and get_current_site for SiteAwareModel."""
     from system_base.models import _thread_locals
+
     mock_request = mocker.Mock()
     mocker.patch.object(_thread_locals, "request", mock_request, create=True)
     mocker.patch("system_base.models.get_current_site", return_value=site)

@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from system_base.models import SiteAwareModel
 from .markdown_utils import render_markdown
 from django.urls import reverse
+from pathlib import Path
 
 
 class ContentType(models.TextChoices):
@@ -48,6 +49,25 @@ class BaseContent(SiteAwareModel):
     class Meta:
         abstract = True
 
+    def calculate_path_from_root(self, other_relative_path):
+        """
+        When we load content, the file_paths are relative to the content directory root
+
+        Given a path that is relative to self.file_path, return the path relative to the content root
+
+        For example:
+        self.path = tutorial/02-understanding-the-graph-commits-and-checkout.md
+        other_relative_path = images/graph1.drawio.svg
+        return "tutorial/images/graph1.drawio.svg"
+
+        tutorial/
+            images/
+                graph1.drawio.svg
+            02-understanding-the-graph-commits-and-checkout.md
+        """
+        parent_dir = Path(self.file_path).parent
+        return str(parent_dir / other_relative_path)
+
 
 class TitledContent(BaseContent):
     """Base content model with title and subtitle."""
@@ -76,7 +96,9 @@ class MarkdownContent(BaseContent):
 
         _thread_locals = local()
         request = getattr(_thread_locals, "request", None)
-        return render_markdown(self.content, request)
+        return render_markdown(
+            self.content, request, context={"content_instance": self}
+        )
 
     class Meta:
         abstract = True
