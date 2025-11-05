@@ -1,6 +1,8 @@
 from django.contrib import admin
 from .models import (
     Topic,
+    ContentCollection,
+    ContentCollectionItem,
     Form,
     FormPage,
     FormText,
@@ -103,6 +105,35 @@ class TopicAdmin(admin.ModelAdmin):
         (None, {"fields": ("title", "subtitle", "content")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
+
+
+class ContentCollectionItemInline(admin.TabularInline):
+    """Inline for collection items."""
+
+    model = ContentCollectionItem
+    extra = 1
+    fields = ("child_type", "child_id", "order", "overrides")
+    ordering = ("order",)
+
+
+@admin.register(ContentCollection)
+class ContentCollectionAdmin(admin.ModelAdmin):
+    list_display = ("title", "subtitle")
+    list_filter = ("tags",)
+    search_fields = ("title", "subtitle")
+    inlines = [ContentCollectionItemInline]
+    fieldsets = (
+        (None, {"fields": ("title", "subtitle")}),
+        ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
+    )
+
+
+@admin.register(ContentCollectionItem)
+class ContentCollectionItemAdmin(admin.ModelAdmin):
+    list_display = ("collection", "child", "order")
+    list_filter = ("collection",)
+    search_fields = ("collection__title",)
+    ordering = ("collection", "order")
 
 
 @admin.register(Form)

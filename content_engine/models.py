@@ -1,4 +1,6 @@
 from django.db import models
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.utils.translation import gettext_lazy as _
 from system_base.models import SiteAwareModel
 from .markdown_utils import render_markdown
@@ -9,6 +11,7 @@ class ContentType(models.TextChoices):
 
     TOPIC = "TOPIC", _("Topic")
     FORM = "FORM", _("Form")
+    COLLECTION = "COLLECTION", _("Collection")
     FORM_PAGE = "FORM_PAGE", _("Form Page")
     FORM_QUESTION = "FORM_QUESTION", _("Form Question")
     FORM_TEXT = "FORM_TEXT", _("Form Text")
@@ -72,6 +75,41 @@ class MarkdownContent(BaseContent):
 
 class Topic(TitledContent, MarkdownContent):
     """Topic content item."""
+
+
+class ContentCollection(TitledContent):
+    """Content collection - contains an ordered list of child content."""
+
+    def children(self):
+        """Return ordered list of child content items."""
+        return [item.child for item in self.items.all()]
+
+
+class ContentCollectionItem(SiteAwareModel):
+    """Through model for ContentCollection children with order and overrides."""
+
+    collection = models.ForeignKey(
+        ContentCollection, on_delete=models.CASCADE, related_name="items"
+    )
+
+    # Generic foreign key to any content type
+    child_type = models.ForeignKey(DjangoContentType, on_delete=models.CASCADE)
+    child_id = models.UUIDField()
+    child = GenericForeignKey("child_type", "child_id")
+
+    order = models.PositiveIntegerField(default=0)
+    overrides = models.JSONField(
+        null=True,
+        blank=True,
+        help_text=_("Optional overrides as key-value pairs"),
+    )
+
+    class Meta:
+        ordering = ["order"]
+        unique_together = ["collection", "child_type", "child_id"]
+
+    def __str__(self):
+        return f"{self.collection.title} - {self.child} (order={self.order})"
 
 
 class Form(TitledContent, MarkdownContent):

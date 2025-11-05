@@ -14,12 +14,10 @@ class ContentType(str, Enum):
 
     TOPIC = "TOPIC"
     FORM = "FORM"
-    # COLLECTION = "COLLECTION"
+    COLLECTION = "COLLECTION"
     FORM_PAGE = "FORM_PAGE"
     FORM_QUESTION = "FORM_QUESTION"
     FORM_TEXT = "FORM_TEXT"
-
-    LINEAR_COURSE = "LINEAR_COURSE"
 
 
 class QuestionType(str, Enum):
@@ -80,23 +78,16 @@ class Child(BaseModel):
     )
 
 
-class ContentCollectionBase(BaseModel):
+class ContentCollection(BaseContentModel, content_type=ContentType.COLLECTION):
     """
     You can think of this as a folder. It contains an ordered list of child content.
 
     """
 
     children: list[Child] = Field(
-        default_factory=list, description="List of child content references with optional overrides"
+        default_factory=list,
+        description="List of child content references with optional overrides",
     )
-
-
-class LinearCourse(
-    BaseContentModel, ContentCollectionBase, content_type=ContentType.LINEAR_COURSE
-):
-    """
-    A course where each each item needs to be completed in order
-    """
 
 
 class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM):
