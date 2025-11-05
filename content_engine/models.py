@@ -3,11 +3,12 @@ from django.utils.translation import gettext_lazy as _
 from system_base.models import SiteAwareModel
 from .markdown_utils import render_markdown
 
+
 class ContentType(models.TextChoices):
     """Content type enumeration."""
+
     TOPIC = "TOPIC", _("Topic")
     FORM = "FORM", _("Form")
-    COLLECTION = "COLLECTION", _("Collection")
     FORM_PAGE = "FORM_PAGE", _("Form Page")
     FORM_QUESTION = "FORM_QUESTION", _("Form Question")
     FORM_TEXT = "FORM_TEXT", _("Form Text")
@@ -15,6 +16,7 @@ class ContentType(models.TextChoices):
 
 class QuestionType(models.TextChoices):
     """Question type enumeration."""
+
     MULTIPLE_CHOICE = "multiple_choice", _("Multiple Choice")
     CHECKBOXES = "checkboxes", _("Checkboxes")
     SHORT_TEXT = "short_text", _("Short Text")
@@ -23,22 +25,17 @@ class QuestionType(models.TextChoices):
 
 class FormStrategy(models.TextChoices):
     """Form strategy enumeration."""
+
     CATEGORY_VALUE_SUM = "CATEGORY_VALUE_SUM", _("Category Value Sum")
 
 
 class BaseContent(SiteAwareModel):
     """Base model for all content types."""
-    
+
     meta = models.JSONField(
-        null=True,
-        blank=True,
-        help_text=_("Optional metadata as key-value pairs")
+        null=True, blank=True, help_text=_("Optional metadata as key-value pairs")
     )
-    tags = models.JSONField(
-        null=True,
-        blank=True,
-        help_text=_("Optional list of tags")
-    )
+    tags = models.JSONField(null=True, blank=True, help_text=_("Optional list of tags"))
 
     class Meta:
         abstract = True
@@ -46,6 +43,7 @@ class BaseContent(SiteAwareModel):
 
 class TitledContent(BaseContent):
     """Base content model with title and subtitle."""
+
     title = models.CharField(max_length=500)
     subtitle = models.CharField(max_length=500, null=True, blank=True)
 
@@ -58,16 +56,14 @@ class TitledContent(BaseContent):
 
 class MarkdownContent(BaseContent):
     """Base content model with markdown content."""
-    content = models.TextField(
-        null=True,
-        blank=True,
-        help_text=_("Markdown content")
-    )
+
+    content = models.TextField(null=True, blank=True, help_text=_("Markdown content"))
 
     def rendered_content(self):
         from threading import local
+
         _thread_locals = local()
-        request = getattr(_thread_locals, 'request', None)
+        request = getattr(_thread_locals, "request", None)
         return render_markdown(self.content, request)
 
     class Meta:
@@ -78,29 +74,19 @@ class Topic(TitledContent, MarkdownContent):
     """Topic content item."""
 
 
-
-class ContentCollection(TitledContent):
-    """Content collection - contains an ordered list of child content."""
-    children = models.JSONField(
-        help_text=_("Single directory path or list of content paths")
-    )
-
 class Form(TitledContent, MarkdownContent):
     """Form content with scoring strategy."""
+
     strategy = models.CharField(
         max_length=50,
         choices=FormStrategy.choices,
     )
 
 
-
 class FormPage(TitledContent):
     """A page within a form."""
-    form = models.ForeignKey(
-        Form,
-        on_delete=models.CASCADE,
-        related_name="pages"
-    )
+
+    form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name="pages")
     order = models.PositiveIntegerField(default=0)
 
     def children(self):
@@ -117,28 +103,27 @@ class FormPage(TitledContent):
         return all_children
 
     class Meta:
-        ordering = ['order']
-
+        ordering = ["order"]
 
 
 class FormText(BaseContent):
     """Text content within a form page."""
+
     text = models.TextField()
     form_page = models.ForeignKey(
-        FormPage,
-        on_delete=models.CASCADE,
-        related_name="text_items"
+        FormPage, on_delete=models.CASCADE, related_name="text_items"
     )
     order = models.PositiveIntegerField(default=0)
 
     def rendered_text(self):
         from threading import local
+
         _thread_locals = local()
-        request = getattr(_thread_locals, 'request', None)
+        request = getattr(_thread_locals, "request", None)
         return render_markdown(self.text, request)
 
     class Meta:
-        ordering = ['order']
+        ordering = ["order"]
 
     @property
     def content_type(self):
@@ -150,6 +135,7 @@ class FormText(BaseContent):
 
 class FormQuestion(BaseContent):
     """A question within a form page."""
+
     question = models.TextField()
     type = models.CharField(
         max_length=20,
@@ -158,16 +144,15 @@ class FormQuestion(BaseContent):
     required = models.BooleanField(default=True)
     category = models.CharField(max_length=200, null=True, blank=True)
     form_page = models.ForeignKey(
-        FormPage,
-        on_delete=models.CASCADE,
-        related_name="questions"
+        FormPage, on_delete=models.CASCADE, related_name="questions"
     )
     order = models.PositiveIntegerField(default=0)
 
     def rendered_question(self):
         from threading import local
+
         _thread_locals = local()
-        request = getattr(_thread_locals, 'request', None)
+        request = getattr(_thread_locals, "request", None)
         return render_markdown(self.question, request)
 
     def question_number(self):
@@ -186,8 +171,9 @@ class FormQuestion(BaseContent):
                     return question_count
 
         return None
+
     class Meta:
-        ordering = ['order']
+        ordering = ["order"]
 
     @property
     def content_type(self):
@@ -199,17 +185,16 @@ class FormQuestion(BaseContent):
 
 class QuestionOption(SiteAwareModel):
     """An option for a form question."""
+
     question = models.ForeignKey(
-        FormQuestion,
-        on_delete=models.CASCADE,
-        related_name="options"
+        FormQuestion, on_delete=models.CASCADE, related_name="options"
     )
     text = models.CharField(max_length=500)
     value = models.CharField(max_length=100)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ['order']
+        ordering = ["order"]
 
     def __str__(self):
         return self.text

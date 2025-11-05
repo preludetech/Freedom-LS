@@ -18,6 +18,7 @@ dependencies = [
     "pydantic>=2.11.9",
     "pytest>=8.4.2",
     "pytest-django>=4.11.1",
+    "pytest-mock>=3.15.1",
     "python-frontmatter>=1.1.0",
 ]
 

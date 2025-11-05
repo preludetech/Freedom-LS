@@ -9,21 +9,20 @@ from student_interface.models import FormProgress, QuestionAnswer
 
 
 @pytest.mark.django_db
-def test_get_current_page_number_no_answers(site, user, form):
+def test_get_current_page_number_no_answers(mock_site_context, user, form):
     """Test get_current_page_number when no questions are answered."""
+
     # Create pages with questions
-    page1 = FormPage.objects.create(site_id=site, form=form, title="Page 1", order=0)
-    page2 = FormPage.objects.create(site_id=site, form=form, title="Page 2", order=1)
+    page1 = FormPage.objects.create(form=form, title="Page 1", order=0)
+    page2 = FormPage.objects.create(form=form, title="Page 2", order=1)
 
     FormQuestion.objects.create(
-        site_id=site,
         form_page=page1,
         question="Question 1",
         type="multiple_choice",
         order=0,
     )
     FormQuestion.objects.create(
-        site_id=site,
         form_page=page2,
         question="Question 2",
         type="multiple_choice",
@@ -37,21 +36,22 @@ def test_get_current_page_number_no_answers(site, user, form):
 
 
 @pytest.mark.django_db
-def test_get_current_page_number_partially_answered(site, user, form):
+def test_get_current_page_number_partially_answered(mock_site_context, user, form):
     """Test get_current_page_number when some questions are answered."""
+
     # Create pages with questions
-    page1 = FormPage.objects.create(site_id=site, form=form, title="Page 1", order=0)
-    page2 = FormPage.objects.create(site_id=site, form=form, title="Page 2", order=1)
-    page3 = FormPage.objects.create(site_id=site, form=form, title="Page 3", order=2)
+    page1 = FormPage.objects.create(form=form, title="Page 1", order=0)
+    page2 = FormPage.objects.create(form=form, title="Page 2", order=1)
+    page3 = FormPage.objects.create(form=form, title="Page 3", order=2)
 
     question1 = FormQuestion.objects.create(
-        site_id=site, form_page=page1, question="Question 1", type="short_text", order=0
+        form_page=page1, question="Question 1", type="short_text", order=0
     )
     FormQuestion.objects.create(
-        site_id=site, form_page=page2, question="Question 2", type="short_text", order=0
+        form_page=page2, question="Question 2", type="short_text", order=0
     )
     FormQuestion.objects.create(
-        site_id=site, form_page=page3, question="Question 3", type="short_text", order=0
+        form_page=page3, question="Question 3", type="short_text", order=0
     )
 
     form_progress = FormProgress.objects.create(user=user, form=form)
@@ -66,17 +66,18 @@ def test_get_current_page_number_partially_answered(site, user, form):
 
 
 @pytest.mark.django_db
-def test_get_current_page_number_all_answered(site, user, form):
+def test_get_current_page_number_all_answered(mock_site_context, user, form):
     """Test get_current_page_number when all questions are answered."""
+
     # Create pages with questions
-    page1 = FormPage.objects.create(site_id=site, form=form, title="Page 1", order=0)
-    page2 = FormPage.objects.create(site_id=site, form=form, title="Page 2", order=1)
+    page1 = FormPage.objects.create(form=form, title="Page 1", order=0)
+    page2 = FormPage.objects.create(form=form, title="Page 2", order=1)
 
     question1 = FormQuestion.objects.create(
-        site_id=site, form_page=page1, question="Question 1", type="short_text", order=0
+        form_page=page1, question="Question 1", type="short_text", order=0
     )
     question2 = FormQuestion.objects.create(
-        site_id=site, form_page=page2, question="Question 2", type="short_text", order=0
+        form_page=page2, question="Question 2", type="short_text", order=0
     )
 
     form_progress = FormProgress.objects.create(user=user, form=form)
@@ -94,18 +95,19 @@ def test_get_current_page_number_all_answered(site, user, form):
 
 
 @pytest.mark.django_db
-def test_get_current_page_number_page_with_text_only(site, user, form):
+def test_get_current_page_number_page_with_text_only(mock_site_context, user, form):
     """Test get_current_page_number with pages that have only text (no questions)."""
+
     # Create pages - first has text, second has question
-    page1 = FormPage.objects.create(site_id=site, form=form, title="Page 1", order=0)
-    page2 = FormPage.objects.create(site_id=site, form=form, title="Page 2", order=1)
+    page1 = FormPage.objects.create(form=form, title="Page 1", order=0)
+    page2 = FormPage.objects.create(form=form, title="Page 2", order=1)
 
     # Page 1 has only text, no questions
-    FormText.objects.create(site_id=site, form_page=page1, text="Intro text", order=0)
+    FormText.objects.create(form_page=page1, text="Intro text", order=0)
 
     # Page 2 has a question
     FormQuestion.objects.create(
-        site_id=site, form_page=page2, question="Question 2", type="short_text", order=0
+        form_page=page2, question="Question 2", type="short_text", order=0
     )
 
     form_progress = FormProgress.objects.create(user=user, form=form)
@@ -115,8 +117,9 @@ def test_get_current_page_number_page_with_text_only(site, user, form):
 
 
 @pytest.mark.django_db
-def test_get_or_create_incomplete_no_existing(user, form):
+def test_get_or_create_incomplete_no_existing(mock_site_context, user, form):
     """Test get_or_create_incomplete when user has no existing progress."""
+
     progress = FormProgress.get_or_create_incomplete(user, form)
 
     assert progress is not None
@@ -127,8 +130,9 @@ def test_get_or_create_incomplete_no_existing(user, form):
 
 
 @pytest.mark.django_db
-def test_get_or_create_incomplete_returns_existing_incomplete(user, form):
+def test_get_or_create_incomplete_returns_existing_incomplete(mock_site_context, user, form):
     """Test get_or_create_incomplete returns existing incomplete progress."""
+
     # Create an incomplete progress
     existing = FormProgress.objects.create(user=user, form=form)
 
@@ -140,8 +144,9 @@ def test_get_or_create_incomplete_returns_existing_incomplete(user, form):
 
 
 @pytest.mark.django_db
-def test_get_or_create_incomplete_creates_new_when_completed(user, form):
+def test_get_or_create_incomplete_creates_new_when_completed(mock_site_context, user, form):
     """Test get_or_create_incomplete creates new progress when existing is completed."""
+
     # Create a completed progress
     completed = FormProgress.objects.create(
         user=user, form=form, completed_time=timezone.now()
@@ -156,8 +161,9 @@ def test_get_or_create_incomplete_creates_new_when_completed(user, form):
 
 
 @pytest.mark.django_db
-def test_get_or_create_incomplete_returns_latest_incomplete(user, form):
+def test_get_or_create_incomplete_returns_latest_incomplete(mock_site_context, user, form):
     """Test get_or_create_incomplete returns the latest incomplete when multiple exist."""
+
     # Create an older incomplete progress
     older = FormProgress.objects.create(user=user, form=form)
     # Set the start_time to be older

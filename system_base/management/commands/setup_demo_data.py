@@ -24,6 +24,14 @@ demo_sites = [
             {"full_name": "Fiona Green", "email": "fiona@uavi.com"},
         ],
     },
+    {
+        "name": "Prelude",
+        "domain": "127.0.0.1:8002",
+        "cohorts": [
+            "2025 01",
+        ],
+        "students": [],
+    },
 ]
 
 
@@ -104,7 +112,9 @@ class Command(BaseCommand):
                     )
                 else:
                     self.stdout.write(
-                        self.style.WARNING(f"Student '{student.full_name}' already exists")
+                        self.style.WARNING(
+                            f"Student '{student.full_name}' already exists"
+                        )
                     )
 
             # Add students to first cohort if available

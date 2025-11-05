@@ -147,6 +147,7 @@ def parse_markdown_file(path):
     Returns:
         list: List containing a single validated pydantic model instance
     """
+    print(path)
     # Load the yaml frontmatter
     post = frontmatter.load(path)
     data = post.metadata

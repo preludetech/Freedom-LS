@@ -9,19 +9,22 @@ from typing import Any, ClassVar, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 
-
 class ContentType(str, Enum):
     """Content type enumeration."""
+
     TOPIC = "TOPIC"
     FORM = "FORM"
-    COLLECTION = "COLLECTION"
+    # COLLECTION = "COLLECTION"
     FORM_PAGE = "FORM_PAGE"
     FORM_QUESTION = "FORM_QUESTION"
     FORM_TEXT = "FORM_TEXT"
 
+    LINEAR_COURSE = "LINEAR_COURSE"
+
 
 class QuestionType(str, Enum):
     """Question type enumeration."""
+
     MULTIPLE_CHOICE = "multiple_choice"
     CHECKBOXES = "checkboxes"
     SHORT_TEXT = "short_text"
@@ -30,17 +33,16 @@ class QuestionType(str, Enum):
 
 class FormStrategy(str, Enum):
     """Form strategy enumeration."""
+
     CATEGORY_VALUE_SUM = "CATEGORY_VALUE_SUM"
-    
-
-
-
 
 
 class BaseBaseContentModel(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
-    meta: Optional[dict[str, Any]] = Field(None, description="Optional metadata as key-value pairs")
+    meta: Optional[dict[str, Any]] = Field(
+        None, description="Optional metadata as key-value pairs"
+    )
     tags: Optional[list[str]] = Field(None, description="Optional list of tags")
     content_type: ContentType = Field(..., description="Type of content")
     file_path: Path = Field(..., description="Path to the content file")
@@ -64,36 +66,37 @@ class MarkdownContentModel(BaseModel):
 
 
 class Topic(BaseContentModel, MarkdownContentModel, content_type=ContentType.TOPIC):
-    """Schema for content items.
-    title: Required
-    subtitle: Optional
-    meta: Optional. This is a collection of key value pairs where the values can have any type
-
-    eg:
-    ```
-    title: Understanding Texture Tolerance in Children with Autism
-    subtitle: Why Texture Matters and How It Affects Eating
-    meta:
-        id: SA1
-    tags: optional list of strings
-    content_type: enum. Can be TOPIC or FORM
-    ```
-    """
     pass
-    
 
 
-class ContentCollection(BaseContentModel, content_type=ContentType.COLLECTION):
+class Child(BaseModel):
+    """A child content reference with optional overrides."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: Path = Field(..., description="Path to the child content file")
+    overrides: Optional[dict[str, Any]] = Field(
+        None, description="Optional overrides as key-value pairs"
+    )
+
+
+class ContentCollectionBase(BaseModel):
     """
     You can think of this as a folder. It contains an ordered list of child content.
 
-    the children element is either a single string, (a directory path) or a list of strings (a list of paths)
-
     """
-    children: Union[str, list[str]] = Field(..., description="Single directory path or list of content paths") 
+
+    children: list[Child] = Field(
+        default_factory=list, description="List of child content references with optional overrides"
+    )
 
 
-
+class LinearCourse(
+    BaseContentModel, ContentCollectionBase, content_type=ContentType.LINEAR_COURSE
+):
+    """
+    A course where each each item needs to be completed in order
+    """
 
 
 class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM):
@@ -102,21 +105,24 @@ class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM
 
     A form page is a yaml file, the first object defined will have the FORM_PAGE content type
     """
+
     strategy: FormStrategy = Field(..., description="Strategy for form scoring")
-    
+
 
 class FormPage(BaseContentModel, content_type=ContentType.FORM_PAGE):
-    """
-    """
-    def derive_content_type(self,data):
-        if "text" in data: 
-            return ContentType.FORM_TEXT 
+    """ """
+
+    def derive_content_type(self, data):
+        if "text" in data:
+            return ContentType.FORM_TEXT
         if "question" in data:
             return ContentType.FORM_QUESTION
-    
+
+
 class QuestionOption(BaseModel):
     """A single option for a form question."""
-    model_config = ConfigDict(extra='forbid')
+
+    model_config = ConfigDict(extra="forbid")
 
     text: str = Field(..., description="Display text for the option")
     value: Union[int, str] = Field(..., description="Value associated with this option")
@@ -125,7 +131,8 @@ class QuestionOption(BaseModel):
 
 class FormText(BaseBaseContentModel, content_type=ContentType.FORM_TEXT):
     text: str = Field(..., description="Text")
-    
+
+
 class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION):
     """
     A question in a form page.
@@ -149,11 +156,18 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
           value: 5
     ```
     """
+
     question: str = Field(..., description="The question text")
-    type: QuestionType = Field(..., description="Question type (multiple_choice, checkboxes, short_text, long_text)")
+    type: QuestionType = Field(
+        ...,
+        description="Question type (multiple_choice, checkboxes, short_text, long_text)",
+    )
     required: bool = Field(True, description="Whether the question is required")
     category: Optional[str] = Field(None, description="Question category")
-    options: Optional[list[QuestionOption]] = Field(None, description="Options for multiple choice questions")
+    options: Optional[list[QuestionOption]] = Field(
+        None, description="Options for multiple choice questions"
+    )
+
 
 # SCHEMAS is automatically built via __init_subclass__
 SCHEMAS = BaseContentModel._registry

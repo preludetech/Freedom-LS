@@ -10,24 +10,25 @@ _thread_locals = local()
 class SiteAwareManager(models.Manager):
     def get_queryset(self):
         queryset = super().get_queryset()
-        request = getattr(_thread_locals, 'request', None)
+        request = getattr(_thread_locals, "request", None)
         if request:
             site = get_current_site(request)
-            return queryset.filter(site_id=site)
+            return queryset.filter(site=site)
         return queryset
 
 
 class SiteAwareModelBase(models.Model):
-    site_id = models.ForeignKey(Site, on_delete=models.PROTECT)
+    site = models.ForeignKey(Site, on_delete=models.PROTECT)
 
     objects = SiteAwareManager()
 
     def save(self, *args, **kwargs):
         # Automatically set site_id if not already set
-        if not self.site_id_id:
-            request = getattr(_thread_locals, 'request', None)
+
+        if not self.site_id:
+            request = getattr(_thread_locals, "request", None)
             if request:
-                self.site_id = get_current_site(request)
+                self.site = get_current_site(request)
         super().save(*args, **kwargs)
 
     class Meta:
@@ -36,5 +37,6 @@ class SiteAwareModelBase(models.Model):
 
 class SiteAwareModel(SiteAwareModelBase):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
     class Meta:
         abstract = True

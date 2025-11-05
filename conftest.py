@@ -25,7 +25,7 @@ def user(site):
     """Create a test user."""
     user = User(
         email="test@example.com",
-        site_id=site,
+        site=site,
         is_active=True,
     )
     user.set_password("testpass")
@@ -37,7 +37,7 @@ def user(site):
 def form(site):
     """Create a test form."""
     return Form.objects.create(
-        site_id=site, title="Test Form", strategy="CATEGORY_VALUE_SUM"
+        site=site, title="Test Form", strategy="CATEGORY_VALUE_SUM"
     )
 
 
@@ -58,3 +58,13 @@ def make_temp_file():
     # Cleanup
     if temp_file and temp_file.exists():
         temp_file.unlink()
+
+
+@pytest.fixture
+def mock_site_context(site, mocker):
+    """Mock the thread local request and get_current_site for SiteAwareModel."""
+    from system_base.models import _thread_locals
+    mock_request = mocker.Mock()
+    mocker.patch.object(_thread_locals, "request", mock_request, create=True)
+    mocker.patch("system_base.models.get_current_site", return_value=site)
+    return site
