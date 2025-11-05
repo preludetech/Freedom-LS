@@ -1,0 +1,18 @@
+
+<c-vars video_url video_title="YouTube video player"/>
+
+
+<div class="relative w-full overflow-hidden rounded-lg shadow-md" style="height: 500px;">
+    <iframe 
+        class="w-full h-full"
+        src="https://www.youtube.com/embed/{{video_id}}" 
+        title="{{video_title}}" 
+        frameborder="0" 
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+        referrerpolicy="strict-origin-when-cross-origin" 
+        allowfullscreen>
+    </iframe>
+</div>
+
+
+

@@ -98,6 +98,7 @@ class TopicProgress(SiteAwareModel):
         Topic, on_delete=models.CASCADE, related_name="progress_records"
     )
     start_time = models.DateTimeField(auto_now_add=True)
+    last_accessed_time = models.DateTimeField(auto_now=True)
     complete_time = models.DateTimeField(blank=True, null=True)
 
     class Meta:

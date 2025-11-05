@@ -1,18 +1,108 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from content_engine.models import Topic, Form
-from .models import FormProgress
+from django.urls import reverse
+from django.utils import timezone
+from content_engine.models import Topic, Form, ContentCollection
+from .models import FormProgress, TopicProgress
+
+
+def get_navigation_items(collection, current_item):
+    """Get previous and next items in a collection relative to current item."""
+    children = collection.children()
+    current_index = None
+
+    for i, child in enumerate(children):
+        if child.pk == current_item.pk and type(child) == type(current_item):
+            current_index = i
+            break
+
+    if current_index is None:
+        return None, None
+
+    previous_item = children[current_index - 1] if current_index > 0 else None
+    next_item = (
+        children[current_index + 1] if current_index < len(children) - 1 else None
+    )
+
+    return previous_item, next_item
+
+
+def get_item_url(item, collection_pk=None):
+    """Get the URL for a content item (Topic, Form, or Collection)."""
+    if isinstance(item, Topic):
+        if collection_pk:
+            return reverse(
+                "student_interface:topic_detail_in_collection",
+                kwargs={"collection_pk": collection_pk, "pk": item.pk},
+            )
+        return reverse("student_interface:topic_detail", kwargs={"pk": item.pk})
+    elif isinstance(item, Form):
+        if collection_pk:
+            return reverse(
+                "student_interface:form_detail_in_collection",
+                kwargs={"collection_pk": collection_pk, "pk": item.pk},
+            )
+        return reverse("student_interface:form_detail", kwargs={"pk": item.pk})
+    elif isinstance(item, ContentCollection):
+        return reverse("student_interface:course_home", kwargs={"pk": item.pk})
+    return None
 
 
 @login_required
-def topic_detail(request, pk):
+def topic_detail(request, pk, collection_pk=None):
     """View to display a topic for students."""
     topic = get_object_or_404(Topic, pk=pk)
-    return render(request, "content_engine/topic_detail.html", {"topic": topic})
+
+    # Track progress
+    topic_progress, created = TopicProgress.objects.get_or_create(
+        user=request.user, topic=topic
+    )
+    if not created:
+        topic_progress.save()
+
+    # Handle "mark complete" POST request
+    if request.method == "POST" and "mark_complete" in request.POST:
+        topic_progress.complete_time = timezone.now()
+        topic_progress.save()
+
+        if collection_pk:
+            collection = get_object_or_404(ContentCollection, pk=collection_pk)
+            _, next_item = get_navigation_items(collection, topic)
+            if next_item:
+                return redirect(get_item_url(next_item, collection.pk))
+            return redirect("student_interface:course_home", pk=collection.pk)
+
+        return redirect("student_interface:topic_detail", pk=topic.pk)
+
+    # Get navigation items
+    collection = None
+    previous_url = None
+    next_url = None
+
+    if collection_pk:
+        collection = get_object_or_404(ContentCollection, pk=collection_pk)
+        previous_item, next_item = get_navigation_items(collection, topic)
+
+        if previous_item:
+            previous_url = get_item_url(previous_item, collection.pk)
+        if next_item:
+            next_url = get_item_url(next_item, collection.pk)
+
+    return render(
+        request,
+        "content_engine/topic_detail.html",
+        {
+            "topic": topic,
+            "collection": collection,
+            "previous_url": previous_url,
+            "next_url": next_url,
+            "is_complete": topic_progress.complete_time is not None,
+        },
+    )
 
 
 @login_required
-def form_detail(request, pk):
+def form_detail(request, pk, collection_pk=None):
     """View to display a form for students."""
     form = get_object_or_404(Form, pk=pk)
 
@@ -29,6 +119,10 @@ def form_detail(request, pk):
     if form_progress:
         page_number = form_progress.get_current_page_number()
 
+    collection = None
+    if collection_pk:
+        collection = get_object_or_404(ContentCollection, pk=collection_pk)
+
     return render(
         request,
         "content_engine/form_detail.html",
@@ -36,6 +130,7 @@ def form_detail(request, pk):
             "form": form,
             "page_number": page_number,
             "form_progress": form_progress,
+            "collection": collection,
         },
     )
 
@@ -99,3 +194,97 @@ def form_fill_page(request, pk, page_number):
     }
 
     return render(request, "content_engine/form_page_detail.html", context)
+
+
+def course_home(request, pk):
+    # TODO: check that the student is registered for the course
+
+    BLOCKED = "BLOCKED"
+    READY = "READY"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETE = "COMPLETE"
+
+    collection = get_object_or_404(ContentCollection, pk=pk)
+
+    children = [
+        # {title, status, url}
+    ]
+
+    next_status = READY  # First item starts as READY
+    for i, child in enumerate(collection.children()):
+        # create a list of children dicts
+        # status is either blocked, ready, in progress or complete
+        # users need to complete things in order, an item is blocked if the previous item has not been completed yet
+
+        status = None
+        url = None
+        title = None
+
+        if isinstance(child, Topic):
+            title = child.title
+            url = reverse(
+                "student_interface:topic_detail_in_collection",
+                kwargs={"collection_pk": collection.pk, "pk": child.pk},
+            )
+
+            # Check progress
+            topic_progress = TopicProgress.objects.filter(
+                user=request.user, topic=child
+            ).first()
+
+            if topic_progress and topic_progress.complete_time:
+                status = COMPLETE
+            elif topic_progress:
+                status = IN_PROGRESS
+            elif next_status == READY:
+                status = READY
+            else:
+                status = BLOCKED
+
+        elif isinstance(child, Form):
+            title = child.title
+            url = reverse(
+                "student_interface:form_detail_in_collection",
+                kwargs={"collection_pk": collection.pk, "pk": child.pk},
+            )
+
+            # Check progress
+            form_progress = (
+                FormProgress.objects.filter(user=request.user, form=child)
+                .order_by("-start_time")
+                .first()
+            )
+
+            if form_progress and form_progress.completed_time:
+                status = COMPLETE
+            elif form_progress:
+                status = IN_PROGRESS
+            elif next_status == READY:
+                status = READY
+            else:
+                status = BLOCKED
+
+        elif isinstance(child, ContentCollection):
+            title = child.title
+            url = reverse("student_interface:course_home", kwargs={"pk": child.pk})
+
+            # For collections, check if all direct children are complete
+            # TODO: implement proper recursive collection completion checking
+            if next_status == READY:
+                status = READY
+            else:
+                status = BLOCKED
+
+        children.append({"title": title, "status": status, "url": url})
+
+        # Update next_status for the next iteration
+        if status == COMPLETE:
+            next_status = READY
+        else:
+            next_status = BLOCKED
+
+    return render(
+        request,
+        "content_engine/collection_detail.html",
+        {"collection": collection, "children": children},
+    )

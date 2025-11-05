@@ -426,14 +426,16 @@ def save_content_to_db(path, site_name):
                 # Get the Django ContentType for the child
                 child_content_type = DjangoContentType.objects.get_for_model(child_content)
 
-                # Create the ContentCollectionItem
-                ContentCollectionItem.objects.create(
+                # Create or update the ContentCollectionItem
+                ContentCollectionItem.objects.update_or_create(
                     site=site,
                     collection=collection,
                     child_type=child_content_type,
                     child_id=child_content.id,
-                    order=order,
-                    overrides=child.overrides,
+                    defaults={
+                        "order": order,
+                        "overrides": child.overrides,
+                    },
                 )
                 logger.info(
                     f"Added {child_content.__class__.__name__} '{child_content.title}' "

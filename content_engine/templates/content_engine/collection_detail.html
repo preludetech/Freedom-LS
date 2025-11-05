@@ -4,22 +4,59 @@
 
 {% block content %}
 
-    <div class="space-y-4">
+    <div class="max-w-4xl mx-auto space-y-8">
 
-        <h1>{{ collection.title }}</h1>
-        {% if collection.subtitle %}
-        <h2>{{ collection.subtitle }}</h2>
-        {% endif %}
-        <hr/>
-        <div class="space-y-4 py-4">
+        <div class="space-y-2">
+            <h1>{{ collection.title }}</h1>
+            {% if collection.subtitle %}
+            <p class="text-xl text-gray-600">{{ collection.subtitle }}</p>
+            {% endif %}
+        </div>
+
+        <div class="space-y-3">
             {% for child in children %}
-            <div>
-                {{ forloop.counter }}. 
+            <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center gap-4 flex-1">
+                    <span class="text-lg font-semibold text-gray-500 w-8">{{ forloop.counter }}.</span>
+                    <h3>{{ child.title }}</h3>
+                </div>
 
-                <a href="{{child.preview_url}}">
-                    {{ child.title }}
-                </a>
-                
+                <div>
+                    {% if preview %}
+                        <a href="{{child.preview_url}}" class="btn btn-outline">
+                           Preview
+                        </a>
+                    {% else %}
+                        {% if child.status == "BLOCKED" %}
+                            <span class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-400">
+                                <i class="fa fa-lock"></i>
+                                Locked
+                            </span>
+
+                        {% elif child.status == "READY" %}
+                            <a href="{{ child.url }}" class="btn btn-primary">
+                                Start
+                            </a>
+
+                        {% elif child.status == "IN_PROGRESS" %}
+                            <a href="{{ child.url }}" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-700 bg-primary-50 rounded-md hover:bg-primary-100 transition-colors no-underline">
+                                <i class="fa fa-arrow-right"></i>
+                                Continue
+                            </a>
+
+                        {% elif child.status == "COMPLETE" %}
+                            <a href="{{ child.url }}" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100 transition-colors no-underline">
+                                <i class="fa fa-check-circle"></i>
+                                Review
+                            </a>
+
+                        {% else %}
+                            <span class="px-4 py-2 text-sm font-medium text-red-600">
+                                Unknown status "{{ child.status }}"
+                            </span>
+                        {% endif %}
+                    {% endif %}
+                </div>
             </div>
             {% endfor %}
         </div>

@@ -4,6 +4,14 @@
     
 {% block content %}
 
+    {% if collection %}
+    <div class="mb-4">
+        <a href="{% url 'student_interface:course_home' collection.pk %}" class="btn btn-outline">
+            <i class="fa fa-arrow-left"></i> Back to {{ collection.title }}
+        </a>
+    </div>
+    {% endif %}
+
     <h1>{{ form.title }}</h1>
     {% if form.subtitle %}
         <h2>{{ form.subtitle }}</h2>

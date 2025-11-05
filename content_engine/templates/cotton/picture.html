@@ -1,0 +1,63 @@
+<c-vars src alt caption="" />
+
+<div x-data="{ open: false }" class="my-6">
+    <!-- Thumbnail Image -->
+    <figure class="max-w-4xl mx-auto">
+        <img
+            src="{{ src }}"
+            alt="{{ alt }}"
+            @click="open = true"
+            class="w-full h-auto rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+            loading="lazy"
+        />
+        {% if caption %}
+        <figcaption class="mt-2 text-sm text-gray-600 text-center">
+            {{ caption }}
+        </figcaption>
+        {% endif %}
+    </figure>
+
+    <!-- Overlay Modal -->
+    <div
+        x-show="open"
+        x-cloak
+        @keydown.escape.window="open = false"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90"
+        @click.self="open = false"
+    >
+        <div class="relative max-w-7xl max-h-screen p-4 overflow-auto">
+            <!-- Close Button -->
+            <button
+                @click="open = false"
+                class="absolute top-6 right-6 z-10 w-10 h-10 flex items-center justify-center bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full text-white transition-colors"
+                aria-label="Close"
+            >
+                <i class="fa fa-times text-xl"></i>
+            </button>
+
+            <!-- Zoomable Image -->
+            <img
+                src="{{ src }}"
+                alt="{{ alt }}"
+                class="max-w-full max-h-screen object-contain"
+            />
+
+            {% if caption %}
+            <p class="mt-4 text-center text-white text-sm">
+                {{ caption }}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+
+<!-- 
+<c-picture 
+      src="/static/images/diagram.png" 
+      alt="System architecture diagram"
+      caption="Figure 1: Overview of the system components"
+  /> -->
