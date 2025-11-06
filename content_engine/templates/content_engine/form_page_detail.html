@@ -18,7 +18,7 @@
         <div class="space-y-2 ml-4">
             {% for option in child.options.all %}
                 <div class="flex items-center">
-                    <input type="radio" id="q{{child.id}}_opt{{option.id}}" name="question_{{child.id}}" value="{{option.id}}" class="mr-2">
+                    <input type="radio" id="q{{child.id}}_opt{{option.id}}" name="question_{{child.id}}" value="{{option.id}}" class="mr-2" {% if child.required %}required {% endif %}>
                     <label for="q{{child.id}}_opt{{option.id}}" class="cursor-pointer">{{option.text}}</label>
                 </div>
             {% endfor %}
@@ -32,8 +32,8 @@
 {% endpartialdef %}
 
 {% partialdef form-text %}
-<div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg prose max-w-none">
-    {{child.rendered_text}}
+<div class="mb-6 p-4 bg-white border border-gray-200 rounded-lg prose max-w-none">
+    {{child.rendered_content}}
 </div>
 {% endpartialdef %}
 
@@ -67,6 +67,9 @@
     </div>
 
     <form method="POST">
+
+        {% csrf_token %}
+
 
         <!-- Form content -->
         <div class="mb-8">

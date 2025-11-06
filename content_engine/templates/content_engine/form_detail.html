@@ -6,7 +6,7 @@
 
     {% if collection %}
     <div class="mb-4">
-        <a href="{% url 'student_interface:course_home' collection.slug %}" class="btn btn-outline">
+        <a href="{% url 'student_interface:course_home' collection.pk %}" class="btn btn-outline">
             <i class="fa fa-arrow-left"></i> Back to {{ collection.title }}
         </a>
     </div>
@@ -31,7 +31,7 @@
             </p>
         {% else %}
             <p>
-                <a href="{% url 'student_interface:form_start' form.pk %}" class="btn btn-primary">Start Form >></a>
+                <a href="{% url 'student_interface:form_start' form.slug %}" class="btn btn-primary">Start Form >></a>
             </p>
         {% endif %}
     {% endif %}

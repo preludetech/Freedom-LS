@@ -11,9 +11,10 @@
 
     <link rel="stylesheet" type="text/css" href="{% static 'vendor/tailwind.output.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
 
 </head>
-<body>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     {% block body %}
 
     <main class="p-4 flex-grow container mx-auto">
