@@ -43,7 +43,7 @@
     }
 
     ol {
-        @apply list-decimal list-inside space-y-2
+        @apply list-decimal space-y-2
     }
 
     /* Form elements */
