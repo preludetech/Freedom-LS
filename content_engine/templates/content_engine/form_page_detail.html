@@ -1,4 +1,5 @@
 {% extends '_base.html' %}
+{% load content_tags %}
 
 
 
@@ -18,10 +19,43 @@
         <div class="space-y-2 ml-4">
             {% for option in child.options.all %}
                 <div class="flex items-center">
-                    <input type="radio" id="q{{child.id}}_opt{{option.id}}" name="question_{{child.id}}" value="{{option.id}}" class="mr-2" {% if child.required %}required {% endif %}>
+                    <input type="radio" id="q{{child.id}}_opt{{option.id}}" name="question_{{child.id}}" value="{{option.id}}" class="mr-2"
+                    {% if child.required %}required {% endif %}
+                    {% if existing_answers|length > 0 %}
+                        {% with answer=existing_answers|get_item:child.id %}
+                            {% if answer and option in answer.selected_options.all %}checked{% endif %}
+                        {% endwith %}
+                    {% endif %}>
                     <label for="q{{child.id}}_opt{{option.id}}" class="cursor-pointer">{{option.text}}</label>
                 </div>
             {% endfor %}
+        </div>
+    {% elif child.type == "checkboxes" %}
+        <div class="space-y-2 ml-4">
+            {% for option in child.options.all %}
+                <div class="flex items-center">
+                    <input type="checkbox" id="q{{child.id}}_opt{{option.id}}" name="question_{{child.id}}" value="{{option.id}}" class="mr-2"
+                    {% if existing_answers|length > 0 %}
+                        {% with answer=existing_answers|get_item:child.id %}
+                            {% if answer and option in answer.selected_options.all %}checked{% endif %}
+                        {% endwith %}
+                    {% endif %}>
+                    <label for="q{{child.id}}_opt{{option.id}}" class="cursor-pointer">{{option.text}}</label>
+                </div>
+            {% endfor %}
+        </div>
+    {% elif child.type == "short_text" %}
+        <div class="ml-4">
+            <input type="text" name="question_{{child.id}}" class="w-full" {% if child.required %}required{% endif %}
+            {% if existing_answers|length > 0 %}
+                {% with answer=existing_answers|get_item:child.id %}
+                    {% if answer %}value="{{ answer.text_answer }}"{% endif %}
+                {% endwith %}
+            {% endif %}>
+        </div>
+    {% elif child.type == "long_text" %}
+        <div class="ml-4">
+            <textarea name="question_{{child.id}}" rows="5" class="w-full" {% if child.required %}required{% endif %}>{% if existing_answers|length > 0 %}{% with answer=existing_answers|get_item:child.id %}{% if answer %}{{ answer.text_answer }}{% endif %}{% endwith %}{% endif %}</textarea>
         </div>
     {% else %}
         <div class="p-3 bg-red-100 border border-red-400 text-red-700 rounded">

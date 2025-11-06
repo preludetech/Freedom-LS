@@ -246,6 +246,24 @@ def form_fill_page(request, pk, page_number):
 
     form_page = all_pages[page_number - 1]
 
+    # Get existing answers for questions on this page
+    questions = [
+        child for child in form_page.children()
+        if hasattr(child, 'question')  # It's a FormQuestion
+    ]
+
+    # Build a dictionary of existing answers keyed by question ID
+    existing_answers = {}
+    for question in questions:
+        try:
+            answer = QuestionAnswer.objects.get(
+                form_progress=form_progress,
+                question=question
+            )
+            existing_answers[question.id] = answer
+        except QuestionAnswer.DoesNotExist:
+            pass
+
     # Calculate navigation
     previous_page = all_pages[page_number - 2] if page_number > 1 else None
     next_page = all_pages[page_number] if page_number < total_pages else None
@@ -260,6 +278,7 @@ def form_fill_page(request, pk, page_number):
         "pages_left": pages_left,
         "previous_page": previous_page,
         "next_page": next_page,
+        "existing_answers": existing_answers,
     }
 
     return render(request, "content_engine/form_page_detail.html", context)
