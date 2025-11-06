@@ -25,4 +25,9 @@ urlpatterns = [
         views.form_fill_page,
         name="form_fill_page",
     ),
+    path(
+        "form_progress/<uuid:pk>/complete/",
+        views.form_complete,
+        name="form_complete",
+    ),
 ]

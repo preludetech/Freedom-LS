@@ -102,7 +102,7 @@
                 {% endif %}
             </div>
             <div>
-                
+
             {% if next_page %}
 
             {% if preview %}
@@ -112,6 +112,13 @@
             {% else %}
             <button type="submit" class="btn btn-primary">
                 Next
+            </button>
+            {% endif %}
+            {% else %}
+            {# Last page - show Submit button #}
+            {% if not preview %}
+            <button type="submit" class="btn btn-primary">
+                Submit
             </button>
             {% endif %}
             {% endif %}

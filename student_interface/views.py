@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.utils import timezone
 from content_engine.models import Topic, Form, ContentCollection
-from .models import FormProgress, TopicProgress
+from .models import FormProgress, TopicProgress, QuestionAnswer
 
 
 def get_navigation_items(collection, current_item):
@@ -12,7 +12,7 @@ def get_navigation_items(collection, current_item):
     current_index = None
 
     for i, child in enumerate(children):
-        if child.pk == current_item.pk and type(child) == type(current_item):
+        if child.pk == current_item.pk and type(child) is type(current_item):
             current_index = i
             break
 
@@ -169,7 +169,70 @@ def form_fill_page(request, pk, page_number):
         )
 
     if request.method == "POST":
-        TODO
+        # Get the form and current page
+        form = form_progress.form
+        all_pages = list(form.pages.all())
+        total_pages = len(all_pages)
+
+        if page_number < 1 or page_number > total_pages:
+            return redirect("student_interface:form_start", form_slug=form.slug)
+
+        form_page = all_pages[page_number - 1]
+
+        # Get all questions on this page
+        questions = [
+            child for child in form_page.children()
+            if hasattr(child, 'question')  # It's a FormQuestion
+        ]
+
+        # Process each question's answer
+        for question in questions:
+            field_name = f"question_{question.id}"
+
+            # Get or create the answer
+            answer, created = QuestionAnswer.objects.get_or_create(
+                form_progress=form_progress,
+                question=question
+            )
+
+            # Handle different question types
+            if question.type == "multiple_choice":
+                # Get the selected option ID from POST
+                option_id = request.POST.get(field_name)
+                if option_id:
+                    # Clear existing selections and set the new one
+                    answer.selected_options.clear()
+                    answer.selected_options.add(option_id)
+                    answer.save()
+
+            elif question.type == "checkboxes":
+                # Get all selected option IDs (can be multiple)
+                option_ids = request.POST.getlist(field_name)
+                if option_ids:
+                    answer.selected_options.clear()
+                    answer.selected_options.add(*option_ids)
+                    answer.save()
+
+            elif question.type in ["short_text", "long_text"]:
+                # Get text answer
+                text_answer = request.POST.get(field_name, "")
+                answer.text_answer = text_answer
+                answer.save()
+
+        # Determine where to redirect
+        if page_number < total_pages:
+            # Redirect to next page
+            return redirect(
+                "student_interface:form_fill_page",
+                pk=form_progress.pk,
+                page_number=page_number + 1
+            )
+        else:
+            # This was the last page, mark as complete and redirect to complete page
+            form_progress.completed_time = timezone.now()
+            form_progress.save()
+            return redirect("student_interface:form_complete", pk=form_progress.pk)
+
 
     # Get the form and all its pages
     form = form_progress.form
@@ -200,6 +263,30 @@ def form_fill_page(request, pk, page_number):
     }
 
     return render(request, "content_engine/form_page_detail.html", context)
+
+
+@login_required
+def form_complete(request, pk):
+    """View displayed when a user completes a form."""
+    form_progress = get_object_or_404(FormProgress, pk=pk)
+
+    # Ensure the form_progress belongs to the current user
+    if form_progress.user != request.user:
+        return redirect("student_interface:form_start", form_slug=form_progress.form.slug)
+
+    # Ensure the form is actually complete
+    if not form_progress.completed_time:
+        return redirect(
+            "student_interface:form_fill_page",
+            pk=form_progress.pk,
+            page_number=form_progress.get_current_page_number()
+        )
+
+    return render(
+        request,
+        "student_interface/form_complete.html",
+        {"form": form_progress.form, "form_progress": form_progress}
+    )
 
 
 def course_home(request, collection_slug):
