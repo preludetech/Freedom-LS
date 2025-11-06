@@ -12,7 +12,7 @@
 
         {% if collection %}
         <div class="mb-4">
-            <a href="{% url 'student_interface:course_home' collection.pk %}" class="btn btn-outline">
+            <a href="{% url 'student_interface:course_home' collection.slug %}" class="btn btn-outline">
                 <i class="fa fa-arrow-left"></i> Back to {{ collection.title }}
             </a>
         </div>
