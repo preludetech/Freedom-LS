@@ -1,5 +1,6 @@
 from django import template
 from content_engine.models import File
+from content_engine.markdown_utils import render_markdown
 
 register = template.Library()
 
@@ -41,3 +42,14 @@ def get_file_by_path(file_path, content_instance):
     except File.MultipleObjectsReturned:
         # In case of duplicates, return the first one
         return File.objects.filter(file_path=final_path).first()
+
+
+@register.simple_tag(takes_context=True)
+def markdown(context, value):
+    """
+    Template tag to render markdown content.
+
+    Usage: {% markdown content %}
+    """
+    request = context.get('request')
+    return render_markdown(value, request)

@@ -318,6 +318,7 @@ AUTHENTICATION_BACKENDS = (
 MARKDOWN_ALLOWED_TAGS = {
     "c-youtube": {"video_id", "video_title"},
     "c-picture": {"src", "alt", "caption"},
+    "c-callout": {"level", "title"},
 }
 
 MARKDOWN_TEMPLATE_RENDER_ON = True
