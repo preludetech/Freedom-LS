@@ -12,17 +12,23 @@ dependencies = [
     "django-cotton>=2.1.3",
     "django-guardian>=3.2.0",
     "django-ninja>=1.4.3",
-    "django-template-partials>=25.2",
     "django-unfold>=0.67.0",
     "markdown-headdown>=0.1.3",
     "nh3>=0.3.2",
     "pydantic>=2.11.9",
-    "pytest>=8.4.2",
-    "pytest-django>=4.11.1",
-    "pytest-mock>=3.15.1",
     "python-frontmatter>=1.1.0",
 ]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings_dev"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
+
+[dependency-groups]
+dev = [
+    "django-debug-toolbar>=6.1.0",
+    "django-template-partials>=25.2",
+    "ipython>=9.7.0",
+    "pytest>=8.4.2",
+    "pytest-django>=4.11.1",
+    "pytest-mock>=3.15.1",
+]

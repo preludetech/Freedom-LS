@@ -24,20 +24,21 @@ from ninja import NinjaAPI
 
 api = NinjaAPI()
 
-api.add_router("xapi/", "xapi_learning_record_store.api.router") 
+api.add_router("xapi/", "xapi_learning_record_store.api.router")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path('api/', api.urls),
+    path("api/", api.urls),
     # path("api/xapi/", include("xapi_learning_record_store.api_urls")),
     # path("api/", api.urls),
-
     path("__reload__/", include("django_browser_reload.urls")),
     path("content/", include("content_engine.urls")),
     path("", include("student_interface.urls")),
-
 ]
 
 # Serve media files during development
 if settings.DEBUG:
+    from debug_toolbar.toolbar import debug_toolbar_urls
+
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += debug_toolbar_urls()

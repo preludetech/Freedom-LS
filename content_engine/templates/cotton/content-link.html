@@ -1,0 +1,16 @@
+<c-vars path />
+{% load content_tags %}
+{% comment %}
+Look up the content object by file_path to get the actual URL.
+It can be a Topic or a Form.
+TODO. 
+    - non-preview link
+    - leading and trailing whitespace issue
+{% endcomment %}
+{% with content_obj=path|get_content_by_path:content_instance %}
+{% if content_obj %}
+<a href="{{ content_obj.preview_url }}" class="">{{ slot }} </a>
+{% else %}
+<span class="text-red-600" title="Content not found: {{ path }}">{{ slot }}</span>
+{% endif %}
+{% endwith %}

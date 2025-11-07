@@ -50,7 +50,6 @@ INSTALLED_APPS = [
     "unfold.contrib.constance",  # optional, if django-constance package is used
     "django.contrib.admin",  # required
     "guardian",
-    "django_browser_reload",
     #########
     # COMMON APPS
     # These need to be separate repos so they can be installed on different projects
@@ -319,6 +318,7 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-youtube": {"video_id", "video_title"},
     "c-picture": {"src", "alt", "caption"},
     "c-callout": {"level", "title"},
+    "c-content-link": {"path"},
 }
 
 MARKDOWN_TEMPLATE_RENDER_ON = True

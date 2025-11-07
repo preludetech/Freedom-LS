@@ -36,4 +36,5 @@ def render_markdown(markdown_text, request, context=None):
         content = markdown_text
 
     md = markdown.Markdown(extensions=["fenced_code", "mdx_headdown"])
+
     return mark_safe(md.convert(content))

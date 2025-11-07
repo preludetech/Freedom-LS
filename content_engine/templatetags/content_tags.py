@@ -1,5 +1,5 @@
 from django import template
-from content_engine.models import File
+from content_engine.models import File, Topic, Form
 from content_engine.markdown_utils import render_markdown
 
 register = template.Library()
@@ -65,3 +65,34 @@ def get_item(dictionary, key):
     if dictionary is None:
         return None
     return dictionary.get(key)
+
+
+@register.filter
+def get_content_by_path(file_path, content_instance):
+    """
+    Template filter to look up a content object (Topic or Form) by its file_path.
+
+    Usage: {{ "path/to/content.md"|get_content_by_path:content_instance }}
+    """
+    if not file_path:
+        return None
+
+    final_path = content_instance.calculate_path_from_root(file_path)
+
+    # Try to find as Topic first
+    try:
+        return Topic.objects.get(file_path=final_path)
+    except Topic.DoesNotExist:
+        pass
+    except Topic.MultipleObjectsReturned:
+        return Topic.objects.filter(file_path=final_path).first()
+
+    # Try to find as Form
+    try:
+        return Form.objects.get(file_path=final_path)
+    except Form.DoesNotExist:
+        pass
+    except Form.MultipleObjectsReturned:
+        return Form.objects.filter(file_path=final_path).first()
+
+    return None
