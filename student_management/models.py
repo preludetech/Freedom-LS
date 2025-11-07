@@ -2,9 +2,15 @@ from django.db import models
 from system_base.models import SiteAwareModel
 from django.utils.translation import gettext_lazy as _
 
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
 
 class Student(SiteAwareModel):
     """A student is a human, but they can't log in here"""
+
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
 
     short_name = models.CharField(max_length=150, blank=True, null=True)
     full_name = models.CharField(max_length=150, blank=True, null=True)
