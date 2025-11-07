@@ -31,3 +31,10 @@ if not TESTING:
     ]
 
 INSTALLED_APPS = [*INSTALLED_APPS, "django_browser_reload"]
+
+
+####
+# ALLAUTH
+
+ACCOUNT_RATE_LIMITS = False
+HEADLESS_SERVE_SPECIFICATION = True

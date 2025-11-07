@@ -2,6 +2,10 @@ from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 from student_management.models import Student, Cohort, CohortMembership
+from app_authentication.models import Client
+
+client_api_key = "W8tuA0ReonfZsAKywAZz9-IMGNCIq3TVGDiiar0LJqRoLEMceqgYjllfXU7iz6s7"
+client_name = "Student Interface"
 
 demo_sites = [
     {
@@ -76,6 +80,25 @@ class Command(BaseCommand):
                     self.style.WARNING(f"User '{user_email}' already exists")
                 )
 
+            # Create or update API client for this site
+            client, created = Client.objects.update_or_create(
+                name=client_name,
+                site=site,
+                defaults={"api_key": client_api_key, "is_active": True},
+            )
+            if created:
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"API Client '{client_name}' created for site '{site.name}'"
+                    )
+                )
+            else:
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"API Client '{client_name}' updated for site '{site.name}'"
+                    )
+                )
+
             # Create cohorts for this site
             created_cohorts = []
             for cohort_name in site_data.get("cohorts", []):
@@ -98,23 +121,41 @@ class Command(BaseCommand):
             # Create students for this site
             created_students = []
             for student_data in site_data.get("students", []):
-                student, created = Student.objects.get_or_create(
+                # Split full_name into first_name and last_name
+                full_name = student_data["full_name"]
+                name_parts = full_name.split(" ", 1)
+                first_name = name_parts[0]
+                last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+                # Create or get the user first
+                student_user, user_created = User.objects.get_or_create(
                     email=student_data["email"],
                     site=site,
-                    defaults={"full_name": student_data["full_name"]},
+                    defaults={
+                        "first_name": first_name,
+                        "last_name": last_name,
+                        "is_active": True,
+                    },
+                )
+                if user_created:
+                    student_user.set_password(student_data["email"])
+                    student_user.save()
+
+                # Create or get the student
+                student, created = Student.objects.get_or_create(
+                    user=student_user,
+                    site=site,
                 )
                 created_students.append(student)
                 if created:
                     self.stdout.write(
                         self.style.SUCCESS(
-                            f"Student '{student.full_name}' created for site '{site.name}'"
+                            f"Student '{full_name}' created for site '{site.name}'"
                         )
                     )
                 else:
                     self.stdout.write(
-                        self.style.WARNING(
-                            f"Student '{student.full_name}' already exists"
-                        )
+                        self.style.WARNING(f"Student '{full_name}' already exists")
                     )
 
             # Add students to first cohort if available
@@ -127,9 +168,10 @@ class Command(BaseCommand):
                         site=site,
                     )
                     if created:
+                        student_name = f"{student.user.first_name} {student.user.last_name}".strip()
                         self.stdout.write(
                             self.style.SUCCESS(
-                                f"Added '{student.full_name}' to cohort '{first_cohort.name}'"
+                                f"Added '{student_name}' to cohort '{first_cohort.name}'"
                             )
                         )
 

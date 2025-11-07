@@ -50,6 +50,12 @@ INSTALLED_APPS = [
     "unfold.contrib.constance",  # optional, if django-constance package is used
     "django.contrib.admin",  # required
     "guardian",
+    "app_authentication",
+    #########
+    # AllAuth
+    "allauth",
+    "allauth.account",
+    "allauth.headless",
     #########
     # COMMON APPS
     # These need to be separate repos so they can be installed on different projects
@@ -59,6 +65,14 @@ INSTALLED_APPS = [
     # this will be separated out into a new django project
     "student_interface",
 ]
+
+# These are the URLs to be implemented by your single-page application.
+# HEADLESS_FRONTEND_URLS = {
+#     "account_confirm_email": "https://app.project.org/account/verify-email/{key}",
+#     "account_reset_password_from_key": "https://app.org/account/password/reset/key/{key}",
+#     "account_signup": "https://app.org/account/signup",
+# }
+# TODO
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -70,6 +84,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "system_base.middleware.CurrentSiteMiddleware",
     "django_browser_reload.middleware.BrowserReloadMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -245,6 +260,10 @@ site_conf = {
         "SITE_TITLE": "Prelude",
         "SITE_HEADER": "Prelude",
     },
+    "Wrend": {
+        "SITE_TITLE": "Wrend",
+        "SITE_HEADER": "Wrend",
+    },
 }
 
 
@@ -311,6 +330,7 @@ UNFOLD = {
 AUTHENTICATION_BACKENDS = (
     "django.contrib.auth.backends.ModelBackend",
     "guardian.backends.ObjectPermissionBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
 )
 
 
@@ -325,3 +345,27 @@ MARKDOWN_TEMPLATE_RENDER_ON = True
 
 
 COTTON_SNAKE_CASED_NAMES = False
+
+
+###
+# ALLAUTH
+
+HEADLESS_CLIENTS = ("app",)
+
+ACCOUNT_LOGIN_METHODS = {"email"}
+# USER_MODEL_USERNAME_FIELD = "email"
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_SIGNUP_EMAIL_ENTER_TWICE = True
+# ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
+
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+
+# ACCOUNT_ADAPTER = "accounts.allauth_account_adapter.AccountAdapter"
+# ALLOW_SIGN_UPS = True
+
+# HEADLESS_FRONTEND_URLS TODO
+
+# HEADLESS_TOKEN_STRATEGY

@@ -17,14 +17,15 @@ class StudentCohortMembershipInline(TabularInline):
 
 @admin.register(Student)
 class StudentAdmin(SiteAwareModelAdmin):
-    list_display = ["full_name", "email", "id_number", "cellphone", "get_cohorts"]
-    search_fields = ["full_name", "email", "id_number"]
+    list_display = ["id_number", "cellphone", "get_cohorts"]
+    search_fields = ["id_number"]
     list_filter = ["date_of_birth"]
     inlines = [StudentCohortMembershipInline]
 
     def get_cohorts(self, obj):
         cohorts = Cohort.objects.filter(cohortmembership__student=obj)
         return ", ".join([cohort.name for cohort in cohorts])
+
     get_cohorts.short_description = "Cohorts"
 
 

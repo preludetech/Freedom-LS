@@ -552,7 +552,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "django", specifier = ">=5.2.7" },
-    { name = "django-allauth", specifier = ">=65.11.2" },
+    { name = "django-allauth", extras = ["headless"], specifier = ">=65.11.2" },
     { name = "django-browser-reload", specifier = ">=1.21.0" },
     { name = "django-click", specifier = ">=2.4.1" },
     { name = "django-cotton", specifier = ">=2.1.3" },
