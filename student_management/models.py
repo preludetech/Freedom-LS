@@ -24,6 +24,33 @@ class Student(SiteAwareModel):
             return f"{self.user.first_name} {self.user.last_name}".strip()
         return self.user.email or f"Student {self.pk}"
 
+    def get_course_registrations(self):
+        """Get all active course registrations for this student."""
+        registered_collections = set()
+
+        # Get direct student registrations
+        student_registrations = StudentCourseRegistration.objects.filter(
+            student=self
+        ).select_related("collection")
+
+        for reg in student_registrations:
+            registered_collections.add(reg.collection)
+
+        # Get cohort-based registrations through cohort memberships
+        cohort_memberships = CohortMembership.objects.filter(
+            student=self
+        ).select_related("cohort")
+
+        for membership in cohort_memberships:
+            cohort_registrations = CohortCourseRegistration.objects.filter(
+                cohort=membership.cohort
+            ).select_related("collection")
+
+            for reg in cohort_registrations:
+                registered_collections.add(reg.collection)
+
+        return list(registered_collections)
+
 
 class Cohort(SiteAwareModel):
     name = models.CharField(_("name"), max_length=150)
@@ -45,3 +72,55 @@ class CohortMembership(SiteAwareModel):
 
     def __str__(self):
         return ""
+
+
+class StudentCourseRegistration(SiteAwareModel):
+    """Individual student registration for a course/collection."""
+
+    collection = models.ForeignKey(
+        "content_engine.ContentCollection",
+        on_delete=models.CASCADE,
+        related_name="student_registrations",
+    )
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name="course_registrations"
+    )
+    is_active = models.BooleanField(default=True)
+    registered_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "collection", "student"],
+                name="unique_student_course_registration",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.student} - {self.collection}"
+
+
+class CohortCourseRegistration(SiteAwareModel):
+    """Cohort-wide registration for a course/collection."""
+
+    collection = models.ForeignKey(
+        "content_engine.ContentCollection",
+        on_delete=models.CASCADE,
+        related_name="cohort_registrations",
+    )
+    cohort = models.ForeignKey(
+        Cohort, on_delete=models.CASCADE, related_name="course_registrations"
+    )
+    is_active = models.BooleanField(default=True)
+    registered_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "collection", "cohort"],
+                name="unique_cohort_course_registration",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.cohort} - {self.collection}"

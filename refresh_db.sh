@@ -9,3 +9,4 @@ python manage.py setup_demo_data
 
 python manage.py content_save  ../tutorial-getting-git Prelude
 python manage.py content_save  ../bloom_content Bloom          
+python manage.py content_save  ../wrend_demo_content  Wrend          

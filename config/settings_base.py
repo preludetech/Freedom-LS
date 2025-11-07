@@ -366,6 +366,6 @@ ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 # ACCOUNT_ADAPTER = "accounts.allauth_account_adapter.AccountAdapter"
 # ALLOW_SIGN_UPS = True
 
-# HEADLESS_FRONTEND_URLS TODO
+# HEADLESS_FRONTEND_URLS = TODO
 
-# HEADLESS_TOKEN_STRATEGY
+# HEADLESS_TOKEN_STRATEGY = default = allauth.headless.tokens.sessions.SessionTokenStrategy

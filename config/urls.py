@@ -24,7 +24,8 @@ from ninja import NinjaAPI
 
 api = NinjaAPI()
 
-api.add_router("xapi/", "xapi_learning_record_store.api.router")
+# api.add_router("xapi/", "xapi_learning_record_store.api.router")
+api.add_router("student/", "student_interface.apis.router")
 
 urlpatterns = [
     path("admin/", admin.site.urls),

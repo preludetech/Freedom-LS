@@ -8,6 +8,7 @@ router = Router()
 
 # TODO: Authentication
 
+
 class ExperienceRecordSchemaIn(Schema):
     # pass
     timestamp: datetime
@@ -15,6 +16,7 @@ class ExperienceRecordSchemaIn(Schema):
 
     class Config:
         extra = "forbid"
+
 
 class TODOSchema(Schema):
     pass
@@ -33,8 +35,9 @@ def hello(request):
         },
     }
 
+
 @router.post("/")
 def create_experience_record(
-    request, data: ExperienceRecordSchemaIn, response:TODOSchema
+    request, data: ExperienceRecordSchemaIn, response: TODOSchema
 ):
     return "todo"
