@@ -5,6 +5,8 @@
 {% comment %}
 Look up the File object by file_path to get the actual file URL
 {% endcomment %}
+
+
 {% with file_obj=src|get_file_by_path:content_instance %}
 
 
@@ -12,53 +14,62 @@ Look up the File object by file_path to get the actual file URL
 {% if file_obj %}
 <div x-data="{ open: false }" class="my-6">
     <!-- Thumbnail Image -->
-    <figure class="max-w-4xl mx-auto">
+    <figure class="max-w-4xl mx-auto m-4">
         <img
             src="{{ file_obj.file.url }}"
             alt="{{ alt }}"
             @click="open = true"
-            class="w-full h-auto rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+            class="w-full h-auto rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow p-4"
             loading="lazy"
         />
         {% if caption %}
-        <figcaption class="mt-2 text-sm text-gray-600 text-center">
+        <figcaption class="mt-2  text-gray-600 text-center">
             {{ caption }}
         </figcaption>
         {% endif %}
     </figure>
 
-    <!-- Overlay Modal -->
     <div
         x-show="open"
         x-cloak
         @keydown.escape.window="open = false"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90"
-        @click.self="open = false"
+        @click="open = false"
+        class="fixed inset-0  flex justify-center items-center  z-50 backdrop-blur-lg"
     >
-        <div class="relative max-w-7xl max-h-screen p-4 overflow-auto">
-            <!-- Close Button -->
-            <button
-                @click="open = false"
-                class="absolute top-6 right-6 z-10 w-10 h-10 flex items-center justify-center bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full text-white transition-colors"
-                aria-label="Close"
-            >
-                <i class="fa fa-times text-xl"></i>
-            </button>
 
-            <!-- Zoomable Image -->
+        <button
+            class="absolute top-0 right-0 bg-white opacity-50 hover:opacity-70 "
+            @click="open = false"
+        >
+                <i class="fa fa-times text-5xl text-black "></i>
+
+        </button>
+
+
+        {% if caption %}
+        <div class="absolute top-0">
+
+            <p class="text-center text-black text-4xl pt-6">
+                {{ caption }}
+            </p>
+        </div>
+        {% endif %}
+
+
+        <div class="relative w-7xl max-h-screen p-6 overflow-auto rounded-sm bg-white ">
+
             <img
                 src="{{ file_obj.file.url }}"
                 alt="{{ alt }}"
-                class="max-w-full max-h-screen object-contain"
+                class="w-full max-h-screen object-contain "
             />
 
-            {% if caption %}
-            <p class="mt-4 text-center text-white text-sm">
-                {{ caption }}
-            </p>
-            {% endif %}
         </div>
+        
+    
     </div>
+
+
 </div>
 {% else %}
 <div class="my-6 p-4 bg-red-50 border border-red-200 rounded-lg">
