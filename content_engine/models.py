@@ -169,6 +169,7 @@ class FormPage(TitledContent):
 
     form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name="pages")
     order = models.PositiveIntegerField(default=0)
+    category = models.CharField(max_length=200, null=True, blank=True)
 
     def children(self):
         """

@@ -35,7 +35,9 @@ def get_item_url(item, collection_slug=None):
                 "student_interface:topic_detail_in_collection",
                 kwargs={"collection_slug": collection_slug, "topic_slug": item.slug},
             )
-        return reverse("student_interface:topic_detail", kwargs={"topic_slug": item.slug})
+        return reverse(
+            "student_interface:topic_detail", kwargs={"topic_slug": item.slug}
+        )
     elif isinstance(item, Form):
         if collection_slug:
             return reverse(
@@ -181,8 +183,9 @@ def form_fill_page(request, pk, page_number):
 
         # Get all questions on this page
         questions = [
-            child for child in form_page.children()
-            if hasattr(child, 'question')  # It's a FormQuestion
+            child
+            for child in form_page.children()
+            if hasattr(child, "question")  # It's a FormQuestion
         ]
 
         # Process each question's answer
@@ -191,8 +194,7 @@ def form_fill_page(request, pk, page_number):
 
             # Get or create the answer
             answer, created = QuestionAnswer.objects.get_or_create(
-                form_progress=form_progress,
-                question=question
+                form_progress=form_progress, question=question
             )
 
             # Handle different question types
@@ -225,14 +227,17 @@ def form_fill_page(request, pk, page_number):
             return redirect(
                 "student_interface:form_fill_page",
                 pk=form_progress.pk,
-                page_number=page_number + 1
+                page_number=page_number + 1,
             )
         else:
-            # This was the last page, mark as complete and redirect to complete page
+            # This was the last page, mark as complete, calculate score, and redirect to complete page
             form_progress.completed_time = timezone.now()
             form_progress.save()
-            return redirect("student_interface:form_complete", pk=form_progress.pk)
 
+            # Calculate scores based on the form's strategy
+            form_progress.score()
+
+            return redirect("student_interface:form_complete", pk=form_progress.pk)
 
     # Get the form and all its pages
     form = form_progress.form
@@ -248,8 +253,9 @@ def form_fill_page(request, pk, page_number):
 
     # Get existing answers for questions on this page
     questions = [
-        child for child in form_page.children()
-        if hasattr(child, 'question')  # It's a FormQuestion
+        child
+        for child in form_page.children()
+        if hasattr(child, "question")  # It's a FormQuestion
     ]
 
     # Build a dictionary of existing answers keyed by question ID
@@ -257,8 +263,7 @@ def form_fill_page(request, pk, page_number):
     for question in questions:
         try:
             answer = QuestionAnswer.objects.get(
-                form_progress=form_progress,
-                question=question
+                form_progress=form_progress, question=question
             )
             existing_answers[question.id] = answer
         except QuestionAnswer.DoesNotExist:
@@ -291,21 +296,30 @@ def form_complete(request, pk):
 
     # Ensure the form_progress belongs to the current user
     if form_progress.user != request.user:
-        return redirect("student_interface:form_start", form_slug=form_progress.form.slug)
+        return redirect(
+            "student_interface:form_start", form_slug=form_progress.form.slug
+        )
 
     # Ensure the form is actually complete
     if not form_progress.completed_time:
         return redirect(
             "student_interface:form_fill_page",
             pk=form_progress.pk,
-            page_number=form_progress.get_current_page_number()
+            page_number=form_progress.get_current_page_number(),
         )
 
-    return render(
-        request,
-        "student_interface/form_complete.html",
-        {"form": form_progress.form, "form_progress": form_progress}
-    )
+    # Check if we should display category scores
+    from content_engine.models import FormStrategy
+    show_scores = form_progress.form.strategy == FormStrategy.CATEGORY_VALUE_SUM
+
+    context = {
+        "form": form_progress.form,
+        "form_progress": form_progress,
+        "show_scores": show_scores,
+        "scores": form_progress.scores if show_scores else None,
+    }
+
+    return render(request, "student_interface/form_complete.html", context)
 
 
 def course_home(request, collection_slug):

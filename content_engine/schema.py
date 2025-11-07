@@ -101,7 +101,9 @@ class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM
 
 
 class FormPage(BaseContentModel, content_type=ContentType.FORM_PAGE):
-    """ """
+    """A page within a form."""
+
+    category: Optional[str] = Field(None, description="Optional category for this form page")
 
     def derive_content_type(self, data):
         if "content" in data:

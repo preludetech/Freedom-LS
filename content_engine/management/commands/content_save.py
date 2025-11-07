@@ -228,6 +228,7 @@ def save_form_page(item, form, site, base_path, order=0):
         form=form,
         title=item.title,
         subtitle=item.subtitle,
+        category=item.category,
         order=order,
         meta=item.meta,
         tags=item.tags,

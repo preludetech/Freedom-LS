@@ -1,6 +1,12 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from content_engine.models import Form, FormQuestion, QuestionOption, Topic
+from content_engine.models import (
+    Form,
+    FormQuestion,
+    QuestionOption,
+    Topic,
+    FormStrategy,
+)
 from system_base.models import SiteAwareModel
 
 User = get_user_model()
@@ -18,6 +24,7 @@ class FormProgress(SiteAwareModel):
     start_time = models.DateTimeField(auto_now_add=True)
     last_updated_time = models.DateTimeField(auto_now=True)
     completed_time = models.DateTimeField(blank=True, null=True)
+    scores = models.JSONField(blank=True, null=True, help_text="Calculated scores by category")
 
     class Meta:
         verbose_name_plural = "Form progress records"
@@ -66,6 +73,100 @@ class FormProgress(SiteAwareModel):
 
         # All questions answered, return last page (or 1 if no pages)
         return len(all_pages) if all_pages else 1
+
+    def score_category_value_sum(self):
+        """
+        Use the CATEGORY_VALUE_SUM scoring strategy:
+
+        Each form page can have a category. This is the parent category
+        Each question has a category. This is the child category
+
+        Each question answer has a numerical value
+        """
+        # Note this only works with multiple_choice questions for now
+
+        # 1. Get all the FormAnswers and create a data structure
+        answer_data = []
+        for answer in self.answers.all():
+            question = answer.question
+
+            # Only process multiple choice questions for now
+            if question.type != "multiple_choice":
+                continue
+
+            # Get the selected option(s)
+            selected_options = answer.selected_options.all()
+            if not selected_options.exists():
+                continue
+
+            # Get the value of the selected option (convert to int)
+            selected_option = selected_options.first()
+            try:
+                value = int(selected_option.value)
+            except (ValueError, TypeError):
+                continue
+
+            # Get the maximum value among all options for this question
+            max_value = 0
+            for option in question.options.all():
+                try:
+                    opt_value = int(option.value)
+                    if opt_value > max_value:
+                        max_value = opt_value
+                except (ValueError, TypeError):
+                    continue
+
+            # Get categories
+            page_category = question.form_page.category
+            question_category = question.category
+
+            answer_data.append({
+                "page_category": page_category,
+                "question_category": question_category,
+                "value": value,
+                "max_value": max_value,
+            })
+
+        # 2. Calculate the final scores for each category and subcategory
+        scores = {}
+
+        for item in answer_data:
+            page_cat = item["page_category"] or "Uncategorized"
+            question_cat = item["question_category"] or "Uncategorized"
+
+            # Initialize category structure if not exists
+            if page_cat not in scores:
+                scores[page_cat] = {
+                    "score": 0,
+                    "max_score": 0,
+                    "sub_categories": {}
+                }
+
+            # Initialize subcategory if not exists
+            if question_cat not in scores[page_cat]["sub_categories"]:
+                scores[page_cat]["sub_categories"][question_cat] = {
+                    "score": 0,
+                    "max_score": 0
+                }
+
+            # Add to subcategory scores
+            scores[page_cat]["sub_categories"][question_cat]["score"] += item["value"]
+            scores[page_cat]["sub_categories"][question_cat]["max_score"] += item["max_value"]
+
+            # Add to parent category scores
+            scores[page_cat]["score"] += item["value"]
+            scores[page_cat]["max_score"] += item["max_value"]
+
+        # 3. Save to JSON field
+        self.scores = scores
+        self.save()
+
+    def score(self):
+        """calculate the final score for the form"""
+        if self.form.strategy == FormStrategy.CATEGORY_VALUE_SUM:
+            self.score_category_value_sum()
+        else:
+            raise Exception(f"Unhandled Strategy: {self.form.strategy}")
 
 
 class QuestionAnswer(SiteAwareModel):
