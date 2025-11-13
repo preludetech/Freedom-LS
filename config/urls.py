@@ -33,8 +33,8 @@ urlpatterns = [
     # path("api/xapi/", include("xapi_learning_record_store.api_urls")),
     # path("api/", api.urls),
     path("__reload__/", include("django_browser_reload.urls")),
-    path("content/", include("content_engine.urls")),
-    path("", include("student_interface.urls")),
+    path("content_preview/", include("content_engine.preview_urls")),
+    # path("", include("student_interface.urls")),
     path("_allauth/", include("allauth.headless.urls")),
 ]
 

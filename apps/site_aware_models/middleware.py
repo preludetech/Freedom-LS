@@ -1,4 +1,4 @@
-from system_base.models import _thread_locals
+from site_aware_models.models import _thread_locals
 
 
 class CurrentSiteMiddleware:

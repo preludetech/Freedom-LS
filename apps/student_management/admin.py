@@ -1,7 +1,7 @@
 from django.contrib import admin
 from unfold.admin import TabularInline
 
-from system_base.admin import SiteAwareModelAdmin
+from site_aware_models.admin import SiteAwareModelAdmin
 from .models import (
     Student,
     Cohort,
@@ -100,18 +100,18 @@ class CohortAdmin(GuardedModelAdmin):
 class StudentCourseRegistrationAdmin(SiteAwareModelAdmin):
     list_display = ["get_student_name", "collection", "is_active", "registered_at"]
     list_filter = ["is_active", "registered_at"]
-    search_fields = ["student__user__email", "student__user__first_name", "student__user__last_name", "collection__title"]
+    search_fields = [
+        "student__user__email",
+        "student__user__first_name",
+        "student__user__last_name",
+        "collection__title",
+    ]
     autocomplete_fields = ["student", "collection"]
     readonly_fields = ["registered_at"]
 
     fieldsets = (
-        (None, {
-            "fields": ("student", "collection", "is_active")
-        }),
-        ("Timestamps", {
-            "fields": ("registered_at",),
-            "classes": ("collapse",)
-        }),
+        (None, {"fields": ("student", "collection", "is_active")}),
+        ("Timestamps", {"fields": ("registered_at",), "classes": ("collapse",)}),
     )
 
     def get_student_name(self, obj):
@@ -119,6 +119,7 @@ class StudentCourseRegistrationAdmin(SiteAwareModelAdmin):
         if obj.student.user.first_name or obj.student.user.last_name:
             return f"{obj.student.user.first_name} {obj.student.user.last_name}".strip()
         return obj.student.user.email
+
     get_student_name.short_description = "Student"
     get_student_name.admin_order_field = "student__user__first_name"
 
@@ -132,11 +133,6 @@ class CohortCourseRegistrationAdmin(SiteAwareModelAdmin):
     readonly_fields = ["registered_at"]
 
     fieldsets = (
-        (None, {
-            "fields": ("cohort", "collection", "is_active")
-        }),
-        ("Timestamps", {
-            "fields": ("registered_at",),
-            "classes": ("collapse",)
-        }),
+        (None, {"fields": ("cohort", "collection", "is_active")}),
+        ("Timestamps", {"fields": ("registered_at",), "classes": ("collapse",)}),
     )

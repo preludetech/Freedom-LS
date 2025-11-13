@@ -61,14 +61,18 @@ def get_student_courses(request):
 
 class CourseItemSchema(Schema):
     """Schema for a single item in a course."""
-    title: str
+
+    uuid: str
     slug: str
-    content_type: str  # "topic", "form", or "collection"
-    status: str  # "BLOCKED", "READY", "IN_PROGRESS", or "COMPLETE"
+    status: str  # "IN_PROGRESS" or "COMPLETE"
 
 
-@router.get("/courses/{slug}/index", response=List[CourseItemSchema], auth=[x_session_token_auth])
-def get_course_index(request, slug: str):
+@router.get(
+    "/courses/{slug}/progress",
+    response=List[CourseItemSchema],
+    auth=[x_session_token_auth],
+)
+def get_course_progress(request, slug: str):
     """
     Get an ordered list of all the course contents.
     Returns the same information as views.course_home, but as a data structure.
@@ -85,44 +89,30 @@ def get_course_index(request, slug: str):
 
     # TODO: Check that the student is registered for the course
 
-    BLOCKED = "BLOCKED"
-    READY = "READY"
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETE = "COMPLETE"
 
     items = []
-    next_status = READY  # First item starts as READY
 
     for child in collection.children():
         status = None
-        title = None
-        child_slug = None
-        content_type = None
 
         if isinstance(child, Topic):
-            title = child.title
-            child_slug = child.slug
-            content_type = "topic"
-
             # Check progress
             topic_progress = TopicProgress.objects.filter(
                 user=user, topic=child
             ).first()
 
-            if topic_progress and topic_progress.complete_time:
-                status = COMPLETE
-            elif topic_progress:
-                status = IN_PROGRESS
-            elif next_status == READY:
-                status = READY
-            else:
-                status = BLOCKED
+            if topic_progress:
+                if topic_progress.complete_time:
+                    status = COMPLETE
+                else:
+                    status = IN_PROGRESS
+                items.append(
+                    {"uuid": child.pk, "slug": child.slug, "status": child.status}
+                )
 
         elif isinstance(child, Form):
-            title = child.title
-            child_slug = child.slug
-            content_type = "form"
-
             # Check progress
             form_progress = (
                 FormProgress.objects.filter(user=user, form=child)
@@ -130,38 +120,17 @@ def get_course_index(request, slug: str):
                 .first()
             )
 
-            if form_progress and form_progress.completed_time:
-                status = COMPLETE
-            elif form_progress:
-                status = IN_PROGRESS
-            elif next_status == READY:
-                status = READY
-            else:
-                status = BLOCKED
+            if form_progress:
+                if form_progress.completed_time:
+                    status = COMPLETE
+                else:
+                    status = IN_PROGRESS
+                items.append({"uuid": child.pk, "slug": child.slug, "status": status})
 
         elif isinstance(child, ContentCollection):
-            title = child.title
-            child_slug = child.slug
-            content_type = "collection"
+            TODO
 
             # For collections, check if all direct children are complete
             # TODO: implement proper recursive collection completion checking
-            if next_status == READY:
-                status = READY
-            else:
-                status = BLOCKED
-
-        items.append({
-            "title": title,
-            "slug": child_slug,
-            "content_type": content_type,
-            "status": status,
-        })
-
-        # Update next_status for the next iteration
-        if status == COMPLETE:
-            next_status = READY
-        else:
-            next_status = BLOCKED
 
     return items

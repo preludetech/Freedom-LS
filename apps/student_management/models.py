@@ -1,5 +1,5 @@
 from django.db import models
-from system_base.models import SiteAwareModel
+from site_aware_models.models import SiteAwareModel
 from django.utils.translation import gettext_lazy as _
 
 from django.contrib.auth import get_user_model

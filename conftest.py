@@ -63,9 +63,9 @@ def make_temp_file():
 @pytest.fixture
 def mock_site_context(site, mocker):
     """Mock the thread local request and get_current_site for SiteAwareModel."""
-    from system_base.models import _thread_locals
+    from site_aware_models.models import _thread_locals
 
     mock_request = mocker.Mock()
     mocker.patch.object(_thread_locals, "request", mock_request, create=True)
-    mocker.patch("system_base.models.get_current_site", return_value=site)
+    mocker.patch("site_aware_models.models.get_current_site", return_value=site)
     return site

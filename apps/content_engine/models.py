@@ -2,11 +2,11 @@ from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.utils.translation import gettext_lazy as _
-from system_base.models import SiteAwareModel
+from site_aware_models.models import SiteAwareModel
 from .markdown_utils import render_markdown
 from django.urls import reverse
 from pathlib import Path
-
+from .schema import ContentType as SchemaContentTypes
 
 class ContentType(models.TextChoices):
     """Content type enumeration."""
@@ -106,6 +106,7 @@ class MarkdownContent(BaseContent):
 
 class Topic(TitledContent, MarkdownContent):
     """Topic content item."""
+    CONTENT_TYPE = SchemaContentTypes.TOPIC
 
     class Meta:
         unique_together = ["site", "slug"]
@@ -154,6 +155,7 @@ class ContentCollectionItem(SiteAwareModel):
 
 class Form(TitledContent, MarkdownContent):
     """Form content with scoring strategy."""
+    CONTENT_TYPE = SchemaContentTypes.FORM
 
     strategy = models.CharField(
         max_length=50,

@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
 from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
-from system_base.admin import SiteAwareModelAdmin
+from site_aware_models.admin import SiteAwareModelAdmin
 
 User = get_user_model()
 
@@ -25,23 +25,47 @@ class UserAdmin(SiteAwareModelAdmin):
     readonly_fields = ["last_login"]
 
     add_fieldsets = (
-        (None, {
-            "fields": ("email", "password1", "password2"),
-        }),
-        ("Personal info", {
-            "fields": ("first_name", "last_name"),
-        }),
-        ("Permissions", {
-            "fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions"),
-        }),
+        (
+            None,
+            {
+                "fields": ("email", "password1", "password2"),
+            },
+        ),
+        (
+            "Personal info",
+            {
+                "fields": ("first_name", "last_name"),
+            },
+        ),
+        (
+            "Permissions",
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                ),
+            },
+        ),
     )
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         ("Personal info", {"fields": ("first_name", "last_name")}),
-        ("Permissions", {
-            "fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions"),
-        }),
+        (
+            "Permissions",
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                ),
+            },
+        ),
         ("Important dates", {"fields": ("last_login",)}),
     )
 
@@ -49,7 +73,7 @@ class UserAdmin(SiteAwareModelAdmin):
         """Use special form during user creation"""
         defaults = {}
         if obj is None:
-            defaults['form'] = self.add_form
+            defaults["form"] = self.add_form
         defaults.update(kwargs)
         return super().get_form(request, obj, **defaults)
 

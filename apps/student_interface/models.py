@@ -7,7 +7,7 @@ from content_engine.models import (
     Topic,
     FormStrategy,
 )
-from system_base.models import SiteAwareModel
+from site_aware_models.models import SiteAwareModel
 
 User = get_user_model()
 
@@ -24,7 +24,9 @@ class FormProgress(SiteAwareModel):
     start_time = models.DateTimeField(auto_now_add=True)
     last_updated_time = models.DateTimeField(auto_now=True)
     completed_time = models.DateTimeField(blank=True, null=True)
-    scores = models.JSONField(blank=True, null=True, help_text="Calculated scores by category")
+    scores = models.JSONField(
+        blank=True, null=True, help_text="Calculated scores by category"
+    )
 
     class Meta:
         verbose_name_plural = "Form progress records"
@@ -120,12 +122,14 @@ class FormProgress(SiteAwareModel):
             page_category = question.form_page.category
             question_category = question.category
 
-            answer_data.append({
-                "page_category": page_category,
-                "question_category": question_category,
-                "value": value,
-                "max_value": max_value,
-            })
+            answer_data.append(
+                {
+                    "page_category": page_category,
+                    "question_category": question_category,
+                    "value": value,
+                    "max_value": max_value,
+                }
+            )
 
         # 2. Calculate the final scores for each category and subcategory
         scores = {}
@@ -136,22 +140,20 @@ class FormProgress(SiteAwareModel):
 
             # Initialize category structure if not exists
             if page_cat not in scores:
-                scores[page_cat] = {
-                    "score": 0,
-                    "max_score": 0,
-                    "sub_categories": {}
-                }
+                scores[page_cat] = {"score": 0, "max_score": 0, "sub_categories": {}}
 
             # Initialize subcategory if not exists
             if question_cat not in scores[page_cat]["sub_categories"]:
                 scores[page_cat]["sub_categories"][question_cat] = {
                     "score": 0,
-                    "max_score": 0
+                    "max_score": 0,
                 }
 
             # Add to subcategory scores
             scores[page_cat]["sub_categories"][question_cat]["score"] += item["value"]
-            scores[page_cat]["sub_categories"][question_cat]["max_score"] += item["max_value"]
+            scores[page_cat]["sub_categories"][question_cat]["max_score"] += item[
+                "max_value"
+            ]
 
             # Add to parent category scores
             scores[page_cat]["score"] += item["value"]

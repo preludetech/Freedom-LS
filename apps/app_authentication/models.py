@@ -1,5 +1,5 @@
 from django.db import models
-from system_base.models import SiteAwareModel
+from site_aware_models.models import SiteAwareModel
 import secrets
 
 
@@ -16,7 +16,9 @@ class Client(SiteAwareModel):
         help_text="API key for authentication",
         editable=False,
     )
-    is_active = models.BooleanField(default=True, help_text="Whether this client is active")
+    is_active = models.BooleanField(
+        default=True, help_text="Whether this client is active"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

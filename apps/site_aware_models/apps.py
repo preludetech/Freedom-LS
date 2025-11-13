@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class SystemBaseConfig(AppConfig):
+class SiteAwareModelsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'system_base'
+    name = 'site_aware_models'

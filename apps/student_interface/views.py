@@ -6,105 +6,105 @@ from content_engine.models import Topic, Form, ContentCollection
 from .models import FormProgress, TopicProgress, QuestionAnswer
 
 
-def get_navigation_items(collection, current_item):
-    """Get previous and next items in a collection relative to current item."""
-    children = collection.children()
-    current_index = None
+# def get_navigation_items(collection, current_item):
+#     """Get previous and next items in a collection relative to current item."""
+#     children = collection.children()
+#     current_index = None
 
-    for i, child in enumerate(children):
-        if child.pk == current_item.pk and type(child) is type(current_item):
-            current_index = i
-            break
+#     for i, child in enumerate(children):
+#         if child.pk == current_item.pk and type(child) is type(current_item):
+#             current_index = i
+#             break
 
-    if current_index is None:
-        return None, None
+#     if current_index is None:
+#         return None, None
 
-    previous_item = children[current_index - 1] if current_index > 0 else None
-    next_item = (
-        children[current_index + 1] if current_index < len(children) - 1 else None
-    )
+#     previous_item = children[current_index - 1] if current_index > 0 else None
+#     next_item = (
+#         children[current_index + 1] if current_index < len(children) - 1 else None
+#     )
 
-    return previous_item, next_item
-
-
-def get_item_url(item, collection_slug=None):
-    """Get the URL for a content item (Topic, Form, or Collection)."""
-    if isinstance(item, Topic):
-        if collection_slug:
-            return reverse(
-                "student_interface:topic_detail_in_collection",
-                kwargs={"collection_slug": collection_slug, "topic_slug": item.slug},
-            )
-        return reverse(
-            "student_interface:topic_detail", kwargs={"topic_slug": item.slug}
-        )
-    elif isinstance(item, Form):
-        if collection_slug:
-            return reverse(
-                "student_interface:form_detail_in_collection",
-                kwargs={"collection_slug": collection_slug, "form_slug": item.slug},
-            )
-        return reverse("student_interface:form_detail", kwargs={"form_slug": item.slug})
-    elif isinstance(item, ContentCollection):
-        return reverse(
-            "student_interface:course_home", kwargs={"collection_slug": item.slug}
-        )
-    return None
+#     return previous_item, next_item
 
 
-@login_required
-def topic_detail(request, topic_slug, collection_slug=None):
-    """View to display a topic for students."""
-    topic = get_object_or_404(Topic, slug=topic_slug)
+# def get_item_url(item, collection_slug=None):
+#     """Get the URL for a content item (Topic, Form, or Collection)."""
+#     if isinstance(item, Topic):
+#         if collection_slug:
+#             return reverse(
+#                 "student_interface:topic_detail_in_collection",
+#                 kwargs={"collection_slug": collection_slug, "topic_slug": item.slug},
+#             )
+#         return reverse(
+#             "student_interface:topic_detail", kwargs={"topic_slug": item.slug}
+#         )
+#     elif isinstance(item, Form):
+#         if collection_slug:
+#             return reverse(
+#                 "student_interface:form_detail_in_collection",
+#                 kwargs={"collection_slug": collection_slug, "form_slug": item.slug},
+#             )
+#         return reverse("student_interface:form_detail", kwargs={"form_slug": item.slug})
+#     elif isinstance(item, ContentCollection):
+#         return reverse(
+#             "student_interface:course_home", kwargs={"collection_slug": item.slug}
+#         )
+#     return None
 
-    # Track progress
-    topic_progress, created = TopicProgress.objects.get_or_create(
-        user=request.user, topic=topic
-    )
-    if not created:
-        topic_progress.save()
 
-    # Handle "mark complete" POST request
-    if request.method == "POST" and "mark_complete" in request.POST:
-        topic_progress.complete_time = timezone.now()
-        topic_progress.save()
+# @login_required
+# def topic_detail(request, topic_slug, collection_slug=None):
+#     """View to display a topic for students."""
+#     topic = get_object_or_404(Topic, slug=topic_slug)
 
-        if collection_slug:
-            collection = get_object_or_404(ContentCollection, slug=collection_slug)
-            _, next_item = get_navigation_items(collection, topic)
-            if next_item:
-                return redirect(get_item_url(next_item, collection.slug))
-            return redirect(
-                "student_interface:course_home", collection_slug=collection.slug
-            )
+#     # Track progress
+#     topic_progress, created = TopicProgress.objects.get_or_create(
+#         user=request.user, topic=topic
+#     )
+#     if not created:
+#         topic_progress.save()
 
-        return redirect("student_interface:topic_detail", topic_slug=topic.slug)
+#     # Handle "mark complete" POST request
+#     if request.method == "POST" and "mark_complete" in request.POST:
+#         topic_progress.complete_time = timezone.now()
+#         topic_progress.save()
 
-    # Get navigation items
-    collection = None
-    previous_url = None
-    next_url = None
+#         if collection_slug:
+#             collection = get_object_or_404(ContentCollection, slug=collection_slug)
+#             _, next_item = get_navigation_items(collection, topic)
+#             if next_item:
+#                 return redirect(get_item_url(next_item, collection.slug))
+#             return redirect(
+#                 "student_interface:course_home", collection_slug=collection.slug
+#             )
 
-    if collection_slug:
-        collection = get_object_or_404(ContentCollection, slug=collection_slug)
-        previous_item, next_item = get_navigation_items(collection, topic)
+#         return redirect("student_interface:topic_detail", topic_slug=topic.slug)
 
-        if previous_item:
-            previous_url = get_item_url(previous_item, collection.slug)
-        if next_item:
-            next_url = get_item_url(next_item, collection.slug)
+#     # Get navigation items
+#     collection = None
+#     previous_url = None
+#     next_url = None
 
-    return render(
-        request,
-        "content_engine/topic_detail.html",
-        {
-            "topic": topic,
-            "collection": collection,
-            "previous_url": previous_url,
-            "next_url": next_url,
-            "is_complete": topic_progress.complete_time is not None,
-        },
-    )
+#     if collection_slug:
+#         collection = get_object_or_404(ContentCollection, slug=collection_slug)
+#         previous_item, next_item = get_navigation_items(collection, topic)
+
+#         if previous_item:
+#             previous_url = get_item_url(previous_item, collection.slug)
+#         if next_item:
+#             next_url = get_item_url(next_item, collection.slug)
+
+#     return render(
+#         request,
+#         "content_engine/topic_detail.html",
+#         {
+#             "topic": topic,
+#             "collection": collection,
+#             "previous_url": previous_url,
+#             "next_url": next_url,
+#             "is_complete": topic_progress.complete_time is not None,
+#         },
+#     )
 
 
 @login_required
@@ -310,6 +310,7 @@ def form_complete(request, pk):
 
     # Check if we should display category scores
     from content_engine.models import FormStrategy
+
     show_scores = form_progress.form.strategy == FormStrategy.CATEGORY_VALUE_SUM
 
     context = {
