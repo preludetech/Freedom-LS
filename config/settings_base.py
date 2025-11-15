@@ -375,3 +375,5 @@ ACCOUNT_ADAPTER = "accounts.allauth_account_adapter.AccountAdapter"
 # HEADLESS_FRONTEND_URLS = TODO
 
 # HEADLESS_TOKEN_STRATEGY = default = allauth.headless.tokens.sessions.SessionTokenStrategy
+
+LOGIN_REDIRECT_URL = "/"

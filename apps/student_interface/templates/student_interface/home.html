@@ -5,11 +5,11 @@
 {% block content %}
 <div class="max-w-4xl mx-auto py-12">
     <div class="text-center">
-        <h1 class="mb-4">Welcome</h1>
-        <p class="text-lg text-gray-700">
-            Home page placeholder
-        </p>
         {% if not user.is_authenticated %}
+            <h1 class="mb-4">Welcome</h1>
+            <p class="text-lg text-gray-700">
+                Please log in or sign up.
+            </p>
             <div class="mt-8 flex justify-center gap-4">
                 <a href="{% url 'account_login' %}" class="btn btn-primary">
                     Login

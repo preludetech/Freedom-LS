@@ -356,7 +356,6 @@ def save_file_to_db(file_path, site, base_path):
 def save_content_to_db(path, site_name):
     """Scan through all validated files and save them to the database."""
     path = Path(path)
-
     # Get the site
     site = Site.objects.get(
         name=site_name,

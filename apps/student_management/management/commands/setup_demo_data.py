@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 from student_management.models import Student, Cohort, CohortMembership
-from app_authentication.models import Client
+# from app_authentication.models import Client
 
 client_api_key = "W8tuA0ReonfZsAKywAZz9-IMGNCIq3TVGDiiar0LJqRoLEMceqgYjllfXU7iz6s7"
 client_name = "Student Interface"
@@ -70,23 +70,23 @@ class Command(BaseCommand):
                 )
 
             # Create or update API client for this site
-            client, created = Client.objects.update_or_create(
-                name=client_name,
-                site=site,
-                defaults={"api_key": client_api_key, "is_active": True},
-            )
-            if created:
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"API Client '{client_name}' created for site '{site.name}'"
-                    )
-                )
-            else:
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"API Client '{client_name}' updated for site '{site.name}'"
-                    )
-                )
+            # client, created = Client.objects.update_or_create(
+            #     name=client_name,
+            #     site=site,
+            #     defaults={"api_key": client_api_key, "is_active": True},
+            # )
+            # if created:
+            #     self.stdout.write(
+            #         self.style.SUCCESS(
+            #             f"API Client '{client_name}' created for site '{site.name}'"
+            #         )
+            #     )
+            # else:
+            #     self.stdout.write(
+            #         self.style.SUCCESS(
+            #             f"API Client '{client_name}' updated for site '{site.name}'"
+            #         )
+            #     )
 
             # Create cohorts for this site
             created_cohorts = []

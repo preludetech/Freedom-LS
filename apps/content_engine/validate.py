@@ -134,6 +134,7 @@ def parse_yaml_file(path):
             data["content_type"] = data.get(
                 "content_type", first_model.derive_content_type(data)
             )
+
         current_model = validate_yaml_section(
             data, path, section_num=idx if len(sections) > 1 else None
         )
@@ -150,7 +151,6 @@ def parse_markdown_file(path):
     Returns:
         list: List containing a single validated pydantic model instance
     """
-    print(path)
     # Load the yaml frontmatter
     post = frontmatter.load(path)
     data = post.metadata

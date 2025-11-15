@@ -21,10 +21,6 @@
     - [ ] See a complete log of activity for any user
     - [ ] view course progress for all learners doing a course
 
-# UI TODOs 
-
-- password fields: show and hide password 
-
 
 # Students 
 
@@ -59,3 +55,14 @@
 
 - virtual environments 
 - 
+
+
+
+
+
+# TODOs to delegate
+
+- password fields: show and hide password 
+- make allauth forms prettier 
+- xapi logs for allauth signals: login, logout, signup etc
+- make "message" show up better. Like a little popup with x that slides in and out
