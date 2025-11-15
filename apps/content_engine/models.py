@@ -8,6 +8,7 @@ from django.urls import reverse
 from pathlib import Path
 from .schema import ContentType as SchemaContentTypes
 
+
 class ContentType(models.TextChoices):
     """Content type enumeration."""
 
@@ -32,6 +33,7 @@ class FormStrategy(models.TextChoices):
     """Form strategy enumeration."""
 
     CATEGORY_VALUE_SUM = "CATEGORY_VALUE_SUM", _("Category Value Sum")
+    QUIZ = "QUIZ", _("Quiz")
 
 
 class BaseContent(SiteAwareModel):
@@ -106,6 +108,7 @@ class MarkdownContent(BaseContent):
 
 class Topic(TitledContent, MarkdownContent):
     """Topic content item."""
+
     CONTENT_TYPE = SchemaContentTypes.TOPIC
 
     class Meta:
@@ -155,6 +158,7 @@ class ContentCollectionItem(SiteAwareModel):
 
 class Form(TitledContent, MarkdownContent):
     """Form content with scoring strategy."""
+
     CONTENT_TYPE = SchemaContentTypes.FORM
 
     strategy = models.CharField(
@@ -207,7 +211,7 @@ class FormContent(MarkdownContent):
         return ContentType.FORM_CONTENT
 
     def __str__(self):
-        return self.text[:50]
+        return self.content[:50]
 
 
 class FormQuestion(BaseContent):

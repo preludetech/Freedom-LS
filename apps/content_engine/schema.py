@@ -33,6 +33,14 @@ class FormStrategy(str, Enum):
     """Form strategy enumeration."""
 
     CATEGORY_VALUE_SUM = "CATEGORY_VALUE_SUM"
+    QUIZ = "QUIZ"
+
+
+class CollectionType(str, Enum):
+    """Collection type enumeration."""
+
+    COURSE = "COURSE"
+    COURSE_SECTION = "COURSE_SECTION"
 
 
 class BaseBaseContentModel(BaseModel):
@@ -81,13 +89,19 @@ class Child(BaseModel):
 class ContentCollection(BaseContentModel, content_type=ContentType.COLLECTION):
     """
     You can think of this as a folder. It contains an ordered list of child content.
-
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     children: list[Child] = Field(
         default_factory=list,
         description="List of child content references with optional overrides",
     )
+
+    collection_type: Optional[CollectionType] = Field(
+        None, description="Type of collection (COURSE or COURSE_SECTION)"
+    )
+    # TODO: save collection type to db
 
 
 class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM):
@@ -103,7 +117,9 @@ class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM
 class FormPage(BaseContentModel, content_type=ContentType.FORM_PAGE):
     """A page within a form."""
 
-    category: Optional[str] = Field(None, description="Optional category for this form page")
+    category: Optional[str] = Field(
+        None, description="Optional category for this form page"
+    )
 
     def derive_content_type(self, data):
         if "content" in data:
