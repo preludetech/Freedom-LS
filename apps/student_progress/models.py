@@ -91,77 +91,86 @@ class FormProgress(SiteAwareModel):
         """
         # Note this only works with multiple_choice questions for now
 
-        # 1. Get all the FormAnswers and create a data structure
+        # 1. Get all questions from the form and create a data structure
         answer_data = []
-        for answer in self.answers.all():
-            question = answer.question
 
-            # Only process multiple choice questions for now
-            if question.type != "multiple_choice":
-                continue
-
-            # Get the selected option(s)
-            selected_options = answer.selected_options.all()
-            if not selected_options.exists():
-                continue
-
-            # Get the value of the selected option (convert to int)
-            selected_option = selected_options.first()
-            try:
-                value = int(selected_option.value)
-            except (ValueError, TypeError):
-                continue
-
-            # Get the maximum value among all options for this question
-            max_value = 0
-            for option in question.options.all():
-                try:
-                    opt_value = int(option.value)
-                    if opt_value > max_value:
-                        max_value = opt_value
-                except (ValueError, TypeError):
+        # Iterate through all pages and all questions
+        for page in self.form.pages.all():
+            for child in page.children():
+                # Only process FormQuestion objects (skip FormContent)
+                if child.content_type != "FORM_QUESTION":
                     continue
 
-            # Get categories
-            page_category = question.form_page.category
-            question_category = question.category
+                question = child
 
-            answer_data.append(
-                {
-                    "page_category": page_category,
-                    "question_category": question_category,
-                    "value": value,
-                    "max_value": max_value,
-                }
-            )
+                # Only process multiple choice questions for now
+                if question.type != "multiple_choice":
+                    continue
+
+                # Get the maximum value among all options for this question
+                max_value = 0
+                for option in question.options.all():
+                    try:
+                        opt_value = int(option.value)
+                        if opt_value > max_value:
+                            max_value = opt_value
+                    except (ValueError, TypeError):
+                        continue
+
+                # Check if this question has been answered
+                value = 0  # Default to 0 if not answered
+                try:
+                    answer = self.answers.get(question=question)
+                    selected_options = answer.selected_options.all()
+                    if selected_options.exists():
+                        selected_option = selected_options.first()
+                        value = int(selected_option.value)
+                except (QuestionAnswer.DoesNotExist, ValueError, TypeError):
+                    # Question not answered or invalid value, keep value as 0
+                    pass
+
+                # Get categories
+                page_category = page.category
+                question_category = question.category
+
+                answer_data.append(
+                    {
+                        "page_category": page_category,
+                        "question_category": question_category,
+                        "value": value,
+                        "max_value": max_value,
+                    }
+                )
 
         # 2. Calculate the final scores for each category and subcategory
         scores = {}
 
         for item in answer_data:
             page_cat = item["page_category"] or "Uncategorized"
-            question_cat = item["question_category"] or "Uncategorized"
+            question_cat = item["question_category"]  # Keep as None if not set
 
             # Initialize category structure if not exists
             if page_cat not in scores:
                 scores[page_cat] = {"score": 0, "max_score": 0, "sub_categories": {}}
 
-            # Initialize subcategory if not exists
-            if question_cat not in scores[page_cat]["sub_categories"]:
-                scores[page_cat]["sub_categories"][question_cat] = {
-                    "score": 0,
-                    "max_score": 0,
-                }
-
-            # Add to subcategory scores
-            scores[page_cat]["sub_categories"][question_cat]["score"] += item["value"]
-            scores[page_cat]["sub_categories"][question_cat]["max_score"] += item[
-                "max_value"
-            ]
-
-            # Add to parent category scores
+            # Add to parent category scores (always)
             scores[page_cat]["score"] += item["value"]
             scores[page_cat]["max_score"] += item["max_value"]
+
+            # Only create subcategory if question has a category
+            if question_cat is not None:
+                # Initialize subcategory if not exists
+                if question_cat not in scores[page_cat]["sub_categories"]:
+                    scores[page_cat]["sub_categories"][question_cat] = {
+                        "score": 0,
+                        "max_score": 0,
+                    }
+
+                # Add to subcategory scores
+                scores[page_cat]["sub_categories"][question_cat]["score"] += item["value"]
+                scores[page_cat]["sub_categories"][question_cat]["max_score"] += item[
+                    "max_value"
+                ]
 
         # 3. Save to JSON field
         self.scores = scores
@@ -171,6 +180,9 @@ class FormProgress(SiteAwareModel):
         """calculate the final score for the form"""
         if self.form.strategy == FormStrategy.CATEGORY_VALUE_SUM:
             self.score_category_value_sum()
+        elif self.form.strategy == FormStrategy.QUIZ:
+            self.score_category_value_sum()
+
         else:
             raise Exception(f"Unhandled Strategy: {self.form.strategy}")
 
