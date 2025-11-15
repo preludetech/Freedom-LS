@@ -1,4 +1,5 @@
 {% load static %}
+{% load i18n %}
 
 <!DOCTYPE html>
 <html>
@@ -6,14 +7,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>
-        {% block title %} {% endblock %}
+        
+        {% block head_title %}
+        {% endblock head_title %}
+
     </title>
 
     <link rel="stylesheet" type="text/css" href="{% static 'vendor/tailwind.output.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    {% block extra_head %}
+    {% endblock extra_head %}
 </head>
 
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
@@ -36,6 +43,9 @@
             Replace this in child templates
         {% endblock content %}
     {% endblock body %}
+    
+    {% block extra_body %}
+    {% endblock extra_body %}
     </main>
 </body>
 </html>

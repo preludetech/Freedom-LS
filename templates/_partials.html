@@ -5,7 +5,7 @@
     {% if logout_url_ %}
         <form method="post" action="{{logout_url_}}">
             {% csrf_token %}
-            <button type="submit" class="button-white w-full">Sign Out</button>
+            <button type="submit" class="btn btn-primary">Sign Out</button>
         </form>
     {% endif %}
 {% endpartialdef %}

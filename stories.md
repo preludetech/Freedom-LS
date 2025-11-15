@@ -4,7 +4,7 @@
     - [x] CRUD students
     - [x] CRUD cohorts
     - [x] Manage which students are in a cohort
-    - [ ] Register a cohort or student for a course
+    - [x] Register a cohort or student for a course
 
 - as a superuser I should be able to:
     - [X] manage permissions on a per object level (Guardian)
@@ -15,11 +15,17 @@
     - [ ] Configure Client applications that can use the API 
 
 - as a developer I want to:
-    - [ ] have the website reload when changes are made
+    - [X] have the website reload when changes are made
 
 - as a course administrator I want to
     - [ ] See a complete log of activity for any user
     - [ ] view course progress for all learners doing a course
+
+
+# teachers 
+
+- view cohorts and students 
+- see course registration
 
 
 # Students 

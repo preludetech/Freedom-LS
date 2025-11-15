@@ -4,20 +4,21 @@
 
 {% block head_title %}Profile{% endblock %}
 {% block content %}
-{% element h1 %}
-Profile
-{% endelement %}
 
-{% element form form=form method="post" action="" tags="" %}
-{% slot body %}
-{% csrf_token %}
-{% element fields form=form unlabeled=True %}
-{% endelement %}
-{% endslot %}
-{% slot actions %}
-{% element button type="submit" tags="prominent,login" %}
-{% trans "Save" %}
-{% endelement %}
-{% endslot %}
-{% endelement %}
+<h1>
+    Profile
+</h1>
+
+ <form method="POST" >
+        {% csrf_token %}
+        {{form}}
+
+        <button type="submit" class="btn btn-primary">
+            Save
+        </button>
+
+</form>
+
+
+
 {% endblock content %}
