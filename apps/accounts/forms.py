@@ -8,5 +8,6 @@ User = get_user_model()
 class UserForm(forms.ModelForm):
     class Meta:
         model = User
+        # TODO: allow the user to upload a profile picture
 
-        fields = ["full_name"]
+        fields = ["first_name", "last_name"]

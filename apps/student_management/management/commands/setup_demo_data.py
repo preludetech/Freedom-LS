@@ -12,21 +12,11 @@ demo_sites = [
         "name": "Wrend",
         "domain": "127.0.0.1:8000",
         "cohorts": ["2024 Intake", "2025 Intake"],
-        "students": [
-            {"full_name": "Alice Johnson", "email": "alice@wrend.com"},
-            {"full_name": "Bob Smith", "email": "bob@wrend.com"},
-            {"full_name": "Charlie Brown", "email": "charlie@wrend.com"},
-        ],
     },
     {
         "name": "Bloom",
         "domain": "127.0.0.1:8001",
         "cohorts": ["Cohort A", "Cohort B"],
-        "students": [
-            {"full_name": "Diana Prince", "email": "diana@uavi.com"},
-            {"full_name": "Ethan Hunt", "email": "ethan@uavi.com"},
-            {"full_name": "Fiona Green", "email": "fiona@uavi.com"},
-        ],
     },
     {
         "name": "Prelude",
@@ -34,7 +24,6 @@ demo_sites = [
         "cohorts": [
             "2025 01",
         ],
-        "students": [],
     },
 ]
 
@@ -118,27 +107,25 @@ class Command(BaseCommand):
                         self.style.WARNING(f"Cohort '{cohort_name}' already exists")
                     )
 
-            # Create students for this site
+            # Create students for this site (3 students per site)
             created_students = []
-            for student_data in site_data.get("students", []):
-                # Split full_name into first_name and last_name
-                full_name = student_data["full_name"]
-                name_parts = full_name.split(" ", 1)
-                first_name = name_parts[0]
-                last_name = name_parts[1] if len(name_parts) > 1 else ""
+            site_prefix = site_data["name"].lower()
+            for i in range(1, 4):  # Create 3 students (s1, s2, s3)
+                full_name = f"{site_prefix}_s{i}"
+                email = f"{site_prefix}_s{i}@email.com"
 
                 # Create or get the user first
                 student_user, user_created = User.objects.get_or_create(
-                    email=student_data["email"],
+                    email=email,
                     site=site,
                     defaults={
-                        "first_name": first_name,
-                        "last_name": last_name,
+                        "first_name": full_name,
+                        "last_name": "",
                         "is_active": True,
                     },
                 )
                 if user_created:
-                    student_user.set_password(student_data["email"])
+                    student_user.set_password(email)
                     student_user.save()
 
                 # Create or get the student

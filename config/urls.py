@@ -36,6 +36,7 @@ urlpatterns = [
     path("content_preview/", include("content_engine.preview_urls")),
     path("", include("student_interface.urls")),
     path("accounts/", include("allauth.urls")),
+    path("accounts/", include("accounts.urls")),
     # path("_allauth/", include("allauth.headless.urls")),
 ]
 

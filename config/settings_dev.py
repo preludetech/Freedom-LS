@@ -38,3 +38,10 @@ INSTALLED_APPS = [*INSTALLED_APPS, "django_browser_reload"]
 
 ACCOUNT_RATE_LIMITS = False
 HEADLESS_SERVE_SPECIFICATION = True
+
+
+###
+# EMAIL
+
+EMAIL_BACKEND = "django.core.mail.backends.filebased.EmailBackend"
+EMAIL_FILE_PATH = "gitignore/emails"

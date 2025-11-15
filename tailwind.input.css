@@ -134,4 +134,9 @@
         @apply bg-white text-gray-700 border border-gray-300
                hover:bg-gray-50 focus:ring-blue-500
     }
+
+    .btn-success {
+        @apply bg-green-600 text-white
+               hover:bg-green-700 focus:ring-green-500
+    }
 }

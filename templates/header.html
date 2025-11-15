@@ -10,11 +10,22 @@
                     <i class="fas fa-chevron-down text-sm"></i>
                 </button>
                 <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                    <a href="{% url 'account_logout' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</a>
+                    <a href="{% url 'account_profile' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
+                    {% include "_partials.html#logout-button" %}
+
                 </div>
             </div>
         {% else %}
-            <a href="{% url 'account_login' %}" class="text-white hover:text-blue-200">Login</a>
+            <div x-data="{ open: false }" class="relative">
+                <button @click="open = !open" class="text-white hover:text-blue-200 flex items-center space-x-2">
+                    <span>Account</span>
+                    <i class="fas fa-chevron-down text-sm"></i>
+                </button>
+                <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                    <a href="{% url 'account_login' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Login</a>
+                    <a href="{% url 'account_signup' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign up</a>
+                </div>
+            </div>
         {% endif %}
     </nav>
 </header>

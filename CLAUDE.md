@@ -18,6 +18,7 @@ python manage.py runserver
 - Uses TailwindCSS v4
 - Build CSS: `npm run tailwind_build`
 - Watch CSS during development: `npm run tailwind_watch`
+- tailwind.input.css is used for reusable styles and components that are used across many pages. Keep things DRY. Don't use tailwind.input.css for styling components that only appear in one place
 
 ### Database
 - Apply migrations: `python manage.py migrate`

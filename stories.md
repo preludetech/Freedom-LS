@@ -20,3 +20,42 @@
 - as a course administrator I want to
     - [ ] See a complete log of activity for any user
     - [ ] view course progress for all learners doing a course
+
+# UI TODOs 
+
+- password fields: show and hide password 
+
+
+# Students 
+
+- flash cards 
+- accountability:
+    - set goals and share progress 
+- self quiz questions based on what we have seen so far 
+- ask for alternative explanation 
+- leave comment for instructor 
+- converse with other students (comment/question etc). Flag nasty comments 
+- assessment on technical topics to see which mini-courses will help. Much like Bloom idea
+    - bash 
+    - git 
+    - virtual environments 
+    - pdb 
+    - reading tracebacks 
+- link a repo to a course, automate code review 
+
+
+# B2B features 
+
+- Certain courses can show up on multiple sites, eg many schools can teach the same content
+- Exam function:
+    - screen recording and lock down 
+    - ID photo 
+
+
+# Mini courses 
+
+
+- CLAUDE and Django
+
+- virtual environments 
+- 
