@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "content_engine",
     "accounts",
     "student_management",
+    "student_progress",
     "site_aware_models",
     #########
     # STUDENT INTERFACE

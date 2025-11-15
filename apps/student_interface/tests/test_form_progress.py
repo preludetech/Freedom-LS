@@ -5,7 +5,7 @@ import pytest
 from django.utils import timezone
 
 from content_engine.models import FormPage, FormQuestion, FormContent
-from student_interface.models import FormProgress, QuestionAnswer
+from apps.student_progress.models import FormProgress, QuestionAnswer
 
 
 @pytest.mark.django_db

@@ -1,0 +1,76 @@
+{% extends '_base.html' %}
+
+{% block title %} {{ course.title }} {% endblock %}
+
+
+{% block body %}
+
+{% partialdef body inline %}
+
+        <div class="space-y-2">
+            <h1>{{ course.title }}</h1>
+            {% if course.subtitle %}
+            <p class="text-xl text-gray-600">{{ course.subtitle }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mt-8">
+            <h2>Contents</h2>
+
+            <div class="mt-4 space-y-2">
+            {% for child in children %}
+            <div class="flex items-center justify-between py-2">
+                <div class="flex items-center gap-3">
+                    <span class="text-gray-400 pr-2">{{ forloop.counter }}.</span>
+                    <span>{{ child.title }}</span>
+                </div>
+
+                <div>
+                    {% if child.status == "BLOCKED" %}
+                        <span class="text-sm text-gray-400">
+                            <i class="fa fa-lock"></i>
+                        </span>
+
+                    {% elif child.status == "READY" %}
+                        <a href="{{ child.url }}" class="btn btn-primary">
+                            Start
+                        </a>
+
+                    {% elif child.status == "IN_PROGRESS" %}
+                        <a href="{{ child.url }}" class="text-primary-600 hover:text-primary-700 no-underline">
+                            Continue →
+                        </a>
+
+                    {% elif child.status == "COMPLETE" %}
+                        <a href="{{ child.url }}" class="text-green-600 hover:text-green-700 no-underline">
+                            <i class="fa fa-check"></i>
+                        </a>
+
+                    {% else %}
+                        <span class="text-sm text-red-600">
+                            Unknown status "{{ child.status }}"
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            </div>
+        </div>
+
+        {% if user.is_authenticated %}
+            {% if is_registered %}
+            {% else %}
+                <form method="post" action="{% url 'student_interface:register_for_course' collection_slug=course.slug %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success">Register for Course</button>
+                </form>
+            {% endif %}
+        {% else %}
+
+        <c-login-prompt/>
+
+        {% endif %}
+
+{% endpartialdef %}
+
+{% endblock %}
