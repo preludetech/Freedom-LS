@@ -22,7 +22,11 @@
             <div class="flex items-center justify-between py-2">
                 <div class="flex items-center gap-3">
                     <span class="text-gray-400 pr-2">{{ forloop.counter }}.</span>
-                    <span>{{ child.title }}</span>
+                    {% if child.status != "BLOCKED" %}
+                        <a href="{{ child.url }}" class="no-underline hover:underline">{{ child.title }}</a>
+                    {% else %}
+                        <span>{{ child.title }}</span>
+                    {% endif %}
                 </div>
 
                 <div>
@@ -33,12 +37,13 @@
 
                     {% elif child.status == "READY" %}
                         <a href="{{ child.url }}" class="btn btn-primary">
-                            Start
+                            <i class="fa fa-play"></i>
                         </a>
 
                     {% elif child.status == "IN_PROGRESS" %}
                         <a href="{{ child.url }}" class="text-primary-600 hover:text-primary-700 no-underline">
-                            Continue →
+                                                        <i class="fa fa-play"></i>
+
                         </a>
 
                     {% elif child.status == "COMPLETE" %}

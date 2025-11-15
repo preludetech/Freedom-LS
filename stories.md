@@ -27,7 +27,6 @@
 - view cohorts and students 
 - see course registration
 
-
 # Students 
 
 - flash cards 
@@ -58,9 +57,7 @@
 
 
 - CLAUDE and Django
-
 - virtual environments 
-- 
 
 
 
@@ -69,6 +66,5 @@
 # TODOs to delegate
 
 - password fields: show and hide password 
-- make allauth forms prettier 
 - xapi logs for allauth signals: login, logout, signup etc
 - make "message" show up better. Like a little popup with x that slides in and out
