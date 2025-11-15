@@ -5,8 +5,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 import tempfile
 from pathlib import Path
-
+from django.test import RequestFactory
 from content_engine.models import Form
+
 
 User = get_user_model()
 
@@ -34,14 +35,6 @@ def user(site):
 
 
 @pytest.fixture
-def form(site):
-    """Create a test form."""
-    return Form.objects.create(
-        site=site, title="Test Form", strategy="CATEGORY_VALUE_SUM"
-    )
-
-
-@pytest.fixture
 def make_temp_file():
     """Create a temporary YAML file and clean it up after test."""
     temp_file = None
@@ -62,10 +55,25 @@ def make_temp_file():
 
 @pytest.fixture
 def mock_site_context(site, mocker):
-    """Mock the thread local request and get_current_site for SiteAwareModel."""
+    """Mock the thread local request and get_current_site for SiteAwareModel and templates."""
     from site_aware_models.models import _thread_locals
 
     mock_request = mocker.Mock()
     mocker.patch.object(_thread_locals, "request", mock_request, create=True)
     mocker.patch("site_aware_models.models.get_current_site", return_value=site)
+    # Also patch for template context processors
+    mocker.patch("django.contrib.sites.shortcuts.get_current_site", return_value=site)
     return site
+
+
+@pytest.fixture
+def site_aware_request(mock_site_context):
+    return RequestFactory()
+
+
+@pytest.fixture
+def form(site):
+    """Create a test form."""
+    return Form.objects.create(
+        site=site, title="Test Form", strategy="CATEGORY_VALUE_SUM"
+    )

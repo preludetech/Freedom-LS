@@ -35,17 +35,21 @@ class FormProgress(SiteAwareModel):
         return f"{self.user} - {self.form.title}"
 
     @classmethod
+    def get_latest_incomplete(cls, user, form):
+        return (
+            cls.objects.filter(user=user, form=form, completed_time__isnull=True)
+            .order_by("-start_time")
+            .first()
+        )
+
+    @classmethod
     def get_or_create_incomplete(cls, user, form):
         """
         Get the latest incomplete FormProgress for this user and form,
         or create a new one if all existing ones are completed.
         """
         # Try to get the latest incomplete progress
-        incomplete = (
-            cls.objects.filter(user=user, form=form, completed_time__isnull=True)
-            .order_by("-start_time")
-            .first()
-        )
+        incomplete = cls.get_latest_incomplete(user, form)
 
         if incomplete:
             return incomplete

@@ -1,17 +1,15 @@
 """Tests for markdown_utils.py - focusing on custom cotton tag functionality."""
 
 import pytest
-from django.test import RequestFactory
 from django.utils.safestring import SafeString
 
 from content_engine.markdown_utils import render_markdown
 
 
 @pytest.fixture
-def mock_request():
+def mock_request(site_aware_request):
     """Create a mock request object."""
-    factory = RequestFactory()
-    return factory.get("/")
+    return site_aware_request.get("/")
 
 
 @pytest.mark.django_db

@@ -1,4 +1,6 @@
 import pytest
+from content_engine.models import Form
+
 
 test_data = [
     (
@@ -7,6 +9,14 @@ test_data = [
         "tutorial/images/graph1.drawio.svg",
     )
 ]
+
+
+@pytest.fixture
+def form(site):
+    """Create a test form."""
+    return Form.objects.create(
+        site=site, title="Test Form", strategy="CATEGORY_VALUE_SUM"
+    )
 
 
 @pytest.mark.django_db
