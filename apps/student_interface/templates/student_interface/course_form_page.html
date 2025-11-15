@@ -1,0 +1,179 @@
+{% extends "student_interface/_course_base.html" %}
+{% load content_tags %}
+
+
+{% partialdef form-input-multiple-choice %}
+    {% for option in question.options.all %}
+        <div class="flex items-center">
+            <input type="radio" id="q{{child.id}}_opt{{option.id}}" name="question_{{child.id}}" value="{{option.id}}" class="mr-2"
+            {% if question.required %}required {% endif %}
+            {% if existing_answers|length > 0 %}
+                {% with answer=existing_answers|get_item:child.id %}
+                    {% if answer and option in answer.selected_options.all %}checked{% endif %}
+                {% endwith %}
+            {% endif %}>
+            <label for="q{{question.id}}_opt{{option.id}}" class="cursor-pointer">{{option.text}}</label>
+        </div>
+    {% endfor %}
+{% endpartialdef %}
+
+{% partialdef form-input-checkboxes %}
+    {% for option in question.options.all %}
+        <div class="flex items-center">
+            <input type="checkbox" id="q{{question.id}}_opt{{option.id}}" name="question_{{question.id}}" value="{{option.id}}" class="mr-2"
+            {% if existing_answers|length > 0 %}
+                {% with answer=existing_answers|get_item:question.id %}
+                    {% if answer and option in answer.selected_options.all %}checked{% endif %}
+                {% endwith %}
+            {% endif %}>
+            <label for="q{{question.id}}_opt{{option.id}}" class="cursor-pointer">{{option.text}}</label>
+        </div>
+    {% endfor %}
+{% endpartialdef %}
+
+{% partialdef form-input-short-text %}
+    <input type="text" name="question_{{question.id}}" class="w-full" {% if question.required %}required{% endif %}
+    {% if existing_answers|length > 0 %}
+        {% with answer=existing_answers|get_item:child.id %}
+            {% if answer %}value="{{ answer.text_answer }}"{% endif %}
+        {% endwith %}
+    {% endif %}>
+{% endpartialdef %}
+
+{% partialdef form-input-long-text %}
+<div class="ml-4">
+    <textarea name="question_{{question.id}}" rows="5" class="w-full" {% if question.required %}required{% endif %}>{% if existing_answers|length > 0 %}{% with answer=existing_answers|get_item:question.id %}{% if answer %}{{ answer.text_answer }}{% endif %}{% endwith %}{% endif %}</textarea>
+</div>
+{% endpartialdef %}
+
+{% partialdef form-question %}
+<div class="mb-6 p-4 bg-white border border-gray-200 rounded-lg">
+    <div class="mb-3 flex flex-row gap-2">
+        <span class="font-semibold text-gray-900">{{question.question_number}}.</span>
+        <span class="text-gray-900">{{ question.rendered_question }}</span>
+        {% if question.required %}
+            <span class="text-red-600 ml-1">*</span>
+        {% endif %}
+    </div>
+
+    <div class="space-y-2 ml-4">
+
+
+    {% if question.type == "multiple_choice" %}
+        {% partial form-input-multiple-choice %}
+    {% elif question.type == "checkboxes" %}
+        {% partial form-input-checkboxes %}
+    {% elif question.type == "short_text" %}
+        {% partial form-input-short-text %}
+    {% elif question.type == "long_text" %}
+        {% partial form-input-long-text %}
+    {% else %}
+        <div class="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            ERROR! UNHANDLED FORM TYPE {{ question.type }}
+        </div>
+    {% endif %}
+    </div>
+</div>
+{% endpartialdef %}
+
+{% partialdef form-content %}
+<div class="mb-6 p-4 bg-white border border-gray-200 rounded-lg prose max-w-none">
+    {{child.rendered_content}}
+</div>
+{% endpartialdef %}
+
+
+
+{% block content %}
+
+<div class="mb-8">
+    <h1 class="mb-2">{{ form.title }}</h1>
+    {% if form.subtitle %}
+        <h2 class="text-gray-600">{{ form.subtitle }}</h2>
+    {% endif %}
+</div>
+
+<!-- Page Progress Indicator -->
+<div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+    <div class="flex items-center justify-between mb-3">
+        <span class="text-sm font-medium text-gray-700">Page {{ current_page_num }} of {{ total_pages }}</span>
+    </div>
+
+    <!-- Page Navigation -->
+    <div class="flex gap-2 flex-wrap">
+        {% for page in page_links %}
+            {% if page.is_current %}
+                <span class="px-3 py-1 bg-blue-600 text-white rounded font-medium text-sm">
+                    {{ page.number }}
+                </span>
+            {% elif page.is_accessible %}
+                <a href="{{ page.url }}" class="no-underline px-3 py-1 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-100 text-sm" title="{{ page.title }} ">
+                    {{ page.number }}
+                </a>
+            {% else %}
+                <span class="px-3 py-1 bg-gray-100 text-gray-400 rounded text-sm cursor-not-allowed">
+                    {{ page.number }}
+                </span>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+
+<div class="mb-6">
+    <h3>{{ form_page.title }}</h3>
+    {% if form_page.subtitle %}
+        <h4 class="text-gray-600">{{ form_page.subtitle }}</h4>
+    {% endif %}
+</div>
+
+ <form method="POST">
+
+        {% csrf_token %}
+
+        <!-- Form content -->
+        <div class="mb-8">
+            {% for child in form_page.children %}
+            {% if child.content_type == 'FORM_QUESTION' %}
+                {% with question=child %}
+                    {% partial form-question %}
+                {% endwith %}
+            {% elif child.content_type == 'FORM_CONTENT' %}
+            {% partial form-content %}
+            {% endif %}
+            {% endfor %}
+        </div>
+
+
+         <!-- Navigation -->
+        
+        <div class="flex justify-between items-center pt-6 border-t border-gray-300">
+            <div>
+                {% if previous_page_url %}
+                
+                    <a href="{{previous_page_url}}" class="btn btn-secondary">
+                        Back
+                    </a>
+                {% else %}
+                <div class="w-20"></div>
+                {% endif %}
+            </div>
+            <div>
+
+            {% if has_next_page %}
+            
+            <button type="submit" class="btn btn-primary">
+                Next
+            </button>
+            {% else %}
+            {# Last page - show Submit button #}
+            <button type="submit" class="btn btn-primary">
+                Submit
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+</form>
+
+
+{% endblock %}

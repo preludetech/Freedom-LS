@@ -14,7 +14,7 @@
     {{ topic.rendered_content }}
 </div>
 
-<div class="flex items-center justify-between mt-8 pt-4 border-t border-gray-200">
+<div class="flex items-center justify-between mt-8 pt-4 border-t border-gray-200 gap-3">
     <div>
         {% if previous_url %}
             <a href="{{ previous_url }}" class="btn btn-outline">
@@ -23,7 +23,6 @@
         {% endif %}
     </div>
 
-    <div class="flex gap-2">
         {% if not is_complete %}
             <form method="post">
                 {% csrf_token %}
@@ -36,7 +35,6 @@
                 Next <i class="fa fa-arrow-right"></i>
             </a>
         {% endif %}
-    </div>
 </div>
 
 

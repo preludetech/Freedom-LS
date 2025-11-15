@@ -22,6 +22,21 @@ urlpatterns = [
         views.view_course_item,
         name="view_course_item",
     ),
+    path(
+        "courses/<slug:collection_slug>/<int:index>/start_form",
+        views.form_start,
+        name="form_start",
+    ),
+    path(
+        "courses/<slug:collection_slug>/<int:index>/fill_form/<int:page_number>",
+        views.form_fill_page,
+        name="form_fill_page",
+    ),
+    path(
+        "courses/<slug:collection_slug>/<int:index>/complete",
+        views.course_form_complete,
+        name="course_form_complete",
+    ),
     ### Check these
     # path("topics/<slug:topic_slug>/", views.topic_detail, name="topic_detail"),
     # path(
@@ -35,7 +50,6 @@ urlpatterns = [
     #     views.form_detail,
     #     name="form_detail_in_collection",
     # ),
-    # path("forms/<slug:form_slug>/start/", views.form_start, name="form_start"),
     # path(
     #     "form_progress/<uuid:pk>/<int:page_number>/",
     #     views.form_fill_page,

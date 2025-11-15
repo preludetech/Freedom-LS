@@ -1,4 +1,4 @@
-{% extends '_base.html' %}
+{% extends 'student_interface/_course_base.html' %}
 
 {% block title %}Form Complete - {{ form.title }}{% endblock %}
 
@@ -63,10 +63,5 @@
     </div>
     {% endif %}
 
-    <div class="text-center space-y-4">
-        <a href="{% url 'student_interface:form_detail' form.slug %}" class="btn btn-primary">
-            View Form
-        </a>
-    </div>
 </div>
 {% endblock %}

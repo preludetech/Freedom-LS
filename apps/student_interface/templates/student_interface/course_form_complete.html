@@ -1,0 +1,16 @@
+{% extends "student_interface/_course_base.html" %}
+
+
+
+{% block content %}
+
+
+<h1>{{ form.title }}</h1>
+{% if form.subtitle %}
+<h2>{{ form.subtitle }}</h2>
+{% endif %}
+<hr/>
+
+
+
+{% endblock %}
