@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "student_management",
     "student_progress",
     "site_aware_models",
+    "educator_interface",
     #########
     # STUDENT INTERFACE
     "student_interface",

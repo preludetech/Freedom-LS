@@ -18,7 +18,12 @@ python manage.py runserver
 - Uses TailwindCSS v4
 - Build CSS: `npm run tailwind_build`
 - Watch CSS during development: `npm run tailwind_watch`
-- tailwind.input.css is used for reusable styles and components that are used across many pages. Keep things DRY. Don't use tailwind.input.css for styling components that only appear in one place
+- **IMPORTANT**: `tailwind.input.css` contains reusable component classes (buttons, forms, etc.)
+  - **ALWAYS check `tailwind.input.css` FIRST** before writing any inline Tailwind classes for common UI elements
+  - **USE existing component classes** when they exist (e.g., `.btn`, `.btn-primary` for buttons)
+  - Only write inline Tailwind classes for truly unique, one-off styling that doesn't match existing components
+  - Add new component classes to `tailwind.input.css` if creating something reusable that doesn't exist yet
+  - Keep things DRY - don't duplicate styles that already exist in the component library
 
 ### Database
 - Apply migrations: `python manage.py migrate`
@@ -34,6 +39,20 @@ python manage.py runserver
 - when creating tests, make one test at a time
 
 ## Architecture
+
+### Django app location 
+
+All apps are inside the `apps/` directory. This is on the PATH. 
+
+When importing something from an app in the `apps` directory:
+
+```
+# DONT DO THIS
+from apps.content_engine.models import ContentCollection
+
+# Rather, leave out the `apps` part of the import statement. This works
+from content_engine.models import ContentCollection
+```
 
 ### Site-Aware Models Pattern
 The core architectural pattern is site isolation using Django Sites framework:

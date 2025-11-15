@@ -1,0 +1,56 @@
+{% extends "educator_interface/_educator_interface_base.html" %}
+
+{% block head_title %}Courses{% endblock %}
+
+{% block content %}
+<div>
+    <h1 class="mb-6">Courses</h1>
+
+    {% if courses %}
+        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Title
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Students
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cohorts
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for course in courses %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 ">
+                                <div class="text-sm font-medium text-gray-900">{{ course.title }}</div>
+                            </td>
+                            <td class="px-6 py-4 ">
+                                <div class="text-sm text-gray-900">{{ course.total_student_count }}</div>
+                            </td>
+                            <td class="px-6 py-4 ">
+                                <div class="text-sm text-gray-900">{{ course.cohort_count }}</div>
+                            </td>
+                            <td class="px-6 py-4 ">
+                                <a href="{% url 'educator_interface:course_student_progress' collection_slug=course.slug %}" class="btn btn-primary">
+                                    Student Progress
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="bg-white shadow-md rounded-lg p-6">
+            <p class="text-gray-500">No courses available.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
