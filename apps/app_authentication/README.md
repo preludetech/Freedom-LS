@@ -1,0 +1,1 @@
+Used for authenticating other apps, eg mobile apps. 

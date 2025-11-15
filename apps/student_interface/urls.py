@@ -4,6 +4,7 @@ from . import views
 app_name = "student_interface"
 
 urlpatterns = [
+    path("", views.home, name="home"),
     path("topics/<slug:topic_slug>/", views.topic_detail, name="topic_detail"),
     path(
         "collections/<slug:collection_slug>/topics/<slug:topic_slug>/",

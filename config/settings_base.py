@@ -39,9 +39,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sites",
-    "accounts",
-    "student_management",
-    "site_aware_models",
     "unfold",  # before django.contrib.admin
     "unfold.contrib.filters",  # optional, if special filters are needed
     "unfold.contrib.forms",  # optional, if special form elements are needed
@@ -53,19 +50,21 @@ INSTALLED_APPS = [
     "unfold.contrib.constance",  # optional, if django-constance package is used
     "django.contrib.admin",  # required
     "guardian",
-    "app_authentication",
     #########
     # AllAuth
     "allauth",
     "allauth.account",
-    "allauth.headless",
+    # "allauth.headless",
     #########
-    # COMMON APPS
-    # These need to be separate repos so they can be installed on different projects
+    # CUSTOM APPS
+    # "app_authentication",
+    # xapi_learning_record_store
     "content_engine",
+    "accounts",
+    "student_management",
+    "site_aware_models",
     #########
     # STUDENT INTERFACE
-    # this will be separated out into a new django project
     "student_interface",
 ]
 
@@ -118,6 +117,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "site_aware_models.context_processors.site_config",
             ],
             "builtins": [
                 "django_cotton.templatetags.cotton",
