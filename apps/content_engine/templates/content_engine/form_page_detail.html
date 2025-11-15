@@ -1,86 +1,6 @@
 {% extends '_base.html' %}
 {% load content_tags %}
 
-{% partialdef form-input-multiple-choice %}
-    {% for option in question.options.all %}
-        <div class="flex items-center">
-            <input type="radio" id="q{{child.id}}_opt{{option.id}}" name="question_{{child.id}}" value="{{option.id}}" class="mr-2"
-            {% if question.required %}required {% endif %}
-            {% if existing_answers|length > 0 %}
-                {% with answer=existing_answers|get_item:child.id %}
-                    {% if answer and option in answer.selected_options.all %}checked{% endif %}
-                {% endwith %}
-            {% endif %}>
-            <label for="q{{question.id}}_opt{{option.id}}" class="cursor-pointer">{{option.text}}</label>
-        </div>
-    {% endfor %}
-{% endpartialdef %}
-
-{% partialdef form-input-checkboxes %}
-    {% for option in question.options.all %}
-        <div class="flex items-center">
-            <input type="checkbox" id="q{{question.id}}_opt{{option.id}}" name="question_{{question.id}}" value="{{option.id}}" class="mr-2"
-            {% if existing_answers|length > 0 %}
-                {% with answer=existing_answers|get_item:question.id %}
-                    {% if answer and option in answer.selected_options.all %}checked{% endif %}
-                {% endwith %}
-            {% endif %}>
-            <label for="q{{question.id}}_opt{{option.id}}" class="cursor-pointer">{{option.text}}</label>
-        </div>
-    {% endfor %}
-{% endpartialdef %}
-
-{% partialdef form-input-short-text %}
-    <input type="text" name="question_{{question.id}}" class="w-full" {% if question.required %}required{% endif %}
-    {% if existing_answers|length > 0 %}
-        {% with answer=existing_answers|get_item:child.id %}
-            {% if answer %}value="{{ answer.text_answer }}"{% endif %}
-        {% endwith %}
-    {% endif %}>
-{% endpartialdef %}
-
-{% partialdef form-input-long-text %}
-<div class="ml-4">
-    <textarea name="question_{{question.id}}" rows="5" class="w-full" {% if question.required %}required{% endif %}>{% if existing_answers|length > 0 %}{% with answer=existing_answers|get_item:question.id %}{% if answer %}{{ answer.text_answer }}{% endif %}{% endwith %}{% endif %}</textarea>
-</div>
-{% endpartialdef %}
-
-{% partialdef form-question %}
-<div class="mb-6 p-4 bg-white border border-gray-200 rounded-lg">
-    <div class="mb-3 flex flex-row gap-2">
-        <span class="font-semibold text-gray-900">{{question.question_number}}.</span>
-        <span class="text-gray-900">{{ question.rendered_question }}</span>
-        {% if question.required %}
-            <span class="text-red-600 ml-1">*</span>
-        {% endif %}
-    </div>
-
-    <div class="space-y-2 ml-4">
-
-
-    {% if question.type == "multiple_choice" %}
-        {% partial form-input-multiple-choice %}
-    {% elif question.type == "checkboxes" %}
-        {% partial form-input-checkboxes %}
-    {% elif question.type == "short_text" %}
-        {% partial form-input-short-text %}
-    {% elif question.type == "long_text" %}
-        {% partial form-input-long-text %}
-    {% else %}
-        <div class="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            ERROR! UNHANDLED FORM TYPE {{ question.type }}
-        </div>
-    {% endif %}
-    </div>
-</div>
-{% endpartialdef %}
-
-{% partialdef form-content %}
-<div class="mb-6 p-4 bg-white border border-gray-200 rounded-lg prose max-w-none">
-    {{child.rendered_content}}
-</div>
-{% endpartialdef %}
-
 
 {% block title %} {{ form.title }} - Page {{ current_page_num }} {% endblock %}
 
@@ -113,7 +33,6 @@
     <form method="POST">
 
         {% csrf_token %}
-
 
         <!-- Form content -->
         <div class="mb-8">
@@ -170,5 +89,7 @@
             {% endif %}
         </div>
     </div>
+
+    
 </form>
     {% endblock content %}
