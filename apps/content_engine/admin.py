@@ -26,6 +26,7 @@ class QuestionOptionAdmin(admin.ModelAdmin):
     list_filter = ("question__form_page__form",)
     search_fields = ("text", "question__question")
     ordering = ("question", "order")
+    exclude = ("site",)
 
 
 class FormContentInline(admin.StackedInline):
@@ -33,7 +34,7 @@ class FormContentInline(admin.StackedInline):
 
     model = FormContent
     extra = 0
-    fields = ("text", "order")
+    fields = ("content", "order")
 
 
 class FormQuestionInline(admin.StackedInline):
@@ -47,15 +48,16 @@ class FormQuestionInline(admin.StackedInline):
 
 @admin.register(FormContent)
 class FormContentAdmin(admin.ModelAdmin):
-    list_display = ("text_preview", "form_page", "order")
+    list_display = ("content_preview", "form_page", "order")
     list_filter = ("form_page__form",)
-    search_fields = ("text", "form_page__title")
+    search_fields = ("content", "form_page__title")
     ordering = ("form_page", "order")
+    exclude = ("site",)
 
-    def text_preview(self, obj):
-        return obj.text[:50]
+    def content_preview(self, obj):
+        return obj.content[:50]
 
-    text_preview.short_description = "Text"
+    content_preview.short_description = "Content"
 
 
 @admin.register(FormQuestion)
@@ -72,6 +74,7 @@ class FormQuestionAdmin(admin.ModelAdmin):
     search_fields = ("question", "category", "form_page__title")
     ordering = ("form_page", "order")
     inlines = [QuestionOptionInline]
+    exclude = ("site",)
 
     def question_preview(self, obj):
         return obj.question[:50]
@@ -95,6 +98,7 @@ class FormPageAdmin(admin.ModelAdmin):
     search_fields = ("title", "subtitle", "form__title")
     ordering = ("form", "order")
     inlines = [FormContentInline, FormQuestionInline]
+    exclude = ("site",)
 
 
 @admin.register(Topic)
@@ -102,6 +106,7 @@ class TopicAdmin(admin.ModelAdmin):
     list_display = ("title", "subtitle", "file_path")
     list_filter = ("tags",)
     search_fields = ("title", "subtitle")
+    exclude = ("site",)
     fieldsets = (
         (None, {"fields": ("title", "subtitle", "content")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
@@ -123,6 +128,7 @@ class ContentCollectionAdmin(admin.ModelAdmin):
     list_filter = ("tags",)
     search_fields = ("title", "subtitle")
     inlines = [ContentCollectionItemInline]
+    exclude = ("site",)
     fieldsets = (
         (None, {"fields": ("title", "subtitle")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
@@ -135,6 +141,7 @@ class ContentCollectionItemAdmin(admin.ModelAdmin):
     list_filter = ("collection",)
     search_fields = ("collection__title",)
     ordering = ("collection", "order")
+    exclude = ("site",)
 
 
 @admin.register(Form)
@@ -143,6 +150,7 @@ class FormAdmin(admin.ModelAdmin):
     list_filter = ("strategy", "tags")
     search_fields = ("title", "subtitle")
     inlines = [FormPageInline]
+    exclude = ("site",)
     fieldsets = (
         (None, {"fields": ("title", "subtitle", "content", "strategy")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
@@ -159,6 +167,7 @@ class FileAdmin(admin.ModelAdmin):
     )
     list_filter = ("file_type",)
     search_fields = ("original_filename", "file_path", "mime_type")
+    exclude = ("site",)
     fieldsets = (
         (None, {"fields": ("file", "file_type", "original_filename")}),
         (
