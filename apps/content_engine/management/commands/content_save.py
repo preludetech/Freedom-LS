@@ -152,22 +152,66 @@ def update_file_with_option_uuids(file_path, question_uuid, option_uuids):
     logger.info(f"Updated {file_path} with option UUIDs")
 
 
+def get_unique_slug(model_class, site, base_slug, existing_uuid=None):
+    """
+    Generate a unique slug by appending -2, -3, etc. if needed.
+
+    Args:
+        model_class: The model class (Topic, Form, ContentCollection)
+        site: The site object
+        base_slug: The base slug to make unique
+        existing_uuid: Optional UUID of existing object (to exclude from uniqueness check)
+
+    Returns:
+        A unique slug for the given site and model
+    """
+    slug = base_slug
+    counter = 2
+
+    while True:
+        # Check if this slug exists
+        queryset = model_class.objects.filter(site=site, slug=slug)
+
+        # If we're updating an existing object, exclude it from the check
+        if existing_uuid:
+            try:
+                queryset = queryset.exclude(id=uuid.UUID(existing_uuid))
+            except (ValueError, AttributeError):
+                pass  # Invalid UUID or None, continue without exclusion
+
+        if not queryset.exists():
+            return slug
+
+        # Slug exists, try next number
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+
 def save_with_uuid(model_class, item, site, base_path, update_file=True, **fields):
     """Generic save function that handles UUID logic."""
-    # Calculate relative path if base_path is provided
-    if base_path:
-        relative_path = str(item.file_path.relative_to(base_path))
-        fields["file_path"] = relative_path
+    try:
+        # Calculate relative path if base_path is provided
+        if base_path:
+            relative_path = str(item.file_path.relative_to(base_path))
+            fields["file_path"] = relative_path
 
-    if item.uuid:
-        instance, created = model_class.objects.update_or_create(
-            id=uuid.UUID(item.uuid), site=site, defaults=fields
-        )
-    else:
-        instance = model_class.objects.create(site=site, **fields)
-        if update_file:
-            update_file_with_uuid(item.file_path, instance.id)
-    return instance
+        # Ensure slug uniqueness if a slug field is provided
+        if "slug" in fields:
+            base_slug = fields["slug"]
+            fields["slug"] = get_unique_slug(model_class, site, base_slug, item.uuid)
+
+        if item.uuid:
+            instance, created = model_class.objects.update_or_create(
+                id=uuid.UUID(item.uuid), site=site, defaults=fields
+            )
+        else:
+            instance = model_class.objects.create(site=site, **fields)
+            if update_file:
+                update_file_with_uuid(item.file_path, instance.id)
+        return instance
+    except Exception as e:
+        print(f"Error with file: {item.file_path}")
+        raise e
 
 
 def save_topic(item, site, base_path):
@@ -179,6 +223,7 @@ def save_topic(item, site, base_path):
         base_path,
         title=item.title,
         subtitle=item.subtitle,
+        description=item.description,
         slug=slugify(item.title),
         content=item.content,
         meta=item.meta,
@@ -195,6 +240,7 @@ def save_collection(item, site, base_path):
         base_path,
         title=item.title,
         subtitle=item.subtitle,
+        description=item.description,
         slug=slugify(item.title),
         meta=item.meta,
         tags=item.tags,
@@ -210,6 +256,7 @@ def save_form(item, site, base_path):
         base_path,
         title=item.title,
         subtitle=item.subtitle,
+        description=item.description,
         slug=slugify(item.title),
         content=item.content,
         strategy=item.strategy,
@@ -228,6 +275,7 @@ def save_form_page(item, form, site, base_path, order=0):
         form=form,
         title=item.title,
         subtitle=item.subtitle,
+        description=item.description,
         category=item.category,
         order=order,
         meta=item.meta,
@@ -482,16 +530,16 @@ def save_content_to_db(path, site_name):
                 for f in subdir.iterdir():
                     if f.is_file() and f.suffix in [".md", ".yaml", ".yml"]:
                         # Parse to check if it's a Form or Collection (top-level content)
-                        try:
-                            parsed = parse_single_file(f)
-                            if parsed and parsed[0].content_type in (
-                                SchemaContentType.FORM,
-                                SchemaContentType.COLLECTION,
-                            ):
-                                main_files.append(f)
-                                break  # Found the main file
-                        except:
-                            pass
+                        # try:
+                        parsed = parse_single_file(f)
+                        if parsed and parsed[0].content_type in (
+                            SchemaContentType.FORM,
+                            SchemaContentType.COLLECTION,
+                        ):
+                            main_files.append(f)
+                            break  # Found the main file
+                    # except:
+                    #     pass
 
                 if main_files:
                     children_list.append(
