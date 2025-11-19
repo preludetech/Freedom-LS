@@ -27,6 +27,7 @@ api = NinjaAPI()
 # api.add_router("xapi/", "xapi_learning_record_store.api.router")
 # api.add_router("student/", "student_interface.apis.router")
 
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     # path("api/", api.urls),
@@ -34,10 +35,10 @@ urlpatterns = [
     # path("api/", api.urls),
     path("__reload__/", include("django_browser_reload.urls")),
     # path("content_preview/", include("content_engine.preview_urls")),
-    path("", include("student_interface.urls")),
     path("educator/", include("educator_interface.urls")),
     path("accounts/", include("allauth.urls")),
     path("accounts/", include("accounts.urls")),
+    path("__/si/", include("student_interface.urls")),
     # path("_allauth/", include("allauth.headless.urls")),
 ]
 

@@ -152,7 +152,7 @@ class FormAdmin(admin.ModelAdmin):
     inlines = [FormPageInline]
     exclude = ("site",)
     fieldsets = (
-        (None, {"fields": ("title", "subtitle", "content", "strategy")}),
+        (None, {"fields": ("title", "subtitle", "content", "strategy", "slug")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 

@@ -6,8 +6,13 @@
     <div class="text-center">
         {% if  user.is_authenticated %}
 
+            {% block user_authenticated %}
+
             <h1 class="mb-4">Welcome back, {{ user.first_name|default:user.email }}</h1>
         
+            {% endblock user_authenticated %}
+
+
 
         {% else %}
             <h1 class="mb-4">Welcome</h1>
@@ -17,6 +22,8 @@
         {% endif %}
     </div>
 
+
+    {% block all_courses %}
     <div>
         <div hx-get="{% url 'student_interface:partial_list_courses' %}"
              hx-trigger="load"
@@ -24,4 +31,6 @@
             <c-loading-indicator id="course-loading" message="Loading courses..." />
         </div>
     </div>
+    {% endblock all_courses %}
+
 {% endblock %}

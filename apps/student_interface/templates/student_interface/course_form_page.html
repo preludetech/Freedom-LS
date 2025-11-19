@@ -94,6 +94,7 @@
 </div>
 
 <!-- Page Progress Indicator -->
+{% partialdef page_progress_indicator inline %}
 <div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
     <div class="flex items-center justify-between mb-3">
         <span class="text-sm font-medium text-gray-700">Page {{ current_page_num }} of {{ total_pages }}</span>
@@ -119,12 +120,17 @@
     </div>
 </div>
 
+{% endpartialdef %}
+
 <div class="mb-6">
     <h3>{{ form_page.title }}</h3>
     {% if form_page.subtitle %}
         <h4 class="text-gray-600">{{ form_page.subtitle }}</h4>
     {% endif %}
 </div>
+
+
+{% partialdef form_and_navigation inline %}
 
  <form method="POST">
 
@@ -174,6 +180,7 @@
     </div>
 
 </form>
+{% endpartialdef %}
 
 
 {% endblock %}

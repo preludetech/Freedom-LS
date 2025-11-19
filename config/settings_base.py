@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "educator_interface",
     #########
     # STUDENT INTERFACE
+    "bloom_student_interface",  # must be before student_interface if we want to override those partials
     "student_interface",
 ]
 
@@ -87,6 +88,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "site_aware_models.middleware.CurrentSiteMiddleware",
+    "config.site_urlconf_middleware.SiteURLConfMiddleware",
     "django_browser_reload.middleware.BrowserReloadMiddleware",
     "allauth.account.middleware.AccountMiddleware",
 ]

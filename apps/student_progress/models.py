@@ -80,6 +80,69 @@ class FormProgress(SiteAwareModel):
         # All questions answered, return last page (or 1 if no pages)
         return len(all_pages) if all_pages else 1
 
+    def existing_answers_dict(self, questions):
+        """
+        Get a dictionary of existing answers for the given questions.
+        Returns a dict with question.id as keys and QuestionAnswer objects as values.
+        """
+        existing_answers = {}
+        for question in questions:
+            try:
+                answer = QuestionAnswer.objects.get(
+                    form_progress=self, question=question
+                )
+                existing_answers[question.id] = answer
+            except QuestionAnswer.DoesNotExist:
+                pass
+        return existing_answers
+
+    def save_answers(self, questions, post_data):
+        """
+        Save answers from POST data for the given questions.
+        Handles multiple_choice, checkboxes, short_text, and long_text question types.
+        """
+        for question in questions:
+            field_name = f"question_{question.id}"
+
+            # Get or create the answer
+            answer, created = QuestionAnswer.objects.get_or_create(
+                form_progress=self, question=question
+            )
+
+            # Handle different question types
+            if question.type == "multiple_choice":
+                # Get the selected option ID from POST
+                option_id = post_data.get(field_name)
+                if option_id:
+                    # Clear existing selections and set the new one
+                    answer.selected_options.clear()
+                    answer.selected_options.add(option_id)
+                    answer.save()
+
+            elif question.type == "checkboxes":
+                # Get all selected option IDs (can be multiple)
+                option_ids = post_data.getlist(field_name)
+                if option_ids:
+                    answer.selected_options.clear()
+                    answer.selected_options.add(*option_ids)
+                    answer.save()
+
+            elif question.type in ["short_text", "long_text"]:
+                # Get text answer
+                text_answer = post_data.get(field_name, "")
+                answer.text_answer = text_answer
+                answer.save()
+
+    def complete(self):
+        """
+        Mark the form as completed and calculate the final score.
+        """
+        from django.utils import timezone
+
+        self.completed_time = timezone.now()
+        self.score()
+        self.save()
+
     def score_category_value_sum(self):
         """
         Use the CATEGORY_VALUE_SUM scoring strategy:

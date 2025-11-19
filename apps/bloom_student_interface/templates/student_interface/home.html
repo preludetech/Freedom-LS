@@ -1,0 +1,40 @@
+{% extends 'student_interface/home.html' %}
+
+{% block all_courses %}
+{% endblock all_courses %}
+
+{% block user_authenticated %}
+
+<div class="mb-6">
+    <div class="flex justify-between items-center mb-4">
+        <h2>Children</h2>
+        <a href="{% url 'bloom_student_interface:child_create' %}" class="btn btn-primary">Add Child</a>
+    </div>
+
+    {% if children %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for child in children %}
+                <div class="border border-gray-300 rounded-md p-4 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg">{{ child.name }}</h3>
+                        <p class="text-gray-600">Age: {{ child.age }}</p>
+                    </div>
+                    <div class="flex flex-col gap-2 mt-auto">
+                        <a href="{% url 'bloom_student_interface:child_assessment' child.slug %}" class="btn btn-primary">Do Picky Eating Assessment</a>
+                        <div class="flex gap-2">
+                            <a href="{% url 'bloom_student_interface:child_edit' child.pk %}" class="btn btn-outline">Edit</a>
+                            <form method="post" action="{% url 'bloom_student_interface:child_delete' child.pk %}" onsubmit="return confirm('Are you sure you want to delete {{ child.name }}?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-secondary">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-gray-600">No children yet. Click "Add Child" to create one.</p>
+    {% endif %}
+</div>
+
+{% endblock user_authenticated %}

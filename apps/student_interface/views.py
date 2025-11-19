@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.utils import timezone
 from content_engine.models import Topic, Form, ContentCollection
-from student_progress.models import FormProgress, TopicProgress, QuestionAnswer
+from student_progress.models import FormProgress, TopicProgress
 from student_management.models import Student, StudentCourseRegistration
 
 from .utils import get_course_index, get_is_registered
@@ -227,45 +227,13 @@ def form_fill_page(request, collection_slug, index, page_number):
 
     if request.method == "POST":
         # Process each question's answer
-        for question in questions:
-            field_name = f"question_{question.id}"
+        form_progress.save_answers(questions, request.POST)
 
-            # Get or create the answer
-            answer, created = QuestionAnswer.objects.get_or_create(
-                form_progress=form_progress, question=question
-            )
-
-            # Handle different question types
-            if question.type == "multiple_choice":
-                # Get the selected option ID from POST
-                option_id = request.POST.get(field_name)
-                if option_id:
-                    # Clear existing selections and set the new one
-                    answer.selected_options.clear()
-                    answer.selected_options.add(option_id)
-                    answer.save()
-
-            elif question.type == "checkboxes":
-                # Get all selected option IDs (can be multiple)
-                option_ids = request.POST.getlist(field_name)
-                if option_ids:
-                    answer.selected_options.clear()
-                    answer.selected_options.add(*option_ids)
-                    answer.save()
-
-            elif question.type in ["short_text", "long_text"]:
-                # Get text answer
-                text_answer = request.POST.get(field_name, "")
-                answer.text_answer = text_answer
-                answer.save()
         if next_page_url:
             return redirect(next_page_url)
 
-        form_progress.completed_time = timezone.now()
-
-        # Calculate scores based on the form's strategy
-        form_progress.score()
-        form_progress.save()
+        # Mark form as completed and calculate scores
+        form_progress.complete()
 
         return redirect(
             "student_interface:course_form_complete",
@@ -287,15 +255,7 @@ def form_fill_page(request, collection_slug, index, page_number):
     )
 
     # Build a dictionary of existing answers keyed by question ID
-    existing_answers = {}
-    for question in questions:
-        try:
-            answer = QuestionAnswer.objects.get(
-                form_progress=form_progress, question=question
-            )
-            existing_answers[question.id] = answer
-        except QuestionAnswer.DoesNotExist:
-            pass
+    existing_answers = form_progress.existing_answers_dict(questions)
 
     # Determine the furthest page the user has progressed to
     furthest_page = form_progress.get_current_page_number()
