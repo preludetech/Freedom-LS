@@ -146,5 +146,11 @@ class ActivityLog(SiteAwareModel):
         verbose_name_plural = "Activity logs"
 
     def __str__(self):
-        status = "Done" if self.done is True else "Not done" if self.done is False else "Not marked"
+        status = (
+            "Done"
+            if self.done is True
+            else "Not done"
+            if self.done is False
+            else "Not marked"
+        )
         return f"{self.child.name} - {self.activity.title} on {self.date} ({status})"

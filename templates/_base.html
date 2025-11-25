@@ -26,22 +26,21 @@
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
 
-    {% include "header.html" %}
-
-    {% if messages %}
-        {% for message in messages %}
-            <div class="mb-4 p-4 rounded-lg {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
+    {% include "partials/header.html" %}
 
 
-    <main class="max-w-7xl mx-auto py-12">
+
+    {% include "partials/messages.html" %} 
+
+
+    <main class="max-w-7xl mx-auto">
     {% block body %}
-        {% block content %}
+        <div class="py-12">
+
+            {% block content %}
             Replace this in child templates
-        {% endblock content %}
+            {% endblock content %}
+        </div>
     {% endblock body %}
     
     {% block extra_body %}

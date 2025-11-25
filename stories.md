@@ -68,3 +68,37 @@
 - password fields: show and hide password 
 - xapi logs for allauth signals: login, logout, signup etc
 - make "message" show up better. Like a little popup with x that slides in and out
+
+
+
+
+# Clients 
+
+
+
+## Prelude 
+
+- learners can:
+    - register 
+    - view all courses
+    - register for course (pay money)
+    - quizzes mid way
+
+## Wrend 
+
+- admins:
+    - add students
+    - register people for courses
+    - add deadlines  
+    - monitor
+        - student/cohort progress 
+        - quiz results 
+
+- course components:
+    - sections and subsections 
+
+
+## Bloom 
+
+- Quiz up front with questions associated with content 
+- Browsable library? or mini courses?

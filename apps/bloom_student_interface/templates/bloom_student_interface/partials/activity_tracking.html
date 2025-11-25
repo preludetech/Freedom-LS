@@ -1,0 +1,18 @@
+{% partialdef activity_radio %}
+
+<button 
+    hx-post="{% url 'bloom_student_interface:action_child_activity_toggle' child.slug activity.slug date %}"
+    hx-swap="outerHTML"
+    class="cursor-pointer"
+    >
+
+    {% if done == True %}
+    <i class="fa fa-check-circle text-green-600" title="Done today"></i>
+    {% elif done == False %}
+    <i class="fa fa-times-circle text-red-600" title="Not done today"></i>
+    {% else %}
+    <i class="fa fa-question-circle text-gray-400" title="Not yet marked"></i>
+    {% endif %}
+</button>
+
+{% endpartialdef %}

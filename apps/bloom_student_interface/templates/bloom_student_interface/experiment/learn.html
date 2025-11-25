@@ -1,0 +1,25 @@
+{% extends "bloom_student_interface/_base_logged_in.html" %}
+
+{% partialdef content %}
+
+<div  id="tabs" hx-swap-oob="true"></div>
+
+<div id="main_content" hx-swap-oob="true">
+    Learn content
+</div>
+
+{% endpartialdef %}
+
+{% partialdef tabs %}
+{% endpartialdef %}
+
+
+
+{% block content %}
+
+
+{% partial tabs %}
+{% partial content %}
+
+
+{% endblock content %}
