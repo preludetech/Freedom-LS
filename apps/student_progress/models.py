@@ -208,32 +208,63 @@ class FormProgress(SiteAwareModel):
         # 2. Calculate the final scores for each category and subcategory
         scores = {}
 
+        def parse_categories(page_category, question_category):
+            """Parse category strings into a list of category levels."""
+            categories = []
+
+            # Parse page category (may have pipe separators for nested levels)
+            if page_category:
+                # Split on | and strip whitespace from each part
+                page_cats = [c.strip() for c in page_category.split("|")]
+                categories.extend(page_cats)
+
+            # Add question category as the final level if it exists
+            if question_category:
+                categories.append(question_category)
+
+            # Return at least "Uncategorized" if no categories
+            return categories if categories else ["Uncategorized"]
+
+        def add_score_to_nested_categories(scores_dict, categories, value, max_value):
+            """Recursively add score and max_score to nested category structure."""
+            if not categories:
+                return
+
+            # Get the top-level category for this recursion level
+            top_cat = categories[0]
+
+            # Initialize if doesn't exist
+            if top_cat not in scores_dict:
+                scores_dict[top_cat] = {
+                    "score": 0,
+                    "max_score": 0,
+                    "sub_categories": {},
+                }
+
+            # Add to this level
+            scores_dict[top_cat]["score"] += value
+            scores_dict[top_cat]["max_score"] += max_value
+
+            # Recursively handle remaining categories (if any)
+            if len(categories) > 1:
+                add_score_to_nested_categories(
+                    scores_dict[top_cat]["sub_categories"],
+                    categories[1:],
+                    value,
+                    max_value,
+                )
+
         for item in answer_data:
-            page_cat = item["page_category"] or "Uncategorized"
-            question_cat = item["question_category"]  # Keep as None if not set
+            page_cat = item["page_category"]
+            question_cat = item["question_category"]
 
-            # Initialize category structure if not exists
-            if page_cat not in scores:
-                scores[page_cat] = {"score": 0, "max_score": 0, "sub_categories": {}}
+            # Parse categories into hierarchical levels
+            categories = parse_categories(page_cat, question_cat)
 
-            # Add to parent category scores (always)
-            scores[page_cat]["score"] += item["value"]
-            scores[page_cat]["max_score"] += item["max_value"]
-
-            # Only create subcategory if question has a category
-            if question_cat is not None:
-                # Initialize subcategory if not exists
-                if question_cat not in scores[page_cat]["sub_categories"]:
-                    scores[page_cat]["sub_categories"][question_cat] = {
-                        "score": 0,
-                        "max_score": 0,
-                    }
-
-                # Add to subcategory scores
-                scores[page_cat]["sub_categories"][question_cat]["score"] += item["value"]
-                scores[page_cat]["sub_categories"][question_cat]["max_score"] += item[
-                    "max_value"
-                ]
+            # Add scores to the nested structure
+            add_score_to_nested_categories(
+                scores, categories, item["value"], item["max_value"]
+            )
 
         # 3. Save to JSON field
         self.scores = scores
