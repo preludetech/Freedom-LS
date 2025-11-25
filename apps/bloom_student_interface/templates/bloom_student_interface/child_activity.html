@@ -1,0 +1,45 @@
+{% extends "_base.html" %}
+
+{% block head_title %}{{ activity.title }} - {{ child.name }}{% endblock head_title %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4">
+    <h1 class="text-3xl font-bold mb-6">{{ activity.title }}</h1>
+
+    {% if activity.category %}
+        <p class="text-sm text-gray-500 mb-4">{{ activity.category }}</p>
+    {% endif %}
+
+    <div class="border border-gray-300 rounded-md p-6">
+        {% if activity.description %}
+            <div class="mb-4">
+                <h2 class="text-xl font-semibold mb-2">Description</h2>
+                <p class="text-gray-700">{{ activity.description }}</p>
+            </div>
+        {% endif %}
+
+        {% if activity.content %}
+            <div class="prose max-w-none">
+                {{ activity.rendered_content|safe }}
+            </div>
+        {% else %}
+            <p class="text-gray-600">This is a placeholder page for activity: <strong>{{ activity.title }}</strong></p>
+            <p class="text-gray-600 mt-2">Activity content will be displayed here.</p>
+        {% endif %}
+    </div>
+
+    <div class="mt-6 flex gap-4 items-center">
+        {% if not committed %}
+            <form method="post" action="{% url 'bloom_student_interface:child_activity_commit' child.slug activity.slug %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary">Commit to This Activity</button>
+            </form>
+        {% else %}
+            <div class="text-green-600 font-semibold">
+                <i class="fas fa-check-circle"></i> Committed
+            </div>
+        {% endif %}
+        <a href="{% url 'bloom_student_interface:child_activities' child.slug %}" class="btn btn-outline">Back to Activities</a>
+    </div>
+</div>
+{% endblock content %}

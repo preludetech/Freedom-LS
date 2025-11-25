@@ -4,10 +4,19 @@ from django.views.generic import CreateView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
+from django.utils import timezone
+from django.db.models import Prefetch
 
-from content_engine.models import Form
+from content_engine.models import Form, Activity
 from student_progress.models import FormProgress
-from .models import Child, ChildFormProgress
+from student_management.models import Student
+from .models import (
+    Child,
+    ChildFormProgress,
+    RecommendedCourse,
+    CommittedActivity,
+    ActivityLog,
+)
 
 from .recommender import make_recommendations
 
@@ -15,9 +24,48 @@ from .recommender import make_recommendations
 def home(request):
     """Home page with list of available courses."""
     children = []
+    recommended_courses = []
+    registered_courses = []
+    activity_logs_today = {}
+
     if request.user.is_authenticated:
-        children = Child.objects.filter(user=request.user)
-    return render(request, "student_interface/home.html", {"children": children})
+        children = Child.objects.filter(user=request.user).prefetch_related(
+            "activities__activity"
+        )
+        recommended_courses = RecommendedCourse.objects.filter(
+            user=request.user
+        ).select_related("collection")
+
+        # Get registered courses if user has a Student record
+        try:
+            student = Student.objects.get(user=request.user)
+            registered_courses = student.get_course_registrations()
+        except Student.DoesNotExist:
+            pass
+
+        # Get today's activity logs for all children
+        today = timezone.now().date()
+        logs = ActivityLog.objects.filter(
+            child__user=request.user, date=today
+        ).select_related("child", "activity")
+
+        activity_logs_today = {}
+        for log in logs:
+            child_id = log.child_id
+            activity_id = log.activity_id
+            activity_logs_today[child_id] = activity_logs_today.get(child_id, {})
+            activity_logs_today[child_id][activity_id] = log.done
+
+    return render(
+        request,
+        "student_interface/home.html",
+        {
+            "children": children,
+            "recommended_courses": recommended_courses,
+            "registered_courses": registered_courses,
+            "activity_logs_today": activity_logs_today,
+        },
+    )
 
 
 class ChildCreateView(LoginRequiredMixin, CreateView):
@@ -249,4 +297,71 @@ def child_assessment_complete(request, child_slug, form_slug):
         request,
         "bloom_student_interface/child_assessment_complete.html",
         context,
+    )
+
+
+@login_required
+def child_activities(request, slug):
+    """Activities page for a specific child."""
+    child = get_object_or_404(Child, slug=slug, user=request.user)
+
+    recommended_activities = child.recommended_activities.select_related(
+        "activity"
+    ).all()
+
+    committed_activities = child.activities.select_related("activity").all()
+
+    return render(
+        request,
+        "bloom_student_interface/child_activities.html",
+        {
+            "child": child,
+            "recommended_activities": recommended_activities,
+            "committed_activities": committed_activities,
+        },
+    )
+
+
+@login_required
+def child_activity(request, child_slug, activity_slug):
+    """Detail page for a specific activity for a child."""
+    child = get_object_or_404(Child, slug=child_slug, user=request.user)
+
+    activity = get_object_or_404(Activity, slug=activity_slug)
+
+    committed = CommittedActivity.objects.filter(
+        child=child, activity=activity
+    ).exists()
+
+    return render(
+        request,
+        "bloom_student_interface/child_activity.html",
+        {
+            "child": child,
+            "activity": activity,
+            "committed": committed,
+        },
+    )
+
+
+@login_required
+def child_activity_commit(request, child_slug, activity_slug):
+    """Commit a child to an activity."""
+    if request.method != "POST":
+        return redirect(
+            "bloom_student_interface:child_activity",
+            child_slug=child_slug,
+            activity_slug=activity_slug,
+        )
+
+    child = get_object_or_404(Child, slug=child_slug, user=request.user)
+    activity = get_object_or_404(Activity, slug=activity_slug)
+
+    # Create the commitment if it doesn't already exist
+    CommittedActivity.objects.get_or_create(child=child, activity=activity)
+
+    return redirect(
+        "bloom_student_interface:child_activity",
+        child_slug=child_slug,
+        activity_slug=activity_slug,
     )

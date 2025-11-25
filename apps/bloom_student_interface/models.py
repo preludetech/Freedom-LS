@@ -1,12 +1,9 @@
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.text import slugify
 
-
+from content_engine.models import Activity, ContentCollection
 from site_aware_models.models import SiteAwareModel
-
 from student_progress.models import FormProgress
 
 
@@ -65,38 +62,89 @@ class ChildFormProgress(SiteAwareModel):
         return None
 
 
-class ContentRecommendation(SiteAwareModel):
+class RecommendedActivity(SiteAwareModel):
     """
-    Recommendations for users or children to view specific content (Topics or Collections).
+    Activity recommendations for children.
     Created when a parent fills out a form for their child.
     """
 
-    # Who is this recommendation for (User or Child)
-    recipient_type = models.ForeignKey(
-        ContentType, on_delete=models.CASCADE, related_name="+"
+    child = models.ForeignKey(
+        Child, on_delete=models.CASCADE, related_name="recommended_activities"
     )
-    recipient_object_id = models.UUIDField()
-    recipient = GenericForeignKey("recipient_type", "recipient_object_id")
-
-    # What content is recommended (Topic or ContentCollection)
-    recommended_content_type = models.ForeignKey(
-        ContentType, on_delete=models.CASCADE, related_name="+"
+    activity = models.ForeignKey(
+        Activity, on_delete=models.CASCADE, related_name="recommendations"
     )
-    recommended_content_id = models.UUIDField()
-    recommended_content = GenericForeignKey(
-        "recommended_content_type", "recommended_content_id"
-    )
-
-    # What triggered this recommendation (optional)
     form_progress = models.ForeignKey(
         FormProgress, on_delete=models.CASCADE, null=True, blank=True
     )
-
-    # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name_plural = "Recommended activities"
 
     def __str__(self):
-        return f"Recommendation for {self.recipient}: {self.recommended_content}"
+        return f"Activity recommendation for {self.child.name}: {self.activity.title}"
+
+
+class RecommendedCourse(SiteAwareModel):
+    """
+    Course (ContentCollection) recommendations for users.
+    Created when a parent fills out a form.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="recommended_courses",
+    )
+    collection = models.ForeignKey(
+        ContentCollection, on_delete=models.CASCADE, related_name="recommendations"
+    )
+    form_progress = models.ForeignKey(
+        FormProgress, on_delete=models.CASCADE, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "Recommended courses"
+
+    def __str__(self):
+        return f"Course recommendation for {self.user.email}: {self.collection.title}"
+
+
+class CommittedActivity(SiteAwareModel):
+    child = models.ForeignKey(
+        Child, on_delete=models.CASCADE, related_name="activities"
+    )
+    activity = models.ForeignKey(
+        Activity,
+        on_delete=models.CASCADE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class ActivityLog(SiteAwareModel):
+    """
+    Log of activities performed by a child on a specific date.
+    Tracks whether the activity was completed (done=True), not done (done=False), or not yet marked (done=None).
+    """
+
+    child = models.ForeignKey(
+        Child, on_delete=models.CASCADE, related_name="activity_logs"
+    )
+    activity = models.ForeignKey(
+        Activity, on_delete=models.CASCADE, related_name="logs"
+    )
+    date = models.DateField()
+    done = models.BooleanField(null=True, blank=True, default=None)
+
+    class Meta:
+        ordering = ["-date"]
+        unique_together = ["child", "activity", "date"]
+        verbose_name_plural = "Activity logs"
+
+    def __str__(self):
+        status = "Done" if self.done is True else "Not done" if self.done is False else "Not marked"
+        return f"{self.child.name} - {self.activity.title} on {self.date} ({status})"

@@ -12,4 +12,7 @@ urlpatterns = [
     path("child/<slug:child_slug>/assessment/<slug:form_slug>/start/", views.child_assessment_start, name="child_assessment_start"),
     path("child/<slug:child_slug>/assessment/<slug:form_slug>/page/<int:page_number>/", views.child_assessment_fill_page, name="child_assessment_fill_page"),
     path("child/<slug:child_slug>/assessment/<slug:form_slug>/complete/", views.child_assessment_complete, name="child_assessment_complete"),
+    path("child/<slug:slug>/activities/", views.child_activities, name="child_activities"),
+    path("child/<slug:child_slug>/activity/<slug:activity_slug>/", views.child_activity, name="child_activity"),
+    path("child/<slug:child_slug>/activity/<slug:activity_slug>/commit/", views.child_activity_commit, name="child_activity_commit"),
 ]
