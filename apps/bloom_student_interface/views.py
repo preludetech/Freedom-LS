@@ -1,11 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse, resolve
 from django.views.generic import CreateView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
-from django.urls import reverse
 from django.utils import timezone
-from datetime import datetime
+from datetime import datetime, timedelta
+from urllib.parse import urlparse
 from content_engine.models import Form, Activity
 from student_progress.models import FormProgress
 from student_management.models import Student
@@ -28,6 +28,8 @@ def home(request):
     activity_logs_today = {}
 
     if request.user.is_authenticated:
+        # return redirect("bloom_student_interface:children_activities")
+
         children = Child.objects.filter(user=request.user).prefetch_related(
             "activities__activity"
         )
@@ -318,6 +320,24 @@ def child_activities(request, slug):
 
     committed_activities = child.activities.select_related("activity").all()
 
+    # Get the last 7 days of activity logs for this child
+    today = timezone.now().date()
+    dates = [today - timedelta(days=i) for i in range(7)]
+
+    logs = ActivityLog.objects.filter(
+        child=child, date__gte=dates[-1], date__lte=today
+    ).select_related("activity")
+
+    # Structure: activity_logs[date][activity_id] = done
+    activity_logs = {}
+    for date in dates:
+        activity_logs[date] = {}
+
+    for log in logs:
+        if log.date not in activity_logs:
+            activity_logs[log.date] = {}
+        activity_logs[log.date][log.activity_id] = log.done
+
     return render(
         request,
         "bloom_student_interface/child_activities.html",
@@ -325,6 +345,8 @@ def child_activities(request, slug):
             "child": child,
             "recommended_activities": recommended_activities,
             "committed_activities": committed_activities,
+            "activity_logs": activity_logs,
+            "dates": dates,
         },
     )
 
@@ -401,6 +423,58 @@ def action_child_activity_toggle(request, child_slug, activity_slug, date):
 
     return render(
         request,
-        "student_interface/home.html#activity_radio",
+        "bloom_student_interface/partials/activity_tracking.html#activity_radio",
         {"done": log.done, "date": date, "child": child, "activity": activity},
+    )
+
+
+###########################
+# New navigation
+
+children_view_names = [
+    "bloom_student_interface:children_activities"
+    "bloom_student_interface:children_assessment"
+]
+
+
+def children_activities(request):
+    template_name = "bloom_student_interface/experiment/children/activities.html"
+    children = Child.objects.filter(user=request.user)
+    context = {"children": children}
+
+    if request.headers.get("Hx-Request"):
+        current_url = request.headers.get("Hx-Current-Url")
+        url_path = urlparse(current_url).path
+        current_view_name = resolve(url_path).view_name
+        if current_view_name in children_view_names:
+            return render(request, f"{template_name}#child_content")
+
+    return render(request, template_name, context)
+
+
+def children_assessment(request):
+    template_name = "bloom_student_interface/experiment/children/assessment.html"
+    children = Child.objects.filter(user=request.user)
+    context = {"children": children}
+
+    if request.headers.get("Hx-Request"):
+        current_url = request.headers.get("Hx-Current-Url")
+        url_path = urlparse(current_url).path
+        current_view_name = resolve(url_path).view_name
+        if current_view_name in children_view_names:
+            return render(request, f"{template_name}#child_content")
+
+    return render(request, template_name, context)
+
+
+def learn(request):
+    if request.headers.get("Hx-Request"):
+        return render(
+            request,
+            "bloom_student_interface/experiment/learn.html#content",
+        )
+
+    return render(
+        request,
+        "bloom_student_interface/experiment/learn.html",
     )
