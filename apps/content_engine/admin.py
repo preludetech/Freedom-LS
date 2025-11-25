@@ -87,7 +87,7 @@ class FormPageInline(admin.StackedInline):
 
     model = FormPage
     extra = 0
-    fields = ("title", "subtitle", "order")
+    fields = ("title", "subtitle", "description", "order")
     show_change_link = True
 
 
@@ -95,20 +95,24 @@ class FormPageInline(admin.StackedInline):
 class FormPageAdmin(admin.ModelAdmin):
     list_display = ("title", "subtitle", "form", "order")
     list_filter = ("form",)
-    search_fields = ("title", "subtitle", "form__title")
+    search_fields = ("title", "subtitle", "description", "form__title")
     ordering = ("form", "order")
     inlines = [FormContentInline, FormQuestionInline]
     exclude = ("site",)
+    fieldsets = (
+        (None, {"fields": ("title", "subtitle", "description", "form", "category", "order")}),
+        ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
+    )
 
 
 @admin.register(Topic)
 class TopicAdmin(admin.ModelAdmin):
     list_display = ("title", "subtitle", "file_path")
     list_filter = ("tags",)
-    search_fields = ("title", "subtitle")
+    search_fields = ("title", "subtitle", "description")
     exclude = ("site",)
     fieldsets = (
-        (None, {"fields": ("title", "subtitle", "content")}),
+        (None, {"fields": ("title", "subtitle", "description", "content")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
@@ -126,11 +130,11 @@ class ContentCollectionItemInline(admin.TabularInline):
 class ContentCollectionAdmin(admin.ModelAdmin):
     list_display = ("title", "subtitle")
     list_filter = ("tags",)
-    search_fields = ("title", "subtitle")
+    search_fields = ("title", "subtitle", "description")
     inlines = [ContentCollectionItemInline]
     exclude = ("site",)
     fieldsets = (
-        (None, {"fields": ("title", "subtitle")}),
+        (None, {"fields": ("title", "subtitle", "description")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
@@ -148,11 +152,11 @@ class ContentCollectionItemAdmin(admin.ModelAdmin):
 class FormAdmin(admin.ModelAdmin):
     list_display = ("title", "subtitle", "strategy")
     list_filter = ("strategy", "tags")
-    search_fields = ("title", "subtitle")
+    search_fields = ("title", "subtitle", "description")
     inlines = [FormPageInline]
     exclude = ("site",)
     fieldsets = (
-        (None, {"fields": ("title", "subtitle", "content", "strategy", "slug")}),
+        (None, {"fields": ("title", "subtitle", "description", "content", "strategy", "slug")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 

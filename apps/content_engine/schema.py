@@ -13,6 +13,7 @@ class ContentType(str, Enum):
     """Content type enumeration."""
 
     TOPIC = "TOPIC"
+    ACTIVITY = "ACTIVITY"
     FORM = "FORM"
     COLLECTION = "COLLECTION"
     FORM_PAGE = "FORM_PAGE"
@@ -65,6 +66,7 @@ class BaseBaseContentModel(BaseModel):
 class BaseContentModel(BaseBaseContentModel):
     title: str = Field(..., description="Title of the content item")
     subtitle: Optional[str] = Field(None, description="Optional subtitle")
+    description: Optional[str] = Field(None, description="Optional description")
 
 
 class MarkdownContentModel(BaseModel):
@@ -73,6 +75,12 @@ class MarkdownContentModel(BaseModel):
 
 class Topic(BaseContentModel, MarkdownContentModel, content_type=ContentType.TOPIC):
     pass
+
+
+class Activity(
+    BaseContentModel, MarkdownContentModel, content_type=ContentType.ACTIVITY
+):
+    category: Optional[str] = Field(None, description="Optional category for this activity")
 
 
 class Child(BaseModel):

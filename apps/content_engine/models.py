@@ -76,6 +76,9 @@ class TitledContent(BaseContent):
 
     title = models.CharField(max_length=500)
     subtitle = models.CharField(max_length=500, null=True, blank=True)
+    description = models.TextField(
+        null=True, blank=True, help_text=_("Optional description")
+    )
     slug = models.SlugField(
         max_length=500,
         help_text=_("URL-friendly identifier"),
@@ -116,6 +119,17 @@ class Topic(TitledContent, MarkdownContent):
 
     def preview_url(self):
         return reverse("content_engine:topic_detail", kwargs={"topic_slug": self.slug})
+
+
+class Activity(TitledContent, MarkdownContent):
+    """Topic content item."""
+
+    CONTENT_TYPE = SchemaContentTypes.ACTIVITY
+
+    category = models.CharField(max_length=200, null=True, blank=True)
+
+    class Meta:
+        unique_together = ["site", "slug"]
 
 
 class ContentCollection(TitledContent):

@@ -22,6 +22,7 @@ from content_engine.validate import validate, get_all_files, parse_single_file
 from content_engine.schema import ContentType as SchemaContentType
 from content_engine.models import (
     Topic,
+    Activity,
     ContentCollection,
     ContentCollectionItem,
     Form,
@@ -231,6 +232,24 @@ def save_topic(item, site, base_path):
     )
 
 
+def save_activity(item, site, base_path):
+    """Save an Activity to the database."""
+    return save_with_uuid(
+        Activity,
+        item,
+        site,
+        base_path,
+        title=item.title,
+        subtitle=item.subtitle,
+        description=item.description,
+        slug=slugify(item.title),
+        content=item.content,
+        category=item.category,
+        meta=item.meta,
+        tags=item.tags,
+    )
+
+
 def save_collection(item, site, base_path):
     """Save a ContentCollection to the database."""
     return save_with_uuid(
@@ -434,6 +453,12 @@ def save_content_to_db(path, site_name):
         topic = save_topic(item, site, path)
         content_by_path[item.file_path] = topic
         logger.info(f"Saved Topic: {topic.title}")
+
+    # Save Activities
+    for item in grouped.get(SchemaContentType.ACTIVITY, []):
+        activity = save_activity(item, site, path)
+        content_by_path[item.file_path] = activity
+        logger.info(f"Saved Activity: {activity.title}")
 
     # Save Collections
     collections_data = []  # Store (collection_obj, schema_item) for later children processing
