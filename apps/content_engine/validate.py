@@ -223,8 +223,7 @@ def parse_markdown_file(path):
         ) from e
     except Exception as e:
         raise ValueError(
-            f"\n❌ Error reading markdown file {path}\n"
-            f"Error: {str(e)}"
+            f"\n❌ Error reading markdown file {path}\nError: {str(e)}"
         ) from e
 
     data = post.metadata
@@ -266,10 +265,8 @@ def validate_yaml_file(path):
         # Re-raise ValueError as-is (already has user-friendly message)
         raise
     except Exception as e:
-        raise ValueError(
-            f"\n❌ Unexpected error while validating {path}\n"
-            f"Error: {str(e)}"
-        ) from e
+        print(f"\n❌ Unexpected error while validating {path}\nError: {str(e)}")
+        raise
 
 
 def validate_markdown_file(path):
@@ -283,10 +280,8 @@ def validate_markdown_file(path):
         # Re-raise ValueError as-is (already has user-friendly message)
         raise
     except Exception as e:
-        raise ValueError(
-            f"\n❌ Unexpected error while validating {path}\n"
-            f"Error: {str(e)}"
-        ) from e
+        print(f"\n❌ Unexpected error while validating {path}\nError: {str(e)}")
+        raise
 
 
 def validate_single_file(path):
@@ -322,8 +317,7 @@ def validate(path):
         all_file_paths = get_all_files(path)
     except Exception as e:
         raise ValueError(
-            f"\n❌ Error scanning directory {path}\n"
-            f"Error: {str(e)}"
+            f"\n❌ Error scanning directory {path}\nError: {str(e)}"
         ) from e
 
     # Check if we found any content files
@@ -341,11 +335,9 @@ def validate(path):
             except ValueError as e:
                 # Collect errors but continue validating other files
                 failed_files.append((file_path, str(e)))
-            except Exception as e:
-                # Catch any unexpected errors
-                failed_files.append(
-                    (file_path, f"\n❌ Unexpected error: {str(e)}")
-                )
+            # except Exception as e:
+            # Catch any unexpected errors
+            # failed_files.append((file_path, f"\n❌ Unexpected error: {str(e)}"))
 
     # Report all failures at the end
     if failed_files:
