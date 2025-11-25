@@ -6,18 +6,41 @@ from django.contrib.sites.models import Site
 import tempfile
 from pathlib import Path
 from django.test import RequestFactory
-from content_engine.models import Form
+from django.urls import reverse
+from content_engine.models import Form, Activity
 
 
 User = get_user_model()
 
 
+def reverse_url(
+    live_server, viewname, urlconf=None, args=None, kwargs=None, current_app=None
+):
+    end = reverse(viewname, urlconf, args, kwargs, current_app)
+    return f"{live_server.url}{end}"
+
+
 @pytest.fixture
-def site():
-    """Create a test site."""
-    site, _ = Site.objects.get_or_create(
-        name="TestSite", defaults={"domain": "testsite"}
+def activity(mock_site_context):
+    """Create a test activity."""
+    return Activity.objects.create(
+        title="Test Activity",
+        slug="test-activity",
     )
+
+
+@pytest.fixture
+def site(request):
+    """Create a test site. Can be parametrized with a name."""
+    # Check if parametrized with a name
+    if hasattr(request, "param"):
+        name = request.param
+        domain = name.lower()
+    else:
+        name = "TestSite"
+        domain = "testsite"
+
+    site, _ = Site.objects.get_or_create(name=name, defaults={"domain": domain})
     return site
 
 
@@ -58,12 +81,24 @@ def mock_site_context(site, mocker):
     """Mock the thread local request and get_current_site for SiteAwareModel and templates."""
     from site_aware_models.models import _thread_locals
 
+    # Check if request attribute already exists
+    had_request = hasattr(_thread_locals, 'request')
+    old_request = getattr(_thread_locals, 'request', None) if had_request else None
+
     mock_request = mocker.Mock()
-    mocker.patch.object(_thread_locals, "request", mock_request, create=True)
+    _thread_locals.request = mock_request
+
     mocker.patch("site_aware_models.models.get_current_site", return_value=site)
     # Also patch for template context processors
     mocker.patch("django.contrib.sites.shortcuts.get_current_site", return_value=site)
-    return site
+
+    yield site
+
+    # Cleanup: restore original state
+    if had_request:
+        _thread_locals.request = old_request
+    elif hasattr(_thread_locals, 'request'):
+        delattr(_thread_locals, 'request')
 
 
 @pytest.fixture

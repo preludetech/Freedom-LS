@@ -7,9 +7,20 @@
 
 {% partialdef activity_radio %}
 
-<!-- <i class="fa fa-check-circle" aria-hidden="true"></i>
-<i class="fa fa-times-circle" aria-hidden="true"></i>
-<i class="fa fa-question-circle" aria-hidden="true"></i> -->
+<button 
+    hx-post="{% url 'bloom_student_interface:action_child_activity_toggle' child.slug activity.slug date %}"
+    hx-swap="outerHTML"
+    class="cursor-pointer"
+    >
+
+    {% if done == True %}
+    <i class="fa fa-check-circle text-green-600" title="Done today"></i>
+    {% elif done == False %}
+    <i class="fa fa-times-circle text-red-600" title="Not done today"></i>
+    {% else %}
+    <i class="fa fa-question-circle text-gray-400" title="Not yet marked"></i>
+    {% endif %}
+</button>
 
 
 
@@ -44,19 +55,11 @@
                                             </a>
                                         </td>
                                         <td class="pl-3">
-                                            {% if child.id in activity_logs_today and commitment.activity.id in activity_logs_today|dict_get:child.id %}
-                                                {% with status=activity_logs_today|dict_get:child.id|dict_get:commitment.activity.id %}
-                                                    {% if status == True %}
-                                                        <i class="fa fa-check-circle text-green-600" title="Done today"></i>
-                                                    {% elif status == False %}
-                                                        <i class="fa fa-times-circle text-red-600" title="Not done today"></i>
-                                                    {% elif status == None %}
-                                                        <i class="fa fa-question-circle text-gray-400" title="Not yet marked"></i>
-                                                    {% endif %}
+                                                {% with  activity=commitment.activity  done=activity_logs_today|dict_get:child.id|dict_get:commitment.activity.id %}
+
+                                                {% partial activity_radio %}
+                                                
                                                 {% endwith %}
-                                            {% else %}
-                                                <i class="fa fa-question-circle text-gray-400" title="Not yet marked"></i>
-                                            {% endif %}
                                         </td>
                                     </tr>
 

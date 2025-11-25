@@ -5,8 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.utils import timezone
-from django.db.models import Prefetch
-
+from datetime import datetime
 from content_engine.models import Form, Activity
 from student_progress.models import FormProgress
 from student_management.models import Student
@@ -56,6 +55,13 @@ def home(request):
             activity_logs_today[child_id] = activity_logs_today.get(child_id, {})
             activity_logs_today[child_id][activity_id] = log.done
 
+    # Format date as string for URL
+    today_str = (
+        timezone.now().date().strftime("%Y-%m-%d")
+        if request.user.is_authenticated
+        else ""
+    )
+
     return render(
         request,
         "student_interface/home.html",
@@ -64,6 +70,7 @@ def home(request):
             "recommended_courses": recommended_courses,
             "registered_courses": registered_courses,
             "activity_logs_today": activity_logs_today,
+            "date": today_str,
         },
     )
 
@@ -364,4 +371,36 @@ def child_activity_commit(request, child_slug, activity_slug):
         "bloom_student_interface:child_activity",
         child_slug=child_slug,
         activity_slug=activity_slug,
+    )
+
+
+@login_required
+def action_child_activity_toggle(request, child_slug, activity_slug, date):
+    """Toggle activity log status for a child on a specific date."""
+    child = get_object_or_404(Child, slug=child_slug, user=request.user)
+    activity = get_object_or_404(Activity, slug=activity_slug)
+
+    # Parse date string to date object
+
+    date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+
+    # Get or create the activity log
+    log, created = ActivityLog.objects.get_or_create(
+        child=child, activity=activity, date=date_obj
+    )
+
+    # Toggle through states: True -> False -> None -> True
+    if log.done is True:
+        log.done = False
+    elif log.done is False:
+        log.done = None
+    elif log.done is None:
+        log.done = True
+
+    log.save()
+
+    return render(
+        request,
+        "student_interface/home.html#activity_radio",
+        {"done": log.done, "date": date, "child": child, "activity": activity},
     )
