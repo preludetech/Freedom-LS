@@ -1,0 +1,40 @@
+{% extends "bloom_student_interface/_base_logged_in.html" %}
+
+{% partialdef content %}
+
+<div  id="tabs" hx-swap-oob="true"></div>
+
+<div id="main_content" hx-swap-oob="true">
+    
+    <h1>Children</h1>
+
+    {% if children %}
+
+    {% for child in children %}
+
+    <div>
+        <div>
+            <h2>{{child.name }}</h2>
+        </div>
+        <div>
+            <h3>Activities</h3>
+        </div>
+    </div>
+
+    {% endfor %}
+
+    {% else %}
+
+    TODO: Add a child to get started 
+
+    {% endif %}
+
+
+</div>
+
+{% endpartialdef %}
+
+
+{% block content %}
+{% partial content %}
+{% endblock content %}

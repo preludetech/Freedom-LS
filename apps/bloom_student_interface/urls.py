@@ -45,7 +45,8 @@ urlpatterns = [
         name="action_child_activity_toggle",
     ),
     ###### Experimenting with better layout
-    path("children/activities", views.children_activities, name="children_activities"),
-    path("children/assessment", views.children_assessment, name="children_assessment"),
+    # path("children/activities", views.children_activities, name="children_activities"),
+    # path("children/assessment", views.children_assessment, name="children_assessment"),
     path("learn", views.learn, name="learn"),
+    path("children", views.children, name="children"),
 ]

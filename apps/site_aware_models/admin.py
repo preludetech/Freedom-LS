@@ -7,4 +7,5 @@ admin.site.unregister(Site)
 
 class SiteAwareModelAdmin(ModelAdmin):
     """Base admin class for site-aware models"""
-    exclude = ["site_id"]
+
+    exclude = ["site"]

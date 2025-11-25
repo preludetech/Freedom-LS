@@ -19,6 +19,7 @@ from .models import (
 )
 
 from .recommender import make_recommendations
+# from django.template.loader import render_to_string
 
 
 def home(request):
@@ -446,40 +447,40 @@ def action_child_activity_toggle(request, child_slug, activity_slug, date):
 ###########################
 # New navigation
 
-children_view_names = [
-    "bloom_student_interface:children_activities"
-    "bloom_student_interface:children_assessment"
-]
+# children_view_names = [
+#     "bloom_student_interface:children_activities"
+#     "bloom_student_interface:children_assessment"
+# ]
 
 
-def children_activities(request):
-    template_name = "bloom_student_interface/experiment/children/activities.html"
-    children = Child.objects.filter(user=request.user)
-    context = {"children": children}
+# def children_activities(request):
+#     template_name = "bloom_student_interface/experiment/children/activities.html"
+#     children = Child.objects.filter(user=request.user)
+#     context = {"children": children}
 
-    if request.headers.get("Hx-Request"):
-        current_url = request.headers.get("Hx-Current-Url")
-        url_path = urlparse(current_url).path
-        current_view_name = resolve(url_path).view_name
-        if current_view_name in children_view_names:
-            return render(request, f"{template_name}#child_content")
+#     if request.headers.get("Hx-Request"):
+#         current_url = request.headers.get("Hx-Current-Url")
+#         url_path = urlparse(current_url).path
+#         current_view_name = resolve(url_path).view_name
+#         if current_view_name in children_view_names:
+#             return render(request, f"{template_name}#child_content")
 
-    return render(request, template_name, context)
+#     return render(request, template_name, context)
 
 
-def children_assessment(request):
-    template_name = "bloom_student_interface/experiment/children/assessment.html"
-    children = Child.objects.filter(user=request.user)
-    context = {"children": children}
+# def children_assessment(request):
+#     template_name = "bloom_student_interface/experiment/children/assessment.html"
+#     children = Child.objects.filter(user=request.user)
+#     context = {"children": children}
 
-    if request.headers.get("Hx-Request"):
-        current_url = request.headers.get("Hx-Current-Url")
-        url_path = urlparse(current_url).path
-        current_view_name = resolve(url_path).view_name
-        if current_view_name in children_view_names:
-            return render(request, f"{template_name}#child_content")
+#     if request.headers.get("Hx-Request"):
+#         current_url = request.headers.get("Hx-Current-Url")
+#         url_path = urlparse(current_url).path
+#         current_view_name = resolve(url_path).view_name
+#         if current_view_name in children_view_names:
+#             return render(request, f"{template_name}#child_content")
 
-    return render(request, template_name, context)
+#     return render(request, template_name, context)
 
 
 def learn(request):
@@ -493,3 +494,33 @@ def learn(request):
         request,
         "bloom_student_interface/experiment/learn.html",
     )
+
+
+def children(request):
+    context = {
+        "children": Child.objects.filter(user=request.user).prefetch_related(
+            "activities__activity"
+        ),
+    }
+
+    if request.headers.get("Hx-Request"):
+        return render(
+            request,
+            "bloom_student_interface/experiment/children.html#content",
+            context=context,
+        )
+
+    return render(
+        request, "bloom_student_interface/experiment/children.html", context=context
+    )
+
+
+# tabs = {
+#     "template": "Top level template",
+#     "links": [
+#         {"title": "Children", "href": "TODO", "content" : {
+
+#         } },
+#         {"title": "Learn", "href": "TODO", "content": {"template": "TODO"}},
+#     ],
+# }

@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import FormProgress, QuestionAnswer, TopicProgress
+from site_aware_models.admin import SiteAwareModelAdmin
 
 
 class QuestionAnswerInline(admin.TabularInline):
@@ -12,7 +13,7 @@ class QuestionAnswerInline(admin.TabularInline):
 
 
 @admin.register(FormProgress)
-class FormProgressAdmin(admin.ModelAdmin):
+class FormProgressAdmin(SiteAwareModelAdmin):
     list_display = (
         "user",
         "form",
@@ -50,7 +51,7 @@ class FormProgressAdmin(admin.ModelAdmin):
 
 
 @admin.register(QuestionAnswer)
-class QuestionAnswerAdmin(admin.ModelAdmin):
+class QuestionAnswerAdmin(SiteAwareModelAdmin):
     list_display = (
         "form_progress",
         "question",
@@ -84,7 +85,7 @@ class QuestionAnswerAdmin(admin.ModelAdmin):
 
 
 @admin.register(TopicProgress)
-class TopicProgressAdmin(admin.ModelAdmin):
+class TopicProgressAdmin(SiteAwareModelAdmin):
     list_display = (
         "user",
         "topic",

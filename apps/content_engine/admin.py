@@ -11,6 +11,8 @@ from .models import (
     File,
 )
 
+from site_aware_models.admin import SiteAwareModelAdmin
+
 
 class QuestionOptionInline(admin.TabularInline):
     """Inline for question options."""
@@ -21,7 +23,7 @@ class QuestionOptionInline(admin.TabularInline):
 
 
 @admin.register(QuestionOption)
-class QuestionOptionAdmin(admin.ModelAdmin):
+class QuestionOptionAdmin(SiteAwareModelAdmin):
     list_display = ("text", "value", "question", "order")
     list_filter = ("question__form_page__form",)
     search_fields = ("text", "question__question")
@@ -47,7 +49,7 @@ class FormQuestionInline(admin.StackedInline):
 
 
 @admin.register(FormContent)
-class FormContentAdmin(admin.ModelAdmin):
+class FormContentAdmin(SiteAwareModelAdmin):
     list_display = ("content_preview", "form_page", "order")
     list_filter = ("form_page__form",)
     search_fields = ("content", "form_page__title")
@@ -61,7 +63,7 @@ class FormContentAdmin(admin.ModelAdmin):
 
 
 @admin.register(FormQuestion)
-class FormQuestionAdmin(admin.ModelAdmin):
+class FormQuestionAdmin(SiteAwareModelAdmin):
     list_display = (
         "question_preview",
         "type",
@@ -92,7 +94,7 @@ class FormPageInline(admin.StackedInline):
 
 
 @admin.register(FormPage)
-class FormPageAdmin(admin.ModelAdmin):
+class FormPageAdmin(SiteAwareModelAdmin):
     list_display = ("title", "subtitle", "form", "order")
     list_filter = ("form",)
     search_fields = ("title", "subtitle", "description", "form__title")
@@ -100,13 +102,25 @@ class FormPageAdmin(admin.ModelAdmin):
     inlines = [FormContentInline, FormQuestionInline]
     exclude = ("site",)
     fieldsets = (
-        (None, {"fields": ("title", "subtitle", "description", "form", "category", "order")}),
+        (
+            None,
+            {
+                "fields": (
+                    "title",
+                    "subtitle",
+                    "description",
+                    "form",
+                    "category",
+                    "order",
+                )
+            },
+        ),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
 
 @admin.register(Topic)
-class TopicAdmin(admin.ModelAdmin):
+class TopicAdmin(SiteAwareModelAdmin):
     list_display = ("title", "subtitle", "file_path")
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")
@@ -127,7 +141,7 @@ class ContentCollectionItemInline(admin.TabularInline):
 
 
 @admin.register(ContentCollection)
-class ContentCollectionAdmin(admin.ModelAdmin):
+class ContentCollectionAdmin(SiteAwareModelAdmin):
     list_display = ("title", "subtitle")
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")
@@ -140,7 +154,7 @@ class ContentCollectionAdmin(admin.ModelAdmin):
 
 
 @admin.register(ContentCollectionItem)
-class ContentCollectionItemAdmin(admin.ModelAdmin):
+class ContentCollectionItemAdmin(SiteAwareModelAdmin):
     list_display = ("collection", "child", "order")
     list_filter = ("collection",)
     search_fields = ("collection__title",)
@@ -149,20 +163,32 @@ class ContentCollectionItemAdmin(admin.ModelAdmin):
 
 
 @admin.register(Form)
-class FormAdmin(admin.ModelAdmin):
+class FormAdmin(SiteAwareModelAdmin):
     list_display = ("title", "subtitle", "strategy")
     list_filter = ("strategy", "tags")
     search_fields = ("title", "subtitle", "description")
     inlines = [FormPageInline]
     exclude = ("site",)
     fieldsets = (
-        (None, {"fields": ("title", "subtitle", "description", "content", "strategy", "slug")}),
+        (
+            None,
+            {
+                "fields": (
+                    "title",
+                    "subtitle",
+                    "description",
+                    "content",
+                    "strategy",
+                    "slug",
+                )
+            },
+        ),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
 
 @admin.register(File)
-class FileAdmin(admin.ModelAdmin):
+class FileAdmin(SiteAwareModelAdmin):
     list_display = (
         "original_filename",
         "file_type",
