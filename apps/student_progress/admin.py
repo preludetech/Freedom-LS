@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import FormProgress, QuestionAnswer, TopicProgress
+from .models import FormProgress, QuestionAnswer, TopicProgress, CourseProgress
 from site_aware_models.admin import SiteAwareModelAdmin
 
 
@@ -109,6 +109,36 @@ class TopicProgressAdmin(SiteAwareModelAdmin):
 
     def is_complete(self, obj):
         return obj.complete_time is not None
+
+    is_complete.boolean = True
+    is_complete.short_description = "Complete"
+
+
+@admin.register(CourseProgress)
+class CourseProgressAdmin(SiteAwareModelAdmin):
+    list_display = (
+        "user",
+        "course",
+        "start_time",
+        "last_accessed_time",
+        "completed_time",
+        "is_complete",
+    )
+    list_filter = ("completed_time", "course", "start_time")
+    search_fields = ("user__email", "course__title")
+    ordering = ("-last_accessed_time",)
+    readonly_fields = ("start_time", "last_accessed_time")
+    exclude = ("site",)
+    fieldsets = (
+        (None, {"fields": ("user", "course")}),
+        (
+            "Progress",
+            {"fields": ("start_time", "last_accessed_time", "completed_time")},
+        ),
+    )
+
+    def is_complete(self, obj):
+        return obj.completed_time is not None
 
     is_complete.boolean = True
     is_complete.short_description = "Complete"

@@ -15,15 +15,30 @@ def home(request):
 
 
 def course_home(request, collection_slug):
+    from student_progress.models import CourseProgress
+
     course = get_object_or_404(ContentCollection, slug=collection_slug)
 
     children = get_course_index(course=course, request=request)
     is_registered = get_is_registered(request, course)
 
+    # Get course progress if user is authenticated
+    course_progress = None
+    if request.user.is_authenticated:
+        try:
+            course_progress = CourseProgress.objects.get(user=request.user, course=course)
+        except CourseProgress.DoesNotExist:
+            pass
+
     return render(
         request,
         "student_interface/course_home.html",
-        {"course": course, "children": children, "is_registered": is_registered},
+        {
+            "course": course,
+            "children": children,
+            "is_registered": is_registered,
+            "course_progress": course_progress,
+        },
     )
 
 
@@ -83,15 +98,25 @@ def register_for_course(request, collection_slug):
 
 
 def view_course_item(request, collection_slug, index):
+    from student_progress.models import CourseProgress
+
     course = get_object_or_404(ContentCollection, slug=collection_slug)
     children = course.children()
     current_item = children[index - 1]
 
     total_children = len(children)
 
+    # Update or create course progress to track last accessed time
+    if request.user.is_authenticated:
+        course_progress, _ = CourseProgress.objects.get_or_create(
+            user=request.user, course=course
+        )
+        course_progress.save()  # This updates last_accessed_time via auto_now
+
     # Calculate navigation URLs
     next_url = None
-    if index < total_children:
+    is_last_item = index >= total_children
+    if not is_last_item:
         next_url = reverse(
             "student_interface:view_course_item",
             kwargs={"collection_slug": collection_slug, "index": index + 1},
@@ -111,13 +136,16 @@ def view_course_item(request, collection_slug, index):
             course=course,
             next_url=next_url,
             previous_url=previous_url,
+            is_last_item=is_last_item,
         )
 
     if isinstance(current_item, Form):
         return view_form(request, form=current_item, course=course, index=index)
 
 
-def view_topic(request, topic, course, next_url, previous_url):
+def view_topic(request, topic, course, next_url, previous_url, is_last_item=False):
+    from student_progress.models import CourseProgress
+
     topic_progress, created = TopicProgress.objects.get_or_create(
         user=request.user, topic=topic
     )
@@ -128,8 +156,28 @@ def view_topic(request, topic, course, next_url, previous_url):
         topic_progress.complete_time = timezone.now()
         topic_progress.save()
 
+        # If this is the last item, mark the course as complete
+        if is_last_item:
+            course_progress, _ = CourseProgress.objects.get_or_create(
+                user=request.user, course=course
+            )
+            if not course_progress.completed_time:
+                course_progress.completed_time = timezone.now()
+                course_progress.save()
+
         if next_url:
             return redirect(next_url)
+        else:
+            # If no next_url (last item), redirect to course home
+            return redirect("student_interface:course_home", collection_slug=course.slug)
+
+    # Check if the course is already complete
+    is_course_complete = False
+    try:
+        course_progress = CourseProgress.objects.get(user=request.user, course=course)
+        is_course_complete = course_progress.completed_time is not None
+    except CourseProgress.DoesNotExist:
+        pass
 
     context = {
         "course": course,
@@ -137,6 +185,8 @@ def view_topic(request, topic, course, next_url, previous_url):
         "is_complete": topic_progress.complete_time is not None,
         "next_url": next_url,
         "previous_url": previous_url,
+        "is_last_item": is_last_item,
+        "is_course_complete": is_course_complete,
     }
     return render(request, "student_interface/course_topic.html", context)
 

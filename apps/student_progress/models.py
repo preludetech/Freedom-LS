@@ -6,6 +6,7 @@ from content_engine.models import (
     QuestionOption,
     Topic,
     FormStrategy,
+    ContentCollection,
 )
 from site_aware_models.models import SiteAwareModel
 
@@ -320,3 +321,24 @@ class TopicProgress(SiteAwareModel):
 
     def __str__(self):
         return f"{self.user} - {self.topic.title}"
+
+
+class CourseProgress(SiteAwareModel):
+    """Tracks a user's progress through a course (ContentCollection)."""
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="course_progress"
+    )
+    course = models.ForeignKey(
+        ContentCollection, on_delete=models.CASCADE, related_name="progress_records"
+    )
+    start_time = models.DateTimeField(auto_now_add=True)
+    last_accessed_time = models.DateTimeField(auto_now=True)
+    completed_time = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        verbose_name_plural = "Course progress records"
+        unique_together = ["user", "course"]
+
+    def __str__(self):
+        return f"{self.user} - {self.course.title}"

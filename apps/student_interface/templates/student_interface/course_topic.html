@@ -27,13 +27,27 @@
             <form method="post">
                 {% csrf_token %}
                 <button type="submit" name="mark_complete" class="btn btn-primary">
-                    <i class="fa fa-check"></i> Mark Complete & Continue
+                    {% if is_last_item %}
+                        <i class="fa fa-check"></i> Finish Course
+                    {% else %}
+                        <i class="fa fa-check"></i> Mark Complete & Continue
+                    {% endif %}
                 </button>
             </form>
         {% elif next_url %}
             <a href="{{ next_url }}" class="btn btn-primary">
                 Next <i class="fa fa-arrow-right"></i>
             </a>
+        {% elif is_last_item %}
+            {% if is_course_complete %}
+                <a href="{% url 'student_interface:course_home' collection_slug=course.slug %}" class="btn btn-outline">
+                    <i class="fa fa-home"></i> Home
+                </a>
+            {% else %}
+                <a href="{% url 'student_interface:course_home' collection_slug=course.slug %}" class="btn btn-primary">
+                    <i class="fa fa-check"></i> Finish Course
+                </a>
+            {% endif %}
         {% endif %}
 </div>
 
