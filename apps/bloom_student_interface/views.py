@@ -13,6 +13,7 @@ from .models import (
     Child,
     ChildFormProgress,
     RecommendedCourse,
+    RecommendedActivity,
     CommittedActivity,
     ActivityLog,
 )
@@ -309,26 +310,17 @@ def child_assessment_complete(request, child_slug, form_slug):
     )
 
 
-@login_required
-def child_activities(request, slug):
-    """Activities page for a specific child."""
-    child = get_object_or_404(Child, slug=slug, user=request.user)
-
-    recommended_activities = child.recommended_activities.select_related(
-        "activity"
-    ).all()
-
-    committed_activities = child.activities.select_related("activity").all()
-
+def get_activity_log_entries(child, day_range):
     # Get the last 7 days of activity logs for this child
     today = timezone.now().date()
-    dates = [today - timedelta(days=i) for i in range(7)]
-
-    logs = ActivityLog.objects.filter(
-        child=child, date__gte=dates[-1], date__lte=today
-    ).select_related("activity")
+    dates = [today - timedelta(days=i) for i in range(day_range)]
+    min_date = min(dates)
 
     # Structure: activity_logs[date][activity_id] = done
+    logs = ActivityLog.objects.filter(
+        child=child, date__gte=min_date, date__lte=today
+    ).select_related("activity")
+
     activity_logs = {}
     for date in dates:
         activity_logs[date] = {}
@@ -338,6 +330,27 @@ def child_activities(request, slug):
             activity_logs[log.date] = {}
         activity_logs[log.date][log.activity_id] = log.done
 
+    return activity_logs
+
+
+@login_required
+def child_activities(request, slug):
+    """Activities page for a specific child."""
+    DAY_RANGE = 7
+
+    child = get_object_or_404(Child, slug=slug, user=request.user)
+
+    recommended_activities = child.recommended_activities.select_related(
+        "activity"
+    ).all()
+
+    committed_activities = child.activities.select_related("activity").all()
+
+    activity_logs = get_activity_log_entries(
+        child=child,
+        day_range=DAY_RANGE,
+    )
+
     return render(
         request,
         "bloom_student_interface/child_activities.html",
@@ -346,7 +359,6 @@ def child_activities(request, slug):
             "recommended_activities": recommended_activities,
             "committed_activities": committed_activities,
             "activity_logs": activity_logs,
-            "dates": dates,
         },
     )
 
@@ -388,6 +400,9 @@ def child_activity_commit(request, child_slug, activity_slug):
 
     # Create the commitment if it doesn't already exist
     CommittedActivity.objects.get_or_create(child=child, activity=activity)
+
+    # if there is an existing recommendation, delete it
+    RecommendedActivity.objects.filter(child=child, activity=activity).delete()
 
     return redirect(
         "bloom_student_interface:child_activity",
