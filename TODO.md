@@ -1,10 +1,7 @@
 # Foundational 
 
 - Quiz form functionality (middle and end of course)
-
-
 - Deployment
-
 
 # Bloom 
 

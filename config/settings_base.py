@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     #######
     # Client facing apps
     # These are the frontends for different learning systems
-    "bloom_student_interface",  # must be before student_interface if we want to override those partials
+    # "bloom_student_interface",  # must be before student_interface if we want to override those partials
     #########
     # CUSTOM APPS
     # "app_authentication",

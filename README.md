@@ -24,9 +24,6 @@ If you are writing some frontend-related code then it is likely that you will ch
 
 Instead of having to remember to do this all the time, you can use `npm run tailwind_watch`.
 
-
-
-
 ## Database setup 
 
 Currently we are using Sqlite. Get the database set up like so:
@@ -43,6 +40,16 @@ python manage.py create_demo_data
 
 Feel free to add more things to the create_demo_data script if it will make your dev-life easier. 
 
+Here is a useful script for quickly deleting and recreating the database, and loading a bunch of demo data:
+
+```
+./refresh_db.sh
+```
+
+Once you have created demo data, there will be a few users defined. 
+
+Eg dor the site called Demo, there is a superuser with the email address `demo@email.com` and password `demo@user.com`
+
 ## Running the development server 
 
 This is a multi-tenant application. You can decide which tennant is running by choosing the port to use.
@@ -52,8 +59,11 @@ This is a multi-tenant application. You can decide which tennant is running by c
 
 We are using the Django site framework to allow multi-tenant functionality. If you take a look at the `create_demo_data` script then you will see that there are a few different sites set up.
 
+## Email validation 
 
+Users need to validate their email addresses before logging into the platform. We are using a fake file based email backend in development. 
 
+Emails are saved in gitignore/emails. You can find all the validation links there.
 
 # Project layout
 

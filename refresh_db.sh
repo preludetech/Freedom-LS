@@ -4,9 +4,12 @@ rm db.sqlite3
 rm -rf media
 python manage.py makemigrations
 python manage.py migrate
-python manage.py setup_demo_data
+python manage.py create_demo_data
 
 
-python manage.py content_save  ../tutorial-getting-git Prelude
-python manage.py content_save  ../bloom_content/picky_eating Bloom          
-python manage.py content_save  ../wrend_demo_content  Wrend          
+python manage.py content_save  ./demo_content Demo
+
+
+# python manage.py content_save  ../tutorial-getting-git Prelude
+# python manage.py content_save  ../bloom_content/picky_eating Bloom          
+# python manage.py content_save  ../wrend_demo_content  Wrend          
