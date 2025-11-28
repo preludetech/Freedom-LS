@@ -9,9 +9,9 @@ client_name = "Student Interface"
 
 demo_sites = [
     {
-        "name": "Wrend",
+        "name": "Demo",
         "domain": "127.0.0.1:8000",
-        "cohorts": ["2024 Intake", "2025 Intake"],
+        "cohorts": ["Cohort 2025.03.04", "Cohort 2025.04.06"],
     },
     {
         "name": "Bloom",
@@ -24,6 +24,11 @@ demo_sites = [
         "cohorts": [
             "2025 01",
         ],
+    },
+    {
+        "name": "Wrend",
+        "domain": "127.0.0.1:8003",
+        "cohorts": ["2024 Intake", "2025 Intake"],
     },
 ]
 

@@ -1,7 +1,7 @@
 from unfold.admin import ModelAdmin
 from django.contrib import admin
 
-from .models import Child, ChildFormProgress, RecommendedActivity, RecommendedCourse
+from .models import Child, ChildFormProgress, RecommendedActivity
 
 
 @admin.register(Child)
@@ -24,15 +24,6 @@ class ChildFormProgressAdmin(ModelAdmin):
 class RecommendedActivityAdmin(ModelAdmin):
     list_display = ["child", "activity", "form_progress", "created_at"]
     search_fields = ["child__name", "activity__title"]
-    list_filter = ["created_at"]
-    readonly_fields = ["created_at"]
-    exclude = ["site"]
-
-
-@admin.register(RecommendedCourse)
-class RecommendedCourseAdmin(ModelAdmin):
-    list_display = ["user", "collection", "form_progress", "created_at"]
-    search_fields = ["user__email", "collection__title"]
     list_filter = ["created_at"]
     readonly_fields = ["created_at"]
     exclude = ["site"]

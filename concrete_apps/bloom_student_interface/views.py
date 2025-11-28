@@ -1,27 +1,25 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse_lazy, reverse, resolve
+from django.urls import reverse_lazy, reverse
 from django.views.generic import CreateView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from datetime import datetime, timedelta
-from urllib.parse import urlparse
 from content_engine.models import Form, Activity
 from student_progress.models import FormProgress
-from student_management.models import Student
+from student_management.models import Student, RecommendedCourse
 from .models import (
     Child,
     ChildFormProgress,
-    RecommendedCourse,
     RecommendedActivity,
     CommittedActivity,
     ActivityLog,
 )
 
 from .recommender import make_recommendations
-# from django.template.loader import render_to_string
 
 
+@login_required
 def home(request):
     """Home page with list of available courses."""
     children = []

@@ -98,7 +98,3 @@
     - sections and subsections 
 
 
-## Bloom 
-
-- Quiz up front with questions associated with content 
-- Browsable library? or mini courses?

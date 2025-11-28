@@ -80,6 +80,7 @@ def partial_list_courses(request):
 @login_required
 def register_for_course(request, collection_slug):
     """Register the current user for a course."""
+    from student_management.models import RecommendedCourse
 
     course = get_object_or_404(ContentCollection, slug=collection_slug)
 
@@ -92,6 +93,12 @@ def register_for_course(request, collection_slug):
         collection=course,
         defaults={"is_active": True},
     )
+
+    # Delete any existing RecommendedCourse for this user and course
+    RecommendedCourse.objects.filter(
+        user=request.user,
+        collection=course
+    ).delete()
 
     # Redirect back to the course home page
     return redirect("student_interface:course_home", collection_slug=collection_slug)

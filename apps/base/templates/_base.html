@@ -25,15 +25,15 @@
 
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
-
+    {% block header %}
     {% include "partials/header.html" %}
+    {% endblock %}
 
     {% include "partials/messages.html" %} 
 
-
     <main class="max-w-7xl mx-auto">
     {% block body %}
-        <div class="py-12 border">
+        <div class="py-12">
 
             {% block content %}
             Replace this in child templates

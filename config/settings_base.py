@@ -17,6 +17,7 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, os.path.join(BASE_DIR, "apps"))
+sys.path.insert(0, os.path.join(BASE_DIR, "concrete_apps"))
 
 
 # Quick-start development settings - unsuitable for production
@@ -50,15 +51,16 @@ INSTALLED_APPS = [
     "unfold.contrib.constance",  # optional, if django-constance package is used
     "django.contrib.admin",  # required
     "guardian",
-    #########
-    # AllAuth
-    "allauth",
-    "allauth.account",
     # "allauth.headless",
+    #######
+    # Client facing apps
+    # These are the frontends for different learning systems
+    "bloom_student_interface",  # must be before student_interface if we want to override those partials
     #########
     # CUSTOM APPS
     # "app_authentication",
     # xapi_learning_record_store
+    "base",
     "content_engine",
     "accounts",
     "student_management",
@@ -67,8 +69,11 @@ INSTALLED_APPS = [
     "educator_interface",
     #########
     # STUDENT INTERFACE
-    "bloom_student_interface",  # must be before student_interface if we want to override those partials
     "student_interface",
+    #########
+    # AllAuth
+    "allauth",
+    "allauth.account",
 ]
 
 # These are the URLs to be implemented by your single-page application.
@@ -99,7 +104,10 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         # "DIRS": [],
-        "DIRS": [BASE_DIR / "templates", "/tmp"],
+        "DIRS": [
+            # BASE_DIR / "templates",
+            "/tmp"
+        ],
         # "APP_DIRS": True,
         "OPTIONS": {
             "loaders": [

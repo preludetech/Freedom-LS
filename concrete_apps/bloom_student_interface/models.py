@@ -87,33 +87,6 @@ class RecommendedActivity(SiteAwareModel):
         return f"Activity recommendation for {self.child.name}: {self.activity.title}"
 
 
-class RecommendedCourse(SiteAwareModel):
-    """
-    Course (ContentCollection) recommendations for users.
-    Created when a parent fills out a form.
-    """
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="recommended_courses",
-    )
-    collection = models.ForeignKey(
-        ContentCollection, on_delete=models.CASCADE, related_name="recommendations"
-    )
-    form_progress = models.ForeignKey(
-        FormProgress, on_delete=models.CASCADE, null=True, blank=True
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-created_at"]
-        verbose_name_plural = "Recommended courses"
-
-    def __str__(self):
-        return f"Course recommendation for {self.user.email}: {self.collection.title}"
-
-
 class CommittedActivity(SiteAwareModel):
     child = models.ForeignKey(
         Child, on_delete=models.CASCADE, related_name="activities"

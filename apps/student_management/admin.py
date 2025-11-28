@@ -8,6 +8,7 @@ from .models import (
     CohortMembership,
     StudentCourseRegistration,
     CohortCourseRegistration,
+    RecommendedCourse,
 )
 from guardian.admin import GuardedModelAdmin
 
@@ -136,3 +137,12 @@ class CohortCourseRegistrationAdmin(SiteAwareModelAdmin):
         (None, {"fields": ("cohort", "collection", "is_active")}),
         ("Timestamps", {"fields": ("registered_at",), "classes": ("collapse",)}),
     )
+
+
+@admin.register(RecommendedCourse)
+class RecommendedCourseAdmin(SiteAwareModelAdmin):
+    list_display = ["user", "collection", "created_at"]
+    search_fields = ["user__email", "collection__title"]
+    list_filter = ["created_at"]
+    readonly_fields = ["created_at"]
+    exclude = ["site"]

@@ -1,0 +1,22 @@
+{% extends "allauth/layouts/entrance.html" %}
+{% load static %}
+
+{% block header %}
+{% endblock %}
+
+
+{% block body %}
+
+<div class="flex flex-col items-center justify-center min-h-screen space-y-8">
+    <img src="{% static 'bloom_student_interface/logo.jpeg' %}"
+         alt="Bloom Logo"
+         class="max-w-xs w-full h-auto"
+        >
+
+{% block content %}
+Replace this in child templates
+{% endblock content %}
+
+</div>
+
+{% endblock %}

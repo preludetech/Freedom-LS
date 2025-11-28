@@ -124,3 +124,32 @@ class CohortCourseRegistration(SiteAwareModel):
 
     def __str__(self):
         return f"{self.cohort} - {self.collection}"
+
+
+class RecommendedCourse(SiteAwareModel):
+    """
+    Course (ContentCollection) recommendations for users.
+    Created when a parent fills out a form.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="recommended_courses",
+    )
+    collection = models.ForeignKey(
+        "content_engine.ContentCollection",
+        on_delete=models.CASCADE,
+        related_name="recommendations",
+    )
+    # form_progress = models.ForeignKey(
+    #     FormProgress, on_delete=models.CASCADE, null=True, blank=True
+    # )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "Recommended courses"
+
+    def __str__(self):
+        return f"Course recommendation for {self.user.email}: {self.collection.title}"
