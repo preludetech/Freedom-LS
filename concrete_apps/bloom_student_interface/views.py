@@ -4,6 +4,7 @@ from django.views.generic import CreateView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+from django import forms
 from datetime import datetime, timedelta
 from content_engine.models import Form, Activity
 from student_progress.models import FormProgress
@@ -18,17 +19,20 @@ from .models import (
 
 from .recommender import make_recommendations
 
+PICKY_EATING_FORM_SLUG = "picky-eating"
+
 
 @login_required
 def home(request):
     """Home page with list of available courses."""
+
     children = []
     recommended_courses = []
     registered_courses = []
     activity_logs_today = {}
 
     if request.user.is_authenticated:
-        # return redirect("bloom_student_interface:children_activities")
+        return redirect("bloom_student_interface:children")
 
         children = Child.objects.filter(user=request.user).prefetch_related(
             "activities__activity"
@@ -118,9 +122,8 @@ def child_delete(request, pk):
 def child_assessment(request, slug):
     """Picky eating assessment for a specific child."""
     child = get_object_or_404(Child, slug=slug, user=request.user)
-    FORM_SLUG = "picky-eating"
 
-    form = Form.objects.get(slug=FORM_SLUG)
+    form = Form.objects.get(slug=PICKY_EATING_FORM_SLUG)
 
     incomplete_form_progress = ChildFormProgress.get_latest_incomplete(child, form)
     page_number = (
@@ -485,32 +488,74 @@ def learn(request):
     if request.headers.get("Hx-Request"):
         return render(
             request,
-            "bloom_student_interface/experiment/learn.html#content",
+            "bloom_student_interface/learn.html#content",
         )
 
     return render(
         request,
-        "bloom_student_interface/experiment/learn.html",
+        "bloom_student_interface/learn.html",
     )
 
 
 def children(request):
+    children = Child.objects.filter(user=request.user).prefetch_related(
+        "activities__activity"
+    )
+
+    # Get the picky eating form
+    picky_eating_form = Form.objects.get(slug=PICKY_EATING_FORM_SLUG)
+
+    # Add assessment status to each child
+    for child in children:
+        child.has_incomplete_assessment = (
+            ChildFormProgress.get_latest_incomplete(child, picky_eating_form)
+            is not None
+        )
+        child.has_complete_assessment = (
+            ChildFormProgress.get_latest_complete(child, picky_eating_form) is not None
+        )
+
     context = {
-        "children": Child.objects.filter(user=request.user).prefetch_related(
-            "activities__activity"
-        ),
+        "children": children,
     }
 
     if request.headers.get("Hx-Request"):
         return render(
             request,
-            "bloom_student_interface/experiment/children.html#content",
+            "bloom_student_interface/children.html#content",
             context=context,
         )
 
-    return render(
-        request, "bloom_student_interface/experiment/children.html", context=context
-    )
+    return render(request, "bloom_student_interface/children.html", context=context)
+
+
+class ChildForm(forms.ModelForm):
+    """Form for creating and editing children."""
+
+    class Meta:
+        model = Child
+        fields = ["name", "age"]
+        widgets = {
+            "name": forms.TextInput(attrs={"placeholder": "Enter child's name"}),
+            "age": forms.NumberInput(attrs={"placeholder": "Enter age", "min": 0}),
+        }
+
+
+@login_required
+def create_child(request):
+    """Create a new child for the current user."""
+    if request.method == "POST":
+        form = ChildForm(request.POST)
+        if form.is_valid():
+            child = form.save(commit=False)
+            child.user = request.user
+            child.save()
+
+            return redirect("bloom_student_interface:children")
+    else:
+        form = ChildForm()
+
+    return render(request, "partials/form.html", context={"form": form})
 
 
 # tabs = {

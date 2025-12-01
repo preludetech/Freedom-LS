@@ -1,0 +1,117 @@
+{% extends "bloom_student_interface/_base_logged_in.html" %}
+
+
+{% partialdef add-child-button %}
+
+<form
+        hx-post="{% url 'bloom_student_interface:children_create' %}"
+        hx-target="#child-form-container"
+        hx-swap="innerHTML"
+    >
+        {% csrf_token %}
+
+        <c-modal title="Add Child">
+            <c-slot name="trigger">
+                <button class="btn btn-primary"
+                hx-get="{% url 'bloom_student_interface:children_create' %}"
+                hx-target="#child-form-container"
+                hx-trigger="click">
+                Add a Child
+            </button>
+        </c-slot>
+        
+        <!-- Modal content will be loaded here via HTMX -->
+        <div id="child-form-container">
+            <p class="text-gray-500">Loading form...</p>
+        </div>
+        
+        <c-slot name="footer">
+            <button type="button" class="btn btn-outline" @click="open = false">Cancel</button>
+            <input type="submit" class="btn btn-primary" value="Save"/>
+        </c-slot>
+    </c-modal>
+</form>
+
+
+{% endpartialdef %}
+
+
+
+{% partialdef child %}
+<div class="border p-4 rounded">
+    <div class="mb-3">
+        <h2 class="text-xl font-semibold">{{child.name}}</h2>
+        <p class="text-gray-600">Age: {{child.age}}</p>
+    </div>
+    <div>
+        {% if child.has_incomplete_assessment %}
+            <a href="{% url 'bloom_student_interface:child_assessment_start' child_slug=child.slug form_slug='picky-eating' %}"
+               class="btn btn-primary">
+                Continue Assessment
+            </a>
+        {% elif child.has_complete_assessment %}
+            <a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
+               class="btn btn-outline">
+                View Assessment Results
+            </a>
+            <a href="{% url 'bloom_student_interface:child_assessment_start' child_slug=child.slug form_slug='picky-eating' %}"
+               class="btn btn-outline ml-2">
+                Retake Assessment
+            </a>
+        {% else %}
+            <a href="{% url 'bloom_student_interface:child_assessment_start' child_slug=child.slug form_slug='picky-eating' %}"
+               class="btn btn-primary">
+                Start Assessment
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endpartialdef %}
+
+
+
+{% partialdef content %}
+
+<div  id="tabs" hx-swap-oob="true"></div>
+
+<div id="main_content" hx-swap-oob="true">
+    
+    <h1>Children</h1>
+
+    {% if children %}
+
+    <div class="space-y-3">
+        {% for child in children %}
+        {% partial child %}
+        {% endfor %}
+    </div>
+
+    {% partial add-child-button %}
+
+    {% else %}
+
+    <div class="flex flex-col items-center justify-center py-16 px-4">
+        <div class="text-center max-w-md">
+            <svg class="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+            </svg>
+            <h2 class="text-2xl font-semibold text-gray-900 mb-2">No children yet</h2>
+            <p class="text-gray-600 mb-6">
+                Get started by adding your first child! You can add multiple children.
+            </p>
+
+                {% partial add-child-button %}
+        </div>
+    </div>
+
+    {% endif %}
+
+
+</div>
+
+{% endpartialdef %}
+
+
+{% block content %}
+{% partial content %}
+{% endblock content %}
