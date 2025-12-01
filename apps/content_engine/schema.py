@@ -115,6 +115,8 @@ class ContentCollection(BaseContentModel, content_type=ContentType.COLLECTION):
         None, description="Optional category for this form page"
     )
 
+    content: Optional[str] = Field(None, description="Markdown content body")
+
 
 class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM):
     """

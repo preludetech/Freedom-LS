@@ -1,25 +1,114 @@
 {% extends "bloom_student_interface/_base_logged_in.html" %}
 
+{% partialdef start_course_button %}
+    <a class="btn btn-outline" href="{% url 'student_interface:register_for_course' course.slug %}">Start</a>
+{% endpartialdef %}
+
+
+{% partialdef view_course_button %}
+
+<c-modal title="{{course.title}}">
+    <c-slot name="trigger">
+        <button class="btn btn-outline">Details</button>
+    </c-slot>
+
+    {% if course.subtitle %}
+    <p>
+        {{ course.subtitle}}
+    </p>
+    {% endif %}
+
+    {% with content=course.rendered_content %}
+        {% if content %}
+        <div class="space-y-2">
+            {{ content }}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <c-slot name="footer">
+        <button class="btn btn-outline" @click="open = false">Close</button>
+        {% partial start_course_button %}
+    </c-slot>
+
+</c-modal>
+{% endpartialdef %}
+
+
 {% partialdef content %}
 
-<div  id="tabs" hx-swap-oob="true"></div>
+<div id="main_content" hx-swap-oob="true" class="space-y-4">
+    <h1>My Learning</h1>
 
-<div id="main_content" hx-swap-oob="true">
-    Learn content
+    <div class="surface">
+        <h2>Current Courses</h2>
+
+        {% if registered_courses %}
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {% for course in registered_courses %}
+                        {% include "student_interface/partials/course_list.html#course-card" %}
+                {% endfor %}
+            </div>
+
+        {% else %}
+            <p class="text-gray-600">You haven't signed up for any courses yet</p>
+        {% endif %}
+        
+    </div>
+
+    <div class="surface">
+        <h2>Recommended Courses</h2>
+
+        {% if recommended_courses %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for recommendation in recommended_courses %}
+                <div class="surface">
+                    <div class="mb-4">
+                        <h3 class="text-lg">{{ recommendation.collection.title }}</h3>
+                        {% if recommendation.collection.description %}
+                            <p class="text-gray-600">{{ recommendation.collection.description }}</p>
+                        {% endif %}
+                    </div>
+                    <!-- <div class="flex flex-col gap-2 mt-auto">
+                        <a href="{% url 'student_interface:course_home' recommendation.collection.slug %}" class="btn btn-primary">View Course</a>
+                    </div> -->
+
+                        {% with course=recommendation.collection %}
+                            {% partial view_course_button %}
+                            {% partial start_course_button %}
+                        {% endwith %}
+
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        {% else %}
+            <p class="text-gray-600">No recommended courses yet.</p>
+        {% endif %}
+
+    </div>
+
+    <div class="surface">
+        <h2>Learning History</h2>
+    </div>
 </div>
 
+
+
+
+
+
 {% endpartialdef %}
 
-{% partialdef tabs %}
-{% endpartialdef %}
+
 
 
 
 {% block content %}
 
 
-{% partial tabs %}
 {% partial content %}
+
 
 
 {% endblock content %}

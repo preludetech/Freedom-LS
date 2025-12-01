@@ -138,7 +138,7 @@ class CollectionType(models.TextChoices):
     COURSE = "COURSE", _("Course")
 
 
-class ContentCollection(TitledContent):
+class ContentCollection(MarkdownContent, TitledContent):
     """Content collection - contains an ordered list of child content."""
 
     collection_type = models.CharField(

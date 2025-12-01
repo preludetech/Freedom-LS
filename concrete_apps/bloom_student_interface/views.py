@@ -562,16 +562,26 @@ def action_child_activity_start_stop(request, child_slug, activity_slug, action)
 
 
 def learn(request):
-    if request.headers.get("Hx-Request"):
-        return render(
-            request,
-            "bloom_student_interface/learn.html#content",
-        )
+    recommended_courses = RecommendedCourse.objects.filter(
+        user=request.user
+    ).select_related("collection")
 
-    return render(
-        request,
-        "bloom_student_interface/learn.html",
-    )
+    # Get registered courses if user has a Student record
+    try:
+        student = Student.objects.get(user=request.user)
+        registered_courses = student.get_course_registrations()
+    except Student.DoesNotExist:
+        registered_courses = []
+
+    context = {
+        "recommended_courses": recommended_courses,
+        "registered_courses": registered_courses,
+    }
+
+    if request.headers.get("Hx-Request"):
+        return render(request, "bloom_student_interface/learn.html#content", context)
+
+    return render(request, "bloom_student_interface/learn.html", context)
 
 
 def children(request):
