@@ -336,15 +336,11 @@ def get_activity_log_entries(child, day_range):
 
 
 @login_required
-def child_activities(request, slug):
+def child_activities_configure(request, slug):
     """Activities page for a specific child."""
     DAY_RANGE = 7
 
     child = get_object_or_404(Child, slug=slug, user=request.user)
-
-    recommended_activities = child.recommended_activities.select_related(
-        "activity"
-    ).all()
 
     committed_activities = child.activities.select_related("activity").all()
 
@@ -353,9 +349,14 @@ def child_activities(request, slug):
         day_range=DAY_RANGE,
     )
 
+    committed_activity_ids = committed_activities.values_list("activity_id", flat=True)
+    recommended_activities = child.recommended_activities.select_related(
+        "activity"
+    ).exclude(activity_id__in=committed_activity_ids)
+
     return render(
         request,
-        "bloom_student_interface/child_activities.html",
+        "bloom_student_interface/child_activities_configure.html",
         {
             "child": child,
             "recommended_activities": recommended_activities,
@@ -404,7 +405,7 @@ def child_activity_commit(request, child_slug, activity_slug):
     CommittedActivity.objects.get_or_create(child=child, activity=activity)
 
     # if there is an existing recommendation, delete it
-    RecommendedActivity.objects.filter(child=child, activity=activity).delete()
+    # RecommendedActivity.objects.filter(child=child, activity=activity)
 
     return redirect(
         "bloom_student_interface:child_activity",
@@ -558,12 +559,24 @@ def create_child(request):
     return render(request, "partials/form.html", context={"form": form})
 
 
-# tabs = {
-#     "template": "Top level template",
-#     "links": [
-#         {"title": "Children", "href": "TODO", "content" : {
+def child_current_activities(request, slug):
+    DAY_RANGE = 7
 
-#         } },
-#         {"title": "Learn", "href": "TODO", "content": {"template": "TODO"}},
-#     ],
-# }
+    child = get_object_or_404(Child, slug=slug, user=request.user)
+
+    committed_activities = child.activities.select_related("activity").all()
+
+    activity_logs = get_activity_log_entries(
+        child=child,
+        day_range=DAY_RANGE,
+    )
+
+    return render(
+        request,
+        "bloom_student_interface/partials/activity_tracking.html#current_activities_table",
+        {
+            "child": child,
+            "committed_activities": committed_activities,
+            "activity_logs": activity_logs,
+        },
+    )

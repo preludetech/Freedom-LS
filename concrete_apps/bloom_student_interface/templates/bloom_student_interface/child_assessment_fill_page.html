@@ -1,0 +1,10 @@
+{% extends 'bloom_student_interface/_assessment_base.html' %}
+
+{% block title %}{{ form.title }} - Page {{ current_page_num }}{% endblock %}
+
+{% block content %}
+
+    {% include "student_interface/course_form_page.html#page_progress_indicator" %}
+    {% include "student_interface/course_form_page.html#form_and_navigation" %}
+
+{% endblock %}

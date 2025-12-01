@@ -1,3 +1,6 @@
+{% load dict_filters %}
+
+
 {% partialdef activity_radio %}
 
 <button 
@@ -14,5 +17,60 @@
     <i class="fa fa-question-circle text-gray-400" title="Not yet marked"></i>
     {% endif %}
 </button>
+
+{% endpartialdef %}
+
+
+
+{% partialdef current_activities_table %}
+
+{% if committed_activities %}
+
+
+<table class="w-full border-collapse">
+    <thead>
+        <tr>
+            <th class="text-left p-2 border-b">Activity</th>
+            {% for loop_date in activity_logs %}
+            <th class="text-center p-2 border-b {% if forloop.first %}bg-blue-50 font-bold{% endif %}">
+                <div class="text-xs">{{ loop_date|date:"D" }}</div>
+                <div class="text-sm">{{ loop_date|date:"M j" }}</div>
+            </th>
+            {% endfor %}
+            <th class="p-2 border-b"></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for commitment in committed_activities %}
+        <tr class="border-b">
+            <td class="p-2">
+                <div class="font-semibold">{{ commitment.activity.title }}</div>
+                {% if commitment.activity.category %}
+                    <div class="text-sm text-gray-500">{{ commitment.activity.category }}</div>
+                {% endif %}
+            </td>
+            {% for loop_date in activity_logs %}
+            <td class="text-center p-2 {% if forloop.first %}bg-blue-50{% endif %}">
+                {% with activity=commitment.activity done=activity_logs|dict_get:loop_date|dict_get:commitment.activity.id date=loop_date|date:"Y-m-d" %}
+                {% include "bloom_student_interface/partials/activity_tracking.html#activity_radio" %}
+                {% endwith %}
+            </td>
+            {% endfor %}
+            <td class="p-2">
+                <a href="{% url 'bloom_student_interface:child_activity' child.slug commitment.activity.slug %}" class="btn btn-primary text-sm">View</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% else %}
+
+<p>
+
+    You haven't committed to doing any activities with your child yet. Please click on the "configure activities" button below to choose some things to do.
+</p>
+    
+    {% endif %}
 
 {% endpartialdef %}

@@ -1,0 +1,30 @@
+{% extends 'bloom_student_interface/_assessment_base.html' %}
+
+
+{% block content %}
+    <div class="space-y-4 py-4">
+        {{ form.rendered_content }}
+    </div>
+
+
+    {% if complete_form_progress  %}
+
+        {% with progress=complete_form_progress %}
+            {% include "student_interface/course_form.html#completed_form_scores"%}
+        {% endwith %}
+
+    {% endif %}
+
+
+    {% if incomplete_form_progress %}
+            <a href="{% url 'bloom_student_interface:child_assessment_fill_page' child.slug  form.slug page_number %}" class="btn btn-primary">Continue Form >></a>
+    {% elif  complete_form_progress %}
+
+    <a href="{% url 'bloom_student_interface:child_assessment_start' child.slug  form.slug   %}" class="btn btn-primary">Reassess</a>
+
+    {% else %}
+            <a href="{% url 'bloom_student_interface:child_assessment_start' child.slug  form.slug   %}" class="btn btn-primary">Start Form >></a>
+    {% endif %}
+
+    <a href="{% url 'bloom_student_interface:home' %}" class="btn btn-outline">Back to Home</a>
+{% endblock %}

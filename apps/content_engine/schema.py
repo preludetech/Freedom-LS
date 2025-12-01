@@ -41,7 +41,6 @@ class CollectionType(str, Enum):
     """Collection type enumeration."""
 
     COURSE = "COURSE"
-    COURSE_SECTION = "COURSE_SECTION"
 
 
 class BaseBaseContentModel(BaseModel):
@@ -109,7 +108,7 @@ class ContentCollection(BaseContentModel, content_type=ContentType.COLLECTION):
     )
 
     collection_type: Optional[CollectionType] = Field(
-        None, description="Type of collection (COURSE or COURSE_SECTION)"
+        None, description="Type of collection"
     )
 
     category: Optional[str] = Field(

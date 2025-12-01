@@ -38,28 +38,43 @@
 
 
 {% partialdef child %}
-<div class="border p-4 rounded">
-    <div class="mb-3">
+<div class=" p-4  grid grid-cols-5 gap-4  rounded-xl shadow-xl">
+    <div class="text-center">
         <h2 class="text-xl font-semibold">{{child.name}}</h2>
         <p class="text-gray-600">Age: {{child.age}}</p>
     </div>
-    <div>
-        {% if child.has_incomplete_assessment %}
-            <a href="{% url 'bloom_student_interface:child_assessment_start' child_slug=child.slug form_slug='picky-eating' %}"
-               class="btn btn-primary">
-                Continue Assessment
-            </a>
-        {% elif child.has_complete_assessment %}
-            <a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
+    <div class="col-span-4 ">
+        {% if child.has_complete_assessment %}
+            <!-- <a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
                class="btn btn-outline">
                 View Assessment Results
             </a>
-            <a href="{% url 'bloom_student_interface:child_assessment_start' child_slug=child.slug form_slug='picky-eating' %}"
+            <a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
                class="btn btn-outline ml-2">
                 Retake Assessment
+            </a> -->
+
+            <h3>Activities</h3>
+
+            <div
+                hx-get="{% url 'bloom_student_interface:child_current_activities' slug=child.slug %}"
+                hx-trigger="load"
+                hx-swap="outerHTML"></div>
+
+            <a class="btn btn-primary" href="{% url 'bloom_student_interface:child_activities_configure' slug=child.slug %}">Configure activities</a>
+
+
+        {% elif child.has_incomplete_assessment %}
+
+            <p>You'll need to finish up the assessment so we can make recommendations</p>
+            <a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
+               class="btn btn-primary">
+                Continue Assessment
             </a>
+        
         {% else %}
-            <a href="{% url 'bloom_student_interface:child_assessment_start' child_slug=child.slug form_slug='picky-eating' %}"
+            <p>Please complete this assessment about your child. Once that is done, we can make recommendations.</p>
+            <a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
                class="btn btn-primary">
                 Start Assessment
             </a>
@@ -86,7 +101,10 @@
         {% endfor %}
     </div>
 
-    {% partial add-child-button %}
+    <div class="pt-4 float-end">
+
+        {% partial add-child-button %}
+    </div>
 
     {% else %}
 

@@ -283,6 +283,8 @@ def save_collection(item, site, base_path):
         subtitle=item.subtitle,
         description=item.description,
         slug=slugify(item.title),
+        collection_type=item.collection_type,
+        category=item.category,
         meta=item.meta,
         tags=item.tags,
     )

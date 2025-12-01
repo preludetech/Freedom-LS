@@ -132,8 +132,22 @@ class Activity(TitledContent, MarkdownContent):
         unique_together = ["site", "slug"]
 
 
+class CollectionType(models.TextChoices):
+    """Collection type enumeration."""
+
+    COURSE = "COURSE", _("Course")
+
+
 class ContentCollection(TitledContent):
     """Content collection - contains an ordered list of child content."""
+
+    collection_type = models.CharField(
+        max_length=50,
+        choices=CollectionType.choices,
+        null=True,
+        blank=True,
+    )
+    category = models.CharField(max_length=200, null=True, blank=True)
 
     class Meta:
         unique_together = ["site", "slug"]
