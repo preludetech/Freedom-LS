@@ -28,10 +28,10 @@
         <button class="btn btn-outline">Description</button>
     </c-slot>
 
-    <div class="pl-3">
+    <c-markdown-container>
 
         {{activity.rendered_content}}
-    </div>
+    </c-markdown-container>
 
     <c-slot name="footer">
         <button type="button" class="btn btn-outline" @click="open = false">Close</button>
@@ -113,13 +113,13 @@
                 {% if commitment.activity.category %}
                     <div class="text-sm text-gray-500">{{ commitment.activity.category }}</div>
                 {% endif %}
-                <div class="flex gap-3">
+                <c-button-group>
 
                     {% with activity=commitment.activity %}
                     {% partial view_activity_description_button %}
                     {% partial stop_activity_button %}
                     {% endwith %}
-                </div>
+                </c-button-group>
             </td>
             {% for loop_date in activity_logs %}
             <td class="text-center p-2 {% if forloop.first %}bg-blue-50{% endif %}">
@@ -168,7 +168,8 @@
                             <p class="text-gray-600 mt-2">{{ recommendation.activity.description }}</p>
                         {% endif %}
                     </div>
-                    <div class="mt-auto flex gap-3">
+
+                    <c-button-group>
 
                         {% with activity=recommendation.activity %}
                             {% include 'bloom_student_interface/partials/activity_tracking.html#view_activity_description_button'%}
@@ -181,7 +182,7 @@
                         >Start</button>
 
 
-                    </div>
+                    </c-button-group>
                 </div>
             {% endfor %}
         </div>
@@ -221,7 +222,7 @@
                             Stopped on {{ stopped.stopped_at|date:"F j, Y" }}
                         </p>
                     </div>
-                    <div class="flex gap-2">
+                    <c-button-group>
                         {% with activity=stopped.activity %}
                             {% partial view_activity_description_button %}
                         {% endwith %}
@@ -233,7 +234,7 @@
                             hx-swap="outerHTML"
                         >Start Again</button>
 
-                    </div>
+                    </c-button-group>
                 </div>
             {% endfor %}
         </div>

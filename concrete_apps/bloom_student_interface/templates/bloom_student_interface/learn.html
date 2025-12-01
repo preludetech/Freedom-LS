@@ -20,9 +20,9 @@
 
     {% with content=course.rendered_content %}
         {% if content %}
-        <div class="space-y-2">
+        <c-markdown-container>
             {{ content }}
-        </div>
+        </c-markdown-container>
         {% endif %}
     {% endwith %}
 

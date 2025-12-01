@@ -77,9 +77,9 @@
 {% endpartialdef %}
 
 {% partialdef form-content %}
-<div class="mb-6 p-4 bg-white border border-gray-200 rounded-lg prose max-w-none">
+<c-markdown-container class="surface max-w-none">
     {{child.rendered_content}}
-</div>
+</c-markdown-container>
 {% endpartialdef %}
 
 

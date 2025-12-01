@@ -19,9 +19,9 @@
         {% endif %}
 
         {% if activity.content %}
-            <div class="prose max-w-none">
-                {{ activity.rendered_content|safe }}
-            </div>
+            <c-markdown-container>
+                {{ activity.rendered_content }}
+            </c-markdown-container>
         {% else %}
             <p class="text-gray-600">This is a placeholder page for activity: <strong>{{ activity.title }}</strong></p>
             <p class="text-gray-600 mt-2">Activity content will be displayed here.</p>
