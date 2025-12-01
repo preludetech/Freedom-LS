@@ -98,7 +98,15 @@
         {% for commitment in committed_activities %}
         <tr class="border-b">
             <td class="p-2">
-                <div class="font-semibold">{{ commitment.activity.title }}</div>
+                <div class="flex items-center gap-2">
+                    <div class="font-semibold">
+                        {% if commitment.activity.id in recommended_activity_ids %}
+                        <i class="fa fa-star" aria-hidden="true" title="recommended activity"></i>
+
+                    {% endif %}
+                        {{ commitment.activity.title }}</div>
+                    
+                </div>
                 {% if commitment.activity.category %}
                     <div class="text-sm text-gray-500">{{ commitment.activity.category }}</div>
                 {% endif %}
@@ -137,14 +145,7 @@
 {% endpartialdef %}
 
 
-{% partialdef activity_start_stop_response %}
 
-{# This partial is used when starting an activity - it updates both recommended and current activities #}
-
-{% partial current_activities_table %}
-{% partial recommended_activities %}
-
-{% endpartialdef %}
 
 
 {% partialdef recommended_activities %}
@@ -193,5 +194,62 @@
         {% endif %}
     {% endif %}
 </div>
+
+{% endpartialdef %}
+
+
+{% partialdef activity_history %}
+
+<div id="activity_history" hx-swap-oob="true">
+    {% if stopped_activities %}
+        <div class="space-y-4">
+            {% for stopped in stopped_activities %}
+                <div class="surface p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-lg font-semibold">{{ stopped.activity.title }}</h3>
+                            {% if stopped.activity.id in recommended_activity_ids %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                Recommended
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if stopped.activity.category %}
+                            <p class="text-sm text-gray-500">{{ stopped.activity.category }}</p>
+                        {% endif %}
+                        <p class="text-sm text-gray-500 mt-1">
+                            Stopped on {{ stopped.stopped_at|date:"F j, Y" }}
+                        </p>
+                    </div>
+                    <div class="flex gap-2">
+                        {% with activity=stopped.activity %}
+                            {% partial view_activity_description_button %}
+                        {% endwith %}
+
+                        <button
+                            class="btn btn-outline"
+                            hx-post="{% url 'bloom_student_interface:action_child_activity_start_stop' child.slug stopped.activity.slug 'start' %}"
+                            hx-target="#activity_start_stop_response"
+                            hx-swap="innerHTML"
+                        >Start Again</button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-gray-600">No activity history yet.</p>
+    {% endif %}
+</div>
+
+{% endpartialdef %}
+
+
+
+{% partialdef activity_start_stop_response %}
+
+{# This partial is used when starting an activity - it updates both recommended and current activities #}
+
+{% partial current_activities_table %}
+{% partial recommended_activities %}
 
 {% endpartialdef %}

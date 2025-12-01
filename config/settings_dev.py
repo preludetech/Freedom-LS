@@ -32,7 +32,8 @@ if not TESTING:
 
 INSTALLED_APPS = [
     *INSTALLED_APPS,
-    "django_browser_reload",
+    # "django_watchfiles",
+    # "django_browser_reload",
 ]
 
 
@@ -48,3 +49,18 @@ HEADLESS_SERVE_SPECIFICATION = True
 
 EMAIL_BACKEND = "django.core.mail.backends.filebased.EmailBackend"
 EMAIL_FILE_PATH = "gitignore/emails"
+
+
+#####
+# DATABASE
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "USER": "pguser",
+        "NAME": "db",
+        "PASSWORD": "password",
+        "HOST": "127.0.0.1",
+        "PORT": "6543",
+    },
+}

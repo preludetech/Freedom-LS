@@ -23,11 +23,11 @@ urlpatterns = [
         views.child_activity,
         name="child_activity",
     ),
-    path(
-        "child/<slug:child_slug>/activity/<slug:activity_slug>/commit/",
-        views.child_activity_commit,
-        name="child_activity_commit",
-    ),
+    # path(
+    #     "child/<slug:child_slug>/activity/<slug:activity_slug>/commit/",
+    #     views.child_activity_commit,
+    #     name="child_activity_commit",
+    # ),
     path(
         "child/<slug:child_slug>/activity/<slug:activity_slug>/toggle/<str:date>/",
         views.action_child_activity_toggle,

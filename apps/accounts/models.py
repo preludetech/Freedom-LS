@@ -5,7 +5,7 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 from django.contrib.sites.shortcuts import get_current_site
-from site_aware_models.models import _thread_locals, SiteAwareModel
+from site_aware_models.models import _thread_locals, SiteAwareModelBase
 from django.utils.translation import gettext_lazy as _
 
 
@@ -51,7 +51,7 @@ class UserManager(BaseUserManager):
         return user
 
 
-class User(SiteAwareModel, AbstractBaseUser, PermissionsMixin):
+class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
 
     first_name = models.CharField(null=True, max_length=200)

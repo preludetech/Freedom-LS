@@ -337,35 +337,13 @@ def get_activity_log_entries(child, day_range):
 @login_required
 def child_activities_configure(request, slug):
     """Activities page for a specific child."""
-    DAY_RANGE = 7
 
     child = get_object_or_404(Child, slug=slug, user=request.user)
 
-    committed_activities = (
-        child.activities.filter(stopped_at__isnull=True)
-        .select_related("activity")
-        .all()
-    )
-
-    activity_logs = get_activity_log_entries(
-        child=child,
-        day_range=DAY_RANGE,
-    )
-
-    committed_activity_ids = committed_activities.values_list("activity_id", flat=True)
-    recommended_activities = child.recommended_activities.select_related(
-        "activity"
-    ).exclude(activity_id__in=committed_activity_ids)
+    context = get_activities_context(child)
 
     return render(
-        request,
-        "bloom_student_interface/child_activities_configure.html",
-        {
-            "child": child,
-            "recommended_activities": recommended_activities,
-            "committed_activities": committed_activities,
-            "activity_logs": activity_logs,
-        },
+        request, "bloom_student_interface/child_activities_configure.html", context
     )
 
 
@@ -391,30 +369,30 @@ def child_activity(request, child_slug, activity_slug):
     )
 
 
-@login_required
-def child_activity_commit(request, child_slug, activity_slug):
-    """Commit a child to an activity."""
-    if request.method != "POST":
-        return redirect(
-            "bloom_student_interface:child_activity",
-            child_slug=child_slug,
-            activity_slug=activity_slug,
-        )
+# @login_required
+# def child_activity_commit(request, child_slug, activity_slug):
+#     """Commit a child to an activity."""
+#     if request.method != "POST":
+#         return redirect(
+#             "bloom_student_interface:child_activity",
+#             child_slug=child_slug,
+#             activity_slug=activity_slug,
+#         )
 
-    child = get_object_or_404(Child, slug=child_slug, user=request.user)
-    activity = get_object_or_404(Activity, slug=activity_slug)
+#     child = get_object_or_404(Child, slug=child_slug, user=request.user)
+#     activity = get_object_or_404(Activity, slug=activity_slug)
 
-    # Create the commitment if it doesn't already exist
-    CommittedActivity.objects.get_or_create(child=child, activity=activity)
+#     # Create the commitment if it doesn't already exist
+#     CommittedActivity.objects.get_or_create(child=child, activity=activity)
 
-    # if there is an existing recommendation, delete it
-    # RecommendedActivity.objects.filter(child=child, activity=activity)
+#     # if there is an existing recommendation, delete it
+#     # RecommendedActivity.objects.filter(child=child, activity=activity)
 
-    return redirect(
-        "bloom_student_interface:child_activity",
-        child_slug=child_slug,
-        activity_slug=activity_slug,
-    )
+#     return redirect(
+#         "bloom_student_interface:child_activity",
+#         child_slug=child_slug,
+#         activity_slug=activity_slug,
+#     )
 
 
 @login_required
@@ -473,6 +451,43 @@ def action_child_activity_toggle(request, child_slug, activity_slug, date):
 #     )
 
 
+def get_activities_context(child):
+    DAY_RANGE = 7
+    committed_activities = (
+        child.activities.filter(stopped_at__isnull=True)
+        .select_related("activity")
+        .all()
+    )
+    activity_logs = get_activity_log_entries(child=child, day_range=DAY_RANGE)
+    committed_activity_ids = committed_activities.values_list("activity_id", flat=True)
+    recommended_activities = child.recommended_activities.select_related(
+        "activity"
+    ).exclude(activity_id__in=committed_activity_ids)
+
+    # Get set of recommended activity IDs (including those that are committed)
+    recommended_activity_ids = set(
+        child.recommended_activities.values_list("activity_id", flat=True)
+    )
+
+    # Get stopped activities (previously committed but now stopped)
+    # Only get the latest stopped commitment for each activity
+    stopped_activities = (
+        child.activities.filter(stopped_at__isnull=False)
+        .select_related("activity")
+        .order_by("activity_id", "-stopped_at")
+        .distinct("activity_id")
+    )
+
+    return {
+        "child": child,
+        "recommended_activities": recommended_activities,
+        "committed_activities": committed_activities,
+        "activity_logs": activity_logs,
+        "recommended_activity_ids": recommended_activity_ids,
+        "stopped_activities": stopped_activities,
+    }
+
+
 @login_required
 def action_child_activity_start_stop(request, child_slug, activity_slug, action):
     """Start (commit to) a child's activity by creating a CommittedActivity."""
@@ -497,28 +512,12 @@ def action_child_activity_start_stop(request, child_slug, activity_slug, action)
     else:
         raise Exception(f"unknown action: {action}")
 
-    # Return updated recommended activities list and current activities table
-    DAY_RANGE = 7
-    committed_activities = (
-        child.activities.filter(stopped_at__isnull=True)
-        .select_related("activity")
-        .all()
-    )
-    activity_logs = get_activity_log_entries(child=child, day_range=DAY_RANGE)
-    committed_activity_ids = committed_activities.values_list("activity_id", flat=True)
-    recommended_activities = child.recommended_activities.select_related(
-        "activity"
-    ).exclude(activity_id__in=committed_activity_ids)
+    context = get_activities_context(child)
 
     return render(
         request,
         "bloom_student_interface/partials/activity_tracking.html#activity_start_stop_response",
-        {
-            "child": child,
-            "recommended_activities": recommended_activities,
-            "committed_activities": committed_activities,
-            "activity_logs": activity_logs,
-        },
+        context,
     )
 
 
@@ -641,27 +640,10 @@ def create_child(request):
 
 
 def child_current_activities(request, slug):
-    DAY_RANGE = 7
-
     child = get_object_or_404(Child, slug=slug, user=request.user)
-
-    committed_activities = (
-        child.activities.filter(stopped_at__isnull=True)
-        .select_related("activity")
-        .all()
-    )
-
-    activity_logs = get_activity_log_entries(
-        child=child,
-        day_range=DAY_RANGE,
-    )
-
+    context = get_activities_context(child)
     return render(
         request,
         "bloom_student_interface/partials/activity_tracking.html#current_activities_table",
-        {
-            "child": child,
-            "committed_activities": committed_activities,
-            "activity_logs": activity_logs,
-        },
+        context,
     )

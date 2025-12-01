@@ -8,13 +8,18 @@
     <h1 class="text-3xl font-bold mb-6">Activities for {{ child.name }}</h1>
 
     <div class="surface">
-        <h2 class="">Committed Activities</h2>
+        <h2 class="">Current Activities</h2>
         {% include 'bloom_student_interface/partials/activity_tracking.html#current_activities_table' %}
     </div>
 
     <div class="surface">
         <h2 class="">Recommended Activities</h2>
         {% include 'bloom_student_interface/partials/activity_tracking.html#recommended_activities' %}
+    </div>
+
+    <div class="surface">
+        <h2>Activity History</h2>
+        {% include 'bloom_student_interface/partials/activity_tracking.html#activity_history' %}
     </div>
 
  

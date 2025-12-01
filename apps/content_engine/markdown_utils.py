@@ -6,6 +6,7 @@ from django.utils.safestring import mark_safe
 from django.conf import settings
 import nh3
 from copy import deepcopy
+import os
 
 
 def render_markdown(markdown_text, request, context=None):
@@ -23,9 +24,8 @@ def render_markdown(markdown_text, request, context=None):
     # [s for s in markdown_text.split("\n") if "c-p" in s]
 
     if settings.MARKDOWN_TEMPLATE_RENDER_ON:
-        temp = tempfile.NamedTemporaryFile(
-            prefix="template_",
-        )
+        os.makedirs("/tmp/lms_templates", exist_ok=True)
+        temp = tempfile.NamedTemporaryFile(prefix="template_", dir="/tmp/lms_templates")
 
         temp.write(str.encode(markdown_text))
         temp.seek(0)

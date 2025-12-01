@@ -100,7 +100,7 @@ TEMPLATES = [
         # "DIRS": [],
         "DIRS": [
             # BASE_DIR / "templates",
-            "/tmp"
+            "/tmp/lms_templates"
         ],
         # "APP_DIRS": True,
         "OPTIONS": {

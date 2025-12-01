@@ -1,7 +1,8 @@
 #!/bin/sh
 
-rm db.sqlite3
+rm -rf dev_db/gitignore
 rm -rf media
+
 python manage.py makemigrations
 python manage.py migrate
 
