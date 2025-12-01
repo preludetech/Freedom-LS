@@ -24,6 +24,7 @@ dependencies = [
 DJANGO_SETTINGS_MODULE = "config.settings_dev"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 env = ["DJANGO_ALLOW_ASYNC_UNSAFE = True"]
+testpaths = ["apps", "tests"]
 
 [dependency-groups]
 dev = [

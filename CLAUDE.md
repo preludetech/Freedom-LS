@@ -32,11 +32,20 @@ python manage.py runserver
 ### Testing
 - Pytest is used for testing (via pytest-django)
 - Settings configured in `pyproject.toml`
-- Run all tests: `pytest`
-- Run specific test: `pytest path/to/test_file.py::test_name`
-- Test settings module: `config.settings_dev`
+- Default test settings module: `config.settings_dev`
 - Shared fixtures are in `conftest.py` at project root
 - when creating tests, make one test at a time
+- Run specific test: `pytest path/to/test_file.py::test_name`
+
+To run all tests except for the tests of the bloom app run `pytest`
+
+To run the Bloom tests in isolation, run `pytest concrete_apps/bloom_student_interface --ds concrete_apps.bloom_student_interface.config.settings_dev`
+
+To run all the tests (including the Bloom tests) run: `pytest apps concrete_apps/bloom_student_interface --ds concrete_apps.bloom_student_interface.config.settings_dev`
+
+
+
+
 
 ## Architecture
 

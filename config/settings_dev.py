@@ -30,7 +30,10 @@ if not TESTING:
         *MIDDLEWARE,
     ]
 
-INSTALLED_APPS = [*INSTALLED_APPS, "django_browser_reload"]
+INSTALLED_APPS = [
+    *INSTALLED_APPS,
+    "django_browser_reload",
+]
 
 
 ####
