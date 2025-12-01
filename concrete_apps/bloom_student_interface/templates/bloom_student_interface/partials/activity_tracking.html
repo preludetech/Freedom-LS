@@ -70,6 +70,10 @@
 {% endpartialdef %}
 
 
+{% partialdef recommended_indicator %}
+<i class="fa fa-star" aria-hidden="true" title="recommended activity"></i>
+{% endpartialdef%}
+
 
 
 {% partialdef current_activities_table %}
@@ -101,9 +105,8 @@
                 <div class="flex items-center gap-2">
                     <div class="font-semibold">
                         {% if commitment.activity.id in recommended_activity_ids %}
-                        <i class="fa fa-star" aria-hidden="true" title="recommended activity"></i>
-
-                    {% endif %}
+                            {% partial recommended_indicator %}
+                        {% endif %}
                         {{ commitment.activity.title }}</div>
                     
                 </div>
@@ -165,7 +168,7 @@
                             <p class="text-gray-600 mt-2">{{ recommendation.activity.description }}</p>
                         {% endif %}
                     </div>
-                    <div class="mt-auto flex">
+                    <div class="mt-auto flex gap-3">
 
                         {% with activity=recommendation.activity %}
                             {% include 'bloom_student_interface/partials/activity_tracking.html#view_activity_description_button'%}
@@ -174,8 +177,7 @@
                         <button
                             class="btn btn-outline"
                             hx-post="{% url 'bloom_student_interface:action_child_activity_start_stop' child.slug recommendation.activity.slug  'start' %}"
-                            hx-target="#recommended_activities"
-                            hx-swap="outerHTML"
+                            
                         >Start</button>
 
 
@@ -209,9 +211,7 @@
                         <div class="flex items-center gap-2">
                             <h3 class="text-lg font-semibold">{{ stopped.activity.title }}</h3>
                             {% if stopped.activity.id in recommended_activity_ids %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                Recommended
-                            </span>
+                               {% partial recommended_indicator %}
                             {% endif %}
                         </div>
                         {% if stopped.activity.category %}
@@ -228,10 +228,11 @@
 
                         <button
                             class="btn btn-outline"
-                            hx-post="{% url 'bloom_student_interface:action_child_activity_start_stop' child.slug stopped.activity.slug 'start' %}"
-                            hx-target="#activity_start_stop_response"
-                            hx-swap="innerHTML"
+                            hx-post="{% url 'bloom_student_interface:action_child_activity_start_stop' child.slug stopped.activity.slug  'start' %}"
+                            hx-target="#recommended_activities"
+                            hx-swap="outerHTML"
                         >Start Again</button>
+
                     </div>
                 </div>
             {% endfor %}
@@ -251,5 +252,8 @@
 
 {% partial current_activities_table %}
 {% partial recommended_activities %}
+{% partial activity_history %}
+
+
 
 {% endpartialdef %}

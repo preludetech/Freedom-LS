@@ -476,6 +476,7 @@ def get_activities_context(child):
         .select_related("activity")
         .order_by("activity_id", "-stopped_at")
         .distinct("activity_id")
+        .exclude(activity_id__in=committed_activity_ids)
     )
 
     return {
