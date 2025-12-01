@@ -49,4 +49,5 @@ urlpatterns = [
     # path("children/assessment", views.children_assessment, name="children_assessment"),
     path("learn", views.learn, name="learn"),
     path("children", views.children, name="children"),
+    path("children/create/", views.create_child, name="children_create"),
 ]

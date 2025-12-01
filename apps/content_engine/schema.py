@@ -80,7 +80,9 @@ class Topic(BaseContentModel, MarkdownContentModel, content_type=ContentType.TOP
 class Activity(
     BaseContentModel, MarkdownContentModel, content_type=ContentType.ACTIVITY
 ):
-    category: Optional[str] = Field(None, description="Optional category for this activity")
+    category: Optional[str] = Field(
+        None, description="Optional category for this activity"
+    )
 
 
 class Child(BaseModel):
@@ -109,7 +111,10 @@ class ContentCollection(BaseContentModel, content_type=ContentType.COLLECTION):
     collection_type: Optional[CollectionType] = Field(
         None, description="Type of collection (COURSE or COURSE_SECTION)"
     )
-    # TODO: save collection type to db
+
+    category: Optional[str] = Field(
+        None, description="Optional category for this form page"
+    )
 
 
 class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM):
