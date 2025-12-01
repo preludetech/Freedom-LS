@@ -7,13 +7,13 @@
     </div>
 
 
-    {% if complete_form_progress  %}
+    <!-- {% if complete_form_progress  %}
 
         {% with progress=complete_form_progress %}
             {% include "student_interface/course_form.html#completed_form_scores"%}
         {% endwith %}
 
-    {% endif %}
+    {% endif %} -->
 
 
     {% if incomplete_form_progress %}
@@ -26,5 +26,4 @@
             <a href="{% url 'bloom_student_interface:child_assessment_start' child.slug  form.slug   %}" class="btn btn-primary">Start Form >></a>
     {% endif %}
 
-    <a href="{% url 'bloom_student_interface:home' %}" class="btn btn-outline">Back to Home</a>
 {% endblock %}

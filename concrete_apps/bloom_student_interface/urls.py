@@ -5,9 +5,9 @@ app_name = "bloom_student_interface"
 
 urlpatterns = [
     path("", views.home, name="home"),
-    path("child/create/", views.ChildCreateView.as_view(), name="child_create"),
-    path("child/<uuid:pk>/edit/", views.ChildUpdateView.as_view(), name="child_edit"),
-    path("child/<uuid:pk>/delete/", views.child_delete, name="child_delete"),
+    # path("child/create/", views.ChildCreateView.as_view(), name="child_create"),
+    # path("child/<uuid:pk>/edit/", views.ChildUpdateView.as_view(), name="child_edit"),
+    # path("child/<uuid:pk>/delete/", views.child_delete, name="child_delete"),
     path(
         "child/<slug:slug>/activities/child_activities_configure",
         views.child_activities_configure,

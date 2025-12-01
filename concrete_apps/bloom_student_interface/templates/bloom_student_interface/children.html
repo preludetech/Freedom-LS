@@ -35,15 +35,177 @@
 {% endpartialdef %}
 
 
+{% partialdef category_scores_radar %}
+
+<div id="scores_{{form_progress.id}}" class="w-full  mx-auto">
+    <canvas id="radar_{{form_progress.id}}"></canvas>
+</div>
+
+<script>
+(function() {
+    const scores = {{ form_progress.scores|safe }};
+    const ctx = document.getElementById('radar_{{form_progress.id}}').getContext('2d');
+
+    // Extract categories and calculate percentages
+    const labels = [];
+    const data = [];
+
+    for (const [category, categoryData] of Object.entries(scores)) {
+        labels.push(category.split(" ")[0]);
+        const percentage = categoryData.max_score > 0
+            ? (categoryData.score / categoryData.max_score) * 100
+            : 0;
+        data.push(percentage.toFixed(1));
+    }
+
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Score %',
+                data: data,
+                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                borderColor: 'rgb(59, 130, 246)',
+                borderWidth: 2,
+                pointBackgroundColor: 'rgb(59, 130, 246)',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: 'rgb(59, 130, 246)'
+            }]
+        },
+        options: {
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        stepSize: 20,
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.r.toFixed(1) + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
+
+{% endpartialdef %}
+
+{% partialdef redo_assessment_button %}
+
+<a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
+    class="btn btn-primary">
+    Redo Assessment
+</a>
+
+{% endpartialdef %}
+
+
+
+{% partialdef category_scores_table %}
+
+
+<table class="w-full">
+    
+    {% for category, value in  form_progress.scores.items %}
+        <tr>
+            <th class="text-left">{{category}}</th>
+            <!-- <td>
+                {{value.score}} / {{value.max_score}}
+            </td> -->
+            <td>
+                {% widthratio value.score value.max_score 100 %}%
+            </td>
+        </tr>
+    {% endfor %}
+</table>
+
+{% endpartialdef %}
+
+
+
+
+{% partialdef assessment_details_button %}
+<c-modal title="{{child.name}}: Assessment Details" class="w-7xl">
+    <c-slot name="trigger">
+        <button class="btn btn-primary">Details</button>
+    </c-slot>
+
+    
+    <p class="text-sm text-gray-600 mt-2 text-left">
+                Last Assessment: {{ child.complete_assessment.completed_time|date:"M d, Y" }}
+            </p>
+
+        <div class="grid grid-cols-2 gap-3">
+
+            <div>
+                <h3>Overview</h3>
+                {% partial category_scores_radar %} 
+            </div>
+            <div>
+                <h3>Scores</h3>
+                {% include "student_interface/partials/form_progress_scores.html#completed_form_category_scores"%}
+            </div>
+        </div>
+
+    <c-slot name="footer">
+        <button type="button" class="btn btn-outline" @click="open = false">Close</button>
+        {% partial redo_assessment_button %}
+        
+    </c-slot>
+
+</c-modal>
+
+{% endpartialdef %}
+
+
+
 
 {% partialdef child %}
-<div class=" p-4  grid grid-cols-5 gap-4  rounded-xl shadow-xl">
-    <div class="text-center">
-        <h2 class="text-xl font-semibold">{{child.name}}</h2>
+<div class=" p-4  grid grid-cols-6 gap-4  rounded-xl shadow-xl">
+    <div class="text-center col-span-2">
+        <h2>{{child.name}}</h2>
         <p class="text-gray-600">Age: {{child.age}}</p>
+
+
+        {% if child.complete_assessment %}
+
+            <h3>Assessment</h3>
+            <p class="text-sm text-gray-600 mt-2">
+                Last Assessment: {{ child.complete_assessment.completed_time|date:"M d, Y" }}
+            </p>
+
+            {% partial redo_assessment_button %}
+
+
+            {% with form_progress=child.complete_assessment %}
+                <!-- {% partial category_scores_radar %} -->
+                {% partial category_scores_table %}
+                {% partial assessment_details_button %}
+            {% endwith %}
+
+            
+
+        {% endif %}
+
     </div>
     <div class="col-span-4 ">
-        {% if child.has_complete_assessment %}
+        {% if child.complete_assessment %}
             <!-- <a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
                class="btn btn-outline">
                 View Assessment Results

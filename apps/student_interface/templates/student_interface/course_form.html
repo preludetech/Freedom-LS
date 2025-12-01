@@ -2,31 +2,7 @@
 
 
 
-{% partialdef completed_form_scores %}
-<div class="mt-4">
-            <h4 class="font-semibold mb-2">Scores:</h4>
-            <div class="space-y-2">
-                {% for category, data in progress.scores.items %}
-                <div class="bg-white p-2 rounded">
-                    <div class="flex justify-between items-center">
-                        <span class="font-medium">{{ category }}</span>
-                        <span class="text-sm">{{ data.score }} / {{ data.max_score }}</span>
-                    </div>
-                    {% if data.sub_categories %}
-                    <div class="ml-4 mt-2 space-y-1">
-                        {% for sub_cat, sub_data in data.sub_categories.items %}
-                        <div class="flex justify-between text-sm text-gray-600">
-                            <span>{{ sub_cat }}</span>
-                            <span>{{ sub_data.score }} / {{ sub_data.max_score }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-{% endpartialdef %}
+
 
 {% block content %}
 

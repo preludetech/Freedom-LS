@@ -12,7 +12,6 @@ from student_management.models import Student, RecommendedCourse
 from .models import (
     Child,
     ChildFormProgress,
-    RecommendedActivity,
     CommittedActivity,
     ActivityLog,
 )
@@ -34,88 +33,88 @@ def home(request):
     if request.user.is_authenticated:
         return redirect("bloom_student_interface:children")
 
-        children = Child.objects.filter(user=request.user).prefetch_related(
-            "activities__activity"
-        )
-        recommended_courses = RecommendedCourse.objects.filter(
-            user=request.user
-        ).select_related("collection")
+    #     children = Child.objects.filter(user=request.user).prefetch_related(
+    #         "activities__activity"
+    #     )
+    #     recommended_courses = RecommendedCourse.objects.filter(
+    #         user=request.user
+    #     ).select_related("collection")
 
-        # Get registered courses if user has a Student record
-        try:
-            student = Student.objects.get(user=request.user)
-            registered_courses = student.get_course_registrations()
-        except Student.DoesNotExist:
-            pass
+    #     # Get registered courses if user has a Student record
+    #     try:
+    #         student = Student.objects.get(user=request.user)
+    #         registered_courses = student.get_course_registrations()
+    #     except Student.DoesNotExist:
+    #         pass
 
-        # Get today's activity logs for all children
-        today = timezone.now().date()
-        logs = ActivityLog.objects.filter(
-            child__user=request.user, date=today
-        ).select_related("child", "activity")
+    #     # Get today's activity logs for all children
+    #     today = timezone.now().date()
+    #     logs = ActivityLog.objects.filter(
+    #         child__user=request.user, date=today
+    #     ).select_related("child", "activity")
 
-        activity_logs_today = {}
-        for log in logs:
-            child_id = log.child_id
-            activity_id = log.activity_id
-            activity_logs_today[child_id] = activity_logs_today.get(child_id, {})
-            activity_logs_today[child_id][activity_id] = log.done
+    #     activity_logs_today = {}
+    #     for log in logs:
+    #         child_id = log.child_id
+    #         activity_id = log.activity_id
+    #         activity_logs_today[child_id] = activity_logs_today.get(child_id, {})
+    #         activity_logs_today[child_id][activity_id] = log.done
 
-    # Format date as string for URL
-    today_str = (
-        timezone.now().date().strftime("%Y-%m-%d")
-        if request.user.is_authenticated
-        else ""
-    )
+    # # Format date as string for URL
+    # today_str = (
+    #     timezone.now().date().strftime("%Y-%m-%d")
+    #     if request.user.is_authenticated
+    #     else ""
+    # )
 
-    return render(
-        request,
-        "student_interface/home.html",
-        {
-            "children": children,
-            "recommended_courses": recommended_courses,
-            "registered_courses": registered_courses,
-            "activity_logs_today": activity_logs_today,
-            "date": today_str,
-        },
-    )
-
-
-class ChildCreateView(LoginRequiredMixin, CreateView):
-    """Create a new child."""
-
-    model = Child
-    template_name = "bloom_student_interface/child_form.html"
-    fields = ["name", "age"]
-    success_url = reverse_lazy("bloom_student_interface:home")
-
-    def form_valid(self, form):
-        form.instance.user = self.request.user
-        return super().form_valid(form)
+    # return render(
+    #     request,
+    #     "student_interface/home.html",
+    #     {
+    #         "children": children,
+    #         "recommended_courses": recommended_courses,
+    #         "registered_courses": registered_courses,
+    #         "activity_logs_today": activity_logs_today,
+    #         "date": today_str,
+    #     },
+    # )
 
 
-class ChildUpdateView(LoginRequiredMixin, UpdateView):
-    """Edit an existing child."""
+# class ChildCreateView(LoginRequiredMixin, CreateView):
+#     """Create a new child."""
 
-    model = Child
-    template_name = "bloom_student_interface/child_form.html"
-    fields = ["name", "age"]
-    success_url = reverse_lazy("bloom_student_interface:home")
+#     model = Child
+#     template_name = "bloom_student_interface/child_form.html"
+#     fields = ["name", "age"]
+#     success_url = reverse_lazy("bloom_student_interface:home")
 
-    def get_queryset(self):
-        return Child.objects.filter(user=self.request.user)
+#     def form_valid(self, form):
+#         form.instance.user = self.request.user
+#         return super().form_valid(form)
 
 
-@login_required
-def child_delete(request, pk):
-    """Delete a child."""
-    child = get_object_or_404(Child, pk=pk, user=request.user)
+# class ChildUpdateView(LoginRequiredMixin, UpdateView):
+#     """Edit an existing child."""
 
-    if request.method == "POST":
-        child.delete()
-        return redirect("bloom_student_interface:home")
+#     model = Child
+#     template_name = "bloom_student_interface/child_form.html"
+#     fields = ["name", "age"]
+#     success_url = reverse_lazy("bloom_student_interface:home")
 
-    return redirect("bloom_student_interface:home")
+#     def get_queryset(self):
+#         return Child.objects.filter(user=self.request.user)
+
+
+# @login_required
+# def child_delete(request, pk):
+#     """Delete a child."""
+#     child = get_object_or_404(Child, pk=pk, user=request.user)
+
+#     if request.method == "POST":
+#         child.delete()
+#         return redirect("bloom_student_interface:home")
+
+#     return redirect("bloom_student_interface:home")
 
 
 @login_required
@@ -512,9 +511,14 @@ def children(request):
             ChildFormProgress.get_latest_incomplete(child, picky_eating_form)
             is not None
         )
-        child.has_complete_assessment = (
-            ChildFormProgress.get_latest_complete(child, picky_eating_form) is not None
+        complete_form_progress = ChildFormProgress.get_latest_complete(
+            child, picky_eating_form
         )
+        # child.has_complete_assessment = complete_form_progress is not None
+        # child.last_assessment_date = (
+        #     complete_form_progress.completed_time if complete_form_progress else None
+        # )
+        child.complete_assessment = complete_form_progress
 
     context = {
         "children": children,
