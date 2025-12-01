@@ -38,7 +38,7 @@ urlpatterns = [
     path("educator/", include("educator_interface.urls")),
     path("accounts/", include("allauth.urls")),
     path("accounts/", include("accounts.urls")),
-    path("__/si/", include("student_interface.urls")),
+    path("", include("student_interface.urls")),
     # path("_allauth/", include("allauth.headless.urls")),
 ]
 
