@@ -22,12 +22,57 @@
 
 
 
+{% partialdef view_activity_description_button %}
+<c-modal title="{{activity.title}}">
+    <c-slot name="trigger">
+        <button class="btn btn-outline">Description</button>
+    </c-slot>
+
+    <div class="pl-3">
+
+        {{activity.rendered_content}}
+    </div>
+
+    <c-slot name="footer">
+        <button type="button" class="btn btn-outline" @click="open = false">Close</button>
+    </c-slot>
+</c-modal>
+{% endpartialdef %}
+
+
+{% partialdef stop_activity_button %}
+<c-modal title="Are you sure?">
+    
+    <c-slot name="trigger">
+        <button class="btn btn-outline">Stop</button>
+    </c-slot>
+
+    <p>Are you sure you would like to stop the activity? </p>
+    <p>
+        <b>{{activity.title}}</b>
+    </p>
+
+    <p>Stopping an activity will remove it from your activity tracker. You will be able to restart it at any time. We will not delete any of your activity logs, you'll still have access to everything.</p>
+
+    <c-slot name="footer">
+        <button type="button" class="btn btn-outline" >Stop the activity</button>
+        <button type="button" class="btn btn-outline" @click="open = false">Nevermind</button>
+    </c-slot>
+
+</c-modal>
+
+{% endpartialdef %}
+
+
+
+
 {% partialdef current_activities_table %}
 
 {% if committed_activities %}
 
 
 <table class="w-full border-collapse">
+    
     <thead>
         <tr>
             <th class="text-left p-2 border-b">Activity</th>
@@ -40,6 +85,7 @@
             <th class="p-2 border-b"></th>
         </tr>
     </thead>
+
     <tbody>
         {% for commitment in committed_activities %}
         <tr class="border-b">
@@ -48,6 +94,10 @@
                 {% if commitment.activity.category %}
                     <div class="text-sm text-gray-500">{{ commitment.activity.category }}</div>
                 {% endif %}
+                {% with activity=commitment.activity %}
+                    {% partial view_activity_description_button %}
+                    {% partial stop_activity_button %}
+                {% endwith %}
             </td>
             {% for loop_date in activity_logs %}
             <td class="text-center p-2 {% if forloop.first %}bg-blue-50{% endif %}">
@@ -56,9 +106,9 @@
                 {% endwith %}
             </td>
             {% endfor %}
-            <td class="p-2">
+            <!-- <td class="p-2">
                 <a href="{% url 'bloom_student_interface:child_activity' child.slug commitment.activity.slug %}" class="btn btn-primary text-sm">View</a>
-            </td>
+            </td> -->
         </tr>
         {% endfor %}
     </tbody>
