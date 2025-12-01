@@ -6,14 +6,14 @@
 
 {% block user_authenticated %}
 
-<div class="border border-gray-300 rounded-md p-4">
+<div class="surface">
     <h2>Children</h2>
     <a href="{% url 'bloom_student_interface:child_create' %}" class="btn btn-primary">Add Child</a>
 
     {% if children %}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for child in children %}
-                <div class="border border-gray-300 rounded-md p-4 flex flex-col">
+                <div class="surface flex flex-col">
                     <div class="mb-4">
                         <h3 class="">{{ child.name }}</h3>
 
@@ -81,13 +81,13 @@
 </div>
 
 
-<div class="border border-gray-300 rounded-md p-4">
+<div class="surface">
     <h2>Recommended Courses</h2>
 
     {% if recommended_courses %}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for recommendation in recommended_courses %}
-                <div class="border border-gray-300 rounded-md p-4 flex flex-col">
+                <div class="surface">
                     <div class="mb-4">
                         <h3 class="text-lg">{{ recommendation.collection.title }}</h3>
                         {% if recommendation.collection.description %}

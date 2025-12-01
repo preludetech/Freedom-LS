@@ -341,7 +341,11 @@ def child_activities_configure(request, slug):
 
     child = get_object_or_404(Child, slug=slug, user=request.user)
 
-    committed_activities = child.activities.select_related("activity").all()
+    committed_activities = (
+        child.activities.filter(stopped_at__isnull=True)
+        .select_related("activity")
+        .all()
+    )
 
     activity_logs = get_activity_log_entries(
         child=child,
@@ -442,6 +446,79 @@ def action_child_activity_toggle(request, child_slug, activity_slug, date):
         request,
         "bloom_student_interface/partials/activity_tracking.html#activity_radio",
         {"done": log.done, "date": date, "child": child, "activity": activity},
+    )
+
+
+# @login_required
+# def action_child_activity_stop(request, child_slug, activity_slug):
+#     """Stop (decommit) a child's activity by setting stopped_at timestamp."""
+
+#     # Return updated activities table
+#     DAY_RANGE = 7
+#     committed_activities = (
+#         child.activities.filter(stopped_at__isnull=True)
+#         .select_related("activity")
+#         .all()
+#     )
+#     activity_logs = get_activity_log_entries(child=child, day_range=DAY_RANGE)
+
+#     return render(
+#         request,
+#         "bloom_student_interface/partials/activity_tracking.html#current_activities_table",
+#         {
+#             "child": child,
+#             "committed_activities": committed_activities,
+#             "activity_logs": activity_logs,
+#         },
+#     )
+
+
+@login_required
+def action_child_activity_start_stop(request, child_slug, activity_slug, action):
+    """Start (commit to) a child's activity by creating a CommittedActivity."""
+    if request.method != "POST":
+        return redirect("bloom_student_interface:children")
+
+    child = get_object_or_404(Child, slug=child_slug, user=request.user)
+    activity = get_object_or_404(Activity, slug=activity_slug)
+
+    if action == "start":
+        # Create the commitment if it doesn't already exist (or reactivate stopped activity)
+        committed_activity, created = CommittedActivity.objects.get_or_create(
+            child=child, activity=activity, stopped_at__isnull=True
+        )
+    elif action == "stop":
+        # Find the committed activity and set stopped_at
+        committed_activity = get_object_or_404(
+            CommittedActivity, child=child, activity=activity, stopped_at__isnull=True
+        )
+        committed_activity.stopped_at = timezone.now()
+        committed_activity.save()
+    else:
+        raise Exception(f"unknown action: {action}")
+
+    # Return updated recommended activities list and current activities table
+    DAY_RANGE = 7
+    committed_activities = (
+        child.activities.filter(stopped_at__isnull=True)
+        .select_related("activity")
+        .all()
+    )
+    activity_logs = get_activity_log_entries(child=child, day_range=DAY_RANGE)
+    committed_activity_ids = committed_activities.values_list("activity_id", flat=True)
+    recommended_activities = child.recommended_activities.select_related(
+        "activity"
+    ).exclude(activity_id__in=committed_activity_ids)
+
+    return render(
+        request,
+        "bloom_student_interface/partials/activity_tracking.html#activity_start_stop_response",
+        {
+            "child": child,
+            "recommended_activities": recommended_activities,
+            "committed_activities": committed_activities,
+            "activity_logs": activity_logs,
+        },
     )
 
 
@@ -568,7 +645,11 @@ def child_current_activities(request, slug):
 
     child = get_object_or_404(Child, slug=slug, user=request.user)
 
-    committed_activities = child.activities.select_related("activity").all()
+    committed_activities = (
+        child.activities.filter(stopped_at__isnull=True)
+        .select_related("activity")
+        .all()
+    )
 
     activity_logs = get_activity_log_entries(
         child=child,

@@ -33,6 +33,11 @@ urlpatterns = [
         views.action_child_activity_toggle,
         name="action_child_activity_toggle",
     ),
+    path(
+        "child/<slug:child_slug>/activity/<slug:activity_slug>/<str:action>/",
+        views.action_child_activity_start_stop,
+        name="action_child_activity_start_stop",
+    ),
     ###### Experimenting with better layout
     # path("children/activities", views.children_activities, name="children_activities"),
     # path("children/assessment", views.children_assessment, name="children_assessment"),

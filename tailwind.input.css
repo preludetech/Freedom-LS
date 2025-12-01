@@ -131,4 +131,8 @@
         @apply bg-green-600 text-white
                hover:bg-green-700 focus:ring-green-500
     }
+
+    .surface {
+        @apply border border-gray-300 rounded-md p-6
+    }
 }

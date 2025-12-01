@@ -42,7 +42,7 @@
 
 {% partialdef stop_activity_button %}
 <c-modal title="Are you sure?">
-    
+
     <c-slot name="trigger">
         <button class="btn btn-outline">Stop</button>
     </c-slot>
@@ -55,7 +55,13 @@
     <p>Stopping an activity will remove it from your activity tracker. You will be able to restart it at any time. We will not delete any of your activity logs, you'll still have access to everything.</p>
 
     <c-slot name="footer">
-        <button type="button" class="btn btn-outline" >Stop the activity</button>
+        <button
+            type="button"
+            class="btn btn-outline"
+            hx-post="{% url 'bloom_student_interface:action_child_activity_start_stop' child.slug activity.slug 'stop' %}"
+            
+            @click="open = false"
+        >Stop the activity</button>
         <button type="button" class="btn btn-outline" @click="open = false">Nevermind</button>
     </c-slot>
 
@@ -68,7 +74,9 @@
 
 {% partialdef current_activities_table %}
 
-{% if committed_activities %}
+<div id="current_activities_table_{{child.slug}}" hx-swap-oob="true">
+
+    {% if committed_activities %}
 
 
 <table class="w-full border-collapse">
@@ -94,10 +102,13 @@
                 {% if commitment.activity.category %}
                     <div class="text-sm text-gray-500">{{ commitment.activity.category }}</div>
                 {% endif %}
-                {% with activity=commitment.activity %}
+                <div class="flex gap-3">
+
+                    {% with activity=commitment.activity %}
                     {% partial view_activity_description_button %}
                     {% partial stop_activity_button %}
-                {% endwith %}
+                    {% endwith %}
+                </div>
             </td>
             {% for loop_date in activity_logs %}
             <td class="text-center p-2 {% if forloop.first %}bg-blue-50{% endif %}">
@@ -117,10 +128,70 @@
 {% else %}
 
 <p>
-
-    You haven't committed to doing any activities with your child yet. Please click on the "configure activities" button below to choose some things to do.
+    You haven't committed to doing any activities with your child yet. 
 </p>
-    
+
     {% endif %}
+</div>
+
+{% endpartialdef %}
+
+
+{% partialdef activity_start_stop_response %}
+
+{# This partial is used when starting an activity - it updates both recommended and current activities #}
+
+{% partial current_activities_table %}
+{% partial recommended_activities %}
+
+{% endpartialdef %}
+
+
+{% partialdef recommended_activities %}
+
+<div id="recommended_activities" hx-swap-oob="true">
+    {% if recommended_activities %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            
+            {% for recommendation in recommended_activities %}
+                <div class="surface p-4 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold">{{ recommendation.activity.title }}</h3>
+                        {% if recommendation.activity.category %}
+                            <p class="text-sm text-gray-500">{{ recommendation.activity.category }}</p>
+                        {% endif %}
+                        {% if recommendation.activity.description %}
+                            <p class="text-gray-600 mt-2">{{ recommendation.activity.description }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="mt-auto flex">
+
+                        {% with activity=recommendation.activity %}
+                            {% include 'bloom_student_interface/partials/activity_tracking.html#view_activity_description_button'%}
+                        {% endwith %}
+
+                        <button
+                            class="btn btn-outline"
+                            hx-post="{% url 'bloom_student_interface:action_child_activity_start_stop' child.slug recommendation.activity.slug  'start' %}"
+                            hx-target="#recommended_activities"
+                            hx-swap="outerHTML"
+                        >Start</button>
+
+
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        {% if committed_activities %}
+        <p class="text-gray-600">No new recommendations. Check back later!</p>
+        <p class="text-gray-600">If you feel that you have outgrown your current recommended activities, please redo the assessment so we can come up with new recommendations for you.</p>
+
+        
+        {% else %}
+        <p class="text-gray-600">No recommended activities yet. Complete an assessment to get personalized activity recommendations.</p>
+        {% endif %}
+    {% endif %}
+</div>
 
 {% endpartialdef %}

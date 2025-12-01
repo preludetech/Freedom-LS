@@ -4,51 +4,17 @@
 {% block head_title %}Activities for {{ child.name }}{% endblock head_title %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4">
+<div class="max-w-4xl mx-auto px-4 space-y-4">
     <h1 class="text-3xl font-bold mb-6">Activities for {{ child.name }}</h1>
 
-    {% if committed_activities %}
-    <div class="border border-gray-300 rounded-md p-6 mb-6">
-        <h2 class="text-2xl font-semibold mb-4">Committed Activities</h2>
-
+    <div class="surface">
+        <h2 class="">Committed Activities</h2>
         {% include 'bloom_student_interface/partials/activity_tracking.html#current_activities_table' %}
-
-     
     </div>
-    {% endif %}
 
-    <div class="border border-gray-300 rounded-md p-6">
-        <h2 class="text-2xl font-semibold mb-4">Recommended Activities</h2>
-
-        {% if recommended_activities %}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {% for recommendation in recommended_activities %}
-                    <div class="border border-gray-300 rounded-md p-4 flex flex-col">
-                        <div class="mb-4">
-                            <h3 class="text-lg font-semibold">{{ recommendation.activity.title }}</h3>
-                            {% if recommendation.activity.category %}
-                                <p class="text-sm text-gray-500">{{ recommendation.activity.category }}</p>
-                            {% endif %}
-                            {% if recommendation.activity.description %}
-                                <p class="text-gray-600 mt-2">{{ recommendation.activity.description }}</p>
-                            {% endif %}
-                        </div>
-                        <div class="mt-auto">
-                            <a href="{% url 'bloom_student_interface:child_activity' child.slug recommendation.activity.slug %}" class="btn btn-primary">View Activity</a>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            {% if committed_activities %}
-            <p class="text-gray-600">No new recommendations. Check back later!</p>
-            <p class="text-gray-600">If you feel that you have outgrown your current recommended activities, please redo the assessment so we can come up with new recommendations for you.</p>
-
-            
-            {% else %}
-            <p class="text-gray-600">No recommended activities yet. Complete an assessment to get personalized activity recommendations.</p>
-            {% endif %}
-        {% endif %}
+    <div class="surface">
+        <h2 class="">Recommended Activities</h2>
+        {% include 'bloom_student_interface/partials/activity_tracking.html#recommended_activities' %}
     </div>
 
  

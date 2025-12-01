@@ -99,7 +99,7 @@ class CommittedActivity(SiteAwareModel):
         on_delete=models.CASCADE,
     )
     created_at = models.DateTimeField(auto_now_add=True)
-
+    stopped_at = models.DateTimeField(null=True, blank=True) 
 
 class ActivityLog(SiteAwareModel):
     """

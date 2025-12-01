@@ -177,7 +177,7 @@
 
 
 {% partialdef child %}
-<div class=" p-4  grid grid-cols-6 gap-4  rounded-xl shadow-xl">
+<div class="surface grid grid-cols-6 gap-4">
     <div class="text-center col-span-2">
         <h2>{{child.name}}</h2>
         <p class="text-gray-600">Age: {{child.age}}</p>
@@ -194,7 +194,6 @@
 
 
             {% with form_progress=child.complete_assessment %}
-                <!-- {% partial category_scores_radar %} -->
                 {% partial category_scores_table %}
                 {% partial assessment_details_button %}
             {% endwith %}
@@ -220,7 +219,9 @@
             <div
                 hx-get="{% url 'bloom_student_interface:child_current_activities' slug=child.slug %}"
                 hx-trigger="load"
-                hx-swap="outerHTML"></div>
+                id="current_activities_table_{{child.slug}}"
+                
+                ></div>
 
             <a class="btn btn-primary" href="{% url 'bloom_student_interface:child_activities_configure' slug=child.slug %}">Configure activities</a>
 
