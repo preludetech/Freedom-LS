@@ -26,7 +26,16 @@ Instead of having to remember to do this all the time, you can use `npm run tail
 
 ## Database setup 
 
-Currently we are using Sqlite. Get the database set up like so:
+We are using a postgres database. There is a development docker composition in the dev_db directory. 
+
+If you want to do anything that interacts with the db, then you will need to run the development database:
+
+```
+cd dev_db 
+docker compose up
+```
+
+In a separate terminal, you can run the migrations:
 
 ```
 python manage.py migrate
@@ -43,12 +52,16 @@ Feel free to add more things to the create_demo_data script if it will make your
 Here is a useful script for quickly deleting and recreating the database, and loading a bunch of demo data:
 
 ```
-./refresh_db.sh
+# first, kill your docker composition. Then run:
+./db_clear.sh
+
+# Now start your composition again. Then run:
+./db_recreate.sh
 ```
 
 Once you have created demo data, there will be a few users defined. 
 
-Eg dor the site called Demo, there is a superuser with the email address `demo@email.com` and password `demo@user.com`
+Eg for the site called Demo, there is a superuser with the email address `demo@email.com` and password `demo@user.com`
 
 ## Running the development server 
 
