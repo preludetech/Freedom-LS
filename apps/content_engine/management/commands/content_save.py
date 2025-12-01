@@ -40,13 +40,39 @@ logger = logging.getLogger(__name__)
 def represent_str(dumper, data):
     """Custom string representer that uses literal style for multi-line strings."""
     if "\n" in data:
+        # Force literal block style for multi-line strings
+        # The style parameter tells PyYAML which style to use:
+        # '|' = literal block style (preserves newlines, no escaping)
+        # Use the literal style to preserve readability of multi-line content
         return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
     return dumper.represent_scalar("tag:yaml.org,2002:str", data)
 
 
 # Create custom YAML dumper
 class PreservingDumper(yaml.SafeDumper):
-    pass
+    """Custom YAML dumper that preserves multi-line strings in literal block style."""
+
+    def write_line_break(self, data=None):
+        """Override to ensure proper line breaks in literal style."""
+        super().write_line_break(data)
+
+    def choose_scalar_style(self):
+        """Override scalar style selection to prefer literal style for multi-line strings.
+
+        This method is called by PyYAML to determine which style to use for a scalar.
+        By default, PyYAML may choose double-quoted style for strings with special
+        characters, even if we specified style='|'. This override ensures that
+        our style preference is respected.
+        """
+        # Call parent's choose_scalar_style first
+        style = super().choose_scalar_style()
+
+        # If we explicitly set style to '|' (literal), keep it
+        # even if the string has special characters
+        if self.event.style == '|':
+            return '|'
+
+        return style
 
 
 PreservingDumper.add_representer(str, represent_str)

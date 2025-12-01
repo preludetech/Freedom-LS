@@ -20,9 +20,15 @@ required: true
 type: multiple_choice
 uuid: 5e8405d4-2333-49cb-b4fd-9406d3f64b9c
 ---
-content: "Considering blah blah, answer the following:\n<c-picture  \n  src=\"../images/graph1.drawio.svg\"\
-  \  \n  alt=\"Graph example\" \n  caption=\"Example of a graph\"\n  >\n</c-picture>"
-uuid: e894b2a0-32fd-4512-b2ac-618be11d96d8
+content: |-
+  Considering blah blah, answer the following:
+  <c-picture  
+     src="../images/graph1.drawio.svg"
+     alt="Graph example"
+     caption="Example of a graph"
+     />
+    Blah blah
+uuid: f262b2cf-3322-4b15-bf25-462ed56dcfb4
 ---
 options:
 - text: option 1 text
