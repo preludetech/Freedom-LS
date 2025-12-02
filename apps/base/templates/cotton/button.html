@@ -1,0 +1,17 @@
+
+
+{% if href %}
+    <a 
+        href="{{href}}" 
+        class="btn btn-outline"
+        {{attrs}}
+        >{{slot}}</a>
+
+{% else %}
+
+    <button 
+        {{attrs}}
+        class="btn btn-outline"
+        >{{slot}}</button>
+
+{% endif %}

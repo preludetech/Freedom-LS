@@ -9,7 +9,6 @@ wheels/
 *.egg-info
 
 db.sqlite3
-dev_db/
 
 
 # Virtual environments
