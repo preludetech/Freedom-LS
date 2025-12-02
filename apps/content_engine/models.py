@@ -99,6 +99,9 @@ class MarkdownContent(BaseContent):
     def rendered_content(self):
         from threading import local
 
+        if self.content is None:
+            return ""
+
         _thread_locals = local()
         request = getattr(_thread_locals, "request", None)
         return render_markdown(
