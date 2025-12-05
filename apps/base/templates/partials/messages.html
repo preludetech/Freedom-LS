@@ -1,7 +1,34 @@
 {% if messages %}
-    {% for message in messages %}
-        <div class="mb-4 p-4 rounded-lg {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
-            {{ message }}
+    <div aria-live="assertive" class="fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:p-6 sm:items-start z-50">
+        <div class="w-full flex flex-col items-center space-y-4 sm:items-end">
+            {% for message in messages %}
+                <div
+                    x-data="{ show: true }"
+                    x-show="show"
+                    x-transition
+                    x-init="setTimeout(() => show = false, 10000)"
+                    class="pointer-events-auto flex justify-between items-center p-4 rounded-md shadow-lg text-white
+                    {% if 'debug' in message.tags %}
+                        bg-gray-600
+                    {% elif 'info' in message.tags %}
+                        bg-blue-500
+                    {% elif 'success' in message.tags %}
+                        bg-green-500
+                    {% elif 'warning' in message.tags %}
+                        bg-orange-500
+                    {% elif 'error' in message.tags %}
+                        bg-red-500
+                    {% else %}
+                        bg-blue-500
+                    {% endif %}"
+                >
+                    <span class="text-sm font-medium">{{ message }}</span>
+
+                    <button @click="show = false" class="ml-4 text-xl font-bold leading-none hover:opacity-75 focus:outline-none">
+                        &times;
+                    </button>
+                </div>
+            {% endfor %}
         </div>
-    {% endfor %}
+    </div>
 {% endif %}
