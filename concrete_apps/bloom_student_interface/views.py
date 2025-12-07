@@ -561,6 +561,7 @@ def action_child_activity_start_stop(request, child_slug, activity_slug, action)
 #     return render(request, template_name, context)
 
 
+@login_required
 def learn(request):
     recommended_courses = RecommendedCourse.objects.filter(
         user=request.user
@@ -584,6 +585,7 @@ def learn(request):
     return render(request, "bloom_student_interface/learn.html", context)
 
 
+@login_required
 def children(request):
     children = Child.objects.filter(user=request.user).prefetch_related(
         "activities__activity"
@@ -653,6 +655,7 @@ def create_child(request):
     return render(request, "partials/form.html", context={"form": form})
 
 
+@login_required
 def child_current_activities(request, slug):
     child = get_object_or_404(Child, slug=slug, user=request.user)
     context = get_activities_context(child)
