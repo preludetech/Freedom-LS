@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.utils import timezone
-from content_engine.models import Topic, Form, ContentCollection
+from content_engine.models import Topic, Form, Course
 from student_progress.models import FormProgress, TopicProgress
 from student_management.models import Student, StudentCourseRegistration
 
@@ -17,7 +17,7 @@ def home(request):
 def course_home(request, collection_slug):
     from student_progress.models import CourseProgress
 
-    course = get_object_or_404(ContentCollection, slug=collection_slug)
+    course = get_object_or_404(Course, slug=collection_slug)
 
     children = get_course_index(course=course, request=request)
     is_registered = get_is_registered(request, course)
@@ -43,7 +43,7 @@ def course_home(request, collection_slug):
 
 
 def partial_course_toc(request, collection_slug):
-    course = get_object_or_404(ContentCollection, slug=collection_slug)
+    course = get_object_or_404(Course, slug=collection_slug)
 
     children = get_course_index(course=course, request=request)
     is_registered = get_is_registered(request, course)
@@ -59,7 +59,7 @@ def partial_list_courses(request):
     """Return a partial HTML section listing all available courses."""
     from student_management.models import Student
 
-    all_courses = ContentCollection.objects.all()
+    all_courses = Course.objects.all()
     registered_courses = []
 
     if request.user.is_authenticated:
@@ -82,7 +82,7 @@ def register_for_course(request, collection_slug):
     """Register the current user for a course."""
     from student_management.models import RecommendedCourse
 
-    course = get_object_or_404(ContentCollection, slug=collection_slug)
+    course = get_object_or_404(Course, slug=collection_slug)
 
     # Get or create Student instance for this user
     student, _ = Student.objects.get_or_create(user=request.user)
@@ -107,7 +107,7 @@ def register_for_course(request, collection_slug):
 def view_course_item(request, collection_slug, index):
     from student_progress.models import CourseProgress
 
-    course = get_object_or_404(ContentCollection, slug=collection_slug)
+    course = get_object_or_404(Course, slug=collection_slug)
     children = course.children()
     current_item = children[index - 1]
 
@@ -231,7 +231,7 @@ def view_form(request, form, course, index):
 def form_start(request, collection_slug, index):
     """Start or resume a form for the current user."""
 
-    course = get_object_or_404(ContentCollection, slug=collection_slug)
+    course = get_object_or_404(Course, slug=collection_slug)
     children = course.children()
     form = children[index - 1]
 
@@ -252,7 +252,7 @@ def form_start(request, collection_slug, index):
 
 @login_required
 def form_fill_page(request, collection_slug, index, page_number):
-    course = get_object_or_404(ContentCollection, slug=collection_slug)
+    course = get_object_or_404(Course, slug=collection_slug)
     children = course.children()
     form = children[index - 1]
     all_pages = list(form.pages.all())
@@ -356,7 +356,7 @@ def form_fill_page(request, collection_slug, index, page_number):
 
 @login_required
 def course_form_complete(request, collection_slug, index):
-    course = get_object_or_404(ContentCollection, slug=collection_slug)
+    course = get_object_or_404(Course, slug=collection_slug)
     children = course.children()
     form = children[index - 1]
 

@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Count
-from content_engine.models import ContentCollection
+from content_engine.models import Course
 
 
 def home(request):
@@ -10,7 +10,7 @@ def home(request):
 
 def course_student_progress(request, collection_slug):
     """Show student progress for a specific course."""
-    course = get_object_or_404(ContentCollection, slug=collection_slug)
+    course = get_object_or_404(Course, slug=collection_slug)
     return render(
         request,
         "educator_interface/course_student_progress.html",
@@ -21,7 +21,7 @@ def course_student_progress(request, collection_slug):
 def course_list(request):
     """List all courses in alphabetical order."""
     courses = (
-        ContentCollection.objects.all()
+        Course.objects.all()
         .annotate(
             cohort_count=Count("cohort_registrations", distinct=True),
             direct_student_count=Count("student_registrations", distinct=True),

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Topic,
-    ContentCollection,
+    Course,
     ContentCollectionItem,
     Form,
     FormPage,
@@ -140,8 +140,8 @@ class ContentCollectionItemInline(admin.TabularInline):
     ordering = ("order",)
 
 
-@admin.register(ContentCollection)
-class ContentCollectionAdmin(SiteAwareModelAdmin):
+@admin.register(Course)
+class CourseAdmin(SiteAwareModelAdmin):
     list_display = ("title", "subtitle")
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")

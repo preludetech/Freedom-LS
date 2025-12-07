@@ -75,10 +75,10 @@ class CohortMembership(SiteAwareModel):
 
 
 class StudentCourseRegistration(SiteAwareModel):
-    """Individual student registration for a course/collection."""
+    """Individual student registration for a course."""
 
     collection = models.ForeignKey(
-        "content_engine.ContentCollection",
+        "content_engine.Course",
         on_delete=models.CASCADE,
         related_name="student_registrations",
     )
@@ -101,10 +101,10 @@ class StudentCourseRegistration(SiteAwareModel):
 
 
 class CohortCourseRegistration(SiteAwareModel):
-    """Cohort-wide registration for a course/collection."""
+    """Cohort-wide registration for a course."""
 
     collection = models.ForeignKey(
-        "content_engine.ContentCollection",
+        "content_engine.Course",
         on_delete=models.CASCADE,
         related_name="cohort_registrations",
     )
@@ -128,7 +128,7 @@ class CohortCourseRegistration(SiteAwareModel):
 
 class RecommendedCourse(SiteAwareModel):
     """
-    Course (ContentCollection) recommendations for users.
+    Course recommendations for users.
     Created when a parent fills out a form.
     """
 
@@ -138,7 +138,7 @@ class RecommendedCourse(SiteAwareModel):
         related_name="recommended_courses",
     )
     collection = models.ForeignKey(
-        "content_engine.ContentCollection",
+        "content_engine.Course",
         on_delete=models.CASCADE,
         related_name="recommendations",
     )

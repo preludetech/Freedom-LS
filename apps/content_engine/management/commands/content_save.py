@@ -23,7 +23,7 @@ from content_engine.schema import ContentType as SchemaContentType
 from content_engine.models import (
     Topic,
     Activity,
-    ContentCollection,
+    Course,
     ContentCollectionItem,
     Form,
     FormPage,
@@ -69,8 +69,8 @@ class PreservingDumper(yaml.SafeDumper):
 
         # If we explicitly set style to '|' (literal), keep it
         # even if the string has special characters
-        if self.event.style == '|':
-            return '|'
+        if self.event.style == "|":
+            return "|"
 
         return style
 
@@ -184,7 +184,7 @@ def get_unique_slug(model_class, site, base_slug, existing_uuid=None):
     Generate a unique slug by appending -2, -3, etc. if needed.
 
     Args:
-        model_class: The model class (Topic, Form, ContentCollection)
+        model_class: The model class (Topic, Form, Course)
         site: The site object
         base_slug: The base slug to make unique
         existing_uuid: Optional UUID of existing object (to exclude from uniqueness check)
@@ -272,10 +272,10 @@ def save_activity(item, site, base_path):
     )
 
 
-def save_collection(item, site, base_path):
-    """Save a ContentCollection to the database."""
+def save_course(item, site, base_path):
+    """Save a Course to the database."""
     return save_with_uuid(
-        ContentCollection,
+        Course,
         item,
         site,
         base_path,
@@ -284,7 +284,6 @@ def save_collection(item, site, base_path):
         description=item.description,
         slug=slugify(item.title),
         content=item.content,
-        collection_type=item.collection_type,
         category=item.category,
         meta=item.meta,
         tags=item.tags,
@@ -485,13 +484,13 @@ def save_content_to_db(path, site_name):
         content_by_path[item.file_path] = activity
         logger.info(f"Saved Activity: {activity.title}")
 
-    # Save Collections
+    # Save Courses
     collections_data = []  # Store (collection_obj, schema_item) for later children processing
-    for item in grouped.get(SchemaContentType.COLLECTION, []):
-        collection = save_collection(item, site, path)
+    for item in grouped.get(SchemaContentType.COURSE, []):
+        collection = save_course(item, site, path)
         content_by_path[item.file_path] = collection
         collections_data.append((collection, item))
-        logger.info(f"Saved ContentCollection: {collection.title}")
+        logger.info(f"Saved Course: {collection.title}")
 
     # Save Forms and track them by directory
     forms_by_dir = {}
@@ -579,11 +578,11 @@ def save_content_to_db(path, site_name):
                 main_files = []
                 for f in subdir.iterdir():
                     if f.is_file() and f.suffix in [".md", ".yaml", ".yml"]:
-                        # Parse to check if it's a Form or Collection (top-level content)
+                        # Parse to check if it's a Form or Course or other top-level content
                         parsed = parse_single_file(f)
                         if parsed and parsed[0].content_type in (
                             SchemaContentType.FORM,
-                            SchemaContentType.COLLECTION,
+                            SchemaContentType.COURSE,
                         ):
                             main_files.append(f)
                             break  # Found the main file

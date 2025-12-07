@@ -1,7 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.utils import timezone
-from content_engine.models import Topic, Form, ContentCollection
+from content_engine.models import Topic, Form, Course
 from student_progress.models import FormProgress, TopicProgress, QuestionAnswer
 from student_management.models import Student, StudentCourseRegistration
 
@@ -82,7 +82,7 @@ def get_course_index(request, course):
                 else:
                     status = BLOCKED
 
-            elif isinstance(child, ContentCollection):
+            elif isinstance(child, Course):
                 NotImplemented
                 title = child.title
                 # url = reverse(
@@ -91,8 +91,8 @@ def get_course_index(request, course):
                 # )
                 url = "todo"
 
-                # For collections, check if all direct children are complete
-                # TODO: implement proper recursive collection completion checking
+                # For courses, check if all direct children are complete
+                # TODO: implement proper recursive course completion checking
                 if next_status == READY:
                     status = READY
                 else:

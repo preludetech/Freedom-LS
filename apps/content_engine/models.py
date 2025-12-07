@@ -135,21 +135,9 @@ class Activity(TitledContent, MarkdownContent):
         unique_together = ["site", "slug"]
 
 
-class CollectionType(models.TextChoices):
-    """Collection type enumeration."""
+class Course(MarkdownContent, TitledContent):
+    """Course - contains an ordered list of child content."""
 
-    COURSE = "COURSE", _("Course")
-
-
-class ContentCollection(MarkdownContent, TitledContent):
-    """Content collection - contains an ordered list of child content."""
-
-    collection_type = models.CharField(
-        max_length=50,
-        choices=CollectionType.choices,
-        null=True,
-        blank=True,
-    )
     category = models.CharField(max_length=200, null=True, blank=True)
 
     class Meta:
@@ -161,10 +149,10 @@ class ContentCollection(MarkdownContent, TitledContent):
 
 
 class ContentCollectionItem(SiteAwareModel):
-    """Through model for ContentCollection children with order and overrides."""
+    """Through model for Course children with order and overrides."""
 
     collection = models.ForeignKey(
-        ContentCollection, on_delete=models.CASCADE, related_name="items"
+        Course, on_delete=models.CASCADE, related_name="items"
     )
 
     # Generic foreign key to any content type

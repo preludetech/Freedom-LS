@@ -15,7 +15,7 @@ class ContentType(str, Enum):
     TOPIC = "TOPIC"
     ACTIVITY = "ACTIVITY"
     FORM = "FORM"
-    COLLECTION = "COLLECTION"
+    COURSE = "COURSE"
     FORM_PAGE = "FORM_PAGE"
     FORM_QUESTION = "FORM_QUESTION"
     FORM_CONTENT = "FORM_CONTENT"
@@ -35,12 +35,6 @@ class FormStrategy(str, Enum):
 
     CATEGORY_VALUE_SUM = "CATEGORY_VALUE_SUM"
     QUIZ = "QUIZ"
-
-
-class CollectionType(str, Enum):
-    """Collection type enumeration."""
-
-    COURSE = "COURSE"
 
 
 class BaseBaseContentModel(BaseModel):
@@ -95,7 +89,7 @@ class Child(BaseModel):
     )
 
 
-class ContentCollection(BaseContentModel, content_type=ContentType.COLLECTION):
+class Course(BaseContentModel, content_type=ContentType.COURSE):
     """
     You can think of this as a folder. It contains an ordered list of child content.
     """
@@ -105,10 +99,6 @@ class ContentCollection(BaseContentModel, content_type=ContentType.COLLECTION):
     children: list[Child] = Field(
         default_factory=list,
         description="List of child content references with optional overrides",
-    )
-
-    collection_type: Optional[CollectionType] = Field(
-        None, description="Type of collection"
     )
 
     category: Optional[str] = Field(
