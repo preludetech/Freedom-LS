@@ -6,9 +6,8 @@ from .models import Child, ChildFormProgress, RecommendedActivity
 
 @admin.register(Child)
 class ChildAdmin(ModelAdmin):
-    list_display = ["name", "age", "user", "slug"]
+    list_display = ["name", "user"]
     search_fields = ["name", "user__email"]
-    list_filter = ["age"]
     readonly_fields = ["slug"]
     exclude = ["site"]
 

@@ -626,10 +626,13 @@ class ChildForm(forms.ModelForm):
 
     class Meta:
         model = Child
-        fields = ["name", "age"]
+        fields = ["name", "date_of_birth", "gender"]
         widgets = {
             "name": forms.TextInput(attrs={"placeholder": "Enter child's name"}),
-            "age": forms.NumberInput(attrs={"placeholder": "Enter age", "min": 0}),
+            "date_of_birth": forms.DateInput(
+                attrs={"type": "date", "placeholder": "YYYY-MM-DD"}
+            ),
+            "gender": forms.Select(),
         }
 
 

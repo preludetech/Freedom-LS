@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
 
-from content_engine.models import Activity, ContentCollection
+from content_engine.models import Activity
 from site_aware_models.models import SiteAwareModel
 from student_progress.models import FormProgress
 
@@ -12,7 +12,16 @@ class Child(SiteAwareModel):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="children"
     )
     name = models.CharField(max_length=255)
-    age = models.IntegerField()
+    date_of_birth = models.DateField()
+    gender = models.CharField(
+        max_length=20,
+        choices=[
+            ("male", "Male"),
+            ("female", "Female"),
+            ("other", "Other"),
+            ("prefer_not_to_say", "Prefer not to say"),
+        ],
+    )
     slug = models.SlugField(max_length=255, unique=True, blank=True)
 
     def save(self, *args, **kwargs):
@@ -27,7 +36,7 @@ class Child(SiteAwareModel):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.name} ({self.age}) - {self.user}"
+        return f"{self.name} ({self.date_of_birth}) - {self.user}"
 
 
 class ChildFormProgress(SiteAwareModel):
@@ -99,7 +108,8 @@ class CommittedActivity(SiteAwareModel):
         on_delete=models.CASCADE,
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    stopped_at = models.DateTimeField(null=True, blank=True) 
+    stopped_at = models.DateTimeField(null=True, blank=True)
+
 
 class ActivityLog(SiteAwareModel):
     """
