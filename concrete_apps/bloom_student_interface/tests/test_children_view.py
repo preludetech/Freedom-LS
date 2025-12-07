@@ -5,12 +5,20 @@ from content_engine.models import Form
 from student_progress.models import FormProgress
 from bloom_student_interface.models import Child, ChildFormProgress
 from bloom_student_interface.views import children
+from datetime import date, timedelta
 
 
 @pytest.fixture
 def picky_eating_form(mock_site_context):
     """Create the picky eating form."""
     return Form.objects.create(slug="picky-eating", title="Picky Eating Assessment")
+
+
+def make_child(user):
+    dob = date.today() - timedelta(days=365 * 4)
+    return Child.objects.create(
+        user=user, name="Test Child", date_of_birth=dob, gender="female"
+    )
 
 
 @pytest.mark.parametrize("site", ["Bloom"], indirect=True)
@@ -21,7 +29,7 @@ class TestChildrenView:
     def test_no_assessment(self, user, mock_site_context, picky_eating_form):
         """Test that a child with no assessment shows 'Start Assessment' button."""
         # Create a child
-        Child.objects.create(user=user, name="Test Child", age=5)
+        make_child(user)
 
         # Create a request and call the view directly
         factory = RequestFactory()
@@ -36,7 +44,7 @@ class TestChildrenView:
     def test_incomplete_assessment(self, user, mock_site_context, picky_eating_form):
         """Test that a child with incomplete assessment shows 'Continue Assessment' button."""
         # Create a child
-        child = Child.objects.create(user=user, name="Test Child", age=5)
+        child = make_child(user)
 
         # Create incomplete form progress
         form_progress = FormProgress.objects.create(user=user, form=picky_eating_form)
@@ -55,13 +63,11 @@ class TestChildrenView:
     def test_complete_assessment(self, user, mock_site_context, picky_eating_form):
         """Test that a child with complete assessment shows 'View Assessment Results' button."""
         # Create a child
-        child = Child.objects.create(user=user, name="Test Child", age=5)
+        child = make_child(user)
 
         # Create complete form progress
         form_progress = FormProgress.objects.create(
-            user=user,
-            form=picky_eating_form,
-            completed_time=timezone.now()
+            user=user, form=picky_eating_form, completed_time=timezone.now()
         )
         ChildFormProgress.objects.create(form_progress=form_progress, child=child)
 
