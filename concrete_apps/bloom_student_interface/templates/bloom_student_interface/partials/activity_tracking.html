@@ -232,68 +232,55 @@
 
     {% if recommended_activities_organised %}
 
-        
+        <div class="space-y-4">
+            {% for cat1, value1 in recommended_activities_organised.items %}
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800 bg-blue-50 px-3 py-1 rounded">{{ cat1 }}</h2>
 
+                    {% for cat2, value2 in value1.items %}
+                        <div class="mt-3 ml-3">
+                            <h3 class="text-base font-semibold text-gray-700 mb-2">{{ cat2 }}</h3>
 
-        {% for cat1, value1 in recommended_activities_organised.items %}
+                            {% for level, activity_list in value2.items %}
+                                <div class="mt-2">
+                                    <h4 class="text-sm font-medium text-gray-600 mb-1 ml-2">Level {{ level }}</h4>
+                                    <div class="space-y-2">
+                                        {% for activity in activity_list %}
+                                            <div class="border border-gray-300 rounded p-3 flex items-center gap-4">
+                                                <div class="flex-1 min-w-0">
+                                                    <h5 class="font-semibold text-gray-900">{{ activity.title }}</h5>
+                                                    {% if activity.description %}
+                                                        <p class="text-gray-600 text-sm truncate">{{ activity.description }}</p>
+                                                    {% endif %}
+                                                </div>
 
-        <div class="surface">
-            {{cat1}}
-            {% for cat2, value2 in value1.items %}
-
-            <div class="surface">
-                {{cat2}}
-
-                {% for level, activity_list in value2.items %}
-                <div class="surface">
-
-                Level: {{level}}
-
-                {% for activity in activity_list %}
-                        
-                    <div class="surface">
-                        <h3 class="text-lg font-semibold">{{ activity.title }}</h3>
-{% if activity.description %}
-                            <p class="text-gray-600 mt-2">{{ activity.description }}</p>
-                        {% endif %}
-<c-button-group>
-
-                            {% include 'bloom_student_interface/partials/activity_tracking.html#view_activity_description_button'%}
-
-                        <button
-                            class="btn btn-outline"
-                            hx-post="{% url 'bloom_student_interface:action_child_activity_start_stop' child.slug activity.slug  'start' %}"
-                            
-                        >Start</button>
-
-
-                    </c-button-group>
-
-                    </div>
-
-                {% endfor %}
-
+                                                <c-button-group>
+                                                    {% include 'bloom_student_interface/partials/activity_tracking.html#view_activity_description_button' %}
+                                                    <button
+                                                        class="btn btn-primary"
+                                                        hx-post="{% url 'bloom_student_interface:action_child_activity_start_stop' child.slug activity.slug 'start' %}"
+                                                    >Start</button>
+                                                </c-button-group>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
-
-            </div>
-
             {% endfor %}
-
         </div>
 
-        {% endfor %}
-
-
     {% else %}
-        {% if committed_activities %}
-        <p class="text-gray-600">No new recommendations. Check back later!</p>
-        <p class="text-gray-600">If you feel that you have outgrown your current recommended activities, please redo the assessment so we can come up with new recommendations for you.</p>
-
-        
-        {% else %}
-        <p class="text-gray-600">No recommended activities yet. Complete an assessment to get personalized activity recommendations.</p>
-        {% endif %}
+        <div class="surface bg-gray-50">
+            {% if committed_activities %}
+                <p class="text-gray-700 mb-2">No new recommendations. Check back later!</p>
+                <p class="text-gray-600 text-sm">If you feel that you have outgrown your current recommended activities, please redo the assessment so we can come up with new recommendations for you.</p>
+            {% else %}
+                <p class="text-gray-700">No recommended activities yet. Complete an assessment to get personalized activity recommendations.</p>
+            {% endif %}
+        </div>
     {% endif %}
 
 </div>
@@ -303,7 +290,7 @@
 
 
 
-{% partialdef recommended_activities %}
+{% partialdef recommended_activities_old %}
 
 <div id="recommended_activities" hx-swap-oob="true">
     {% if recommended_activities %}
@@ -410,7 +397,7 @@
 {# This partial is used when starting an activity - it updates both recommended and current activities #}
 
 {% partial current_activities_table %}
-{% partial recommended_activities %}
+{% partial recommended_activities_organised %}
 {% partial activity_history %}
 
 
