@@ -44,6 +44,8 @@ urlpatterns = [
     path("learn", views.learn, name="learn"),
     path("children", views.children, name="children"),
     path("children/create/", views.create_child, name="children_create"),
+    path("children/<slug:slug>/edit/", views.edit_child, name="children_edit"),
+    path("children/<slug:slug>/delete/", views.delete_child, name="children_delete"),
     ## Assessment
     path(
         "child/<slug:slug>/assessment/", views.child_assessment, name="child_assessment"

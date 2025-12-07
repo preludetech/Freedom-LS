@@ -35,6 +35,74 @@
 {% endpartialdef %}
 
 
+{% partialdef edit-child-button %}
+
+<form
+        hx-post="{% url 'bloom_student_interface:children_edit' slug=child.slug %}"
+        hx-target="#edit-child-form-container-{{child.slug}}"
+        hx-swap="innerHTML"
+    >
+        {% csrf_token %}
+
+        <c-modal title="Edit Child">
+            <c-slot name="trigger">
+                <button class="btn btn-outline"
+                hx-get="{% url 'bloom_student_interface:children_edit' slug=child.slug %}"
+                hx-target="#edit-child-form-container-{{child.slug}}"
+                hx-trigger="click">
+                Edit
+            </button>
+        </c-slot>
+
+        <!-- Modal content will be loaded here via HTMX -->
+        <div id="edit-child-form-container-{{child.slug}}">
+            <p class="text-gray-500">Loading form...</p>
+        </div>
+
+        <c-slot name="footer">
+            <button type="button" class="btn btn-outline" @click="open = false">Cancel</button>
+            <input type="submit" class="btn btn-primary" value="Save"/>
+        </c-slot>
+    </c-modal>
+</form>
+
+{% endpartialdef %}
+
+
+{% partialdef delete-child-button %}
+
+<form
+        hx-post="{% url 'bloom_student_interface:children_delete' slug=child.slug %}"
+        hx-target="#delete-child-confirmation-{{child.slug}}"
+        hx-swap="innerHTML"
+    >
+        {% csrf_token %}
+
+        <c-modal title="Delete Child - Confirm">
+            <c-slot name="trigger">
+                <button type="button" class="btn btn-danger"
+                hx-get="{% url 'bloom_student_interface:children_delete' slug=child.slug %}"
+                hx-target="#delete-child-confirmation-{{child.slug}}"
+                hx-trigger="click">
+                Delete
+            </button>
+        </c-slot>
+
+        <!-- Confirmation message will be loaded here via HTMX -->
+        <div id="delete-child-confirmation-{{child.slug}}">
+            <p class="text-gray-500">Loading...</p>
+        </div>
+
+        <c-slot name="footer">
+            <button type="button" class="btn btn-outline" @click="open = false">Cancel</button>
+            <input type="submit" class="btn btn-danger" value="Yes, Delete Permanently"/>
+        </c-slot>
+    </c-modal>
+</form>
+
+{% endpartialdef %}
+
+
 {% partialdef category_scores_radar %}
 
 <div id="scores_{{form_progress.id}}" class="w-full  mx-auto">
@@ -181,6 +249,11 @@
     <div class="text-center col-span-2">
         <h2>{{child.name}}</h2>
         <p class="text-gray-600">Age: {{child.age}}</p>
+
+        <c-button-group>
+            {% partial edit-child-button %}
+            {% partial delete-child-button %}
+        </c-button-group>
 
 
         {% if child.complete_assessment %}

@@ -132,6 +132,11 @@
                hover:bg-green-700 focus:ring-green-500
     }
 
+    .btn-danger {
+        @apply bg-red-600 text-white
+               hover:bg-red-700 focus:ring-red-500
+    }
+
     .surface {
         @apply border border-gray-300 rounded-md p-6
     }

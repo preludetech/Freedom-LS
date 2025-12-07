@@ -1,0 +1,31 @@
+<div class="space-y-4">
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div class="flex items-start">
+            <svg class="h-6 w-6 text-red-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <div>
+                <h3 class="text-lg font-semibold text-red-900">Warning: This action cannot be undone</h3>
+                <p class="text-red-700 mt-2">
+                    You are about to permanently delete <strong>{{ child.name }}</strong> and all associated data.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-gray-700">
+        <p class="font-medium mb-2">The following data will be permanently deleted:</p>
+        <ul class="list-disc list-inside space-y-1 text-sm">
+            <li>Child profile information</li>
+            <li>All assessment results and progress</li>
+            <li>Activity tracking history</li>
+            <li>All recommendations and configurations</li>
+        </ul>
+    </div>
+
+    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <p class="text-sm text-gray-600">
+            <strong>Important:</strong> This data cannot be recovered once deleted. If you're unsure, consider canceling and reviewing the child's information first.
+        </p>
+    </div>
+</div>

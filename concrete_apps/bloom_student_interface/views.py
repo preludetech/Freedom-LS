@@ -733,6 +733,38 @@ def create_child(request):
 
 
 @login_required
+def edit_child(request, slug):
+    """Edit an existing child for the current user."""
+    child = get_object_or_404(Child, slug=slug, user=request.user)
+
+    if request.method == "POST":
+        form = ChildForm(request.POST, instance=child)
+        if form.is_valid():
+            form.save()
+            return redirect("bloom_student_interface:children")
+    else:
+        form = ChildForm(instance=child)
+
+    return render(request, "partials/form.html", context={"form": form})
+
+
+@login_required
+def delete_child(request, slug):
+    """Delete a child and all associated data."""
+    child = get_object_or_404(Child, slug=slug, user=request.user)
+
+    if request.method == "POST":
+        child.delete()
+        return redirect("bloom_student_interface:children")
+
+    return render(
+        request,
+        "bloom_student_interface/partials/confirm_delete_child.html",
+        context={"child": child},
+    )
+
+
+@login_required
 def child_current_activities(request, slug):
     child = get_object_or_404(Child, slug=slug, user=request.user)
     context = get_activities_context(child)
