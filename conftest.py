@@ -13,13 +13,6 @@ from content_engine.models import Form, Activity
 User = get_user_model()
 
 
-def reverse_url(
-    live_server, viewname, urlconf=None, args=None, kwargs=None, current_app=None
-):
-    end = reverse(viewname, urlconf, args, kwargs, current_app)
-    return f"{live_server.url}{end}"
-
-
 @pytest.fixture
 def activity(mock_site_context):
     """Create a test activity."""
@@ -82,8 +75,8 @@ def mock_site_context(site, mocker):
     from site_aware_models.models import _thread_locals
 
     # Check if request attribute already exists
-    had_request = hasattr(_thread_locals, 'request')
-    old_request = getattr(_thread_locals, 'request', None) if had_request else None
+    had_request = hasattr(_thread_locals, "request")
+    old_request = getattr(_thread_locals, "request", None) if had_request else None
 
     mock_request = mocker.Mock()
     _thread_locals.request = mock_request
@@ -97,8 +90,8 @@ def mock_site_context(site, mocker):
     # Cleanup: restore original state
     if had_request:
         _thread_locals.request = old_request
-    elif hasattr(_thread_locals, 'request'):
-        delattr(_thread_locals, 'request')
+    elif hasattr(_thread_locals, "request"):
+        delattr(_thread_locals, "request")
 
 
 @pytest.fixture

@@ -65,7 +65,7 @@ def make_recommendations(child):
             recommendation, created = RecommendedActivity.objects.get_or_create(
                 child=child,
                 activity=activity,
-                site_id=3,
+                # site_id=3,
                 defaults={"form_progress": complete_form_progress},
             )
             recommendation_count += 1

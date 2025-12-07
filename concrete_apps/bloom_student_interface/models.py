@@ -136,6 +136,18 @@ class ActivityLog(SiteAwareModel):
     date = models.DateField()
     done = models.BooleanField(null=True, blank=True, default=None)
 
+    notes = models.TextField(null=True, blank=True)
+    sentiment = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        choices=[
+            ("good", "Good"),
+            ("bad", "Bad"),
+            ("neutral", "Neutral"),
+        ],
+    )
+
     class Meta:
         ordering = ["-date"]
         unique_together = ["child", "activity", "date"]

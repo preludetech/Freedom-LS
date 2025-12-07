@@ -1,22 +1,99 @@
 {% load dict_filters %}
 
 
+{% partialdef good %}
+<i class="fa fa-thumbs-up text-green-600" title="Good"></i>
+{% endpartialdef %}
+
+{% partialdef bad %}
+<i class="fa fa-thumbs-down text-orange-600" title="Bad"></i>
+{% endpartialdef %}
+
+{% partialdef neutral %}
+<i class="fa fa-check-circle text-yellow-600" title="Neutral"></i>
+{% endpartialdef %}
+
+{% partialdef not_done %}
+<i class="fa fa-times-circle text-red-600" title="Not done today"></i>
+{% endpartialdef %}
+
+{% partialdef not_marked %}
+            <i class="fa fa-question-circle text-gray-400" title="Not yet marked"></i>
+
+{% endpartialdef %}
+
+
+{% partialdef log_status_symbol %}
+    {% if log.sentiment == "good" %}
+        {% partial good %}
+    {% elif log.sentiment == "bad" %}
+        {% partial bad %}
+    {% elif log.sentiment == "neutral" %}
+        {% partial neutral %}
+    {% elif log.done == False %}
+        {% partial not_done %}
+    {% else %}
+        {% partial not_marked %}
+    {% endif %}
+
+{% endpartialdef %}
+
+
 {% partialdef activity_radio %}
 
-<button 
-    hx-post="{% url 'bloom_student_interface:action_child_activity_toggle' child.slug activity.slug date %}"
-    hx-swap="outerHTML"
-    class="cursor-pointer"
-    >
+<c-modal  id="activity-{{activity.pk}}-{{date}}">
+    <c-slot name="title">
+            {% partial log_status_symbol %} {{activity.title}} - {{date}}
 
-    {% if done == True %}
-    <i class="fa fa-check-circle text-green-600" title="Done today"></i>
-    {% elif done == False %}
-    <i class="fa fa-times-circle text-red-600" title="Not done today"></i>
-    {% else %}
-    <i class="fa fa-question-circle text-gray-400" title="Not yet marked"></i>
-    {% endif %}
-</button>
+    </c-slot>
+    
+    <c-slot name="trigger">
+        <button
+            data-testid="activity-status-button-{{activity.slug}}-{{date}}"
+            class="cursor-pointer relative text-4xl"
+            >
+            
+            {% partial log_status_symbol %}
+
+            {% if log.notes %}
+                <i class="fa fa-file-text text-blue-400 absolute -top-1 -left-1 text-sm" aria-hidden="true" title="{{log.notes}}"></i>
+            {% endif %}
+        </button>
+
+    </c-slot>
+
+
+
+    <form
+        hx-post="{% url 'bloom_student_interface:action_child_activity_toggle' child.slug activity.slug date %}"
+
+        hx-swap="outerHTML"
+
+        hx-target="#activity-{{activity.pk}}-{{date}}"
+
+    >
+        <textarea name="notes" placeholder="How did it go?" data-testid="activity-notes-textarea-{{activity.slug}}-{{date}}">{{log.notes}}</textarea>
+        <button name="good" class="btn btn-outline border-green-600">
+            <i class="fa fa-thumbs-up" aria-hidden="true"></i>
+            Good
+        </button>
+        <button class="btn btn-outline" name="neutral">Neutral</button>
+        <button class="btn btn-outline border-red-600" name="bad">
+            <i class="fa fa-thumbs-down" aria-hidden="true"></i>
+            Bad
+        </button>
+        <button class="btn btn-outline border-red-600" name="didnt-do">
+            <i class="fa fa-times-circle" aria-hidden="true"></i>
+            I didn't do it
+        </button>
+    </form>
+
+    <c-slot name="footer">
+        <button type="button" class="btn btn-outline" @click="open = false" data-testid="modal-cancel-button-{{activity.slug}}-{{date}}">Cancel</button>
+    </c-slot>
+
+</c-modal>
+
 
 {% endpartialdef %}
 
@@ -103,12 +180,12 @@
         <tr class="border-b">
             <td class="p-2">
                 <div class="flex items-center gap-2">
-                    <div class="font-semibold">
+                    <div class="font-semibold" data-testid="committed-activity-title-{{commitment.activity.slug}}">
                         {% if commitment.activity.id in recommended_activity_ids %}
                             {% partial recommended_indicator %}
                         {% endif %}
                         {{ commitment.activity.title }}</div>
-                    
+
                 </div>
                 {% if commitment.activity.category %}
                     <div class="text-sm text-gray-500">{{ commitment.activity.category }}</div>
@@ -123,7 +200,7 @@
             </td>
             {% for loop_date in activity_logs %}
             <td class="text-center p-2 {% if forloop.first %}bg-blue-50{% endif %}">
-                {% with activity=commitment.activity done=activity_logs|dict_get:loop_date|dict_get:commitment.activity.id date=loop_date|date:"Y-m-d" %}
+                {% with activity=commitment.activity log=activity_logs|dict_get:loop_date|dict_get:commitment.activity.id date=loop_date|date:"Y-m-d" %}
                 {% include "bloom_student_interface/partials/activity_tracking.html#activity_radio" %}
                 {% endwith %}
             </td>

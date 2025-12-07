@@ -1,9 +1,12 @@
-<c-vars title footer class=""/>
+<c-vars title footer class="" id=""/>
 
 <!-- Modal backdrop and container -->
 <div x-data="{ open: false }"
      x-on:keydown.escape.window="open = false"
      x-cloak
+     {% if id %}
+     id="{{id}}"
+     {% endif %}
      {{ c.attrs }}>
 
     <!-- Trigger slot - the element that opens the modal -->

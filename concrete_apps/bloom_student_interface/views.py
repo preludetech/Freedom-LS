@@ -329,7 +329,7 @@ def get_activity_log_entries(child, day_range):
     for log in logs:
         if log.date not in activity_logs:
             activity_logs[log.date] = {}
-        activity_logs[log.date][log.activity_id] = log.done
+        activity_logs[log.date][log.activity_id] = log
 
     return activity_logs
 
@@ -410,20 +410,33 @@ def action_child_activity_toggle(request, child_slug, activity_slug, date):
         child=child, activity=activity, date=date_obj
     )
 
-    # Toggle through states: True -> False -> None -> True
-    if log.done is True:
-        log.done = False
-    elif log.done is False:
-        log.done = None
-    elif log.done is None:
+    log.notes = request.POST["notes"]
+
+    if "good" in request.POST:
         log.done = True
+        log.sentiment = "good"
+
+    elif "neutral" in request.POST:
+        log.done = True
+        log.sentiment = "neutral"
+
+    elif "bad" in request.POST:
+        log.done = True
+        log.sentiment = "bad"
+
+    elif "didnt-do" in request.POST:
+        log.done = False
+        log.sentiment = None
+
+    else:
+        raise Exception(f"{request.POST}")
 
     log.save()
 
     return render(
         request,
         "bloom_student_interface/partials/activity_tracking.html#activity_radio",
-        {"done": log.done, "date": date, "child": child, "activity": activity},
+        {"log": log, "date": date, "child": child, "activity": activity},
     )
 
 
