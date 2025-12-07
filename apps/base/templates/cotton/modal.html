@@ -1,7 +1,7 @@
-<c-vars title footer class="" id=""/>
+<c-vars title footer class="" id="" open="false"/>
 
 <!-- Modal backdrop and container -->
-<div x-data="{ open: false }"
+<div x-data="{ open: {{open}} }"
      x-on:keydown.escape.window="open = false"
      x-cloak
      {% if id %}
@@ -9,10 +9,13 @@
      {% endif %}
      {{ c.attrs }}>
 
+    {% if trigger %}
     <!-- Trigger slot - the element that opens the modal -->
     <div @click="open = true">
         {{trigger}}
     </div>
+
+    {% endif %}
 
     <!-- Modal overlay -->
     <div x-show="open"

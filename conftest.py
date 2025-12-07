@@ -73,6 +73,7 @@ def make_temp_file():
 def mock_site_context(site, mocker):
     """Mock the thread local request and get_current_site for SiteAwareModel and templates."""
     from site_aware_models.models import _thread_locals
+    from django.contrib.sites.models import SITE_CACHE
 
     # Check if request attribute already exists
     had_request = hasattr(_thread_locals, "request")
@@ -85,9 +86,14 @@ def mock_site_context(site, mocker):
     # Also patch for template context processors
     mocker.patch("django.contrib.sites.shortcuts.get_current_site", return_value=site)
 
+    # Clear and populate SITE_CACHE to ensure RequestFactory requests work
+    SITE_CACHE.clear()
+    SITE_CACHE['testserver'] = site
+
     yield site
 
-    # Cleanup: restore original state
+    # Cleanup: restore original state and clear cache
+    SITE_CACHE.clear()
     if had_request:
         _thread_locals.request = old_request
     elif hasattr(_thread_locals, "request"):

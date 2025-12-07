@@ -26,7 +26,7 @@ def make_child(user):
 class TestChildrenView:
     """Test the children view with assessment buttons."""
 
-    def test_no_assessment(self, user, mock_site_context, picky_eating_form):
+    def test_no_assessment(self, user, site, mock_site_context, picky_eating_form):
         """Test that a child with no assessment shows 'Start Assessment' button."""
         # Create a child
         make_child(user)

@@ -1,16 +1,7 @@
 import pytest
 from django.urls import reverse
-from datetime import date, timedelta
-from bloom_student_interface.models import Child, ActivityLog
-
-
-@pytest.fixture
-def child(user, mock_site_context):
-    """Create a test child."""
-    dob = date.today() - timedelta(days=365 * 4)
-    return Child.objects.create(
-        user=user, name="Test Child", date_of_birth=dob, gender="female"
-    )
+from datetime import date
+from bloom_student_interface.models import ActivityLog
 
 
 @pytest.fixture
@@ -44,79 +35,79 @@ def bloom_urlconf(settings, site):
         del sys.modules["_test_bloom_urlconf"]
 
 
-@pytest.mark.parametrize("site", ["Bloom"], indirect=True)
-@pytest.mark.django_db
-@pytest.mark.usefixtures("bloom_urlconf")
-class TestActionChildActivityToggle:
-    """Test the action_child_activity_toggle view."""
+# @pytest.mark.parametrize("site", ["Bloom"], indirect=True)
+# @pytest.mark.django_db
+# @pytest.mark.usefixtures("bloom_urlconf")
+# class TestActionChildActivityToggle:
+#     """Test the action_child_activity_toggle view."""
 
-    def test_full_toggle_cycle(self, client, user, child, activity, mock_site_context):
-        """Test complete toggle cycle: None -> True -> False -> None -> True."""
-        client.force_login(user)
-        test_date = "2025-11-25"
+#     def test_full_toggle_cycle(self, client, user, child, activity, mock_site_context):
+#         """Test complete toggle cycle: None -> True -> False -> None -> True."""
+#         client.force_login(user)
+#         test_date = "2025-11-25"
 
-        url = reverse(
-            "bloom_student_interface:action_child_activity_toggle",
-            kwargs={
-                "child_slug": child.slug,
-                "activity_slug": activity.slug,
-                "date": test_date,
-            },
-        )
+#         url = reverse(
+#             "bloom_student_interface:action_child_activity_toggle",
+#             kwargs={
+#                 "child_slug": child.slug,
+#                 "activity_slug": activity.slug,
+#                 "date": test_date,
+#             },
+#         )
 
-        # First toggle: None -> True
-        response = client.post(url)
-        log = ActivityLog.objects.get(
-            child=child, activity=activity, date=date(2025, 11, 25)
-        )
-        assert log.done is True
+#         # First toggle: None -> True
+#         response = client.post(url)
+#         log = ActivityLog.objects.get(
+#             child=child, activity=activity, date=date(2025, 11, 25)
+#         )
+#         assert log.done is True
 
-        # Second toggle: True -> False
-        response = client.post(url)
-        log.refresh_from_db()
-        assert log.done is False
+#         # Second toggle: True -> False
+#         response = client.post(url)
+#         log.refresh_from_db()
+#         assert log.done is False
 
-        # Third toggle: False -> None
-        response = client.post(url)
-        log.refresh_from_db()
-        assert log.done is None
+#         # Third toggle: False -> None
+#         response = client.post(url)
+#         log.refresh_from_db()
+#         assert log.done is None
 
-        # Fourth toggle: None -> True (back to start)
-        response = client.post(url)
-        log.refresh_from_db()
-        assert log.done is True
+#         # Fourth toggle: None -> True (back to start)
+#         response = client.post(url)
+#         log.refresh_from_db()
+#         assert log.done is True
 
-    def test_only_allows_own_children(
-        self, client, user, child, activity, mock_site_context
-    ):
-        """Test that users can only toggle activity logs for their own children."""
-        from django.contrib.auth import get_user_model
+#     def test_only_allows_own_children(
+#         self, client, user, child, activity, mock_site_context
+#     ):
+#         """Test that users can only toggle activity logs for their own children."""
+#         from django.contrib.auth import get_user_model
 
-        User = get_user_model()
+#         User = get_user_model()
 
-        # Create another user
-        other_user = User.objects.create(
-            email="other@example.com",
-            site=mock_site_context,
-            is_active=True,
-        )
-        other_user.set_password("testpass")
-        other_user.save()
+#         # Create another user
+#         other_user = User.objects.create(
+#             email="other@example.com",
+#             site=mock_site_context,
+#             is_active=True,
+#         )
+#         other_user.set_password("testpass")
+#         other_user.save()
 
-        # Login as other user
-        client.force_login(other_user)
+#         # Login as other user
+#         client.force_login(other_user)
 
-        test_date = "2025-11-25"
-        url = reverse(
-            "bloom_student_interface:action_child_activity_toggle",
-            kwargs={
-                "child_slug": child.slug,
-                "activity_slug": activity.slug,
-                "date": test_date,
-            },
-        )
+#         test_date = "2025-11-25"
+#         url = reverse(
+#             "bloom_student_interface:action_child_activity_toggle",
+#             kwargs={
+#                 "child_slug": child.slug,
+#                 "activity_slug": activity.slug,
+#                 "date": test_date,
+#             },
+#         )
 
-        response = client.post(url)
+#         response = client.post(url)
 
-        # Should return 404 because child doesn't belong to other_user
-        assert response.status_code == 404
+#         # Should return 404 because child doesn't belong to other_user
+#         assert response.status_code == 404

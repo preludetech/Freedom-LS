@@ -16,9 +16,14 @@ from .models import (
     ActivityLog,
 )
 
-from .recommender import make_recommendations
-
-PICKY_EATING_FORM_SLUG = "picky-eating"
+from .activity_utils import (
+    make_activity_recommendations,
+    get_activity_good_streak,
+    # get_activity_bad_streak,
+)
+from django.conf import settings
+from django.template.loader import render_to_string
+from django.http import HttpResponse
 
 
 @login_required
@@ -122,7 +127,7 @@ def child_assessment(request, slug):
     """Picky eating assessment for a specific child."""
     child = get_object_or_404(Child, slug=slug, user=request.user)
 
-    form = Form.objects.get(slug=PICKY_EATING_FORM_SLUG)
+    form = Form.objects.get(slug=settings.PICKY_EATING_FORM_SLUG)
 
     incomplete_form_progress = ChildFormProgress.get_latest_incomplete(child, form)
     page_number = (
@@ -249,7 +254,7 @@ def child_assessment_fill_page(request, child_slug, form_slug, page_number):
         # Mark form as completed and calculate scores
         form_progress.complete()
 
-        make_recommendations(child)
+        make_activity_recommendations(child)
 
         return redirect(
             "bloom_student_interface:child_assessment_complete",
@@ -433,11 +438,40 @@ def action_child_activity_toggle(request, child_slug, activity_slug, date):
 
     log.save()
 
-    return render(
-        request,
+    context = {"log": log, "date": date, "child": child, "activity": activity}
+
+    response_string = render_to_string(
         "bloom_student_interface/partials/activity_tracking.html#activity_radio",
-        {"log": log, "date": date, "child": child, "activity": activity},
+        context,
+        request=request,
     )
+
+    if log.sentiment == "good":
+        streak = get_activity_good_streak(child, activity)
+        if streak >= settings.NUMBER_OF_GOOD_ACTIVITIES_BEFORE_LEVEL_UP:
+            level_up_modal = render_to_string(
+                "bloom_student_interface/partials/activity_tracking.html#activity_level_up_modal",
+                context,
+                request=request,
+            )
+            response_string = response_string + level_up_modal
+    elif log.sentiment == "bad":
+        streak = get_activity_bad_streak(child, activity)
+        if streak >= settings.NUMBER_OF_BAD_ACTIVITIES_BEFORE_LEVEL_DOWN:
+            level_down_modal = render_to_string(
+                "bloom_student_interface/partials/activity_tracking.html#activity_level_up_modal",
+                context,
+                request=request,
+            )
+            response_string = response_string + level_down_modal
+
+    return HttpResponse(response_string)
+
+    # return render(
+    #     request,
+    #     "bloom_student_interface/partials/activity_tracking.html#activity_radio",
+    #     context,
+    # )
 
 
 # @login_required
@@ -605,7 +639,7 @@ def children(request):
     )
 
     # Get the picky eating form
-    picky_eating_form = Form.objects.get(slug=PICKY_EATING_FORM_SLUG)
+    picky_eating_form = Form.objects.get(slug=settings.PICKY_EATING_FORM_SLUG)
 
     # Add assessment status to each child
     for child in children:
