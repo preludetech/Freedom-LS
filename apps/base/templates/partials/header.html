@@ -5,10 +5,7 @@
     <nav class="space-x-1 flex flex-row">
 
         {% if user.is_authenticated %}
-            <div x-data="{ open: false }" class="relative"
-         
-            
-            >
+            <div x-data="{ open: false }" class="relative">
                 <button @click="open = !open" class="text-white hover:text-blue-200 flex items-center space-x-2">
                     <span>{{ user.email }}</span>
                     <i class="fas fa-chevron-down text-sm"></i>

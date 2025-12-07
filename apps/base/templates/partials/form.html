@@ -1,1 +1,22 @@
-{{form}}
+<div class="space-y-4 text-left">
+    {% for field in form %}
+        <div class="form-field">
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.help_text %}
+                <p class="text-sm text-gray-600 mt-1">{{ field.help_text }}</p>
+            {% endif %}
+            {% if field.errors %}
+                <div class="text-sm text-red-600 mt-1">
+                    {{ field.errors }}
+                </div>
+            {% endif %}
+        </div>
+    {% endfor %}
+
+    {% if form.non_field_errors %}
+        <div class="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-800">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+</div>
