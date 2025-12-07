@@ -39,6 +39,8 @@ def _get_category_activities(category, score):
 
 
 def make_activity_recommendations(child):
+    # TODO avoid recommending something that was recently stopped for being too easy or hard
+
     # get the latest picky-eating scores
     picky_eating_form = Form.objects.get(slug=settings.PICKY_EATING_FORM_SLUG)
     complete_form_progress = ChildFormProgress.get_latest_complete(

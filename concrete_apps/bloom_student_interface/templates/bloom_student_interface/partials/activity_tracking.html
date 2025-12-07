@@ -226,6 +226,79 @@
 
 {% endpartialdef %}
 
+{% partialdef recommended_activities_organised %}
+
+<div id="recommended_activities" hx-swap-oob="true">
+
+    {% if recommended_activities_organised %}
+
+        
+
+
+        {% for cat1, value1 in recommended_activities_organised.items %}
+
+        <div class="surface">
+            {{cat1}}
+            {% for cat2, value2 in value1.items %}
+
+            <div class="surface">
+                {{cat2}}
+
+                {% for level, activity_list in value2.items %}
+                <div class="surface">
+
+                Level: {{level}}
+
+                {% for activity in activity_list %}
+                        
+                    <div class="surface">
+                        <h3 class="text-lg font-semibold">{{ activity.title }}</h3>
+{% if activity.description %}
+                            <p class="text-gray-600 mt-2">{{ activity.description }}</p>
+                        {% endif %}
+<c-button-group>
+
+                            {% include 'bloom_student_interface/partials/activity_tracking.html#view_activity_description_button'%}
+
+                        <button
+                            class="btn btn-outline"
+                            hx-post="{% url 'bloom_student_interface:action_child_activity_start_stop' child.slug activity.slug  'start' %}"
+                            
+                        >Start</button>
+
+
+                    </c-button-group>
+
+                    </div>
+
+                {% endfor %}
+
+                </div>
+                {% endfor %}
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+        {% endfor %}
+
+
+    {% else %}
+        {% if committed_activities %}
+        <p class="text-gray-600">No new recommendations. Check back later!</p>
+        <p class="text-gray-600">If you feel that you have outgrown your current recommended activities, please redo the assessment so we can come up with new recommendations for you.</p>
+
+        
+        {% else %}
+        <p class="text-gray-600">No recommended activities yet. Complete an assessment to get personalized activity recommendations.</p>
+        {% endif %}
+    {% endif %}
+
+</div>
+
+{% endpartialdef %}
 
 
 

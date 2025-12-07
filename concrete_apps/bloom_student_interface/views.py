@@ -518,7 +518,25 @@ def get_activities_context(child):
         child.recommended_activities.filter(active=True)
         .select_related("activity")
         .exclude(activity_id__in=committed_activity_ids)
+        .order_by("activity__level")
     )
+
+    recommended_activities_organised = {}
+    for recommendation in recommended_activities:
+        activity = recommendation.activity
+        cat, sub_cat = (s.strip() for s in activity.category.split("|"))
+        level = activity.level
+
+        recommended_activities_organised[cat] = recommended_activities_organised.get(
+            cat, {}
+        )
+        recommended_activities_organised[cat][sub_cat] = (
+            recommended_activities_organised[cat].get(sub_cat, {})
+        )
+        recommended_activities_organised[cat][sub_cat][level] = (
+            recommended_activities_organised[cat][sub_cat].get(level, [])
+        )
+        recommended_activities_organised[cat][sub_cat][level].append(activity)
 
     # Get set of recommended activity IDs (including those that are committed)
     recommended_activity_ids = set(
@@ -540,6 +558,7 @@ def get_activities_context(child):
     return {
         "child": child,
         "recommended_activities": recommended_activities,
+        "recommended_activities_organised": recommended_activities_organised,
         "committed_activities": committed_activities,
         "activity_logs": activity_logs,
         "recommended_activity_ids": recommended_activity_ids,
