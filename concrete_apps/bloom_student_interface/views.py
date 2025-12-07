@@ -19,7 +19,9 @@ from .models import (
 from .activity_utils import (
     make_activity_recommendations,
     get_activity_good_streak,
-    # get_activity_bad_streak,
+    get_activity_bad_streak,
+    adjust_activity_recommendations_positive,
+    adjust_activity_recommendations_negative,
 )
 from django.conf import settings
 from django.template.loader import render_to_string
@@ -30,10 +32,10 @@ from django.http import HttpResponse
 def home(request):
     """Home page with list of available courses."""
 
-    children = []
-    recommended_courses = []
-    registered_courses = []
-    activity_logs_today = {}
+    # children = []
+    # recommended_courses = []
+    # registered_courses = []
+    # activity_logs_today = {}
 
     if request.user.is_authenticated:
         return redirect("bloom_student_interface:children")
@@ -448,7 +450,10 @@ def action_child_activity_toggle(request, child_slug, activity_slug, date):
 
     if log.sentiment == "good":
         streak = get_activity_good_streak(child, activity)
+
         if streak >= settings.NUMBER_OF_GOOD_ACTIVITIES_BEFORE_LEVEL_UP:
+            activity_options = adjust_activity_recommendations_positive(child, activity)
+            # context["activity_options"] = activity_options
             level_up_modal = render_to_string(
                 "bloom_student_interface/partials/activity_tracking.html#activity_level_up_modal",
                 context,
@@ -458,8 +463,10 @@ def action_child_activity_toggle(request, child_slug, activity_slug, date):
     elif log.sentiment == "bad":
         streak = get_activity_bad_streak(child, activity)
         if streak >= settings.NUMBER_OF_BAD_ACTIVITIES_BEFORE_LEVEL_DOWN:
+            activity_options = adjust_activity_recommendations_negative(child, activity)
+            # context["activity_options"] = activity_options
             level_down_modal = render_to_string(
-                "bloom_student_interface/partials/activity_tracking.html#activity_level_up_modal",
+                "bloom_student_interface/partials/activity_tracking.html#activity_level_down_modal",
                 context,
                 request=request,
             )
@@ -507,13 +514,17 @@ def get_activities_context(child):
     )
     activity_logs = get_activity_log_entries(child=child, day_range=DAY_RANGE)
     committed_activity_ids = committed_activities.values_list("activity_id", flat=True)
-    recommended_activities = child.recommended_activities.select_related(
-        "activity"
-    ).exclude(activity_id__in=committed_activity_ids)
+    recommended_activities = (
+        child.recommended_activities.filter(active=True)
+        .select_related("activity")
+        .exclude(activity_id__in=committed_activity_ids)
+    )
 
     # Get set of recommended activity IDs (including those that are committed)
     recommended_activity_ids = set(
-        child.recommended_activities.values_list("activity_id", flat=True)
+        child.recommended_activities.filter(active=True).values_list(
+            "activity_id", flat=True
+        )
     )
 
     # Get stopped activities (previously committed but now stopped)

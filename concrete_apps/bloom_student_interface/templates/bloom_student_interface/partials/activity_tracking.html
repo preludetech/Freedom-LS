@@ -350,8 +350,34 @@
 
 <c-modal open="true" title="You're doing great!">
 
-    You've done a great job with this activity. We think you are ready to do something a little more challenging.
+    <p>
+        You've done a great job with this activity. We think you are ready to do something a little more challenging.
+    </p>
 
+    <p>We've updated your recommended activities</p>
+        
+    <c-slot name="footer">
+        <a class="btn" href="{% url 'bloom_student_interface:child_activities_configure' child.slug %}">See New Recommendations</a>
+    </c-slot>
+</c-modal>
+
+{% endpartialdef %}
+
+
+
+{% partialdef activity_level_down_modal %}
+
+<c-modal open="true" title="You're doing great!">
+
+    <p>
+        It looks like this one is a bit of a struggle. Let's work on something else for a while and then come back to this later.
+    </p>
+
+    <p>We've updated your recommended activities</p>
+
+    <c-slot name="footer">
+        <a class="btn" href="{% url 'bloom_student_interface:child_activities_configure' child.slug %}">See New Recommendations</a>
+    </c-slot>
 </c-modal>
 
 {% endpartialdef %}

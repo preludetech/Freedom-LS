@@ -21,7 +21,7 @@ class ChildFormProgressAdmin(ModelAdmin):
 
 @admin.register(RecommendedActivity)
 class RecommendedActivityAdmin(ModelAdmin):
-    list_display = ["child", "activity", "form_progress", "created_at"]
+    list_display = ["child", "activity", "active", "created_at"]
     search_fields = ["child__name", "activity__title"]
     list_filter = ["created_at"]
     readonly_fields = ["created_at"]

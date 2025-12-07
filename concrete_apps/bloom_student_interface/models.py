@@ -100,6 +100,18 @@ class RecommendedActivity(SiteAwareModel):
         FormProgress, on_delete=models.CASCADE, null=True, blank=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    active = models.BooleanField(default=True)
+    deactivated_at = models.DateTimeField(null=True, blank=True)
+    deactivation_reason = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        choices=[
+            ("completed", "Completed"),
+            ("too_hard", "Too Hard"),
+            ("too_easy", "Too Easy"),
+        ],
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -107,6 +119,33 @@ class RecommendedActivity(SiteAwareModel):
 
     def __str__(self):
         return f"Activity recommendation for {self.child.name}: {self.activity.title}"
+
+    def mark_complete(self):
+        """Mark this recommendation as completed successfully."""
+        from django.utils import timezone
+
+        self.active = False
+        self.deactivated_at = timezone.now()
+        self.deactivation_reason = "completed"
+        self.save()
+
+    def mark_too_hard(self):
+        """Mark this recommendation as too hard for the child."""
+        from django.utils import timezone
+
+        self.active = False
+        self.deactivated_at = timezone.now()
+        self.deactivation_reason = "too_hard"
+        self.save()
+
+    def mark_too_easy(self):
+        """Mark this recommendation as too easy for the child."""
+        from django.utils import timezone
+
+        self.active = False
+        self.deactivated_at = timezone.now()
+        self.deactivation_reason = "too_easy"
+        self.save()
 
 
 class CommittedActivity(SiteAwareModel):
