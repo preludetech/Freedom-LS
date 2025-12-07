@@ -38,7 +38,6 @@
 
 {% endpartialdef %}
 
-
 {% partialdef activity_radio %}
 
 <c-modal  id="activity-{{activity.pk}}-{{date}}">
@@ -190,6 +189,9 @@
                 {% if commitment.activity.category %}
                     <div class="text-sm text-gray-500">{{ commitment.activity.category }}</div>
                 {% endif %}
+                {% if commitment.activity.level %}
+                    <div class="text-sm text-gray-500">Level {{ commitment.activity.level }}</div>
+                {% endif %}
                 <c-button-group>
 
                     {% with activity=commitment.activity %}
@@ -240,6 +242,9 @@
                         <h3 class="text-lg font-semibold">{{ recommendation.activity.title }}</h3>
                         {% if recommendation.activity.category %}
                             <p class="text-sm text-gray-500">{{ recommendation.activity.category }}</p>
+                        {% endif %}
+                        {% if recommendation.activity.level %}
+                            <p class="text-sm text-gray-500">Level: {{ recommendation.activity.level }}</p>
                         {% endif %}
                         {% if recommendation.activity.description %}
                             <p class="text-gray-600 mt-2">{{ recommendation.activity.description }}</p>
@@ -294,6 +299,9 @@
                         </div>
                         {% if stopped.activity.category %}
                             <p class="text-sm text-gray-500">{{ stopped.activity.category }}</p>
+                        {% endif %}
+                        {% if stopped.activity.level %}
+                            <p class="text-sm text-gray-500">Level: {{ stopped.activity.level }}</p>
                         {% endif %}
                         <p class="text-sm text-gray-500 mt-1">
                             Stopped on {{ stopped.stopped_at|date:"F j, Y" }}
