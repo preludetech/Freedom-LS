@@ -1,5 +1,7 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 from django.utils.text import slugify
 
 from content_engine.models import Activity
@@ -24,7 +26,15 @@ class Child(SiteAwareModel):
     )
     slug = models.SlugField(max_length=255, unique=True, blank=True)
 
+    def clean(self):
+        super().clean()
+        if self.date_of_birth and self.date_of_birth >= timezone.now().date():
+            raise ValidationError(
+                {"date_of_birth": "Date of birth must be in the past."}
+            )
+
     def save(self, *args, **kwargs):
+        # self.full_clean()
         if not self.slug:
             base_slug = slugify(self.name)
             slug = base_slug

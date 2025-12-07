@@ -4,15 +4,22 @@
 
 {% block content %}
     <div class="max-w-4xl mx-auto">
-        <h1 class="mb-6">Assessment Complete!</h1>
 
-        <div class="border border-gray-300 rounded-md p-6 mb-6">
-            <h2 class="mb-4">{{ form.title }}</h2>
-            <p><strong>Child:</strong> {{ child.name }} (Age {{ child.age }})</p>
-            {% if form_progress %}
-                <p><strong>Completed:</strong> {{ form_progress.completed_time|date:"F j, Y, g:i a" }}</p>
-            {% endif %}
+        <div class="surface mb-6 bg-green-50 border-green-200">
+            <p class="text-lg font-semibold text-green-800 mb-4">Well done for completing the assessment!</p>
+
+            <p class="mb-4">Now that we know a bit about {{child.name}}, we can make some recommendations.</p>
+
+            <p class="mb-4">The most important thing in this situation is your child's growth. So start off by looking at the activity recommendations. Pick a few things that you think you can do with your child.</p>
+
+            <p>We'll also recommend a few courses for you to do. This will help you to better understand your child and the activities we are sharing.</p>
+        
+            <!-- TODO: show radar chart here 
+            link to activities  -->
+
+
         </div>
+
 
         {% if form_progress and scores %}
 
