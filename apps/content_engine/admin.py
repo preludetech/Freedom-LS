@@ -9,6 +9,7 @@ from .models import (
     FormQuestion,
     QuestionOption,
     File,
+    Activity,
 )
 
 from site_aware_models.admin import SiteAwareModelAdmin
@@ -28,7 +29,6 @@ class QuestionOptionAdmin(SiteAwareModelAdmin):
     list_filter = ("question__form_page__form",)
     search_fields = ("text", "question__question")
     ordering = ("question", "order")
-    exclude = ("site",)
 
 
 class FormContentInline(admin.StackedInline):
@@ -124,7 +124,17 @@ class TopicAdmin(SiteAwareModelAdmin):
     list_display = ("title", "subtitle", "file_path")
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")
-    exclude = ("site",)
+    fieldsets = (
+        (None, {"fields": ("title", "subtitle", "description", "content")}),
+        ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
+    )
+
+
+@admin.register(Activity)
+class ActivityAdmin(SiteAwareModelAdmin):
+    list_display = ("title", "category", "level", "file_path")
+    list_filter = ("tags",)
+    search_fields = ("title", "subtitle", "description")
     fieldsets = (
         (None, {"fields": ("title", "subtitle", "description", "content")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),

@@ -61,6 +61,13 @@ class BaseContentModel(BaseBaseContentModel):
     subtitle: Optional[str] = Field(None, description="Optional subtitle")
     description: Optional[str] = Field(None, description="Optional description")
 
+    category: Optional[str] = Field(
+        None, description="Optional category for this activity"
+    )
+    image: Optional[str] = Field(
+        None, description="Optional category for this activity"
+    )
+
 
 class MarkdownContentModel(BaseModel):
     content: Optional[str] = Field(None, description="Markdown content body")
@@ -73,8 +80,8 @@ class Topic(BaseContentModel, MarkdownContentModel, content_type=ContentType.TOP
 class Activity(
     BaseContentModel, MarkdownContentModel, content_type=ContentType.ACTIVITY
 ):
-    category: Optional[str] = Field(
-        None, description="Optional category for this activity"
+    level: Optional[int] = Field(
+        None, description="level 1 is easiest, 2 is harder, etc"
     )
 
 
@@ -101,10 +108,6 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
         description="List of child content references with optional overrides",
     )
 
-    category: Optional[str] = Field(
-        None, description="Optional category for this form page"
-    )
-
     content: Optional[str] = Field(None, description="Markdown content body")
 
 
@@ -120,10 +123,6 @@ class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM
 
 class FormPage(BaseContentModel, content_type=ContentType.FORM_PAGE):
     """A page within a form."""
-
-    category: Optional[str] = Field(
-        None, description="Optional category for this form page"
-    )
 
     def derive_content_type(self, data):
         if "content" in data:

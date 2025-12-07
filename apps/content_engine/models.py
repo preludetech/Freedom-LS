@@ -117,6 +117,8 @@ class Topic(TitledContent, MarkdownContent):
 
     CONTENT_TYPE = SchemaContentTypes.TOPIC
 
+    category = models.CharField(max_length=200, null=True, blank=True)
+
     class Meta:
         unique_together = ["site", "slug"]
 
@@ -130,6 +132,7 @@ class Activity(TitledContent, MarkdownContent):
     CONTENT_TYPE = SchemaContentTypes.ACTIVITY
 
     category = models.CharField(max_length=200, null=True, blank=True)
+    level = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
         unique_together = ["site", "slug"]

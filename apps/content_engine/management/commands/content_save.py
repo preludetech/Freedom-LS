@@ -214,20 +214,70 @@ def get_unique_slug(model_class, site, base_slug, existing_uuid=None):
         counter += 1
 
 
-def save_with_uuid(model_class, item, site, base_path, update_file=True, **fields):
-    """Generic save function that handles UUID logic."""
+def save_with_uuid(
+    model_class,
+    item,
+    site,
+    base_path,
+    update_file=True,
+    exclude_fields=None,
+    **extra_fields,
+):
+    """Generic save function that handles UUID logic.
+
+    Automatically extracts all fields from the Pydantic item and validates
+    that they match the Django model schema.
+
+    Args:
+        model_class: Django model class to save to
+        item: Pydantic model instance with frontmatter data
+        site: Django Site instance
+        base_path: Base path for calculating relative file paths
+        update_file: Whether to update the file with UUID after creation
+        exclude_fields: Additional fields to exclude from the Pydantic dump (e.g., 'options' for FormQuestion)
+        **extra_fields: Additional fields not in the Pydantic model (e.g., foreign keys like 'form', 'form_page', 'order')
+    """
+    # Build exclusion set
+    exclude = {"content_type", "file_path", "uuid"}
+    if exclude_fields:
+        exclude.update(exclude_fields)
+
+    # Get all fields from the Pydantic item (excluding internal fields)
+    fields = item.model_dump(
+        exclude=exclude,
+        exclude_none=True,  # Don't include None values
+    )
+
+    # Add extra fields (like foreign keys that aren't in the Pydantic schema)
+    fields.update(extra_fields)
+
     # Calculate relative path if base_path is provided
     if base_path:
         relative_path = str(item.file_path.relative_to(base_path))
         fields["file_path"] = relative_path
 
-    # Ensure slug uniqueness if a slug field is provided
-    if "slug" in fields:
-        base_slug = fields["slug"]
+    # Get all fields from the Django model
+    model_field_names = {f.name for f in model_class._meta.get_fields()}
+
+    # Validate: check for fields that don't exist on the model
+    item_field_names = set(fields.keys())
+    invalid_fields = item_field_names - model_field_names
+
+    if invalid_fields:
+        raise ValueError(
+            f"Cannot save {model_class.__name__} from {item.file_path}: "
+            f"Fields present in frontmatter but don't exist in Django model: {sorted(invalid_fields)}. "
+            f"Either add these fields to the {model_class.__name__} model or remove from the Pydantic schema. "
+            f"Valid model fields are: {sorted(model_field_names)}"
+        )
+
+    # Auto-generate slug if title exists and slug field exists on model
+    if "title" in fields and "slug" in model_field_names:
+        base_slug = slugify(fields["title"])
         fields["slug"] = get_unique_slug(model_class, site, base_slug, item.uuid)
 
     if item.uuid:
-        instance, created = model_class.objects.update_or_create(
+        instance, _ = model_class.objects.update_or_create(
             id=uuid.UUID(item.uuid), site=site, defaults=fields
         )
     else:
@@ -239,37 +289,12 @@ def save_with_uuid(model_class, item, site, base_path, update_file=True, **field
 
 def save_topic(item, site, base_path):
     """Save a Topic to the database."""
-    return save_with_uuid(
-        Topic,
-        item,
-        site,
-        base_path,
-        title=item.title,
-        subtitle=item.subtitle,
-        description=item.description,
-        slug=slugify(item.title),
-        content=item.content,
-        meta=item.meta,
-        tags=item.tags,
-    )
+    return save_with_uuid(Topic, item, site, base_path)
 
 
 def save_activity(item, site, base_path):
     """Save an Activity to the database."""
-    return save_with_uuid(
-        Activity,
-        item,
-        site,
-        base_path,
-        title=item.title,
-        subtitle=item.subtitle,
-        description=item.description,
-        slug=slugify(item.title),
-        content=item.content,
-        category=item.category,
-        meta=item.meta,
-        tags=item.tags,
-    )
+    return save_with_uuid(Activity, item, site, base_path)
 
 
 def save_course(item, site, base_path):
@@ -279,33 +304,13 @@ def save_course(item, site, base_path):
         item,
         site,
         base_path,
-        title=item.title,
-        subtitle=item.subtitle,
-        description=item.description,
-        slug=slugify(item.title),
-        content=item.content,
-        category=item.category,
-        meta=item.meta,
-        tags=item.tags,
+        exclude_fields={"children"},
     )
 
 
 def save_form(item, site, base_path):
     """Save a Form to the database."""
-    return save_with_uuid(
-        Form,
-        item,
-        site,
-        base_path,
-        title=item.title,
-        subtitle=item.subtitle,
-        description=item.description,
-        slug=slugify(item.title),
-        content=item.content,
-        strategy=item.strategy,
-        meta=item.meta,
-        tags=item.tags,
-    )
+    return save_with_uuid(Form, item, site, base_path)
 
 
 def save_form_page(item, form, site, base_path, order=0):
@@ -316,13 +321,7 @@ def save_form_page(item, form, site, base_path, order=0):
         site,
         base_path,
         form=form,
-        title=item.title,
-        subtitle=item.subtitle,
-        description=item.description,
-        category=item.category,
         order=order,
-        meta=item.meta,
-        tags=item.tags,
     )
 
 
@@ -334,33 +333,27 @@ def save_form_content(item, form_page, site, order=0):
         site,
         None,  # No base_path for inline content
         form_page=form_page,
-        content=item.content,
         order=order,
-        meta=item.meta,
-        tags=item.tags,
     )
 
 
 def save_form_question(item, form_page, site, order=0):
     """Save FormQuestion and its options to the database."""
+    # Exclude 'options' since they're handled separately below
     question = save_with_uuid(
         FormQuestion,
         item,
         site,
         None,  # No base_path for inline content
+        exclude_fields={"options"},
         form_page=form_page,
-        question=item.question,
-        type=item.type,
-        required=item.required,
-        category=item.category,
         order=order,
-        meta=item.meta,
-        tags=item.tags,
     )
 
     if item.options:
         option_uuids = []
         for idx, option in enumerate(item.options):
+            # Convert value to string since the model field is CharField
             option_obj = save_with_uuid(
                 QuestionOption,
                 option,
@@ -368,9 +361,8 @@ def save_form_question(item, form_page, site, order=0):
                 None,  # No base_path for inline content
                 update_file=False,
                 question=question,
-                text=option.text,
-                value=str(option.value),
                 order=idx,
+                value=str(option.value),  # Convert to string for CharField
             )
             option_uuids.append((idx, option_obj.id))
 
