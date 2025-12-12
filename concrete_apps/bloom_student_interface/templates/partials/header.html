@@ -1,12 +1,12 @@
 {% load static %}
 
 
-<header class=" p-4  flex justify-between items-center">
+<header class=" p-4 px-12 flex justify-between items-center ">
     <a href="/">
-        <img src="{% static 'bloom_student_interface/logo.jpeg' %}"
+        <img src="{% static 'bloom_student_interface/LogoNoBackground.png' %}"
          alt="Bloom Logo"
          class="h-20"
-        >
+        > 
     </a>
     <nav class="space-x-1 flex flex-row">
         {% if user.is_authenticated %}

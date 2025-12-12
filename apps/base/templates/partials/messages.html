@@ -7,19 +7,19 @@
                     x-show="show"
                     x-transition
                     x-init="setTimeout(() => show = false, 10000)"
-                    class="pointer-events-auto flex justify-between items-center p-4 rounded-md shadow-lg text-white
+                    class="pointer-events-auto flex justify-between items-center p-4 rounded-md shadow-lg border-2
                     {% if 'debug' in message.tags %}
-                        bg-gray-600
+                        bg-gray-100 border-gray-700 text-gray-900
                     {% elif 'info' in message.tags %}
-                        bg-blue-500
+                        bg-blue-100 border-blue-700 text-blue-900
                     {% elif 'success' in message.tags %}
-                        bg-green-500
+                        bg-green-100 border-green-700 text-green-900
                     {% elif 'warning' in message.tags %}
-                        bg-orange-500
+                        bg-orange-100 border-orange-700 text-orange-900
                     {% elif 'error' in message.tags %}
-                        bg-red-500
+                        bg-red-100 border-red-700 text-red-900
                     {% else %}
-                        bg-blue-500
+                        bg-blue-100 border-blue-700 text-blue-900
                     {% endif %}"
                 >
                     <span class="text-sm font-medium">{{ message }}</span>
