@@ -62,9 +62,9 @@
                 </span>
 
             {% elif child.status == "READY" %}
-                <a href="{{ child.url }}" class="btn btn-primary">
+                <c-button href="{{ child.url }}" >
                     <i class="fa fa-play"></i>
-                </a>
+                </c-button>
 
             {% elif child.status == "IN_PROGRESS" %}
                 <a href="{{ child.url }}" class="text-primary-600 hover:text-primary-700 no-underline">
@@ -93,7 +93,7 @@
     {% else %}
         <form method="post" action="{% url 'student_interface:register_for_course' collection_slug=course.slug %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-success">Register for Course</button>
+            <c-button type="submit">Register for Course</c-button>
         </form>
     {% endif %}
 {% else %}

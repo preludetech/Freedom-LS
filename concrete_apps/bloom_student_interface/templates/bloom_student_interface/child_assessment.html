@@ -18,14 +18,14 @@
 
     <c-button-group variant="space-between">
 
-     <c-button href="{% url 'bloom_student_interface:children' %}" variant="secondary">
-           << Back to Children
+     <c-button href="{% url 'bloom_student_interface:children' %}" variant="outline">
+           Back
     </c-button>
 
     {% if incomplete_form_progress %}
         <c-button 
             href="{% url 'bloom_student_interface:child_assessment_fill_page' child.slug  form.slug page_number %}">
-            Continue Form >>
+            Continue Form 
         </c-button>
     {% elif  complete_form_progress %}
 
@@ -39,7 +39,7 @@
        
         <c-button
             href="{% url 'bloom_student_interface:child_assessment_start' child.slug form.slug %}">
-            Start Assessment >>
+            Start Assessment 
         </c-button>
     {% endif %}
 

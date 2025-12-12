@@ -3,10 +3,13 @@
 
 <header class=" p-4 px-12 flex justify-between items-center" hx-boost="true">
     <a href="/">
-        <img src="{% static 'bloom_student_interface/LogoNoBackground.png' %}"
+        
+        <img src="{% static 'bloom_student_interface/Logo-no-text.png' %}"
          alt="Bloom Logo"
-         class="h-20"
-        > 
+         class="h-15 inline-block"
+        ><img src="{% static 'bloom_student_interface/Bloom-text-only.png' %}"
+         alt="Bloom"
+         class="h-8 inline-block ml-2">
     </a>
     
         {% if user.is_authenticated %}

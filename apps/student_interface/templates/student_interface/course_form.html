@@ -5,9 +5,8 @@
 
 <h1>{{ form.title }}</h1>
 {% if form.subtitle %}
-<h2>{{ form.subtitle }}</h2>
+<p>{{ form.subtitle }}</p>
 {% endif %}
-<hr/>
 
 <c-markdown-container>
     {{ form.rendered_content }}

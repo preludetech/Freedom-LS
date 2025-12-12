@@ -1,7 +1,7 @@
 {% extends "bloom_student_interface/_base_logged_in.html" %}
 
 {% partialdef start_course_button %}
-    <a class="btn btn-outline" href="{% url 'student_interface:register_for_course' course.slug %}">Start</a>
+    <c-button href="{% url 'student_interface:register_for_course' course.slug %}">Start</c-button>
 {% endpartialdef %}
 
 
@@ -9,7 +9,7 @@
 
 <c-modal title="{{course.title}}">
     <c-slot name="trigger">
-        <button class="btn btn-outline">Details</button>
+        <c-button variant="outline">Details</c-button>
     </c-slot>
 
     {% if course.subtitle %}
@@ -27,7 +27,7 @@
     {% endwith %}
 
     <c-slot name="footer">
-        <button class="btn btn-outline" @click="open = false">Close</button>
+        <c-button variant="outline" @click="open = false">Close</c-button>
         {% partial start_course_button %}
     </c-slot>
 
@@ -39,7 +39,7 @@
 
 <div id="main_content"  class="space-y-4">
 
-    <div class="surface">
+    <div class="surface space-y-4">
         <h2>Current Courses</h2>
 
         {% if registered_courses %}
@@ -55,7 +55,7 @@
         
     </div>
 
-    <div class="surface">
+    <div class="surface space-y-4">
         <h2>Recommended Courses</h2>
 
         {% if recommended_courses %}
@@ -72,22 +72,23 @@
                         <a href="{% url 'student_interface:course_home' recommendation.collection.slug %}" class="btn btn-primary">View Course</a>
                     </div> -->
 
-                        {% with course=recommendation.collection %}
-                            {% partial view_course_button %}
-                            {% partial start_course_button %}
-                        {% endwith %}
+                    <c-button-group>
 
-                    </div>
+                        {% with course=recommendation.collection %}
+                        {% partial view_course_button %}
+                        {% partial start_course_button %}
+                        {% endwith %}
+                    </c-button-group>
+
                 </div>
             {% endfor %}
         </div>
         {% else %}
             <p class="text-gray-600">No recommended courses yet.</p>
         {% endif %}
-
     </div>
 
-    <div class="surface">
+    <div class="surface space-y-4">
         <h2>Learning History</h2>
     </div>
 </div>
