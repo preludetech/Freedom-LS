@@ -16,33 +16,33 @@
 {% for button in buttons %}
     {% if button.action == "continue" %}
         <p>
-            <a href="{% url 'student_interface:form_fill_page' course.slug index page_number %}"
-               class="btn btn-primary"
-               data-testid="continue-form-button">{{ button.text }} >></a>
+            <c-button href="{% url 'student_interface:form_fill_page' course.slug index page_number %}"
+               
+               data-testid="continue-form-button">{{ button.text }} >></c-button>
         </p>
     {% elif button.action == "start" %}
         <p>
-            <a href="{% url 'student_interface:form_start' course.slug index %}"
-               class="btn btn-primary"
-               data-testid="start-form-button">{{ button.text }} >></a>
+            <c-button href="{% url 'student_interface:form_start' course.slug index %}"
+               
+               data-testid="start-form-button">{{ button.text }} >></c-button>
         </p>
     {% elif button.action == "try_again" %}
         <p>
-            <a href="{% url 'student_interface:form_start' course.slug index %}"
-               class="btn btn-primary"
-               data-testid="try-again-button">{{ button.text }}</a>
+            <c-button href="{% url 'student_interface:form_start' course.slug index %}"
+               
+               data-testid="try-again-button">{{ button.text }}</c-button>
         </p>
     {% elif button.action == "next" %}
         <p>
-            <a href="{{ next_url }}"
-               class="btn btn-primary"
-               data-testid="next-button">{{ button.text }}</a>
+            <c-button href="{{ next_url }}"
+               
+               data-testid="next-button">{{ button.text }}</c-button>
         </p>
     {% elif button.action == "finish_course" %}
         <p>
-            <a href="{% url 'student_interface:course_home' collection_slug=course.slug %}"
-               class="btn btn-primary"
-               data-testid="finish-course-button">{{ button.text }}</a>
+            <c-button href="{% url 'student_interface:course_home' collection_slug=course.slug %}"
+               
+               data-testid="finish-course-button">{{ button.text }}</c-button>
         </p>
     {% endif %}
 {% endfor %}

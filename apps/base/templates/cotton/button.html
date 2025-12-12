@@ -1,0 +1,52 @@
+<c-vars
+    variant="primary"
+    type="button"
+    href=""
+    form=""
+    id=""
+    name=""
+    value=""
+    disabled=""
+    dropdown=""
+    class=""
+/>
+
+<{% if href %}a href="{{ href }}"{% else %}button{% endif %}
+{% if form %} form="{{ form }}"{% endif %}
+{% if id %} id="{{ id }}"{% endif %}
+{% if name %} name="{{ name }}"{% endif %}
+{% if value %} value="{{ value }}"{% endif %}
+{% if not href and type %} type="{{ type }}"{% endif %}
+{% if disabled %} disabled{% endif %}
+class="{% if dropdown %}block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer{% else %}btn btn-{{ variant }}{% endif %} {{ class }}"
+{{ attrs }}
+>
+{{slot}}
+</{% if href %}a{% else %}button{% endif %}>
+
+
+{% comment %}
+Usage Examples:
+
+  <c-button>Click me</c-button>
+
+  <!-- Different variants -->
+  <c-button variant="secondary">Cancel</c-button>
+  <c-button variant="danger">Delete</c-button>
+  <c-button variant="outline">Outline</c-button>
+
+  <!-- As link -->
+  <c-button href="/somewhere">Go somewhere</c-button>
+
+  <!-- With form attributes -->
+  <c-button type="submit" form="my-form">Submit</c-button>
+
+  <!-- Disabled -->
+  <c-button disabled="disabled">Can't click</c-button>
+
+  <!-- Additional classes -->
+  <c-button class="w-full">Full width button</c-button>
+
+  <!-- Dropdown menu style -->
+  <c-button dropdown="true">Dropdown menu item</c-button>
+{% endcomment %}

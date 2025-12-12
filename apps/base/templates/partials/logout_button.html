@@ -1,7 +1,11 @@
-    {% url 'account_logout' as logout_url_ %}
-    {% if logout_url_ %}
-        <form method="post" action="{{logout_url_}}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-primary">Sign Out</button>
-        </form>
-    {% endif %}
+{% url 'account_logout' as logout_url_ %}
+{% if logout_url_ %}
+    <form method="post" action="{{logout_url_}}">
+        {% csrf_token %}
+        {% if dropdown %}
+            <c-button type="submit" dropdown="true">Sign Out</c-button>
+        {% else %}
+            <c-button type="submit">Sign Out</c-button>
+        {% endif %}
+    </form>
+{% endif %}

@@ -18,13 +18,22 @@
 
 
     {% if incomplete_form_progress %}
-            <a href="{% url 'bloom_student_interface:child_assessment_fill_page' child.slug  form.slug page_number %}" class="btn btn-primary">Continue Form >></a>
+        <c-button 
+            href="{% url 'bloom_student_interface:child_assessment_fill_page' child.slug  form.slug page_number %}">
+            Continue Form >>
+        </c-button>
     {% elif  complete_form_progress %}
 
-    <a href="{% url 'bloom_student_interface:child_assessment_start' child.slug  form.slug   %}" class="btn btn-primary">Reassess</a>
+        <c-button 
+            href="{% url 'bloom_student_interface:child_assessment_start' child.slug  form.slug %}" >
+                Reassess
+        </c-button>
 
     {% else %}
-            <a href="{% url 'bloom_student_interface:child_assessment_start' child.slug  form.slug   %}" class="btn btn-primary">Start Form >></a>
+        <c-button
+            href="{% url 'bloom_student_interface:child_assessment_start' child.slug form.slug %}">
+            Start Form >>
+        </c-button>
     {% endif %}
 
 {% endblock %}

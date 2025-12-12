@@ -662,9 +662,9 @@ def learn(request):
     return render(request, "bloom_student_interface/learn.html", context)
 
 
-@login_required
-def children(request):
-    children = Child.objects.filter(user=request.user).prefetch_related(
+def get_children_context(user):
+    """Get the context data for the children view."""
+    children = Child.objects.filter(user=user).prefetch_related(
         "activities__activity"
     )
 
@@ -680,23 +680,14 @@ def children(request):
         complete_form_progress = ChildFormProgress.get_latest_complete(
             child, picky_eating_form
         )
-        # child.has_complete_assessment = complete_form_progress is not None
-        # child.last_assessment_date = (
-        #     complete_form_progress.completed_time if complete_form_progress else None
-        # )
         child.complete_assessment = complete_form_progress
 
-    context = {
-        "children": children,
-    }
+    return {"children": children}
 
-    # if request.headers.get("Hx-Request"):
-    #     return render(
-    #         request,
-    #         "bloom_student_interface/children.html#content",
-    #         context=context,
-    #     )
 
+@login_required
+def children(request):
+    context = get_children_context(request.user)
     return render(request, "bloom_student_interface/children.html", context=context)
 
 
@@ -724,6 +715,15 @@ def create_child(request):
             child = form.save(commit=False)
             child.user = request.user
             child.save()
+
+            # If HTMX request, return updated children list
+            if request.headers.get("HX-Request"):
+                context = get_children_context(request.user)
+                return render(
+                    request,
+                    "bloom_student_interface/children.html#content",
+                    context=context,
+                )
 
             return redirect("bloom_student_interface:children")
     else:

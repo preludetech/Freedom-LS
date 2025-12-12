@@ -5,29 +5,29 @@
 
 <form
         hx-post="{% url 'bloom_student_interface:children_create' %}"
-        hx-target="#child-form-container"
-        hx-swap="innerHTML"
+        hx-target="#children"
+        hx-swap="outerHTML"
     >
         {% csrf_token %}
 
         <c-modal title="Add Child">
             <c-slot name="trigger">
-                <button class="btn btn-primary"
+                <c-button
                 hx-get="{% url 'bloom_student_interface:children_create' %}"
                 hx-target="#child-form-container"
                 hx-trigger="click">
                 Add a Child
-            </button>
+            </c-button>
         </c-slot>
-        
+
         <!-- Modal content will be loaded here via HTMX -->
         <div id="child-form-container">
             <p class="text-gray-500">Loading form...</p>
         </div>
-        
+
         <c-slot name="footer">
-            <button type="button" class="btn btn-outline" @click="open = false">Cancel</button>
-            <input type="submit" class="btn btn-primary" value="Save"/>
+            <c-button type="button"  @click="open = false">Cancel</c-button>
+            <c-button type="submit" value="Save" >Save</c-button>
         </c-slot>
     </c-modal>
 </form>
@@ -46,12 +46,14 @@
 
         <c-modal title="Edit Child">
             <c-slot name="trigger">
-                <button class="btn btn-outline"
+                <c-button
+                dropdown="true"
                 hx-get="{% url 'bloom_student_interface:children_edit' slug=child.slug %}"
                 hx-target="#edit-child-form-container-{{child.slug}}"
                 hx-trigger="click">
+                <i class="fa fa-pencil" aria-hidden="true"></i>
                 Edit
-            </button>
+            </c-button>
         </c-slot>
 
         <!-- Modal content will be loaded here via HTMX -->
@@ -80,12 +82,15 @@
 
         <c-modal title="Delete Child - Confirm">
             <c-slot name="trigger">
-                <button type="button" class="btn btn-danger"
+                <c-button
+                dropdown="true"
                 hx-get="{% url 'bloom_student_interface:children_delete' slug=child.slug %}"
                 hx-target="#delete-child-confirmation-{{child.slug}}"
                 hx-trigger="click">
+                <i class="fa fa-trash" aria-hidden="true"></i>
+
                 Delete
-            </button>
+            </c-button>
         </c-slot>
 
         <!-- Confirmation message will be loaded here via HTMX -->
@@ -250,10 +255,10 @@
         <h2>{{child.name}}</h2>
         <p class="text-gray-600">Age: {{child.age}}</p>
 
-        <c-button-group>
+        <c-dropdown-menu>
             {% partial edit-child-button %}
             {% partial delete-child-button %}
-        </c-button-group>
+        </c-dropdown-menu>
 
 
         {% if child.complete_assessment %}
@@ -308,11 +313,17 @@
             </a>
         
         {% else %}
-            <p>Please complete this assessment about your child. Once that is done, we can make recommendations.</p>
-            <a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
-               class="btn btn-primary">
-                Start Assessment
-            </a>
+            <div class="surface bg-blue-50 border-blue-200">
+                <h4 class="text-blue-900 mb-2">Ready to Get Started?</h4>
+                <p class="text-gray-700 mb-4">
+                    Complete a brief assessment about your child's development and interests.
+                    This helps us provide personalized course recommendations tailored to their unique needs.
+                </p>
+                <c-button href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
+                   class="btn btn-primary">
+                    Start Assessment
+                </c-button>
+            </div>
         {% endif %}
     </div>
 </div>
@@ -323,7 +334,7 @@
 {% partialdef content %}
 
 
-<div id="main_content">
+<div id="children">
     
     {% if children %}
 
