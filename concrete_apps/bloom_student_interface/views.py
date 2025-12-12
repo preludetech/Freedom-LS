@@ -724,6 +724,13 @@ def create_child(request):
                 )
 
             return redirect("bloom_student_interface:children")
+        else:
+            # Form is invalid - retarget to just replace the form, not the whole children div
+            if request.headers.get("HX-Request"):
+                response = render(request, "partials/form.html", context={"form": form})
+                response["HX-Retarget"] = "#child-form-container"
+                response["HX-Reswap"] = "innerHTML"
+                return response
     else:
         form = ChildForm()
 
@@ -749,6 +756,13 @@ def edit_child(request, slug):
                 )
 
             return redirect("bloom_student_interface:children")
+        else:
+            # Form is invalid - retarget to just replace the form, not the whole children div
+            if request.headers.get("HX-Request"):
+                response = render(request, "partials/form.html", context={"form": form})
+                response["HX-Retarget"] = f"#edit-child-form-container-{child.slug}"
+                response["HX-Reswap"] = "innerHTML"
+                return response
 
     else:
         form = ChildForm(instance=child)

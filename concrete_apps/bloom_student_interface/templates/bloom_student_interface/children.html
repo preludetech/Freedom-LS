@@ -15,6 +15,7 @@
                 <c-button
                 hx-get="{% url 'bloom_student_interface:children_create' %}"
                 hx-target="#child-form-container"
+                hx-swap="innerHTML"
                 hx-trigger="click">
                 Add a Child
             </c-button>
@@ -50,6 +51,7 @@
                 dropdown="true"
                 hx-get="{% url 'bloom_student_interface:children_edit' slug=child.slug %}"
                 hx-target="#edit-child-form-container-{{child.slug}}"
+                hx-swap="innerHTML"
                 hx-trigger="click">
                 <i class="fa fa-pencil" aria-hidden="true"></i>
                 Edit

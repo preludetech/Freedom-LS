@@ -29,6 +29,7 @@ class Child(SiteAwareModel):
     class Meta:
         verbose_name_plural = "Children"
 
+
     def clean(self):
         super().clean()
         if self.date_of_birth and self.date_of_birth >= timezone.now().date():
@@ -50,6 +51,28 @@ class Child(SiteAwareModel):
 
     def __str__(self):
         return f"{self.name} ({self.date_of_birth}) - {self.user}"
+
+    def age(self):
+        """Calculate and return the age in years and months."""
+        today = timezone.now().date()
+
+        years = today.year - self.date_of_birth.year
+        months = today.month - self.date_of_birth.month
+
+        if months < 0:
+            years -= 1
+            months += 12
+
+        if today.day < self.date_of_birth.day:
+            months -= 1
+            if months < 0:
+                years -= 1
+                months += 12
+
+        year_str = "year" if years == 1 else "years"
+        month_str = "month" if months == 1 else "months"
+
+        return f"{years} {year_str}, {months} {month_str}"
 
 
 class ChildFormProgress(SiteAwareModel):
