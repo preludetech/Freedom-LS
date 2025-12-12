@@ -146,7 +146,14 @@ def view_course_item(request, collection_slug, index):
         )
 
     if isinstance(current_item, Form):
-        return view_form(request, form=current_item, course=course, index=index)
+        return view_form(
+            request,
+            form=current_item,
+            course=course,
+            index=index,
+            is_last_item=is_last_item,
+            next_url=next_url,
+        )
 
 
 def view_topic(request, topic, course, next_url, previous_url, is_last_item=False):
@@ -199,8 +206,9 @@ def view_topic(request, topic, course, next_url, previous_url, is_last_item=Fals
     return render(request, "student_interface/course_topic.html", context)
 
 
-def view_form(request, form, course, index):
+def view_form(request, form, course, index, is_last_item=False, next_url=None):
     """Show the front page of the form"""
+    from student_interface.utils import form_start_page_buttons
 
     # Try to get existing incomplete form progress (don't create if it doesn't exist)
     incomplete_form_progress = FormProgress.get_latest_incomplete(
@@ -216,6 +224,14 @@ def view_form(request, form, course, index):
         user=request.user, form=form, completed_time__isnull=False
     ).order_by("-completed_time")
 
+    # Determine which buttons to show
+    buttons = form_start_page_buttons(
+        form=form,
+        incomplete_form_progress=incomplete_form_progress,
+        completed_form_progress=completed_form_progress,
+        is_last_item=is_last_item,
+    )
+
     context = {
         "course": course,
         "form": form,
@@ -223,6 +239,8 @@ def view_form(request, form, course, index):
         "completed_form_progress": completed_form_progress,
         "index": index,
         "page_number": page_number,
+        "buttons": buttons,
+        "next_url": next_url,
     }
 
     return render(request, "student_interface/course_form.html", context)

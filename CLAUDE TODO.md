@@ -1,8 +1,6 @@
-- [ ] Mark all playwright tests as "playwright" using the pytest mark functionality here: https://docs.pytest.org/en/stable/how-to/mark.html
 
 
 Quiz to do 
-- [ ] if a person has a quiz in progress: show a continue button (not a start form button) 
 - [ ] if they passed the quiz then: show a Next button on both the course_form_complete and course_form pages 
 - [ ] if they failed the quiz: show a "try again" button 
 

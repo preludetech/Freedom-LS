@@ -3,23 +3,24 @@ content_type: FORM_PAGE
 description: lorem ipsum
 subtitle: Something Something
 title: Page 1
-uuid: d5f43271-9465-496d-925d-61118963ad9e
+uuid: f28cd121-5b7e-4e14-a576-1fd7dc95c72c
 ---
 options:
 - text: option 1 text
-  uuid: 1a99dddc-b7a7-4e33-b7b4-3fa542f2d593
+  uuid: af285237-7536-40f0-b214-ea3e024907ca
   value: one
-  correct: true
 - text: option 2 text
-  uuid: 9b197f18-f9ed-4a8f-bc19-031ba16c0e55
+  uuid: cea9db28-3cc6-4975-998d-e3c73ea8b203
   value: two
-- text: option 3 text
-  uuid: 18a39842-b421-4e7b-b724-e3ade30921d3
+- text: CORRECT
+  uuid: b1587401-9d0b-448f-b8fb-206acdc1d005
   value: three
+  correct: true
+
 question: Some question blah blah
 required: true
 type: multiple_choice
-uuid: 5e8405d4-2333-49cb-b4fd-9406d3f64b9c
+uuid: 2617c6fc-58ee-4703-870c-283ebb85c91d
 ---
 content: |-
   Considering blah blah, answer the following:
@@ -29,36 +30,38 @@ content: |-
      caption="Example of a graph"
      />
     Blah blah
-uuid: f262b2cf-3322-4b15-bf25-462ed56dcfb4
+uuid: 3c08278d-5d69-43d6-a5e2-291cedcb3c4a
 ---
 options:
-- text: option 1 text
-  uuid: 19cadb43-6a82-4719-9710-24bc03b9d42d
+- text: CORRECT
+  uuid: 7abbc04c-0f22-4171-bb34-0a592b730118
   value: one
+  correct: true
+
 - text: option 2 text
-  uuid: 983d1950-21bc-426b-a26c-e273c88fe957
+  uuid: f5dfcce8-a53c-4bcb-a51f-a856260eaceb
   value: two
 - text: option 3 text
-  uuid: 37602a68-682b-411f-a620-a193c1e98e43
-  value: three
-  correct: true
-question: Some question blah blah
-required: true
-type: multiple_choice
-uuid: 6a8dc6f4-9a00-4f2c-8fc0-f5890361eba9
----
-options:
-- text: option 1 text
-  uuid: 44299573-83ae-45e9-abd5-6c1800da9b0f
-  value: one
-- text: option 2 text
-  uuid: f0c5c7f1-bc54-403f-9be9-c07aaa6cd6d9
-  value: two
-  correct: true
-- text: option 3 text
-  uuid: e804908f-0413-45c4-81dd-c340b8038cdb
+  uuid: 03442a92-8872-4828-9180-bc0e3f5be1fc
   value: three
 question: Some question blah blah
 required: true
 type: multiple_choice
-uuid: 71d8173c-5e7a-49d5-a467-ea7d04b16530
+uuid: 10862474-3ef7-42a2-972f-59deb212b589
+---
+options:
+- text: CORRECT
+  uuid: 356addeb-73d7-4084-9e99-9f650c217ad7
+  value: one
+  correct: true
+
+- text: option 2 text
+  uuid: d12f10ae-04a1-4d4e-966d-ddb68ff219b3
+  value: two
+- text: option 3 text
+  uuid: d0bb1650-a17a-4b16-9030-3333a5cbc7f8
+  value: three
+question: Some question blah blah
+required: true
+type: multiple_choice
+uuid: 160c4442-4097-4078-9080-020ba3ccf16a

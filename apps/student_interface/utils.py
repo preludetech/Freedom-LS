@@ -118,3 +118,82 @@ def get_course_index(request, course):
             for child in course.children()
         ]
     return children
+
+
+
+
+def form_start_page_buttons(form, incomplete_form_progress, completed_form_progress, is_last_item):
+    """
+    Determine which buttons to show on the form start page.
+
+    Returns a list of button dicts with 'text' and 'action' keys.
+
+    Args:
+        form: Form instance
+        incomplete_form_progress: FormProgress instance or None
+        completed_form_progress: QuerySet of completed FormProgress objects
+        is_last_item: Boolean indicating if this is the last item in the course
+    """
+    buttons = []
+
+    # If user has incomplete progress, show Continue button
+    if incomplete_form_progress:
+        buttons.append({
+            "text": "Continue Form",
+            "action": "continue"
+        })
+        return buttons
+
+    # Check if there's any completed progress
+    latest_completed = completed_form_progress.first()
+
+    if latest_completed:
+        # For QUIZ forms, check if user passed
+        if form.strategy == FormStrategy.QUIZ:
+            scores = latest_completed.scores or {}
+            score = scores.get("score", 0)
+            max_score = scores.get("max_score", 1)
+
+            # Calculate pass percentage (80% threshold)
+            pass_threshold = 0.8
+            percentage = score / max_score if max_score > 0 else 0
+            passed = percentage >= pass_threshold
+
+            if passed:
+                # User passed the quiz
+                if is_last_item:
+                    buttons.append({
+                        "text": "Finish Course",
+                        "action": "finish_course"
+                    })
+                else:
+                    buttons.append({
+                        "text": "Next",
+                        "action": "next"
+                    })
+            else:
+                # User failed the quiz - only show Try Again
+                buttons.append({
+                    "text": "Try Again",
+                    "action": "try_again"
+                })
+        else:
+            # Non-quiz form that's completed
+            if is_last_item:
+                buttons.append({
+                    "text": "Finish Course",
+                    "action": "finish_course"
+                })
+            else:
+                buttons.append({
+                    "text": "Next",
+                    "action": "next"
+                })
+    else:
+        # No progress at all - show Start button
+        buttons.append({
+            "text": "Start Form",
+            "action": "start"
+        })
+
+    return buttons 
