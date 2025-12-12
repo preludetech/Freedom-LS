@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.utils import timezone
-from content_engine.models import Topic, Form, Course
+from content_engine.models import Topic, Form, Course, FormStrategy
 from student_progress.models import FormProgress, TopicProgress
 from student_management.models import Student, StudentCourseRegistration
 
@@ -370,12 +370,18 @@ def course_form_complete(request, collection_slug, index):
         .first()
     )
 
+    # Get incorrect answers if this is a quiz with show_incorrect enabled
+    incorrect_answers = []
+    if form_progress:
+        incorrect_answers = form_progress.get_incorrect_quiz_answers()
+
     context = {
         "course": course,
         "form": form,
         "form_progress": form_progress,
         "show_scores": True,
         "scores": form_progress.scores if form_progress else None,
+        "incorrect_answers": incorrect_answers,
     }
 
     return render(request, "student_interface/course_form_complete.html", context)

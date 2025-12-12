@@ -20,6 +20,82 @@
     <div class="mb-8">
         <h2 class="mb-6">Your Results</h2>
 
+        {% if form.strategy == "QUIZ" %}
+        <!-- Quiz scoring display -->
+        <div class="mb-6 p-8 bg-white border border-gray-200 rounded-lg shadow-sm text-center">
+            <div class="mb-6">
+                <div class="text-5xl font-bold text-blue-600 mb-2" data-testid="quiz-score">
+                    {{ scores.score }} / {{ scores.max_score }}
+                </div>
+                <div class="text-2xl text-gray-600" data-testid="quiz-percentage">
+                    {% widthratio scores.score scores.max_score 100 as percentage %}
+                    {{ percentage }}%
+                </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="w-full bg-gray-200 rounded-full h-4 mb-4">
+                {% widthratio scores.score scores.max_score 100 as percentage %}
+                <div class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: {{ percentage }}%"></div>
+            </div>
+
+            <p class="text-gray-600">
+                {% if percentage == 100 %}
+                    Perfect score! You got all questions correct!
+                {% elif percentage >= 80 %}
+                    Great job! You passed the quiz.
+                {% elif percentage >= 60 %}
+                    Good effort! You passed the quiz.
+                {% else %}
+                    Keep practicing! Review the material and try again.
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Show incorrect answers if enabled -->
+        {% if incorrect_answers and form.quiz_show_incorrect %}
+        <div class="mt-8" data-testid="incorrect-answers-section">
+            <h3 class="text-2xl font-semibold mb-4 text-gray-900">Review Incorrect Answers</h3>
+
+            <div class="space-y-6">
+                {% for item in incorrect_answers %}
+                <div class="p-6 bg-red-50 border border-red-200 rounded-lg" data-testid="incorrect-question-{{ item.question.id }}">
+                    <!-- Question text -->
+                    <div class="mb-4">
+                        <h4 class="font-semibold text-gray-900 mb-2">Question {{ item.question.question_number }}</h4>
+                        <p class="text-gray-800">{{ item.question.question }}</p>
+                    </div>
+
+                    <!-- Student's answer -->
+                    <div class="mb-3">
+                        <p class="text-sm font-medium text-red-700 mb-1">Your answer:</p>
+                        <div class="pl-4" data-testid="student-answer-{{ item.question.id }}">
+                            {% for option in item.student_selected %}
+                            <p class="text-gray-700">
+                                <i class="fas fa-times-circle text-red-500 mr-2"></i>{{ option.text }}
+                            </p>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Correct answer -->
+                    <div>
+                        <p class="text-sm font-medium text-green-700 mb-1">Correct answer:</p>
+                        <div class="pl-4" data-testid="correct-answer-{{ item.question.id }}">
+                            {% for option in item.correct_options %}
+                            <p class="text-gray-700">
+                                <i class="fas fa-check-circle text-green-500 mr-2"></i>{{ option.text }}
+                            </p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <!-- Category-based scoring display -->
         {% for category, category_data in scores.items %}
         <div class="mb-6 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
             <div class="mb-4">
@@ -60,6 +136,7 @@
             {% endif %}
         </div>
         {% endfor %}
+        {% endif %}
     </div>
     {% endif %}
 

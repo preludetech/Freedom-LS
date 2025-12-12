@@ -319,6 +319,60 @@ class FormProgress(SiteAwareModel):
         else:
             raise Exception(f"Unhandled Strategy: {self.form.strategy}")
 
+    def get_incorrect_quiz_answers(self):
+        """
+        Get a list of incorrect answers for a completed quiz.
+
+        Returns a list of dicts with:
+        - question: FormQuestion instance
+        - student_selected: list of QuestionOption instances the student selected
+        - correct_options: list of QuestionOption instances that are correct
+
+        Only returns results if:
+        - form.strategy is QUIZ
+
+        We will use this function in multiple places. Sometimes we'll want to show the incorrect answers to the teacher. Even if we dont want to show the answers to the student, this function should work
+        """
+        incorrect_answers = []
+
+        if self.form.strategy != FormStrategy.QUIZ:
+            return incorrect_answers
+
+        # Iterate through all pages and questions
+        for page in self.form.pages.all():
+            for child in page.children():
+                # Only process FormQuestion objects
+                if child.content_type != "FORM_QUESTION":
+                    continue
+
+                question = child
+
+                # Get the student's answer for this question
+                try:
+                    answer = self.answers.get(question=question)
+                except QuestionAnswer.DoesNotExist:
+                    # Question not answered, skip
+                    continue
+
+                selected_options = list(answer.selected_options.all())
+
+                # Check if the answer is correct
+                is_correct = any(option.correct for option in selected_options)
+
+                if not is_correct:
+                    # Get the correct option(s)
+                    correct_options = list(question.options.filter(correct=True))
+
+                    incorrect_answers.append(
+                        {
+                            "question": question,
+                            "student_selected": selected_options,
+                            "correct_options": correct_options,
+                        }
+                    )
+
+        return incorrect_answers
+
 
 class QuestionAnswer(SiteAwareModel):
     """Stores answers to form questions."""

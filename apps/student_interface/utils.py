@@ -1,7 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.utils import timezone
-from content_engine.models import Topic, Form, Course
+from content_engine.models import Topic, Form, Course, FormStrategy
 from student_progress.models import FormProgress, TopicProgress, QuestionAnswer
 from student_management.models import Student, StudentCourseRegistration
 

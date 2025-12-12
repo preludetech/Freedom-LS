@@ -2,6 +2,15 @@
 
 This is a multi-site Learning Management System (LMS) built with Django. The project uses a site-aware architecture where all models are scoped to Django Sites, enabling multiple independent LMS instances to run from a single codebase.
 
+## Code style
+
+Import statements should go at the top of the file 
+
+### Exception handling
+
+- Try blocks hould be as short as possible
+- When catching exceptions, be specific about the types of exceptions being handled. Avoid silent failures
+
 ## Development Environment
 
 ### Package Management

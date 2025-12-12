@@ -1,9 +1,6 @@
 {% extends "student_interface/_course_base.html" %}
 
 
-
-
-
 {% block content %}
 
 <h1>{{ form.title }}</h1>
@@ -41,7 +38,32 @@
         </div>
 
         {% if progress.scores %}
-            {% partial completed_form_scores %}
+            {% if form.strategy == "QUIZ" %}
+            <div class="mt-4 p-4 bg-white rounded border border-gray-200" data-testid="previous-submission-score">
+                <div class="flex items-center justify-between">
+                    <span class="font-semibold text-gray-700">Score:</span>
+                    <div class="text-right">
+                        <span class="text-2xl font-bold text-blue-600">{{ progress.scores.score }} / {{ progress.scores.max_score }}</span>
+                        <span class="ml-2 text-lg text-gray-600">
+                            {% widthratio progress.scores.score progress.scores.max_score 100 as percentage %}
+                            ({{ percentage }}%)
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            {# Category-based scores #}
+            <div class="mt-4">
+                {% for category, category_data in progress.scores.items %}
+                <div class="mb-2 flex justify-between items-center">
+                    <span class="text-sm font-medium text-gray-700">{{ category }}</span>
+                    <span class="text-sm text-gray-600">
+                        {{ category_data.score }} / {{ category_data.max_score }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
         {% endif %}
     </div>
     {% endfor %}
