@@ -1,14 +1,29 @@
 {% load static %}
 
 
-<header class=" p-4 px-12 flex justify-between items-center ">
+<header class=" p-4 px-12 flex justify-between items-center" hx-boost="true">
     <a href="/">
         <img src="{% static 'bloom_student_interface/LogoNoBackground.png' %}"
          alt="Bloom Logo"
          class="h-20"
         > 
     </a>
-    <nav class="space-x-1 flex flex-row">
+    
+        {% if user.is_authenticated %}
+
+        <nav class="flex gap-6 items-center">
+
+            {% for item in navigation %}
+            <a 
+                href="{{ item.url }}" 
+                class="no-underline text-gray-700 hover:underline text-2xl transition-colors">
+                 {{item.title}}
+            </a>
+            {% endfor %}
+        </nav>
+        {% endif %}
+
+    <nav class="space-x-1 flex flex-row ">
         {% if user.is_authenticated %}
                 {% include "partials/header_bar_user_menu.html" %}       
         {% endif %}

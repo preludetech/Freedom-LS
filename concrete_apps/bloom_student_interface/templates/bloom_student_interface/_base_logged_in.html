@@ -2,32 +2,8 @@
 
 {% block body %}
 
-    <nav class="bg-white border-b border-gray-200 shadow-sm mb-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex space-x-8 h-16">
-                <a hx-push-url="true"
-                   hx-get="{% url 'bloom_student_interface:children' %}"
-                   hx-swap="none"
-                   class="cursor-pointer inline-flex items-center px-3 py-2 text-lg font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md transition-colors no-underline"
-                   >
-                    My Children
-                </a>
-                <a hx-push-url="true"
-                   hx-get="{% url 'bloom_student_interface:learn' %}"
-                   hx-swap="none"
-                   class="cursor-pointer inline-flex items-center px-3 py-2 text-lg font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md transition-colors no-underline"
-                   >
-                    My Learning
-                </a>
-            </div>
-        </div>
-    </nav>
+<h1 class="text-gray-800 mb-6 mt-4">{% block title %} {% endblock %}</h1>
 
-
-    {% block content %}
-    {% endblock content %}
-
+{{ block.super }}
 
 {% endblock body %}
-
-

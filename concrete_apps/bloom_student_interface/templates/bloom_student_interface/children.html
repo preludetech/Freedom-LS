@@ -322,12 +322,9 @@
 
 {% partialdef content %}
 
-<!-- <div  id="tabs" hx-swap-oob="true"> </div> -->
 
-<div id="main_content" hx-swap-oob="true">
+<div id="main_content">
     
-    <h1>Children</h1>
-
     {% if children %}
 
     <div class="space-y-3">
@@ -363,6 +360,12 @@
 </div>
 
 {% endpartialdef %}
+
+
+
+{% block title %}
+My Children
+{% endblock %}
 
 
 {% block content %}

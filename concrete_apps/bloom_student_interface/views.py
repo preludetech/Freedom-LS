@@ -656,8 +656,8 @@ def learn(request):
         "registered_courses": registered_courses,
     }
 
-    if request.headers.get("Hx-Request"):
-        return render(request, "bloom_student_interface/learn.html#content", context)
+    # if request.headers.get("Hx-Request"):
+    #     return render(request, "bloom_student_interface/learn.html#content", context)
 
     return render(request, "bloom_student_interface/learn.html", context)
 
@@ -690,12 +690,12 @@ def children(request):
         "children": children,
     }
 
-    if request.headers.get("Hx-Request"):
-        return render(
-            request,
-            "bloom_student_interface/children.html#content",
-            context=context,
-        )
+    # if request.headers.get("Hx-Request"):
+    #     return render(
+    #         request,
+    #         "bloom_student_interface/children.html#content",
+    #         context=context,
+    #     )
 
     return render(request, "bloom_student_interface/children.html", context=context)
 

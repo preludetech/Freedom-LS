@@ -37,8 +37,7 @@
 
 {% partialdef content %}
 
-<div id="main_content" hx-swap-oob="true" class="space-y-4">
-    <h1>My Learning</h1>
+<div id="main_content"  class="space-y-4">
 
     <div class="surface">
         <h2>Current Courses</h2>
@@ -103,12 +102,11 @@
 
 
 
+{% block title %}
+My Learning
+{% endblock %}
+
 
 {% block content %}
-
-
 {% partial content %}
-
-
-
 {% endblock content %}
