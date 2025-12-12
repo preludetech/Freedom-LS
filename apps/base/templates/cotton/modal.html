@@ -47,7 +47,7 @@
                  x-transition:leave="ease-in duration-200"
                  x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 class="relative transform overflow-hidden rounded-lg bg-white shadow-xl transition-all {{class}}"
+                 class=" relative transform overflow-hidden rounded-lg bg-white shadow-xl transition-all "
                  @click.away="open = false">
 
                 <!-- Header -->
@@ -68,12 +68,15 @@
                 </div>
 
                 <!-- Content -->
-                <div class="bg-white px-6 py-4 ">
+                <div class="{{class}} bg-white px-6 py-4 ">
+                    
                     {{ slot }}
                 </div>
 
                 <!-- Footer (optional) -->
-                    <c-button-group class=" bg-gray-50 px-6 py-4 border-t border-gray-200">
+                    <c-button-group 
+                    variant="space-between"
+                    class=" bg-gray-50 px-6 py-4 border-t border-gray-200">
                         {{ footer }}
                     </c-button-group>
             </div>

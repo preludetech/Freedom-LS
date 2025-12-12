@@ -1,19 +1,17 @@
-{% extends '_base.html' %}
+{% extends 'bloom_student_interface/_base_logged_in.html' %}
 
 
-{% block title %}{{form.title}} - {{ child.name }}{% endblock %}
+{% block title %}Assessment: {{form.title}}{% endblock %}
 
-{% block body %}
-<div class="max-w-4xl mx-auto">
+{% block pre-content %}
+<div class="mx-auto surface">
 
-<a href="{% url 'bloom_student_interface:home' %}" class=""> < Back to Home</a>
-<h1>Assessment</h1>
-<p><strong>Assessment name:</strong> {{ form.title }}</p>
+<!-- <a href="{% url 'bloom_student_interface:home' %}" class=""> < Back to Home</a> -->
 <p><strong>Child:</strong> {{ child.name }}</p>
-
-{% block content %}
-{% endblock content %}
+<p><strong>Age:</strong> {{ child.age }}</p>
 
 </div>
 
-{% endblock body %}
+{% endblock %}
+
+

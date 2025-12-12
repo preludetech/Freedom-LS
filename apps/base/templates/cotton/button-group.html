@@ -1,3 +1,92 @@
-<div class="flex gap-3 {{ class }}">
-    {{slot}}
-</div>
+<c-vars
+    variant="default"
+    class=""
+/>
+
+{% if variant == "vertical" %}
+    <div class="flex flex-col gap-2 {{ class }}">
+        {{slot}}
+    </div>
+{% elif variant == "attached" %}
+    <div class="inline-flex [&>*]:rounded-none [&>*:first-child]:rounded-l-md [&>*:last-child]:rounded-r-md [&>*:not(:first-child)]:-ml-px {{ class }}">
+        {{slot}}
+    </div>
+{% elif variant == "space-between" %}
+    <div class="flex justify-between gap-3 {{ class }}">
+        {{slot}}
+    </div>
+{% elif variant == "centered" %}
+    <div class="flex justify-center gap-3 {{ class }}">
+        {{slot}}
+    </div>
+{% elif variant == "right" %}
+    <div class="flex justify-end gap-3 {{ class }}">
+        {{slot}}
+    </div>
+{% elif variant == "tight" %}
+    <div class="flex gap-1 {{ class }}">
+        {{slot}}
+    </div>
+{% elif variant == "loose" %}
+    <div class="flex gap-6 {{ class }}">
+        {{slot}}
+    </div>
+{% else %}
+    {# default variant #}
+    <div class="flex gap-3 {{ class }}">
+        {{slot}}
+    </div>
+{% endif %}
+
+{% comment %}
+Usage Examples:
+
+  <!-- Default horizontal layout with normal gap -->
+  <c-button-group>
+      <c-button>Save</c-button>
+      <c-button variant="secondary">Cancel</c-button>
+  </c-button-group>
+
+  <!-- Vertical stacked layout -->
+  <c-button-group variant="vertical">
+      <c-button>Edit</c-button>
+      <c-button>Delete</c-button>
+  </c-button-group>
+
+  <!-- Attached buttons (no gap, connected) -->
+  <c-button-group variant="attached">
+      <c-button>Left</c-button>
+      <c-button>Middle</c-button>
+      <c-button>Right</c-button>
+  </c-button-group>
+
+  <!-- Buttons pushed to edges -->
+  <c-button-group variant="space-between">
+      <c-button>Back</c-button>
+      <c-button>Next</c-button>
+  </c-button-group>
+
+  <!-- Centered buttons -->
+  <c-button-group variant="centered">
+      <c-button>Submit</c-button>
+  </c-button-group>
+
+  <!-- Right-aligned buttons -->
+  <c-button-group variant="right">
+      <c-button>Save</c-button>
+      <c-button variant="secondary">Cancel</c-button>
+  </c-button-group>
+
+  <!-- Tight spacing -->
+  <c-button-group variant="tight">
+      <c-button>1</c-button>
+      <c-button>2</c-button>
+      <c-button>3</c-button>
+  </c-button-group>
+
+  <!-- Loose spacing -->
+  <c-button-group variant="loose">
+      <c-button>Save</c-button>
+      <c-button variant="secondary">Cancel</c-button>
+  </c-button-group>
+{% endcomment %}

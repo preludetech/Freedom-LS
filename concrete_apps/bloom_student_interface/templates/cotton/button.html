@@ -18,7 +18,7 @@
 {% if value %} value="{{ value }}"{% endif %}
 {% if not href and type %} type="{{ type }}"{% endif %}
 {% if disabled %} disabled{% endif %}
-class="{% if dropdown %}block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer{% else %}inline-block px-6 py-2 font-medium rounded-md
+class="{{ class }} {% if dropdown %}block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer{% else %}inline-block px-6 py-2 font-medium rounded-md
                focus:outline-none focus:ring-2 focus:ring-offset-2
                disabled:opacity-50 disabled:cursor-not-allowed
                no-underline cursor-pointer transition-colors
@@ -30,7 +30,7 @@ class="{% if dropdown %}block w-full text-left px-4 py-2 text-sm text-gray-700 h
                   bg-red-200 text-red-800 hover:bg-red-300 hover:text-red-900 focus:ring-red-500
                {% elif variant == "outline" %}
                   bg-transparent border-2 border-purple-300 text-purple-800 hover:bg-purple-50 hover:text-purple-900 focus:ring-purple-500
-               {% endif %}{% endif %} {{ class }}"
+               {% endif %}{% endif %} "
 {{ attrs }}
 >
 {{slot}}

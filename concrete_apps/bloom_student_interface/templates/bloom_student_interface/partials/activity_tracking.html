@@ -101,16 +101,15 @@
 {% partialdef view_activity_description_button %}
 <c-modal title="{{activity.title}}">
     <c-slot name="trigger">
-        <button class="btn btn-outline">Description</button>
+        <c-button variant="outline">Description</c-button>
     </c-slot>
 
     <c-markdown-container>
-
         {{activity.rendered_content}}
     </c-markdown-container>
 
     <c-slot name="footer">
-        <button type="button" class="btn btn-outline" @click="open = false">Close</button>
+        <c-button type="button" variant="outline" @click="open = false">Close</c-button>
     </c-slot>
 </c-modal>
 {% endpartialdef %}
@@ -120,7 +119,7 @@
 <c-modal title="Are you sure?">
 
     <c-slot name="trigger">
-        <button class="btn btn-outline">Stop</button>
+        <c-button variant="danger">Stop</c-button>
     </c-slot>
 
     <p>Are you sure you would like to stop the activity? </p>
@@ -131,14 +130,14 @@
     <p>Stopping an activity will remove it from your activity tracker. You will be able to restart it at any time. We will not delete any of your activity logs, you'll still have access to everything.</p>
 
     <c-slot name="footer">
-        <button
+        <c-button
             type="button"
-            class="btn btn-outline"
+            variant="danger"
             hx-post="{% url 'bloom_student_interface:action_child_activity_start_stop' child.slug activity.slug 'stop' %}"
             
             @click="open = false"
-        >Stop the activity</button>
-        <button type="button" class="btn btn-outline" @click="open = false">Nevermind</button>
+        >Stop the activity</c-button>
+        <c-button type="button" variant="outline" @click="open = false">Nevermind</c-button>
     </c-slot>
 
 </c-modal>
@@ -221,6 +220,8 @@
     You haven't committed to doing any activities with your child yet. 
 </p>
 
+
+
     {% endif %}
 </div>
 
@@ -228,9 +229,22 @@
 
 {% partialdef recommended_activities_organised %}
 
-<div id="recommended_activities" hx-swap-oob="true">
+<div id="recommended_activities" hx-swap-oob="true" class="space-y-8">
 
     {% if recommended_activities_organised %}
+
+        <div class="surface space-y-4">
+            <p>
+
+                Don't panic if you see a lot of stuff here, you don't need to take on everything at the same time. Pick up to 6 different activities that you think you'll be able to do regularly. 
+            </p>
+            <p>
+             Aim to do at least 3 of your chosen activities every day. If you can do more, that's great, but if you do less then that's totally okay! 
+            </p>
+            <p>If an activity isn't working out for you, you can always choose to stop it and take on something different. Try a few things out and see what fits into your life best.</p>
+
+            <p>If you consistently do well with an activity then we'll recommend something more advanced. And if you consistently struggle we'll suggest a change. We'll let you know when there are new recommendations.</p>
+        </div>
 
         <div class="space-y-4">
             {% for cat1, value1 in recommended_activities_organised.items %}
@@ -256,10 +270,10 @@
 
                                                 <c-button-group>
                                                     {% include 'bloom_student_interface/partials/activity_tracking.html#view_activity_description_button' %}
-                                                    <button
-                                                        class="btn btn-primary"
+                                                    <c-button
+                                                        
                                                         hx-post="{% url 'bloom_student_interface:action_child_activity_start_stop' child.slug activity.slug 'start' %}"
-                                                    >Start</button>
+                                                    >Start</c-button>
                                                 </c-button-group>
                                             </div>
                                         {% endfor %}
@@ -385,6 +399,7 @@
         </div>
     {% else %}
         <p class="text-gray-600">No activity history yet.</p>
+        <p class="text-gray-600">If you stop doing an activity then it'll show up over here</p>
     {% endif %}
 </div>
 

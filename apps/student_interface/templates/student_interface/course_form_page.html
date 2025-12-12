@@ -95,7 +95,7 @@
 
 <!-- Page Progress Indicator -->
 {% partialdef page_progress_indicator inline %}
-<div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+<div class="surface">
     <div class="flex items-center justify-between mb-3">
         <span class="text-sm font-medium text-gray-700">Page {{ current_page_num }} of {{ total_pages }}</span>
     </div>
@@ -103,19 +103,13 @@
     <!-- Page Navigation -->
     <div class="flex gap-2 flex-wrap">
         {% for page in page_links %}
-            {% if page.is_current %}
-                <span class="px-3 py-1 bg-blue-600 text-white rounded font-medium text-sm">
-                    {{ page.number }}
-                </span>
-            {% elif page.is_accessible %}
-                <a href="{{ page.url }}" class="no-underline px-3 py-1 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-100 text-sm" title="{{ page.title }} ">
-                    {{ page.number }}
-                </a>
-            {% else %}
-                <span class="px-3 py-1 bg-gray-100 text-gray-400 rounded text-sm cursor-not-allowed">
-                    {{ page.number }}
-                </span>
-            {% endif %}
+            <c-form-page-link
+                number="{{ page.number }}"
+                is_current="{{ page.is_current }}"
+                is_accessible="{{ page.is_accessible }}"
+                url="{{ page.url }}"
+                title="{{ page.title }}"
+            />
         {% endfor %}
     </div>
 </div>
@@ -160,9 +154,9 @@
             <div>
                 {% if previous_page_url %}
                 
-                    <a href="{{previous_page_url}}" class="btn btn-secondary">
+                    <c-button href="{{previous_page_url}}" variant="secondary">
                         Back
-                    </a>
+                    </c-button>
                 {% else %}
                 <div class="w-20"></div>
                 {% endif %}
@@ -171,14 +165,14 @@
 
             {% if has_next_page %}
             
-            <button type="submit" class="btn btn-primary">
+            <c-button type="submit">
                 Next
-            </button>
+            </c-button>
             {% else %}
             {# Last page - show Submit button #}
-            <button type="submit" class="btn btn-primary">
-                Submit
-            </button>
+            <c-button type="submit">
+                Finish
+            </c-button>
             {% endif %}
         </div>
     </div>

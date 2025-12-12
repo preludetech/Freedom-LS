@@ -7,21 +7,24 @@
 <div class="max-w-4xl mx-auto px-4 space-y-4">
     <h1 class="text-3xl font-bold mb-6">Activities for {{ child.name }}</h1>
 
-    <div class="surface">
+    <div class="surface space-y-4">
         <h2 class="">Current Activities</h2>
         {% include 'bloom_student_interface/partials/activity_tracking.html#current_activities_table' %}
     </div>
 
-    <div class="surface">
+    <div class="surface space-y-4">
         <h2 class="">Recommended Activities</h2>
         {% include 'bloom_student_interface/partials/activity_tracking.html#recommended_activities_organised' %}
     </div>
 
-    <div class="surface">
+    <div class="surface space-y-4">
         <h2>Activity History</h2>
         {% include 'bloom_student_interface/partials/activity_tracking.html#activity_history' %}
     </div>
 
+    <div class="w-fit mx-auto">
+        <c-button href="{%url 'bloom_student_interface:children' %}">Back to All Children</c-button>
+    </div>
  
 </div>
 {% endblock content %}

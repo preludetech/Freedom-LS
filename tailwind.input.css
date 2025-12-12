@@ -38,12 +38,18 @@
     }
 
     ul {
-        @apply list-disc list-inside ml-6 space-y-2
+        @apply list-disc list-inside  space-y-2
     }
 
     ol {
-        @apply list-decimal space-y-2
+        @apply list-decimal space-y-2 list-inside
     }
+
+    li {
+        @apply py-1
+    }
+
+  
 
     /* Form elements */
     label {
@@ -101,7 +107,29 @@
 }
 
 @layer utilities {
-    
+    /* Friendly purple scrollbar */
+    .scrollbar-purple {
+        /* scrollbar-width: thin; */
+        scrollbar-color: rgb(168 85 247) rgb(243 232 255);
+    }
+
+    .scrollbar-purple::-webkit-scrollbar {
+        /* width: 8px; */
+    }
+
+    .scrollbar-purple::-webkit-scrollbar-track {
+        background: rgb(243 232 255); /* purple-100 */
+        border-radius: 4px;
+    }
+
+    .scrollbar-purple::-webkit-scrollbar-thumb {
+        background: rgb(168 85 247); /* purple-500 */
+        border-radius: 4px;
+    }
+
+    .scrollbar-purple::-webkit-scrollbar-thumb:hover {
+        background: rgb(147 51 234); /* purple-600 */
+    }
 }
 
 @layer components {
@@ -138,6 +166,6 @@
     }
 
     .surface {
-        @apply border border-gray-300 rounded-md p-6
+        @apply border border-gray-300 rounded-md py-6 px-8
     }
 }

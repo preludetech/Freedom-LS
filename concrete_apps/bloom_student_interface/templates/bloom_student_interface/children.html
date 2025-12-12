@@ -143,13 +143,13 @@
             datasets: [{
                 label: 'Score %',
                 data: data,
-                backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                borderColor: 'rgb(168, 85, 247)',
                 borderWidth: 2,
-                pointBackgroundColor: 'rgb(59, 130, 246)',
+                pointBackgroundColor: 'rgb(168, 85, 247)',
                 pointBorderColor: '#fff',
                 pointHoverBackgroundColor: '#fff',
-                pointHoverBorderColor: 'rgb(59, 130, 246)'
+                pointHoverBorderColor: 'rgb(168, 85, 247)'
             }]
         },
         options: {
@@ -186,10 +186,9 @@
 
 {% partialdef redo_assessment_button %}
 
-<a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
-    class="btn btn-primary">
+<c-button href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}">
     Redo Assessment
-</a>
+</c-button>
 
 {% endpartialdef %}
 
@@ -203,9 +202,7 @@
     {% for category, value in  form_progress.scores.items %}
         <tr>
             <th class="text-left">{{category}}</th>
-            <!-- <td>
-                {{value.score}} / {{value.max_score}}
-            </td> -->
+            
             <td>
                 {% widthratio value.score value.max_score 100 %}%
             </td>
@@ -219,32 +216,34 @@
 
 
 {% partialdef assessment_details_button %}
-<c-modal title="{{child.name}}: Assessment Details" class="w-7xl">
+<c-modal title="{{child.name}}: Assessment Details" class="w-7xl" >
     <c-slot name="trigger">
-        <button class="btn btn-primary">Details</button>
+        <c-button>Details</c-button>
     </c-slot>
 
-    
-    <p class="text-sm text-gray-600 mt-2 text-left">
-                Last Assessment: {{ child.complete_assessment.completed_time|date:"M d, Y" }}
-            </p>
+    <div class="space-y-4">
+        <p class="text-sm text-gray-600 text-left">
+            <span class="font-bold">Last Assessment:</span> {{ child.complete_assessment.completed_time|date:"M d, Y" }}
+        </p>
 
-        <div class="grid grid-cols-2 gap-3">
-
+        <div class="grid grid-cols-2 gap-6">
             <div>
-                <h3>Overview</h3>
-                {% partial category_scores_radar %} 
+                <h3 class="mb-3">Overview</h3>
+                {% partial category_scores_radar %}
             </div>
             <div>
-                <h3>Scores</h3>
-                {% include "student_interface/partials/form_progress_scores.html#completed_form_category_scores"%}
+                <h3 class="mb-3">Scores</h3>
+                <div class="max-h-[600px] overflow-y-auto scrollbar-purple">
+                    {% include "student_interface/partials/form_progress_scores.html#completed_form_category_scores"%}
+                </div>
             </div>
         </div>
+    </div>
 
     <c-slot name="footer">
-        <button type="button" class="btn btn-outline" @click="open = false">Close</button>
-        {% partial redo_assessment_button %}
-        
+
+            <c-button type="button" variant="outline" @click="open = false">Close</c-button>
+            {% partial redo_assessment_button %}
     </c-slot>
 
 </c-modal>
@@ -255,38 +254,44 @@
 
 
 {% partialdef child %}
-<div class="surface grid grid-cols-6 gap-4">
-    <div class="text-center col-span-2">
-        <h2>{{child.name}}</h2>
-        <p class="text-gray-600">Age: {{child.age}}</p>
+<div class="surface grid grid-cols-6 gap-4 ">
+    
 
+    <div class="text-center col-span-2  relative">
+        <!-- Menu in top right corner -->
+    <div class="absolute  right-5 z-10">
         <c-dropdown-menu>
             {% partial edit-child-button %}
             {% partial delete-child-button %}
         </c-dropdown-menu>
+    </div>
 
+        <div class="mb-6">
+            <h2>{{child.name}}</h2>
+            <p class="text-gray-600">Age: {{child.age}}</p>
+        </div>
 
         {% if child.complete_assessment %}
-
-            <h3>Assessment</h3>
-            <p class="text-sm text-gray-600 mt-2">
-                Last Assessment: {{ child.complete_assessment.completed_time|date:"M d, Y" }}
-            </p>
-
-            {% partial redo_assessment_button %}
-
-
-            {% with form_progress=child.complete_assessment %}
+            <div class="space-y-4">
+                <h3>Assessment</h3>
+                <p class="text-sm text-gray-600 text-left">
+                    <strong>Last Assessment:</strong>
+                    {{ child.complete_assessment.completed_time|date:"M d, Y" }}
+                </p>
+                
+                
+                {% with form_progress=child.complete_assessment %}
                 {% partial category_scores_table %}
-                {% partial assessment_details_button %}
-            {% endwith %}
-
-            
-
+                <c-button-group variant="centered">
+                    {% partial redo_assessment_button %}
+                    {% partial assessment_details_button %}
+                </c-button-group>
+                {% endwith %}
+            </div>
         {% endif %}
 
     </div>
-    <div class="col-span-4 ">
+    <div class="col-span-4 relative space-y-4">
         {% if child.complete_assessment %}
             <!-- <a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
                class="btn btn-outline">
@@ -297,7 +302,11 @@
                 Retake Assessment
             </a> -->
 
-            <h3>Activities</h3>
+            <h3 class="text-center">Activities</h3>
+            <c-button href="{% url 'bloom_student_interface:child_activities_configure' slug=child.slug %}" variant="outline" class="absolute -right-4 -top-3">
+                <i class="fa fa-pencil" aria-hidden="true"></i>
+                Edit activities
+            </c-button>
 
             <div
                 hx-get="{% url 'bloom_student_interface:child_current_activities' slug=child.slug %}"
@@ -306,7 +315,6 @@
                 
                 ></div>
 
-            <a class="btn btn-primary" href="{% url 'bloom_student_interface:child_activities_configure' slug=child.slug %}">Configure activities</a>
 
 
         {% elif child.has_incomplete_assessment %}
@@ -318,16 +326,19 @@
             </a>
         
         {% else %}
-            <div class="surface bg-blue-50 border-blue-200">
-                <h4 class="text-blue-900 mb-2">Ready to Get Started?</h4>
-                <p class="text-gray-700 mb-4">
+            <div class="surface space-y-4">
+                <h4 class="">Ready to Get Started?</h4>
+                <p class="">
                     Complete a brief assessment about your child's development and interests.
                     This helps us provide personalized course recommendations tailored to their unique needs.
                 </p>
-                <c-button href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
-                   class="btn btn-primary">
+                <div class="mx-auto w-fit">
+
+                    <c-button href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
+                    class="">
                     Start Assessment
                 </c-button>
+            </div>
             </div>
         {% endif %}
     </div>

@@ -41,8 +41,10 @@
 
     <main class="max-w-7xl mx-auto">
     {% block body %}
-        <div class="py-12">
+        <div class="py-12 space-y-12">
 
+            {% block pre-content %}
+            {% endblock %}
             {% block content %}
             Replace this in child templates
             {% endblock content %}

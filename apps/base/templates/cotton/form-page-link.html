@@ -1,0 +1,55 @@
+<c-vars
+    number=""
+    is_current="False"
+    is_accessible="False"
+    url=""
+    title=""
+/>
+
+{% if is_current == "True" or is_current == True %}
+    <span class="px-3 py-1 bg-blue-600 text-white rounded font-medium text-sm">
+        {{ number }}
+    </span>
+{% elif is_accessible == "True" or is_accessible == True %}
+    <a href="{{ url }}" class="no-underline px-3 py-1 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-100 text-sm" title="{{ title }}">
+        {{ number }}
+    </a>
+{% else %}
+    <span class="px-3 py-1 bg-gray-100 text-gray-400 rounded text-sm cursor-not-allowed">
+        {{ number }}
+    </span>
+{% endif %}
+
+{% comment %}
+Usage Examples:
+
+  <!-- Current page (highlighted) -->
+  <c-form-page-link
+      number="3"
+      is_current="true"
+  />
+
+  <!-- Accessible page (clickable) -->
+  <c-form-page-link
+      number="2"
+      is_accessible="true"
+      url="/course/form/page/2/"
+      title="Question Set 2"
+  />
+
+  <!-- Inaccessible page (disabled) -->
+  <c-form-page-link
+      number="5"
+  />
+
+  <!-- In a loop -->
+  {% for page in page_links %}
+      <c-form-page-link
+          number="{{ page.number }}"
+          is_current="{{ page.is_current }}"
+          is_accessible="{{ page.is_accessible }}"
+          url="{{ page.url }}"
+          title="{{ page.title }}"
+      />
+  {% endfor %}
+{% endcomment %}
