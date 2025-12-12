@@ -1,0 +1,1 @@
+Read through all the chances made since the last commit so you understand what I'm working on. 
