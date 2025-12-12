@@ -64,8 +64,11 @@
         </div>
 
         <c-slot name="footer">
-            <button type="button" class="btn btn-outline" @click="open = false">Cancel</button>
-            <input type="submit" class="btn btn-primary" value="Save"/>
+            <c-button 
+                type="button" 
+                @click="open = false"
+                variant="secondary">Cancel</c-button>
+            <c-button type="submit" value="Save">Save</c-button>
         </c-slot>
     </c-modal>
 </form>
@@ -101,8 +104,8 @@
         </div>
 
         <c-slot name="footer">
-            <button type="button" class="btn btn-outline" @click="open = false">Cancel</button>
-            <input type="submit" class="btn btn-danger" value="Yes, Delete Permanently"/>
+            <c-button variant="secondary" @click="open = false">Cancel</c-button>
+            <c-button type="submit"  value="Yes, Delete Permanently" variant="danger">Yes, Delete Permanently</c-button>
         </c-slot>
     </c-modal>
 </form>

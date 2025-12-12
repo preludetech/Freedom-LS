@@ -777,6 +777,18 @@ def delete_child(request, slug):
 
     if request.method == "POST":
         child.delete()
+
+        if request.headers.get("HX-Request"):
+            context = get_children_context(request.user)
+            response = render(
+                request,
+                "bloom_student_interface/children.html#content",
+                context=context,
+            )
+            response["HX-Retarget"] = "#children"
+            response["HX-Reswap"] = "outerHTML"
+            return response
+
         return redirect("bloom_student_interface:children")
 
     return render(
