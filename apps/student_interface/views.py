@@ -26,7 +26,9 @@ def course_home(request, collection_slug):
     course_progress = None
     if request.user.is_authenticated:
         try:
-            course_progress = CourseProgress.objects.get(user=request.user, course=course)
+            course_progress = CourseProgress.objects.get(
+                user=request.user, course=course
+            )
         except CourseProgress.DoesNotExist:
             pass
 
@@ -95,10 +97,7 @@ def register_for_course(request, collection_slug):
     )
 
     # Delete any existing RecommendedCourse for this user and course
-    RecommendedCourse.objects.filter(
-        user=request.user,
-        collection=course
-    ).delete()
+    RecommendedCourse.objects.filter(user=request.user, collection=course).delete()
 
     # Redirect back to the course home page
     return redirect("student_interface:course_home", collection_slug=collection_slug)
@@ -176,7 +175,9 @@ def view_topic(request, topic, course, next_url, previous_url, is_last_item=Fals
             return redirect(next_url)
         else:
             # If no next_url (last item), redirect to course home
-            return redirect("student_interface:course_home", collection_slug=course.slug)
+            return redirect(
+                "student_interface:course_home", collection_slug=course.slug
+            )
 
     # Check if the course is already complete
     is_course_complete = False

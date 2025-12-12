@@ -119,6 +119,10 @@ class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM
     """
 
     strategy: FormStrategy = Field(..., description="Strategy for form scoring")
+    quiz_show_incorrect: Optional[bool] = Field(
+        None,
+        description="Optional boolean. If the strategy is QUIZ then this must be included",
+    )
 
 
 class FormPage(BaseContentModel, content_type=ContentType.FORM_PAGE):
@@ -139,6 +143,10 @@ class QuestionOption(BaseModel):
     text: str = Field(..., description="Display text for the option")
     value: Union[int, str] = Field(..., description="Value associated with this option")
     uuid: Optional[str] = Field(None, description="Unique identifier for the option")
+
+    correct: Optional[bool] = Field(
+        None, description="Used in Quizzes: Is this the correct answer?"
+    )
 
 
 class FormContent(BaseBaseContentModel, content_type=ContentType.FORM_CONTENT):

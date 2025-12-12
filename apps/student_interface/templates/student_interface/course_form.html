@@ -18,11 +18,11 @@
 
 {% if incomplete_form_progress %}
     <p>
-        <a href="{% url 'student_interface:form_fill_page' course.slug index page_number %}" class="btn btn-primary">Continue Form >></a>
+        <a href="{% url 'student_interface:form_fill_page' course.slug index page_number %}" class="btn btn-primary" data-testid="continue-form-button">Continue Form >></a>
     </p>
 {% else %}
     <p>
-        <a href="{% url 'student_interface:form_start' course.slug  index %}" class="btn btn-primary">Start Form >></a>
+        <a href="{% url 'student_interface:form_start' course.slug  index %}" class="btn btn-primary" data-testid="start-form-button">Start Form >></a>
     </p>
 {% endif %}
 

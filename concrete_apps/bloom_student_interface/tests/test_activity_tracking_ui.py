@@ -4,9 +4,8 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from playwright.sync_api import Page
-from urllib.parse import urlparse
-from allauth.account.models import EmailAddress
 from content_engine.models import Form
+from conftest import reverse_url
 
 from bloom_student_interface.models import (
     Child,
@@ -18,22 +17,6 @@ from content_engine.models import Activity
 from student_progress.models import FormProgress
 
 User = get_user_model()
-
-
-def reverse_url(
-    live_server, viewname, urlconf=None, args=None, kwargs=None, current_app=None
-):
-    end = reverse(viewname, urlconf, args, kwargs, current_app)
-    return f"{live_server.url}{end}"
-
-
-@pytest.fixture
-def live_server_site(live_server, site):
-    # Update site domain to match the live_server
-    parsed_url = urlparse(live_server.url)
-    site.domain = parsed_url.netloc
-    site.save()
-    return site
 
 
 @pytest.fixture
@@ -48,35 +31,6 @@ def picky_eating_form(live_server_site):
         },
     )
     return form
-
-
-@pytest.fixture
-def logged_in_page(
-    page: Page, live_server, user, db, live_server_site, picky_eating_form
-):
-    """Create a logged in page with a verified email address."""
-
-    # Set the user's email as verified (required for allauth)
-    # Use get_or_create to avoid duplicate email addresses
-    EmailAddress.objects.get_or_create(
-        user=user, email=user.email, defaults={"verified": True, "primary": True}
-    )
-
-    # Navigate to login page
-    login_url = reverse_url(live_server, "account_login")
-    page.goto(login_url)
-
-    # Fill in login form
-    page.fill('input[name="login"]', user.email)
-    page.fill('input[name="password"]', "testpass")
-
-    # Submit the form
-    page.click('button[type="submit"]')
-
-    # Wait for navigation to complete
-    page.wait_for_load_state("networkidle")
-
-    yield page
 
 
 @pytest.mark.django_db

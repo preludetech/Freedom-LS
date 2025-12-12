@@ -202,6 +202,10 @@ class Form(TitledContent, MarkdownContent):
         choices=FormStrategy.choices,
     )
 
+    quiz_show_incorrect = models.BooleanField(
+        blank=True, null=True
+    )  # Should we show the answers after the user finishes the form?
+
     class Meta:
         unique_together = ["site", "slug"]
 
@@ -259,17 +263,18 @@ class FormContent(MarkdownContent):
 class FormQuestion(BaseContent):
     """A question within a form page."""
 
+    form_page = models.ForeignKey(
+        FormPage, on_delete=models.CASCADE, related_name="questions"
+    )
+    order = models.PositiveIntegerField(default=0)
+    category = models.CharField(max_length=200, null=True, blank=True)
+
     question = models.TextField()
     type = models.CharField(
         max_length=20,
         choices=QuestionType.choices,
     )
     required = models.BooleanField(default=True)
-    category = models.CharField(max_length=200, null=True, blank=True)
-    form_page = models.ForeignKey(
-        FormPage, on_delete=models.CASCADE, related_name="questions"
-    )
-    order = models.PositiveIntegerField(default=0)
 
     def rendered_question(self):
         from threading import local
@@ -315,6 +320,7 @@ class QuestionOption(SiteAwareModel):
     text = models.CharField(max_length=500)
     value = models.CharField(max_length=100)
     order = models.PositiveIntegerField(default=0)
+    correct = models.BooleanField(null=True, blank=True)
 
     class Meta:
         ordering = ["order"]

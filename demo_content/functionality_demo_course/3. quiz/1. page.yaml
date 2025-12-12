@@ -9,6 +9,7 @@ options:
 - text: option 1 text
   uuid: 1a99dddc-b7a7-4e33-b7b4-3fa542f2d593
   value: one
+  correct: true
 - text: option 2 text
   uuid: 9b197f18-f9ed-4a8f-bc19-031ba16c0e55
   value: two
@@ -40,6 +41,7 @@ options:
 - text: option 3 text
   uuid: 37602a68-682b-411f-a620-a193c1e98e43
   value: three
+  correct: true
 question: Some question blah blah
 required: true
 type: multiple_choice
@@ -52,6 +54,7 @@ options:
 - text: option 2 text
   uuid: f0c5c7f1-bc54-403f-9be9-c07aaa6cd6d9
   value: two
+  correct: true
 - text: option 3 text
   uuid: e804908f-0413-45c4-81dd-c340b8038cdb
   value: three

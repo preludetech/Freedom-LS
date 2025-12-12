@@ -49,10 +49,10 @@
 {% partialdef form-question %}
 <div class="mb-6 p-4 bg-white border border-gray-200 rounded-lg">
     <div class="mb-3 flex flex-row gap-2">
-        <span class="font-semibold text-gray-900">{{question.question_number}}.</span>
+        <span class="font-semibold text-gray-900" data-testid="question-number-{{question.question_number}}">{{question.question_number}}.</span>
         <span class="text-gray-900">{{ question.rendered_question }}</span>
         {% if question.required %}
-            <span class="text-red-600 ml-1">*</span>
+            <span class="text-red-600 ml-1" data-testid="required-indicator-{{question.question_number}}">*</span>
         {% endif %}
     </div>
 

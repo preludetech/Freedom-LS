@@ -15,6 +15,8 @@ options:
 - text: option 3 text
   uuid: 2567d11c-3a20-46a4-93df-ff3a82162ae2
   value: three
+  correct: true
+
 question: Some question blah blah
 required: true
 type: multiple_choice
@@ -34,6 +36,8 @@ options:
 - text: option 1 text
   uuid: fd83dffb-6f41-4850-8fc2-4ab972f97f65
   value: one
+  correct: true
+
 - text: option 2 text
   uuid: de402627-3054-4ff8-9be5-8829e9edace2
   value: two
@@ -52,6 +56,8 @@ options:
 - text: option 2 text
   uuid: 977d9175-e3dd-438f-bcb9-909b6b331805
   value: two
+  correct: true
+
 - text: option 3 text
   uuid: 1c9c4798-f377-491e-a1bc-8f7c1e6d748c
   value: three

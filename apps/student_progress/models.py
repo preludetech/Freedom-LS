@@ -271,12 +271,50 @@ class FormProgress(SiteAwareModel):
         self.scores = scores
         self.save()
 
+    def score_quiz(self):
+        """
+        Calculate quiz score by counting correct answers.
+        """
+        score = 0
+        max_score = 0
+
+        # Iterate through all pages and questions
+        for page in self.form.pages.all():
+            for child in page.children():
+                # Only process FormQuestion objects (skip FormContent)
+                if child.content_type != "FORM_QUESTION":
+                    continue
+
+                question = child
+
+                # Count this question toward max_score
+                max_score += 1
+
+                # Check if user answered this question correctly
+                try:
+                    answer = self.answers.get(question=question)
+                    selected_options = answer.selected_options.all()
+
+                    # Check if any selected option is marked as correct
+                    for option in selected_options:
+                        if option.correct:
+                            score += 1
+                            break  # Only count once per question
+
+                except QuestionAnswer.DoesNotExist:
+                    # Question not answered, contributes 0 to score
+                    pass
+
+        # Save the scores
+        self.scores = {"score": score, "max_score": max_score}
+        self.save()
+
     def score(self):
         """calculate the final score for the form"""
         if self.form.strategy == FormStrategy.CATEGORY_VALUE_SUM:
             self.score_category_value_sum()
         elif self.form.strategy == FormStrategy.QUIZ:
-            self.score_category_value_sum()
+            self.score_quiz()
 
         else:
             raise Exception(f"Unhandled Strategy: {self.form.strategy}")

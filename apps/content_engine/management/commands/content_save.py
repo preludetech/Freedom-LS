@@ -264,8 +264,9 @@ def save_with_uuid(
     invalid_fields = item_field_names - model_field_names
 
     if invalid_fields:
+        source_info = getattr(item, 'file_path', 'inline content')
         raise ValueError(
-            f"Cannot save {model_class.__name__} from {item.file_path}: "
+            f"Cannot save {model_class.__name__} from {source_info}: "
             f"Fields present in frontmatter but don't exist in Django model: {sorted(invalid_fields)}. "
             f"Either add these fields to the {model_class.__name__} model or remove from the Pydantic schema. "
             f"Valid model fields are: {sorted(model_field_names)}"

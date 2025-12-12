@@ -11,6 +11,7 @@ This Skill helps write comprehensive pytest unit tests for the Django LMS projec
 ## Project-Specific Testing Patterns
 
 ### Site-Aware Models Testing
+
 All models in this project are site-aware. When testing models that require site context, always use the `mock_site_context` fixture:
 
 ```python
@@ -23,13 +24,27 @@ def test_student_creation(mock_site_context):
     assert student.site is not None
 ```
 
+There is no need to explicitly set the site if `mock_site_context` is being used. 
+
+Eg, this is BAD:
+
+```
+def test_student_creation(live_server_site):
+    student = Student.objects.create(
+        first_name="John",
+        last_name="Doe",
+        email="john@example.com"
+        site=live_Server_site.site
+    )
+```
+This is bad because it spins up a whole server to get access to a Site object that we don't need access to.
+
+
 ### Common Fixtures
-Available in `conftest.py` at project root:
-- `site`: Creates a test Site
-- `user`: Creates a test User
-- `form`: Creates a test Form
-- `make_temp_file`: Helper for creating temporary files
-- `mock_site_context`: Mocks site context for SiteAwareModel
+
+Common fixtures are in `conftest.py`. 
+
+If you make new fixtures that are likely to be reused, put them in `conftest.py`
 
 ### Import Pattern
 Apps are inside the `apps/` directory but it's on the PATH. Leave out the `apps` part:
