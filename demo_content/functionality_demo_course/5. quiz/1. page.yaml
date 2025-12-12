@@ -1,0 +1,61 @@
+---
+content_type: FORM_PAGE
+description: lorem ipsum
+subtitle: Something Something
+title: Page 1
+uuid: b2c8d2f6-5535-414f-84e6-559ec15e85eb
+---
+options:
+- text: option 1 text
+  uuid: e79885d4-1202-489b-97c4-9b54b4c36d6d
+  value: one
+- text: option 2 text
+  uuid: b6517b41-f2b5-42a9-80be-1536e957574f
+  value: two
+- text: option 3 text
+  uuid: 2567d11c-3a20-46a4-93df-ff3a82162ae2
+  value: three
+question: Some question blah blah
+required: true
+type: multiple_choice
+uuid: 1274eec8-1d29-4462-a914-7fc48d2d3a5d
+---
+content: |-
+  Considering blah blah, answer the following:
+  <c-picture  
+     src="../images/graph1.drawio.svg"
+     alt="Graph example"
+     caption="Example of a graph"
+     />
+    Blah blah
+uuid: 5228fd09-ab31-46de-b63a-3a714da9c0ec
+---
+options:
+- text: option 1 text
+  uuid: fd83dffb-6f41-4850-8fc2-4ab972f97f65
+  value: one
+- text: option 2 text
+  uuid: de402627-3054-4ff8-9be5-8829e9edace2
+  value: two
+- text: option 3 text
+  uuid: 85ca2da1-6901-4f2d-a1a1-3b044161fc23
+  value: three
+question: Some question blah blah
+required: true
+type: multiple_choice
+uuid: 63099bea-6502-4339-b703-1e8619c5f879
+---
+options:
+- text: option 1 text
+  uuid: 7a43e9c6-7fd9-4481-8694-d4bfbed4d60a
+  value: one
+- text: option 2 text
+  uuid: 977d9175-e3dd-438f-bcb9-909b6b331805
+  value: two
+- text: option 3 text
+  uuid: 1c9c4798-f377-491e-a1bc-8f7c1e6d748c
+  value: three
+question: Some question blah blah
+required: true
+type: multiple_choice
+uuid: 22cce43e-d274-4ac6-9d37-c0adbe4b43c4

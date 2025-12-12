@@ -136,6 +136,7 @@ class Activity(TitledContent, MarkdownContent):
 
     class Meta:
         unique_together = ["site", "slug"]
+        verbose_name_plural = "Activities"
 
 
 class Course(MarkdownContent, TitledContent):
@@ -149,6 +150,9 @@ class Course(MarkdownContent, TitledContent):
     def children(self):
         """Return ordered list of child content items."""
         return [item.child for item in self.items.all()]
+
+    def __str__(self):
+        return self.title
 
 
 class ContentCollectionItem(SiteAwareModel):
@@ -191,6 +195,9 @@ class Form(TitledContent, MarkdownContent):
     class Meta:
         unique_together = ["site", "slug"]
 
+    def __str__(self):
+        return self.title
+
 
 class FormPage(TitledContent):
     """A page within a form."""
@@ -214,6 +221,9 @@ class FormPage(TitledContent):
 
     class Meta:
         ordering = ["order"]
+
+    def __str__(self):
+        return f"{self.form.title} - {self.title}"
 
 
 class FormContent(MarkdownContent):

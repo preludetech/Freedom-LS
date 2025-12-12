@@ -26,6 +26,9 @@ class Child(SiteAwareModel):
     )
     slug = models.SlugField(max_length=255, unique=True, blank=True)
 
+    class Meta:
+        verbose_name_plural = "Children"
+
     def clean(self):
         super().clean()
         if self.date_of_birth and self.date_of_birth >= timezone.now().date():
@@ -52,6 +55,9 @@ class Child(SiteAwareModel):
 class ChildFormProgress(SiteAwareModel):
     form_progress = models.ForeignKey(FormProgress, on_delete=models.CASCADE)
     child = models.ForeignKey(Child, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.child.name} - {self.form_progress.form.title}"
 
     @classmethod
     def get_latest_incomplete(cls, child, form):
@@ -158,6 +164,13 @@ class CommittedActivity(SiteAwareModel):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     stopped_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name_plural = "Committed activities"
+
+    def __str__(self):
+        status = "Active" if not self.stopped_at else f"Stopped {self.stopped_at.date()}"
+        return f"{self.child.name} - {self.activity.title} ({status})"
 
 
 class ActivityLog(SiteAwareModel):
