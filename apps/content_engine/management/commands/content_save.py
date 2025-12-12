@@ -546,43 +546,34 @@ def save_content_to_db(path, site_name):
         # If no children specified, scan the directory for all content files
         if not children_list:
             collection_dir = schema_item.file_path.parent
-            # Get all content files in the collection directory (not subdirectories)
-            dir_files = [
-                f
-                for f in collection_dir.iterdir()
-                if f.is_file() and f.suffix in [".md", ".yaml", ".yml"]
-            ]
-            # Also include subdirectories as they might contain collections or forms
-            dir_subdirs = [d for d in collection_dir.iterdir() if d.is_dir()]
+            # Get all items (both files and directories) in sorted order
+            all_items = sorted(collection_dir.iterdir())
 
-            # Create Child-like objects for directory scanning
-            for f in sorted(dir_files):
-                if (
-                    f != schema_item.file_path
-                ):  # Don't include the collection file itself
-                    children_list.append(
-                        type("Child", (), {"path": f, "overrides": None})()
-                    )
+            for item in all_items:
+                if item.is_file() and item.suffix in [".md", ".yaml", ".yml"]:
+                    # Don't include the collection file itself
+                    if item != schema_item.file_path:
+                        children_list.append(
+                            type("Child", (), {"path": item, "overrides": None})()
+                        )
+                elif item.is_dir():
+                    # For subdirectories, look for main content files (forms or collections)
+                    main_files = []
+                    for f in item.iterdir():
+                        if f.is_file() and f.suffix in [".md", ".yaml", ".yml"]:
+                            # Parse to check if it's a Form or Course or other top-level content
+                            parsed = parse_single_file(f)
+                            if parsed and parsed[0].content_type in (
+                                SchemaContentType.FORM,
+                                SchemaContentType.COURSE,
+                            ):
+                                main_files.append(f)
+                                break  # Found the main file
 
-            # For subdirectories, look for main content files (forms or collections)
-            for subdir in sorted(dir_subdirs):
-                # Look for a main file in the subdirectory (form or collection)
-                main_files = []
-                for f in subdir.iterdir():
-                    if f.is_file() and f.suffix in [".md", ".yaml", ".yml"]:
-                        # Parse to check if it's a Form or Course or other top-level content
-                        parsed = parse_single_file(f)
-                        if parsed and parsed[0].content_type in (
-                            SchemaContentType.FORM,
-                            SchemaContentType.COURSE,
-                        ):
-                            main_files.append(f)
-                            break  # Found the main file
-
-                if main_files:
-                    children_list.append(
-                        type("Child", (), {"path": main_files[0], "overrides": None})()
-                    )
+                    if main_files:
+                        children_list.append(
+                            type("Child", (), {"path": main_files[0], "overrides": None})()
+                        )
 
         # Create ContentCollectionItem entries for each child
         for order, child in enumerate(children_list):
