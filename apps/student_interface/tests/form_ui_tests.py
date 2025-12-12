@@ -76,12 +76,14 @@ def answer_all_questions_on_page(page: Page, form_page, correct=True):
     """
     for question in form_page.questions.filter(type="multiple_choice"):
         if correct:
-            answer_multiple_choice_question(page, question, {'correct': True})
+            answer_multiple_choice_question(page, question, {"correct": True})
         else:
             # Select first incorrect option
             incorrect_option = question.options.filter(correct=False).first()
             if incorrect_option:
-                answer_multiple_choice_question(page, question, {'text': incorrect_option.text})
+                answer_multiple_choice_question(
+                    page, question, {"text": incorrect_option.text}
+                )
 
 
 def complete_quiz(page: Page, quiz_form, all_correct=True):
@@ -103,10 +105,10 @@ def complete_quiz(page: Page, quiz_form, all_correct=True):
             questions = list(form_page.questions.filter(type="multiple_choice"))
             if questions:
                 # First question incorrect
-                answer_multiple_choice_question(page, questions[0], {'correct': False})
+                answer_multiple_choice_question(page, questions[0], {"correct": False})
                 # Rest correct
                 for question in questions[1:]:
-                    answer_multiple_choice_question(page, question, {'correct': True})
+                    answer_multiple_choice_question(page, question, {"correct": True})
 
         # Click Next or Submit depending on if it's the last page
         if i < len(pages) - 1:
@@ -123,6 +125,7 @@ def complete_quiz(page: Page, quiz_form, all_correct=True):
 @pytest.fixture
 def make_quiz_form(mock_site_context):
     """Factory fixture to create quiz forms with different configurations."""
+
     def _make_quiz_form(
         title="Math Quiz",
         slug="math-quiz",
@@ -155,7 +158,9 @@ def make_quiz_form(mock_site_context):
                 order=page_idx,
             )
 
-            for q_idx, (question_text, options, correct_answer) in enumerate(questions_data[page_idx]):
+            for q_idx, (question_text, options, correct_answer) in enumerate(
+                questions_data[page_idx]
+            ):
                 question = FormQuestion.objects.create(
                     form_page=page,
                     question=question_text,
@@ -181,6 +186,7 @@ def make_quiz_form(mock_site_context):
 @pytest.fixture
 def make_course_with_form(mock_site_context):
     """Factory fixture to create a course containing a form."""
+
     def _make_course(form, title="Test Course", slug=None):
         if slug is None:
             slug = form.slug + "-course"
@@ -200,6 +206,7 @@ def make_course_with_form(mock_site_context):
 @pytest.fixture
 def make_registered_student(user, mock_site_context):
     """Factory fixture to create a student registered for a course."""
+
     def _make_student(course):
         student = Student.objects.create(user=user)
         StudentCourseRegistration.objects.create(
@@ -357,7 +364,9 @@ def quiz_course_no_show_incorrect(make_course_with_form, quiz_form_no_show_incor
 
 
 @pytest.fixture
-def student_with_private_quiz_registration(make_registered_student, quiz_course_no_show_incorrect):
+def student_with_private_quiz_registration(
+    make_registered_student, quiz_course_no_show_incorrect
+):
     """Create a student registered for the private quiz course."""
     return make_registered_student(quiz_course_no_show_incorrect)
 
@@ -367,6 +376,7 @@ def student_with_private_quiz_registration(make_registered_student, quiz_course_
 # ============================================================================
 
 
+@pytest.mark.playwright
 @pytest.mark.django_db
 def test_view_form_landing_page(
     live_server,
@@ -394,6 +404,7 @@ def test_view_form_landing_page(
     assert not previous_submissions.is_visible()
 
 
+@pytest.mark.playwright
 @pytest.mark.django_db
 def test_start_and_fill_form_complete_workflow(
     live_server,
@@ -478,6 +489,7 @@ def test_start_and_fill_form_complete_workflow(
     )
 
 
+@pytest.mark.playwright
 @pytest.mark.django_db
 def test_form_resumption(
     live_server,
@@ -555,6 +567,7 @@ def test_form_resumption(
 # ============================================================================
 
 
+@pytest.mark.playwright
 @pytest.mark.django_db
 def test_quiz_completion_shows_scores(
     live_server,
@@ -582,6 +595,7 @@ def test_quiz_completion_shows_scores(
     assert "100" in percentage_text.inner_text()
 
 
+@pytest.mark.playwright
 @pytest.mark.django_db
 def test_quiz_shows_incorrect_answers_when_enabled(
     live_server,
@@ -599,17 +613,17 @@ def test_quiz_shows_incorrect_answers_when_enabled(
     q1, q2 = list(page1.questions.all())
 
     # Question 1: INCORRECT
-    answer_multiple_choice_question(logged_in_page, q1, {'text': '7'})
+    answer_multiple_choice_question(logged_in_page, q1, {"text": "7"})
 
     # Question 2: CORRECT
-    answer_multiple_choice_question(logged_in_page, q2, {'correct': True})
+    answer_multiple_choice_question(logged_in_page, q2, {"correct": True})
 
     click_next(logged_in_page)
 
     # Page 2: INCORRECT
     page2 = list(quiz_form.pages.all())[1]
     q3 = page2.questions.first()
-    answer_multiple_choice_question(logged_in_page, q3, {'text': '11'})
+    answer_multiple_choice_question(logged_in_page, q3, {"text": "11"})
 
     submit_form(logged_in_page)
 
@@ -619,7 +633,9 @@ def test_quiz_shows_incorrect_answers_when_enabled(
     assert "3" in score_text.inner_text()
 
     # Verify incorrect answers section exists
-    incorrect_section = logged_in_page.locator("[data-testid='incorrect-answers-section']")
+    incorrect_section = logged_in_page.locator(
+        "[data-testid='incorrect-answers-section']"
+    )
     assert incorrect_section.is_visible()
 
     # Verify question 1 is shown as incorrect
@@ -646,6 +662,7 @@ def test_quiz_shows_incorrect_answers_when_enabled(
     assert not q2_incorrect.is_visible()
 
 
+@pytest.mark.playwright
 @pytest.mark.django_db
 def test_quiz_does_not_show_incorrect_when_disabled(
     live_server,
@@ -663,11 +680,11 @@ def test_quiz_does_not_show_incorrect_when_disabled(
     questions = list(page1.questions.all())
 
     # First question: INCORRECT
-    answer_multiple_choice_question(logged_in_page, questions[0], {'text': '7'})
+    answer_multiple_choice_question(logged_in_page, questions[0], {"text": "7"})
 
     # Second question (if exists): answer correctly
     if len(questions) > 1:
-        answer_multiple_choice_question(logged_in_page, questions[1], {'correct': True})
+        answer_multiple_choice_question(logged_in_page, questions[1], {"correct": True})
 
     submit_form(logged_in_page)
 
@@ -681,10 +698,13 @@ def test_quiz_does_not_show_incorrect_when_disabled(
     assert "2" in score_text.inner_text()
 
     # CRITICAL: Verify incorrect answers section does NOT exist
-    incorrect_section = logged_in_page.locator("[data-testid='incorrect-answers-section']")
+    incorrect_section = logged_in_page.locator(
+        "[data-testid='incorrect-answers-section']"
+    )
     assert not incorrect_section.is_visible()
 
 
+@pytest.mark.playwright
 @pytest.mark.django_db
 def test_completed_quiz_shows_scores_on_landing_page(
     live_server,
@@ -710,4 +730,6 @@ def test_completed_quiz_shows_scores_on_landing_page(
     score_display = logged_in_page.locator("[data-testid='previous-submission-score']")
     assert score_display.is_visible()
     assert "3" in score_display.inner_text()  # 3/3 score
-    assert "100" in score_display.inner_text() or "100%" in score_display.inner_text()  # 100%
+    assert (
+        "100" in score_display.inner_text() or "100%" in score_display.inner_text()
+    )  # 100%

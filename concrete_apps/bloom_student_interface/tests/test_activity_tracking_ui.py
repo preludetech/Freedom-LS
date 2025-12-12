@@ -20,19 +20,20 @@ User = get_user_model()
 
 
 @pytest.fixture
-def picky_eating_form(live_server_site):
+def picky_eating_form(mock_site_context):
     # Create the picky eating form that the children view expects
     form, created = Form.objects.get_or_create(
         slug="picky-eating",
         defaults={
             "title": "Picky Eating Assessment",
             "strategy": "CATEGORY_VALUE_SUM",
-            "site": live_server_site,
+            # "site": live_server_site,
         },
     )
     return form
 
 
+@pytest.mark.playwright
 @pytest.mark.django_db
 def test_committed_activity_displays_correctly(
     live_server, logged_in_page: Page, user, mock_site_context, picky_eating_form
