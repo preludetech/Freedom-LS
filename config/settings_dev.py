@@ -33,7 +33,7 @@ if not TESTING:
 INSTALLED_APPS = [
     *INSTALLED_APPS,
     # "django_watchfiles",
-    # "django_browser_reload",
+    "django_browser_reload",
 ]
 
 
