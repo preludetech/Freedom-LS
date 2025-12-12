@@ -7,7 +7,12 @@ test_data = [
         "tutorial/02-understanding-the-graph-commits-and-checkout.md",
         "images/graph1.drawio.svg",
         "tutorial/images/graph1.drawio.svg",
-    )
+    ),
+    (
+        "functionality_demo_course/3. quiz/1. page.yaml",
+        "../images/graph1.drawio.svg",
+        "functionality_demo_course/images/graph1.drawio.svg",
+    ),
 ]
 
 

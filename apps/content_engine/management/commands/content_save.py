@@ -325,26 +325,26 @@ def save_form_page(item, form, site, base_path, order=0):
     )
 
 
-def save_form_content(item, form_page, site, order=0):
+def save_form_content(item, form_page, site, base_path, order=0):
     """Save FormContent to the database."""
     return save_with_uuid(
         FormContent,
         item,
         site,
-        None,  # No base_path for inline content
+        base_path,
         form_page=form_page,
         order=order,
     )
 
 
-def save_form_question(item, form_page, site, order=0):
+def save_form_question(item, form_page, site, base_path, order=0):
     """Save FormQuestion and its options to the database."""
     # Exclude 'options' since they're handled separately below
     question = save_with_uuid(
         FormQuestion,
         item,
         site,
-        None,  # No base_path for inline content
+        base_path,
         exclude_fields={"options"},
         form_page=form_page,
         order=order,
@@ -529,12 +529,12 @@ def save_content_to_db(path, site_name):
                 # Save texts and questions in the order they appear in the file
                 for content_order, item in enumerate(file_content_items):
                     if item.content_type == SchemaContentType.FORM_CONTENT:
-                        save_form_content(item, form_page, site, order=content_order)
+                        save_form_content(item, form_page, site, path, order=content_order)
                         logger.info(
                             f"Saved FormContent in {form_page.title} (order={content_order})"
                         )
                     elif item.content_type == SchemaContentType.FORM_QUESTION:
-                        save_form_question(item, form_page, site, order=content_order)
+                        save_form_question(item, form_page, site, path, order=content_order)
                         logger.info(
                             f"Saved FormQuestion in {form_page.title} (order={content_order})"
                         )

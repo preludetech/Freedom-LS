@@ -157,8 +157,8 @@ content: This is some instructional text
     # Save to database
 
     page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
-    question = save_form_question(parsed[1], page, site, order=0)
-    text = save_form_content(parsed[2], page, site, order=1)
+    question = save_form_question(parsed[1], page, site, temp_file.parent, order=0)
+    text = save_form_content(parsed[2], page, site, temp_file.parent, order=1)
 
     # Read file back
     with open(temp_file, "r") as f:
@@ -223,7 +223,7 @@ options:
 
     # Save to database
     page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
-    question = save_form_question(parsed[1], page, site, order=0)
+    question = save_form_question(parsed[1], page, site, temp_file.parent, order=0)
 
     # Read file back
     with open(temp_file, "r") as f:
@@ -261,7 +261,7 @@ def test_yaml_dump_does_not_add_excessive_whitespace(site, form, make_temp_file)
     # Save to add UUIDs
     parsed = parse_single_file(temp_file)
     page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
-    save_form_content(parsed[1], page, site, order=0)
+    save_form_content(parsed[1], page, site, temp_file.parent, order=0)
 
     # Read back
     with open(temp_file, "r") as f:
@@ -300,7 +300,7 @@ content: |
     # Save the content
     parsed = parse_single_file(temp_file)
     page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
-    save_form_content(parsed[1], page, site, order=0)
+    save_form_content(parsed[1], page, site, temp_file.parent, order=0)
 
     # Read back
     with open(temp_file, "r") as f:
@@ -368,7 +368,7 @@ content: |
     # Save the content
     parsed = parse_single_file(temp_file)
     page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
-    save_form_content(parsed[1], page, site, order=0)
+    save_form_content(parsed[1], page, site, temp_file.parent, order=0)
 
     # Read back
     with open(temp_file, "r") as f:
@@ -482,8 +482,8 @@ options:
     # Save to database - the question has UUID but options don't,
     # so update_file_with_option_uuids will be called
     page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
-    save_form_content(parsed[1], page, site, order=0)
-    save_form_question(parsed[2], page, site, order=1)
+    save_form_content(parsed[1], page, site, temp_file.parent, order=0)
+    save_form_question(parsed[2], page, site, temp_file.parent, order=1)
 
     # Read the file back
     with open(temp_file, "r") as f:

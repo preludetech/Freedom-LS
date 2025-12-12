@@ -68,7 +68,17 @@ class BaseContent(SiteAwareModel):
             02-understanding-the-graph-commits-and-checkout.md
         """
         parent_dir = Path(self.file_path).parent
-        return str(parent_dir / other_relative_path)
+        other_relative_path = Path(other_relative_path)
+
+        result = parent_dir
+
+        for part in other_relative_path.parts:
+            if part == "..":
+                result = result.parent
+            else:
+                result = result / part
+
+        return result.as_posix()
 
 
 class TitledContent(BaseContent):

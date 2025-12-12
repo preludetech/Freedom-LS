@@ -36,7 +36,10 @@ class FormContentInline(admin.StackedInline):
 
     model = FormContent
     extra = 0
-    fields = ("content", "order")
+    fields = (
+        "content",
+        "order",
+    )
 
 
 class FormQuestionInline(admin.StackedInline):
@@ -50,7 +53,11 @@ class FormQuestionInline(admin.StackedInline):
 
 @admin.register(FormContent)
 class FormContentAdmin(SiteAwareModelAdmin):
-    list_display = ("content_preview", "form_page", "order")
+    list_display = (
+        "content_preview",
+        "form_page",
+        "order",
+    )
     list_filter = ("form_page__form",)
     search_fields = ("content", "form_page__title")
     ordering = ("form_page", "order")

@@ -57,10 +57,10 @@ When importing something from an app in the `apps` directory:
 
 ```
 # DONT DO THIS
-from apps.content_engine.models import ContentCollection
+from apps.content_engine.models import Course
 
 # Rather, leave out the `apps` part of the import statement. This works
-from content_engine.models import ContentCollection
+from content_engine.models import Course
 ```
 
 ### Site-Aware Models Pattern

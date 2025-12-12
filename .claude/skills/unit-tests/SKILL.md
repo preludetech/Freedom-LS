@@ -36,10 +36,10 @@ Apps are inside the `apps/` directory but it's on the PATH. Leave out the `apps`
 
 ```python
 # CORRECT
-from content_engine.models import ContentCollection
+from content_engine.models import Course
 
 # INCORRECT
-from apps.content_engine.models import ContentCollection
+from apps.content_engine.models import Course
 ```
 
 ## Instructions for Writing Tests
