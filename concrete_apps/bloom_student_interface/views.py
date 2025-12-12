@@ -664,9 +664,7 @@ def learn(request):
 
 def get_children_context(user):
     """Get the context data for the children view."""
-    children = Child.objects.filter(user=user).prefetch_related(
-        "activities__activity"
-    )
+    children = Child.objects.filter(user=user).prefetch_related("activities__activity")
 
     # Get the picky eating form
     picky_eating_form = Form.objects.get(slug=settings.PICKY_EATING_FORM_SLUG)
@@ -741,7 +739,17 @@ def edit_child(request, slug):
         form = ChildForm(request.POST, instance=child)
         if form.is_valid():
             form.save()
+
+            if request.headers.get("HX-Request"):
+                context = get_children_context(request.user)
+                return render(
+                    request,
+                    "bloom_student_interface/children.html#content",
+                    context=context,
+                )
+
             return redirect("bloom_student_interface:children")
+
     else:
         form = ChildForm(instance=child)
 

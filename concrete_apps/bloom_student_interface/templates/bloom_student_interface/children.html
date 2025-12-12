@@ -39,8 +39,8 @@
 
 <form
         hx-post="{% url 'bloom_student_interface:children_edit' slug=child.slug %}"
-        hx-target="#edit-child-form-container-{{child.slug}}"
-        hx-swap="innerHTML"
+        hx-target="#children"
+        hx-swap="outerHTML"
     >
         {% csrf_token %}
 
