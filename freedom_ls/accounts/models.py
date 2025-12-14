@@ -5,7 +5,7 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 from django.contrib.sites.shortcuts import get_current_site
-from freedom_ls.site_aware_models.models import _thread_locals, SiteAwareModelBase
+from freedom_ls.site_aware_models.models import _thread_locals, SiteAwareModelBase, SiteAwareModel
 
 
 class UserManager(BaseUserManager):
@@ -71,6 +71,23 @@ class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
     def username(self) -> str:
         """Return email as username for template compatibility."""
         return self.email
+
+
+class SiteSignupPolicy(SiteAwareModel):
+    """
+    Per-site toggle for whether self-service account signups are allowed.
+    If no row exists for a site, the global default in settings.ALLOW_SIGN_UPS is used.
+    """
+
+    allow_signups = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["site"], name="unique_signup_policy_per_site"),
+        ]
+
+    def __str__(self):
+        return f"{self.site.domain}: allow_signups={self.allow_signups}"
 
 
 # class SiteGroup(SiteAwareModelBase, AuthGroup):
