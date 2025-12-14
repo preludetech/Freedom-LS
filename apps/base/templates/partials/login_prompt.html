@@ -4,7 +4,9 @@
         <c-button href="{% url 'account_login' %}" >
             Login
         </c-button>
-        <c-button href="{% url 'account_signup' %}" >
-            Sign up
-        </c-button>
+        {% if allow_signups %}
+            <c-button href="{% url 'account_signup' %}" >
+                Sign up
+            </c-button>
+        {% endif %}
     </div>

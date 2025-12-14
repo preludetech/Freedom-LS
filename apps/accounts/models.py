@@ -69,6 +69,23 @@ class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
 
+class SiteSignupPolicy(SiteAwareModelBase):
+    """
+    Per-site toggle for whether self-service account signups are allowed.
+    If no row exists for a site, the global default in settings.ALLOW_SIGN_UPS is used.
+    """
+
+    allow_signups = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["site"], name="unique_signup_policy_per_site"),
+        ]
+
+    def __str__(self):
+        return f"{self.site.domain}: allow_signups={self.allow_signups}"
+
+
 # class SiteGroup(SiteAwareModelBase, AuthGroup):
 #     """Custom Group model with site awareness"""
 
