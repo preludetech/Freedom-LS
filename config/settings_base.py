@@ -124,6 +124,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "freedom_ls.site_aware_models.context_processors.site_config",
+                "freedom_ls.accounts.context_processors.signup_policy",
             ],
             "builtins": [
                 "django_cotton.templatetags.cotton",
@@ -225,7 +226,7 @@ ACCOUNT_ADAPTER = "freedom_ls.accounts.allauth_account_adapter.AccountAdapter"
 
 
 # ACCOUNT_ADAPTER = "freedom_ls.accounts.allauth_account_adapter.AccountAdapter"
-# ALLOW_SIGN_UPS = True
+ALLOW_SIGN_UPS = True
 
 # HEADLESS_FRONTEND_URLS = TODO
 
