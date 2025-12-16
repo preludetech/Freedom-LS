@@ -10,6 +10,7 @@
         @click="open = !open"
         class="p-2 hover:bg-gray-100 rounded-md transition-colors"
         aria-label="Menu"
+        x-ref="menuButton"
     >
         {% if trigger %}{{ trigger }}{% else %}<i class="fa fa-ellipsis-v" aria-hidden="true"></i>{% endif %}
     </button>
@@ -24,8 +25,15 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
-        class="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-10"
+        class="fixed w-40 bg-white border border-gray-200 rounded-md shadow-lg z-[9999]"
         style="display: none;"
+        x-init="$watch('open', value => {
+            if (value) {
+                const rect = $refs.menuButton.getBoundingClientRect();
+                $el.style.top = rect.bottom + 8 + 'px';
+                $el.style.left = rect.right - 160 + 'px';
+            }
+        })"
     >
         <div class="py-1 space-y-1">
             {{ slot }}

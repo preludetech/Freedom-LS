@@ -1,36 +1,52 @@
 {% load static %}
 
+{% partialdef nav %}
 
-<header class=" p-4 px-12 flex justify-between items-center" hx-boost="true">
-    <a href="/">
-        
-        <img src="{% static 'bloom_student_interface/Logo-no-text.png' %}"
-         alt="Bloom Logo"
-         class="h-15 inline-block"
-        ><img src="{% static 'bloom_student_interface/Bloom-text-only.png' %}"
-         alt="Bloom"
-         class="h-8 inline-block ml-2">
-    </a>
-    
-        {% if user.is_authenticated %}
-
-        <nav class="flex gap-6 items-center">
-
-            {% for item in navigation %}
-            <a 
-                href="{{ item.url }}" 
+{% for item in navigation %}
+            <a
+                href="{{ item.url }}"
                 class="no-underline text-gray-700 hover:underline text-2xl transition-colors">
                  {{item.title}}
             </a>
             {% endfor %}
+
+{% endpartialdef %}
+
+
+
+<header class="p-4 md:px-12 flex justify-between items-center" hx-boost="true">
+
+    <a href="/" class="flex items-center">
+
+        <img src="{% static 'bloom_student_interface/Logo-no-text.png' %}"
+         alt="Bloom Logo"
+         class="h-10 md:h-15 inline-block"
+        ><img src="{% static 'bloom_student_interface/Bloom-text-only.png' %}"
+         alt="Bloom"
+         class="h-6 md:h-8 ml-1 md:ml-2 hidden sm:inline-block">
+    </a>
+
+        {% if user.is_authenticated %}
+        <nav class="gap-3 md:gap-6 items-center hidden md:flex">
+
+            {% partial nav %}
+            
         </nav>
         {% endif %}
 
     <nav class="space-x-1 flex flex-row ">
         {% if user.is_authenticated %}
-                {% include "partials/header_bar_user_menu.html" %}       
+            {% include "partials/header_bar_user_menu.html" %}       
         {% endif %}
     </nav>
 
     
 </header>
+
+{% if user.is_authenticated %}
+<nav class="gap-6 items-center flex md:hidden justify-center py-2">
+
+    {% partial nav %}
+    
+</nav>
+{% endif %}

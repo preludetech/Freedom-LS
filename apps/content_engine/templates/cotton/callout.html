@@ -14,7 +14,7 @@ Supports levels: info, warning, error, success
         <i class="fas {{ icon }} mr-2"></i>{{ title }}
     </h4>
     {% endif %}
-    <div class=" px-4 space-y-4 pt-2">
+    <div class="{{ text }} px-4 space-y-4 pt-2">
         {% markdown slot %}
     </div>
 </div>

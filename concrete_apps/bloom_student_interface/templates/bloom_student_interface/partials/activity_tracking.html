@@ -42,14 +42,13 @@
 
 <c-modal  id="activity-{{activity.pk}}-{{date}}">
     <c-slot name="title">
-            {% partial log_status_symbol %} {{activity.title}} - {{date}}
-
+        {% partial log_status_symbol %} {{activity.title}} - {{date}}
     </c-slot>
     
     <c-slot name="trigger">
         <button
             data-testid="activity-status-button-{{activity.slug}}-{{date}}"
-            class="cursor-pointer relative text-4xl"
+            class="cursor-pointer relative text-3xl"
             >
             
             {% partial log_status_symbol %}
@@ -101,7 +100,11 @@
 {% partialdef view_activity_description_button %}
 <c-modal title="{{activity.title}}">
     <c-slot name="trigger">
+        {% if dropdown %}
+        <c-button dropdown="true">Description</c-button>
+        {% else %}
         <c-button variant="outline">Description</c-button>
+        {% endif %}
     </c-slot>
 
     <c-markdown-container>
@@ -119,7 +122,12 @@
 <c-modal title="Are you sure?">
 
     <c-slot name="trigger">
-        <c-button variant="danger">Stop</c-button>
+        {% if dropdown %}
+        <c-button dropdown="true">Stop</c-button>
+        {% else %}
+        <c-button variant="outline">Stop</c-button>
+        {% endif %}
+
     </c-slot>
 
     <p>Are you sure you would like to stop the activity? </p>
@@ -146,19 +154,21 @@
 
 
 {% partialdef recommended_indicator %}
-<i class="fa fa-star" aria-hidden="true" title="recommended activity"></i>
+<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200">
+    Recommended
+</span>
 {% endpartialdef%}
 
 
 
 {% partialdef current_activities_table %}
 
-<div id="current_activities_table_{{child.slug}}" hx-swap-oob="true">
+<div id="current_activities_table_{{child.slug}}" hx-swap-oob="true" class="overflow-x-scroll">
 
     {% if committed_activities %}
 
 
-<table class="w-full border-collapse">
+<table class="lg:w-full border-collapse">
     
     <thead>
         <tr>
@@ -175,29 +185,38 @@
 
     <tbody>
         {% for commitment in committed_activities %}
-        <tr class="border-b">
+        <tr class="">
             <td class="p-2">
-                <div class="flex items-center gap-2">
-                    <div class="font-semibold" data-testid="committed-activity-title-{{commitment.activity.slug}}">
-                        {% if commitment.activity.id in recommended_activity_ids %}
-                            {% partial recommended_indicator %}
-                        {% endif %}
-                        {{ commitment.activity.title }}</div>
+                <div class="font-semibold" data-testid="committed-activity-title-{{commitment.activity.slug}}">
+                    
+                    {{ commitment.activity.title }}
 
+
+                    <c-dropdown-menu>
+
+                    {% with activity=commitment.activity dropdown="true" %}
+                    {% partial view_activity_description_button %}
+                    {% partial stop_activity_button %}
+                    {% endwith %}
+                </c-dropdown-menu>
+                </div>
+
+                    
+                <div>
+
+                    {% if commitment.activity.level %}
+                    <span class="">Level {{ commitment.activity.level }}</span>
+                    {% endif %}
+
+                    {% if commitment.activity.id in recommended_activity_ids %}
+                    {% partial recommended_indicator %}
+                    {% endif %}
                 </div>
                 {% if commitment.activity.category %}
                     <div class="text-sm text-gray-500">{{ commitment.activity.category }}</div>
                 {% endif %}
-                {% if commitment.activity.level %}
-                    <div class="text-sm text-gray-500">Level {{ commitment.activity.level }}</div>
-                {% endif %}
-                <c-button-group>
-
-                    {% with activity=commitment.activity %}
-                    {% partial view_activity_description_button %}
-                    {% partial stop_activity_button %}
-                    {% endwith %}
-                </c-button-group>
+                
+                
             </td>
             {% for loop_date in activity_logs %}
             <td class="text-center p-2 {% if forloop.first %}bg-blue-50{% endif %}">
@@ -271,9 +290,10 @@
                                                 <c-button-group>
                                                     {% include 'bloom_student_interface/partials/activity_tracking.html#view_activity_description_button' %}
                                                     <c-button
-                                                        
                                                         hx-post="{% url 'bloom_student_interface:action_child_activity_start_stop' child.slug activity.slug 'start' %}"
-                                                    >Start</c-button>
+                                                    >
+                                                        Start
+                                                    </c-button>
                                                 </c-button-group>
                                             </div>
                                         {% endfor %}
