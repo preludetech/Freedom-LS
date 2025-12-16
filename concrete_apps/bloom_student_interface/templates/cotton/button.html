@@ -18,7 +18,8 @@
 {% if value %} value="{{ value }}"{% endif %}
 {% if not href and type %} type="{{ type }}"{% endif %}
 {% if disabled %} disabled{% endif %}
-class="{{ class }} {% if dropdown %}block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer{% else %}inline-block px-6 py-2 font-medium rounded-md
+class="{{ class }} {% if dropdown %}block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer
+      {% else %} inline-flex items-center justify-center px-6 py-2 font-medium rounded-md
                focus:outline-none focus:ring-2 focus:ring-offset-2
                disabled:opacity-50 disabled:cursor-not-allowed
                no-underline cursor-pointer transition-colors

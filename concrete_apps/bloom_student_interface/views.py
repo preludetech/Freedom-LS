@@ -7,7 +7,7 @@ from django.utils import timezone
 from django import forms
 from datetime import datetime, timedelta
 from content_engine.models import Form, Activity
-from student_progress.models import FormProgress
+from student_progress.models import FormProgress, CourseProgress
 from student_management.models import Student, RecommendedCourse
 from .models import (
     Child,
@@ -647,15 +647,31 @@ def learn(request):
     ).select_related("collection")
 
     # Get registered courses if user has a Student record
+    current_courses = []
+    completed_courses = []
+
     try:
         student = Student.objects.get(user=request.user)
-        registered_courses = student.get_course_registrations()
+        all_courses = student.get_course_registrations()
+
+        # Separate courses into current and completed based on CourseProgress
+        for course in all_courses:
+            progress = CourseProgress.objects.filter(
+                user=request.user,
+                course=course
+            ).first()
+
+            if progress and progress.completed_time:
+                completed_courses.append(course)
+            else:
+                current_courses.append(course)
     except Student.DoesNotExist:
-        registered_courses = []
+        pass
 
     context = {
         "recommended_courses": recommended_courses,
-        "registered_courses": registered_courses,
+        "registered_courses": current_courses,
+        "completed_courses": completed_courses,
     }
 
     # if request.headers.get("Hx-Request"):
