@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from django.test import RequestFactory
 from django.urls import reverse
-from content_engine.models import Form, Activity
+from freedom_ls.content_engine.models import Form, Activity
 from urllib.parse import urlparse
 from playwright.sync_api import Page
 from allauth.account.models import EmailAddress
@@ -82,7 +82,7 @@ def make_temp_file():
 @pytest.fixture
 def mock_site_context(site, mocker):
     """Mock the thread local request and get_current_site for SiteAwareModel and templates."""
-    from site_aware_models.models import _thread_locals
+    from freedom_ls.site_aware_models.models import _thread_locals
     from django.contrib.sites.models import SITE_CACHE
 
     # Check if request attribute already exists
@@ -92,7 +92,7 @@ def mock_site_context(site, mocker):
     mock_request = mocker.Mock()
     _thread_locals.request = mock_request
 
-    mocker.patch("site_aware_models.models.get_current_site", return_value=site)
+    mocker.patch("freedom_ls.site_aware_models.models.get_current_site", return_value=site)
     # Also patch for template context processors
     mocker.patch("django.contrib.sites.shortcuts.get_current_site", return_value=site)
 

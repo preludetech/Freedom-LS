@@ -25,7 +25,7 @@ dependencies = [
 DJANGO_SETTINGS_MODULE = "config.settings_dev"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 env = ["DJANGO_ALLOW_ASYNC_UNSAFE = True"]
-testpaths = ["apps", "tests"]
+testpaths = ["freedom_ls", "tests"]
 addopts = "--strict-markers"
 markers = [
     "playwright: marks tests that use playwright for browser automation",

@@ -16,7 +16,6 @@ import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, os.path.join(BASE_DIR, "apps"))
 sys.path.insert(0, os.path.join(BASE_DIR, "concrete_apps"))
 
 
@@ -54,16 +53,16 @@ INSTALLED_APPS = [
     # CUSTOM APPS
     # "app_authentication",
     # xapi_learning_record_store
-    "base",
-    "content_engine",
-    "accounts",
-    "student_management",
-    "student_progress",
-    "site_aware_models",
-    "educator_interface",
+    "freedom_ls.base",
+    "freedom_ls.content_engine",
+    "freedom_ls.accounts",
+    "freedom_ls.student_management",
+    "freedom_ls.student_progress",
+    "freedom_ls.site_aware_models",
+    "freedom_ls.educator_interface",
     #########
     # STUDENT INTERFACE
-    "student_interface",
+    "freedom_ls.student_interface",
     #########
     # AllAuth is at the end because we need to override many of its templates
     "allauth",
@@ -86,7 +85,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "site_aware_models.middleware.CurrentSiteMiddleware",
+    "freedom_ls.site_aware_models.middleware.CurrentSiteMiddleware",
     # "config.site_urlconf_middleware.SiteURLConfMiddleware",
     "django_browser_reload.middleware.BrowserReloadMiddleware",
     "allauth.account.middleware.AccountMiddleware",
@@ -123,7 +122,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "site_aware_models.context_processors.site_config",
+                "freedom_ls.site_aware_models.context_processors.site_config",
             ],
             "builtins": [
                 "django_cotton.templatetags.cotton",
@@ -184,140 +183,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "accounts.User"
 
-# primary_colors = {
-#     "Wrend": {
-#         "50": "oklch(97.7% .014 308.299)",
-#         "100": "oklch(94.6% .033 307.174)",
-#         "200": "oklch(90.2% .063 306.703)",
-#         "300": "oklch(82.7% .119 306.383)",
-#         "400": "oklch(71.4% .203 305.504)",
-#         "500": "oklch(62.7% .265 303.9)",
-#         "600": "oklch(55.8% .288 302.321)",
-#         "700": "oklch(49.6% .265 301.924)",
-#         "800": "oklch(43.8% .218 303.724)",
-#         "900": "oklch(38.1% .176 304.987)",
-#         "950": "oklch(29.1% .149 302.717)",
-#     },
-#     "Bloom": {
-#         "50": "#e0ffe1",
-#         "100": "#82ff90",
-#         "200": "#49ed66",
-#         "300": "#24d64f",
-#         "400": "#00be3f",
-#         "500": "#00aa12",
-#         "600": "#00882a",
-#         "700": "#00621c",
-#         "800": "#003d0e",
-#         "900": "#001f04",
-#     },
-# }
-
-
-# site_conf = {
-#     "Bloom": {
-#         "SITE_TITLE": "Bloom",
-#         "SITE_HEADER": "Bloom",
-#         "COLORS": {
-#             "base": {
-#                 "50": "oklch(98.5% .002 247.839)",
-#                 "100": "oklch(96.7% .003 264.542)",
-#                 "200": "oklch(92.8% .006 264.531)",
-#                 "300": "oklch(87.2% .01 258.338)",
-#                 "400": "oklch(70.7% .022 261.325)",
-#                 "500": "oklch(55.1% .027 264.364)",
-#                 "600": "oklch(44.6% .03 256.802)",
-#                 "700": "oklch(37.3% .034 259.733)",
-#                 "800": "oklch(27.8% .033 256.848)",
-#                 "900": "oklch(21% .034 264.665)",
-#                 "950": "oklch(13% .028 261.692)",
-#             },
-#             "primary": {
-#                 "50": "oklch(97.5% .015 145)",
-#                 "100": "oklch(94.5% .035 145)",
-#                 "200": "oklch(89.5% .070 145)",
-#                 "300": "oklch(82.0% .130 145)",
-#                 "400": "oklch(70.5% .180 145)",
-#                 "500": "oklch(62.0% .210 145)",
-#                 "600": "oklch(54.0% .220 145)",
-#                 "700": "oklch(46.5% .200 145)",
-#                 "800": "oklch(40.0% .165 145)",
-#                 "900": "oklch(34.0% .130 145)",
-#                 "950": "oklch(26.0% .100 145)",
-#             },
-#             "font": {
-#                 "subtle-light": "var(--color-base-500)",  # text-base-500
-#                 "subtle-dark": "var(--color-base-400)",  # text-base-400
-#                 "default-light": "var(--color-base-600)",  # text-base-600
-#                 "default-dark": "var(--color-base-300)",  # text-base-300
-#                 "important-light": "var(--color-base-900)",  # text-base-900
-#                 "important-dark": "var(--color-base-100)",  # text-base-100
-#             },
-#         },
-
-
-#     },
-#     "Prelude": {
-#         "SITE_TITLE": "Prelude",
-#         "SITE_HEADER": "Prelude",
-#     },
-#     "Wrend": {
-#         "SITE_TITLE": "Wrend",
-#         "SITE_HEADER": "Wrend",
-#     },
-# }
-
-
-# UNFOLD_DEFAULTS = {
-#     "COLORS": {
-#         "base": {
-#             "50": "oklch(98.5% .002 247.839)",
-#             "100": "oklch(96.7% .003 264.542)",
-#             "200": "oklch(92.8% .006 264.531)",
-#             "300": "oklch(87.2% .01 258.338)",
-#             "400": "oklch(70.7% .022 261.325)",
-#             "500": "oklch(55.1% .027 264.364)",
-#             "600": "oklch(44.6% .03 256.802)",
-#             "700": "oklch(37.3% .034 259.733)",
-#             "800": "oklch(27.8% .033 256.848)",
-#             "900": "oklch(21% .034 264.665)",
-#             "950": "oklch(13% .028 261.692)",
-#         },
-#         "primary": {
-#             "50": "oklch(97.7% .014 308.299)",
-#             "100": "oklch(94.6% .033 307.174)",
-#             "200": "oklch(90.2% .063 306.703)",
-#             "300": "oklch(82.7% .119 306.383)",
-#             "400": "oklch(71.4% .203 305.504)",
-#             "500": "oklch(62.7% .265 303.9)",
-#             "600": "oklch(55.8% .288 302.321)",
-#             "700": "oklch(49.6% .265 301.924)",
-#             "800": "oklch(43.8% .218 303.724)",
-#             "900": "oklch(38.1% .176 304.987)",
-#             "950": "oklch(29.1% .149 302.717)",
-#         },
-#         "font": {
-#             "subtle-light": "var(--color-base-500)",  # text-base-500
-#             "subtle-dark": "var(--color-base-400)",  # text-base-400
-#             "default-light": "var(--color-base-600)",  # text-base-600
-#             "default-dark": "var(--color-base-300)",  # text-base-300
-#             "important-light": "var(--color-base-900)",  # text-base-900
-#             "important-dark": "var(--color-base-100)",  # text-base-100
-#         },
-#     }
-# }
-
-
-# Unfold Admin Configuration
-def get_unfold_value(key):
-    def get_environment(request):
-        from django.contrib.sites.shortcuts import get_current_site
-
-        site = get_current_site(request).name
-
-        return site_conf[site].get(key) or UNFOLD_DEFAULTS[key]
-
-    return get_environment
-
 
 # UNFOLD = {
 #     "SITE_TITLE": get_unfold_value("SITE_TITLE"),
@@ -355,10 +220,10 @@ ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
-ACCOUNT_ADAPTER = "accounts.allauth_account_adapter.AccountAdapter"
+ACCOUNT_ADAPTER = "freedom_ls.accounts.allauth_account_adapter.AccountAdapter"
 
 
-# ACCOUNT_ADAPTER = "accounts.allauth_account_adapter.AccountAdapter"
+# ACCOUNT_ADAPTER = "freedom_ls.accounts.allauth_account_adapter.AccountAdapter"
 # ALLOW_SIGN_UPS = True
 
 # HEADLESS_FRONTEND_URLS = TODO

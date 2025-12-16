@@ -35,10 +35,10 @@ urlpatterns = [
     # path("api/", api.urls),
     path("__reload__/", include("django_browser_reload.urls")),
     # path("content_preview/", include("content_engine.preview_urls")),
-    path("educator/", include("educator_interface.urls")),
+    path("educator/", include("freedom_ls.educator_interface.urls")),
     path("accounts/", include("allauth.urls")),
-    path("accounts/", include("accounts.urls")),
-    path("", include("student_interface.urls")),
+    path("accounts/", include("freedom_ls.accounts.urls")),
+    path("", include("freedom_ls.student_interface.urls")),
     # path("_allauth/", include("allauth.headless.urls")),
 ]
 
