@@ -24,6 +24,7 @@ def get_course_index(request, course):
     READY = "READY"
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETE = "COMPLETE"
+    FAILED = "FAILED"
 
     is_registered = get_is_registered(request, course)
 
@@ -42,7 +43,7 @@ def get_course_index(request, course):
             status = None
             url = reverse(
                 "student_interface:view_course_item",
-                kwargs={"collection_slug": course.slug, "index": index + 1},
+                kwargs={"course_slug": course.slug, "index": index + 1},
             )
             title = None
 
@@ -74,7 +75,13 @@ def get_course_index(request, course):
                 )
 
                 if form_progress and form_progress.completed_time:
-                    status = COMPLETE
+                    if form_progress.form.strategy == FormStrategy.QUIZ:
+                        if form_progress.passed():
+                            status = COMPLETE
+                        else:
+                            status = FAILED
+                    else:
+                        status = COMPLETE
                 elif form_progress:
                     status = IN_PROGRESS
                 elif next_status == READY:
@@ -87,7 +94,7 @@ def get_course_index(request, course):
                 title = child.title
                 # url = reverse(
                 #     "student_interface:course_home",
-                #     kwargs={"collection_slug": child.slug},
+                #     kwargs={"course_slug": child.slug},
                 # )
                 url = "todo"
 
@@ -120,9 +127,9 @@ def get_course_index(request, course):
     return children
 
 
-
-
-def form_start_page_buttons(form, incomplete_form_progress, completed_form_progress, is_last_item):
+def form_start_page_buttons(
+    form, incomplete_form_progress, completed_form_progress, is_last_item
+):
     """
     Determine which buttons to show on the form start page.
 
@@ -138,10 +145,7 @@ def form_start_page_buttons(form, incomplete_form_progress, completed_form_progr
 
     # If user has incomplete progress, show Continue button
     if incomplete_form_progress:
-        buttons.append({
-            "text": "Continue Form",
-            "action": "continue"
-        })
+        buttons.append({"text": "Continue Form", "action": "continue"})
         return buttons
 
     # Check if there's any completed progress
@@ -162,38 +166,20 @@ def form_start_page_buttons(form, incomplete_form_progress, completed_form_progr
             if passed:
                 # User passed the quiz
                 if is_last_item:
-                    buttons.append({
-                        "text": "Finish Course",
-                        "action": "finish_course"
-                    })
+                    buttons.append({"text": "Finish Course", "action": "finish_course"})
                 else:
-                    buttons.append({
-                        "text": "Next",
-                        "action": "next"
-                    })
+                    buttons.append({"text": "Next", "action": "next"})
             else:
                 # User failed the quiz - only show Try Again
-                buttons.append({
-                    "text": "Try Again",
-                    "action": "try_again"
-                })
+                buttons.append({"text": "Try Again", "action": "try_again"})
         else:
             # Non-quiz form that's completed
             if is_last_item:
-                buttons.append({
-                    "text": "Finish Course",
-                    "action": "finish_course"
-                })
+                buttons.append({"text": "Finish Course", "action": "finish_course"})
             else:
-                buttons.append({
-                    "text": "Next",
-                    "action": "next"
-                })
+                buttons.append({"text": "Next", "action": "next"})
     else:
         # No progress at all - show Start button
-        buttons.append({
-            "text": "Start Form",
-            "action": "start"
-        })
+        buttons.append({"text": "Start Form", "action": "start"})
 
-    return buttons 
+    return buttons

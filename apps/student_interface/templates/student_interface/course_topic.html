@@ -44,11 +44,11 @@
             </c-button>
         {% elif is_last_item %}
             {% if is_course_complete %}
-                <c-button href="{% url 'student_interface:course_home' collection_slug=course.slug %}" variant="outline">
+                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}" variant="outline">
                     <i class="fa fa-home"></i> Home
                 </c-button>
             {% else %}
-                <c-button href="{% url 'student_interface:course_home' collection_slug=course.slug %}" >
+                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}" >
                     <i class="fa fa-check"></i> Finish Course
                 </c-button>
             {% endif %}

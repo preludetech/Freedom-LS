@@ -23,7 +23,7 @@ def navigate_to_form(page: Page, live_server, course_slug: str, index: int = 1):
     form_url = reverse_url(
         live_server,
         "student_interface:view_course_item",
-        kwargs={"collection_slug": course_slug, "index": index},
+        kwargs={"course_slug": course_slug, "index": index},
     )
     page.goto(form_url)
     page.wait_for_load_state("networkidle")
@@ -59,8 +59,8 @@ def click_next(page: Page):
 
 
 def submit_form(page: Page):
-    """Click the Submit button."""
-    submit_button = page.locator("button[type='submit']:has-text('Submit')")
+    """Click the Finish button."""
+    submit_button = page.locator("button[type='submit']:has-text('Finish')")
     submit_button.click()
     page.wait_for_load_state("networkidle")
 
@@ -130,6 +130,7 @@ def make_quiz_form(mock_site_context):
         title="Math Quiz",
         slug="math-quiz",
         quiz_show_incorrect=True,
+        quiz_pass_percentage=70,
         num_pages=2,
     ):
         form = Form.objects.create(
@@ -138,6 +139,7 @@ def make_quiz_form(mock_site_context):
             slug=slug,
             strategy="QUIZ",
             quiz_show_incorrect=quiz_show_incorrect,
+            quiz_pass_percentage=quiz_pass_percentage,
         )
 
         # Create pages with questions
@@ -392,7 +394,7 @@ def test_view_form_landing_page(
     assert title.is_visible()
 
     # Assert form subtitle is visible
-    subtitle = logged_in_page.locator("h2:has-text('A test quiz for students')")
+    subtitle = logged_in_page.locator("p:has-text('A test quiz for students')")
     assert subtitle.is_visible()
 
     # Assert "Start Form" button is visible

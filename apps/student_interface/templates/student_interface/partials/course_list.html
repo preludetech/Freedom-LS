@@ -1,5 +1,5 @@
 {% partialdef course-card %}
-<a href="{% url 'student_interface:course_home' collection_slug=course.slug %}"
+<a href="{% url 'student_interface:course_home' course_slug=course.slug %}"
    class="block p-6 bg-white border border-gray-200 rounded-lg shadow hover:bg-gray-50 transition no-underline">
     <div class="flex items-start justify-between mb-2">
         <h4 class="text-xl font-semibold text-gray-900">{{ course.title }}</h4>

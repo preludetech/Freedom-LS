@@ -82,6 +82,8 @@ content_type: FORM
 strategy: QUIZ
 title: Quiz 3
 uuid: 00000000-0000-0000-0000-000000000004
+quiz_show_incorrect: true
+quiz_pass_percentage: 70
 ---
 """)
         (quiz_3_dir / "1. page.yaml").write_text("""---
@@ -122,6 +124,8 @@ content_type: FORM
 strategy: QUIZ
 title: Quiz 5
 uuid: 00000000-0000-0000-0000-00000000000a
+quiz_show_incorrect: true
+quiz_pass_percentage: 70
 ---
 """)
         (quiz_5_dir / "1. page.yaml").write_text("""---

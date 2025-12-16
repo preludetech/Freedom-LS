@@ -12,39 +12,6 @@
     {{ form.rendered_content }}
 </c-markdown-container>
 
-{% for button in buttons %}
-    {% if button.action == "continue" %}
-        <p>
-            <c-button href="{% url 'student_interface:form_fill_page' course.slug index page_number %}"
-               
-               data-testid="continue-form-button">{{ button.text }} >></c-button>
-        </p>
-    {% elif button.action == "start" %}
-        <p>
-            <c-button href="{% url 'student_interface:form_start' course.slug index %}"
-               
-               data-testid="start-form-button">{{ button.text }} >></c-button>
-        </p>
-    {% elif button.action == "try_again" %}
-        <p>
-            <c-button href="{% url 'student_interface:form_start' course.slug index %}"
-               
-               data-testid="try-again-button">{{ button.text }}</c-button>
-        </p>
-    {% elif button.action == "next" %}
-        <p>
-            <c-button href="{{ next_url }}"
-               
-               data-testid="next-button">{{ button.text }}</c-button>
-        </p>
-    {% elif button.action == "finish_course" %}
-        <p>
-            <c-button href="{% url 'student_interface:course_home' collection_slug=course.slug %}"
-               
-               data-testid="finish-course-button">{{ button.text }}</c-button>
-        </p>
-    {% endif %}
-{% endfor %}
 
 {% if completed_form_progress %}
 <hr class="my-8"/>
@@ -92,5 +59,46 @@
     {% endfor %}
 </div>
 {% endif %}
+
+
+
+<div class="pt-4">
+
+{% for button in buttons %}
+    {% if button.action == "continue" %}
+        <p>
+            <c-button href="{% url 'student_interface:form_fill_page' course.slug index page_number %}"
+               
+               data-testid="continue-form-button">{{ button.text }} >></c-button>
+        </p>
+    {% elif button.action == "start" %}
+        <p>
+            <c-button href="{% url 'student_interface:form_start' course.slug index %}"
+               
+               data-testid="start-form-button">{{ button.text }} >></c-button>
+        </p>
+    {% elif button.action == "try_again" %}
+        <p>
+            <c-button href="{% url 'student_interface:form_start' course.slug index %}"
+               
+               data-testid="try-again-button">{{ button.text }}</c-button>
+        </p>
+    {% elif button.action == "next" %}
+        <p>
+            <c-button href="{{ next_url }}"
+               
+               data-testid="next-button">{{ button.text }}</c-button>
+        </p>
+    {% elif button.action == "finish_course" %}
+        <p>
+            <c-button href="{% url 'student_interface:course_finish' course_slug=course.slug %}"
+
+               data-testid="finish-course-button">{{ button.text }}</c-button>
+        </p>
+    {% endif %}
+{% endfor %}
+
+</div>
+
 
 {% endblock %}

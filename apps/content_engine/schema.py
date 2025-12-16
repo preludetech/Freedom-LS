@@ -6,7 +6,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, ClassVar, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ContentType(str, Enum):
@@ -121,8 +121,37 @@ class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM
     strategy: FormStrategy = Field(..., description="Strategy for form scoring")
     quiz_show_incorrect: Optional[bool] = Field(
         None,
-        description="Optional boolean. If the strategy is QUIZ then this must be included",
+        description="Required if strategy is QUIZ. Should incorrect answers be shown after completion?",
     )
+    quiz_pass_percentage: Optional[int] = Field(
+        None,
+        description="Required if strategy is QUIZ. Percentage (0-100) required to pass the quiz",
+    )
+
+    @model_validator(mode="after")
+    def validate_quiz_fields(self):
+        """Validate that quiz fields are set correctly based on strategy."""
+        if self.strategy == FormStrategy.QUIZ:
+            # If QUIZ strategy, both fields must be provided
+            if self.quiz_show_incorrect is None:
+                raise ValueError(
+                    f"quiz_show_incorrect is required when strategy is QUIZ (in {self.file_path})"
+                )
+            if self.quiz_pass_percentage is None:
+                raise ValueError(
+                    f"quiz_pass_percentage is required when strategy is QUIZ (in {self.file_path})"
+                )
+        else:
+            # If not QUIZ strategy, these fields should not be set
+            if self.quiz_show_incorrect is not None:
+                raise ValueError(
+                    f"quiz_show_incorrect should only be set when strategy is QUIZ (in {self.file_path})"
+                )
+            if self.quiz_pass_percentage is not None:
+                raise ValueError(
+                    f"quiz_pass_percentage should only be set when strategy is QUIZ (in {self.file_path})"
+                )
+        return self
 
 
 class FormPage(BaseContentModel, content_type=ContentType.FORM_PAGE):

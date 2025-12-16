@@ -35,6 +35,17 @@ class FormProgress(SiteAwareModel):
     def __str__(self):
         return f"{self.user} - {self.form.title}"
 
+    def quiz_percentage(self):
+        if self.form.strategy != FormStrategy.QUIZ:
+            raise ValueError("This method should only work for quiz models")
+        if not self.scores:
+            raise ValueError("Need to score the quiz before calling this method")
+
+        return round((self.scores["score"] / self.scores["max_score"]) * 100)
+
+    def passed(self):
+        return self.quiz_percentage() >= self.form.quiz_pass_percentage
+
     @classmethod
     def get_latest_incomplete(cls, user, form):
         return (

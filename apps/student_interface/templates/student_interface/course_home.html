@@ -56,32 +56,7 @@
         </div>
 
         <div>
-            {% if child.status == "BLOCKED" %}
-                <span class="text-sm text-gray-400">
-                    <i class="fa fa-lock"></i>
-                </span>
-
-            {% elif child.status == "READY" %}
-                <c-button href="{{ child.url }}" >
-                    <i class="fa fa-play"></i>
-                </c-button>
-
-            {% elif child.status == "IN_PROGRESS" %}
-                <a href="{{ child.url }}" class="text-primary-600 hover:text-primary-700 no-underline">
-                                                <i class="fa fa-play"></i>
-
-                </a>
-
-            {% elif child.status == "COMPLETE" %}
-                <a href="{{ child.url }}" class="text-green-600 hover:text-green-700 no-underline">
-                    <i class="fa fa-check"></i>
-                </a>
-
-            {% else %}
-                <span class="text-sm text-red-600">
-                    Unknown status "{{ child.status }}"
-                </span>
-            {% endif %}
+            {% include "student_interface/partials/course_minimal_toc.html#icon" %}
         </div>
     </div>
     {% endfor %}
@@ -91,7 +66,7 @@
 {% if user.is_authenticated %}
     {% if is_registered %}
     {% else %}
-        <form method="post" action="{% url 'student_interface:register_for_course' collection_slug=course.slug %}">
+        <form method="post" action="{% url 'student_interface:register_for_course' course_slug=course.slug %}">
             {% csrf_token %}
             <c-button type="submit">Register for Course</c-button>
         </form>

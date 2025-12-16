@@ -8,9 +8,9 @@ def home(request):
     return render(request, "educator_interface/home.html")
 
 
-def course_student_progress(request, collection_slug):
+def course_student_progress(request, course_slug):
     """Show student progress for a specific course."""
-    course = get_object_or_404(Course, slug=collection_slug)
+    course = get_object_or_404(Course, slug=course_slug)
     return render(
         request,
         "educator_interface/course_student_progress.html",
@@ -35,7 +35,9 @@ def course_list(request):
         cohort_student_ids = set()
         for cohort_reg in course.cohort_registrations.all():
             cohort_student_ids.update(
-                cohort_reg.cohort.cohortmembership_set.values_list("student_id", flat=True)
+                cohort_reg.cohort.cohortmembership_set.values_list(
+                    "student_id", flat=True
+                )
             )
 
         # Get direct student registrations

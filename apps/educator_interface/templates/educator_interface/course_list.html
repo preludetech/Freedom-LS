@@ -38,7 +38,7 @@
                                 <div class="text-sm text-gray-900">{{ course.cohort_count }}</div>
                             </td>
                             <td class="px-6 py-4 ">
-                                <a href="{% url 'educator_interface:course_student_progress' collection_slug=course.slug %}" class="btn btn-primary">
+                                <a href="{% url 'educator_interface:course_student_progress' course_slug=course.slug %}" class="btn btn-primary">
                                     Student Progress
                                 </a>
                             </td>

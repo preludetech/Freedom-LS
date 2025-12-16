@@ -206,6 +206,12 @@ class Form(TitledContent, MarkdownContent):
         blank=True, null=True
     )  # Should we show the answers after the user finishes the form?
 
+    quiz_pass_percentage = models.PositiveSmallIntegerField(
+        blank=True,
+        null=True,
+        help_text=_("Percentage (0-100) required to pass the quiz"),
+    )
+
     class Meta:
         unique_together = ["site", "slug"]
 

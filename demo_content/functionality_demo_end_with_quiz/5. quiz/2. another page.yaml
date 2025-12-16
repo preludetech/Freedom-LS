@@ -1,12 +1,13 @@
 ---
 content_type: FORM_PAGE
 description: lorem ipsum
-subtitle: Something Something
-title: Page 1
+subtitle: Second subtitle
+title: Page 2 title
 uuid: 3eff7624-772b-4d0e-90c2-1672a9dcf225
 ---
 options:
-- text: option 1 text
+- text: CORRECT
+  correct: true
   uuid: f126e588-4903-4c7a-9743-ac0e07dd6e1e
   value: one
 - text: option 2 text
@@ -31,9 +32,11 @@ content: |-
 uuid: af1dcf04-068b-4b6a-af60-1708e0c30e80
 ---
 options:
-- text: option 1 text
+- text: CORRECT
+  correct: true
   uuid: 51bf3301-7baa-4f7d-8703-8ec42cf19e38
   value: one
+  
 - text: option 2 text
   uuid: 4ff80f47-dc34-4922-98d9-bcf434d2f3b6
   value: two
@@ -52,7 +55,8 @@ options:
 - text: option 2 text
   uuid: e32a43dc-73f2-4aa7-a0a7-39c4421e6f2d
   value: two
-- text: option 3 text
+- text: CORRECT
+  correct: true
   uuid: 92752e16-dbc0-4c6c-9105-f1d08767a3a0
   value: three
 question: Some question blah blah

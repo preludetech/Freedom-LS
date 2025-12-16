@@ -14,10 +14,10 @@ def home(request):
     return render(request, "student_interface/home.html")
 
 
-def course_home(request, collection_slug):
+def course_home(request, course_slug):
     from student_progress.models import CourseProgress
 
-    course = get_object_or_404(Course, slug=collection_slug)
+    course = get_object_or_404(Course, slug=course_slug)
 
     children = get_course_index(course=course, request=request)
     is_registered = get_is_registered(request, course)
@@ -44,8 +44,8 @@ def course_home(request, collection_slug):
     )
 
 
-def partial_course_toc(request, collection_slug):
-    course = get_object_or_404(Course, slug=collection_slug)
+def partial_course_toc(request, course_slug):
+    course = get_object_or_404(Course, slug=course_slug)
 
     children = get_course_index(course=course, request=request)
     is_registered = get_is_registered(request, course)
@@ -80,11 +80,11 @@ def partial_list_courses(request):
 
 
 @login_required
-def register_for_course(request, collection_slug):
+def register_for_course(request, course_slug):
     """Register the current user for a course."""
     from student_management.models import RecommendedCourse
 
-    course = get_object_or_404(Course, slug=collection_slug)
+    course = get_object_or_404(Course, slug=course_slug)
 
     # Get or create Student instance for this user
     student, _ = Student.objects.get_or_create(user=request.user)
@@ -100,13 +100,14 @@ def register_for_course(request, collection_slug):
     RecommendedCourse.objects.filter(user=request.user, collection=course).delete()
 
     # Redirect back to the course home page
-    return redirect("student_interface:course_home", collection_slug=collection_slug)
+    return redirect("student_interface:course_home", course_slug=course_slug)
 
 
-def view_course_item(request, collection_slug, index):
+@login_required
+def view_course_item(request, course_slug, index):
     from student_progress.models import CourseProgress
 
-    course = get_object_or_404(Course, slug=collection_slug)
+    course = get_object_or_404(Course, slug=course_slug)
     children = course.children()
     current_item = children[index - 1]
 
@@ -125,14 +126,14 @@ def view_course_item(request, collection_slug, index):
     if not is_last_item:
         next_url = reverse(
             "student_interface:view_course_item",
-            kwargs={"collection_slug": collection_slug, "index": index + 1},
+            kwargs={"course_slug": course_slug, "index": index + 1},
         )
 
     previous_url = None
     if index > 1:
         previous_url = reverse(
             "student_interface:view_course_item",
-            kwargs={"collection_slug": collection_slug, "index": index - 1},
+            kwargs={"course_slug": course_slug, "index": index - 1},
         )
 
     if isinstance(current_item, Topic):
@@ -169,22 +170,11 @@ def view_topic(request, topic, course, next_url, previous_url, is_last_item=Fals
         topic_progress.complete_time = timezone.now()
         topic_progress.save()
 
-        # If this is the last item, mark the course as complete
-        if is_last_item:
-            course_progress, _ = CourseProgress.objects.get_or_create(
-                user=request.user, course=course
-            )
-            if not course_progress.completed_time:
-                course_progress.completed_time = timezone.now()
-                course_progress.save()
-
         if next_url:
             return redirect(next_url)
         else:
-            # If no next_url (last item), redirect to course home
-            return redirect(
-                "student_interface:course_home", collection_slug=course.slug
-            )
+            # If no next_url (last item), redirect to course finish page
+            return redirect("student_interface:course_finish", course_slug=course.slug)
 
     # Check if the course is already complete
     is_course_complete = False
@@ -247,10 +237,10 @@ def view_form(request, form, course, index, is_last_item=False, next_url=None):
 
 
 @login_required
-def form_start(request, collection_slug, index):
+def form_start(request, course_slug, index):
     """Start or resume a form for the current user."""
 
-    course = get_object_or_404(Course, slug=collection_slug)
+    course = get_object_or_404(Course, slug=course_slug)
     children = course.children()
     form = children[index - 1]
 
@@ -263,15 +253,15 @@ def form_start(request, collection_slug, index):
     # Redirect the user to form_fill_page
     return redirect(
         "student_interface:form_fill_page",
-        collection_slug=collection_slug,
+        course_slug=course_slug,
         index=index,
         page_number=page_number,
     )
 
 
 @login_required
-def form_fill_page(request, collection_slug, index, page_number):
-    course = get_object_or_404(Course, slug=collection_slug)
+def form_fill_page(request, course_slug, index, page_number):
+    course = get_object_or_404(Course, slug=course_slug)
     children = course.children()
     form = children[index - 1]
     all_pages = list(form.pages.all())
@@ -292,7 +282,7 @@ def form_fill_page(request, collection_slug, index, page_number):
         reverse(
             "student_interface:form_fill_page",
             kwargs={
-                "collection_slug": collection_slug,
+                "course_slug": course_slug,
                 "index": index,
                 "page_number": page_number + 1,
             },
@@ -313,7 +303,7 @@ def form_fill_page(request, collection_slug, index, page_number):
 
         return redirect(
             "student_interface:course_form_complete",
-            collection_slug=collection_slug,
+            course_slug=course_slug,
             index=index,
         )
 
@@ -321,7 +311,7 @@ def form_fill_page(request, collection_slug, index, page_number):
         reverse(
             "student_interface:form_fill_page",
             kwargs={
-                "collection_slug": collection_slug,
+                "course_slug": course_slug,
                 "index": index,
                 "page_number": page_number - 1,
             },
@@ -346,7 +336,7 @@ def form_fill_page(request, collection_slug, index, page_number):
                 "url": reverse(
                     "student_interface:form_fill_page",
                     kwargs={
-                        "collection_slug": collection_slug,
+                        "course_slug": course_slug,
                         "index": index,
                         "page_number": i,
                     },
@@ -374,8 +364,8 @@ def form_fill_page(request, collection_slug, index, page_number):
 
 
 @login_required
-def course_form_complete(request, collection_slug, index):
-    course = get_object_or_404(Course, slug=collection_slug)
+def course_form_complete(request, course_slug, index):
+    course = get_object_or_404(Course, slug=course_slug)
     children = course.children()
     form = children[index - 1]
 
@@ -393,6 +383,35 @@ def course_form_complete(request, collection_slug, index):
     if form_progress:
         incorrect_answers = form_progress.get_incorrect_quiz_answers()
 
+    # Determine if this is a failed quiz
+    is_failed_quiz = False
+    if form_progress and form.strategy == FormStrategy.QUIZ:
+        try:
+            is_failed_quiz = not form_progress.passed()
+        except ValueError:
+            pass
+
+    # Calculate next URL for continue button
+    total_children = len(children)
+    is_last_item = index >= total_children
+    if is_last_item:
+        # Last item - go to course finish page
+        next_url = reverse(
+            "student_interface:course_finish", kwargs={"course_slug": course_slug}
+        )
+    else:
+        # Not last item - go to next item
+        next_url = reverse(
+            "student_interface:view_course_item",
+            kwargs={"course_slug": course_slug, "index": index + 1},
+        )
+
+    # Calculate retry URL
+    retry_url = reverse(
+        "student_interface:form_start",
+        kwargs={"course_slug": course_slug, "index": index},
+    )
+
     context = {
         "course": course,
         "form": form,
@@ -400,6 +419,34 @@ def course_form_complete(request, collection_slug, index):
         "show_scores": True,
         "scores": form_progress.scores if form_progress else None,
         "incorrect_answers": incorrect_answers,
+        "is_failed_quiz": is_failed_quiz,
+        "next_url": next_url,
+        "retry_url": retry_url,
     }
 
     return render(request, "student_interface/course_form_complete.html", context)
+
+
+@login_required
+def course_finish(request, course_slug):
+    """Mark the course progress as complete for this user and render a completion page."""
+    from student_progress.models import CourseProgress
+
+    course = get_object_or_404(Course, slug=course_slug)
+
+    # Get existing course progress (should already exist)
+    course_progress = get_object_or_404(
+        CourseProgress, user=request.user, course=course
+    )
+
+    # Mark as complete if not already
+    if not course_progress.completed_time:
+        course_progress.completed_time = timezone.now()
+        course_progress.save()
+
+    context = {
+        "course": course,
+        "course_progress": course_progress,
+    }
+
+    return render(request, "student_interface/course_finish.html", context)

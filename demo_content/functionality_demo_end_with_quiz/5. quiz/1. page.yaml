@@ -6,7 +6,8 @@ title: Page 1
 uuid: b2c8d2f6-5535-414f-84e6-559ec15e85eb
 ---
 options:
-- text: option 1 text
+- text: CORRECT
+  correct: true
   uuid: e79885d4-1202-489b-97c4-9b54b4c36d6d
   value: one
 - text: option 2 text
@@ -15,7 +16,6 @@ options:
 - text: option 3 text
   uuid: 2567d11c-3a20-46a4-93df-ff3a82162ae2
   value: three
-  correct: true
 
 question: Some question blah blah
 required: true
@@ -33,7 +33,7 @@ content: |-
 uuid: 5228fd09-ab31-46de-b63a-3a714da9c0ec
 ---
 options:
-- text: option 1 text
+- text: CORRECT
   uuid: fd83dffb-6f41-4850-8fc2-4ab972f97f65
   value: one
   correct: true
@@ -53,7 +53,7 @@ options:
 - text: option 1 text
   uuid: 7a43e9c6-7fd9-4481-8694-d4bfbed4d60a
   value: one
-- text: option 2 text
+- text: CORRECT
   uuid: 977d9175-e3dd-438f-bcb9-909b6b331805
   value: two
   correct: true
