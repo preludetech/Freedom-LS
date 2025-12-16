@@ -44,6 +44,11 @@ class FormProgress(SiteAwareModel):
         return round((self.scores["score"] / self.scores["max_score"]) * 100)
 
     def passed(self):
+        if self.form.quiz_pass_percentage is None:
+            raise ValueError(
+                f"Quiz '{self.form.title}' (ID: {self.form.id}) does not have a pass percentage configured. "
+                "Set quiz_pass_percentage on the Form to use this method."
+            )
         return self.quiz_percentage() >= self.form.quiz_pass_percentage
 
     @classmethod

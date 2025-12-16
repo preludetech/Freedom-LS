@@ -47,7 +47,7 @@
 {% endpartialdef %}
 
 {% partialdef form-question %}
-<div class="mb-6 p-4 bg-white border border-gray-200 rounded-lg">
+<div class="surface">
     <div class="mb-3 flex flex-row gap-2">
         <span class="font-semibold text-gray-900" data-testid="question-number-{{question.question_number}}">{{question.question_number}}.</span>
         <span class="text-gray-900">{{ question.rendered_question }}</span>
@@ -89,15 +89,23 @@
 <div class="mb-8">
     <h1 class="mb-2">{{ form.title }}</h1>
     {% if form.subtitle %}
-        <h2 class="text-gray-600">{{ form.subtitle }}</h2>
+        <p class="text-gray-600">{{ form.subtitle }}</p>
     {% endif %}
+
+    
 </div>
 
 <!-- Page Progress Indicator -->
 {% partialdef page_progress_indicator inline %}
-<div class="surface">
-    <div class="flex items-center justify-between mb-3">
-        <span class="text-sm font-medium text-gray-700">Page {{ current_page_num }} of {{ total_pages }}</span>
+<div class="surface space-y-3">
+    <div class="text-sm font-medium text-gray-700">
+        <p class="">
+            Page {{ current_page_num }} of {{ total_pages }}:
+            {{ form_page.title }}
+        </p>
+    {% if form_page.subtitle %}
+        <p class="text-gray-500">{{ form_page.subtitle }}</>
+    {% endif %}
     </div>
 
     <!-- Page Navigation -->
@@ -116,34 +124,26 @@
 
 {% endpartialdef %}
 
-<div class="mb-6">
-    <h3>{{ form_page.title }}</h3>
-    {% if form_page.subtitle %}
-        <h4 class="text-gray-600">{{ form_page.subtitle }}</h4>
-    {% endif %}
-</div>
+
 
 
 {% partialdef form_and_navigation inline %}
 
-<h2 class="pb-4 text-center">
-    {{form_page.title}}
-</h2>
 
  <form method="POST">
 
         {% csrf_token %}
 
         <!-- Form content -->
-        <div class="mb-8">
+        <div class="my-8 space-y-8">
             {% for child in form_page.children %}
-            {% if child.content_type == 'FORM_QUESTION' %}
-                {% with question=child %}
-                    {% partial form-question %}
-                {% endwith %}
-            {% elif child.content_type == 'FORM_CONTENT' %}
-            {% partial form-content %}
-            {% endif %}
+                {% if child.content_type == 'FORM_QUESTION' %}
+                    {% with question=child %}
+                        {% partial form-question %}
+                    {% endwith %}
+                {% elif child.content_type == 'FORM_CONTENT' %}
+                    {% partial form-content %}
+                {% endif %}
             {% endfor %}
         </div>
 
