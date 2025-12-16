@@ -254,25 +254,37 @@
 
 
 {% partialdef child %}
-<div class="surface grid grid-cols-6 gap-4 ">
+<div class="surface lg:grid lg:grid-cols-6 gap-4 ">
     
 
-    <div class="text-center col-span-2  relative">
+    <div class="lg:text-center lg: col-span-2  relative">
         <!-- Menu in top right corner -->
-    <div class="absolute  right-5 z-10">
-        <c-dropdown-menu>
-            {% partial edit-child-button %}
-            {% partial delete-child-button %}
-        </c-dropdown-menu>
-    </div>
-
+        <div class="absolute  right-5 z-10">
+            <c-dropdown-menu>
+                {% partial edit-child-button %}
+                {% partial delete-child-button %}
+            </c-dropdown-menu>
+        </div>
+        
         <div class="mb-6">
             <h2>{{child.name}}</h2>
             <p class="text-gray-600">Age: {{child.age}}</p>
         </div>
 
         {% if child.complete_assessment %}
-            <div class="space-y-4">
+            <div class="flex lg:hidden ">
+
+                <p class="text-sm text-gray-600 text-left">
+                    <strong>Last Assessment:</strong>
+                    {{ child.complete_assessment.completed_time|date:"M d, Y" }}
+                </p>
+                <c-button-group variant="centered">
+                    {% partial redo_assessment_button %}
+                    {% partial assessment_details_button %}
+                </c-button-group>
+            </div>
+
+            <div class="space-y-4 hidden lg:block">
                 <h3>Assessment</h3>
                 <p class="text-sm text-gray-600 text-left">
                     <strong>Last Assessment:</strong>
@@ -291,6 +303,7 @@
         {% endif %}
 
     </div>
+
     <div class="col-span-4 relative space-y-4">
         {% if child.complete_assessment %}
             <!-- <a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
