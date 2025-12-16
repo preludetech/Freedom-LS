@@ -40,6 +40,12 @@
 
 {% partialdef activity_radio %}
 
+<form
+    hx-post="{% url 'bloom_student_interface:action_child_activity_toggle' child.slug activity.slug date %}"
+    hx-swap="outerHTML"
+    hx-target="#activity-{{activity.pk}}-{{date}}"
+    class="space-y-4"
+>
 <c-modal  id="activity-{{activity.pk}}-{{date}}">
     <c-slot name="title">
         {% partial log_status_symbol %} {{activity.title}} - {{date}}
@@ -49,6 +55,7 @@
         <button
             data-testid="activity-status-button-{{activity.slug}}-{{date}}"
             class="cursor-pointer relative text-3xl"
+            type="button"
             >
             
             {% partial log_status_symbol %}
@@ -62,35 +69,42 @@
 
 
 
-    <form
-        hx-post="{% url 'bloom_student_interface:action_child_activity_toggle' child.slug activity.slug date %}"
+        <textarea name="notes" placeholder="How did it go?" data-testid="activity-notes-textarea-{{activity.slug}}-{{date}}" class="w-full">{{log.notes}}</textarea>
 
-        hx-swap="outerHTML"
+        <div class="space-y-2">
+            <label class="flex items-center gap-3 p-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50">
+                <input type="radio" name="status" value="good" {% if log.sentiment == "good" %}checked{% endif %} required class="w-4 h-4">
+                <i class="fa fa-thumbs-up text-green-600" aria-hidden="true"></i>
+                <span>Easy</span>
+            </label>
 
-        hx-target="#activity-{{activity.pk}}-{{date}}"
+            <label class="flex items-center gap-3 p-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50">
+                <input type="radio" name="status" value="neutral" {% if log.sentiment == "neutral" %}checked{% endif %} required class="w-4 h-4">
+                <i class="fa fa-check-circle text-yellow-600" aria-hidden="true"></i>
+                <span>Need more practice</span>
+            </label>
 
-    >
-        <textarea name="notes" placeholder="How did it go?" data-testid="activity-notes-textarea-{{activity.slug}}-{{date}}">{{log.notes}}</textarea>
-        <button name="good" class="btn btn-outline border-green-600">
-            <i class="fa fa-thumbs-up" aria-hidden="true"></i>
-            Good
-        </button>
-        <button class="btn btn-outline" name="neutral">Neutral</button>
-        <button class="btn btn-outline border-red-600" name="bad">
-            <i class="fa fa-thumbs-down" aria-hidden="true"></i>
-            Bad
-        </button>
-        <button class="btn btn-outline border-red-600" name="didnt-do">
-            <i class="fa fa-times-circle" aria-hidden="true"></i>
-            I didn't do it
-        </button>
-    </form>
+            <label class="flex items-center gap-3 p-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50">
+                <input type="radio" name="status" value="bad" {% if log.sentiment == "bad" %}checked{% endif %} required class="w-4 h-4">
+                <i class="fa fa-thumbs-down text-orange-600" aria-hidden="true"></i>
+                <span>Bad</span>
+            </label>
 
-    <c-slot name="footer">
-        <button type="button" class="btn btn-outline" @click="open = false" data-testid="modal-cancel-button-{{activity.slug}}-{{date}}">Cancel</button>
-    </c-slot>
+            <label class="flex items-center gap-3 p-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50">
+                <input type="radio" name="status" value="didnt-do" {% if log.done == False %}checked{% endif %} required class="w-4 h-4">
+                <i class="fa fa-times-circle text-red-600" aria-hidden="true"></i>
+                <span>I didn't do it</span>
+            </label>
+        </div>
 
-</c-modal>
+        
+        <c-slot name="footer">
+            <c-button type="button" variant="outline"  @click="open = false" data-testid="modal-cancel-button-{{activity.slug}}-{{date}}">Cancel</c-button>
+            <c-button type="submit">Save</c-button>
+        </c-slot>
+        
+    </c-modal>
+</form>
 
 
 {% endpartialdef %}

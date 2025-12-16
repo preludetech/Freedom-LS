@@ -419,24 +419,26 @@ def action_child_activity_toggle(request, child_slug, activity_slug, date):
 
     log.notes = request.POST["notes"]
 
-    if "good" in request.POST:
+    status = request.POST.get("status")
+
+    if status == "good":
         log.done = True
         log.sentiment = "good"
 
-    elif "neutral" in request.POST:
+    elif status == "neutral":
         log.done = True
         log.sentiment = "neutral"
 
-    elif "bad" in request.POST:
+    elif status == "bad":
         log.done = True
         log.sentiment = "bad"
 
-    elif "didnt-do" in request.POST:
+    elif status == "didnt-do":
         log.done = False
         log.sentiment = None
 
     else:
-        raise Exception(f"{request.POST}")
+        raise Exception(f"Invalid status value: {status}. POST data: {request.POST}")
 
     log.save()
 
