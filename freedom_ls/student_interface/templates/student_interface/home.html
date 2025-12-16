@@ -25,11 +25,11 @@
 
 
     {% block all_courses %}
-    <div class="relative">
+    <div > 
         <div hx-get="{% url 'student_interface:partial_list_courses' %}"
         hx-trigger="load"
         hx-indicator="#course-loading">
-    </div>
+        </div>
     <c-loading-indicator id="course-loading" message="Loading courses..." />
     </div>
     {% endblock all_courses %}
