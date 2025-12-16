@@ -13,6 +13,8 @@ uv add... TODO
 TODO:
 
 INSTALLED_APPS 
+make sure to add contrib.sites 
+
 MIDDLEWARE 
 TEMPLATES 
 
@@ -71,3 +73,14 @@ static/vendor/
 Run `npm run tailwind_watch`
 
 You can now edit `tailwind.input.css` to make it do what you want.
+
+
+### Conftest: 
+copy it across 
+
+### playwright 
+
+run playwright install 
+
+## Dev dependencies
+install manually

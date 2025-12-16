@@ -181,7 +181,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-AUTH_USER_MODEL = "accounts.User"
+AUTH_USER_MODEL = "freedom_ls_accounts.User"
 
 
 # UNFOLD = {
@@ -213,7 +213,7 @@ COTTON_SNAKE_CASED_NAMES = False
 ###
 # ALLAUTH
 
-HEADLESS_CLIENTS = ("app",)
+# HEADLESS_CLIENTS = ("app",)
 ACCOUNT_SIGNUP_FIELDS = ["email*", "email2*", "password1*", "password2*"]
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"

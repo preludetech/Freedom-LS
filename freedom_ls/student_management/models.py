@@ -72,7 +72,7 @@ class StudentCourseRegistration(SiteAwareModel):
     """Individual student registration for a course."""
 
     collection = models.ForeignKey(
-        "content_engine.Course",
+        "freedom_ls_content_engine.Course",
         on_delete=models.CASCADE,
         related_name="student_registrations",
     )
@@ -98,7 +98,7 @@ class CohortCourseRegistration(SiteAwareModel):
     """Cohort-wide registration for a course."""
 
     collection = models.ForeignKey(
-        "content_engine.Course",
+        "freedom_ls_content_engine.Course",
         on_delete=models.CASCADE,
         related_name="cohort_registrations",
     )
@@ -132,7 +132,7 @@ class RecommendedCourse(SiteAwareModel):
         related_name="recommended_courses",
     )
     collection = models.ForeignKey(
-        "content_engine.Course",
+        "freedom_ls_content_engine.Course",
         on_delete=models.CASCADE,
         related_name="recommendations",
     )

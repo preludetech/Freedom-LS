@@ -8,7 +8,10 @@ from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 User = get_user_model()
 
 # Unregister Django's default Group
-admin.site.unregister(Group)
+try:
+    admin.site.unregister(Group)
+except admin.sites.NotRegistered:
+    pass
 
 
 @admin.register(User)
