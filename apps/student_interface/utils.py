@@ -49,6 +49,7 @@ def get_course_index(request, course):
 
             if isinstance(child, Topic):
                 title = child.title
+                child_type = "topic"
 
                 # Check progress
                 topic_progress = TopicProgress.objects.filter(
@@ -66,6 +67,7 @@ def get_course_index(request, course):
 
             elif isinstance(child, Form):
                 title = child.title
+                child_type = "form"
 
                 # Check progress
                 form_progress = (
@@ -92,6 +94,7 @@ def get_course_index(request, course):
             elif isinstance(child, Course):
                 NotImplemented
                 title = child.title
+                child_type = "course"
                 # url = reverse(
                 #     "student_interface:course_home",
                 #     kwargs={"course_slug": child.slug},
@@ -110,6 +113,7 @@ def get_course_index(request, course):
                     "title": title,
                     "status": status,
                     "url": url if status != BLOCKED else None,
+                    "type": child_type,
                 }
             )
 
@@ -120,10 +124,23 @@ def get_course_index(request, course):
                 next_status = BLOCKED
 
     else:
-        children = [
-            {"title": child.title, "status": BLOCKED, "url": ""}
-            for child in course.children()
-        ]
+        children = []
+        for child in course.children():
+            if isinstance(child, Topic):
+                child_type = "topic"
+            elif isinstance(child, Form):
+                child_type = "form"
+            elif isinstance(child, Course):
+                child_type = "course"
+            else:
+                child_type = "unknown"
+
+            children.append({
+                "title": child.title,
+                "status": BLOCKED,
+                "url": "",
+                "type": child_type,
+            })
     return children
 
 

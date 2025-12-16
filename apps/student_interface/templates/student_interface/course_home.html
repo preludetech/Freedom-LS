@@ -44,22 +44,8 @@
     <h2>Contents</h2>
 
     <div class="mt-4 space-y-2">
-    {% for child in children %}
-    <div class="flex items-center justify-between py-2">
-        <div class="flex items-center gap-3">
-            <span class="text-gray-400 pr-2">{{ forloop.counter }}.</span>
-            {% if child.status != "BLOCKED" %}
-                <a href="{{ child.url }}" class="no-underline hover:underline">{{ child.title }}</a>
-            {% else %}
-                <span>{{ child.title }}</span>
-            {% endif %}
-        </div>
-
-        <div>
-            {% include "student_interface/partials/course_minimal_toc.html#icon" %}
-        </div>
-    </div>
-    {% endfor %}
+            {% include "student_interface/partials/course_minimal_toc.html#course-children" %}
+    
     </div>
 </div>
 

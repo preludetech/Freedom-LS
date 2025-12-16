@@ -1,4 +1,4 @@
-{% partialdef icon %}
+{% partialdef status-icon %}
 
 {% if child.status == "BLOCKED" %}
 <span class="text-sm text-gray-400">
@@ -35,6 +35,35 @@
 {% endpartialdef %}
    
    
+
+{% partialdef course-children %}
+{% for child in children %}
+
+    <div class="flex items-center justify-between py-2">
+        <div class="flex items-center gap-3">
+            <span class="text-gray-400 pr-2">{{ forloop.counter }}.</span>
+            <span class="text-gray-500">
+                {% if child.type == "topic" %}
+                <i class="fa fa-book"></i>
+                {% elif child.type == "form" %}
+                <i class="fa fa-edit"></i>
+                {% elif child.type == "course" %}
+                <i class="fa fa-graduation-cap"></i>
+                {% endif %}
+            </span>
+            {% if child.url %}
+            <a href="{{ child.url }}">{{ child.title }}</a>
+            {% else %}
+            <span>{{ child.title }}</span>
+            {% endif %}
+            
+        </div>
+        {% partial status-icon %}
+    </div>
+    
+    {% endfor %}
+
+{% endpartialdef %}
    
 
 
@@ -50,21 +79,8 @@
     <h2 class="text-xl">Contents</h2>
 
     <div class="mt-4">
-    {% for child in children %}
 
-    <div class="flex items-center justify-between py-2">
-        <div class="flex items-center gap-3">
-            <span class="text-gray-400 pr-2">{{ forloop.counter }}.</span>
-            {% partial icon %}
-            {% if child.url %}
-            <a href="{{ child.url }}">{{ child.title }}</a>
-            {% else %}
-            <span>{{ child.title }}</span>
-            {% endif %}
-        </div>
-
-        
-    </div>
-    {% endfor %}
+    {% partial course-children %}
+    
     </div>
 </div>

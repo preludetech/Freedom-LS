@@ -99,7 +99,7 @@
         </c-slot>
 
         <!-- Confirmation message will be loaded here via HTMX -->
-        <div id="delete-child-confirmation-{{child.slug}}">
+        <div id="delete-child-confirmation-{{child.slug}}" class="text-left">
             <p class="text-gray-500">Loading...</p>
         </div>
 
@@ -333,10 +333,10 @@
         {% elif child.has_incomplete_assessment %}
 
             <p>You'll need to finish up the assessment so we can make recommendations</p>
-            <a href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
-               class="btn btn-primary">
+            <c-button href="{% url 'bloom_student_interface:child_assessment' slug=child.slug %}"
+               class="">
                 Continue Assessment
-            </a>
+        </c-button>
         
         {% else %}
             <div class="space-y-4">
