@@ -2,6 +2,7 @@ from datetime import datetime
 
 from django.contrib.sites.shortcuts import get_current_site
 from ninja import Router, Schema
+from pydantic import ConfigDict
 
 # router = Router(tags=["xapi"]) # TODO, what are tags for?
 router = Router()
@@ -10,12 +11,11 @@ router = Router()
 
 
 class ExperienceRecordSchemaIn(Schema):
+    model_config = ConfigDict(extra="forbid")
+
     # pass
     timestamp: datetime
     # record_id # uuid
-
-    class Config:
-        extra = "forbid"
 
 
 class TODOSchema(Schema):

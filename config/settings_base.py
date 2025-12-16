@@ -136,17 +136,6 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
-
-
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -353,8 +342,6 @@ MARKDOWN_ALLOWED_TAGS = {
 }
 
 MARKDOWN_TEMPLATE_RENDER_ON = True
-
-
 COTTON_SNAKE_CASED_NAMES = False
 
 
@@ -362,18 +349,12 @@ COTTON_SNAKE_CASED_NAMES = False
 # ALLAUTH
 
 HEADLESS_CLIENTS = ("app",)
-
+ACCOUNT_SIGNUP_FIELDS = ["email*", "email2*", "password1*", "password2*"]
 ACCOUNT_LOGIN_METHODS = {"email"}
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_SIGNUP_EMAIL_ENTER_TWICE = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
-
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
-
-ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
-
 ACCOUNT_ADAPTER = "accounts.allauth_account_adapter.AccountAdapter"
 
 
