@@ -1,6 +1,9 @@
 <c-dropdown-menu >
     <c-slot name="trigger">
-        {{ user.email }} <i class="fas fa-chevron-down text-sm"></i>
+        <span class="">
+
+            {{ user.email }} <i class="fas fa-chevron-down text-sm"></i>
+        </span>
     </c-slot>
     
     <c-button dropdown="true" href="{% url 'account_profile' %}">Profile</c-button>

@@ -1,6 +1,6 @@
-<c-vars message />
+<c-vars message id />
 
-<div id="{{ c.attrs.id|default:'loading' }}" class="text-center py-12 {{ c.attrs.class }}">
+<div id="{{ id|default:'loading' }}" class="htmx-indicator text-center py-12 {{ c.attrs.class }}">
     <i class="fas fa-spinner fa-spin text-3xl text-gray-400"></i>
     <p class="mt-4 text-gray-500">{{ message|default:"Loading..." }}</p>
 </div>
