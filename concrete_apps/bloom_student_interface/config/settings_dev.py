@@ -61,3 +61,9 @@ MAXIMUM_CHANGE_LEVEL_RECOMMENDATIONS = 3
 TEMPLATES[0]["OPTIONS"]["context_processors"].append(
     "bloom_student_interface.context_processors.bloom"
 )
+
+
+AUTOMATICALLY_RECOMMEND_COURSE_SLUGS = [
+    "introduction-to-picky-eating",
+    "functionality-demo",
+]

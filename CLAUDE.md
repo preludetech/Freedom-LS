@@ -8,7 +8,7 @@ Import statements should go at the top of the file
 
 ### Exception handling
 
-- Try blocks hould be as short as possible
+- Try blocks should be as short as possible
 - When catching exceptions, be specific about the types of exceptions being handled. Avoid silent failures
 
 ## Development Environment
