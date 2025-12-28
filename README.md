@@ -1,4 +1,6 @@
-# The Learning System with no Name 
+# Freedom Learning System
+
+Freedom LS is a lot like a standard LMS, except that it's built for extensibility and general freedom. 
 
 The basic idea of this system is to build out all the functionality that would be needed in an LMS, it should work out of the box and have minimal opinions about how things should be done. 
 
