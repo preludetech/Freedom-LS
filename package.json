@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@tailwindcss/cli": "^4.1.16",
+    "jq": "^1.7.2",
     "tailwindcss": "^4.1.16"
   },
   "scripts": {
@@ -8,5 +9,3 @@
     "tailwind_build": "npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css"
   }
 }
-
-

@@ -6,194 +6,605 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('contenttypes', '0002_remove_content_type_name'),
-        ('sites', '0002_alter_domain_unique'),
+        ("contenttypes", "0002_remove_content_type_name"),
+        ("sites", "0002_alter_domain_unique"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Course',
+            name="Course",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('file_path', models.CharField(help_text='Relative path to the source file', max_length=500)),
-                ('meta', models.JSONField(blank=True, help_text='Optional metadata as key-value pairs', null=True)),
-                ('tags', models.JSONField(blank=True, help_text='Optional list of tags', null=True)),
-                ('title', models.CharField(max_length=500)),
-                ('subtitle', models.CharField(blank=True, max_length=500, null=True)),
-                ('description', models.TextField(blank=True, help_text='Optional description', null=True)),
-                ('slug', models.SlugField(help_text='URL-friendly identifier', max_length=500)),
-                ('content', models.TextField(blank=True, help_text='Markdown content', null=True)),
-                ('category', models.CharField(blank=True, max_length=200, null=True)),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "file_path",
+                    models.CharField(
+                        help_text="Relative path to the source file", max_length=500
+                    ),
+                ),
+                (
+                    "meta",
+                    models.JSONField(
+                        blank=True,
+                        help_text="Optional metadata as key-value pairs",
+                        null=True,
+                    ),
+                ),
+                (
+                    "tags",
+                    models.JSONField(
+                        blank=True, help_text="Optional list of tags", null=True
+                    ),
+                ),
+                ("title", models.CharField(max_length=500)),
+                ("subtitle", models.CharField(blank=True, max_length=500, null=True)),
+                (
+                    "description",
+                    models.TextField(
+                        blank=True, help_text="Optional description", null=True
+                    ),
+                ),
+                (
+                    "slug",
+                    models.SlugField(
+                        help_text="URL-friendly identifier", max_length=500
+                    ),
+                ),
+                (
+                    "content",
+                    models.TextField(
+                        blank=True, help_text="Markdown content", null=True
+                    ),
+                ),
+                ("category", models.CharField(blank=True, max_length=200, null=True)),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
             ],
             options={
-                'unique_together': {('site', 'slug')},
+                "unique_together": {("site", "slug")},
             },
         ),
         migrations.CreateModel(
-            name='Form',
+            name="Form",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('file_path', models.CharField(help_text='Relative path to the source file', max_length=500)),
-                ('meta', models.JSONField(blank=True, help_text='Optional metadata as key-value pairs', null=True)),
-                ('tags', models.JSONField(blank=True, help_text='Optional list of tags', null=True)),
-                ('title', models.CharField(max_length=500)),
-                ('subtitle', models.CharField(blank=True, max_length=500, null=True)),
-                ('description', models.TextField(blank=True, help_text='Optional description', null=True)),
-                ('slug', models.SlugField(help_text='URL-friendly identifier', max_length=500)),
-                ('content', models.TextField(blank=True, help_text='Markdown content', null=True)),
-                ('strategy', models.CharField(choices=[('CATEGORY_VALUE_SUM', 'Category Value Sum'), ('QUIZ', 'Quiz')], max_length=50)),
-                ('quiz_show_incorrect', models.BooleanField(blank=True, null=True)),
-                ('quiz_pass_percentage', models.PositiveSmallIntegerField(blank=True, help_text='Percentage (0-100) required to pass the quiz', null=True)),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "file_path",
+                    models.CharField(
+                        help_text="Relative path to the source file", max_length=500
+                    ),
+                ),
+                (
+                    "meta",
+                    models.JSONField(
+                        blank=True,
+                        help_text="Optional metadata as key-value pairs",
+                        null=True,
+                    ),
+                ),
+                (
+                    "tags",
+                    models.JSONField(
+                        blank=True, help_text="Optional list of tags", null=True
+                    ),
+                ),
+                ("title", models.CharField(max_length=500)),
+                ("subtitle", models.CharField(blank=True, max_length=500, null=True)),
+                (
+                    "description",
+                    models.TextField(
+                        blank=True, help_text="Optional description", null=True
+                    ),
+                ),
+                (
+                    "slug",
+                    models.SlugField(
+                        help_text="URL-friendly identifier", max_length=500
+                    ),
+                ),
+                (
+                    "content",
+                    models.TextField(
+                        blank=True, help_text="Markdown content", null=True
+                    ),
+                ),
+                (
+                    "strategy",
+                    models.CharField(
+                        choices=[
+                            ("CATEGORY_VALUE_SUM", "Category Value Sum"),
+                            ("QUIZ", "Quiz"),
+                        ],
+                        max_length=50,
+                    ),
+                ),
+                ("quiz_show_incorrect", models.BooleanField(blank=True, null=True)),
+                (
+                    "quiz_pass_percentage",
+                    models.PositiveSmallIntegerField(
+                        blank=True,
+                        help_text="Percentage (0-100) required to pass the quiz",
+                        null=True,
+                    ),
+                ),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
             ],
             options={
-                'unique_together': {('site', 'slug')},
+                "unique_together": {("site", "slug")},
             },
         ),
         migrations.CreateModel(
-            name='FormPage',
+            name="FormPage",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('file_path', models.CharField(help_text='Relative path to the source file', max_length=500)),
-                ('meta', models.JSONField(blank=True, help_text='Optional metadata as key-value pairs', null=True)),
-                ('tags', models.JSONField(blank=True, help_text='Optional list of tags', null=True)),
-                ('title', models.CharField(max_length=500)),
-                ('subtitle', models.CharField(blank=True, max_length=500, null=True)),
-                ('description', models.TextField(blank=True, help_text='Optional description', null=True)),
-                ('slug', models.SlugField(help_text='URL-friendly identifier', max_length=500)),
-                ('order', models.PositiveIntegerField(default=0)),
-                ('category', models.CharField(blank=True, max_length=200, null=True)),
-                ('form', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='pages', to='freedom_ls_content_engine.form')),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "file_path",
+                    models.CharField(
+                        help_text="Relative path to the source file", max_length=500
+                    ),
+                ),
+                (
+                    "meta",
+                    models.JSONField(
+                        blank=True,
+                        help_text="Optional metadata as key-value pairs",
+                        null=True,
+                    ),
+                ),
+                (
+                    "tags",
+                    models.JSONField(
+                        blank=True, help_text="Optional list of tags", null=True
+                    ),
+                ),
+                ("title", models.CharField(max_length=500)),
+                ("subtitle", models.CharField(blank=True, max_length=500, null=True)),
+                (
+                    "description",
+                    models.TextField(
+                        blank=True, help_text="Optional description", null=True
+                    ),
+                ),
+                (
+                    "slug",
+                    models.SlugField(
+                        help_text="URL-friendly identifier", max_length=500
+                    ),
+                ),
+                ("order", models.PositiveIntegerField(default=0)),
+                ("category", models.CharField(blank=True, max_length=200, null=True)),
+                (
+                    "form",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="pages",
+                        to="freedom_ls_content_engine.form",
+                    ),
+                ),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
             ],
             options={
-                'ordering': ['order'],
+                "ordering": ["order"],
             },
         ),
         migrations.CreateModel(
-            name='FormContent',
+            name="FormContent",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('file_path', models.CharField(help_text='Relative path to the source file', max_length=500)),
-                ('meta', models.JSONField(blank=True, help_text='Optional metadata as key-value pairs', null=True)),
-                ('tags', models.JSONField(blank=True, help_text='Optional list of tags', null=True)),
-                ('content', models.TextField()),
-                ('order', models.PositiveIntegerField(default=0)),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
-                ('form_page', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='text_items', to='freedom_ls_content_engine.formpage')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "file_path",
+                    models.CharField(
+                        help_text="Relative path to the source file", max_length=500
+                    ),
+                ),
+                (
+                    "meta",
+                    models.JSONField(
+                        blank=True,
+                        help_text="Optional metadata as key-value pairs",
+                        null=True,
+                    ),
+                ),
+                (
+                    "tags",
+                    models.JSONField(
+                        blank=True, help_text="Optional list of tags", null=True
+                    ),
+                ),
+                ("content", models.TextField()),
+                ("order", models.PositiveIntegerField(default=0)),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
+                (
+                    "form_page",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="text_items",
+                        to="freedom_ls_content_engine.formpage",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['order'],
+                "ordering": ["order"],
             },
         ),
         migrations.CreateModel(
-            name='FormQuestion',
+            name="FormQuestion",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('file_path', models.CharField(help_text='Relative path to the source file', max_length=500)),
-                ('meta', models.JSONField(blank=True, help_text='Optional metadata as key-value pairs', null=True)),
-                ('tags', models.JSONField(blank=True, help_text='Optional list of tags', null=True)),
-                ('order', models.PositiveIntegerField(default=0)),
-                ('category', models.CharField(blank=True, max_length=200, null=True)),
-                ('question', models.TextField()),
-                ('type', models.CharField(choices=[('multiple_choice', 'Multiple Choice'), ('checkboxes', 'Checkboxes'), ('short_text', 'Short Text'), ('long_text', 'Long Text')], max_length=20)),
-                ('required', models.BooleanField(default=True)),
-                ('form_page', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='questions', to='freedom_ls_content_engine.formpage')),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "file_path",
+                    models.CharField(
+                        help_text="Relative path to the source file", max_length=500
+                    ),
+                ),
+                (
+                    "meta",
+                    models.JSONField(
+                        blank=True,
+                        help_text="Optional metadata as key-value pairs",
+                        null=True,
+                    ),
+                ),
+                (
+                    "tags",
+                    models.JSONField(
+                        blank=True, help_text="Optional list of tags", null=True
+                    ),
+                ),
+                ("order", models.PositiveIntegerField(default=0)),
+                ("category", models.CharField(blank=True, max_length=200, null=True)),
+                ("question", models.TextField()),
+                (
+                    "type",
+                    models.CharField(
+                        choices=[
+                            ("multiple_choice", "Multiple Choice"),
+                            ("checkboxes", "Checkboxes"),
+                            ("short_text", "Short Text"),
+                            ("long_text", "Long Text"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("required", models.BooleanField(default=True)),
+                (
+                    "form_page",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="questions",
+                        to="freedom_ls_content_engine.formpage",
+                    ),
+                ),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
             ],
             options={
-                'ordering': ['order'],
+                "ordering": ["order"],
             },
         ),
         migrations.CreateModel(
-            name='QuestionOption',
+            name="QuestionOption",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('text', models.CharField(max_length=500)),
-                ('value', models.CharField(max_length=100)),
-                ('order', models.PositiveIntegerField(default=0)),
-                ('correct', models.BooleanField(blank=True, null=True)),
-                ('question', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='options', to='freedom_ls_content_engine.formquestion')),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("text", models.CharField(max_length=500)),
+                ("value", models.CharField(max_length=100)),
+                ("order", models.PositiveIntegerField(default=0)),
+                ("correct", models.BooleanField(blank=True, null=True)),
+                (
+                    "question",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="options",
+                        to="freedom_ls_content_engine.formquestion",
+                    ),
+                ),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
             ],
             options={
-                'ordering': ['order'],
+                "ordering": ["order"],
             },
         ),
         migrations.CreateModel(
-            name='Activity',
+            name="Activity",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('file_path', models.CharField(help_text='Relative path to the source file', max_length=500)),
-                ('meta', models.JSONField(blank=True, help_text='Optional metadata as key-value pairs', null=True)),
-                ('tags', models.JSONField(blank=True, help_text='Optional list of tags', null=True)),
-                ('title', models.CharField(max_length=500)),
-                ('subtitle', models.CharField(blank=True, max_length=500, null=True)),
-                ('description', models.TextField(blank=True, help_text='Optional description', null=True)),
-                ('slug', models.SlugField(help_text='URL-friendly identifier', max_length=500)),
-                ('content', models.TextField(blank=True, help_text='Markdown content', null=True)),
-                ('category', models.CharField(blank=True, max_length=200, null=True)),
-                ('level', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "file_path",
+                    models.CharField(
+                        help_text="Relative path to the source file", max_length=500
+                    ),
+                ),
+                (
+                    "meta",
+                    models.JSONField(
+                        blank=True,
+                        help_text="Optional metadata as key-value pairs",
+                        null=True,
+                    ),
+                ),
+                (
+                    "tags",
+                    models.JSONField(
+                        blank=True, help_text="Optional list of tags", null=True
+                    ),
+                ),
+                ("title", models.CharField(max_length=500)),
+                ("subtitle", models.CharField(blank=True, max_length=500, null=True)),
+                (
+                    "description",
+                    models.TextField(
+                        blank=True, help_text="Optional description", null=True
+                    ),
+                ),
+                (
+                    "slug",
+                    models.SlugField(
+                        help_text="URL-friendly identifier", max_length=500
+                    ),
+                ),
+                (
+                    "content",
+                    models.TextField(
+                        blank=True, help_text="Markdown content", null=True
+                    ),
+                ),
+                ("category", models.CharField(blank=True, max_length=200, null=True)),
+                ("level", models.PositiveSmallIntegerField(blank=True, null=True)),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': 'Activities',
-                'unique_together': {('site', 'slug')},
+                "verbose_name_plural": "Activities",
+                "unique_together": {("site", "slug")},
             },
         ),
         migrations.CreateModel(
-            name='ContentCollectionItem',
+            name="ContentCollectionItem",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('child_id', models.UUIDField()),
-                ('order', models.PositiveIntegerField(default=0)),
-                ('overrides', models.JSONField(blank=True, help_text='Optional overrides as key-value pairs', null=True)),
-                ('child_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.contenttype')),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
-                ('collection', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='freedom_ls_content_engine.course')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("child_id", models.UUIDField()),
+                ("order", models.PositiveIntegerField(default=0)),
+                (
+                    "overrides",
+                    models.JSONField(
+                        blank=True,
+                        help_text="Optional overrides as key-value pairs",
+                        null=True,
+                    ),
+                ),
+                (
+                    "child_type",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="contenttypes.contenttype",
+                    ),
+                ),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
+                (
+                    "collection",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="items",
+                        to="freedom_ls_content_engine.course",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['order'],
-                'unique_together': {('collection', 'child_type', 'child_id')},
+                "ordering": ["order"],
+                "unique_together": {("collection", "child_type", "child_id")},
             },
         ),
         migrations.CreateModel(
-            name='File',
+            name="File",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('file', models.FileField(upload_to='media/content_engine')),
-                ('file_type', models.CharField(choices=[('IMAGE', 'Image'), ('DOCUMENT', 'Document'), ('VIDEO', 'Video'), ('AUDIO', 'Audio'), ('OTHER', 'Other')], default='OTHER', max_length=20)),
-                ('file_path', models.CharField(help_text='Relative path to the source file', max_length=500)),
-                ('original_filename', models.CharField(max_length=255)),
-                ('mime_type', models.CharField(blank=True, max_length=100)),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("file", models.FileField(upload_to="media/content_engine")),
+                (
+                    "file_type",
+                    models.CharField(
+                        choices=[
+                            ("IMAGE", "Image"),
+                            ("DOCUMENT", "Document"),
+                            ("VIDEO", "Video"),
+                            ("AUDIO", "Audio"),
+                            ("OTHER", "Other"),
+                        ],
+                        default="OTHER",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "file_path",
+                    models.CharField(
+                        help_text="Relative path to the source file", max_length=500
+                    ),
+                ),
+                ("original_filename", models.CharField(max_length=255)),
+                ("mime_type", models.CharField(blank=True, max_length=100)),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
             ],
             options={
-                'unique_together': {('site', 'file_path')},
+                "unique_together": {("site", "file_path")},
             },
         ),
         migrations.CreateModel(
-            name='Topic',
+            name="Topic",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('file_path', models.CharField(help_text='Relative path to the source file', max_length=500)),
-                ('meta', models.JSONField(blank=True, help_text='Optional metadata as key-value pairs', null=True)),
-                ('tags', models.JSONField(blank=True, help_text='Optional list of tags', null=True)),
-                ('title', models.CharField(max_length=500)),
-                ('subtitle', models.CharField(blank=True, max_length=500, null=True)),
-                ('description', models.TextField(blank=True, help_text='Optional description', null=True)),
-                ('slug', models.SlugField(help_text='URL-friendly identifier', max_length=500)),
-                ('content', models.TextField(blank=True, help_text='Markdown content', null=True)),
-                ('category', models.CharField(blank=True, max_length=200, null=True)),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "file_path",
+                    models.CharField(
+                        help_text="Relative path to the source file", max_length=500
+                    ),
+                ),
+                (
+                    "meta",
+                    models.JSONField(
+                        blank=True,
+                        help_text="Optional metadata as key-value pairs",
+                        null=True,
+                    ),
+                ),
+                (
+                    "tags",
+                    models.JSONField(
+                        blank=True, help_text="Optional list of tags", null=True
+                    ),
+                ),
+                ("title", models.CharField(max_length=500)),
+                ("subtitle", models.CharField(blank=True, max_length=500, null=True)),
+                (
+                    "description",
+                    models.TextField(
+                        blank=True, help_text="Optional description", null=True
+                    ),
+                ),
+                (
+                    "slug",
+                    models.SlugField(
+                        help_text="URL-friendly identifier", max_length=500
+                    ),
+                ),
+                (
+                    "content",
+                    models.TextField(
+                        blank=True, help_text="Markdown content", null=True
+                    ),
+                ),
+                ("category", models.CharField(blank=True, max_length=200, null=True)),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
             ],
             options={
-                'unique_together': {('site', 'slug')},
+                "unique_together": {("site", "slug")},
             },
         ),
     ]

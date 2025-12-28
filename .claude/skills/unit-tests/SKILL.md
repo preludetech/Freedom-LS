@@ -1,12 +1,12 @@
 ---
 name: unit-tests
-description: Write pytest unit tests for Django models, views, APIs, and utilities. Use when writing tests, adding test coverage, or when the user mentions testing, pytest, or test files. Follows project-specific patterns including site-aware models, mock_site_context fixture, and pytest-django conventions.
+description: Write pytest unit tests for Django models, views, APIs, and utilities. Use when writing/editing tests, adding test coverage, or when the user mentions testing, pytest, or test files. 
 allowed-tools: Read, Grep, Glob, Write, Edit, Bash
 ---
 
 # Unit Test Writer
 
-This Skill helps write comprehensive pytest unit tests for the Django LMS project, following established patterns and conventions.
+This Skill helps write comprehensive pytest unit tests, following established patterns and conventions.
 
 ## Project-Specific Testing Patterns
 
@@ -47,6 +47,7 @@ Common fixtures are in `conftest.py`.
 If you make new fixtures that are likely to be reused, put them in `conftest.py`
 
 ### Import Pattern
+
 Apps are inside the `apps/` directory but it's on the PATH. Leave out the `apps` part:
 
 ```python

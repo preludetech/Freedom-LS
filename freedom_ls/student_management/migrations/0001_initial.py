@@ -7,96 +7,241 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('freedom_ls_content_engine', '0001_initial'),
-        ('sites', '0002_alter_domain_unique'),
+        ("freedom_ls_content_engine", "0001_initial"),
+        ("sites", "0002_alter_domain_unique"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Cohort',
+            name="Cohort",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('name', models.CharField(max_length=150, verbose_name='name')),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("name", models.CharField(max_length=150, verbose_name="name")),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='CohortCourseRegistration',
+            name="CohortCourseRegistration",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('is_active', models.BooleanField(default=True)),
-                ('registered_at', models.DateTimeField(auto_now_add=True)),
-                ('cohort', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='course_registrations', to='freedom_ls_student_management.cohort')),
-                ('collection', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='cohort_registrations', to='freedom_ls_content_engine.course')),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("is_active", models.BooleanField(default=True)),
+                ("registered_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "cohort",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="course_registrations",
+                        to="freedom_ls_student_management.cohort",
+                    ),
+                ),
+                (
+                    "collection",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="cohort_registrations",
+                        to="freedom_ls_content_engine.course",
+                    ),
+                ),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='RecommendedCourse',
+            name="RecommendedCourse",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('collection', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='recommendations', to='freedom_ls_content_engine.course')),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='recommended_courses', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "collection",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="recommendations",
+                        to="freedom_ls_content_engine.course",
+                    ),
+                ),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="recommended_courses",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': 'Recommended courses',
-                'ordering': ['-created_at'],
+                "verbose_name_plural": "Recommended courses",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='Student',
+            name="Student",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('id_number', models.CharField(blank=True, max_length=50, null=True)),
-                ('date_of_birth', models.DateField(blank=True, null=True)),
-                ('cellphone', models.CharField(blank=True, max_length=20, null=True)),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("id_number", models.CharField(blank=True, max_length=50, null=True)),
+                ("date_of_birth", models.DateField(blank=True, null=True)),
+                ("cellphone", models.CharField(blank=True, max_length=20, null=True)),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='CohortMembership',
+            name="CohortMembership",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('cohort', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='freedom_ls_student_management.cohort')),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
-                ('student', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='freedom_ls_student_management.student')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "cohort",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="freedom_ls_student_management.cohort",
+                    ),
+                ),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
+                (
+                    "student",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="freedom_ls_student_management.student",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='StudentCourseRegistration',
+            name="StudentCourseRegistration",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('is_active', models.BooleanField(default=True)),
-                ('registered_at', models.DateTimeField(auto_now_add=True)),
-                ('collection', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='student_registrations', to='freedom_ls_content_engine.course')),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
-                ('student', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='course_registrations', to='freedom_ls_student_management.student')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("is_active", models.BooleanField(default=True)),
+                ("registered_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "collection",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="student_registrations",
+                        to="freedom_ls_content_engine.course",
+                    ),
+                ),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
+                (
+                    "student",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="course_registrations",
+                        to="freedom_ls_student_management.student",
+                    ),
+                ),
             ],
         ),
         migrations.AddConstraint(
-            model_name='cohort',
-            constraint=models.UniqueConstraint(fields=('site_id', 'name'), name='unique_cohort_name_per_site'),
+            model_name="cohort",
+            constraint=models.UniqueConstraint(
+                fields=("site_id", "name"), name="unique_cohort_name_per_site"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='cohortcourseregistration',
-            constraint=models.UniqueConstraint(fields=('site_id', 'collection', 'cohort'), name='unique_cohort_course_registration'),
+            model_name="cohortcourseregistration",
+            constraint=models.UniqueConstraint(
+                fields=("site_id", "collection", "cohort"),
+                name="unique_cohort_course_registration",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='studentcourseregistration',
-            constraint=models.UniqueConstraint(fields=('site_id', 'collection', 'student'), name='unique_student_course_registration'),
+            model_name="studentcourseregistration",
+            constraint=models.UniqueConstraint(
+                fields=("site_id", "collection", "student"),
+                name="unique_student_course_registration",
+            ),
         ),
     ]

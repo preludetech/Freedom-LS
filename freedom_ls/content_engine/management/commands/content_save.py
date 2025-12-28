@@ -18,7 +18,11 @@ from django.utils.text import slugify
 
 import djclick as click
 
-from freedom_ls.content_engine.validate import validate, get_all_files, parse_single_file
+from freedom_ls.content_engine.validate import (
+    validate,
+    get_all_files,
+    parse_single_file,
+)
 from freedom_ls.content_engine.schema import ContentType as SchemaContentType
 from freedom_ls.content_engine.models import (
     Topic,
@@ -264,7 +268,7 @@ def save_with_uuid(
     invalid_fields = item_field_names - model_field_names
 
     if invalid_fields:
-        source_info = getattr(item, 'file_path', 'inline content')
+        source_info = getattr(item, "file_path", "inline content")
         raise ValueError(
             f"Cannot save {model_class.__name__} from {source_info}: "
             f"Fields present in frontmatter but don't exist in Django model: {sorted(invalid_fields)}. "
@@ -530,12 +534,16 @@ def save_content_to_db(path, site_name):
                 # Save texts and questions in the order they appear in the file
                 for content_order, item in enumerate(file_content_items):
                     if item.content_type == SchemaContentType.FORM_CONTENT:
-                        save_form_content(item, form_page, site, path, order=content_order)
+                        save_form_content(
+                            item, form_page, site, path, order=content_order
+                        )
                         logger.info(
                             f"Saved FormContent in {form_page.title} (order={content_order})"
                         )
                     elif item.content_type == SchemaContentType.FORM_QUESTION:
-                        save_form_question(item, form_page, site, path, order=content_order)
+                        save_form_question(
+                            item, form_page, site, path, order=content_order
+                        )
                         logger.info(
                             f"Saved FormQuestion in {form_page.title} (order={content_order})"
                         )
@@ -573,7 +581,9 @@ def save_content_to_db(path, site_name):
 
                     if main_files:
                         children_list.append(
-                            type("Child", (), {"path": main_files[0], "overrides": None})()
+                            type(
+                                "Child", (), {"path": main_files[0], "overrides": None}
+                            )()
                         )
 
         # Create ContentCollectionItem entries for each child

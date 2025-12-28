@@ -25,9 +25,7 @@ class SiteAwareModelBase(models.Model):
     def save(self, *args, **kwargs):
         # Automatically set site_id if not already set
 
-
         if not self.site_id:
-
             request = getattr(_thread_locals, "request", None)
             if request:
                 self.site = get_current_site(request)

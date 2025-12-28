@@ -5,7 +5,6 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 from django.contrib.sites.shortcuts import get_current_site
-from django.utils.translation import gettext_lazy as _
 from freedom_ls.site_aware_models.models import _thread_locals, SiteAwareModelBase
 
 

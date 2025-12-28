@@ -7,77 +7,193 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('freedom_ls_content_engine', '0001_initial'),
-        ('sites', '0002_alter_domain_unique'),
+        ("freedom_ls_content_engine", "0001_initial"),
+        ("sites", "0002_alter_domain_unique"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='FormProgress',
+            name="FormProgress",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('start_time', models.DateTimeField(auto_now_add=True)),
-                ('last_updated_time', models.DateTimeField(auto_now=True)),
-                ('completed_time', models.DateTimeField(blank=True, null=True)),
-                ('scores', models.JSONField(blank=True, help_text='Calculated scores by category', null=True)),
-                ('form', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='progress_records', to='freedom_ls_content_engine.form')),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='form_progress', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("start_time", models.DateTimeField(auto_now_add=True)),
+                ("last_updated_time", models.DateTimeField(auto_now=True)),
+                ("completed_time", models.DateTimeField(blank=True, null=True)),
+                (
+                    "scores",
+                    models.JSONField(
+                        blank=True, help_text="Calculated scores by category", null=True
+                    ),
+                ),
+                (
+                    "form",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="progress_records",
+                        to="freedom_ls_content_engine.form",
+                    ),
+                ),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="form_progress",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': 'Form progress records',
+                "verbose_name_plural": "Form progress records",
             },
         ),
         migrations.CreateModel(
-            name='CourseProgress',
+            name="CourseProgress",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('start_time', models.DateTimeField(auto_now_add=True)),
-                ('last_accessed_time', models.DateTimeField(auto_now=True)),
-                ('completed_time', models.DateTimeField(blank=True, null=True)),
-                ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='progress_records', to='freedom_ls_content_engine.course')),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='course_progress', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("start_time", models.DateTimeField(auto_now_add=True)),
+                ("last_accessed_time", models.DateTimeField(auto_now=True)),
+                ("completed_time", models.DateTimeField(blank=True, null=True)),
+                (
+                    "course",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="progress_records",
+                        to="freedom_ls_content_engine.course",
+                    ),
+                ),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="course_progress",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': 'Course progress records',
-                'unique_together': {('user', 'course')},
+                "verbose_name_plural": "Course progress records",
+                "unique_together": {("user", "course")},
             },
         ),
         migrations.CreateModel(
-            name='QuestionAnswer',
+            name="QuestionAnswer",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('text_answer', models.TextField(blank=True, null=True)),
-                ('last_updated_time', models.DateTimeField(auto_now=True)),
-                ('form_progress', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='answers', to='freedom_ls_student_progress.formprogress')),
-                ('question', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='freedom_ls_content_engine.formquestion')),
-                ('selected_options', models.ManyToManyField(blank=True, to='freedom_ls_content_engine.questionoption')),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("text_answer", models.TextField(blank=True, null=True)),
+                ("last_updated_time", models.DateTimeField(auto_now=True)),
+                (
+                    "form_progress",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="answers",
+                        to="freedom_ls_student_progress.formprogress",
+                    ),
+                ),
+                (
+                    "question",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="freedom_ls_content_engine.formquestion",
+                    ),
+                ),
+                (
+                    "selected_options",
+                    models.ManyToManyField(
+                        blank=True, to="freedom_ls_content_engine.questionoption"
+                    ),
+                ),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
             ],
             options={
-                'unique_together': {('form_progress', 'question')},
+                "unique_together": {("form_progress", "question")},
             },
         ),
         migrations.CreateModel(
-            name='TopicProgress',
+            name="TopicProgress",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('start_time', models.DateTimeField(auto_now_add=True)),
-                ('last_accessed_time', models.DateTimeField(auto_now=True)),
-                ('complete_time', models.DateTimeField(blank=True, null=True)),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
-                ('topic', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='progress_records', to='freedom_ls_content_engine.topic')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='topic_progress', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("start_time", models.DateTimeField(auto_now_add=True)),
+                ("last_accessed_time", models.DateTimeField(auto_now=True)),
+                ("complete_time", models.DateTimeField(blank=True, null=True)),
+                (
+                    "site",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="sites.site"
+                    ),
+                ),
+                (
+                    "topic",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="progress_records",
+                        to="freedom_ls_content_engine.topic",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="topic_progress",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': 'Topic progress records',
-                'unique_together': {('user', 'topic')},
+                "verbose_name_plural": "Topic progress records",
+                "unique_together": {("user", "topic")},
             },
         ),
     ]

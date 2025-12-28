@@ -92,7 +92,9 @@ def mock_site_context(site, mocker):
     mock_request = mocker.Mock()
     _thread_locals.request = mock_request
 
-    mocker.patch("freedom_ls.site_aware_models.models.get_current_site", return_value=site)
+    mocker.patch(
+        "freedom_ls.site_aware_models.models.get_current_site", return_value=site
+    )
     # Also patch for template context processors
     mocker.patch("django.contrib.sites.shortcuts.get_current_site", return_value=site)
 

@@ -8,6 +8,6 @@ class CurrentSiteMiddleware:
     def __call__(self, request):
         _thread_locals.request = request
         response = self.get_response(request)
-        if hasattr(_thread_locals, 'request'):
-            delattr(_thread_locals, 'request')
+        if hasattr(_thread_locals, "request"):
+            delattr(_thread_locals, "request")
         return response

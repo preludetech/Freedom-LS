@@ -1,0 +1,1 @@
+cat /home/sheena/workspace/lms/course_admin/.claude/logs/skill-usage.log - View skill usage log contents

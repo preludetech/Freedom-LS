@@ -46,7 +46,7 @@ dev = [
     "pytest-django>=4.11.1",
     "pytest-mock>=3.15.1",
     "django-browser-reload>=1.21.0",
-
+    "ruff>=0.14.10",
 ]
 
 

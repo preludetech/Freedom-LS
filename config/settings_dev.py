@@ -1,4 +1,4 @@
-from .settings_base import *
+from .settings_base import *  # noqa: F403, F405
 import sys
 import os
 
@@ -22,12 +22,12 @@ TESTING = "test" in sys.argv or "PYTEST_VERSION" in os.environ
 
 if not TESTING:
     INSTALLED_APPS = [
-        *INSTALLED_APPS,
+        *INSTALLED_APPS,  # noqa: F405
         "debug_toolbar",
     ]
     MIDDLEWARE = [
         "debug_toolbar.middleware.DebugToolbarMiddleware",
-        *MIDDLEWARE,
+        *MIDDLEWARE,  # noqa: F405
     ]
 
 INSTALLED_APPS = [

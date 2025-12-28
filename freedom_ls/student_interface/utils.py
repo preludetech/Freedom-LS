@@ -1,9 +1,7 @@
-from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from django.utils import timezone
 from freedom_ls.content_engine.models import Topic, Form, Course, FormStrategy
-from freedom_ls.student_progress.models import FormProgress, TopicProgress, QuestionAnswer
-from freedom_ls.student_management.models import Student, StudentCourseRegistration
+from freedom_ls.student_progress.models import FormProgress, TopicProgress
+from freedom_ls.student_management.models import Student
 
 
 def get_is_registered(request, course):
@@ -135,12 +133,14 @@ def get_course_index(request, course):
             else:
                 child_type = "unknown"
 
-            children.append({
-                "title": child.title,
-                "status": BLOCKED,
-                "url": "",
-                "type": child_type,
-            })
+            children.append(
+                {
+                    "title": child.title,
+                    "status": BLOCKED,
+                    "url": "",
+                    "type": child_type,
+                }
+            )
     return children
 
 

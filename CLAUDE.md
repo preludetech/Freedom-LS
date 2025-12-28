@@ -2,7 +2,15 @@
 
 This is a multi-site Learning Management System (LMS) built with Django. The project uses a site-aware architecture where all models are scoped to Django Sites, enabling multiple independent LMS instances to run from a single codebase.
 
+## Major components
+
+- django>=5.2.7,<6.0 
+- HTMX is used for frontend interactions with the server 
+- AlpineJS is used for frontend interactions
+
 ## Code style
+
+### Import statements 
 
 Import statements should go at the top of the file 
 
@@ -11,14 +19,30 @@ Import statements should go at the top of the file
 - Try blocks should be as short as possible
 - When catching exceptions, be specific about the types of exceptions being handled. Avoid silent failures
 
+### YAGNI 
+
+Don't build functionality that is not explicitly requested.
+
+### DRY 
+
+Focus on clean and DRY code.
+
+### Typing 
+
+All views must include type hints using django-stubs.
+
+
 ## Development Environment
 
 ### Package Management
+
 - **uv** is used for Python dependency management
 - Install dependencies: `uv sync`
 - Activate virtual environment: `source .venv/bin/activate`
+- run python scripts using uv. Eg `uv run manage.py runserver`, `uv run pytest`
 
 ### Running the Server
+
 ```bash
 python manage.py runserver
 ```
@@ -35,26 +59,21 @@ python manage.py runserver
   - Keep things DRY - don't duplicate styles that already exist in the component library
 
 ### Database
-- Apply migrations: `python manage.py migrate`
-- Create migrations: `python manage.py makemigrations`
+
+- Apply migrations: `uv run manage.py migrate`
+- Create migrations: `uv run manage.py makemigrations`
 
 ### Testing
+
 - Pytest is used for testing (via pytest-django)
 - Settings configured in `pyproject.toml`
 - Default test settings module: `config.settings_dev`
 - Shared fixtures are in `conftest.py` at project root
-- when creating tests, make one test at a time
+- When creating tests, make one test at a time
+- When updating tests: Edit one test at a time and make sure it behaves as expected before making many edits
 - Run specific test: `pytest path/to/test_file.py::test_name`
 
-To run all tests except for the tests of the bloom app run `pytest`
-
-To run the Bloom tests in isolation, run `pytest concrete_apps/bloom_student_interface --ds concrete_apps.bloom_student_interface.config.settings_dev`
-
-To run all the tests (including the Bloom tests) run: `pytest apps concrete_apps/bloom_student_interface --ds concrete_apps.bloom_student_interface.config.settings_dev`
-
-
-
-
+To run all tests run `uv run pytest`
 
 ## Architecture
 
@@ -73,6 +92,7 @@ from content_engine.models import Course
 ```
 
 ### Site-Aware Models Pattern
+
 The core architectural pattern is site isolation using Django Sites framework:
 
 - **SiteAwareModelBase**: Adds a ForeignKey to Django Site and includes SiteAwareManager
@@ -83,13 +103,19 @@ The core architectural pattern is site isolation using Django Sites framework:
 
 This means most queries automatically scope to the current site based on the request's domain.
 
+### Admin interface 
+
+All `ModelAdmin`instances for site aware models must inherit from from `freedom_ls.site_aware_models.admin.SiteAwareModelAdmin`
+
 ### Custom User Model
+
 - `AUTH_USER_MODEL = "accounts.User"`
 - User model extends AbstractBaseUser and is site-aware
 - Uses email-based authentication (no username field)
-- UserManager also filters by site
+- `UserManager` also filters by site
 
 ### Multi-Tenancy Configuration
+
 - Site-specific configuration in `config/settings_base.py` via `site_conf` dict
 - Each site can have custom branding (SITE_TITLE, SITE_HEADER, COLORS)
 - Unfold admin interface uses `get_unfold_value()` to dynamically load site-specific settings
@@ -98,11 +124,13 @@ This means most queries automatically scope to the current site based on the req
 
 **Core Apps:**
 - `accounts`: Custom User model with email-based auth
+- `base`: Foundational templates
 - `site_aware_models`: Base models, managers, and middleware for multi-site support
 - `student_management`: Student, Cohort, and CourseRegistration models
-- `content_engine`: Content models (Topic, Form, Collection) with markdown rendering
-- `student_interface`: Student-facing views, APIs, and progress tracking
-- `app_authentication`: Authentication-related functionality
+- `content_engine`: Content models (Topic, Form, Course) with markdown rendering
+- `student_interface`: Student-facing UI. Purely visual, contains no models.
+- `educator_interface`: Educator-facing UI. Purely visual, contains no models.
+- `student_progress`: Tracks course and learning progress 
 
 **Framework Apps:**
 - Uses django-allauth with headless mode for API authentication
@@ -113,7 +141,7 @@ This means most queries automatically scope to the current site based on the req
 - django-ninja for REST API
 
 ### Content Engine
-- Content types: Topic, Form, Collection, FormPage, FormQuestion, FormContent
+- Content types: Topic, Form, Course, FormPage, FormQuestion, FormContent
 - Base classes: `BaseContent`, `TitledContent`, `MarkdownContent`
 - Markdown rendering with custom tags (c-youtube, c-picture, c-callout, c-content-link)
 - Content files stored with relative `file_path` to content root
@@ -121,21 +149,17 @@ This means most queries automatically scope to the current site based on the req
 
 ### Student Registration System
 Students can be registered for courses in two ways:
-1. **Direct registration**: StudentCourseRegistration links Student to ContentCollection
+1. **Direct registration**: StudentCourseRegistration links Student to Course
 2. **Cohort-based registration**: Students join Cohorts, Cohorts register for courses
 3. `Student.get_course_registrations()` merges both registration types
-
-### API Structure
-- Main API defined in `config/urls.py` using django-ninja's `NinjaAPI()`
-- Student API: `/api/student/` (routed to `student_interface.apis.router`)
-- Uses allauth headless authentication (`x_session_token_auth`)
-- Authentication via `_allauth/` endpoints
 
 ### Template System
 - Uses django-cotton for component-based templates
 - django-template-partials for HTMX-style partial rendering
 - Custom template loaders with caching enabled
 - Template builtins include cotton and partials templatetags
+
+
 
 ## Settings
 - `config/settings_base.py`: Base settings for all environments

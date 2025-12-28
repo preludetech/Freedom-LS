@@ -1,7 +1,9 @@
 import tempfile
 from pathlib import Path
 import pytest
-from freedom_ls.content_engine.management.commands.content_save import save_content_to_db
+from freedom_ls.content_engine.management.commands.content_save import (
+    save_content_to_db,
+)
 from freedom_ls.content_engine.models import Course, ContentCollectionItem, Topic, Form
 
 

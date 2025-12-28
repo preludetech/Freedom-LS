@@ -13,11 +13,11 @@ def site_config(request):
     site_name = site.name
 
     # Get site-specific configuration from settings.site_conf
-    site_conf = getattr(settings, 'site_conf', {})
+    site_conf = getattr(settings, "site_conf", {})
     config = site_conf.get(site_name, {})
 
     return {
-        'site_name': site_name,
-        'site_title': config.get('SITE_TITLE', site_name),
-        'site_header': config.get('SITE_HEADER', site_name),
+        "site_name": site_name,
+        "site_title": config.get("SITE_TITLE", site_name),
+        "site_header": config.get("SITE_HEADER", site_name),
     }

@@ -246,17 +246,13 @@ def test_score_category_value_sum_with_three_level_hierarchy(
     option1_q1 = QuestionOption.objects.create(
         question=question1, text="Daily", value="5", order=0
     )
-    QuestionOption.objects.create(
-        question=question1, text="Weekly", value="3", order=1
-    )
+    QuestionOption.objects.create(question=question1, text="Weekly", value="3", order=1)
 
     # Create options for question 2 (max value = 10)
     option1_q2 = QuestionOption.objects.create(
         question=question2, text="Excellent", value="10", order=0
     )
-    QuestionOption.objects.create(
-        question=question2, text="Good", value="7", order=1
-    )
+    QuestionOption.objects.create(question=question2, text="Good", value="7", order=1)
 
     # Create form progress
     form_progress = FormProgress.objects.create(user=user, form=form)

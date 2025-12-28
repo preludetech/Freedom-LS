@@ -34,7 +34,9 @@ def test_score_quiz_single_correct_answer(mock_site_context, user, form):
     form_progress = FormProgress.objects.create(user=user, form=form)
 
     # Create an answer selecting the correct option
-    answer = QuestionAnswer.objects.create(form_progress=form_progress, question=question)
+    answer = QuestionAnswer.objects.create(
+        form_progress=form_progress, question=question
+    )
     answer.selected_options.add(correct_option)
 
     # Call the scoring method
@@ -77,7 +79,9 @@ def test_score_quiz_single_incorrect_answer(mock_site_context, user, form):
     form_progress = FormProgress.objects.create(user=user, form=form)
 
     # Create an answer selecting an incorrect option
-    answer = QuestionAnswer.objects.create(form_progress=form_progress, question=question)
+    answer = QuestionAnswer.objects.create(
+        form_progress=form_progress, question=question
+    )
     answer.selected_options.add(incorrect_option)
 
     # Call the scoring method
@@ -143,15 +147,21 @@ def test_score_quiz_multiple_questions_mixed_answers(mock_site_context, user, fo
     form_progress = FormProgress.objects.create(user=user, form=form)
 
     # Answer Q1 correctly
-    answer1 = QuestionAnswer.objects.create(form_progress=form_progress, question=question1)
+    answer1 = QuestionAnswer.objects.create(
+        form_progress=form_progress, question=question1
+    )
     answer1.selected_options.add(correct_option1)
 
     # Answer Q2 incorrectly
-    answer2 = QuestionAnswer.objects.create(form_progress=form_progress, question=question2)
+    answer2 = QuestionAnswer.objects.create(
+        form_progress=form_progress, question=question2
+    )
     answer2.selected_options.add(incorrect_option2)
 
     # Answer Q3 correctly
-    answer3 = QuestionAnswer.objects.create(form_progress=form_progress, question=question3)
+    answer3 = QuestionAnswer.objects.create(
+        form_progress=form_progress, question=question3
+    )
     answer3.selected_options.add(correct_option3)
 
     # Call the scoring method
@@ -219,7 +229,9 @@ def test_score_quiz_includes_unanswered_questions_in_max_score(
     form_progress = FormProgress.objects.create(user=user, form=form)
 
     # Answer ONLY question 1 correctly (leave Q2 and Q3 unanswered)
-    answer1 = QuestionAnswer.objects.create(form_progress=form_progress, question=question1)
+    answer1 = QuestionAnswer.objects.create(
+        form_progress=form_progress, question=question1
+    )
     answer1.selected_options.add(correct_option1)
 
     # Call the scoring method
