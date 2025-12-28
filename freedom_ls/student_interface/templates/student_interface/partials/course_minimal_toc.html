@@ -1,86 +1,73 @@
 {% partialdef status-icon %}
-
-{% if child.status == "BLOCKED" %}
-<span class="text-sm text-gray-400">
-    <i class="fa fa-lock"></i>
-</span>
-
-{% elif child.status == "READY" %}
-<a href="{{ child.url }}" class="text-primary-600 hover:text-primary-700 no-underline">
-    <i class="fa fa-play"></i>
-</a>
-
-{% elif child.status == "IN_PROGRESS" %}
-<a href="{{ child.url }}" class="text-primary-600 hover:text-primary-700 no-underline">
-    <i class="fa fa-play"></i>
-</a>
-
-{% elif child.status == "COMPLETE" %}
-<a href="{{ child.url }}" class="text-green-600 hover:text-green-700 no-underline">
-    <i class="fa fa-check"></i>
-</a>
-
-
-{% elif child.status == "FAILED" %}
-<a href="{{ child.url }}" class="text-red-600 hover:text-red-700 no-underline">
-    <i class="fa fa-repeat"></i>
-</a>
-
-{% else %}
-<span class="text-sm text-red-600">
-    Unknown status "{{ child.status }}"
-</span>
-{% endif %}
-
+    {% if child.status == "BLOCKED" %}
+        <span class="text-sm text-gray-400">
+            <i class="fa fa-lock"></i>
+        </span>
+    {% elif child.status == "READY" %}
+        <a href="{{ child.url }}"
+           class="text-primary-600 hover:text-primary-700 no-underline">
+            <i class="fa fa-play"></i>
+        </a>
+    {% elif child.status == "IN_PROGRESS" %}
+        <a href="{{ child.url }}"
+           class="text-primary-600 hover:text-primary-700 no-underline">
+            <i class="fa fa-play"></i>
+        </a>
+    {% elif child.status == "COMPLETE" %}
+        <a href="{{ child.url }}"
+           class="text-green-600 hover:text-green-700 no-underline">
+            <i class="fa fa-check"></i>
+        </a>
+    {% elif child.status == "FAILED" %}
+        <a href="{{ child.url }}"
+           class="text-red-600 hover:text-red-700 no-underline">
+            <i class="fa fa-repeat"></i>
+        </a>
+    {% else %}
+        <span class="text-sm text-red-600">Unknown status "{{ child.status }}"</span>
+    {% endif %}
 {% endpartialdef %}
-   
-   
 
 {% partialdef course-children %}
-{% for child in children %}
-
-    <div class="flex items-center justify-between py-2">
-        <div class="flex items-center gap-3">
-            <span class="text-gray-400 pr-2">{{ forloop.counter }}.</span>
-            <span class="text-gray-500">
-                {% if child.type == "topic" %}
-                <i class="fa fa-book"></i>
-                {% elif child.type == "form" %}
-                <i class="fa fa-edit"></i>
-                {% elif child.type == "course" %}
-                <i class="fa fa-graduation-cap"></i>
+    {% for child in children %}
+        <div class="flex items-center justify-between py-2">
+            <div class="flex items-center gap-3">
+                <span class="text-gray-400 pr-2">{{ forloop.counter }}.</span>
+                <span class="text-gray-500">
+                    {% if child.type == "topic" %}
+                        <i class="fa fa-book"></i>
+                    {% elif child.type == "form" %}
+                        <i class="fa fa-edit"></i>
+                    {% elif child.type == "course" %}
+                        <i class="fa fa-graduation-cap"></i>
+                    {% endif %}
+                </span>
+                {% if child.url %}
+                    <a href="{{ child.url }}">{{ child.title }}</a>
+                {% else %}
+                    <span>{{ child.title }}</span>
                 {% endif %}
-            </span>
-            {% if child.url %}
-            <a href="{{ child.url }}">{{ child.title }}</a>
-            {% else %}
-            <span>{{ child.title }}</span>
-            {% endif %}
-            
+            </div>
+            {% partial status-icon %}
         </div>
-        {% partial status-icon %}
-    </div>
-    
     {% endfor %}
-
 {% endpartialdef %}
-   
-
-
 
 <div class="space-y-2">
-    <h1 class="text-2xl">{{ course.title }}</h1>
+    <h1 class="text-2xl">
+        {{ course.title }}
+    </h1>
     {% if course.subtitle %}
-    <p class="text-xl text-gray-600">{{ course.subtitle }}</p>
+        <p class="text-xl text-gray-600">
+            {{ course.subtitle }}
+        </p>
     {% endif %}
 </div>
-
 <div class="mt-8">
-    <h2 class="text-xl">Contents</h2>
-
+    <h2 class="text-xl">
+        Contents
+    </h2>
     <div class="mt-4">
-
-    {% partial course-children %}
-    
+        {% partial course-children %}
     </div>
 </div>

@@ -19,7 +19,7 @@ dependencies = [
     "pytest-playwright>=0.7.2",
     "python-frontmatter>=1.1.0",
     "django-template-partials>=25.2",
-
+    "djlint>=1.36.4",
 ]
 
 [tool.setuptools.packages.find]
@@ -36,6 +36,17 @@ addopts = "--strict-markers"
 markers = [
     "playwright: marks tests that use playwright for browser automation",
 ]
+
+
+[tool.djlint]
+profile="django"
+blank_line_after_tag="load,extends,include,endpartialdef"
+close_void_tags=true
+custom_blocks="partialdef"
+custom_html="c-\\w+"
+line_break_after_multiline_tag=true
+max_blank_lines=1
+
 
 [dependency-groups]
 dev = [
