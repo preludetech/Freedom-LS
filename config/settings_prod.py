@@ -2,9 +2,14 @@ from .settings_base import *  # noqa: F403, F405
 import os
 
 
+HOST_DOMAIN = os.getenv("HOST_DOMAIN")
+
 DEBUG = False
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", HOST_DOMAIN]
+
+# CSRF Configuration for HTTPS/Cloudflare tunnel
+CSRF_TRUSTED_ORIGINS = [f"https://{HOST_DOMAIN}"]
 
 SECRET_KEY = os.getenv("SECRET_KEY", "")
 

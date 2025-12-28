@@ -49,7 +49,8 @@ Replace the site name, domain and content path with something realistic.
 
 ```bash
 # create the site
-docker compose exec web python manage.py create_site Demo 127.0.0.1
+# docker compose exec web python manage.py create_site Demo 127.0.0.1
+docker compose exec web python manage.py create_site Demo staging.freedomlearningsystem.org
 
 # copy the content into the container
 docker compose cp  ./demo_content  web:/app/content 
