@@ -13,7 +13,7 @@ RUN npm install
 
 # Copy TailwindCSS config and source files
 COPY tailwind.input.css ./
-COPY static ./static
+# COPY static ./static
 COPY freedom_ls ./freedom_ls
 
 # Build TailwindCSS for production
