@@ -19,21 +19,28 @@ from django.contrib import admin
 from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
 
-from ninja import NinjaAPI
+# from ninja import NinjaAPI
 
-api = NinjaAPI()
+
+def health_check(request):
+    """Simple health check endpoint for Docker and load balancers."""
+    return JsonResponse({"status": "healthy"})
+
+
+# api = NinjaAPI()
 
 # api.add_router("xapi/", "xapi_learning_record_store.api.router")
 # api.add_router("student/", "student_interface.apis.router")
 
 
 urlpatterns = [
+    path("health/", health_check, name="health_check"),
     path("admin/", admin.site.urls),
     # path("api/", api.urls),
     # path("api/xapi/", include("xapi_learning_record_store.api_urls")),
     # path("api/", api.urls),
-    path("__reload__/", include("django_browser_reload.urls")),
     # path("content_preview/", include("content_engine.preview_urls")),
     path("educator/", include("freedom_ls.educator_interface.urls")),
     path("accounts/", include("allauth.urls")),
@@ -45,6 +52,10 @@ urlpatterns = [
 # Serve media files during development
 if settings.DEBUG:
     from debug_toolbar.toolbar import debug_toolbar_urls
+
+    urlpatterns += [
+        path("__reload__/", include("django_browser_reload.urls")),
+    ]
 
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += debug_toolbar_urls()

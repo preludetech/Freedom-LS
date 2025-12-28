@@ -10,6 +10,11 @@ client_name = "Student Interface"
 demo_sites = [
     {
         "name": "Demo",
+        "domain": "127.0.0.1",
+        "cohorts": ["Cohort 2025.03.04", "Cohort 2025.04.06"],
+    },
+    {
+        "name": "DemoDev",
         "domain": "127.0.0.1:8000",
         "cohorts": ["Cohort 2025.03.04", "Cohort 2025.04.06"],
     },

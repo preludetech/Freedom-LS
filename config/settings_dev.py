@@ -64,3 +64,6 @@ DATABASES = {
         "PORT": "6543",
     },
 }
+
+
+MIDDLEWARE = MIDDLEWARE + ["django_browser_reload.middleware.BrowserReloadMiddleware"]

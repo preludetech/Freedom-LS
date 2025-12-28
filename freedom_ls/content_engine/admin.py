@@ -144,7 +144,18 @@ class ActivityAdmin(SiteAwareModelAdmin):
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("content_preview",)
     fieldsets = (
-        (None, {"fields": ("title", "subtitle", "description", "content", "content_preview")}),
+        (
+            None,
+            {
+                "fields": (
+                    "title",
+                    "subtitle",
+                    "description",
+                    "content",
+                    "content_preview",
+                )
+            },
+        ),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 

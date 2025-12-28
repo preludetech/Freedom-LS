@@ -36,6 +36,6 @@ def render_markdown(markdown_text, request, context=None):
         content = markdown_text
 
     md = markdown.Markdown(extensions=["fenced_code", "mdx_headdown"])
-    md.parser.blockprocessors.deregister('code')  # Disable indented code blocks
+    md.parser.blockprocessors.deregister("code")  # Disable indented code blocks
 
     return mark_safe(md.convert(content))

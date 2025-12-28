@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     # "django.contrib.admin",
     # "template_partials",
+    "whitenoise.runserver_nostatic",
     "django_cotton.apps.SimpleAppConfig",
     "template_partials.apps.SimpleAppConfig",
     "django.contrib.auth",
@@ -79,6 +80,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -87,7 +89,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "freedom_ls.site_aware_models.middleware.CurrentSiteMiddleware",
     # "config.site_urlconf_middleware.SiteURLConfMiddleware",
-    "django_browser_reload.middleware.BrowserReloadMiddleware",
     "allauth.account.middleware.AccountMiddleware",
 ]
 
