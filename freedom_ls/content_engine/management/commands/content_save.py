@@ -8,6 +8,7 @@ import uuid
 import mimetypes
 import frontmatter
 import yaml
+import re
 from pathlib import Path
 from collections import defaultdict
 
@@ -289,7 +290,39 @@ def save_with_uuid(
         instance = model_class.objects.create(site=site, **fields)
         if update_file:
             update_file_with_uuid(item.file_path, instance.id)
+    try:
+        if item.content:
+            instance.content = markdown_translate(instance.content)
+            instance.save()
+    except AttributeError:
+        pass  # nothing to do
+
     return instance
+
+
+def markdown_translate(markdown_content):
+    # look for markdown pictures
+    # Eg with caption: `![[Chewy tubes.jpg | Chewy Tubes]]`
+    # Eg without caption: `![[Chewy tubes.jpg]]`
+    # replace them with c-picture cotton components
+
+    # Pattern with caption: ![[filename | caption]]
+    pattern_with_caption = r"!\[\[([^|\]]+)\s*\|\s*([^\]]+)\]\]"
+    markdown_content = re.sub(
+        pattern_with_caption,
+        lambda m: f'<c-picture src="{m.group(1).strip()}" caption="{m.group(2).strip()}"></c-picture>',
+        markdown_content,
+    )
+
+    # Pattern without caption: ![[filename]]
+    pattern_without_caption = r"!\[\[([^\]]+)\]\]"
+    markdown_content = re.sub(
+        pattern_without_caption,
+        lambda m: f'<c-picture src="{m.group(1).strip()}"></c-picture>',
+        markdown_content,
+    )
+
+    return markdown_content
 
 
 def save_topic(item, site, base_path):

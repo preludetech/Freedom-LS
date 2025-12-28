@@ -1,26 +1,23 @@
-<c-vars title footer class="" id="" open="false"/>
+<c-vars title footer class="" id="" open="false" />
 
 <!-- Modal backdrop and container -->
-<div x-data="{ open: {{open}} }"
+<div x-data="{ open: {{ open }} }"
      x-on:keydown.escape.window="open = false"
      x-cloak
-     {% if id %}
-     id="{{id}}"
-     {% endif %}
+     {% if id %} id="{{ id }}" {% endif %}
      {{ c.attrs }}>
 
     {% if trigger %}
-    <!-- Trigger slot - the element that opens the modal -->
-    <div @click="open = true">
-        {{trigger}}
-    </div>
+        <!-- Trigger slot - the element that opens the modal -->
+        <div @click="open = true">
+            {{ trigger }}
+        </div>
 
     {% endif %}
 
     <!-- Modal overlay -->
     <div x-show="open"
          x-cloak
-         style="display: none;"
          class="fixed inset-0 z-50 overflow-y-auto"
          aria-labelledby="modal-title"
          role="dialog"
@@ -60,7 +57,11 @@
                                 type="button"
                                 class="text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md">
                             <span class="sr-only">Close</span>
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <svg class="h-6 w-6"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 stroke-width="1.5"
+                                 stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
@@ -68,17 +69,15 @@
                 </div>
 
                 <!-- Content -->
-                <div class="{{class}} bg-white px-6 py-4 ">
-                    
+                <div class="{{ class }} bg-white px-6 py-4 ">
+
                     {{ slot }}
                 </div>
 
                 <!-- Footer (optional) -->
-                    <c-button-group 
-                    variant="space-between"
-                    class=" bg-gray-50 px-6 py-4 border-t border-gray-200">
-                        {{ footer }}
-                    </c-button-group>
+                <c-button-group variant="space-between" class=" bg-gray-50 px-6 py-4 border-t border-gray-200">
+                    {{ footer }}
+                </c-button-group>
             </div>
         </div>
     </div>

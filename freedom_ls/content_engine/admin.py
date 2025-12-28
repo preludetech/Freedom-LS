@@ -142,10 +142,20 @@ class ActivityAdmin(SiteAwareModelAdmin):
     list_display = ("title", "category", "level", "file_path")
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")
+    readonly_fields = ("content_preview",)
     fieldsets = (
-        (None, {"fields": ("title", "subtitle", "description", "content")}),
+        (None, {"fields": ("title", "subtitle", "description", "content", "content_preview")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
+
+    def content_preview(self, obj: Activity) -> str:
+        from django.utils.safestring import mark_safe
+
+        if not obj.content:
+            return ""
+        return mark_safe(obj.rendered_content())
+
+    content_preview.short_description = "Content Preview"
 
 
 class ContentCollectionItemInline(admin.TabularInline):

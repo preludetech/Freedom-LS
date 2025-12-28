@@ -16,6 +16,10 @@ def get_file_by_path(file_path, content_instance):
 
     if not file_path:
         return None
+    file_path = file_path.strip()
+
+    if not file_path:
+        return None
 
     final_path = content_instance.calculate_path_from_root(file_path)
 

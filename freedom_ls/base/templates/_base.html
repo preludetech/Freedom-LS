@@ -2,55 +2,64 @@
 {% load i18n %}
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>
-        {% block head_title %}
-        {% endblock head_title %}
-    </title>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description"
+              content="{% block meta_description %}Learning management system{% endblock meta_description %}" />
+        <meta name="keywords"
+              content="{% block meta_keywords %}learning, education, courses{% endblock meta_keywords %}" />
+        <title>
+            {% block head_title %}
+            {% endblock head_title %}
+        </title>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <link rel="stylesheet"
+              href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+        <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+        <script defer
+                src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- <meta name="htmx-config" content='{"historyCacheSize": 0}'> -->
+        <!-- <meta name="htmx-config" content='{"historyCacheSize": 0}' /> -->
 
-    {% block tailwind_css %}
-        <link rel="stylesheet" type="text/css" href="{% static 'vendor/tailwind.output.css' %}">
-    {% endblock tailwind_css %}
+        {% block tailwind_css %}
+            <link rel="stylesheet"
+                  type="text/css"
+                  href="{% static 'vendor/tailwind.output.css' %}" />
+        {% endblock tailwind_css %}
 
-    {% block extra_head %}
-    {% endblock extra_head %}
+        {% block extra_head %}
+        {% endblock extra_head %}
 
-</head>
+    </head>
 
-<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
-    {% block header %}
-    {% include "partials/header.html" %}
-    {% endblock %}
+        {% block header %}
+            {% include "partials/header.html" %}
 
-    {% include "partials/messages.html" %} 
+        {% endblock header %}
 
-    <main class="max-w-7xl mx-auto">
-    {% block body %}
-        <div class="py-12 space-y-12">
+        {% include "partials/messages.html" %}
 
-            {% block pre-content %}
-            {% endblock %}
-            {% block content %}
-            Replace this in child templates
-            {% endblock content %}
-        </div>
-    {% endblock body %}
-    
-    {% block extra_body %}
-    {% endblock extra_body %}
-    </main>
-</body>
+        <main class="max-w-7xl mx-auto">
+            {% block body %}
+                <div class="py-12 space-y-12">
+
+                    {% block pre-content %}
+                    {% endblock pre-content %}
+                    {% block content %}
+                        Replace this in child templates
+                    {% endblock content %}
+                </div>
+            {% endblock body %}
+
+            {% block extra_body %}
+            {% endblock extra_body %}
+        </main>
+    </body>
 </html>

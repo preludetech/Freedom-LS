@@ -67,6 +67,11 @@ class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
 
     objects = UserManager()
 
+    @property
+    def username(self) -> str:
+        """Return email as username for template compatibility."""
+        return self.email
+
 
 # class SiteGroup(SiteAwareModelBase, AuthGroup):
 #     """Custom Group model with site awareness"""

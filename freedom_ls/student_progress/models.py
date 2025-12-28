@@ -124,7 +124,7 @@ class FormProgress(SiteAwareModel):
 
             # Get or create the answer
             answer, created = QuestionAnswer.objects.get_or_create(
-                form_progress=self, question=question
+                form_progress=self, question=question, site=self.site
             )
 
             # Handle different question types
