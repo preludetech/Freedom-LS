@@ -24,20 +24,11 @@ services:
     volumes:
       - ./media:/app/media
       - ./logs:/app/logs
-      
+
+    env_file:
+      - .env
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings_prod
-      - DB_USER=${DB_USER}
-      - DB_NAME=${DB_NAME}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_HOST=${DB_HOST}
-      - SECRET_KEY=${SECRET_KEY}
-      - EMAIL_BACKEND=${EMAIL_BACKEND}
-      - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT}
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
-      - HOST_DOMAIN=${HOST_DOMAIN}
 
     depends_on:
       db:
