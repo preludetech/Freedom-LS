@@ -3,7 +3,7 @@ from django.db.models import Count
 from django.http import HttpRequest
 from guardian.shortcuts import get_objects_for_user
 from freedom_ls.content_engine.models import Course
-from freedom_ls.student_management.models import Cohort
+from freedom_ls.student_management.models import Cohort, Student
 
 
 def home(request: HttpRequest):
@@ -28,6 +28,33 @@ def cohorts_list(request):
     )
 
     return render(request, "educator_interface/cohorts_list.html", {"cohorts": cohorts})
+
+
+def students_list(request):
+    """List all students the user has permission to view."""
+    # Get students with direct view permission
+    students_with_direct_access = get_objects_for_user(
+        request.user,
+        "view_student",
+        klass=Student,
+    )
+
+    # Get cohorts user has access to
+    accessible_cohorts = get_objects_for_user(
+        request.user,
+        "view_cohort",
+        klass=Cohort,
+    )
+
+    # Get students from accessible cohorts
+    students_from_cohorts = Student.objects.filter(
+        cohortmembership__cohort__in=accessible_cohorts
+    )
+
+    # Combine both querysets and remove duplicates
+    students = (students_with_direct_access | students_from_cohorts).distinct()
+
+    return render(request, "educator_interface/students_list.html", {"students": students})
 
 
 def course_student_progress(request, course_slug):

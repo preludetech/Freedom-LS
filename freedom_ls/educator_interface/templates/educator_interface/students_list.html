@@ -1,0 +1,43 @@
+{% extends "educator_interface/_educator_interface_base.html" %}
+
+{% block head_title %}
+    Educator Interface
+{% endblock head_title %}
+
+{% block content %}
+    <h2>
+        Students
+    </h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Cohorts</th>
+                <th>Registered Courses</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+                <tr>
+                    <td>{{ student }}</td>
+                    <td>{{ student.user.email }}</td>
+                    <td>
+                        {% for membership in student.cohortmembership_set.all %}
+                            {{ membership.cohort.name }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            -
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% for course in student.get_course_registrations %}
+                            {{ course.title }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            -
+                        {% endfor %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
