@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Count
 from django.http import HttpRequest
+from django.core.paginator import Paginator
 from guardian.shortcuts import get_objects_for_user
 from freedom_ls.content_engine.models import Course
 from freedom_ls.student_management.models import Cohort, Student
@@ -53,8 +54,7 @@ def cohorts_list(request):
     )
 
 
-def students_list(request):
-    """List all students the user has permission to view."""
+def get_student_data_table_context(request):
     # Get students with direct view permission
     students_with_direct_access = get_objects_for_user(
         request.user,
@@ -75,9 +75,54 @@ def students_list(request):
     )
 
     # Combine both querysets and remove duplicates
-    students = (students_with_direct_access | students_from_cohorts).distinct()
+    students = (
+        (students_with_direct_access | students_from_cohorts)
+        .distinct()
+        .order_by("user__first_name", "user__last_name")
+    )
 
-    return render(request, "educator_interface/students_list.html", {"students": students})
+    # Pagination
+    page_number = request.GET.get("page", 1)
+    paginator = Paginator(students, 15)
+    page_obj = paginator.get_page(page_number)
+
+    columns = [
+        {
+            "header": "Name",
+            "template": "cotton/data-table-cells/text.html",
+            "attr": "__str__",
+        },
+        {
+            "header": "Email",
+            "template": "cotton/data-table-cells/text.html",
+            "attr": "user.email",
+        },
+        {
+            "header": "Cohorts",
+            "template": "educator_interface/data-table-cells/student_cohorts.html",
+        },
+        {
+            "header": "Registered Courses",
+            "template": "educator_interface/data-table-cells/student_courses.html",
+        },
+    ]
+
+    return {"rows": page_obj, "columns": columns, "page_obj": page_obj}
+
+
+def students_list(request):
+    """List all students the user has permission to view."""
+
+    context = get_student_data_table_context(request)
+    # For HTMX requests, render only the partial
+    if request.headers.get("HX-Request"):
+        return render(
+            request,
+            "educator_interface/students_list.html#students-table-partial",
+            context,
+        )
+
+    return render(request, "educator_interface/students_list.html", context)
 
 
 def course_student_progress(request, course_slug):
@@ -120,7 +165,29 @@ def course_list(request):
         # Total unique students
         course.total_student_count = len(cohort_student_ids | direct_student_ids)
 
-    return render(request, "educator_interface/course_list.html", {"courses": courses})
+    columns = [
+        {
+            "header": "Title",
+            "template": "cotton/data-table-cells/text.html",
+            "attr": "title",
+        },
+        {
+            "header": "Students",
+            "template": "cotton/data-table-cells/text.html",
+            "attr": "total_student_count",
+        },
+        {
+            "header": "Cohorts",
+            "template": "cotton/data-table-cells/text.html",
+            "attr": "cohort_count",
+        },
+    ]
+
+    return render(
+        request,
+        "educator_interface/course_list.html",
+        {"courses": courses, "columns": columns},
+    )
 
 
 def cohort_detail(request: HttpRequest, cohort_id: str):

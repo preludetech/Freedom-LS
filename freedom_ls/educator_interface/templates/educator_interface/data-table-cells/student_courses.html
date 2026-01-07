@@ -1,0 +1,5 @@
+{% for course in object.get_course_registrations %}
+    {{ course.title }}{% if not forloop.last %}, {% endif %}
+{% empty %}
+    -
+{% endfor %}

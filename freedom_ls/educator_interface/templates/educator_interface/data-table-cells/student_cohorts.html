@@ -1,0 +1,5 @@
+{% for membership in object.cohortmembership_set.all %}
+    {{ membership.cohort.name }}{% if not forloop.last %}, {% endif %}
+{% empty %}
+    -
+{% endfor %}

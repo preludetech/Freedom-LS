@@ -1,37 +1,106 @@
-<c-vars columns="" rows="" empty_message="No data available" class="" />
+<c-vars columns=""
+        rows=""
+        empty_message="No data available"
+        class=""
+        page_obj="" />
 
-<div class="overflow-x-auto {{ class }}">
-    <table>
-        <thead>
-            <tr>
-                {% for column in columns %}
-                    <th {% if column.header_class %}class="{{ column.header_class }}"{% endif %}>
-                        {{ column.header }}
-                    </th>
-                {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% if rows %}
-                {% for row in rows %}
-                    <tr>
-                        {% for column in columns %}
-                            <td {% if column.cell_class %}class="{{ column.cell_class }}"{% endif %}>
-                                {% include column.template with object=row column=column %}
-
-                            </td>
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            {% else %}
+<div id="data-table-container">
+    <div class="overflow-x-auto {{ class }}">
+        <table>
+            <thead>
                 <tr>
-                    <td colspan="{{ columns|length }}" class="text-center text-gray-500 py-8">
-                        {{ empty_message }}
-                    </td>
+                    {% for column in columns %}
+                        <th {% if column.header_class %}class="{{ column.header_class }}"{% endif %}>
+                            {{ column.header }}
+                        </th>
+                    {% endfor %}
                 </tr>
-            {% endif %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {% if rows %}
+                    {% for row in rows %}
+                        <tr>
+                            {% for column in columns %}
+                                <td {% if column.cell_class %}class="{{ column.cell_class }}"{% endif %}>
+                                    {% include column.template with object=row column=column %}
+
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="{{ columns|length }}" class="text-center text-gray-500 py-8">
+                            {{ empty_message }}
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj and page_obj.paginator.num_pages > 1 %}
+        <div class="flex items-center justify-between mt-6 px-4">
+
+            <div class="flex gap-2">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1"
+                       hx-get="?page=1"
+                       hx-target="#data-table-container"
+                       hx-swap="outerHTML"
+                       class="btn btn-outline">
+                        First
+                    </a>
+                    <a href="?page={{ page_obj.previous_page_number }}"
+                       hx-get="?page={{ page_obj.previous_page_number }}"
+                       hx-target="#data-table-container"
+                       hx-swap="outerHTML"
+                       class="btn btn-outline">
+                        Previous
+                    </a>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                        {# Current page #}
+                        <span class="btn btn-primary">{{ num }}</span>
+                    {% elif num <= 2 or num >= page_obj.paginator.num_pages|add:'-1' or num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                        {# Show: first 2 pages, last 2 pages, or pages within 2 of current #}
+                        <a href="?page={{ num }}"
+                           hx-get="?page={{ num }}"
+                           hx-target="#data-table-container"
+                           hx-swap="outerHTML"
+                           class="btn btn-outline">
+                            {{ num }}
+                        </a>
+                    {% elif num == 3 and page_obj.number > 5 %}
+                        {# Show ellipsis after first 2 pages if there's a gap #}
+                        <span class="btn btn-outline pointer-events-none">...</span>
+                    {% elif num == page_obj.paginator.num_pages|add:'-2' and page_obj.number < page_obj.paginator.num_pages|add:'-4' %}
+                        {# Show ellipsis before last 2 pages if there's a gap #}
+                        <span class="btn btn-outline pointer-events-none">...</span>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}"
+                       hx-get="?page={{ page_obj.next_page_number }}"
+                       hx-target="#data-table-container"
+                       hx-swap="outerHTML"
+                       class="btn btn-outline">
+                        Next
+                    </a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}"
+                       hx-get="?page={{ page_obj.paginator.num_pages }}"
+                       hx-target="#data-table-container"
+                       hx-swap="outerHTML"
+                       class="btn btn-outline">
+                        Last
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
 </div>
 
 {% comment %}

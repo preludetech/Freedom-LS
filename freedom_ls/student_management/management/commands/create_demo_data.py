@@ -17,6 +17,7 @@ demo_sites = [
         "name": "DemoDev",
         "domain": "127.0.0.1:8000",
         "cohorts": ["Cohort 2025.03.04", "Cohort 2025.04.06"],
+        "num_students": 500,
     },
     {
         "name": "Bloom",
@@ -120,7 +121,8 @@ class Command(BaseCommand):
             # Create students for this site (3 students per site)
             created_students = []
             site_prefix = site_data["name"].lower()
-            for i in range(1, 4):  # Create 3 students (s1, s2, s3)
+            max_students = site_data.get("num_students", 3) + 1
+            for i in range(1, max_students):  # Create 3 students (s1, s2, s3)
                 full_name = f"{site_prefix}_s{i}"
                 email = f"{site_prefix}_s{i}@email.com"
 

@@ -1,62 +1,11 @@
 {% extends "educator_interface/_educator_interface_base.html" %}
+{% load cotton %}
 
 {% block head_title %}
     Courses
 {% endblock %}
 
 {% block content %}
-    <div>
-        <h1 class="mb-6">
-            Courses
-        </h1>
-
-        {% if courses %}
-            <div>
-                <table>
-                    <thead">
-                        <tr>
-                            <th>
-                                Title
-                            </th>
-                            <th>
-                                Students
-                            </th>
-                            <th>
-                                Cohorts
-                            </th>
-                            <th>
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for course in courses %}
-                            <tr>
-                                <td>
-                                    {{ course.title }}
-                                </td>
-                                <td>
-                                    {{ course.total_student_count }}
-                                </td>
-                                <td>
-                                    {{ course.cohort_count }}
-                                </td>
-                                <td>
-                                    <c-button href="{% url 'educator_interface:course_student_progress' course_slug=course.slug %}">
-                                        Student Progress
-                                    </c-button>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="bg-white shadow-md rounded-lg p-6">
-                <p class="text-gray-500">
-                    No courses available.
-                </p>
-            </div>
-        {% endif %}
-    </div>
+    <h1 class="mb-6">Courses</h1>
+    <c-data-table :columns=columns :rows=courses empty_message="No courses available" />
 {% endblock %}
