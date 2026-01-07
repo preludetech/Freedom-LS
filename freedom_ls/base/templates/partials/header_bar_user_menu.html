@@ -1,18 +1,22 @@
-<c-dropdown-menu >
+<c-dropdown-menu trigger_class="text-white p-2 cursor-pointer ">
     <c-slot name="trigger">
-        <span class="">
-
-            {{ user.email }} <i class="fas fa-chevron-down text-sm"></i>
-        </span>
+        {{ user.email }} <i class="fas fa-chevron-down text-sm"></i>
     </c-slot>
-    
-    <c-button dropdown="true" href="{% url 'account_profile' %}">Profile</c-button>
-    <c-button dropdown="true" href="{% url 'educator_interface:home' %}">Educator Interface</c-button>
+
+    <c-button dropdown="true" href="{% url 'account_profile' %}">
+        Profile
+    </c-button>
+    <c-button dropdown="true" href="{% url 'educator_interface:home' %}">
+        Educator Interface
+    </c-button>
     {% if user.is_staff %}
-        <c-button dropdown="true" href="/admin/" hx-boost="false">Admin Panel</c-button>
+        <c-button dropdown="true" href="/admin/" hx-boost="false">
+            Admin Panel
+        </c-button>
     {% endif %}
 
     {% with dropdown=True %}
-    {% include "partials/logout_button.html" %}
+        {% include "partials/logout_button.html" %}
+
     {% endwith %}
-</c-dropdown-menu> 
+</c-dropdown-menu>
