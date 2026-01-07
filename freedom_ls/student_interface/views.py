@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.utils import timezone
+from django.http import HttpResponseForbidden
 from freedom_ls.content_engine.models import Topic, Form, Course, FormStrategy
 from freedom_ls.student_progress.models import (
     FormProgress,
@@ -10,7 +11,13 @@ from freedom_ls.student_progress.models import (
 )
 from freedom_ls.student_management.models import Student, StudentCourseRegistration
 from freedom_ls.student_management.models import RecommendedCourse
-from .utils import get_course_index, get_is_registered, form_start_page_buttons
+from .utils import (
+    get_course_index,
+    get_is_registered,
+    form_start_page_buttons,
+    can_access_course_item,
+    all_course_items_complete,
+)
 
 
 def home(request):
@@ -127,6 +134,12 @@ def register_for_course(request, course_slug):
 @login_required
 def view_course_item(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
+
+    # Check if user can access this course item
+    can_access, reason = can_access_course_item(request, course, index)
+    if not can_access:
+        return HttpResponseForbidden(reason)
+
     children = course.children()
     current_item = children[index - 1]
 
@@ -257,6 +270,12 @@ def form_start(request, course_slug, index):
     """Start or resume a form for the current user."""
 
     course = get_object_or_404(Course, slug=course_slug)
+
+    # Check if user can access this course item
+    can_access, reason = can_access_course_item(request, course, index)
+    if not can_access:
+        return HttpResponseForbidden(reason)
+
     children = course.children()
     form = children[index - 1]
 
@@ -278,6 +297,12 @@ def form_start(request, course_slug, index):
 @login_required
 def form_fill_page(request, course_slug, index, page_number):
     course = get_object_or_404(Course, slug=course_slug)
+
+    # Check if user can access this course item
+    can_access, reason = can_access_course_item(request, course, index)
+    if not can_access:
+        return HttpResponseForbidden(reason)
+
     children = course.children()
     form = children[index - 1]
     all_pages = list(form.pages.all())
@@ -286,6 +311,15 @@ def form_fill_page(request, course_slug, index, page_number):
 
     # Get the latest incomplete form progress instance
     form_progress = FormProgress.get_latest_incomplete(user=request.user, form=form)
+
+    # Check if form has been started
+    if not form_progress:
+        return HttpResponseForbidden("You must start the form before filling pages.")
+
+    # Check if user is trying to skip ahead
+    furthest_page = form_progress.get_current_page_number()
+    if page_number > furthest_page:
+        return HttpResponseForbidden("You must complete form pages in order.")
 
     # Get existing answers for questions on this page
     questions = [
@@ -382,6 +416,12 @@ def form_fill_page(request, course_slug, index, page_number):
 @login_required
 def course_form_complete(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
+
+    # Check if user can access this course item
+    can_access, reason = can_access_course_item(request, course, index)
+    if not can_access:
+        return HttpResponseForbidden(reason)
+
     children = course.children()
     form = children[index - 1]
 
@@ -393,6 +433,10 @@ def course_form_complete(request, course_slug, index):
         .order_by("-completed_time")
         .first()
     )
+
+    # User must have completed the form to access this page
+    if not form_progress:
+        return HttpResponseForbidden("You must complete the form before viewing this page.")
 
     # Get incorrect answers if this is a quiz with show_incorrect enabled
     incorrect_answers = []
@@ -448,6 +492,14 @@ def course_finish(request, course_slug):
     """Mark the course progress as complete for this user and render a completion page."""
 
     course = get_object_or_404(Course, slug=course_slug)
+
+    # Check if user is registered for the course
+    if not get_is_registered(request, course):
+        return HttpResponseForbidden("You must be registered for this course.")
+
+    # Check if all course items are complete
+    if not all_course_items_complete(request, course):
+        return HttpResponseForbidden("You must complete all course items before finishing the course.")
 
     # Get existing course progress (should already exist)
     course_progress = get_object_or_404(

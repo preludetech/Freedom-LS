@@ -144,6 +144,65 @@ def get_course_index(request, course):
     return children
 
 
+def can_access_course_item(request, course, index):
+    """
+    Check if a user can access a specific course item at the given index.
+
+    Returns a tuple of (can_access: bool, reason: str)
+    - can_access: True if the user can access this item
+    - reason: A message explaining why access is denied (empty string if allowed)
+
+    Args:
+        request: Django request object
+        course: Course instance
+        index: 1-based index of the item in the course
+    """
+    # Must be authenticated
+    if not request.user.is_authenticated:
+        return False, "You must be logged in to access course content."
+
+    # Must be registered for the course
+    if not get_is_registered(request, course):
+        return False, "You must be registered for this course to access its content."
+
+    # Get the course index to check status
+    course_items = get_course_index(request=request, course=course)
+
+    # Check if index is valid
+    if index < 1 or index > len(course_items):
+        return False, "Invalid course item."
+
+    # Check the status of the requested item
+    item = course_items[index - 1]
+    status = item["status"]
+
+    if status == "BLOCKED":
+        return False, "You must complete previous course items before accessing this one."
+
+    # READY, IN_PROGRESS, COMPLETE, or FAILED are all accessible
+    return True, ""
+
+
+def all_course_items_complete(request, course):
+    """
+    Check if all course items are completed.
+
+    Returns True if all items are complete, False otherwise.
+
+    Args:
+        request: Django request object
+        course: Course instance
+    """
+    course_items = get_course_index(request=request, course=course)
+
+    for item in course_items:
+        status = item["status"]
+        if status != "COMPLETE":
+            return False
+
+    return True
+
+
 def form_start_page_buttons(
     form, incomplete_form_progress, completed_form_progress, is_last_item
 ):
