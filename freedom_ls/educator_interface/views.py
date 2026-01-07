@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import HttpRequest
 from django.core.paginator import Paginator
 from django.urls import reverse
@@ -78,6 +78,15 @@ def get_student_data_table_context(request):
     # Combine both querysets and remove duplicates
     students = (students_with_direct_access | students_from_cohorts).distinct()
 
+    # Handle search
+    search_query = request.GET.get("search", "").strip()
+    if search_query:
+        students = students.filter(
+            Q(user__first_name__icontains=search_query)
+            | Q(user__last_name__icontains=search_query)
+            | Q(user__email__icontains=search_query)
+        )
+
     # Handle sorting
     sort_by = request.GET.get("sort", "")
     sort_order = request.GET.get("order", "asc")
@@ -137,6 +146,8 @@ def get_student_data_table_context(request):
         "sort_by": sort_by,
         "sort_order": sort_order,
         "base_url": reverse("educator_interface:partial_students_table"),
+        "show_search": True,
+        "search_query": search_query,
     }
 
 

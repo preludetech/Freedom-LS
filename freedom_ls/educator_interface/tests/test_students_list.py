@@ -414,3 +414,182 @@ def test_sort_context_is_passed_to_template(mock_site_context, user):
     assert response.status_code == 200
     assert response.context["sort_by"] == ""
     assert response.context["sort_order"] == "asc"
+
+
+@pytest.mark.django_db
+def test_students_can_be_searched_by_name(mock_site_context, user):
+    """Students can be filtered by searching for their first or last name."""
+    # Create students with different names
+    user1 = user.__class__.objects.create_user(
+        email="alice@example.com", password="testpass123"
+    )
+    user1.first_name = "Alice"
+    user1.last_name = "Johnson"
+    user1.save()
+
+    user2 = user.__class__.objects.create_user(
+        email="bob@example.com", password="testpass123"
+    )
+    user2.first_name = "Bob"
+    user2.last_name = "Smith"
+    user2.save()
+
+    user3 = user.__class__.objects.create_user(
+        email="charlie@example.com", password="testpass123"
+    )
+    user3.first_name = "Charlie"
+    user3.last_name = "Anderson"
+    user3.save()
+
+    student1 = Student.objects.create(user=user1)
+    student2 = Student.objects.create(user=user2)
+    student3 = Student.objects.create(user=user3)
+
+    # Give user permission to view all students
+    assign_perm("view_student", user, student1)
+    assign_perm("view_student", user, student2)
+    assign_perm("view_student", user, student3)
+
+    # Create client and login
+    client = Client()
+    client.force_login(user)
+
+    url = reverse("educator_interface:partial_students_table")
+
+    # Search by first name
+    response = client.get(url + "?search=Alice")
+    assert response.status_code == 200
+    students = list(response.context["rows"])
+    assert students == [student1]
+
+    # Search by last name
+    response = client.get(url + "?search=Smith")
+    assert response.status_code == 200
+    students = list(response.context["rows"])
+    assert students == [student2]
+
+    # Search with partial match (case insensitive)
+    response = client.get(url + "?search=and")
+    assert response.status_code == 200
+    students = list(response.context["rows"])
+    assert students == [student3]  # Matches "Anderson"
+
+
+@pytest.mark.django_db
+def test_students_can_be_searched_by_email(mock_site_context, user):
+    """Students can be filtered by searching for their email."""
+    # Create students with different emails
+    user1 = user.__class__.objects.create_user(
+        email="alice.jones@example.com", password="testpass123"
+    )
+    user1.first_name = "Alice"
+    user1.last_name = "Jones"
+    user1.save()
+
+    user2 = user.__class__.objects.create_user(
+        email="bob.smith@test.com", password="testpass123"
+    )
+    user2.first_name = "Bob"
+    user2.last_name = "Smith"
+    user2.save()
+
+    student1 = Student.objects.create(user=user1)
+    student2 = Student.objects.create(user=user2)
+
+    # Give user permission to view all students
+    assign_perm("view_student", user, student1)
+    assign_perm("view_student", user, student2)
+
+    # Create client and login
+    client = Client()
+    client.force_login(user)
+
+    url = reverse("educator_interface:partial_students_table")
+
+    # Search by email
+    response = client.get(url + "?search=alice.jones")
+    assert response.status_code == 200
+    students = list(response.context["rows"])
+    assert students == [student1]
+
+    # Search by email domain
+    response = client.get(url + "?search=test.com")
+    assert response.status_code == 200
+    students = list(response.context["rows"])
+    assert students == [student2]
+
+
+@pytest.mark.django_db
+def test_search_preserves_sorting(mock_site_context, user):
+    """Search results can be sorted."""
+    # Create students
+    user1 = user.__class__.objects.create_user(
+        email="alice@example.com", password="testpass123"
+    )
+    user1.first_name = "Alice"
+    user1.last_name = "Smith"
+    user1.save()
+
+    user2 = user.__class__.objects.create_user(
+        email="bob@example.com", password="testpass123"
+    )
+    user2.first_name = "Bob"
+    user2.last_name = "Smith"
+    user2.save()
+
+    student1 = Student.objects.create(user=user1)
+    student2 = Student.objects.create(user=user2)
+
+    # Give user permission to view all students
+    assign_perm("view_student", user, student1)
+    assign_perm("view_student", user, student2)
+
+    # Create client and login
+    client = Client()
+    client.force_login(user)
+
+    url = reverse("educator_interface:partial_students_table")
+
+    # Search for "Smith" and sort by name descending
+    response = client.get(url + "?search=Smith&sort=name&order=desc")
+    assert response.status_code == 200
+    students = list(response.context["rows"])
+    assert students == [student2, student1]  # Bob before Alice
+
+    # Search for "Smith" and sort by name ascending
+    response = client.get(url + "?search=Smith&sort=name&order=asc")
+    assert response.status_code == 200
+    students = list(response.context["rows"])
+    assert students == [student1, student2]  # Alice before Bob
+
+
+@pytest.mark.django_db
+def test_search_context_is_passed_to_template(mock_site_context, user):
+    """The show_search and search_query are included in the template context."""
+    # Create a student
+    user1 = user.__class__.objects.create_user(
+        email="student@example.com", password="testpass123"
+    )
+    user1.first_name = "Test"
+    user1.last_name = "Student"
+    user1.save()
+    student = Student.objects.create(user=user1)
+    assign_perm("view_student", user, student)
+
+    # Create client and login
+    client = Client()
+    client.force_login(user)
+
+    url = reverse("educator_interface:partial_students_table")
+
+    # Test with search parameter
+    response = client.get(url + "?search=Test")
+    assert response.status_code == 200
+    assert response.context["show_search"] is True
+    assert response.context["search_query"] == "Test"
+
+    # Test without search parameter
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response.context["show_search"] is True
+    assert response.context["search_query"] == ""
