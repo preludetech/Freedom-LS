@@ -41,7 +41,7 @@ def test_user_with_no_permissions_sees_no_students(mock_site_context, user):
     client.force_login(user)
 
     # Call view
-    url = reverse("educator_interface:students_list")
+    url = reverse("educator_interface:partial_students_table")
     response = client.get(url)
 
     # Check response
@@ -88,7 +88,7 @@ def test_user_sees_students_with_direct_view_permission(mock_site_context, user)
     client.force_login(user)
 
     # Call view
-    url = reverse("educator_interface:students_list")
+    url = reverse("educator_interface:partial_students_table")
     response = client.get(url)
 
     # Check response
@@ -143,7 +143,7 @@ def test_user_sees_students_through_cohort_permissions(mock_site_context, user):
     client.force_login(user)
 
     # Call view
-    url = reverse("educator_interface:students_list")
+    url = reverse("educator_interface:partial_students_table")
     response = client.get(url)
 
     # Check response - should see student1 and student2 from cohort_a, but not student3
@@ -200,7 +200,7 @@ def test_user_sees_combined_students_from_both_access_methods(mock_site_context,
     client.force_login(user)
 
     # Call view
-    url = reverse("educator_interface:students_list")
+    url = reverse("educator_interface:partial_students_table")
     response = client.get(url)
 
     # Check response - should see all 3 students without duplicates
@@ -257,7 +257,7 @@ def test_view_displays_correct_student_information(mock_site_context, user):
     client.force_login(user)
 
     # Call view
-    url = reverse("educator_interface:students_list")
+    url = reverse("educator_interface:partial_students_table")
     response = client.get(url)
 
     # Check response
@@ -312,7 +312,7 @@ def test_students_can_be_sorted_by_name(mock_site_context, user):
     client.force_login(user)
 
     # Test sorting by name ascending (default)
-    url = reverse("educator_interface:students_list")
+    url = reverse("educator_interface:partial_students_table")
     response = client.get(url + "?sort=name&order=asc")
     assert response.status_code == 200
     students = list(response.context["rows"])
@@ -364,7 +364,7 @@ def test_students_can_be_sorted_by_email(mock_site_context, user):
     client.force_login(user)
 
     # Test sorting by email ascending
-    url = reverse("educator_interface:students_list")
+    url = reverse("educator_interface:partial_students_table")
     response = client.get(url + "?sort=email&order=asc")
     assert response.status_code == 200
     students = list(response.context["rows"])
@@ -403,7 +403,7 @@ def test_sort_context_is_passed_to_template(mock_site_context, user):
     client.force_login(user)
 
     # Test with sort parameters
-    url = reverse("educator_interface:students_list")
+    url = reverse("educator_interface:partial_students_table")
     response = client.get(url + "?sort=email&order=desc")
     assert response.status_code == 200
     assert response.context["sort_by"] == "email"
