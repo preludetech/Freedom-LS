@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.db.models import Count
 from django.http import HttpRequest
 from django.core.paginator import Paginator
+from django.urls import reverse
 from guardian.shortcuts import get_objects_for_user
 from freedom_ls.content_engine.models import Course
 from freedom_ls.student_management.models import Cohort, Student
@@ -135,22 +136,23 @@ def get_student_data_table_context(request):
         "page_obj": page_obj,
         "sort_by": sort_by,
         "sort_order": sort_order,
+        "base_url": reverse("educator_interface:partial_students_table"),
     }
 
 
-def students_list(request):
+def students_list(request: HttpRequest):
     """List all students the user has permission to view."""
+    return render(request, "educator_interface/students_list.html")
 
+
+def partial_students_table(request: HttpRequest):
+    """Render the students data table (for HTMX requests)."""
     context = get_student_data_table_context(request)
-    # For HTMX requests, render only the partial
-    if request.headers.get("HX-Request"):
-        return render(
-            request,
-            "educator_interface/students_list.html#students-table-partial",
-            context,
-        )
-
-    return render(request, "educator_interface/students_list.html", context)
+    return render(
+        request,
+        "educator_interface/partials/students_table.html",
+        context,
+    )
 
 
 def course_student_progress(request, course_slug):

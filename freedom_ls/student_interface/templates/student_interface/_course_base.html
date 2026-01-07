@@ -1,23 +1,21 @@
 {% extends "_base.html" %}
 
-
 {% block body %}
+    <div class="flex gap-8 py-12">
+        <div class="max-w-2xl">
 
-<div class="flex gap-8 py-12">
-    <div class="max-w-2xl">
-        
-        <div hx-get="{% url 'student_interface:partial_course_toc' course.slug %}"
-             hx-trigger="load"
-             hx-indicator="#course-loading">
-            <c-loading-indicator id="course-loading" message="Loading courses..." />
+            <div hx-get="{% url 'student_interface:partial_course_toc' course.slug %}"
+                 hx-trigger="load"
+                 hx-indicator="#course-loading">
+                <c-loading-indicator id="course-loading" message="Loading courses..." />
+            </div>
+
         </div>
-        
+
+        <div class="w-full">
+            {% block content %}
+            {% endblock content %}
+        </div>
     </div>
-    
-    <div class="w-full">
-        {% block content %}{% endblock %}
-    </div>
-</div>
 
 {% endblock body %}
-

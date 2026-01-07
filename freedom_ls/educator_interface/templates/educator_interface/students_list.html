@@ -12,9 +12,10 @@
 
 {% block content %}
 
-    TODO: fetch and draw the table on page load
-    {% partialdef students-table-partial inline=True %}
-        <c-data-table :columns=columns :rows=rows :page_obj=page_obj :sort_by=sort_by :sort_order=sort_order empty_message="No students found" />
-    {% endpartialdef %}
+    <div hx-get="{% url 'educator_interface:partial_students_table' %}"
+         hx-trigger="load"
+         hx-indicator="#students-loading">
+        <c-loading-indicator id="students-loading" message="Loading students..." />
+    </div>
 
 {% endblock content %}

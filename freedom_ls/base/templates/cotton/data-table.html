@@ -4,7 +4,8 @@
         class=""
         page_obj=""
         sort_by=""
-        sort_order="" />
+        sort_order=""
+        base_url="" />
 
 <div id="data-table-container">
     <div class="overflow-x-auto {{ class }}">
@@ -19,7 +20,7 @@
                                     {% comment %}Currently sorted by this column{% endcomment %}
                                     {% if sort_order == 'asc' %}
                                         <a href="?sort={{ column.sort_field }}&order=desc"
-                                           hx-get="?sort={{ column.sort_field }}&order=desc"
+                                           hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=desc"
                                            hx-target="#data-table-container"
                                            hx-swap="outerHTML"
                                            class="cursor-pointer hover:text-blue-600 inline-flex items-center gap-2">
@@ -28,7 +29,7 @@
                                         </a>
                                     {% else %}
                                         <a href="?sort={{ column.sort_field }}&order=asc"
-                                           hx-get="?sort={{ column.sort_field }}&order=asc"
+                                           hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc"
                                            hx-target="#data-table-container"
                                            hx-swap="outerHTML"
                                            class="cursor-pointer hover:text-blue-600 inline-flex items-center gap-2">
@@ -39,7 +40,7 @@
                                 {% else %}
                                     {% comment %}Not currently sorted{% endcomment %}
                                     <a href="?sort={{ column.sort_field }}&order=asc"
-                                       hx-get="?sort={{ column.sort_field }}&order=asc"
+                                       hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc"
                                        hx-target="#data-table-container"
                                        hx-swap="outerHTML"
                                        class="cursor-pointer hover:text-blue-600 inline-flex items-center gap-2">
@@ -84,14 +85,14 @@
             <div class="flex gap-2">
                 {% if page_obj.has_previous %}
                     <a href="?page=1{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
-                       hx-get="?page=1{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
+                       hx-get="{{ base_url }}?page=1{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
                        hx-target="#data-table-container"
                        hx-swap="outerHTML"
                        class="btn btn-outline">
                         First
                     </a>
                     <a href="?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
-                       hx-get="?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
+                       hx-get="{{ base_url }}?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
                        hx-target="#data-table-container"
                        hx-swap="outerHTML"
                        class="btn btn-outline">
@@ -106,7 +107,7 @@
                     {% elif num <= 2 or num >= page_obj.paginator.num_pages|add:'-1' or num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
                         {# Show: first 2 pages, last 2 pages, or pages within 2 of current #}
                         <a href="?page={{ num }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
-                           hx-get="?page={{ num }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
+                           hx-get="{{ base_url }}?page={{ num }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
                            hx-target="#data-table-container"
                            hx-swap="outerHTML"
                            class="btn btn-outline">
@@ -123,14 +124,14 @@
 
                 {% if page_obj.has_next %}
                     <a href="?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
-                       hx-get="?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
+                       hx-get="{{ base_url }}?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
                        hx-target="#data-table-container"
                        hx-swap="outerHTML"
                        class="btn btn-outline">
                         Next
                     </a>
                     <a href="?page={{ page_obj.paginator.num_pages }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
-                       hx-get="?page={{ page_obj.paginator.num_pages }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
+                       hx-get="{{ base_url }}?page={{ page_obj.paginator.num_pages }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}"
                        hx-target="#data-table-container"
                        hx-swap="outerHTML"
                        class="btn btn-outline">

@@ -8,6 +8,11 @@ urlpatterns = [
     path("cohorts", views.cohorts_list, name="cohorts_list"),
     path("cohorts/<uuid:cohort_id>", views.cohort_detail, name="cohort_detail"),
     path("students", views.students_list, name="students_list"),
+    path(
+        "partials/students/table",
+        views.partial_students_table,
+        name="partial_students_table",
+    ),
     path("courses/", views.course_list, name="course_list"),
     path(
         "courses/<slug:course_slug>/progress/",
