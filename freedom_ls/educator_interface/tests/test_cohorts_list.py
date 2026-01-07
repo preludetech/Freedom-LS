@@ -54,3 +54,26 @@ def test_user_with_permissions_sees_assigned_cohorts(mock_site_context, user):
     assert response.status_code == 200
     cohorts = list(response.context["cohorts"])
     assert cohorts == [cohort_a, cohort_c]
+
+
+@pytest.mark.django_db
+def test_cohort_names_are_clickable_links(mock_site_context, user):
+    """Test that cohort names are clickable links to the detail page."""
+    # Create a cohort
+    cohort = Cohort.objects.create(name="Test Cohort")
+
+    # Assign view permission
+    assign_perm("view_cohort", user, cohort)
+
+    # Create client and login
+    client = Client()
+    client.force_login(user)
+
+    # Call cohorts list view
+    url = reverse("educator_interface:cohorts_list")
+    response = client.get(url)
+
+    # Check that the response contains a link to the cohort detail page
+    assert response.status_code == 200
+    cohort_detail_url = reverse("educator_interface:cohort_detail", kwargs={"cohort_id": cohort.pk})
+    assert cohort_detail_url in response.content.decode()

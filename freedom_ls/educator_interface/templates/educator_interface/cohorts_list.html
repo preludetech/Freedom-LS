@@ -1,5 +1,7 @@
 {% extends "educator_interface/_educator_interface_base.html" %}
 
+{% load cotton %}
+
 {% block head_title %}
     Educator Interface
 {% endblock head_title %}
@@ -8,28 +10,5 @@
     <h2>
         Cohorts
     </h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Cohort Name</th>
-                <th>Active Students</th>
-                <th>Registered Courses</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for cohort in cohorts %}
-                <tr>
-                    <td>{{ cohort.name }}</td>
-                    <td>{{ cohort.student_count }}</td>
-                    <td>
-                        {% for registration in cohort.course_registrations.all %}
-                            {{ registration.collection.title }} ({{ registration.registered_at|date:"Y-m-d" }}){% if not forloop.last %}, {% endif %}
-                        {% empty %}
-                            -
-                        {% endfor %}
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% endblock %}
+    <c-data-table :columns=columns :rows=cohorts empty_message="No cohorts found" />
+{% endblock content %}

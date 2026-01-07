@@ -10,16 +10,6 @@
                         "statusMessage": "Running ruff..."
                     }
                 ]
-            },
-            {
-                "matcher": "Skill",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "mkdir -p .claude/logs && echo \"$(date -Iseconds) $(jq -r '\\\"\\\\(.tool_input.skill)\\\"')\" >> .claude/logs/skill-usage.log",
-                        "statusMessage": "Logging skill usage..."
-                    }
-                ]
             }
         ]
     }

@@ -27,7 +27,30 @@ def cohorts_list(request):
         .order_by("name")
     )
 
-    return render(request, "educator_interface/cohorts_list.html", {"cohorts": cohorts})
+    columns = [
+        {
+            "header": "Cohort Name",
+            "template": "cotton/data-table-cells/link.html",
+            "text_attr": "name",
+            "url_name": "educator_interface:cohort_detail",
+            "url_param": "pk",
+        },
+        {
+            "header": "Active Students",
+            "template": "cotton/data-table-cells/text.html",
+            "attr": "student_count",
+        },
+        {
+            "header": "Registered Courses",
+            "template": "educator_interface/data-table-cells/cohort_courses.html",
+        },
+    ]
+
+    return render(
+        request,
+        "educator_interface/cohorts_list.html",
+        {"cohorts": cohorts, "columns": columns},
+    )
 
 
 def students_list(request):
@@ -98,3 +121,9 @@ def course_list(request):
         course.total_student_count = len(cohort_student_ids | direct_student_ids)
 
     return render(request, "educator_interface/course_list.html", {"courses": courses})
+
+
+def cohort_detail(request: HttpRequest, cohort_id: str):
+    """Display details for a specific cohort."""
+    cohort = get_object_or_404(Cohort, pk=cohort_id)
+    return render(request, "educator_interface/cohort_detail.html", {"cohort": cohort})

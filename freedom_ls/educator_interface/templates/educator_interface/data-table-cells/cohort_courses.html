@@ -1,0 +1,5 @@
+{% for registration in object.course_registrations.all %}
+    {{ registration.collection.title }} ({{ registration.registered_at|date:"Y-m-d" }}){% if not forloop.last %}, {% endif %}
+{% empty %}
+    -
+{% endfor %}

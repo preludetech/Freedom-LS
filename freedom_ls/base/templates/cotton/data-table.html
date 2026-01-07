@@ -1,0 +1,104 @@
+<c-vars columns="" rows="" empty_message="No data available" class="" />
+
+<div class="overflow-x-auto {{ class }}">
+    <table>
+        <thead>
+            <tr>
+                {% for column in columns %}
+                    <th {% if column.header_class %}class="{{ column.header_class }}"{% endif %}>
+                        {{ column.header }}
+                    </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% if rows %}
+                {% for row in rows %}
+                    <tr>
+                        {% for column in columns %}
+                            <td {% if column.cell_class %}class="{{ column.cell_class }}"{% endif %}>
+                                {% include column.template with object=row column=column %}
+
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="{{ columns|length }}" class="text-center text-gray-500 py-8">
+                        {{ empty_message }}
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{% comment %}
+Usage Examples:
+
+The data-table provides generic cell templates for common patterns:
+- cotton/data-table-cells/text.html - Simple attribute display
+- cotton/data-table-cells/link.html - Links with URL generation
+
+Basic text columns (no custom templates needed):
+  columns = [
+      {'header': 'Name', 'template': 'cotton/data-table-cells/text.html', 'attr': 'name'},
+      {'header': 'Email', 'template': 'cotton/data-table-cells/text.html', 'attr': 'email'},
+      {'header': 'Student Count', 'template': 'cotton/data-table-cells/text.html', 'attr': 'student_count'},
+  ]
+  rows = Cohort.objects.all()
+
+Link columns (no custom templates needed):
+  columns = [
+      {
+          'header': 'Cohort Name',
+          'template': 'cotton/data-table-cells/link.html',
+          'text_attr': 'name',
+          'url_name': 'educator_interface:cohort_detail',
+          'url_param': 'pk'
+      },
+      {'header': 'Students', 'template': 'cotton/data-table-cells/text.html', 'attr': 'student_count'},
+  ]
+
+Nested attributes (related models):
+  {'header': 'User Email', 'template': 'cotton/data-table-cells/text.html', 'attr': 'user.email'}
+  {'header': 'Cohort Name', 'template': 'cotton/data-table-cells/text.html', 'attr': 'cohort.name'}
+
+Custom templates for complex cells:
+  columns = [
+      {'header': 'Name', 'template': 'cotton/data-table-cells/text.html', 'attr': 'name'},
+      {'header': 'Courses', 'template': 'educator_interface/cells/cohort_courses.html'},
+      {'header': 'Actions', 'template': 'educator_interface/cells/actions.html', 'cell_class': 'text-right'},
+  ]
+
+  # educator_interface/cells/cohort_courses.html
+  {% for registration in object.course_registrations.all %}
+      {{ registration.collection.title }}{% if not forloop.last %}, {% endif %}
+  {% empty %}
+      -
+  {% endfor %}
+
+  # educator_interface/cells/actions.html
+  <div class="flex gap-2 justify-end">
+      <a href="{% url 'edit' object.pk %}" class="btn btn-outline">Edit</a>
+      <a href="{% url 'delete' object.pk %}" class="btn btn-danger">Delete</a>
+  </div>
+
+Column styling:
+  columns = [
+      {'header': 'ID', 'template': 'cotton/data-table-cells/text.html', 'attr': 'id', 'header_class': 'w-16'},
+      {'header': 'Name', 'template': 'cotton/data-table-cells/text.html', 'attr': 'name', 'header_class': 'w-1/3'},
+      {'header': 'Actions', 'template': 'cells/actions.html', 'cell_class': 'text-right'},
+  ]
+
+Custom empty message:
+  <c-data-table columns=columns rows=rows empty_message="No cohorts found" />
+
+Pro tips:
+  - Use cotton/data-table-cells/text.html for simple attribute display
+  - Use cotton/data-table-cells/link.html for links with URL generation
+  - Create custom templates only for complex cells (loops, buttons, badges, etc.)
+  - Each template receives 'object' (the row) and 'column' (the config)
+  - Supports nested attributes with dot notation (e.g., 'user.email')
+{% endcomment %}

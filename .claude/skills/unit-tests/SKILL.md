@@ -1,7 +1,7 @@
 ---
 name: unit-tests
 description: Write pytest tests using Test-Driven Development (TDD). Use when implementing features, fixing bugs, or when the user mentions testing, TDD, or pytest. Tests should be written BEFORE implementation code.
-allowed-tools: Read, Grep, Glob, Write, Edit, Bash
+allowed-tools: Read, Grep, Glob
 ---
 
 # Test-Driven Development (TDD)
