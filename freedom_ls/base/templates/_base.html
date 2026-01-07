@@ -1,9 +1,7 @@
 {% load static %}
 {% load i18n %}
-
 <!DOCTYPE html>
 <html lang="en">
-
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,40 +14,29 @@
             {% block head_title %}
             {% endblock head_title %}
         </title>
-
         <link rel="stylesheet"
               href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
         <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
         <script defer
                 src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
         <!-- <meta name="htmx-config" content='{"historyCacheSize": 0}' /> -->
-
         {% block tailwind_css %}
             <link rel="stylesheet"
                   type="text/css"
                   href="{% static 'vendor/tailwind.output.css' %}" />
         {% endblock tailwind_css %}
-
         {% block extra_head %}
         {% endblock extra_head %}
-
     </head>
-
     <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-
         {% block header %}
             {% include "partials/header.html" %}
-
         {% endblock header %}
-
         {% include "partials/messages.html" %}
-
         <main class="max-w-7xl mx-auto">
             {% block body %}
                 <div class="py-12 space-y-12">
-
                     {% block pre-content %}
                     {% endblock pre-content %}
                     {% block content %}
@@ -57,7 +44,6 @@
                     {% endblock content %}
                 </div>
             {% endblock body %}
-
             {% block extra_body %}
             {% endblock extra_body %}
         </main>

@@ -1,21 +1,15 @@
 {% extends "educator_interface/_educator_interface_base.html" %}
-
 {% load cotton %}
-
 {% block head_title %}
     Educator Interface
 {% endblock head_title %}
-
 {% block title %}
     Students
 {% endblock title %}
-
 {% block content %}
-
     <div hx-get="{% url 'educator_interface:partial_students_table' %}"
          hx-trigger="load"
          hx-indicator="#students-loading">
         <c-loading-indicator id="students-loading" message="Loading students..." />
     </div>
-
 {% endblock content %}

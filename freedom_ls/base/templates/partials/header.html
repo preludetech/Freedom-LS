@@ -4,11 +4,9 @@
             {{ site_title }}
         </h1>
     </a>
-
     <nav class="space-x-1 flex flex-row">
         {% if user.is_authenticated %}
             {% include "partials/header_bar_user_menu.html" %}
-
         {% endif %}
     </nav>
 </header>

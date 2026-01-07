@@ -1,24 +1,18 @@
 {% extends "allauth/layouts/manage.html" %}
 {% load i18n %}
 {% load allauth account %}
-
-{% block head_title %}Profile{% endblock %}
-{% block content %}
-
-<h1>
+{% block head_title %}
     Profile
-</h1>
-
- <form method="POST" >
+{% endblock %}
+{% block content %}
+    <h1>
+        Profile
+    </h1>
+    <form method="POST">
         {% csrf_token %}
-        {{form}}
-
+        {{ form }}
         <c-button type="submit">
             Save
         </c-button>
-
-</form>
-
-
-
+    </form>
 {% endblock content %}

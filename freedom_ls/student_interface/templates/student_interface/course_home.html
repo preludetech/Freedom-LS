@@ -1,66 +1,57 @@
 {% extends '_base.html' %}
-
-{% block title %} {{ course.title }} {% endblock %}
-
+{% block title %}
+    {{ course.title }}
+{% endblock %}
 {% block body %}
-
-<div class="space-y-2">
-    <h1>{{ course.title }}</h1>
-    {% if course.subtitle %}
-    <p class="text-xl text-gray-600">{{ course.subtitle }}</p>
-    {% endif %}
-</div>
-
-{% if course_progress %}
-<div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-    <h3 class="text-lg font-semibold mb-3">Your Progress</h3>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-        <div>
-            <span class="text-gray-600">Started:</span>
-            <span class="font-medium ml-2">{{ course_progress.start_time|date:"M d, Y" }}</span>
-        </div>
-        <div>
-            <span class="text-gray-600">Last Accessed:</span>
-            <span class="font-medium ml-2">{{ course_progress.last_accessed_time|date:"M d, Y" }}</span>
-        </div>
-        <div>
-            {% if course_progress.completed_time %}
-            <span class="text-gray-600">Completed:</span>
-            <span class="font-medium ml-2 text-green-600">
-                <i class="fa fa-check-circle"></i> {{ course_progress.completed_time|date:"M d, Y" }}
-            </span>
-            {% else %}
-            <span class="text-gray-600">Status:</span>
-            <span class="font-medium ml-2 text-blue-600">
-                <i class="fa fa-spinner"></i> In Progress
-            </span>
-            {% endif %}
-        </div>
+    <div class="space-y-2">
+        <h1>{{ course.title }}</h1>
+        {% if course.subtitle %}
+            <p class="text-xl text-gray-600">{{ course.subtitle }}</p>
+        {% endif %}
     </div>
-</div>
-{% endif %}
-
-<div class="mt-8">
-    <h2>Contents</h2>
-
-    <div class="mt-4 space-y-2">
+    {% if course_progress %}
+        <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <h3 class="text-lg font-semibold mb-3">Your Progress</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                    <span class="text-gray-600">Started:</span>
+                    <span class="font-medium ml-2">{{ course_progress.start_time|date:"M d, Y" }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-600">Last Accessed:</span>
+                    <span class="font-medium ml-2">{{ course_progress.last_accessed_time|date:"M d, Y" }}</span>
+                </div>
+                <div>
+                    {% if course_progress.completed_time %}
+                        <span class="text-gray-600">Completed:</span>
+                        <span class="font-medium ml-2 text-green-600">
+                            <i class="fa fa-check-circle"></i> {{ course_progress.completed_time|date:"M d, Y" }}
+                        </span>
+                    {% else %}
+                        <span class="text-gray-600">Status:</span>
+                        <span class="font-medium ml-2 text-blue-600">
+                            <i class="fa fa-spinner"></i> In Progress
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    <div class="mt-8">
+        <h2>Contents</h2>
+        <div class="mt-4 space-y-2">
             {% include "student_interface/partials/course_minimal_toc.html#course-children" %}
-    
+        </div>
     </div>
-</div>
-
-{% if user.is_authenticated %}
-    {% if is_registered %}
+    {% if user.is_authenticated %}
+        {% if is_registered %}
+        {% else %}
+            <form method="post" action="{% url 'student_interface:register_for_course' course_slug=course.slug %}">
+                {% csrf_token %}
+                <c-button type="submit">Register for Course</c-button>
+            </form>
+        {% endif %}
     {% else %}
-        <form method="post" action="{% url 'student_interface:register_for_course' course_slug=course.slug %}">
-            {% csrf_token %}
-            <c-button type="submit">Register for Course</c-button>
-        </form>
+        {% include "partials/login_prompt.html" %}
     {% endif %}
-{% else %}
-
-{% include "partials/login_prompt.html" %}
-
-{% endif %}
-
 {% endblock %}

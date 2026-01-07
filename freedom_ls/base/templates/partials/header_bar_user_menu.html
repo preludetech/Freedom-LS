@@ -1,8 +1,7 @@
-<c-dropdown-menu trigger_class="text-white p-2 cursor-pointer ">
+<c-dropdown-menu trigger_class="text-white p-2 cursor-pointer">
     <c-slot name="trigger">
         {{ user.email }} <i class="fas fa-chevron-down text-sm"></i>
     </c-slot>
-
     <c-button dropdown="true" href="{% url 'account_profile' %}">
         Profile
     </c-button>
@@ -14,9 +13,7 @@
             Admin Panel
         </c-button>
     {% endif %}
-
     {% with dropdown=True %}
         {% include "partials/logout_button.html" %}
-
     {% endwith %}
 </c-dropdown-menu>
