@@ -1,36 +1,41 @@
 {% extends "_base.html" %}
 
-
 {% block body %}
 
-<div class="flex gap-6">
-    <!-- Left Navigation Panel -->
-    <aside class="w-64 ">
-        <nav class="sticky top-4">
-            <div class="bg-white shadow-md rounded-lg p-4">
-                <h2 class="text-lg font-semibold mb-4 text-gray-800">Navigation</h2>
-                
-                <a href="{% url 'educator_interface:home' %}"
-                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded">
-                    Dashboard
-                </a>
+    <div class="flex gap-6">
+        <!-- Left Navigation Panel -->
+        <aside class="w-64 ">
+            <nav class="sticky top-4">
+                <div class="bg-white shadow-md rounded-lg p-4">
+                    <h2 class="text-lg font-semibold mb-4 text-gray-800">
+                        Navigation
+                    </h2>
 
-                <a href="{% url 'educator_interface:course_list' %}"
-                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded">
-                    Courses
-                </a>
+                    <a href="{% url 'educator_interface:home' %}"
+                       class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded">
+                        Dashboard
+                    </a>
 
-            </div>
-        </nav>
-    </aside>
+                    <a href="{% url 'educator_interface:cohorts_list' %}"
+                       class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded">
+                        Cohorts
+                    </a>
 
-    <!-- Main Content Area -->
-    <div class="flex-1 min-w-0">
-        {% block content %}
-            Replace this in child templates
-        {% endblock content %}
+                    <a href="{% url 'educator_interface:course_list' %}"
+                       class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded">
+                        Courses
+                    </a>
+
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 min-w-0">
+            {% block content %}
+                Replace this in child templates
+            {% endblock content %}
+        </div>
     </div>
-</div>
 
 {% endblock body %}
-    

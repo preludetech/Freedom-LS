@@ -1,11 +1,33 @@
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Count
+from django.http import HttpRequest
+from guardian.shortcuts import get_objects_for_user
 from freedom_ls.content_engine.models import Course
+from freedom_ls.student_management.models import Cohort
 
 
-def home(request):
+def home(request: HttpRequest):
     """Educator interface home page."""
+    # Get cohorts that the user has view permission for
+
     return render(request, "educator_interface/home.html")
+
+
+def cohorts_list(request):
+    cohorts = (
+        get_objects_for_user(
+            request.user,
+            "view_cohort",
+            klass=Cohort,
+        )
+        .annotate(
+            student_count=Count("cohortmembership", distinct=True),
+        )
+        .prefetch_related("course_registrations__collection")
+        .order_by("name")
+    )
+
+    return render(request, "educator_interface/cohorts_list.html", {"cohorts": cohorts})
 
 
 def course_student_progress(request, course_slug):

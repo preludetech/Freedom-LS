@@ -49,7 +49,30 @@
         @apply py-1
     }
 
-  
+    /* Tables */
+    table {
+        @apply w-full border-collapse
+    }
+
+    thead {
+        @apply bg-gray-50 border-b-2 border-gray-300
+    }
+
+    th {
+        @apply px-4 py-3 text-left text-sm font-semibold text-gray-700
+    }
+
+    td {
+        @apply px-4 py-3 text-sm text-gray-900
+    }
+
+    tbody tr {
+        @apply border-b border-gray-200 hover:bg-gray-50
+    }
+
+    tbody tr:last-child {
+        @apply border-b-0
+    }
 
     /* Form elements */
     label {
