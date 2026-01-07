@@ -75,11 +75,29 @@ def get_student_data_table_context(request):
     )
 
     # Combine both querysets and remove duplicates
-    students = (
-        (students_with_direct_access | students_from_cohorts)
-        .distinct()
-        .order_by("user__first_name", "user__last_name")
-    )
+    students = (students_with_direct_access | students_from_cohorts).distinct()
+
+    # Handle sorting
+    sort_by = request.GET.get("sort", "")
+    sort_order = request.GET.get("order", "asc")
+
+    # Define sort field mappings
+    sort_fields = {
+        "name": ["user__first_name", "user__last_name"],
+        "email": ["user__email"],
+    }
+
+    # Apply sorting if a valid sort field is provided
+    if sort_by in sort_fields:
+        order_fields = sort_fields[sort_by]
+        if sort_order == "desc":
+            order_fields = [f"-{field}" for field in order_fields]
+        students = students.order_by(*order_fields)
+    else:
+        # Default ordering
+        students = students.order_by("user__first_name", "user__last_name")
+        sort_by = ""
+        sort_order = "asc"
 
     # Pagination
     page_number = request.GET.get("page", 1)
@@ -91,11 +109,15 @@ def get_student_data_table_context(request):
             "header": "Name",
             "template": "cotton/data-table-cells/text.html",
             "attr": "__str__",
+            "sortable": True,
+            "sort_field": "name",
         },
         {
             "header": "Email",
             "template": "cotton/data-table-cells/text.html",
             "attr": "user.email",
+            "sortable": True,
+            "sort_field": "email",
         },
         {
             "header": "Cohorts",
@@ -107,7 +129,13 @@ def get_student_data_table_context(request):
         },
     ]
 
-    return {"rows": page_obj, "columns": columns, "page_obj": page_obj}
+    return {
+        "rows": page_obj,
+        "columns": columns,
+        "page_obj": page_obj,
+        "sort_by": sort_by,
+        "sort_order": sort_order,
+    }
 
 
 def students_list(request):

@@ -1,11 +1,17 @@
 {% extends "educator_interface/_educator_interface_base.html" %}
+
 {% load cotton %}
 
 {% block head_title %}
     Courses
-{% endblock %}
+{% endblock head_title %}
+
+{% block title %}
+    Courses
+{% endblock title %}
 
 {% block content %}
-    <h1 class="mb-6">Courses</h1>
+
+    TODO: Show active students and active cohorts
     <c-data-table :columns=columns :rows=courses empty_message="No courses available" />
-{% endblock %}
+{% endblock content %}

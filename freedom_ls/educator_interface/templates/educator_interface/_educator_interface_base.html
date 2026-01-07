@@ -2,7 +2,7 @@
 
 {% block body %}
 
-    <div class="flex gap-6">
+    <div class="flex gap-6 pt-8">
         <!-- Left Navigation Panel -->
         <aside class="w-64 ">
             <nav class="sticky top-4">
@@ -37,6 +37,15 @@
 
         <!-- Main Content Area -->
         <div class="flex-1 min-w-0">
+            {% block breadcrumbs %}
+            {% endblock breadcrumbs %}
+
+            <h1>
+                {% block title %}
+                    Fill in the title block
+                {% endblock title %}
+            </h1>
+
             {% block content %}
                 Replace this in child templates
             {% endblock content %}

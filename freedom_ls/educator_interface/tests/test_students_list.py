@@ -10,7 +10,7 @@ from freedom_ls.student_management.models import (
     Cohort,
     CohortMembership,
     StudentCourseRegistration,
-    CohortCourseRegistration
+    CohortCourseRegistration,
 )
 from freedom_ls.content_engine.models import Course
 
@@ -20,16 +20,14 @@ def test_user_with_no_permissions_sees_no_students(mock_site_context, user):
     """User without view permissions sees no students."""
     # Create students but don't assign permissions
     user1 = user.__class__.objects.create_user(
-        email="student1@example.com",
-        password="testpass123"
+        email="student1@example.com", password="testpass123"
     )
     user1.first_name = "Alice"
     user1.last_name = "Johnson"
     user1.save()
 
     user2 = user.__class__.objects.create_user(
-        email="student2@example.com",
-        password="testpass123"
+        email="student2@example.com", password="testpass123"
     )
     user2.first_name = "Bob"
     user2.last_name = "Smith"
@@ -48,7 +46,7 @@ def test_user_with_no_permissions_sees_no_students(mock_site_context, user):
 
     # Check response
     assert response.status_code == 200
-    students_list_result = list(response.context["students"])
+    students_list_result = list(response.context["rows"])
     assert len(students_list_result) == 0
 
 
@@ -57,24 +55,21 @@ def test_user_sees_students_with_direct_view_permission(mock_site_context, user)
     """User with direct view permissions sees only assigned students."""
     # Create students
     user1 = user.__class__.objects.create_user(
-        email="student1@example.com",
-        password="testpass123"
+        email="student1@example.com", password="testpass123"
     )
     user1.first_name = "Alice"
     user1.last_name = "Johnson"
     user1.save()
 
     user2 = user.__class__.objects.create_user(
-        email="student2@example.com",
-        password="testpass123"
+        email="student2@example.com", password="testpass123"
     )
     user2.first_name = "Bob"
     user2.last_name = "Smith"
     user2.save()
 
     user3 = user.__class__.objects.create_user(
-        email="student3@example.com",
-        password="testpass123"
+        email="student3@example.com", password="testpass123"
     )
     user3.first_name = "Charlie"
     user3.last_name = "Brown"
@@ -98,7 +93,7 @@ def test_user_sees_students_with_direct_view_permission(mock_site_context, user)
 
     # Check response
     assert response.status_code == 200
-    students = list(response.context["students"])
+    students = list(response.context["rows"])
     assert students == [student1, student3]
 
 
@@ -107,24 +102,21 @@ def test_user_sees_students_through_cohort_permissions(mock_site_context, user):
     """User sees students from cohorts they have view permission for."""
     # Create students
     user1 = user.__class__.objects.create_user(
-        email="student1@example.com",
-        password="testpass123"
+        email="student1@example.com", password="testpass123"
     )
     user1.first_name = "Alice"
     user1.last_name = "Johnson"
     user1.save()
 
     user2 = user.__class__.objects.create_user(
-        email="student2@example.com",
-        password="testpass123"
+        email="student2@example.com", password="testpass123"
     )
     user2.first_name = "Bob"
     user2.last_name = "Smith"
     user2.save()
 
     user3 = user.__class__.objects.create_user(
-        email="student3@example.com",
-        password="testpass123"
+        email="student3@example.com", password="testpass123"
     )
     user3.first_name = "Charlie"
     user3.last_name = "Brown"
@@ -156,7 +148,7 @@ def test_user_sees_students_through_cohort_permissions(mock_site_context, user):
 
     # Check response - should see student1 and student2 from cohort_a, but not student3
     assert response.status_code == 200
-    students = list(response.context["students"])
+    students = list(response.context["rows"])
     assert set(students) == {student1, student2}
 
 
@@ -165,24 +157,21 @@ def test_user_sees_combined_students_from_both_access_methods(mock_site_context,
     """User sees students from both direct permissions and cohort permissions, without duplicates."""
     # Create students
     user1 = user.__class__.objects.create_user(
-        email="student1@example.com",
-        password="testpass123"
+        email="student1@example.com", password="testpass123"
     )
     user1.first_name = "Alice"
     user1.last_name = "Johnson"
     user1.save()
 
     user2 = user.__class__.objects.create_user(
-        email="student2@example.com",
-        password="testpass123"
+        email="student2@example.com", password="testpass123"
     )
     user2.first_name = "Bob"
     user2.last_name = "Smith"
     user2.save()
 
     user3 = user.__class__.objects.create_user(
-        email="student3@example.com",
-        password="testpass123"
+        email="student3@example.com", password="testpass123"
     )
     user3.first_name = "Charlie"
     user3.last_name = "Brown"
@@ -219,7 +208,7 @@ def test_user_sees_combined_students_from_both_access_methods(mock_site_context,
     # student2 via cohort
     # student3 via direct
     assert response.status_code == 200
-    students = list(response.context["students"])
+    students = list(response.context["rows"])
     assert set(students) == {student1, student2, student3}
 
 
@@ -228,8 +217,7 @@ def test_view_displays_correct_student_information(mock_site_context, user):
     """Verify that the students list displays name, email, cohorts, and courses correctly."""
     # Create student
     user1 = user.__class__.objects.create_user(
-        email="alice@example.com",
-        password="testpass123"
+        email="alice@example.com", password="testpass123"
     )
     user1.first_name = "Alice"
     user1.last_name = "Johnson"
@@ -247,12 +235,12 @@ def test_view_displays_correct_student_information(mock_site_context, user):
     course1 = Course.objects.create(
         title="Introduction to Python",
         slug="intro-python",
-        file_path="courses/python-intro.md"
+        file_path="courses/python-intro.md",
     )
     course2 = Course.objects.create(
         title="Advanced Mathematics",
         slug="advanced-math",
-        file_path="courses/advanced-math.md"
+        file_path="courses/advanced-math.md",
     )
 
     # Register student for course1 directly
@@ -283,3 +271,146 @@ def test_view_displays_correct_student_information(mock_site_context, user):
     assert "Science Cohort 2024" in content
     assert "Introduction to Python" in content
     assert "Advanced Mathematics" in content
+
+
+@pytest.mark.django_db
+def test_students_can_be_sorted_by_name(mock_site_context, user):
+    """Students can be sorted by name in ascending and descending order."""
+    # Create students with different names
+    user1 = user.__class__.objects.create_user(
+        email="alice@example.com", password="testpass123"
+    )
+    user1.first_name = "Alice"
+    user1.last_name = "Johnson"
+    user1.save()
+
+    user2 = user.__class__.objects.create_user(
+        email="bob@example.com", password="testpass123"
+    )
+    user2.first_name = "Bob"
+    user2.last_name = "Smith"
+    user2.save()
+
+    user3 = user.__class__.objects.create_user(
+        email="charlie@example.com", password="testpass123"
+    )
+    user3.first_name = "Charlie"
+    user3.last_name = "Anderson"
+    user3.save()
+
+    student1 = Student.objects.create(user=user1)
+    student2 = Student.objects.create(user=user2)
+    student3 = Student.objects.create(user=user3)
+
+    # Give user permission to view all students
+    assign_perm("view_student", user, student1)
+    assign_perm("view_student", user, student2)
+    assign_perm("view_student", user, student3)
+
+    # Create client and login
+    client = Client()
+    client.force_login(user)
+
+    # Test sorting by name ascending (default)
+    url = reverse("educator_interface:students_list")
+    response = client.get(url + "?sort=name&order=asc")
+    assert response.status_code == 200
+    students = list(response.context["rows"])
+    assert students == [student1, student2, student3]  # Alice, Bob, Charlie
+
+    # Test sorting by name descending
+    response = client.get(url + "?sort=name&order=desc")
+    assert response.status_code == 200
+    students = list(response.context["rows"])
+    assert students == [student3, student2, student1]  # Charlie, Bob, Alice
+
+
+@pytest.mark.django_db
+def test_students_can_be_sorted_by_email(mock_site_context, user):
+    """Students can be sorted by email in ascending and descending order."""
+    # Create students with different emails
+    user1 = user.__class__.objects.create_user(
+        email="charlie@example.com", password="testpass123"
+    )
+    user1.first_name = "Alice"
+    user1.last_name = "Johnson"
+    user1.save()
+
+    user2 = user.__class__.objects.create_user(
+        email="alice@example.com", password="testpass123"
+    )
+    user2.first_name = "Bob"
+    user2.last_name = "Smith"
+    user2.save()
+
+    user3 = user.__class__.objects.create_user(
+        email="bob@example.com", password="testpass123"
+    )
+    user3.first_name = "Charlie"
+    user3.last_name = "Anderson"
+    user3.save()
+
+    student1 = Student.objects.create(user=user1)
+    student2 = Student.objects.create(user=user2)
+    student3 = Student.objects.create(user=user3)
+
+    # Give user permission to view all students
+    assign_perm("view_student", user, student1)
+    assign_perm("view_student", user, student2)
+    assign_perm("view_student", user, student3)
+
+    # Create client and login
+    client = Client()
+    client.force_login(user)
+
+    # Test sorting by email ascending
+    url = reverse("educator_interface:students_list")
+    response = client.get(url + "?sort=email&order=asc")
+    assert response.status_code == 200
+    students = list(response.context["rows"])
+    assert students == [
+        student2,
+        student3,
+        student1,
+    ]  # alice@, bob@, charlie@
+
+    # Test sorting by email descending
+    response = client.get(url + "?sort=email&order=desc")
+    assert response.status_code == 200
+    students = list(response.context["rows"])
+    assert students == [
+        student1,
+        student3,
+        student2,
+    ]  # charlie@, bob@, alice@
+
+
+@pytest.mark.django_db
+def test_sort_context_is_passed_to_template(mock_site_context, user):
+    """The sort_by and sort_order are included in the template context."""
+    # Create a student
+    user1 = user.__class__.objects.create_user(
+        email="student@example.com", password="testpass123"
+    )
+    user1.first_name = "Test"
+    user1.last_name = "Student"
+    user1.save()
+    student = Student.objects.create(user=user1)
+    assign_perm("view_student", user, student)
+
+    # Create client and login
+    client = Client()
+    client.force_login(user)
+
+    # Test with sort parameters
+    url = reverse("educator_interface:students_list")
+    response = client.get(url + "?sort=email&order=desc")
+    assert response.status_code == 200
+    assert response.context["sort_by"] == "email"
+    assert response.context["sort_order"] == "desc"
+
+    # Test without sort parameters (should use defaults)
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response.context["sort_by"] == ""
+    assert response.context["sort_order"] == "asc"

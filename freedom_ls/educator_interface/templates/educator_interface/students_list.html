@@ -6,12 +6,15 @@
     Educator Interface
 {% endblock head_title %}
 
+{% block title %}
+    Students
+{% endblock title %}
+
 {% block content %}
-    <h2>
-        Students
-    </h2>
+
+    TODO: fetch and draw the table on page load
     {% partialdef students-table-partial inline=True %}
-        <c-data-table :columns=columns :rows=rows :page_obj=page_obj empty_message="No students found" />
+        <c-data-table :columns=columns :rows=rows :page_obj=page_obj :sort_by=sort_by :sort_order=sort_order empty_message="No students found" />
     {% endpartialdef %}
 
 {% endblock content %}

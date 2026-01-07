@@ -6,9 +6,11 @@
     Educator Interface
 {% endblock head_title %}
 
+{% block title %}
+    Cohorts
+{% endblock title %}
+
 {% block content %}
-    <h2>
-        Cohorts
-    </h2>
+
     <c-data-table :columns=columns :rows=cohorts empty_message="No cohorts found" />
 {% endblock content %}

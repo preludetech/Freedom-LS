@@ -2,8 +2,22 @@
 
 {% block head_title %}
     {{ cohort.name }}
-{% endblock %}
+{% endblock head_title %}
+
+{% block title %}
+    {{ cohort.name }}
+{% endblock title %}
+
+{% block breadcrumbs %}
+    <a href="{% url 'educator_interface:cohorts_list' %}"><< cohorts</a>
+{% endblock breadcrumbs %}
 
 {% block content %}
-    <h1>{{ cohort.name }}</h1>
-{% endblock %}
+
+    <h2>
+        Students
+    </h2>
+
+    TODO: onload add students table
+
+{% endblock content %}
