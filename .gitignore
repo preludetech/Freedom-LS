@@ -33,4 +33,5 @@ static/vendor/
 
 
 .playwright-mcp/
-..pytest_cache/
+.pytest_cache/
+.ruff_cache/
