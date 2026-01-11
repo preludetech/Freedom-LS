@@ -30,3 +30,7 @@ static/vendor/
 
 *.log
 *.save
+
+
+.playwright-mcp/
+..pytest_cache/
