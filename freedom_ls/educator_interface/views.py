@@ -56,6 +56,9 @@ def cohorts_list(request):
 
 
 def get_student_data_table_context(request):
+    # Get optional cohort filter
+    cohort_id = request.GET.get("cohort")
+
     # Get students with direct view permission
     students_with_direct_access = get_objects_for_user(
         request.user,
@@ -77,6 +80,10 @@ def get_student_data_table_context(request):
 
     # Combine both querysets and remove duplicates
     students = (students_with_direct_access | students_from_cohorts).distinct()
+
+    # Filter by cohort if specified
+    if cohort_id:
+        students = students.filter(cohortmembership__cohort__pk=cohort_id)
 
     # Handle search
     search_query = request.GET.get("search", "").strip()
@@ -117,8 +124,7 @@ def get_student_data_table_context(request):
     columns = [
         {
             "header": "Name",
-            "template": "cotton/data-table-cells/text.html",
-            "attr": "__str__",
+            "template": "educator_interface/data-table-cells/link_to_student.html",
             "sortable": True,
             "sort_field": "name",
         },
@@ -235,3 +241,9 @@ def cohort_detail(request: HttpRequest, cohort_id: str):
     """Display details for a specific cohort."""
     cohort = get_object_or_404(Cohort, pk=cohort_id)
     return render(request, "educator_interface/cohort_detail.html", {"cohort": cohort})
+
+
+def student_detail(request: HttpRequest, student_id: str):
+    """Display details for a specific student."""
+    student = get_object_or_404(Student, pk=student_id)
+    return render(request, "educator_interface/student_detail.html", {"student": student})

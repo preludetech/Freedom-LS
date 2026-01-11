@@ -18,6 +18,10 @@
         Students
     </h2>
 
-    TODO: onload add students table
+    <div hx-get="{% url 'educator_interface:partial_students_table' %}?cohort={{ cohort.pk }}"
+         hx-trigger="load"
+         hx-indicator="#students-loading">
+        <c-loading-indicator id="students-loading" message="Loading students..." />
+    </div>
 
 {% endblock content %}

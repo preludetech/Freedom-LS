@@ -1,0 +1,94 @@
+{% extends "educator_interface/_educator_interface_base.html" %}
+
+{% block head_title %}
+    {{ student }}
+{% endblock head_title %}
+
+{% block title %}
+    {{ student }}
+{% endblock title %}
+
+{% block breadcrumbs %}
+    <a href="{% url 'educator_interface:students_list' %}"><< students</a>
+{% endblock breadcrumbs %}
+
+{% block content %}
+
+    <div class="surface mb-6">
+        <h2 class="mb-4">
+            Student Information
+        </h2>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label>
+                    Name
+                </label>
+                <p class="text-gray-900">
+                    {{ student.user.first_name }} {{ student.user.last_name }}
+                </p>
+            </div>
+
+            <div>
+                <label>
+                    Email
+                </label>
+                <p class="text-gray-900">
+                    {{ student.user.email }}
+                </p>
+            </div>
+
+            {% if student.id_number %}
+                <div>
+                    <label>
+                        ID Number
+                    </label>
+                    <p class="text-gray-900">
+                        {{ student.id_number }}
+                    </p>
+                </div>
+            {% endif %}
+
+            {% if student.date_of_birth %}
+                <div>
+                    <label>
+                        Date of Birth
+                    </label>
+                    <p class="text-gray-900">
+                        {{ student.date_of_birth }}
+                    </p>
+                </div>
+            {% endif %}
+
+            {% if student.cellphone %}
+                <div>
+                    <label>
+                        Cellphone
+                    </label>
+                    <p class="text-gray-900">
+                        {{ student.cellphone }}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="surface mb-6">
+        <h2 class="mb-4">
+            Cohorts
+        </h2>
+        <p class="text-gray-600">
+            TODO: Display student cohorts
+        </p>
+    </div>
+
+    <div class="surface">
+        <h2 class="mb-4">
+            Registered Courses
+        </h2>
+        <p class="text-gray-600">
+            TODO: Display student course registrations
+        </p>
+    </div>
+
+{% endblock content %}

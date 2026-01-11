@@ -1,5 +1,5 @@
 {% for membership in object.cohortmembership_set.all %}
-    {{ membership.cohort.name }}{% if not forloop.last %}, {% endif %}
+    {% include 'educator_interface/data-table-cells/link_to_cohort.html' with object=membership.cohort %}{% if not forloop.last %}, {% endif %}
 {% empty %}
     -
 {% endfor %}
