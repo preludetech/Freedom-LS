@@ -4,7 +4,7 @@ Once you have a running Capover instance set up, you can deploy simply with:
 
 
 ```
-caprover deploy --caproverUrl $CAPROVER_URL --caproverApp $CAPROVER_APP 
+caprover deploy --caproverUrl $CAPROVER_URL --caproverApp $CAPROVER_APP  --branch main
 ```
 
 - `CAPROVER_URL` will be something like `https://captain.whatever.domain.com`
@@ -30,7 +30,9 @@ First, get the content onto the container:
 
 ```
 gh repo clone preludetech/Freedom-LS 
-docker cp Freedom-LS/demo_content $CONTAINER:/app/content 
+cd Freedom-LS
+git pull
+docker cp demo_content $CONTAINER:/app/content 
 ```
 
 Then open a shell into the container, create a Site and save the content. 
