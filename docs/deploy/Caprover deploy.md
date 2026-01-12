@@ -13,20 +13,18 @@ caprover deploy --caproverUrl $CAPROVER_URL --caproverApp $CAPROVER_APP
 
 ## Set up the database 
 
+```
+CONTAINER=$(docker ps --filter name=srv-captain--$CAPROVER_APP -q)
+```
 
-
-CONTAINER=$(docker ps --filter name=srv-captain--freedom-ls -q)
-docker cp Freedom-LS/demo_content $CONTAINER:/app/content 
-
-
-docker exec -it $(docker ps --filter name=srv-captain--freedom-ls -q) /bin/sh
+```
+docker exec -it $CONTAINER /bin/sh
 python manage.py migrate
+```
 
+## Add Content 
 
-## Add demo content 
-
-In a prod environment you would want to add real content. This is a guideline on how to do it.
-
+In a prod environment you would want to add real content. This is how you can add the demo content:
 
 First, get the content onto the container:
 

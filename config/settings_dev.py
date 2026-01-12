@@ -67,3 +67,35 @@ DATABASES = {
 
 
 MIDDLEWARE = MIDDLEWARE + ["django_browser_reload.middleware.BrowserReloadMiddleware"]
+
+# TODO: DELETE
+
+# AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+# AWS_S3_ACCESS_KEY_ID = os.getenv("AWS_S3_ACCESS_KEY_ID")
+# AWS_S3_SECRET_ACCESS_KEY = os.getenv("AWS_S3_SECRET_ACCESS_KEY")
+# AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL")
+# AWS_DEFAULT_ACL = os.getenv("AWS_DEFAULT_ACL")
+# AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME")
+
+# default_storage = {
+#     "BACKEND": "storages.backends.s3.S3Storage",
+#     # "BACKEND": "storages.backends.s3.S3Storage",
+#     # storages.backends.s3boto3.S3Boto3Storage
+#     "OPTIONS": {
+#         "bucket_name": AWS_STORAGE_BUCKET_NAME,
+#         "access_key": AWS_S3_ACCESS_KEY_ID,
+#         "secret_key": AWS_S3_SECRET_ACCESS_KEY,
+#         "endpoint_url": AWS_S3_ENDPOINT_URL,
+#         "region_name": AWS_S3_REGION_NAME,
+#         "default_acl": AWS_DEFAULT_ACL,
+#         "signature_version": "s3v4",
+#     },
+# }
+
+# STORAGES = {
+#     "default": default_storage,
+#     "staticfiles": {
+#         # "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+#         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+#     },
+# }

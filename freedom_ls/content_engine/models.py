@@ -335,6 +335,15 @@ class QuestionOption(SiteAwareModel):
         return self.text
 
 
+def file_upload_handler(instance, filepath):
+    filepath = Path(filepath)
+    ext = filepath.suffix
+    stem = filepath.stem
+    pk = instance.pk
+    assert pk
+    return f"content_engine/{stem}{pk}{ext}"
+
+
 class File(SiteAwareModel):
     """Stores files (images, documents, etc.) referenced in content."""
 
@@ -345,7 +354,7 @@ class File(SiteAwareModel):
         AUDIO = "AUDIO", _("Audio")
         OTHER = "OTHER", _("Other")
 
-    file = models.FileField(upload_to="media/content_engine")
+    file = models.FileField(upload_to=file_upload_handler)
     file_type = models.CharField(
         max_length=20, choices=FileType.choices, default=FileType.OTHER
     )
