@@ -151,3 +151,21 @@ Some text with **bold**."""
         result = render_markdown("", mock_request)
 
         assert result == ""
+
+    def test_blockquote_rendering(self, mock_request):
+        """Test that blockquote rendering works."""
+        markdown_text = "> This is a blockquote"
+        result = render_markdown(markdown_text, mock_request)
+        assert "<blockquote>" in result
+        assert "This is a blockquote" in result
+
+    def test_table_rendering(self, mock_request):
+        """Test that table rendering works."""
+        markdown_text = """
+    | Header 1 | Header 2 |
+    |----------|----------|
+    | Cell 1   | Cell 2   |
+    """
+        result = render_markdown(markdown_text, mock_request)
+        assert "<table>" in result
+        assert "<th>Header 1</th>" in result
