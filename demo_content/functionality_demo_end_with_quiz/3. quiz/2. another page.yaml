@@ -2,7 +2,7 @@
 content_type: FORM_PAGE
 description: lorem ipsum
 subtitle: Something Something
-title: Page 1
+title: Page 2
 uuid: f28cd121-5b7e-4e14-a576-1fd7dc95c72c
 ---
 options:
@@ -24,11 +24,7 @@ uuid: 2617c6fc-58ee-4703-870c-283ebb85c91d
 ---
 content: |-
   Considering blah blah, answer the following:
-  <c-picture  
-     src="../images/graph1.drawio.svg"
-     alt="Graph example"
-     caption="Example of a graph"
-     />
+  <c-picture src="../images/graph1.drawio.svg" alt="Graph example" caption="Example of a graph"/>
     Blah blah
 uuid: 3c08278d-5d69-43d6-a5e2-291cedcb3c4a
 ---

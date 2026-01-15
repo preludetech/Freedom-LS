@@ -37,12 +37,17 @@
         @apply underline text-blue-600
     }
 
+    blockquote {
+        @apply border-l-4 border-blue-500 bg-blue-50 pl-4 pr-4 py-3 my-4 
+               italic text-gray-700 rounded-r-md
+    }
+
     ul {
-        @apply list-disc list-inside  space-y-2
+        @apply list-disc list-outside ml-6 space-y-2
     }
 
     ol {
-        @apply list-decimal space-y-2 list-inside
+        @apply list-decimal list-outside ml-6 space-y-2
     }
 
     li {
