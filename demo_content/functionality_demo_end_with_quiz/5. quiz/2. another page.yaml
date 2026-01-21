@@ -23,11 +23,7 @@ uuid: 393eb697-11b8-4ef6-990c-964f3d3c5584
 ---
 content: |-
   Considering blah blah, answer the following:
-  <c-picture  
-     src="../images/graph1.drawio.svg"
-     alt="Graph example"
-     caption="Example of a graph"
-     />
+  <c-picture src="../images/graph1.drawio.svg" alt="Graph example" caption="Example of a graph" />
     Blah blah
 uuid: af1dcf04-068b-4b6a-af60-1708e0c30e80
 ---
