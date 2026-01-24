@@ -1,8 +1,15 @@
+from typing import Any
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
+from django.contrib.sites.shortcuts import get_current_site
+from django.db.models import Model
+from django.forms import ModelForm
+from django.http import HttpRequest
+from guardian.admin import GuardedModelAdmin
 from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+from .models import SiteGroup
 
 User = get_user_model()
 
@@ -11,6 +18,29 @@ try:
     admin.site.unregister(Group)
 except admin.sites.NotRegistered:
     pass
+
+
+@admin.register(SiteGroup)
+class SiteGroupAdmin(SiteAwareModelAdmin, GuardedModelAdmin):
+    list_display = ["group_name"]
+
+    search_fields = ["group_name"]
+    filter_horizontal = ["permissions"]
+
+    exclude = ["name", "site"]
+
+    def save_model(
+        self,
+        request: HttpRequest,
+        obj: SiteGroup,
+        form: ModelForm,
+        change: bool
+    ) -> None:
+        # Ensure site is set from request if not already set
+        if not obj.site_id:
+            obj.site = get_current_site(request)
+
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(User)
@@ -25,6 +55,8 @@ class UserAdmin(SiteAwareModelAdmin):
     list_filter = ["is_staff", "is_superuser", "is_active"]
     ordering = ["email"]
     readonly_fields = ["last_login"]
+
+    filter_horizontal = ("groups", "user_permissions")
 
     add_fieldsets = (
         (
@@ -78,10 +110,3 @@ class UserAdmin(SiteAwareModelAdmin):
             defaults["form"] = self.add_form
         defaults.update(kwargs)
         return super().get_form(request, obj, **defaults)
-
-
-# @admin.register(SiteGroup)
-# class SiteGroupAdmin(SiteAwareModelAdmin):
-#     list_display = ["name"]
-#     search_fields = ["name"]
-#     filter_horizontal = ["permissions"]

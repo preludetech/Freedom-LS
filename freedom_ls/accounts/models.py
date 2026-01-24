@@ -3,9 +3,13 @@ from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
     PermissionsMixin,
+    Group as AuthGroup,
 )
 from django.contrib.sites.shortcuts import get_current_site
-from freedom_ls.site_aware_models.models import _thread_locals, SiteAwareModelBase, SiteAwareModel
+from django.utils.translation import gettext_lazy as _
+from freedom_ls.site_aware_models.models import _thread_locals, SiteAwareModelBase, SiteAwareModel, SiteAwareManager
+from guardian.mixins import GuardianUserMixin, GuardianGroupMixin
+from guardian.models import GroupObjectPermissionAbstract
 
 
 class UserManager(BaseUserManager):
@@ -50,7 +54,59 @@ class UserManager(BaseUserManager):
         return user
 
 
-class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
+class SiteGroup(SiteAwareModelBase, AuthGroup, GuardianGroupMixin):
+    """Custom Group model with site awareness."""
+    group_name = models.CharField(max_length=200, blank=False)
+
+    # Explicitly declare manager to ensure it's not overridden by Django MTI
+    objects = SiteAwareManager()
+
+    class Meta:
+        verbose_name = _("group")
+        verbose_name_plural = _("groups")
+        unique_together = [['site_id', 'group_name']]
+
+    def __str__(self):
+        return self.group_name
+
+    def save(self, *args, **kwargs):
+        """Auto-generate the name field from group_name and site."""
+        if not self.site_id:
+            request = getattr(_thread_locals, "request", None)
+            if request:
+                self.site = get_current_site(request)
+
+        # Auto-generate the 'name' field for Django's Group compatibility
+        if self.site_id:
+            self.name = f"{self.group_name} ({self.site.domain})"
+
+        super().save(*args, **kwargs)
+
+
+
+class SiteGroupPermissionsMixin(PermissionsMixin):
+    """
+    This mixin overrides the 'groups' field from PermissionsMixin.
+    We need this because the default PermissionsMixin hardcodes the relationship
+    to 'auth.Group', but we need it to point to 'SiteGroup'.
+    """
+    groups = models.ManyToManyField(
+        SiteGroup,  # Pointing to our new custom model
+        verbose_name=_("groups"),
+        blank=True,
+        help_text=_(
+            "The groups this user belongs to. A user will get all permissions "
+            "granted to each of their groups."
+        ),
+        related_name="user_set",
+        related_query_name="user",
+    )
+
+    class Meta:
+        abstract = True
+
+
+class User(SiteAwareModelBase, AbstractBaseUser, SiteGroupPermissionsMixin, GuardianUserMixin):
     email = models.EmailField(unique=True)
 
     first_name = models.CharField(null=True, max_length=200)
@@ -73,6 +129,16 @@ class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
         return self.email
 
 
+class SiteGroupObjectPermission(GroupObjectPermissionAbstract):
+    """
+    Guardian needs a custom table to store object permissions for our custom Group.
+    """
+    group = models.ForeignKey(SiteGroup, on_delete=models.CASCADE)
+
+    class Meta(GroupObjectPermissionAbstract.Meta):
+        abstract = False
+
+
 class SiteSignupPolicy(SiteAwareModel):
     """
     Per-site toggle for whether self-service account signups are allowed.
@@ -88,16 +154,3 @@ class SiteSignupPolicy(SiteAwareModel):
 
     def __str__(self):
         return f"{self.site.domain}: allow_signups={self.allow_signups}"
-
-
-# class SiteGroup(SiteAwareModelBase, AuthGroup):
-#     """Custom Group model with site awareness"""
-
-#     group_name  = models.CharField(null=True, max_length=200)
-#     class Meta:
-#         verbose_name = _("group")
-#         verbose_name_plural = _("groups")
-#         unique_together = [['site_id', 'group_name']]
-
-#     def __str__(self):
-#         return self.group_name
