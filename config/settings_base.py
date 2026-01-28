@@ -185,6 +185,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "freedom_ls_accounts.User"
 
+# Settings for the Custom SiteGroup Django Guardian Custom Group Model
+GUARDIAN_MONKEY_PATCH_GROUP = False
+
+GUARDIAN_GROUP_OBJ_PERMS_MODEL = 'freedom_ls_accounts.SiteGroupObjectPermission'
+
 
 # UNFOLD = {
 #     "SITE_TITLE": get_unfold_value("SITE_TITLE"),
