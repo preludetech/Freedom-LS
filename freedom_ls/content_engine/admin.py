@@ -106,6 +106,7 @@ class FormPageAdmin(SiteAwareModelAdmin):
     list_filter = ("form",)
     search_fields = ("title", "subtitle", "description", "form__title")
     ordering = ("form", "order")
+    readonly_fields = ("slug",)
     inlines = [FormContentInline, FormQuestionInline]
     exclude = ("site",)
     fieldsets = (
@@ -116,6 +117,7 @@ class FormPageAdmin(SiteAwareModelAdmin):
                     "title",
                     "subtitle",
                     "description",
+                    "slug",
                     "form",
                     "category",
                     "order",
@@ -131,8 +133,9 @@ class TopicAdmin(SiteAwareModelAdmin):
     list_display = ("title", "subtitle", "file_path")
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")
+    readonly_fields = ("slug",)
     fieldsets = (
-        (None, {"fields": ("title", "subtitle", "description", "content")}),
+        (None, {"fields": ("title", "subtitle", "description", "slug", "content")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
@@ -142,7 +145,7 @@ class ActivityAdmin(SiteAwareModelAdmin):
     list_display = ("title", "category", "level", "file_path")
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")
-    readonly_fields = ("content_preview",)
+    readonly_fields = ("slug", "content_preview")
     fieldsets = (
         (
             None,
@@ -151,6 +154,7 @@ class ActivityAdmin(SiteAwareModelAdmin):
                     "title",
                     "subtitle",
                     "description",
+                    "slug",
                     "content",
                     "content_preview",
                 )
@@ -183,10 +187,11 @@ class CourseAdmin(SiteAwareModelAdmin):
     list_display = ("title", "subtitle")
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")
+    readonly_fields = ("slug",)
     inlines = [ContentCollectionItemInline]
     exclude = ("site",)
     fieldsets = (
-        (None, {"fields": ("title", "subtitle", "description")}),
+        (None, {"fields": ("title", "subtitle", "description", "slug")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
@@ -205,6 +210,7 @@ class FormAdmin(SiteAwareModelAdmin):
     list_display = ("title", "subtitle", "strategy")
     list_filter = ("strategy", "tags")
     search_fields = ("title", "subtitle", "description")
+    readonly_fields = ("slug",)
     inlines = [FormPageInline]
     exclude = ("site",)
     fieldsets = (
