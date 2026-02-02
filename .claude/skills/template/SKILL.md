@@ -212,7 +212,7 @@ Partials are template fragments either
 **Usage**:
 ```django
 <!-- Include in template -->
-{% include "partials/header.html" %}
+{% include "partials/header_bar.html" %}
 
 <!-- Load via HTMX -->
 <div hx-get="{% url 'app:partial_view' %}"
