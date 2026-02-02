@@ -9,21 +9,17 @@
     disabled=""
     dropdown=""
     class=""
+    icon_left=""
+    icon_right=""
 />
 
-<{% if href %}a href="{{ href }}"{% else %}button{% endif %}
-{% if form %} form="{{ form }}"{% endif %}
-{% if id %} id="{{ id }}"{% endif %}
-{% if name %} name="{{ name }}"{% endif %}
-{% if value %} value="{{ value }}"{% endif %}
-{% if not href and type %} type="{{ type }}"{% endif %}
-{% if disabled %} disabled{% endif %}
-class="{{ class }} {% if dropdown %}block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer{% else %}btn btn-{{ variant }}{% endif %} "
-{{ attrs }}
->
-{{slot}}
-</{% if href %}a{% else %}button{% endif %}>
-
+{% with computed_class=class|add:" "|add:dropdown|yesno:"block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer,btn btn-"|add:variant %}
+{% if dropdown %}
+{% include "cotton/_button_impl.html" with computed_class=class|add:" block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer" %}
+{% else %}
+{% include "cotton/_button_impl.html" with computed_class=class|add:" btn btn-"|add:variant %}
+{% endif %}
+{% endwith %}
 
 {% comment %}
 Usage Examples:
@@ -49,4 +45,9 @@ Usage Examples:
 
   <!-- Dropdown menu style -->
   <c-button dropdown="true">Dropdown menu item</c-button>
+
+  <!-- With icons (Font Awesome) -->
+  <c-button icon_left="user">Profile</c-button>
+  <c-button icon_right="arrow-right">Next</c-button>
+  <c-button icon_left="save" variant="primary">Save Changes</c-button>
 {% endcomment %}

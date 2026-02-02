@@ -1,0 +1,12 @@
+<{% if href %}a href="{{ href }}"{% else %}button{% endif %}
+{% if form %} form="{{ form }}"{% endif %}
+{% if id %} id="{{ id }}"{% endif %}
+{% if name %} name="{{ name }}"{% endif %}
+{% if value %} value="{{ value }}"{% endif %}
+{% if not href and type %} type="{{ type }}"{% endif %}
+{% if disabled %} disabled{% endif %}
+class="{{ computed_class }}"
+{{ attrs }}
+>
+{% if icon_left %}<i class="fa-solid fa-{{ icon_left }} mr-2"></i>{% endif %}{{ slot }}{% if icon_right %}<i class="fa-solid fa-{{ icon_right }} ml-2"></i>{% endif %}
+</{% if href %}a{% else %}button{% endif %}>

@@ -1,0 +1,27 @@
+<c-vars
+    class=""
+/>
+
+<button {{ attrs }} class="{{ class }} flex items-center space-x-2">
+    {{ slot }}
+</button>
+
+{% comment %}
+Usage Examples:
+
+  <c-header-button>
+      <i class="fa-solid fa-user"></i>
+      <span>Profile</span>
+  </c-header-button>
+
+  <!-- With custom classes -->
+  <c-header-button class="text-blue-600 hover:text-blue-800">
+      <i class="fa-solid fa-bell"></i>
+      <span>Notifications</span>
+  </c-header-button>
+
+  <!-- With HTMX or other attributes -->
+  <c-header-button hx-get="/notifications" hx-target="#notifications-panel">
+      <i class="fa-solid fa-bell"></i>
+  </c-header-button>
+{% endcomment %}
