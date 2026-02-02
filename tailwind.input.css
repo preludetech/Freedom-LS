@@ -16,21 +16,25 @@
 
 
 @layer base {
+    /* Prevent horizontal scrolling on mobile */
+    html, body {
+        @apply overflow-x-hidden
+    }
 
     h1 {
-        @apply text-4xl font-bold 
+        @apply text-xl sm:text-2xl lg:text-4xl font-bold
     }
 
     h2 {
-        @apply text-3xl font-bold
+        @apply text-lg sm:text-xl lg:text-3xl font-bold
     }
 
     h3 {
-        @apply text-2xl font-bold
+        @apply text-base sm:text-lg lg:text-2xl font-bold
     }
 
     h4 {
-        @apply text-xl font-bold
+        @apply text-sm sm:text-base lg:text-xl font-bold
     }
 
     a {

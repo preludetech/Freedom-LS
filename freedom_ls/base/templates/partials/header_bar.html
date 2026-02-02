@@ -1,11 +1,11 @@
-<header class="bg-blue-600 p-4 shadow-md flex justify-between items-center">
-    <a href="/">
-        <h1 class="text-2xl font-bold text-white">
+<header class="bg-blue-600 p-3 sm:p-4 shadow-md flex justify-between items-center">
+    <a href="/" class="flex-shrink min-w-0">
+        <h1 class="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate">
             {{ site_title }}
         </h1>
     </a>
 
-    <nav class="space-x-1 flex flex-row">
+    <nav class="flex-shrink-0 ml-2 sm:ml-4">
         {% if user.is_authenticated %}
             {% include "partials/header_bar_user_menu.html" %}
 

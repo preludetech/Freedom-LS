@@ -1,6 +1,8 @@
 <c-dropdown-menu trigger_class="{{ trigger_class|default:'text-white p-2 cursor-pointer' }}">
     <c-slot name="trigger">
-        {{ user.email }} <i class="fas fa-chevron-down text-sm"></i>
+        <span class="hidden sm:inline">{{ user.email }}</span>
+        <span class="sm:hidden"><i class="fas fa-user"></i></span>
+        <i class="fas fa-chevron-down text-sm ml-1"></i>
     </c-slot>
 
     <c-button dropdown="true" href="{% url 'account_profile' %}">
