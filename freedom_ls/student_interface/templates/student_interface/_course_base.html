@@ -1,15 +1,61 @@
 {% extends "_base.html" %}
 
 {% block body %}
-    <div class="flex gap-8 py-12">
-        <div class="max-w-2xl">
+    <div x-data="{ tocOpen: window.matchMedia('(min-width: 1024px)').matches }"
+         class="flex gap-6 py-12">
+
+        <!-- Toggle button: visible when panel is collapsed -->
+        <button x-cloak
+                x-show="!tocOpen"
+                x-transition
+                @click="tocOpen = true"
+                class="self-start mt-1 flex items-center gap-1.5 shrink-0 px-2 py-1.5 rounded-md text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-colors"
+                aria-label="Open table of contents">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 class="h-4 w-4"
+                 fill="none"
+                 viewBox="0 0 24 24"
+                 stroke="currentColor"
+                 stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+
+            <!-- <i class="fa fa-bars" aria-hidden="true"></i> -->
+
+        </button>
+
+        <!-- Side panel -->
+        <div x-cloak
+             x-show="tocOpen"
+             x-transition:enter="transition-all duration-300 ease-out"
+             x-transition:enter-start="opacity-0 -translate-x-2"
+             x-transition:enter-end="opacity-100 translate-x-0"
+             x-transition:leave="transition-all duration-200 ease-in"
+             x-transition:leave-start="opacity-100 translate-x-0"
+             x-transition:leave-end="opacity-0 -translate-x-2"
+             class="w-64 shrink-0">
+
+            <!-- Collapse chevron -->
+            <div class="flex justify-end mb-2">
+                <button @click="tocOpen = false"
+                        class="text-gray-400 hover:text-gray-600 transition-colors"
+                        aria-label="Collapse table of contents">
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         class="h-5 w-5"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+            </div>
 
             <div hx-get="{% url 'student_interface:partial_course_toc' course.slug %}"
                  hx-trigger="load"
                  hx-indicator="#course-loading">
                 <c-loading-indicator id="course-loading" message="Loading courses..." />
             </div>
-
         </div>
 
         <div class="w-full">

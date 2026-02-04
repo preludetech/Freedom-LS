@@ -1,36 +1,38 @@
 {% extends "student_interface/_course_base.html" %}
 
-
-
 {% block content %}
 
-<div class="space-y-8">
+    <div class="space-y-8">
 
-    <div>
-        <h1>{{ topic.title }}</h1>
-        {% if topic.subtitle %}
-        <p>{{ topic.subtitle }}</p>
-        {% endif %}
-    </div>
-    
-    <c-markdown-container>
-        {{ topic.rendered_content }}
-    </c-markdown-container>
-</div>
+        <div>
+            <h1>
+                {{ topic.title }}
+            </h1>
+            {% if topic.subtitle %}
+                <p>
+                    {{ topic.subtitle }}
+                </p>
+            {% endif %}
+        </div>
 
-<div class="flex items-center justify-between mt-8 pt-4 border-t border-gray-200 gap-3">
-    <div>
-        {% if previous_url %}
-            <c-button href="{{ previous_url }}" variant="outline">
-                <i class="fa fa-arrow-left"></i> Previous
-            </c-button>
-        {% endif %}
+        <c-markdown-container>
+            {{ topic.rendered_content }}
+        </c-markdown-container>
     </div>
+
+    <div class="flex items-center justify-between mt-8 pt-4 border-t border-gray-200 gap-3">
+        <div>
+            {% if previous_url %}
+                <c-button href="{{ previous_url }}" variant="outline">
+                    <i class="fa fa-arrow-left"></i> Previous
+                </c-button>
+            {% endif %}
+        </div>
 
         {% if not is_complete %}
             <form method="post">
                 {% csrf_token %}
-                <c-button type="submit" name="mark_complete" >
+                <c-button type="submit" name="mark_complete">
                     {% if is_last_item %}
                         <i class="fa fa-check"></i> Finish Course
                     {% else %}
@@ -39,21 +41,21 @@
                 </c-button>
             </form>
         {% elif next_url %}
-            <c-button href="{{ next_url }}" >
+            <c-button href="{{ next_url }}">
                 Next <i class="fa fa-arrow-right"></i>
             </c-button>
         {% elif is_last_item %}
             {% if is_course_complete %}
-                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}" variant="outline">
+                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}"
+                          variant="outline">
                     <i class="fa fa-home"></i> Home
                 </c-button>
             {% else %}
-                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}" >
+                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
                     <i class="fa fa-check"></i> Finish Course
                 </c-button>
             {% endif %}
         {% endif %}
-</div>
-
+    </div>
 
 {% endblock %}
