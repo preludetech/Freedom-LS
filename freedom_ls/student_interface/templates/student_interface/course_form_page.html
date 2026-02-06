@@ -110,33 +110,36 @@
     </div>
 
     <!-- Page Progress Indicator -->
-    {% partialdef page_progress_indicator inline %}
-        <div class="surface space-y-3">
-            <div class="text-sm font-medium text-gray-700">
-                <p>
-                    Page {{ current_page_num }} of {{ total_pages }}:
-                    {{ form_page.title }}
-                </p>
-                {% if form_page.subtitle %}
-                    <p class="text-gray-500">
-                        {{ form_page.subtitle }}
+    {% if total_pages > 1 %}
+        {% partialdef page_progress_indicator inline %}
+            <div class="surface space-y-3">
+                <div class="text-sm font-medium text-gray-700">
+                    <p>
+                        Page {{ current_page_num }} of {{ total_pages }}:
+                        {{ form_page.title }}
                     </p>
-                {% endif %}
+                    {% if form_page.subtitle %}
+                        <p class="text-gray-500">
+                            {{ form_page.subtitle }}
+                        </p>
+                    {% endif %}
+                </div>
+
+                <!-- Page Navigation -->
+                <div class="flex gap-2 flex-wrap">
+                    {% for page in page_links %}
+                        <c-form-page-link number="{{ page.number }}" is_current="{{ page.is_current }}" is_accessible="{{ page.is_accessible }}" url="{{ page.url }}" title="{{ page.title }}" />
+                    {% endfor %}
+                </div>
             </div>
 
-            <!-- Page Navigation -->
-            <div class="flex gap-2 flex-wrap">
-                {% for page in page_links %}
-                    <c-form-page-link number="{{ page.number }}" is_current="{{ page.is_current }}" is_accessible="{{ page.is_accessible }}" url="{{ page.url }}" title="{{ page.title }}" />
-                {% endfor %}
-            </div>
-        </div>
+        {% endpartialdef %}
 
-    {% endpartialdef %}
+    {% endif %}
 
     {% partialdef form_and_navigation inline %}
 
-        <form method="POST">
+        <form method="post">
 
             {% csrf_token %}
 
@@ -186,4 +189,4 @@
         </form>
     {% endpartialdef %}
 
-{% endblock %}
+{% endblock content %}

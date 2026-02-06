@@ -1,104 +1,114 @@
 {% extends "student_interface/_course_base.html" %}
 
-
 {% block content %}
 
-<h1>{{ form.title }}</h1>
-{% if form.subtitle %}
-<p>{{ form.subtitle }}</p>
-{% endif %}
-
-<c-markdown-container>
-    {{ form.rendered_content }}
-</c-markdown-container>
-
-
-{% if completed_form_progress %}
-<hr class="my-8"/>
-<h2 class="text-2xl font-bold mb-4">Previous Submissions</h2>
-
-<div class="space-y-4">
-    {% for progress in completed_form_progress %}
-    <div class="border rounded-lg p-4 bg-gray-50">
-        <div class="flex justify-between items-start mb-2">
-            <div>
-                <h3 class="font-semibold">Completed: {{ progress.completed_time|date:"F j, Y, g:i a" }}</h3>
-                <p class="text-sm text-gray-600">Started: {{ progress.start_time|date:"F j, Y, g:i a" }}</p>
-            </div>
-        </div>
-
-        {% if progress.scores %}
-            {% if form.strategy == "QUIZ" %}
-            <div class="mt-4 p-4 bg-white rounded border border-gray-200" data-testid="previous-submission-score">
-                <div class="flex items-center justify-between">
-                    <span class="font-semibold text-gray-700">Score:</span>
-                    <div class="text-right">
-                        <span class="text-2xl font-bold text-blue-600">{{ progress.scores.score }} / {{ progress.scores.max_score }}</span>
-                        <span class="ml-2 text-lg text-gray-600">
-                            {% widthratio progress.scores.score progress.scores.max_score 100 as percentage %}
-                            ({{ percentage }}%)
-                        </span>
-                    </div>
-                </div>
-            </div>
-            {% else %}
-            {# Category-based scores #}
-            <div class="mt-4">
-                {% for category, category_data in progress.scores.items %}
-                <div class="mb-2 flex justify-between items-center">
-                    <span class="text-sm font-medium text-gray-700">{{ category }}</span>
-                    <span class="text-sm text-gray-600">
-                        {{ category_data.score }} / {{ category_data.max_score }}
-                    </span>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        {% endif %}
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
-
-
-
-<div class="pt-4">
-
-{% for button in buttons %}
-    {% if button.action == "continue" %}
+    <h1>
+        {{ form.title }}
+    </h1>
+    {% if form.subtitle %}
         <p>
-            <c-button href="{% url 'student_interface:form_fill_page' course.slug index page_number %}"
-               
-               data-testid="continue-form-button">{{ button.text }} >></c-button>
-        </p>
-    {% elif button.action == "start" %}
-        <p>
-            <c-button href="{% url 'student_interface:form_start' course.slug index %}"
-               
-               data-testid="start-form-button">{{ button.text }} >></c-button>
-        </p>
-    {% elif button.action == "try_again" %}
-        <p>
-            <c-button href="{% url 'student_interface:form_start' course.slug index %}"
-               
-               data-testid="try-again-button">{{ button.text }}</c-button>
-        </p>
-    {% elif button.action == "next" %}
-        <p>
-            <c-button href="{{ next_url }}"
-               
-               data-testid="next-button">{{ button.text }}</c-button>
-        </p>
-    {% elif button.action == "finish_course" %}
-        <p>
-            <c-button href="{% url 'student_interface:course_finish' course_slug=course.slug %}"
-
-               data-testid="finish-course-button">{{ button.text }}</c-button>
+            {{ form.subtitle }}
         </p>
     {% endif %}
-{% endfor %}
 
-</div>
+    <c-markdown-container>
+        {{ form.rendered_content }}
+    </c-markdown-container>
 
+    {% if completed_form_progress %}
+        <hr class="my-8" />
+        <h2 class="text-2xl font-bold mb-4">
+            Previous Submissions
+        </h2>
+
+        <div class="space-y-4">
+            {% for progress in completed_form_progress %}
+                <div class="border rounded-lg p-4 bg-gray-50">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h3 class="font-semibold">
+                                Completed: {{ progress.completed_time|date:"F j, Y, g:i a" }}
+                            </h3>
+                            <p class="text-sm text-gray-600">
+                                Started: {{ progress.start_time|date:"F j, Y, g:i a" }}
+                            </p>
+                        </div>
+                    </div>
+
+                    {% if progress.scores %}
+                        {% if form.strategy == "QUIZ" %}
+                            <div class="mt-4 p-4 bg-white rounded border border-gray-200"
+                                 data-testid="previous-submission-score">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-semibold text-gray-700">Score:</span>
+                                    <div class="text-right">
+                                        <span class="text-2xl font-bold text-blue-600">{{ progress.scores.score }} / {{ progress.scores.max_score }}</span>
+                                        <span class="ml-2 text-lg text-gray-600">
+                                            {% widthratio progress.scores.score progress.scores.max_score 100 as percentage %}
+                                            ({{ percentage }}%)
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            {# Category-based scores #}
+                            <div class="mt-4">
+                                {% for category, category_data in progress.scores.items %}
+                                    <div class="mb-2 flex justify-between items-center">
+                                        <span class="text-sm font-medium text-gray-700">{{ category }}</span>
+                                        <span class="text-sm text-gray-600">
+                                            {{ category_data.score }} / {{ category_data.max_score }}
+                                        </span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <c-button-group variant="space-between" class="pt-2">
+
+        {% for button in buttons %}
+            {% if button.action == "continue" %}
+                <p>
+                    <c-button href="{% url 'student_interface:form_fill_page' course.slug index page_number %}"
+                              data-testid="continue-form-button">
+                        {{ button.text }}
+                    </c-button>
+                </p>
+            {% elif button.action == "start" %}
+                <p>
+                    <c-button href="{% url 'student_interface:form_start' course.slug index %}"
+                              data-testid="start-form-button">
+                        {{ button.text }}
+                    </c-button>
+                </p>
+            {% elif button.action == "try_again" %}
+                <p>
+                    <c-button href="{% url 'student_interface:form_start' course.slug index %}"
+                              data-testid="try-again-button">
+                        {{ button.text }}
+                    </c-button>
+                </p>
+            {% elif button.action == "next" %}
+                <p>
+                    <c-button href="{{ next_url }}"  data-testid="next-button">
+                        {{ button.text }}
+                    </c-button>
+                </p>
+            {% elif button.action == "finish_course" %}
+                <p>
+                    <c-button href="{% url 'student_interface:course_finish' course_slug=course.slug %}"
+                              data-testid="finish-course-button">
+                        {{ button.text }}
+                    </c-button>
+                </p>
+            {% endif %}
+        {% endfor %}
+
+    </c-button-group>
 
 {% endblock %}

@@ -32,27 +32,29 @@
         {% if not is_complete %}
             <form method="post">
                 {% csrf_token %}
-                <c-button type="submit" name="mark_complete">
+                <c-button type="submit" name="mark_complete" icon-left="check">
                     {% if is_last_item %}
-                        <i class="fa fa-check"></i> Finish Course
+                        Finish Course
                     {% else %}
-                        <i class="fa fa-check"></i> Next
+                        Next
                     {% endif %}
                 </c-button>
             </form>
         {% elif next_url %}
-            <c-button href="{{ next_url }}">
-                Next <i class="fa fa-arrow-right"></i>
+            <c-button href="{{ next_url }}" icon-left="arrow-right">
+                Next
             </c-button>
         {% elif is_last_item %}
             {% if is_course_complete %}
                 <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}"
-                          variant="outline">
-                    <i class="fa fa-home"></i> Home
+                          variant="outline"
+                          icon-left="home">
+                    Home
                 </c-button>
             {% else %}
-                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
-                    <i class="fa fa-check"></i> Finish Course
+                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}"
+                          icon-left="check">
+                    Finish Course
                 </c-button>
             {% endif %}
         {% endif %}
