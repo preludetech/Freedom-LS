@@ -5,7 +5,11 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 from django.contrib.sites.shortcuts import get_current_site
-from freedom_ls.site_aware_models.models import _thread_locals, SiteAwareModelBase, SiteAwareModel
+from freedom_ls.site_aware_models.models import (
+    _thread_locals,
+    SiteAwareModelBase,
+    SiteAwareModel,
+)
 
 
 class UserManager(BaseUserManager):
@@ -72,6 +76,10 @@ class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
         """Return email as username for template compatibility."""
         return self.email
 
+    @property
+    def display_name(self):
+        return self.first_name or self.email
+
 
 class SiteSignupPolicy(SiteAwareModel):
     """
@@ -83,7 +91,9 @@ class SiteSignupPolicy(SiteAwareModel):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["site"], name="unique_signup_policy_per_site"),
+            models.UniqueConstraint(
+                fields=["site"], name="unique_signup_policy_per_site"
+            ),
         ]
 
     def __str__(self):
