@@ -1,149 +1,169 @@
 {% partialdef view-course-button %}
 
-<c-modal title="{{course.title}}">
-    <c-slot name="trigger">
-        <c-button variant="outline">Details</c-button>
-    </c-slot>
+    <c-modal title="{{ course.title }}">
+        <c-slot name="trigger">
+            <c-button variant="outline">
+                Details
+            </c-button>
+        </c-slot>
 
-    {% if course.subtitle %}
-    <p>
-        {{ course.subtitle}}
-    </p>
-    {% endif %}
-
-    {% with content=course.rendered_content %}
-        {% if content %}
-        <c-markdown-container>
-            {{ content }}
-        </c-markdown-container>
+        {% if course.subtitle %}
+            <p>
+                {{ course.subtitle }}
+            </p>
         {% endif %}
-    {% endwith %}
 
-    <c-slot name="footer">
-        <c-button variant="outline" @click="open = false">Close</c-button>
-        {% partial start_course_button %}
-    </c-slot>
+        {% with content=course.rendered_content %}
+            {% if content %}
+                <c-markdown-container>
+                    {{ content }}
+                </c-markdown-container>
+            {% endif %}
+        {% endwith %}
 
-</c-modal>
-{% endpartialdef %}
+        <c-slot name="footer">
+            <c-button variant="outline" @click="open = false">
+                Close
+            </c-button>
+            {% partial start_course_button %}
+        </c-slot>
 
-
+    </c-modal>
+{% endpartialdef view-course-button %}
 
 {% partialdef start_course_button %}
-    <c-button href="{% url 'student_interface:register_for_course' course.slug %}">Start</c-button>
+    <c-button href="{% url 'student_interface:register_for_course' course.slug %}">
+        Start
+    </c-button>
 {% endpartialdef %}
-
-
-
-
 
 {% partialdef course-card %}
-<div
-   class="surface space-y-3">
-    <div class="flex items-start justify-between mb-2">
-        <h4 class="text-xl font-semibold text-gray-900">{{ course.title }}</h4>
+    <div class="surface flex flex-col">
+        <div class="space-y-3 flex-1 mb-4">
+            <div class="flex items-start justify-between">
+                <h4 class="text-xl font-semibold text-gray-900">
+                    {{ course.title }}
+                </h4>
+            </div>
+            {% if course.description %}
+                <p class="text-gray-600">
+                    {{ course.description }}
+                </p>
+            {% endif %}
+        </div>
+
+        <c-button-group variant="centered">
+            {% partial view-course-button %}
+
+            {% if course_status == "current" %}
+                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
+                    Continue
+                </c-button>
+
+            {% elif course_status == "history" %}
+                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
+                    View
+                </c-button>
+
+            {% else %}
+                {% partial start_course_button %}
+            {% endif %}
+        </c-button-group>
+
     </div>
-    {% if course.description %}
-        <p class="text-gray-600">{{ course.description }}</p>
-    {% endif %}
-
-    <c-button-group>
-        {% partial view-course-button %}
-
-        {% if course_status == "current" %}
-        <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">Continue</c-button>
-        
-        {% elif course_status == "history" %}
-        <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">View</c-button>
-        
-        {% else %}
-            {% partial start_course_button %}
-        {% endif %}
-    </c-button-group>
-
-</div>
 {% endpartialdef %}
-
-
-
 
 {% partialdef current-courses %}
-<div class="surface space-y-4">
-    <h2>Current Courses</h2>
+    <div class="surface space-y-4">
+        <h2>
+            Current Courses
+        </h2>
 
-    {% if registered_courses %}
-        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {% with course_status="current" %}
-                {% for course in registered_courses %}
-                    {% partial course-card %}
-                {% endfor %}
-            {% endwith %}
-        </div>
-    {% else %}
-        <p class="text-gray-600">You haven't signed up for any courses yet</p>
-    {% endif %}
-</div>
+        {% if registered_courses %}
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {% with course_status="current" %}
+                    {% for course in registered_courses %}
+                        {% partial course-card %}
+                    {% endfor %}
+                {% endwith %}
+            </div>
+        {% else %}
+            <p class="text-gray-600">
+                You haven't signed up for any courses yet
+            </p>
+        {% endif %}
+    </div>
 {% endpartialdef %}
-
 
 {% partialdef recommended-courses %}
-<div class="surface space-y-4">
-    <h2>Recommended Courses</h2>
+    <div class="surface space-y-4">
+        <h2>
+            Recommended Courses
+        </h2>
 
-    {% if recommended_courses %}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {% for recommendation in recommended_courses %}
-                {% with course=recommendation.collection %}
-                    {% partial course-card %}
-                {% endwith %}
-            {% endfor %}
-        </div>
-    {% else %}
-        <p class="text-gray-600">No recommended courses yet.</p>
-    {% endif %}
-</div>
+        {% if recommended_courses %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for recommendation in recommended_courses %}
+                    {% with course=recommendation.collection %}
+                        {% partial course-card %}
+                    {% endwith %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-600">
+                No recommended courses yet.
+            </p>
+        {% endif %}
+    </div>
 {% endpartialdef %}
-
 
 {% partialdef learning-history %}
-<div class="surface space-y-4">
-    <h2>Learning History</h2>
+    <div class="surface space-y-4">
+        <h2>
+            Learning History
+        </h2>
 
-    {% if completed_courses %}
-        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {% with course_status="history" %}
-                {% for course in completed_courses %}
-                    {% partial course-card  %}
-                {% endfor %}
-            {% endwith %}
-        </div>
-    {% else %}
-        <p class="text-gray-600">No completed courses yet</p>
-    {% endif %}
-</div>
+        {% if completed_courses %}
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {% with course_status="history" %}
+                    {% for course in completed_courses %}
+                        {% partial course-card %}
+                    {% endfor %}
+                {% endwith %}
+            </div>
+        {% else %}
+            <p class="text-gray-600">
+                No completed courses yet
+            </p>
+        {% endif %}
+    </div>
 {% endpartialdef %}
-
 
 {% partialdef all-courses %}
-<div class="surface space-y-4">
-    <h2>
-        {% if registered_courses %}All Available Courses{% else %}Available Courses{% endif %}
-    </h2>
+    <div class="surface space-y-4">
+        <h2>
+            {% if registered_courses %}
+                All Available Courses
+            {% else %}
+                Available Courses
+            {% endif %}
+        </h2>
 
-    {% if all_courses %}
-        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {% for course in all_courses %}
-                {% partial course-card %}
-            {% endfor %}
-        </div>
-    {% else %}
-        {% if not registered_courses %}
-            <p class="text-gray-500">No courses available yet.</p>
+        {% if all_courses %}
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {% for course in all_courses %}
+                    {% partial course-card %}
+                {% endfor %}
+            </div>
+        {% else %}
+            {% if not registered_courses %}
+                <p class="text-gray-500">
+                    No courses available yet.
+                </p>
+            {% endif %}
         {% endif %}
-    {% endif %}
-</div>
+    </div>
 {% endpartialdef %}
-
 
 <div class="space-y-4">
     {% partial current-courses %}
