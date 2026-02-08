@@ -13,18 +13,14 @@ uv init
 git submodule add git@github.com:preludetech/Freedom-LS.git submodules/Freedom-LS
 ```
 
+```
+uv add submodules/Freedom-LS
+```
 
+```
+django-admin startproject config .
+```
 
-
-
-
-
-
-
-
-### Install dependencies 
-
-uv add... TODO 
 
 ### settings.py 
 
