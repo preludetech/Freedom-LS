@@ -4,6 +4,24 @@ This Learning System is designed to be extended and overwritten.  You can run it
 
 ## Set up 
 
+```
+uv init
+```
+
+
+```
+git submodule add git@github.com:preludetech/Freedom-LS.git submodules/Freedom-LS
+```
+
+
+
+
+
+
+
+
+
+
 ### Install dependencies 
 
 uv add... TODO 
