@@ -296,6 +296,42 @@ def validate_single_file(path):
         validate_markdown_file(path)
 
 
+def check_uuids(models, file_path, seen_uuids):
+    """
+    Check that all UUIDs in models are unique across all content.
+
+    Args:
+        models: List of validated model instances
+        file_path: Path to the file being checked
+        seen_uuids: Dict tracking seen UUIDs (uuid -> file_path)
+
+    Raises:
+        ValueError: If a duplicate UUID is found
+    """
+    for model in models:
+        # Check main model UUID
+        if hasattr(model, 'uuid') and model.uuid:
+            if model.uuid in seen_uuids:
+                raise ValueError(
+                    f"\n❌ Duplicate UUID '{model.uuid}'\n"
+                    f"  First seen in: {seen_uuids[model.uuid]}\n"
+                    f"  Duplicate in: {file_path}"
+                )
+            seen_uuids[model.uuid] = file_path
+
+        # Check UUIDs in question options
+        if hasattr(model, 'options') and model.options:
+            for option in model.options:
+                if hasattr(option, 'uuid') and option.uuid:
+                    if option.uuid in seen_uuids:
+                        raise ValueError(
+                            f"\n❌ Duplicate UUID '{option.uuid}'\n"
+                            f"  First seen in: {seen_uuids[option.uuid]}\n"
+                            f"  Duplicate in: {file_path}"
+                        )
+                    seen_uuids[option.uuid] = file_path
+
+
 def validate(path):
     """
     Validate all content files in a directory or a single file.
@@ -327,17 +363,19 @@ def validate(path):
         return
 
     # 3. validate each file path (only .md and .yaml files)
+    # Track seen UUIDs: uuid -> file_path
+    seen_uuids = {}
     failed_files = []
+
     for file_path in all_file_paths:
         if file_path.suffix in [".md", ".yaml", ".yml"]:
             try:
-                validate_single_file(file_path)
+                models = parse_single_file(file_path)
+                check_uuids(models, file_path, seen_uuids)
+                logger.info(f"✓ {file_path} validated successfully")
             except ValueError as e:
                 # Collect errors but continue validating other files
                 failed_files.append((file_path, str(e)))
-            # except Exception as e:
-            # Catch any unexpected errors
-            # failed_files.append((file_path, f"\n❌ Unexpected error: {str(e)}"))
 
     # Report all failures at the end
     if failed_files:
