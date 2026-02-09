@@ -17,7 +17,7 @@ demo_sites = [
         "name": "DemoDev",
         "domain": "127.0.0.1:8000",
         "cohorts": ["Cohort 2025.03.04", "Cohort 2025.04.06"],
-        "num_students": 500,
+        "num_students": 50,
     },
     {
         "name": "Bloom",

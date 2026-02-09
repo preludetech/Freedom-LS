@@ -29,6 +29,7 @@ from freedom_ls.content_engine.models import (
     Topic,
     Activity,
     Course,
+    CoursePart,
     ContentCollectionItem,
     Form,
     FormPage,
@@ -346,6 +347,17 @@ def save_course(item, site, base_path):
     )
 
 
+def save_course_part(item, site, base_path):
+    """Save a CoursePart to the database."""
+    return save_with_uuid(
+        CoursePart,
+        item,
+        site,
+        base_path,
+        exclude_fields={"children"},
+    )
+
+
 def save_form(item, site, base_path):
     """Save a Form to the database."""
     return save_with_uuid(Form, item, site, base_path)
@@ -514,13 +526,19 @@ def save_content_to_db(path, site_name):
         content_by_path[item.file_path] = activity
         logger.info(f"Saved Activity: {activity.title}")
 
-    # Save Courses
+    # Save Courses and CourseParts
     collections_data = []  # Store (collection_obj, schema_item) for later children processing
     for item in grouped.get(SchemaContentType.COURSE, []):
         collection = save_course(item, site, path)
         content_by_path[item.file_path] = collection
         collections_data.append((collection, item))
         logger.info(f"Saved Course: {collection.title}")
+
+    for item in grouped.get(SchemaContentType.COURSE_PART, []):
+        collection = save_course_part(item, site, path)
+        content_by_path[item.file_path] = collection
+        collections_data.append((collection, item))
+        logger.info(f"Saved CoursePart: {collection.title}")
 
     # Save Forms and track them by directory
     forms_by_dir = {}
@@ -599,15 +617,16 @@ def save_content_to_db(path, site_name):
                             type("Child", (), {"path": item, "overrides": None})()
                         )
                 elif item.is_dir():
-                    # For subdirectories, look for main content files (forms or collections)
+                    # For subdirectories, look for main content files (forms, courses, or course parts)
                     main_files = []
                     for f in item.iterdir():
                         if f.is_file() and f.suffix in [".md", ".yaml", ".yml"]:
-                            # Parse to check if it's a Form or Course or other top-level content
+                            # Parse to check if it's a Form, Course, or CoursePart
                             parsed = parse_single_file(f)
                             if parsed and parsed[0].content_type in (
                                 SchemaContentType.FORM,
                                 SchemaContentType.COURSE,
+                                SchemaContentType.COURSE_PART,
                             ):
                                 main_files.append(f)
                                 break  # Found the main file
@@ -623,7 +642,10 @@ def save_content_to_db(path, site_name):
         for order, child in enumerate(children_list):
             child_content = content_by_path.get(child.path)
             if child_content:
-                # Get the Django ContentType for the child
+                # Get the Django ContentType for both collection and child
+                collection_content_type = DjangoContentType.objects.get_for_model(
+                    collection
+                )
                 child_content_type = DjangoContentType.objects.get_for_model(
                     child_content
                 )
@@ -631,7 +653,8 @@ def save_content_to_db(path, site_name):
                 # Create or update the ContentCollectionItem
                 ContentCollectionItem.objects.update_or_create(
                     site=site,
-                    collection=collection,
+                    collection_type=collection_content_type,
+                    collection_id=collection.id,
                     child_type=child_content_type,
                     child_id=child_content.id,
                     defaults={
@@ -641,7 +664,7 @@ def save_content_to_db(path, site_name):
                 )
                 logger.info(
                     f"Added {child_content.__class__.__name__} '{child_content.title}' "
-                    f"to collection '{collection.title}' (order={order})"
+                    f"to {collection.__class__.__name__} '{collection.title}' (order={order})"
                 )
             else:
                 logger.warning(

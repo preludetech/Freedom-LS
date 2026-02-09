@@ -16,6 +16,7 @@ class ContentType(str, Enum):
     ACTIVITY = "ACTIVITY"
     FORM = "FORM"
     COURSE = "COURSE"
+    COURSE_PART = "COURSE_PART"
     FORM_PAGE = "FORM_PAGE"
     FORM_QUESTION = "FORM_QUESTION"
     FORM_CONTENT = "FORM_CONTENT"
@@ -109,6 +110,21 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
     )
 
     content: Optional[str] = Field(None, description="Markdown content body")
+
+
+class CoursePart(BaseContentModel, content_type=ContentType.COURSE_PART):
+    """
+    A part of a course, this could represent a chapter or a similar. It may contain multiple topics and forms.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    children: list[Child] = Field(
+        default_factory=list,
+        description="List of child content references with optional overrides",
+    )
+
+    # content: Optional[str] = Field(None, description="Markdown content body")
 
 
 class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM):

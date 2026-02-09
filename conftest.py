@@ -90,6 +90,8 @@ def mock_site_context(site, mocker):
     old_request = getattr(_thread_locals, "request", None) if had_request else None
 
     mock_request = mocker.Mock()
+    # Set _cached_site to the actual site object to prevent Mock issues in ORM queries
+    mock_request._cached_site = site
     _thread_locals.request = mock_request
 
     mocker.patch(

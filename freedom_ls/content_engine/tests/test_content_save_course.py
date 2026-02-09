@@ -154,9 +154,7 @@ uuid: 00000000-0000-0000-0000-00000000000e
 
         # VERIFY: Get the course and its children in order
         course = Course.objects.get(title="Test Course", site=site)
-        children = ContentCollectionItem.objects.filter(
-            site=site, collection=course
-        ).order_by("order")
+        children = course.items.all().order_by("order")
 
         # Should have 5 children
         assert children.count() == 5, f"Expected 5 children, got {children.count()}"

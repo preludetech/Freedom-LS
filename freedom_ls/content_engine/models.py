@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse
@@ -149,6 +149,36 @@ class Course(MarkdownContent, TitledContent):
     CONTENT_TYPE = SchemaContentTypes.COURSE
 
     category = models.CharField(max_length=200, null=True, blank=True)
+    items = GenericRelation(
+        "ContentCollectionItem",
+        content_type_field="collection_type",
+        object_id_field="collection_id",
+        related_query_name="course",
+    )
+
+    class Meta:
+        unique_together = ["site", "slug"]
+
+    def children(self):
+        """Return ordered list of child content items."""
+        return [item.child for item in self.items.all()]
+
+    def __str__(self):
+        return self.title
+
+
+class CoursePart(TitledContent):
+    """CoursePart - a chapter or section within a course, contains an ordered list of child content."""
+
+    CONTENT_TYPE = SchemaContentTypes.COURSE_PART
+
+    category = models.CharField(max_length=200, null=True, blank=True)
+    items = GenericRelation(
+        "ContentCollectionItem",
+        content_type_field="collection_type",
+        object_id_field="collection_id",
+        related_query_name="course_part",
+    )
 
     class Meta:
         unique_together = ["site", "slug"]
@@ -162,14 +192,27 @@ class Course(MarkdownContent, TitledContent):
 
 
 class ContentCollectionItem(SiteAwareModel):
-    """Through model for Course children with order and overrides."""
+    """Through model for Course/CoursePart children with order and overrides."""
 
-    collection = models.ForeignKey(
-        Course, on_delete=models.CASCADE, related_name="items"
+    # Generic foreign key to Course or CoursePart
+    collection_type = models.ForeignKey(
+        DjangoContentType,
+        on_delete=models.CASCADE,
+        related_name="items",
+        null=True,
+        blank=True,
     )
+    collection_id = models.UUIDField(null=True, blank=True)
+    collection = GenericForeignKey("collection_type", "collection_id")
+
+    # collection_old = models.ForeignKey(
+    #     Course, on_delete=models.CASCADE, related_name="items"
+    # )
 
     # Generic foreign key to any content type
-    child_type = models.ForeignKey(DjangoContentType, on_delete=models.CASCADE)
+    child_type = models.ForeignKey(
+        DjangoContentType, on_delete=models.CASCADE, related_name="child_items"
+    )
     child_id = models.UUIDField()
     child = GenericForeignKey("child_type", "child_id")
 
@@ -182,7 +225,6 @@ class ContentCollectionItem(SiteAwareModel):
 
     class Meta:
         ordering = ["order"]
-        unique_together = ["collection", "child_type", "child_id"]
 
     def __str__(self):
         return f"{self.collection.title} - {self.child} (order={self.order})"

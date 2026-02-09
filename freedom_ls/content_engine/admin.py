@@ -1,7 +1,9 @@
 from django.contrib import admin
+from django.contrib.contenttypes.admin import GenericTabularInline
 from .models import (
     Topic,
     Course,
+    CoursePart,
     ContentCollectionItem,
     Form,
     FormPage,
@@ -173,10 +175,12 @@ class ActivityAdmin(SiteAwareModelAdmin):
     content_preview.short_description = "Content Preview"
 
 
-class ContentCollectionItemInline(admin.TabularInline):
+class ContentCollectionItemInline(GenericTabularInline):
     """Inline for collection items."""
 
     model = ContentCollectionItem
+    ct_field = "collection_type"
+    ct_fk_field = "collection_id"
     extra = 1
     fields = ("child_type", "child_id", "order", "overrides")
     ordering = ("order",)
@@ -184,6 +188,20 @@ class ContentCollectionItemInline(admin.TabularInline):
 
 @admin.register(Course)
 class CourseAdmin(SiteAwareModelAdmin):
+    list_display = ("title", "subtitle")
+    list_filter = ("tags",)
+    search_fields = ("title", "subtitle", "description")
+    readonly_fields = ("slug",)
+    inlines = [ContentCollectionItemInline]
+    exclude = ("site",)
+    fieldsets = (
+        (None, {"fields": ("title", "subtitle", "description", "slug")}),
+        ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
+    )
+
+
+@admin.register(CoursePart)
+class CoursePartAdmin(SiteAwareModelAdmin):
     list_display = ("title", "subtitle")
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")
