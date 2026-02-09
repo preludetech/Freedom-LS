@@ -67,22 +67,73 @@ class Student(SiteAwareModel):
 
     def current_courses(self):
         """Get all current (non-completed) courses for this student."""
-        from freedom_ls.student_progress.models import CourseProgress
+        from freedom_ls.student_progress.models import (
+            CourseProgress,
+            TopicProgress,
+            FormProgress,
+        )
 
         # Get all registered courses
         all_registered = self.get_course_registrations()
         current = []
 
+        # Fetch all course progress for this user in one query
+        course_progress_dict = {
+            cp.course_id: cp
+            for cp in CourseProgress.objects.filter(
+                user=self.user, course__in=all_registered
+            ).select_related("course")
+        }
+
+        # Prefetch all topic and form progress for efficiency
+        topic_ids = []
+        form_ids = []
         for course in all_registered:
-            try:
-                course_progress = CourseProgress.objects.get(
-                    user=self.user, course=course
-                )
-                if not course_progress.completed_time:
-                    current.append(course)
-            except CourseProgress.DoesNotExist:
-                # No progress yet, consider it current
-                current.append(course)
+            for child in course.children():
+                if child.content_type == "TOPIC":
+                    topic_ids.append(child.id)
+                elif child.content_type == "FORM":
+                    form_ids.append(child.id)
+
+        # Get completed topics and forms
+        completed_topics = set(
+            TopicProgress.objects.filter(
+                user=self.user, topic_id__in=topic_ids, complete_time__isnull=False
+            ).values_list("topic_id", flat=True)
+        )
+
+        completed_forms = set(
+            FormProgress.objects.filter(
+                user=self.user, form_id__in=form_ids, completed_time__isnull=False
+            ).values_list("form_id", flat=True)
+        )
+
+        for course in all_registered:
+            course_progress = course_progress_dict.get(course.id)
+
+            # Only include non-completed courses
+            if course_progress and course_progress.completed_time:
+                continue
+
+            # Calculate percentage complete
+            children = course.children()
+            if children:
+                total_items = len(children)
+                completed_items = 0
+
+                for child in children:
+                    if child.content_type == "TOPIC" and child.id in completed_topics:
+                        completed_items += 1
+                    elif child.content_type == "FORM" and child.id in completed_forms:
+                        completed_items += 1
+
+                percentage = round((completed_items / total_items) * 100)
+            else:
+                percentage = 0
+
+            # Attach percentage to course object as an attribute
+            course.progress_percentage = percentage
+            current.append(course)
 
         return current
 

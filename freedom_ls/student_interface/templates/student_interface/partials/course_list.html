@@ -50,6 +50,17 @@
                     {{ course.description }}
                 </p>
             {% endif %}
+            {% if course_status == "current" and course.progress_percentage is not None %}
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">Progress</span>
+                        <span class="font-medium text-gray-900">{{ course.progress_percentage }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-primary-600 h-2 rounded-full" style="width: {{ course.progress_percentage }}%"></div>
+                    </div>
+                </div>
+            {% endif %}
         </div>
 
         <c-button-group variant="centered">
