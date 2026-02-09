@@ -45,6 +45,47 @@ class Student(SiteAwareModel):
 
         return list(registered_collections)
 
+    def completed_courses(self):
+        """Get all completed courses for this student."""
+        from freedom_ls.student_progress.models import CourseProgress
+
+        # Get all registered courses
+        all_registered = self.get_course_registrations()
+        completed = []
+
+        for course in all_registered:
+            try:
+                course_progress = CourseProgress.objects.get(
+                    user=self.user, course=course
+                )
+                if course_progress.completed_time:
+                    completed.append(course)
+            except CourseProgress.DoesNotExist:
+                pass
+
+        return completed
+
+    def current_courses(self):
+        """Get all current (non-completed) courses for this student."""
+        from freedom_ls.student_progress.models import CourseProgress
+
+        # Get all registered courses
+        all_registered = self.get_course_registrations()
+        current = []
+
+        for course in all_registered:
+            try:
+                course_progress = CourseProgress.objects.get(
+                    user=self.user, course=course
+                )
+                if not course_progress.completed_time:
+                    current.append(course)
+            except CourseProgress.DoesNotExist:
+                # No progress yet, consider it current
+                current.append(course)
+
+        return current
+
 
 class Cohort(SiteAwareModel):
     name = models.CharField(_("name"), max_length=150)

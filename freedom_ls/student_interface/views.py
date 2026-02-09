@@ -69,23 +69,13 @@ def partial_list_courses(request):
     if request.user.is_authenticated:
         try:
             student = Student.objects.get(user=request.user)
-            all_registered = student.get_course_registrations()
 
-            # Separate registered courses into current and completed
-            for course in all_registered:
-                try:
-                    course_progress = CourseProgress.objects.get(
-                        user=request.user, course=course
-                    )
-                    if course_progress.completed_time:
-                        completed_courses.append(course)
-                    else:
-                        registered_courses.append(course)
-                except CourseProgress.DoesNotExist:
-                    # No progress yet, consider it current
-                    registered_courses.append(course)
+            # Get completed and current courses using Student methods
+            completed_courses = student.completed_courses()
+            registered_courses = student.current_courses()
 
             # Exclude all registered courses (both current and completed) from all_courses
+            all_registered = student.get_course_registrations()
             registered_course_ids = [course.id for course in all_registered]
             all_courses = all_courses.exclude(id__in=registered_course_ids)
 
