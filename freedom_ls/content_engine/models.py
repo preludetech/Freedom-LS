@@ -9,17 +9,6 @@ from .markdown_utils import render_markdown
 from .schema import ContentType as SchemaContentTypes
 
 
-class ContentType(models.TextChoices):
-    """Content type enumeration."""
-
-    TOPIC = "TOPIC", _("Topic")
-    FORM = "FORM", _("Form")
-    COLLECTION = "COLLECTION", _("Collection")
-    FORM_PAGE = "FORM_PAGE", _("Form Page")
-    FORM_QUESTION = "FORM_QUESTION", _("Form Question")
-    FORM_CONTENT = "FORM_CONTENT", _("Form Text")
-
-
 class QuestionType(models.TextChoices):
     """Question type enumeration."""
 
@@ -50,6 +39,11 @@ class BaseContent(SiteAwareModel):
 
     class Meta:
         abstract = True
+
+    @property
+    def content_type(self):
+        """Instance property that returns the class-level CONTENT_TYPE."""
+        return self.CONTENT_TYPE
 
     def calculate_path_from_root(self, other_relative_path):
         """
@@ -152,6 +146,8 @@ class Activity(TitledContent, MarkdownContent):
 class Course(MarkdownContent, TitledContent):
     """Course - contains an ordered list of child content."""
 
+    CONTENT_TYPE = SchemaContentTypes.COURSE
+
     category = models.CharField(max_length=200, null=True, blank=True)
 
     class Meta:
@@ -222,6 +218,8 @@ class Form(TitledContent, MarkdownContent):
 class FormPage(TitledContent):
     """A page within a form."""
 
+    CONTENT_TYPE = SchemaContentTypes.FORM_PAGE
+
     form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name="pages")
     order = models.PositiveIntegerField(default=0)
     category = models.CharField(max_length=200, null=True, blank=True)
@@ -249,6 +247,8 @@ class FormPage(TitledContent):
 class FormContent(MarkdownContent):
     """Text content within a form page."""
 
+    CONTENT_TYPE = SchemaContentTypes.FORM_CONTENT
+
     content = models.TextField()
     form_page = models.ForeignKey(
         FormPage, on_delete=models.CASCADE, related_name="text_items"
@@ -258,16 +258,14 @@ class FormContent(MarkdownContent):
     class Meta:
         ordering = ["order"]
 
-    @property
-    def content_type(self):
-        return ContentType.FORM_CONTENT
-
     def __str__(self):
         return self.content[:50]
 
 
 class FormQuestion(BaseContent):
     """A question within a form page."""
+
+    CONTENT_TYPE = SchemaContentTypes.FORM_QUESTION
 
     form_page = models.ForeignKey(
         FormPage, on_delete=models.CASCADE, related_name="questions"
@@ -308,10 +306,6 @@ class FormQuestion(BaseContent):
 
     class Meta:
         ordering = ["order"]
-
-    @property
-    def content_type(self):
-        return ContentType.FORM_QUESTION
 
     def __str__(self):
         return self.question[:50]

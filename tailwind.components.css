@@ -1,0 +1,201 @@
+
+@theme {
+    /* --color-sage-50: #f8faf8;
+    --color-sage-100: #e8ede8;
+    --color-sage-200: #d1dbd1;
+    --color-sage-300: #a8baa8;
+    --color-sage-400: #7a937a;
+    --color-sage-500: #5a7a5a;  /* Primary sage green - richer
+    --color-sage-600: #486648;
+    --color-sage-700: #3a533a;
+    --color-sage-800: #2f432f;
+    --color-sage-900: #253625; */
+}
+
+
+@layer base {
+    /* Prevent horizontal scrolling on mobile */
+    html, body {
+        @apply overflow-x-hidden
+    }
+
+    h1 {
+        @apply text-xl sm:text-2xl lg:text-4xl font-bold
+    }
+
+    h2 {
+        @apply text-lg sm:text-xl lg:text-3xl font-bold
+    }
+
+    h3 {
+        @apply text-base sm:text-lg lg:text-2xl font-bold
+    }
+
+    h4 {
+        @apply text-sm sm:text-base lg:text-xl font-bold
+    }
+
+    a {
+        @apply underline text-blue-600
+    }
+
+    blockquote {
+        @apply border-l-4 border-blue-500 bg-blue-50 pl-4 pr-4 py-3 my-4
+               italic text-gray-700 rounded-r-md
+    }
+
+    ul {
+        @apply list-disc list-outside ml-6 space-y-2
+    }
+
+    ol {
+        @apply list-decimal list-outside ml-6 space-y-2
+    }
+
+    li {
+        @apply py-1
+    }
+
+    /* Tables */
+    table {
+        @apply w-full border-collapse
+    }
+
+    thead {
+        @apply bg-gray-50 border-b-2 border-gray-300
+    }
+
+    th {
+        @apply px-4 py-3 text-left text-sm font-semibold text-gray-700
+    }
+
+    td {
+        @apply px-4 py-3 text-sm text-gray-900
+    }
+
+    tbody tr {
+        @apply border-b border-gray-200 hover:bg-gray-50
+    }
+
+    tbody tr:last-child {
+        @apply border-b-0
+    }
+
+    /* Form elements */
+    label {
+        @apply block text-sm font-medium text-gray-700 mb-1
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="url"],
+    input[type="tel"],
+    input[type="search"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    textarea,
+    select {
+        @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
+               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+               disabled:bg-gray-100 disabled:cursor-not-allowed
+    }
+
+    textarea {
+        @apply resize-y min-h-[100px]
+    }
+
+    select {
+        @apply bg-white cursor-pointer
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+        @apply w-4 h-4 text-blue-600 border-gray-300 rounded
+               focus:ring-2 focus:ring-blue-500 cursor-pointer
+    }
+
+    input[type="radio"] {
+        @apply rounded-full
+    }
+
+
+
+    fieldset {
+        @apply border border-gray-300 rounded-md p-4
+    }
+
+    legend {
+        @apply text-sm font-semibold text-gray-700 px-2
+    }
+
+    form {
+        @apply space-y-2
+    }
+}
+
+@layer utilities {
+    /* Friendly purple scrollbar */
+    .scrollbar-purple {
+        /* scrollbar-width: thin; */
+        scrollbar-color: rgb(168 85 247) rgb(243 232 255);
+    }
+
+    .scrollbar-purple::-webkit-scrollbar {
+        /* width: 8px; */
+    }
+
+    .scrollbar-purple::-webkit-scrollbar-track {
+        background: rgb(243 232 255); /* purple-100 */
+        border-radius: 4px;
+    }
+
+    .scrollbar-purple::-webkit-scrollbar-thumb {
+        background: rgb(168 85 247); /* purple-500 */
+        border-radius: 4px;
+    }
+
+    .scrollbar-purple::-webkit-scrollbar-thumb:hover {
+        background: rgb(147 51 234); /* purple-600 */
+    }
+}
+
+@layer components {
+    .btn {
+        @apply inline-block px-6 py-2 font-medium rounded-md
+               focus:outline-none focus:ring-2 focus:ring-offset-2
+               disabled:opacity-50 disabled:cursor-not-allowed
+               no-underline cursor-pointer transition-colors
+    }
+    /* Button component variants */
+    .btn-primary {
+        @apply bg-blue-600 text-white
+               hover:bg-blue-700 focus:ring-blue-500
+    }
+
+    .btn-secondary {
+        @apply bg-gray-600 text-white
+               hover:bg-gray-700 focus:ring-gray-500
+    }
+
+    .btn-outline {
+        @apply bg-white text-gray-700 border border-gray-300
+               hover:bg-gray-50 focus:ring-blue-500
+    }
+
+    .btn-success {
+        @apply bg-green-600 text-white
+               hover:bg-green-700 focus:ring-green-500
+    }
+
+    .btn-danger {
+        @apply bg-red-600 text-white
+               hover:bg-red-700 focus:ring-red-500
+    }
+
+    .surface {
+        @apply border border-gray-300 rounded-md py-6 px-8
+    }
+}

@@ -21,6 +21,28 @@ uv add submodules/Freedom-LS
 django-admin startproject config .
 ```
 
+Set up a suitable .gitignore
+
+
+### Useful dependencies 
+
+```
+uv add --dev django-debug-toolbar
+uv add --dev django-browser-reload.
+ipython
+```
+
+### 
+
+python manage.py create_site $SITE_NAME $HOST_DOMAIN --email $SUPER_EMAIL --password $SUPER_PASSWORD
+
+
+
+### urls.py 
+
+TODO
+
+
 
 ### settings.py 
 
@@ -65,11 +87,6 @@ ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_ADAPTER = "accounts.allauth_account_adapter.AccountAdapter"
-
-### urls.py 
-
-TODO
-
 
 ### Tailwind set up 
 
