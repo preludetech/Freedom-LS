@@ -1,7 +1,7 @@
 """Context processors for site-aware functionality."""
 
-from django.contrib.sites.shortcuts import get_current_site
 from django.conf import settings
+from .models import get_cached_site
 
 
 def site_config(request):
@@ -9,7 +9,7 @@ def site_config(request):
     Add site configuration to template context.
     Makes site_title and site_name available in all templates.
     """
-    site = get_current_site(request)
+    site = get_cached_site(request)
     site_name = site.name
 
     # Get site-specific configuration from settings.site_conf

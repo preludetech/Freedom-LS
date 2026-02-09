@@ -7,12 +7,19 @@ from threading import local
 _thread_locals = local()
 
 
+def get_cached_site(request):
+    """Get the current site, cached on the request for performance."""
+    if not hasattr(request, "_cached_site"):
+        request._cached_site = get_current_site(request)
+    return request._cached_site
+
+
 class SiteAwareManager(models.Manager):
     def get_queryset(self):
         queryset = super().get_queryset()
         request = getattr(_thread_locals, "request", None)
         if request:
-            site = get_current_site(request)
+            site = get_cached_site(request)
             return queryset.filter(site=site)
         return queryset
 
@@ -28,7 +35,7 @@ class SiteAwareModelBase(models.Model):
         if not self.site_id:
             request = getattr(_thread_locals, "request", None)
             if request:
-                self.site = get_current_site(request)
+                self.site = get_cached_site(request)
         super().save(*args, **kwargs)
 
     class Meta:
