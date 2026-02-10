@@ -112,6 +112,28 @@ def get_is_registered(user, course):
     return is_registered
 
 
+def get_flattened_course_children(course):
+    """
+    Get a flattened list of all content items in the course.
+
+    This includes CourseParts and their nested children in the order they appear,
+    matching the index structure used in get_course_index().
+
+    Returns a list of content items (Topic, Form, CoursePart, etc.)
+    """
+    flattened = []
+
+    for child in course.children():
+        flattened.append(child)
+
+        # If this is a CoursePart, add its children to the flattened list
+        if isinstance(child, CoursePart):
+            for part_child in child.children():
+                flattened.append(part_child)
+
+    return flattened
+
+
 def get_course_index(user, course):
     """
     Generate an index of course children with their status and metadata.

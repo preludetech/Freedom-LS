@@ -2,7 +2,13 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.utils import timezone
-from freedom_ls.content_engine.models import Topic, Form, Course, CoursePart, FormStrategy
+from freedom_ls.content_engine.models import (
+    Topic,
+    Form,
+    Course,
+    CoursePart,
+    FormStrategy,
+)
 from freedom_ls.student_progress.models import (
     FormProgress,
     TopicProgress,
@@ -10,7 +16,12 @@ from freedom_ls.student_progress.models import (
 )
 from freedom_ls.student_management.models import Student, StudentCourseRegistration
 from freedom_ls.student_management.models import RecommendedCourse
-from .utils import get_course_index, get_is_registered, form_start_page_buttons
+from .utils import (
+    get_course_index,
+    get_is_registered,
+    form_start_page_buttons,
+    get_flattened_course_children,
+)
 
 
 def home(request):
@@ -117,7 +128,7 @@ def register_for_course(request, course_slug):
 @login_required
 def view_course_item(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
-    children = course.children()
+    children = get_flattened_course_children(course)
     current_item = children[index - 1]
 
     total_children = len(children)
@@ -256,7 +267,7 @@ def form_start(request, course_slug, index):
     """Start or resume a form for the current user."""
 
     course = get_object_or_404(Course, slug=course_slug)
-    children = course.children()
+    children = get_flattened_course_children(course)
     form = children[index - 1]
 
     # Create a FormProgress instance if it doesn't yet exist
@@ -277,7 +288,7 @@ def form_start(request, course_slug, index):
 @login_required
 def form_fill_page(request, course_slug, index, page_number):
     course = get_object_or_404(Course, slug=course_slug)
-    children = course.children()
+    children = get_flattened_course_children(course)
     form = children[index - 1]
     all_pages = list(form.pages.all())
     total_pages = len(all_pages)
@@ -381,7 +392,7 @@ def form_fill_page(request, course_slug, index, page_number):
 @login_required
 def course_form_complete(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
-    children = course.children()
+    children = get_flattened_course_children(course)
     form = children[index - 1]
 
     # Get the most recent completed form progress
