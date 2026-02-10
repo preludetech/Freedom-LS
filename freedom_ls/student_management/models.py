@@ -133,6 +133,8 @@ class Student(SiteAwareModel):
 
             # Attach percentage to course object as an attribute
             course.progress_percentage = percentage
+            # @claude: refactor this. Make a separate function that calculates the course progress percentage. Write some basic tests to make sure it basically works.
+            # @claude. Then upgrade it so it looks at items inside CourseParts
             current.append(course)
 
         return current
