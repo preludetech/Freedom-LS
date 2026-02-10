@@ -21,8 +21,8 @@ def home(request):
 def course_home(request, course_slug):
     course = get_object_or_404(Course, slug=course_slug)
 
-    children = get_course_index(course=course, request=request)
-    is_registered = get_is_registered(request, course)
+    children = get_course_index(user=request.user, course=course)
+    is_registered = get_is_registered(user=request.user, course=course)
 
     # Get course progress if user is authenticated
     course_progress = None
@@ -49,8 +49,8 @@ def course_home(request, course_slug):
 def partial_course_toc(request, course_slug):
     course = get_object_or_404(Course, slug=course_slug)
 
-    children = get_course_index(course=course, request=request)
-    is_registered = get_is_registered(request, course)
+    children = get_course_index(user=request.user, course=course)
+    is_registered = get_is_registered(user=request.user, course=course)
 
     return render(
         request,

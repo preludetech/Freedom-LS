@@ -17,16 +17,15 @@ COMPLETE = "COMPLETE"
 FAILED = "FAILED"
 
 
-def get_content_status(content_item, request, next_status):
+def get_content_status(content_item, user, next_status):
     """
     Get the status for a content item based on user progress.
 
     Returns tuple of (status, updated_next_status)
     """
-    # @claude: dont require a request argument. Rather just take a user
     if isinstance(content_item, Topic):
         topic_progress = TopicProgress.objects.filter(
-            user=request.user, topic=content_item
+            user=user, topic=content_item
         ).first()
 
         if topic_progress and topic_progress.complete_time:
@@ -40,7 +39,7 @@ def get_content_status(content_item, request, next_status):
 
     elif isinstance(content_item, Form):
         form_progress = (
-            FormProgress.objects.filter(user=request.user, form=content_item)
+            FormProgress.objects.filter(user=user, form=content_item)
             .order_by("-start_time")
             .first()
         )
@@ -61,10 +60,31 @@ def get_content_status(content_item, request, next_status):
             return BLOCKED, BLOCKED
 
     elif isinstance(content_item, CoursePart):
-        # For course parts, check if all direct children are complete
-        # @claude:  implement proper recursive course part completion checking
-        if next_status == READY:
+        # For course parts, recursively check children's completion status
+        children = content_item.children()
+        if not children:
+            # Empty course part - treat as complete
+            return COMPLETE, READY
+
+        # Check the status of all children
+        child_statuses = []
+        temp_next_status = next_status
+
+        for child in children:
+            child_status, temp_next_status = get_content_status(
+                child, user, temp_next_status
+            )
+            child_statuses.append(child_status)
+
+        # Determine CoursePart status based on children
+        if IN_PROGRESS in child_statuses:
+            return IN_PROGRESS, BLOCKED
+        elif READY in child_statuses:
             return READY, BLOCKED
+        elif all(s == COMPLETE for s in child_statuses):
+            return COMPLETE, READY
+        elif FAILED in child_statuses:
+            return FAILED, BLOCKED
         else:
             return BLOCKED, BLOCKED
 
@@ -79,66 +99,12 @@ def get_content_status(content_item, request, next_status):
     return BLOCKED, BLOCKED
 
 
-def create_child_dict(content_item, request, course, index, next_status, is_registered):
-    """
-    Create a standardized dictionary for a content item.
-
-    Returns tuple of (child_dict, updated_next_status)
-    """
-    # @claude: dont require a request argument. Rather just take a user
-
-    child_type = content_item.content_type
-
-    if is_registered:
-        status, next_status = get_content_status(content_item, request, next_status)
-        url = reverse(
-            "student_interface:view_course_item",
-            kwargs={"course_slug": course.slug, "index": index + 1},
-        )
-    else:
-        status = BLOCKED
-        url = ""
-
-    child_dict = {
-        "title": content_item.title,
-        "status": status,
-        "url": url if status != BLOCKED else None,
-        "type": child_type,
-    }
-
-    # Add children for CoursePart
-    if isinstance(content_item, CoursePart):
-        part_children = content_item.children()
-        child_dict["children"] = [
-            {
-                "title": part_child.title,
-                "type": part_child.content_type,
-                # @claude: add the url here. Follow TDD
-                # @claude: add the status here. Follow TDD
-            }
-            for part_child in part_children
-        ]
-        # @claude: course part url and status should be calculated as follows:
-        # if there is a READY child:
-        # url = child url. status=READY
-        # if there is an IN PROGRESS child:
-        # url = child url. status=IN PROGRESS
-        # if all children are COMPLETE
-        # status = COMPLETE. url = first child url
-        # if should be blocked:
-        # url = None
-
-    return child_dict, next_status
-
-
-def get_is_registered(request, course):
+def get_is_registered(user, course):
     # Check if user is registered for the course
-    # @claude: dont require a request argument. Rather just take a user
-
     is_registered = False
-    if request.user.is_authenticated:
+    if user.is_authenticated:
         try:
-            student = Student.objects.get(user=request.user)
+            student = Student.objects.get(user=user)
             registered_courses = student.get_course_registrations()
             is_registered = course in registered_courses
         except Student.DoesNotExist:
@@ -146,25 +112,118 @@ def get_is_registered(request, course):
     return is_registered
 
 
-def get_course_index(request, course):
+def get_course_index(user, course):
     """
     Generate an index of course children with their status and metadata.
 
     Returns a list of dictionaries with title, status, url, type, and optionally children.
     """
-    # @claude: dont require a request argument. Rather just take a user
-
-    is_registered = get_is_registered(request, course)
+    is_registered = get_is_registered(user, course)
     children = []
     next_status = READY  # First item starts as READY
+    global_index = 0  # Track flattened index for nested items
 
-    for index, child in enumerate(course.children()):
-        child_dict, next_status = create_child_dict(
-            child, request, course, index, next_status, is_registered
+    for child in course.children():
+        child_dict, next_status, items_added = create_child_dict_with_flattened_index(
+            child, user, course, global_index, next_status, is_registered
         )
         children.append(child_dict)
+        global_index += items_added
 
     return children
+
+
+def create_child_dict_with_flattened_index(content_item, user, course, start_index, next_status, is_registered):
+    """
+    Create a child dict with proper flattened indices for nested items.
+
+    Returns tuple of (child_dict, updated_next_status, number_of_items_added)
+    """
+    items_added = 1  # This item itself
+
+    # Handle CoursePart specially - don't calculate its status yet, process children first
+    if isinstance(content_item, CoursePart):
+        part_children = content_item.children()
+        part_children_dicts = []
+        part_next_status = next_status  # Use the incoming next_status for children
+        nested_index = start_index + 1  # Start right after the CoursePart itself
+
+        # Calculate status and URL for each child of the CoursePart
+        for part_child in part_children:
+            if is_registered:
+                child_status, part_next_status = get_content_status(
+                    part_child, user, part_next_status
+                )
+                child_url = reverse(
+                    "student_interface:view_course_item",
+                    kwargs={"course_slug": course.slug, "index": nested_index + 1},
+                )
+            else:
+                child_status = BLOCKED
+                child_url = ""
+
+            part_children_dicts.append({
+                "title": part_child.title,
+                "type": part_child.content_type,
+                "url": child_url if child_status != BLOCKED else None,
+                "status": child_status,
+            })
+            nested_index += 1
+            items_added += 1
+
+        # Now calculate CoursePart's own status and URL based on children
+        status = BLOCKED  # Default
+        url = ""
+
+        if part_children_dicts:
+            # Check for READY or IN_PROGRESS children
+            ready_child = next((c for c in part_children_dicts if c["status"] == READY), None)
+            in_progress_child = next((c for c in part_children_dicts if c["status"] == IN_PROGRESS), None)
+
+            if in_progress_child:
+                # Prioritize IN_PROGRESS
+                status = IN_PROGRESS
+                url = in_progress_child["url"]
+            elif ready_child:
+                # Then READY
+                status = READY
+                url = ready_child["url"]
+            elif all(c["status"] == COMPLETE for c in part_children_dicts):
+                # All complete
+                status = COMPLETE
+                url = part_children_dicts[0]["url"]
+
+        child_dict = {
+            "title": content_item.title,
+            "status": status,
+            "url": url if status != BLOCKED else None,
+            "type": content_item.content_type,
+            "children": part_children_dicts,
+        }
+
+        # Update next_status based on the last child's processing
+        next_status = part_next_status
+
+    else:
+        # Regular content item (Topic, Form, etc.)
+        if is_registered:
+            status, next_status = get_content_status(content_item, user, next_status)
+            url = reverse(
+                "student_interface:view_course_item",
+                kwargs={"course_slug": course.slug, "index": start_index + 1},
+            )
+        else:
+            status = BLOCKED
+            url = ""
+
+        child_dict = {
+            "title": content_item.title,
+            "status": status,
+            "url": url if status != BLOCKED else None,
+            "type": content_item.content_type,
+        }
+
+    return child_dict, next_status, items_added
 
 
 def form_start_page_buttons(
