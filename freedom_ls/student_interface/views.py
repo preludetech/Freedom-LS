@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.utils import timezone
-from freedom_ls.content_engine.models import Topic, Form, Course, FormStrategy
+from freedom_ls.content_engine.models import Topic, Form, Course, CoursePart, FormStrategy
 from freedom_ls.student_progress.models import (
     FormProgress,
     TopicProgress,
@@ -164,6 +164,15 @@ def view_course_item(request, course_slug, index):
             is_last_item=is_last_item,
             next_url=next_url,
         )
+
+    # Handle CoursePart by redirecting to the next item (first child of the part)
+    if isinstance(current_item, CoursePart):
+        # CourseParts are not directly viewable, redirect to next item
+        if next_url:
+            return redirect(next_url)
+        else:
+            # If this is the last item, go to course home
+            return redirect("student_interface:course_home", course_slug=course.slug)
 
 
 def view_topic(request, topic, course, next_url, previous_url, is_last_item=False):

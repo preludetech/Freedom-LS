@@ -1,7 +1,135 @@
 from django.urls import reverse
-from freedom_ls.content_engine.models import Topic, Form, Course, FormStrategy
+from freedom_ls.content_engine.models import (
+    Topic,
+    Form,
+    Course,
+    CoursePart,
+    FormStrategy,
+)
 from freedom_ls.student_progress.models import FormProgress, TopicProgress
 from freedom_ls.student_management.models import Student
+
+# Status constants
+BLOCKED = "BLOCKED"
+READY = "READY"
+IN_PROGRESS = "IN_PROGRESS"
+COMPLETE = "COMPLETE"
+FAILED = "FAILED"
+
+
+def get_content_type(content_item):
+    # @claude: remove this function. Rather use content_item.content_type. It is already available
+    """Return the type string for a content item."""
+    if isinstance(content_item, Topic):
+        return "topic"
+    elif isinstance(content_item, Form):
+        return "form"
+    elif isinstance(content_item, CoursePart):
+        return "course_part"
+    elif isinstance(content_item, Course):
+        return "course"
+    else:
+        return "unknown"
+
+
+def get_content_status(content_item, request, next_status):
+    """
+    Get the status for a content item based on user progress.
+
+    Returns tuple of (status, updated_next_status)
+    """
+    if isinstance(content_item, Topic):
+        topic_progress = TopicProgress.objects.filter(
+            user=request.user, topic=content_item
+        ).first()
+
+        if topic_progress and topic_progress.complete_time:
+            return COMPLETE, READY
+        elif topic_progress:
+            return IN_PROGRESS, BLOCKED
+        elif next_status == READY:
+            return READY, BLOCKED
+        else:
+            return BLOCKED, BLOCKED
+
+    elif isinstance(content_item, Form):
+        form_progress = (
+            FormProgress.objects.filter(user=request.user, form=content_item)
+            .order_by("-start_time")
+            .first()
+        )
+
+        if form_progress and form_progress.completed_time:
+            if form_progress.form.strategy == FormStrategy.QUIZ:
+                if form_progress.passed():
+                    return COMPLETE, READY
+                else:
+                    return FAILED, BLOCKED
+            else:
+                return COMPLETE, READY
+        elif form_progress:
+            return IN_PROGRESS, BLOCKED
+        elif next_status == READY:
+            return READY, BLOCKED
+        else:
+            return BLOCKED, BLOCKED
+
+    elif isinstance(content_item, CoursePart):
+        # For course parts, check if all direct children are complete
+        # @claude:  implement proper recursive course part completion checking
+        if next_status == READY:
+            return READY, BLOCKED
+        else:
+            return BLOCKED, BLOCKED
+
+    elif isinstance(content_item, Course):
+        # For courses, check if all direct children are complete
+        # TODO: implement proper recursive course completion checking
+        if next_status == READY:
+            return READY, BLOCKED
+        else:
+            return BLOCKED, BLOCKED
+
+    return BLOCKED, BLOCKED
+
+
+def create_child_dict(content_item, request, course, index, next_status, is_registered):
+    """
+    Create a standardized dictionary for a content item.
+
+    Returns tuple of (child_dict, updated_next_status)
+    """
+    child_type = get_content_type(content_item)
+
+    if is_registered:
+        status, next_status = get_content_status(content_item, request, next_status)
+        url = reverse(
+            "student_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": index + 1},
+        )
+    else:
+        status = BLOCKED
+        url = ""
+
+    child_dict = {
+        "title": content_item.title,
+        "status": status,
+        "url": url if status != BLOCKED else None,
+        "type": child_type,
+    }
+
+    # Add children for CoursePart
+    if isinstance(content_item, CoursePart):
+        part_children = content_item.children()
+        child_dict["children"] = [
+            {
+                "title": part_child.title,
+                "type": get_content_type(part_child),
+            }
+            for part_child in part_children
+        ]
+
+    return child_dict, next_status
 
 
 def get_is_registered(request, course):
@@ -18,129 +146,21 @@ def get_is_registered(request, course):
 
 
 def get_course_index(request, course):
-    BLOCKED = "BLOCKED"
-    READY = "READY"
-    IN_PROGRESS = "IN_PROGRESS"
-    COMPLETE = "COMPLETE"
-    FAILED = "FAILED"
+    """
+    Generate an index of course children with their status and metadata.
 
+    Returns a list of dictionaries with title, status, url, type, and optionally children.
+    """
     is_registered = get_is_registered(request, course)
+    children = []
+    next_status = READY  # First item starts as READY
 
-    # Get the children of this course
-    children = [
-        # {title, status, url}
-    ]
+    for index, child in enumerate(course.children()):
+        child_dict, next_status = create_child_dict(
+            child, request, course, index, next_status, is_registered
+        )
+        children.append(child_dict)
 
-    if is_registered:
-        next_status = READY  # First item starts as READY
-        for index, child in enumerate(course.children()):
-            # create a list of children dicts
-            # status is either blocked, ready, in progress or complete
-            # users need to complete things in order, an item is blocked if the previous item has not been completed yet
-
-            status = None
-            url = reverse(
-                "student_interface:view_course_item",
-                kwargs={"course_slug": course.slug, "index": index + 1},
-            )
-            title = None
-
-            if isinstance(child, Topic):
-                title = child.title
-                child_type = "topic"
-
-                # Check progress
-                topic_progress = TopicProgress.objects.filter(
-                    user=request.user, topic=child
-                ).first()
-
-                if topic_progress and topic_progress.complete_time:
-                    status = COMPLETE
-                elif topic_progress:
-                    status = IN_PROGRESS
-                elif next_status == READY:
-                    status = READY
-                else:
-                    status = BLOCKED
-
-            elif isinstance(child, Form):
-                title = child.title
-                child_type = "form"
-
-                # Check progress
-                form_progress = (
-                    FormProgress.objects.filter(user=request.user, form=child)
-                    .order_by("-start_time")
-                    .first()
-                )
-
-                if form_progress and form_progress.completed_time:
-                    if form_progress.form.strategy == FormStrategy.QUIZ:
-                        if form_progress.passed():
-                            status = COMPLETE
-                        else:
-                            status = FAILED
-                    else:
-                        status = COMPLETE
-                elif form_progress:
-                    status = IN_PROGRESS
-                elif next_status == READY:
-                    status = READY
-                else:
-                    status = BLOCKED
-
-            elif isinstance(child, Course):
-                NotImplemented
-                title = child.title
-                child_type = "course"
-                # url = reverse(
-                #     "student_interface:course_home",
-                #     kwargs={"course_slug": child.slug},
-                # )
-                url = "todo"
-
-                # For courses, check if all direct children are complete
-                # TODO: implement proper recursive course completion checking
-                if next_status == READY:
-                    status = READY
-                else:
-                    status = BLOCKED
-
-            children.append(
-                {
-                    "title": title,
-                    "status": status,
-                    "url": url if status != BLOCKED else None,
-                    "type": child_type,
-                }
-            )
-
-            # Update next_status for the next iteration
-            if status == COMPLETE:
-                next_status = READY
-            else:
-                next_status = BLOCKED
-
-    else:
-        children = []
-        for child in course.children():
-            if isinstance(child, Topic):
-                child_type = "topic"
-            elif isinstance(child, Form):
-                child_type = "form"
-            elif isinstance(child, Course):
-                child_type = "course"
-            else:
-                child_type = "unknown"
-
-            children.append(
-                {
-                    "title": child.title,
-                    "status": BLOCKED,
-                    "url": "",
-                    "type": child_type,
-                }
-            )
     return children
 
 
