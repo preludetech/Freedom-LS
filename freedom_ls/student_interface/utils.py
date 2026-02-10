@@ -17,22 +17,6 @@ COMPLETE = "COMPLETE"
 FAILED = "FAILED"
 
 
-def get_content_type(content_item):
-    # @claude: remove this function. Rather use content_item.content_type. It is already available.
-    # make sure existing tests pass
-    """Return the type string for a content item."""
-    if isinstance(content_item, Topic):
-        return "topic"
-    elif isinstance(content_item, Form):
-        return "form"
-    elif isinstance(content_item, CoursePart):
-        return "course_part"
-    elif isinstance(content_item, Course):
-        return "course"
-    else:
-        return "unknown"
-
-
 def get_content_status(content_item, request, next_status):
     """
     Get the status for a content item based on user progress.
@@ -103,7 +87,7 @@ def create_child_dict(content_item, request, course, index, next_status, is_regi
     """
     # @claude: dont require a request argument. Rather just take a user
 
-    child_type = get_content_type(content_item)
+    child_type = content_item.content_type
 
     if is_registered:
         status, next_status = get_content_status(content_item, request, next_status)
@@ -128,7 +112,7 @@ def create_child_dict(content_item, request, course, index, next_status, is_regi
         child_dict["children"] = [
             {
                 "title": part_child.title,
-                "type": get_content_type(part_child),
+                "type": part_child.content_type,
                 # @claude: add the url here. Follow TDD
                 # @claude: add the status here. Follow TDD
             }

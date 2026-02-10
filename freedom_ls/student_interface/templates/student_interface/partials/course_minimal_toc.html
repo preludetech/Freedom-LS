@@ -30,7 +30,7 @@
 
 {% partialdef course-children %}
     {% for child in children %}
-        {% if child.type == "course_part" %}
+        {% if child.type == "COURSE_PART" %}
             {# Course Part with expandable children #}
             <div x-data="{ expanded: false }" class="py-2">
                 <div class="flex items-center justify-between">
@@ -58,11 +58,11 @@
                         {% for part_child in child.children %}
                             <div class="flex items-center gap-3 text-sm">
                                 <span class="text-gray-500">
-                                    {% if part_child.type == "topic" %}
+                                    {% if part_child.type == "TOPIC" %}
                                         <i class="fa fa-book"></i>
-                                    {% elif part_child.type == "form" %}
+                                    {% elif part_child.type == "FORM" %}
                                         <i class="fa fa-edit"></i>
-                                    {% elif part_child.type == "course" %}
+                                    {% elif part_child.type == "COURSE" %}
                                         <i class="fa fa-graduation-cap"></i>
                                     {% endif %}
                                 </span>
@@ -80,11 +80,11 @@
                 <div class="flex items-center gap-3">
                     <span class="text-gray-400 pr-2">{{ forloop.counter }}.</span>
                     <span class="text-gray-500">
-                        {% if child.type == "topic" %}
+                        {% if child.type == "TOPIC" %}
                             <i class="fa fa-book"></i>
-                        {% elif child.type == "form" %}
+                        {% elif child.type == "FORM" %}
                             <i class="fa fa-edit"></i>
-                        {% elif child.type == "course" %}
+                        {% elif child.type == "COURSE" %}
                             <i class="fa fa-graduation-cap"></i>
                         {% endif %}
                     </span>
