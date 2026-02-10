@@ -51,6 +51,7 @@
                 </p>
             {% endif %}
             {% if course_status == "current" and course.progress_percentage is not None %}
+                <!-- @claude: the course progress element should be just above the buttons. Currently it has a different height depending on the height of the description element -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-600">Progress</span>

@@ -44,8 +44,8 @@
                             <span>{{ child.title }}</span>
 
                             <span class="text-sm text-gray-400">
-                                <i class="fa"
-                                   :class="expanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                                <i class="fa" :class="expanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                                <!-- @claude: if the child title is very long, then the chevron overlaps with the status icon at the end. Make sure it is neat even with long titles -->
                             </span>
                         </button>
                     </div>
@@ -61,8 +61,8 @@
                                 <div class="flex items-center gap-3">
                                     <span class="text-gray-500">
                                         {% if part_child.type == "TOPIC" %}
-                                            <i class="fa fa-book"></i> 
-                                            <!-- @claude: this code is not DRY. child names, icons and links should be defined once in a template 
+                                            <i class="fa fa-book"></i>
+                                            <!-- @claude: this code is not DRY. child names, icons and links should be defined once in a template
                                              the counter should also be displayed. 1.1, 1.2 etc -->
                                         {% elif part_child.type == "FORM" %}
                                             <i class="fa fa-edit"></i>
@@ -71,11 +71,12 @@
                                         {% endif %}
                                     </span>
                                     {% if part_child.url %}
-                                        <a href="{{ part_child.url }}" class="text-gray-600 hover:text-primary-600">{{ part_child.title }}</a>
+                                        <a href="{{ part_child.url }}"
+                                           class="text-gray-600 hover:text-primary-600">{{ part_child.title }}</a>
                                     {% else %}
-                                        <span class="text-gray-600">{{ part_child.title }}</span> 
-<!-- @claude: the title should be displayed in a consistent way. Make rendering specific elements DRY -->
-                                        {% endif %}
+                                        <span class="text-gray-600">{{ part_child.title }}</span>
+                                        <!-- @claude: the title should be displayed in a consistent way. Make rendering specific elements DRY -->
+                                    {% endif %}
                                 </div>
                                 {% with child=part_child %}
                                     {% partial status-icon %}
