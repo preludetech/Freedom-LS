@@ -18,7 +18,8 @@ FAILED = "FAILED"
 
 
 def get_content_type(content_item):
-    # @claude: remove this function. Rather use content_item.content_type. It is already available
+    # @claude: remove this function. Rather use content_item.content_type. It is already available.
+    # make sure existing tests pass
     """Return the type string for a content item."""
     if isinstance(content_item, Topic):
         return "topic"
@@ -38,6 +39,7 @@ def get_content_status(content_item, request, next_status):
 
     Returns tuple of (status, updated_next_status)
     """
+    # @claude: dont require a request argument. Rather just take a user
     if isinstance(content_item, Topic):
         topic_progress = TopicProgress.objects.filter(
             user=request.user, topic=content_item
@@ -99,6 +101,8 @@ def create_child_dict(content_item, request, course, index, next_status, is_regi
 
     Returns tuple of (child_dict, updated_next_status)
     """
+    # @claude: dont require a request argument. Rather just take a user
+
     child_type = get_content_type(content_item)
 
     if is_registered:
@@ -125,15 +129,28 @@ def create_child_dict(content_item, request, course, index, next_status, is_regi
             {
                 "title": part_child.title,
                 "type": get_content_type(part_child),
+                # @claude: add the url here. Follow TDD
+                # @claude: add the status here. Follow TDD
             }
             for part_child in part_children
         ]
+        # @claude: course part url and status should be calculated as follows:
+        # if there is a READY child:
+        # url = child url. status=READY
+        # if there is an IN PROGRESS child:
+        # url = child url. status=IN PROGRESS
+        # if all children are COMPLETE
+        # status = COMPLETE. url = first child url
+        # if should be blocked:
+        # url = None
 
     return child_dict, next_status
 
 
 def get_is_registered(request, course):
     # Check if user is registered for the course
+    # @claude: dont require a request argument. Rather just take a user
+
     is_registered = False
     if request.user.is_authenticated:
         try:
@@ -151,6 +168,8 @@ def get_course_index(request, course):
 
     Returns a list of dictionaries with title, status, url, type, and optionally children.
     """
+    # @claude: dont require a request argument. Rather just take a user
+
     is_registered = get_is_registered(request, course)
     children = []
     next_status = READY  # First item starts as READY
