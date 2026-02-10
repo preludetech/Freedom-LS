@@ -37,11 +37,12 @@
                     <div class="flex items-center gap-3 flex-1">
                         <span class="text-gray-400 pr-2">{{ forloop.counter }}.</span>
                         <button @click="expanded = !expanded"
-                                class="flex items-center gap-3 text-left hover:text-primary-600 transition-colors">
+                                class="flex items-center gap-3 text-left hover:text-blue-600 transition-colors cursor-pointer">
                             <span class="text-gray-500">
                                 <i class="fa fa-folder"></i>
                             </span>
                             <span>{{ child.title }}</span>
+
                             <span class="text-sm text-gray-400">
                                 <i class="fa"
                                    :class="expanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
@@ -56,17 +57,29 @@
                      class="ml-12 mt-2 space-y-2 border-l-2 border-gray-200 pl-4">
                     {% if child.children %}
                         {% for part_child in child.children %}
-                            <div class="flex items-center gap-3 text-sm">
-                                <span class="text-gray-500">
-                                    {% if part_child.type == "TOPIC" %}
-                                        <i class="fa fa-book"></i>
-                                    {% elif part_child.type == "FORM" %}
-                                        <i class="fa fa-edit"></i>
-                                    {% elif part_child.type == "COURSE" %}
-                                        <i class="fa fa-graduation-cap"></i>
-                                    {% endif %}
-                                </span>
-                                <span class="text-gray-600">{{ part_child.title }}</span>
+                            <div class="flex items-center justify-between text-sm">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-gray-500">
+                                        {% if part_child.type == "TOPIC" %}
+                                            <i class="fa fa-book"></i> 
+                                            <!-- @claude: this code is not DRY. child names, icons and links should be defined once in a template 
+                                             the counter should also be displayed. 1.1, 1.2 etc -->
+                                        {% elif part_child.type == "FORM" %}
+                                            <i class="fa fa-edit"></i>
+                                        {% elif part_child.type == "COURSE" %}
+                                            <i class="fa fa-graduation-cap"></i>
+                                        {% endif %}
+                                    </span>
+                                    {% if part_child.url %}
+                                        <a href="{{ part_child.url }}" class="text-gray-600 hover:text-primary-600">{{ part_child.title }}</a>
+                                    {% else %}
+                                        <span class="text-gray-600">{{ part_child.title }}</span> 
+<!-- @claude: the title should be displayed in a consistent way. Make rendering specific elements DRY -->
+                                        {% endif %}
+                                </div>
+                                {% with child=part_child %}
+                                    {% partial status-icon %}
+                                {% endwith %}
                             </div>
                         {% endfor %}
                     {% else %}
