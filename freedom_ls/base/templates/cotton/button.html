@@ -13,6 +13,9 @@
     icon_right=""
 />
 
+
+<!-- @claude simplify this. Dont use _button_impl.html. delete _button_impl -->
+
 {% with computed_class=class|add:" "|add:dropdown|yesno:"block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer,btn btn-"|add:variant %}
 {% if dropdown %}
 {% include "cotton/_button_impl.html" with computed_class=class|add:" block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer" %}
