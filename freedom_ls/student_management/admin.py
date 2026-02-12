@@ -95,7 +95,8 @@ class CohortAdmin(GuardedModelAdmin):
     list_display = ["name"]
     search_fields = ["name"]
     inlines = [CohortMembershipInline, CohortCourseRegistrationInline]
-
+    # @claude: We need a base class that extends from Guarded model admin and excludes the site (like SiteAwareModelAdmin). 
+    # implement it and then update docs/admin_interface.md
 
 @admin.register(StudentCourseRegistration)
 class StudentCourseRegistrationAdmin(SiteAwareModelAdmin):
