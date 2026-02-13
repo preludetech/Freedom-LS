@@ -1,4 +1,15 @@
 {
+    "permissions": {
+        "allow": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash(git status*)",
+            "Bash(git diff*)",
+            "Bash(git log*)"
+        ],
+        "deny": ["Read(.env)", "Read(.env.*)", "Write(config/settings_prod.py)", "Bash(rm -rf *)"]
+    },
     "hooks": {
         "PostToolUse": [
             {

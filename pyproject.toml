@@ -19,7 +19,6 @@ dependencies = [
     "pytest-playwright>=0.7.2",
     "python-frontmatter>=1.1.0",
     "django-template-partials>=25.2",
-    "djlint>=1.36.4",
     "whitenoise>=6.11.0",
     "django-storages[s3]>=1.14.6",
 ]
@@ -61,6 +60,9 @@ dev = [
     "pytest-mock>=3.15.1",
     "django-browser-reload>=1.21.0",
     "ruff>=0.14.10",
+    "djlint>=1.36.4",
+    "factory-boy>=3.3.3",
+    "pytest-cov>=7.0.0",
 ]
 
 
