@@ -13,16 +13,37 @@
     icon_right=""
 />
 
-
-<!-- @claude simplify this. Dont use _button_impl.html. delete _button_impl -->
-
-{% with computed_class=class|add:" "|add:dropdown|yesno:"block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer,btn btn-"|add:variant %}
 {% if dropdown %}
-{% include "cotton/_button_impl.html" with computed_class=class|add:" block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer" %}
-{% else %}
-{% include "cotton/_button_impl.html" with computed_class=class|add:" btn btn-"|add:variant %}
-{% endif %}
+{% with computed_class=class|add:" block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline cursor-pointer" %}
+<{% if href %}a href="{{ href }}"{% else %}button{% endif %}
+{% if form %} form="{{ form }}"{% endif %}
+{% if id %} id="{{ id }}"{% endif %}
+{% if name %} name="{{ name }}"{% endif %}
+{% if value %} value="{{ value }}"{% endif %}
+{% if not href and type %} type="{{ type }}"{% endif %}
+{% if disabled %} disabled{% endif %}
+class="{{ computed_class }}"
+{{ attrs }}
+>
+{% if icon_left %}<i class="fa-solid fa-{{ icon_left }} mr-2"></i>{% endif %}{{ slot }}{% if icon_right %}<i class="fa-solid fa-{{ icon_right }} ml-2"></i>{% endif %}
+</{% if href %}a{% else %}button{% endif %}>
 {% endwith %}
+{% else %}
+{% with computed_class=class|add:" btn btn-"|add:variant %}
+<{% if href %}a href="{{ href }}"{% else %}button{% endif %}
+{% if form %} form="{{ form }}"{% endif %}
+{% if id %} id="{{ id }}"{% endif %}
+{% if name %} name="{{ name }}"{% endif %}
+{% if value %} value="{{ value }}"{% endif %}
+{% if not href and type %} type="{{ type }}"{% endif %}
+{% if disabled %} disabled{% endif %}
+class="{{ computed_class }}"
+{{ attrs }}
+>
+{% if icon_left %}<i class="fa-solid fa-{{ icon_left }} mr-2"></i>{% endif %}{{ slot }}{% if icon_right %}<i class="fa-solid fa-{{ icon_right }} ml-2"></i>{% endif %}
+</{% if href %}a{% else %}button{% endif %}>
+{% endwith %}
+{% endif %}
 
 {% comment %}
 Usage Examples:
