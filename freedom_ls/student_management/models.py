@@ -72,6 +72,9 @@ class Student(SiteAwareModel):
             TopicProgress,
             FormProgress,
         )
+        from freedom_ls.student_management.utils import (
+            calculate_course_progress_percentage,
+        )
 
         # Get all registered courses
         all_registered = self.get_course_registrations()
@@ -85,15 +88,22 @@ class Student(SiteAwareModel):
             ).select_related("course")
         }
 
-        # Prefetch all topic and form progress for efficiency
+        # Collect all topic and form IDs (including nested in CourseParts)
         topic_ids = []
         form_ids = []
-        for course in all_registered:
-            for child in course.children():
-                if child.content_type == "TOPIC":
+
+        def collect_ids(children):
+            """Recursively collect topic and form IDs from children."""
+            for child in children:
+                if child.content_type == "COURSE_PART":
+                    collect_ids(child.children())
+                elif child.content_type == "TOPIC":
                     topic_ids.append(child.id)
                 elif child.content_type == "FORM":
                     form_ids.append(child.id)
+
+        for course in all_registered:
+            collect_ids(course.children())
 
         # Get completed topics and forms
         completed_topics = set(
@@ -115,26 +125,13 @@ class Student(SiteAwareModel):
             if course_progress and course_progress.completed_time:
                 continue
 
-            # Calculate percentage complete
-            children = course.children()
-            if children:
-                total_items = len(children)
-                completed_items = 0
-
-                for child in children:
-                    if child.content_type == "TOPIC" and child.id in completed_topics:
-                        completed_items += 1
-                    elif child.content_type == "FORM" and child.id in completed_forms:
-                        completed_items += 1
-
-                percentage = round((completed_items / total_items) * 100)
-            else:
-                percentage = 0
+            # Calculate percentage complete using utility function
+            percentage = calculate_course_progress_percentage(
+                course, completed_topics, completed_forms
+            )
 
             # Attach percentage to course object as an attribute
             course.progress_percentage = percentage
-            # @claude: refactor this. Make a separate function that calculates the course progress percentage. Write some basic tests to make sure it basically works.
-            # @claude. Then upgrade it so it looks at items inside CourseParts
             current.append(course)
 
         return current
