@@ -37,3 +37,4 @@ static/vendor/
 .ruff_cache/
 
 htmlcov/
+.coverage
