@@ -1,0 +1,31 @@
+<c-vars src text="Download file" />
+
+{% load content_tags %}
+
+{% comment %}
+Download button for a file. Does not display the file content.
+
+Usage:
+<c-file-download src="path/to/document.pdf" />
+<c-file-download src="path/to/document.pdf" text="Get the PDF" />
+{% endcomment %}
+
+{% with file_obj=src|get_file_by_path:content_instance %}
+    {% if file_obj %}
+        <div class="my-6">
+            <c-button
+                href="{{ file_obj.file.url }}"
+                variant="primary"
+                icon_left="download"
+                target="_blank">
+                {{ text }}
+            </c-button>
+        </div>
+    {% else %}
+        <div class="my-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-red-700">
+                File not found: {{ src }}
+            </p>
+        </div>
+    {% endif %}
+{% endwith %}

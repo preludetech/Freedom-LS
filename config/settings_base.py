@@ -92,6 +92,8 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
 ]
 
+X_FRAME_OPTIONS = "SAMEORIGIN"  # needed for pdf display
+
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
@@ -207,6 +209,7 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-callout": {"level", "title"},
     "c-content-link": {"path"},
     "c-pdf-embed": {"src", "caption", "height"},
+    "c-file-download": {"src", "text"},
 }
 
 MARKDOWN_TEMPLATE_RENDER_ON = True
