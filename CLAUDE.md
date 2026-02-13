@@ -36,13 +36,6 @@ Django 5.x, PostgreSQL 17, HTMX 2.x, django-template-partials, TailwindCSS
 - Don't build functionality that is not explicitly requested
 - When catching exceptions, be specific about the types of exceptions being handled. Avoid silent failures
 
-## Detailed documentation
+## Important: Use skills
 
-When you do work related to one of the following, be sure to read and apply the documentation.
-
-- @docs/multi_tenant for understanding site isolation, SiteAwareModel and use of Django Sites framework
-- @docs/frontend_styling.md to see how Tailwind is used to style frontend components
-- @docs/testing.md for test conventions
-- @docs/templates_and_cotton.md for Django templates and cotton components
-
-
+Whenever you are asked to do anything, use all the appropriate skills. Rely on skills rather than pre-training.
