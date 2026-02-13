@@ -1,15 +1,16 @@
 
 @theme {
-    /* --color-sage-50: #f8faf8;
-    --color-sage-100: #e8ede8;
-    --color-sage-200: #d1dbd1;
-    --color-sage-300: #a8baa8;
-    --color-sage-400: #7a937a;
-    --color-sage-500: #5a7a5a;  /* Primary sage green - richer
-    --color-sage-600: #486648;
-    --color-sage-700: #3a533a;
-    --color-sage-800: #2f432f;
-    --color-sage-900: #253625; */
+/* 
+@claude update this so that we have a primary color.  Instead of saying border-blue-500 we should be able to use our theme colors
+
+Use these brand colors: 
+primary: '#283593',
+        secondary: '#00CEC9',
+        accent: '#FF6B35',
+        dark: '#1A1A2E',
+        surface: '#F8F9FC',
+
+*/
 }
 
 

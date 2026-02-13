@@ -6,9 +6,19 @@
     title=""
 />
 
-{% include "cotton/_form_page_link_impl.html" with current_class="px-3 py-1 bg-blue-600 text-white rounded font-medium text-sm" accessible_class="no-underline px-3 py-1 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-100 text-sm" inaccessible_class="px-3 py-1 bg-gray-100 text-gray-400 rounded text-sm cursor-not-allowed" %}
-
-<!-- @claude simplify this. Dont use _form_page_link_impl.html . Delete _form_page_link_impl -->
+{% if is_current == "True" or is_current == True %}
+    <span class="px-3 py-1 bg-blue-600 text-white rounded font-medium text-sm" {{ attrs }}>
+        {{ number }}
+    </span>
+{% elif is_accessible == "True" or is_accessible == True %}
+    <a href="{{ url }}" class="no-underline px-3 py-1 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-100 text-sm" title="{{ title }}" {{ attrs }}>
+        {{ number }}
+    </a>
+{% else %}
+    <span class="px-3 py-1 bg-gray-100 text-gray-400 rounded text-sm cursor-not-allowed" {{ attrs }}>
+        {{ number }}
+    </span>
+{% endif %}
 
 
 {% comment %}
