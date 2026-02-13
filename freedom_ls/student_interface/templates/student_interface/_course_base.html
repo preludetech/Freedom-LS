@@ -1,16 +1,28 @@
 {% extends "_base.html" %}
 
 {% block body %}
-    <div x-data="{ tocOpen: window.matchMedia('(min-width: 1024px)').matches }"
+    <div x-data="{
+             tocOpen: localStorage.getItem('courseTocOpen') !== null
+                 ? localStorage.getItem('courseTocOpen') === 'true'
+                 : window.matchMedia('(min-width: 1024px)').matches,
+             toggleToc() {
+                 this.tocOpen = !this.tocOpen;
+                 localStorage.setItem('courseTocOpen', this.tocOpen);
+             }
+         }"
          class="flex gap-6 py-12">
 
         <!-- Toggle button: visible when panel is collapsed -->
         <button x-cloak
                 x-show="!tocOpen"
                 x-transition
-                @click="tocOpen = true"
+                @click="toggleToc()"
                 class="self-start mt-1 flex items-center gap-1.5 shrink-0 px-2 py-1.5 rounded-md text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-colors"
                 aria-label="Open table of contents">
+
+            <!-- @claude make sure that the open and close buttons are rendered in the same way. Currently one has a button outline and the other doesn't. Also the cursor should be a pointer
+                -->
+            <!-- @claude: use fa icons to represent the open and close buttons. Dont make custom svgs.  -->
             <svg xmlns="http://www.w3.org/2000/svg"
                  class="h-4 w-4"
                  fill="none"
@@ -37,7 +49,7 @@
 
             <!-- Collapse chevron -->
             <div class="flex justify-end mb-2">
-                <button @click="tocOpen = false"
+                <button @click="toggleToc()"
                         class="text-gray-400 hover:text-gray-600 transition-colors"
                         aria-label="Collapse table of contents">
                     <svg xmlns="http://www.w3.org/2000/svg"
