@@ -206,6 +206,7 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-picture": {"src", "alt", "caption"},
     "c-callout": {"level", "title"},
     "c-content-link": {"path"},
+    "c-pdf-embed": {"src", "caption", "height"},
 }
 
 MARKDOWN_TEMPLATE_RENDER_ON = True
