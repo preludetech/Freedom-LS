@@ -50,21 +50,21 @@
                     {{ course.description }}
                 </p>
             {% endif %}
-            {% if course_status == "current" and course.progress_percentage is not None %}
-                <!-- @claude: the course progress element should be just above the buttons. Currently it has a different height depending on the height of the description element -->
-                <div class="space-y-1">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-600">Progress</span>
-                        <span class="font-medium text-gray-900">{{ course.progress_percentage }}%</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="bg-blue-600 h-2 rounded-full"
-                             style="width: {{ course.progress_percentage }}%">
-                        </div>
+        </div>
+
+        {% if course_status == "current" and course.progress_percentage is not None %}
+            <div class="space-y-1 mb-4">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-600">Progress</span>
+                    <span class="font-medium text-gray-900">{{ course.progress_percentage }}%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-blue-600 h-2 rounded-full"
+                         style="width: {{ course.progress_percentage }}%">
                     </div>
                 </div>
-            {% endif %}
-        </div>
+            </div>
+        {% endif %}
 
         <c-button-group variant="centered">
             {% partial view-course-button %}
