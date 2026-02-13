@@ -18,4 +18,12 @@ Use this Skill when:
 - **User mentions "admin", "Django admin", "Unfold"**
 - **Object-level permissions** - Using GuardedModelAdmin
 
-Refer to @docs/admin_interface.md
+## Key Rules
+
+- Use `SiteAwareModelAdmin` for all site-aware models (auto-excludes `site` field)
+- Import inlines from `unfold.admin`, not `django.contrib.admin`
+- Never expose the `site` field in admin
+- For object-level permissions, use `GuardedModelAdmin` — but manually `exclude = ["site"]` since it doesn't inherit from `SiteAwareModelAdmin`
+- Use `autocomplete_fields` for ForeignKey/M2M to avoid loading all options
+
+Refer to @docs/admin_interface.md for full patterns and examples.

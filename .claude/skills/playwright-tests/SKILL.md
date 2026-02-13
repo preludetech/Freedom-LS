@@ -18,10 +18,15 @@ Use this Skill when:
 - **User mentions "E2E", "Playwright", "browser testing", "end-to-end"**
 - **Visual verification needed** - Layout, responsive behavior
 
-**Important:** Only use Playwright for browser-required behavior. If it can be tested with pytest, use pytest instead.
+## Key Rules
 
+- Only use Playwright for browser-required behavior — if it can be tested with pytest, use pytest instead
+- Mark all tests with `@pytest.mark.playwright`
+- Use `page` and `live_server` fixtures
+- Use `reverse()` for URLs, never hardcode
+- Prefer semantic selectors (`text="Submit"`) over CSS selectors
+- Wait for elements with `wait_for_selector()` for dynamic/HTMX content
+- Test location: `tests/e2e/`
 
-# Docs 
-
-- Refer to @docs/playwright-testing.md to see how to use Playwright
-- Refer to @docs/testing.md for general testing guidelines 
+Refer to @docs/playwright-testing.md for full patterns.
+Refer to @docs/testing.md for general testing guidelines.

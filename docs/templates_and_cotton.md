@@ -117,7 +117,17 @@ Usage:
 
 ## HTMX Integration
 
-HTMX loaded globally. CSRF token set in `_base.html`.
+HTMX loaded globally. CSRF token set in `_base.html` via `hx-headers`. Do not add CSRF tokens to individual requests.
+
+### View Conventions
+
+- Prefix view functions returning partials with `partial_` (e.g., `partial_course_toc`, `partial_list_courses`)
+- Return standard `render(request, template, context)` — no special HTMX response classes needed
+- Return HTTP 422 for HTMX validation errors
+
+### Partialdef Naming
+
+- Use kebab-case names for `{% partialdef %}` blocks (e.g., `{% partialdef view-course-button %}`)
 
 ### Common Patterns
 

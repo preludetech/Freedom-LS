@@ -18,4 +18,12 @@ Use this Skill when:
 - **Debugging content rendering** - Issues with markdown or sanitization
 - **Modifying MARKDOWN_ALLOWED_TAGS** - Adding new component support
 
-Refer to @docs/markdown_content.md
+## Key Rules
+
+- Content models (Topic, Activity, Course, Form, FormContent) extend `MarkdownContent`
+- Render with `instance.rendered_content()` — pipeline: markdown -> sanitize (nh3) -> cotton components -> safe HTML
+- Cotton components in markdown live in `freedom_ls/content_engine/templates/cotton/`
+- New components must be registered in `MARKDOWN_ALLOWED_TAGS` in `config/settings_base.py`
+- H1 in content becomes H2 (mdx_headdown)
+
+Refer to @docs/markdown_content.md for full details and examples.

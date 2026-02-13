@@ -18,4 +18,12 @@ Use this Skill when:
 - **Adding component classes** - Need to modify `tailwind.components.css`
 - **Building Tailwind** - Running build/watch commands
 
-Refer to @docs/frontend_styling.md
+## Key Rules
+
+- Always check `tailwind.components.css` first — use component classes (`.btn`, `.btn-primary`, `.surface`) when available
+- Don't duplicate base styles — `h1-h4`, `a`, lists, and form elements are pre-styled in `@layer base`
+- Only use inline Tailwind classes for unique layout/spacing/positioning
+- Repeated patterns should be added to `tailwind.components.css`
+- Run `npm run tailwind_build` after CSS changes
+
+Refer to @docs/frontend_styling.md for full details and examples.

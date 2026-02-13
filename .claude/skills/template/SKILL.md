@@ -16,4 +16,14 @@ Use this Skill when:
 
 # Details
 
-Refer to @docs/templates_and_cotton.md
+## Key Rules
+
+- Pages: `freedom_ls/<app>/templates/<app>/<page>.html` — always extend `_base.html`
+- Cotton components: `freedom_ls/<app>/templates/cotton/<name>.html` — use `<c-vars>` with defaults
+- Partials: `freedom_ls/<app>/templates/<app>/partials/<name>.html`
+- Use `{% partialdef %}` with kebab-case names for inline partials
+- Don't hardcode URLs — use `{% url 'app:name' %}`
+- Check existing cotton components before creating new ones
+- Views returning partials use `partial_` prefix
+
+Refer to @docs/templates_and_cotton.md for full patterns and examples.

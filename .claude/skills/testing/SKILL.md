@@ -17,4 +17,13 @@ Use this Skill when:
 - **Adding functionality** - Use TDD to design it
 - **Refactoring code** - Ensure tests pass throughout
 
-Adhere to the documentation in @docs/testing.md 
+## Key Rules
+
+- Test files: `freedom_ls/<app_name>/tests/test_<module>.py`
+- Use `@pytest.mark.django_db` for database tests
+- Use `mock_site_context` fixture for site-aware models — never manually set site
+- Use `reverse()` for URLs, never hardcode
+- No conditionals in tests — one assertion focus per test
+- TDD cycle: RED (failing test) -> GREEN (minimal code) -> REFACTOR -> REPEAT
+
+Refer to @docs/testing.md for full patterns and examples.

@@ -18,4 +18,12 @@ Use this Skill when:
 - **Writing queries** - Need to understand automatic site filtering
 - **Working with the admin** - Site-aware model admin configuration
 
-Refer to @docs/multi_tenant.md
+## Key Rules
+
+- Extend `SiteAwareModel` for models that need site isolation (includes UUID pk + site FK)
+- Extend `SiteAwareModelBase` if you need site isolation but a custom primary key
+- Manager's `get_queryset()` automatically filters by current site — no manual filtering needed
+- On save, `site_id` auto-populates from the current request — never set it manually
+- In tests, always use `mock_site_context` fixture
+
+Refer to @docs/multi_tenant.md for full details.
