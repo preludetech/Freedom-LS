@@ -41,10 +41,41 @@
 {% endpartialdef %}
 
 {% partialdef content-title %}
-    {% if child.url %}
-        <a href="{{ child.url }}" class="text-gray-600 hover:text-primary-600">{{ child.title }}</a>
+    {% if child.type == "COURSE_PART" %}
+        <span class="text-gray-600">{{ child.title }}</span>
+    {% elif child.url %}
+        <a href="{{ child.url }}"
+           class="text-gray-600 hover:text-primary-600 no-underline">{{ child.title }}</a>
     {% else %}
         <span class="text-gray-600">{{ child.title }}</span>
+    {% endif %}
+{% endpartialdef %}
+
+{% partialdef content-row-inner %}
+    <span class="text-gray-400 {{ text_size }} {{ counter_width }} shrink-0">
+        {% if child_counter %}
+            {{ parent_counter }}.{{ child_counter }}
+        {% else %}
+            {{ parent_counter }}.
+        {% endif %}
+    </span>
+    {% if is_expandable %}
+        <button @click="expanded = !expanded"
+                class="flex items-center gap-2 text-left hover:text-blue-600 transition-colors cursor-pointer flex-1 min-w-0">
+            <span class="text-gray-500 shrink-0 {{ text_size }}">
+                <i class="fa" :class="expanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+            </span>
+            <span class="flex-1 min-w-0 truncate {{ text_size }}">
+                {% partial content-title %}
+            </span>
+        </button>
+    {% else %}
+        <span class="text-gray-500 shrink-0 {{ text_size }}">
+            {% partial content-icon %}
+        </span>
+        <span class="flex-1 min-w-0 truncate {{ text_size }}">
+            {% partial content-title %}
+        </span>
     {% endif %}
 {% endpartialdef %}
 
@@ -52,46 +83,30 @@
     {% for child in children %}
         {% if child.type == "COURSE_PART" %}
             {# Course Part with expandable children #}
-            <div x-data="{ expanded: false }" class="py-2">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3 flex-1 min-w-0">
-                        <span class="text-gray-400 pr-2">{{ forloop.counter }}.</span>
-                        <button @click="expanded = !expanded"
-                                class="flex items-center gap-3 text-left hover:text-blue-600 transition-colors cursor-pointer flex-1 min-w-0">
-                            <span class="text-gray-500 flex-shrink-0">
-                                {% partial content-icon %}
-                            </span>
-                            <span class="flex-1 min-w-0 truncate">{{ child.title }}</span>
-                            <span class="text-sm text-gray-400 flex-shrink-0">
-                                <i class="fa" :class="expanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-                            </span>
-                        </button>
+            <div x-data="{ expanded: false }" class="py-1.5">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        {% with parent_counter=forloop.counter is_expandable=True text_size="text-sm" counter_width="w-5" %}
+                            {% partial content-row-inner %}
+                        {% endwith %}
                     </div>
-                    <div class="flex-shrink-0">
+                    <div class="shrink-0">
                         {% partial status-icon %}
                     </div>
                 </div>
                 {# Nested children of course part #}
                 <div x-show="expanded"
                      x-collapse
-                     class="ml-12 mt-2 space-y-2 border-l-2 border-gray-200 pl-4">
+                     class="ml-6 mt-1 space-y-1 border-l-2 border-gray-200 pl-3">
                     {% if child.children %}
                         {% for part_child in child.children %}
-                            <div class="flex items-center justify-between gap-3 text-sm">
-                                <div class="flex items-center gap-3 flex-1 min-w-0">
-                                    <span class="text-gray-400">{{ forloop.parentloop.counter }}.{{ forloop.counter }}</span>
-                                    <span class="text-gray-500 flex-shrink-0">
-                                        {% with child=part_child %}
-                                            {% partial content-icon %}
-                                        {% endwith %}
-                                    </span>
-                                    <span class="flex-1 min-w-0">
-                                        {% with child=part_child %}
-                                            {% partial content-title %}
-                                        {% endwith %}
-                                    </span>
+                            <div class="flex items-center justify-between gap-2 text-sm">
+                                <div class="flex items-center gap-1 flex-1 min-w-0">
+                                    {% with child=part_child parent_counter=forloop.parentloop.counter child_counter=forloop.counter is_expandable=False text_size="text-xs" counter_width="w-8" %}
+                                        {% partial content-row-inner %}
+                                    {% endwith %}
                                 </div>
-                                <div class="flex-shrink-0">
+                                <div class="shrink-0">
                                     {% with child=part_child %}
                                         {% partial status-icon %}
                                     {% endwith %}
@@ -99,27 +114,19 @@
                             </div>
                         {% endfor %}
                     {% else %}
-                        <span class="text-sm text-gray-400 italic">No items in this part</span>
+                        <span class="text-xs text-gray-400 italic">No items in this part</span>
                     {% endif %}
                 </div>
             </div>
         {% else %}
             {# Regular content item (Topic, Form, Course) #}
-            <div class="flex items-center justify-between gap-3 py-2">
-                <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <span class="text-gray-400 pr-2">{{ forloop.counter }}.</span>
-                    <span class="text-gray-500 flex-shrink-0">
-                        {% partial content-icon %}
-                    </span>
-                    <span class="flex-1 min-w-0">
-                        {% if child.url %}
-                            <a href="{{ child.url }}">{{ child.title }}</a>
-                        {% else %}
-                            <span>{{ child.title }}</span>
-                        {% endif %}
-                    </span>
+            <div class="flex items-center justify-between gap-2 py-1.5">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                    {% with parent_counter=forloop.counter is_expandable=False text_size="text-sm" counter_width="w-5" %}
+                        {% partial content-row-inner %}
+                    {% endwith %}
                 </div>
-                <div class="flex-shrink-0">
+                <div class="shrink-0">
                     {% partial status-icon %}
                 </div>
             </div>
