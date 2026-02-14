@@ -2,13 +2,18 @@ name: Tests
 
 on:
   push:
-    branches: [main, ci_tests]
+    branches: [main]
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     services:
       postgres:
@@ -45,6 +50,7 @@ jobs:
 
   playwright-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -93,3 +99,11 @@ jobs:
 
       - name: Run Playwright tests
         run: uv run pytest -m playwright
+
+      - name: Upload Playwright traces
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
