@@ -16,7 +16,7 @@ jobs:
         env:
           POSTGRES_USER: pguser
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: test_db
+          POSTGRES_DB: db
         ports:
           - 6543:5432
         options: >-
@@ -37,8 +37,8 @@ jobs:
       - name: Install Python dependencies
         run: uv sync
 
-      - name: Run migrations
-        run: uv run python manage.py migrate
+      # - name: Run migrations
+      #   run: uv run python manage.py migrate
 
       - name: Run unit tests
         run: uv run pytest -m "not playwright"
@@ -88,8 +88,8 @@ jobs:
       - name: Install Playwright browsers
         run: uv run playwright install --with-deps chromium
 
-      - name: Run migrations
-        run: uv run python manage.py migrate
+      # - name: Run migrations
+      #   run: uv run python manage.py migrate
 
       - name: Run Playwright tests
         run: uv run pytest -m playwright
