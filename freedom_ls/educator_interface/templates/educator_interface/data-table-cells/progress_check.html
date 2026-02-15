@@ -1,0 +1,23 @@
+{% load base_filters %}
+
+{% with completed=object.progress|get_dict_item:column.item_id %}
+    {% if completed %}
+        <span class="text-green-600">&#10003;</span>
+    {% else %}
+        <span class="text-gray-300">&mdash;</span>
+    {% endif %}
+{% endwith %}
+<!-- 
+@claude update this.
+
+if it is a Form that is a Quiz then:
+- show how many times the user filled it in
+- show the latest score 
+
+if it is a topic
+- show when it was completed 
+
+Also, show things that are in progress. 
+
+Don't hard-code colors, use theme colors from tailwind
+-->
