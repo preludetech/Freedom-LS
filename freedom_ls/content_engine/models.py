@@ -163,6 +163,19 @@ class Course(MarkdownContent, TitledContent):
         """Return ordered list of child content items."""
         return [item.child for item in self.items.all()]
 
+    def children_flat(self) -> list:
+        """Get a flattened list of all content items in the course.
+
+        Includes CourseParts and their nested children in order.
+        """
+        flattened = []
+        for child in self.children():
+            flattened.append(child)
+            if isinstance(child, CoursePart):
+                for part_child in child.children():
+                    flattened.append(part_child)
+        return flattened
+
     def __str__(self):
         return self.title
 

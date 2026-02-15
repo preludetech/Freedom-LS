@@ -20,7 +20,6 @@ from .utils import (
     get_course_index,
     get_is_registered,
     form_start_page_buttons,
-    get_flattened_course_children,
 )
 
 
@@ -131,7 +130,7 @@ def register_for_course(request, course_slug):
 @login_required
 def view_course_item(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
-    children = get_flattened_course_children(course)
+    children = course.children_flat()
     current_item = children[index - 1]
 
     total_children = len(children)
@@ -270,7 +269,7 @@ def form_start(request, course_slug, index):
     """Start or resume a form for the current user."""
 
     course = get_object_or_404(Course, slug=course_slug)
-    children = get_flattened_course_children(course)
+    children = course.children_flat()
     form = children[index - 1]
 
     # Create a FormProgress instance if it doesn't yet exist
@@ -291,7 +290,7 @@ def form_start(request, course_slug, index):
 @login_required
 def form_fill_page(request, course_slug, index, page_number):
     course = get_object_or_404(Course, slug=course_slug)
-    children = get_flattened_course_children(course)
+    children = course.children_flat()
     form = children[index - 1]
     all_pages = list(form.pages.all())
     total_pages = len(all_pages)
@@ -395,7 +394,7 @@ def form_fill_page(request, course_slug, index, page_number):
 @login_required
 def course_form_complete(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
-    children = get_flattened_course_children(course)
+    children = course.children_flat()
     form = children[index - 1]
 
     # Get the most recent completed form progress

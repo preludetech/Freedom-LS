@@ -112,28 +112,6 @@ def get_is_registered(user, course):
     return is_registered
 
 
-def get_flattened_course_children(course):
-    """
-    Get a flattened list of all content items in the course.
-
-    This includes CourseParts and their nested children in the order they appear,
-    matching the index structure used in get_course_index().
-
-    Returns a list of content items (Topic, Form, CoursePart, etc.)
-    """
-    flattened = []
-
-    for child in course.children():
-        flattened.append(child)
-
-        # If this is a CoursePart, add its children to the flattened list
-        if isinstance(child, CoursePart):
-            for part_child in child.children():
-                flattened.append(part_child)
-
-    return flattened
-
-
 def get_course_index(user, course):
     """
     Generate an index of course children with their status and metadata.
@@ -155,7 +133,9 @@ def get_course_index(user, course):
     return children
 
 
-def create_child_dict_with_flattened_index(content_item, user, course, start_index, next_status, is_registered):
+def create_child_dict_with_flattened_index(
+    content_item, user, course, start_index, next_status, is_registered
+):
     """
     Create a child dict with proper flattened indices for nested items.
 
@@ -184,12 +164,14 @@ def create_child_dict_with_flattened_index(content_item, user, course, start_ind
                 child_status = BLOCKED
                 child_url = ""
 
-            part_children_dicts.append({
-                "title": part_child.title,
-                "type": part_child.content_type,
-                "url": child_url if child_status != BLOCKED else None,
-                "status": child_status,
-            })
+            part_children_dicts.append(
+                {
+                    "title": part_child.title,
+                    "type": part_child.content_type,
+                    "url": child_url if child_status != BLOCKED else None,
+                    "status": child_status,
+                }
+            )
             nested_index += 1
             items_added += 1
 
@@ -199,8 +181,12 @@ def create_child_dict_with_flattened_index(content_item, user, course, start_ind
 
         if part_children_dicts:
             # Check for READY or IN_PROGRESS children
-            ready_child = next((c for c in part_children_dicts if c["status"] == READY), None)
-            in_progress_child = next((c for c in part_children_dicts if c["status"] == IN_PROGRESS), None)
+            ready_child = next(
+                (c for c in part_children_dicts if c["status"] == READY), None
+            )
+            in_progress_child = next(
+                (c for c in part_children_dicts if c["status"] == IN_PROGRESS), None
+            )
 
             if in_progress_child:
                 # Prioritize IN_PROGRESS
