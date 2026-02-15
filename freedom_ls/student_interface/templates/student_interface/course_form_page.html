@@ -1,6 +1,7 @@
 {% extends "student_interface/_course_base.html" %}
 
 {% load content_tags %}
+{% load base_filters %}
 
 {% partialdef form-input-multiple-choice %}
     {% for option in question.options.all %}
@@ -11,7 +12,7 @@
                    value="{{ option.id }}"
                    class="mr-2"
                    {% if question.required %}required {% endif %}
-                   {% if existing_answers|length > 0 %} {% with answer=existing_answers|get_item:child.id %} {% if answer and option in answer.selected_options.all %}checked{% endif %}
+                   {% if existing_answers|length > 0 %} {% with answer=existing_answers|get_dict_item:child.id %} {% if answer and option in answer.selected_options.all %}checked{% endif %}
                    {% endwith %}
                    {% endif %} />
             <label for="q{{ question.id }}_opt{{ option.id }}" class="cursor-pointer">
@@ -29,7 +30,7 @@
                    name="question_{{ question.id }}"
                    value="{{ option.id }}"
                    class="mr-2"
-                   {% if existing_answers|length > 0 %} {% with answer=existing_answers|get_item:question.id %} {% if answer and option in answer.selected_options.all %}checked{% endif %}
+                   {% if existing_answers|length > 0 %} {% with answer=existing_answers|get_dict_item:question.id %} {% if answer and option in answer.selected_options.all %}checked{% endif %}
                    {% endwith %}
                    {% endif %} />
             <label for="q{{ question.id }}_opt{{ option.id }}" class="cursor-pointer">
@@ -44,7 +45,7 @@
            name="question_{{ question.id }}"
            class="w-full"
            {% if question.required %}required{% endif %}
-           {% if existing_answers|length > 0 %} {% with answer=existing_answers|get_item:child.id %} {% if answer %}value="{{ answer.text_answer }}"{% endif %}
+           {% if existing_answers|length > 0 %} {% with answer=existing_answers|get_dict_item:child.id %} {% if answer %}value="{{ answer.text_answer }}"{% endif %}
            {% endwith %}
            {% endif %} />
 {% endpartialdef %}
@@ -54,7 +55,7 @@
         <textarea name="question_{{question.id}}"
                   rows="5"
                   class="w-full"
-                  {% if question.required %}required{% endif %}>{% if existing_answers|length > 0 %}{% with answer=existing_answers|get_item:question.id %}{% if answer %}{{ answer.text_answer }}{% endif %}{% endwith %}{% endif %}</textarea>
+                  {% if question.required %}required{% endif %}>{% if existing_answers|length > 0 %}{% with answer=existing_answers|get_dict_item:question.id %}{% if answer %}{{ answer.text_answer }}{% endif %}{% endwith %}{% endif %}</textarea>
     </div>
 {% endpartialdef %}
 
