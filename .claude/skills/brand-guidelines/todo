@@ -1,0 +1,8 @@
+---
+
+## Iconography
+
+- **Library**: Lucide Icons (MIT license) <script src="https://unpkg.com/lucide@latest"></script>
+- **Style**: Outline only (never filled/solid). 1.5px stroke at 24px. 2px rounded corners.
+- **Colours**: Slate `#4A5568` for static UI icons. Ocean `#2B6CB0` for interactive/linked. Signal `#E8553D` for destructive actions only.
+- **Never**: filled icons, multi-colour icons, skeuomorphic/3D styles.

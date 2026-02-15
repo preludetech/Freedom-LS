@@ -41,12 +41,12 @@
     <div class="surface flex flex-col">
         <div class="space-y-3 flex-1 mb-4">
             <div class="flex items-start justify-between">
-                <h4 class="text-xl font-semibold text-gray-900">
+                <h4 class="text-xl font-semibold text-foreground">
                     {{ course.title }}
                 </h4>
             </div>
             {% if course.description %}
-                <p class="text-gray-600">
+                <p class="text-muted">
                     {{ course.description }}
                 </p>
             {% endif %}
@@ -55,11 +55,11 @@
         {% if course_status == "current" and course.progress_percentage is not None %}
             <div class="space-y-1 mb-4">
                 <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Progress</span>
-                    <span class="font-medium text-gray-900">{{ course.progress_percentage }}%</span>
+                    <span class="text-muted">Progress</span>
+                    <span class="font-medium text-foreground">{{ course.progress_percentage }}%</span>
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div class="bg-blue-600 h-2 rounded-full"
+                <div class="w-full bg-surface-disabled rounded-full h-2">
+                    <div class="bg-primary h-2 rounded-full"
                          style="width: {{ course.progress_percentage }}%">
                     </div>
                 </div>
@@ -102,7 +102,7 @@
                 {% endwith %}
             </div>
         {% else %}
-            <p class="text-gray-600">
+            <p class="text-muted">
                 You haven't signed up for any courses yet
             </p>
         {% endif %}
@@ -124,7 +124,7 @@
                 {% endfor %}
             </div>
         {% else %}
-            <p class="text-gray-600">
+            <p class="text-muted">
                 No recommended courses yet.
             </p>
         {% endif %}
@@ -146,7 +146,7 @@
                 {% endwith %}
             </div>
         {% else %}
-            <p class="text-gray-600">
+            <p class="text-muted">
                 No completed courses yet
             </p>
         {% endif %}
@@ -171,7 +171,7 @@
             </div>
         {% else %}
             {% if not registered_courses %}
-                <p class="text-gray-500">
+                <p class="text-muted/50">
                     No courses available yet.
                 </p>
             {% endif %}

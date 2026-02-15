@@ -46,7 +46,7 @@
                                            hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=desc{% if search_query %}&search={{ search_query }}{% endif %}"
                                            hx-target="#data-table-container"
                                            hx-swap="outerHTML"
-                                           class="cursor-pointer hover:text-blue-600 inline-flex items-center gap-2">
+                                           class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                             {{ column.header }}
                                             <i class="fa fa-sort-up" aria-hidden="true"></i>
                                         </a>
@@ -55,7 +55,7 @@
                                            hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
                                            hx-target="#data-table-container"
                                            hx-swap="outerHTML"
-                                           class="cursor-pointer hover:text-blue-600 inline-flex items-center gap-2">
+                                           class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                             {{ column.header }}
                                             <i class="fa fa-sort-down" aria-hidden="true"></i>
                                         </a>
@@ -66,9 +66,9 @@
                                        hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
                                        hx-target="#data-table-container"
                                        hx-swap="outerHTML"
-                                       class="cursor-pointer hover:text-blue-600 inline-flex items-center gap-2">
+                                       class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                         {{ column.header }}
-                                        <i class="fa fa-sort text-gray-400" aria-hidden="true"></i>
+                                        <i class="fa fa-sort text-muted" aria-hidden="true"></i>
                                     </a>
                                 {% endif %}
                             {% else %}
@@ -93,7 +93,7 @@
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="{{ columns|length }}" class="text-center text-gray-500 py-8">
+                        <td colspan="{{ columns|length }}" class="text-center text-muted py-8">
                             {{ empty_message }}
                         </td>
                     </tr>

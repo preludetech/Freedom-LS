@@ -20,7 +20,7 @@ Look up the File object by file_path to get the actual file URL
                      loading="lazy" />
                 {# djlint:on H006 #}
                 {% if caption %}
-                    <figcaption class="mt-2  text-gray-600 text-center">
+                    <figcaption class="mt-2  text-muted text-center">
                         {{ caption }}
                     </figcaption>
                 {% endif %}
@@ -59,8 +59,8 @@ Look up the File object by file_path to get the actual file URL
         </div>
 
     {% else %}
-        <div class="my-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p class="text-red-700">
+        <div class="my-6 p-4 bg-danger/10 border border-danger/20 rounded-lg">
+            <p class="text-danger-hover">
                 Image not found: {{ src }}
             </p>
         </div>

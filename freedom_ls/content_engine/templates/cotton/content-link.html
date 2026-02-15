@@ -11,6 +11,6 @@ TODO.
 {% if content_obj %}
 <a href="{{ content_obj.preview_url }}" class="">{{ slot }} </a>
 {% else %}
-<span class="text-red-600" title="Content not found: {{ path }}">{{ slot }}</span>
+<span class="text-danger" title="Content not found: {{ path }}">{{ slot }}</span>
 {% endif %}
 {% endwith %}

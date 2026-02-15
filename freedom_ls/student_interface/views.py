@@ -26,6 +26,9 @@ from .utils import (
 
 def home(request):
     """Home page with list of available courses."""
+    from django.contrib import messages
+
+    messages.add_message(request, messages.SUCCESS, "whoop whoop")
     return render(request, "student_interface/home.html")
 
 

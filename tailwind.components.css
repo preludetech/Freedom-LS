@@ -1,16 +1,42 @@
 
 @theme {
-/* 
-@claude update this so that we have a primary color.  Instead of saying border-blue-500 we should be able to use our theme colors
+    /* Primary - Interactive elements, links, highlights (Ocean) */
+    --color-primary: #2B6CB0;
+    --color-primary-hover: #4A9BD9;
+    --color-primary-dark: #1A2332;
+    --color-primary-light: #F7F8FA;
 
-Use these brand colors: 
-primary: '#283593',
-        secondary: '#00CEC9',
-        accent: '#FF6B35',
-        dark: '#1A1A2E',
-        surface: '#F8F9FC',
+    /* Secondary - Neutral interactive elements (Slate) */
+    --color-secondary: #4A5568;
+    --color-secondary-hover: #1A2332;
 
-*/
+    /* Success - Completion, progress, positive states (Forest) */
+    --color-success: #38A169;
+    --color-success-hover: #2F855A;
+    --color-success-light: #D1FAE5;
+
+    /* Danger - Errors, destructive actions (Signal) */
+    --color-danger: #E8553D;
+    --color-danger-hover: #C74333;
+    --color-danger-light: #FEDDD7;
+
+    /* Accent - CTAs, important notices, use sparingly (Sand) */
+    --color-accent: #F6E05E;
+    --color-accent-light: #FFFBEA;
+
+    /* Foreground (text) colors */
+    --color-foreground: #1A2332;
+    --color-muted: #4A5568;
+    --color-on-primary: #FFFFFF;
+
+    /* Surface (background) colors */
+    --color-surface: #FFFFFF;
+    --color-surface-alt: #F7F8FA;
+    --color-surface-disabled: #F3F4F6;
+
+    /* Border colors */
+    --color-border: #D1D5DB;
+    --color-border-light: #E5E7EB;
 }
 
 
@@ -37,12 +63,12 @@ primary: '#283593',
     }
 
     a {
-        @apply underline text-blue-600
+        @apply underline text-primary
     }
 
     blockquote {
-        @apply border-l-4 border-blue-500 bg-blue-50 pl-4 pr-4 py-3 my-4
-               italic text-gray-700 rounded-r-md
+        @apply border-l-4 border-primary bg-primary-light pl-4 pr-4 py-3 my-4
+               italic text-muted rounded-r-md
     }
 
     ul {
@@ -63,19 +89,19 @@ primary: '#283593',
     }
 
     thead {
-        @apply bg-gray-50 border-b-2 border-gray-300
+        @apply bg-surface-alt border-b-2 border-border
     }
 
     th {
-        @apply px-4 py-3 text-left text-sm font-semibold text-gray-700
+        @apply px-4 py-3 text-left text-sm font-semibold text-muted
     }
 
     td {
-        @apply px-4 py-3 text-sm text-gray-900
+        @apply px-4 py-3 text-sm text-foreground
     }
 
     tbody tr {
-        @apply border-b border-gray-200 hover:bg-gray-50
+        @apply border-b border-border-light hover:bg-surface-alt
     }
 
     tbody tr:last-child {
@@ -84,7 +110,7 @@ primary: '#283593',
 
     /* Form elements */
     label {
-        @apply block text-sm font-medium text-gray-700 mb-1
+        @apply block text-sm font-medium text-muted mb-1
     }
 
     input[type="text"],
@@ -99,9 +125,9 @@ primary: '#283593',
     input[type="datetime-local"],
     textarea,
     select {
-        @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
-               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-               disabled:bg-gray-100 disabled:cursor-not-allowed
+        @apply w-full px-3 py-2 border border-border rounded-md shadow-sm
+               focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
+               disabled:bg-surface-disabled disabled:cursor-not-allowed
     }
 
     textarea {
@@ -109,13 +135,13 @@ primary: '#283593',
     }
 
     select {
-        @apply bg-white cursor-pointer
+        @apply bg-surface cursor-pointer
     }
 
     input[type="checkbox"],
     input[type="radio"] {
-        @apply w-4 h-4 text-blue-600 border-gray-300 rounded
-               focus:ring-2 focus:ring-blue-500 cursor-pointer
+        @apply w-4 h-4 text-primary border-border rounded
+               focus:ring-2 focus:ring-primary cursor-pointer
     }
 
     input[type="radio"] {
@@ -125,11 +151,11 @@ primary: '#283593',
 
 
     fieldset {
-        @apply border border-gray-300 rounded-md p-4
+        @apply border border-border rounded-md p-4
     }
 
     legend {
-        @apply text-sm font-semibold text-gray-700 px-2
+        @apply text-sm font-semibold text-muted px-2
     }
 
     form {
@@ -149,31 +175,31 @@ primary: '#283593',
     }
     /* Button component variants */
     .btn-primary {
-        @apply bg-blue-600 text-white
-               hover:bg-blue-700 focus:ring-blue-500
+        @apply bg-primary text-on-primary
+               hover:bg-primary-hover focus:ring-primary
     }
 
     .btn-secondary {
-        @apply bg-gray-600 text-white
-               hover:bg-gray-700 focus:ring-gray-500
+        @apply bg-secondary text-on-primary
+               hover:bg-secondary-hover focus:ring-secondary
     }
 
     .btn-outline {
-        @apply bg-white text-gray-700 border border-gray-300
-               hover:bg-gray-50 focus:ring-blue-500
+        @apply bg-surface text-muted border border-border
+               hover:bg-surface-alt focus:ring-primary
     }
 
     .btn-success {
-        @apply bg-green-600 text-white
-               hover:bg-green-700 focus:ring-green-500
+        @apply bg-success text-on-primary
+               hover:bg-success-hover focus:ring-success
     }
 
     .btn-danger {
-        @apply bg-red-600 text-white
-               hover:bg-red-700 focus:ring-red-500
+        @apply bg-danger text-on-primary
+               hover:bg-danger-hover focus:ring-danger
     }
 
     .surface {
-        @apply border border-gray-300 rounded-md py-6 px-8
+        @apply border border-border rounded-md py-6 px-8
     }
 }

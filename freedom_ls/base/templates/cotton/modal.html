@@ -31,7 +31,7 @@
              x-transition:leave="ease-in duration-200"
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
-             class="fixed inset-0 bg-gray-500/50 transition-opacity"
+             class="fixed inset-0 bg-secondary/50 transition-opacity"
              @click="open = false">
         </div>
 
@@ -48,14 +48,14 @@
                  @click.away="open = false">
 
                 <!-- Header -->
-                <div class="bg-white px-6 py-4 border-b border-gray-200 border">
+                <div class="bg-surface px-6 py-4 border-b border-border-light border">
                     <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-900" id="modal-title">
+                        <h3 class="text-lg font-semibold text-foreground" id="modal-title">
                             {{ title }}
                         </h3>
                         <button @click="open = false"
                                 type="button"
-                                class="text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md">
+                                class="text-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary rounded-md">
                             <span class="sr-only">Close</span>
                             <svg class="h-6 w-6"
                                  fill="none"
@@ -69,13 +69,13 @@
                 </div>
 
                 <!-- Content -->
-                <div class="{{ class }} bg-white px-6 py-4 ">
+                <div class="{{ class }} bg-surface px-6 py-4 ">
 
                     {{ slot }}
                 </div>
 
                 <!-- Footer (optional) -->
-                <c-button-group variant="space-between" class=" bg-gray-50 px-6 py-4 border-t border-gray-200">
+                <c-button-group variant="space-between" class=" bg-surface-alt px-6 py-4 border-t border-border-light">
                     {{ footer }}
                 </c-button-group>
             </div>

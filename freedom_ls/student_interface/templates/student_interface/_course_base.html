@@ -17,7 +17,7 @@
                 x-show="!tocOpen"
                 x-transition
                 @click="toggleToc()"
-                class="self-start mt-1 flex items-center gap-1.5 shrink-0 px-2 py-1.5 rounded-md text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-colors"
+                class="self-start mt-1 flex items-center gap-1.5 shrink-0 px-2 py-1.5 rounded-md text-sm font-medium text-muted bg-surface-alt hover:bg-surface-disabled hover:text-foreground transition-colors"
                 aria-label="Open table of contents">
 
             <!-- @claude make sure that the open and close buttons are rendered in the same way. Currently one has a button outline and the other doesn't. Also the cursor should be a pointer
@@ -50,7 +50,7 @@
             <!-- Collapse chevron -->
             <div class="flex justify-end mb-2">
                 <button @click="toggleToc()"
-                        class="text-gray-400 hover:text-gray-600 transition-colors"
+                        class="text-muted/50 hover:text-muted transition-colors"
                         aria-label="Collapse table of contents">
                     <svg xmlns="http://www.w3.org/2000/svg"
                          class="h-5 w-5"

@@ -23,13 +23,13 @@
 
         <div class="space-y-4">
             {% for progress in completed_form_progress %}
-                <div class="border rounded-lg p-4 bg-gray-50">
+                <div class="border rounded-lg p-4 bg-surface-alt">
                     <div class="flex justify-between items-start mb-2">
                         <div>
                             <h3 class="font-semibold">
                                 Completed: {{ progress.completed_time|date:"F j, Y, g:i a" }}
                             </h3>
-                            <p class="text-sm text-gray-600">
+                            <p class="text-sm text-muted">
                                 Started: {{ progress.start_time|date:"F j, Y, g:i a" }}
                             </p>
                         </div>
@@ -37,13 +37,13 @@
 
                     {% if progress.scores %}
                         {% if form.strategy == "QUIZ" %}
-                            <div class="mt-4 p-4 bg-white rounded border border-gray-200"
+                            <div class="mt-4 p-4 bg-white rounded border border-border-light"
                                  data-testid="previous-submission-score">
                                 <div class="flex items-center justify-between">
-                                    <span class="font-semibold text-gray-700">Score:</span>
+                                    <span class="font-semibold text-muted">Score:</span>
                                     <div class="text-right">
-                                        <span class="text-2xl font-bold text-blue-600">{{ progress.scores.score }} / {{ progress.scores.max_score }}</span>
-                                        <span class="ml-2 text-lg text-gray-600">
+                                        <span class="text-2xl font-bold text-primary">{{ progress.scores.score }} / {{ progress.scores.max_score }}</span>
+                                        <span class="ml-2 text-lg text-muted">
                                             {% widthratio progress.scores.score progress.scores.max_score 100 as percentage %}
                                             ({{ percentage }}%)
                                         </span>
@@ -55,8 +55,8 @@
                             <div class="mt-4">
                                 {% for category, category_data in progress.scores.items %}
                                     <div class="mb-2 flex justify-between items-center">
-                                        <span class="text-sm font-medium text-gray-700">{{ category }}</span>
-                                        <span class="text-sm text-gray-600">
+                                        <span class="text-sm font-medium text-muted">{{ category }}</span>
+                                        <span class="text-sm text-muted">
                                             {{ category_data.score }} / {{ category_data.max_score }}
                                         </span>
                                     </div>

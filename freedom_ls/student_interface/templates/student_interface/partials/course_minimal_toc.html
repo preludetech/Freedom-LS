@@ -1,30 +1,30 @@
 {% partialdef status-icon %}
     {% if child.status == "BLOCKED" %}
-        <span class="text-sm text-gray-400">
+        <span class="text-sm text-muted/50">
             <i class="fa fa-lock"></i>
         </span>
     {% elif child.status == "READY" %}
         <a href="{{ child.url }}"
-           class="text-primary-600 hover:text-primary-700 no-underline">
+           class="text-primary hover:text-primary no-underline">
             <i class="fa fa-play"></i>
         </a>
     {% elif child.status == "IN_PROGRESS" %}
         <a href="{{ child.url }}"
-           class="text-primary-600 hover:text-primary-700 no-underline">
+           class="text-primary hover:text-primary no-underline">
             <i class="fa fa-play"></i>
         </a>
     {% elif child.status == "COMPLETE" %}
         <a href="{{ child.url }}"
-           class="text-green-600 hover:text-green-700 no-underline">
+           class="text-success hover:text-success no-underline">
             <i class="fa fa-check"></i>
         </a>
     {% elif child.status == "FAILED" %}
         <a href="{{ child.url }}"
-           class="text-red-600 hover:text-red-700 no-underline">
+           class="text-danger hover:text-danger no-underline">
             <i class="fa fa-repeat"></i>
         </a>
     {% else %}
-        <span class="text-sm text-red-600">Unknown status "{{ child.status }}"</span>
+        <span class="text-sm text-danger">Unknown status "{{ child.status }}"</span>
     {% endif %}
 {% endpartialdef %}
 
@@ -42,17 +42,17 @@
 
 {% partialdef content-title %}
     {% if child.type == "COURSE_PART" %}
-        <span class="text-gray-600">{{ child.title }}</span>
+        <span class="text-muted">{{ child.title }}</span>
     {% elif child.url %}
         <a href="{{ child.url }}"
-           class="text-gray-600 hover:text-primary-600 no-underline">{{ child.title }}</a>
+           class="text-muted hover:text-primary no-underline">{{ child.title }}</a>
     {% else %}
-        <span class="text-gray-600">{{ child.title }}</span>
+        <span class="text-muted">{{ child.title }}</span>
     {% endif %}
 {% endpartialdef %}
 
 {% partialdef content-row-inner %}
-    <span class="text-gray-400 {{ text_size }} {{ counter_width }} shrink-0">
+    <span class="text-muted/50 {{ text_size }} {{ counter_width }} shrink-0">
         {% if child_counter %}
             {{ parent_counter }}.{{ child_counter }}
         {% else %}
@@ -61,8 +61,8 @@
     </span>
     {% if is_expandable %}
         <button @click="toggleExpanded()"
-                class="flex items-center gap-2 text-left hover:text-blue-600 transition-colors cursor-pointer flex-1 min-w-0">
-            <span class="text-gray-500 shrink-0 {{ text_size }}">
+                class="flex items-center gap-2 text-left hover:text-primary transition-colors cursor-pointer flex-1 min-w-0">
+            <span class="text-muted shrink-0 {{ text_size }}">
                 <i class="fa" :class="expanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
             </span>
             <span class="flex-1 min-w-0 truncate {{ text_size }}">
@@ -70,7 +70,7 @@
             </span>
         </button>
     {% else %}
-        <span class="text-gray-500 shrink-0 {{ text_size }}">
+        <span class="text-muted shrink-0 {{ text_size }}">
             {% partial content-icon %}
         </span>
         <span class="flex-1 min-w-0 truncate {{ text_size }}">
@@ -103,7 +103,7 @@
                 {# Nested children of course part #}
                 <div x-show="expanded"
                      x-collapse
-                     class="ml-6 mt-1 space-y-1 border-l-2 border-gray-200 pl-3">
+                     class="ml-6 mt-1 space-y-1 border-l-2 border-border-light pl-3">
                     {% if child.children %}
                         {% for part_child in child.children %}
                             <div class="flex items-center justify-between gap-2 text-sm">
@@ -120,7 +120,7 @@
                             </div>
                         {% endfor %}
                     {% else %}
-                        <span class="text-xs text-gray-400 italic">No items in this part</span>
+                        <span class="text-xs text-muted/50 italic">No items in this part</span>
                     {% endif %}
                 </div>
             </div>
@@ -145,7 +145,7 @@
         {{ course.title }}
     </h1>
     {% if course.subtitle %}
-        <p class="text-xl text-gray-600">
+        <p class="text-xl text-muted">
             {{ course.subtitle }}
         </p>
     {% endif %}

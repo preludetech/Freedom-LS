@@ -1,6 +1,6 @@
 {% if messages %}
-    <div aria-live="assertive" class="fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:p-6 sm:items-start z-50">
-        <div class="w-full flex flex-col items-center space-y-4 sm:items-end">
+    <div aria-live="assertive" class="fixed top-20 left-0 right-0 flex justify-center px-4 pointer-events-none z-50">
+        <div class="w-full max-w-md flex flex-col items-center space-y-4">
             {% for message in messages %}
                 <div
                     x-data="{ show: true }"
@@ -9,17 +9,17 @@
                     x-init="setTimeout(() => show = false, 10000)"
                     class="pointer-events-auto flex justify-between items-center p-4 rounded-md shadow-lg border-2
                     {% if 'debug' in message.tags %}
-                        bg-gray-100 border-gray-700 text-gray-900
+                        bg-surface-alt border-muted text-foreground
                     {% elif 'info' in message.tags %}
-                        bg-blue-100 border-blue-700 text-blue-900
+                        bg-primary-light border-primary text-primary-dark
                     {% elif 'success' in message.tags %}
-                        bg-green-100 border-green-700 text-green-900
+                        bg-success-light border-success text-success-hover
                     {% elif 'warning' in message.tags %}
-                        bg-orange-100 border-orange-700 text-orange-900
+                        bg-accent-light border-accent text-accent
                     {% elif 'error' in message.tags %}
-                        bg-red-100 border-red-700 text-red-900
+                        bg-danger-light border-danger text-danger-hover
                     {% else %}
-                        bg-blue-100 border-blue-700 text-blue-900
+                        bg-primary-light border-primary text-primary-dark
                     {% endif %}"
                 >
                     <span class="text-sm font-medium">{{ message }}</span>

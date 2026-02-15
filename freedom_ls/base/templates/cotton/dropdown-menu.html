@@ -2,7 +2,7 @@
 
 <c-vars trigger=""
         class=""
-        trigger_class="p-2 hover:bg-gray-100 rounded-md transition-colors" />
+        trigger_class="p-2 hover:bg-surface-alt rounded-md transition-colors" />
 
 <div class="relative inline-block {{ class }}" x-data="{ open: false }">
     <!-- 3-dots menu button -->
@@ -28,7 +28,7 @@
          x-transition:leave="transition ease-in duration-75"
          x-transition:leave-start="transform opacity-100 scale-100"
          x-transition:leave-end="transform opacity-0 scale-95"
-         class="fixed w-40 bg-white border border-gray-200 rounded-md shadow-lg z-[9999]"
+         class="fixed w-40 bg-surface border border-border-light rounded-md shadow-lg z-[9999]"
          style="display: none"
          x-init="$watch('open', value => { if (value) { const rect = $refs.menuButton.getBoundingClientRect(); $el.style.top = rect.bottom + 8 + 'px'; $el.style.left = rect.right - 160 + 'px'; } })">
         <div class="py-1 space-y-1">

@@ -61,11 +61,11 @@
 {% partialdef form-question %}
     <div class="surface">
         <div class="mb-3 flex flex-row gap-2">
-            <span class="font-semibold text-gray-900"
+            <span class="font-semibold text-foreground"
                   data-testid="question-number-{{ question.question_number }}">{{ question.question_number }}.</span>
-            <span class="text-gray-900">{{ question.rendered_question }}</span>
+            <span class="text-foreground">{{ question.rendered_question }}</span>
             {% if question.required %}
-                <span class="text-red-600 ml-1"
+                <span class="text-danger ml-1"
                       data-testid="required-indicator-{{ question.question_number }}">*</span>
             {% endif %}
         </div>
@@ -81,7 +81,7 @@
             {% elif question.type == "long_text" %}
                 {% partial form-input-long-text %}
             {% else %}
-                <div class="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                <div class="p-3 bg-danger/10 border border-danger text-danger rounded">
                     ERROR! UNHANDLED FORM TYPE {{ question.type }}
                 </div>
             {% endif %}
@@ -102,7 +102,7 @@
             {{ form.title }}
         </h1>
         {% if form.subtitle %}
-            <p class="text-gray-600">
+            <p class="text-muted">
                 {{ form.subtitle }}
             </p>
         {% endif %}
@@ -113,13 +113,13 @@
     {% if total_pages > 1 %}
         {% partialdef page_progress_indicator inline %}
             <div class="surface space-y-3">
-                <div class="text-sm font-medium text-gray-700">
+                <div class="text-sm font-medium text-muted">
                     <p>
                         Page {{ current_page_num }} of {{ total_pages }}:
                         {{ form_page.title }}
                     </p>
                     {% if form_page.subtitle %}
-                        <p class="text-gray-500">
+                        <p class="text-muted/50">
                             {{ form_page.subtitle }}
                         </p>
                     {% endif %}
@@ -158,7 +158,7 @@
 
             <!-- Navigation -->
 
-            <div class="flex justify-between items-center pt-6 border-t border-gray-300">
+            <div class="flex justify-between items-center pt-6 border-t border-border">
                 <div>
                     {% if previous_page_url %}
 
