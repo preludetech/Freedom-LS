@@ -2,41 +2,30 @@
 @theme {
     /* Primary - Interactive elements, links, highlights (Ocean) */
     --color-primary: #2B6CB0;
-    --color-primary-hover: #4A9BD9;
-    --color-primary-dark: #1A2332;
-    --color-primary-light: #F7F8FA;
-
-    /* Secondary - Neutral interactive elements (Slate) */
-    --color-secondary: #4A5568;
-    --color-secondary-hover: #1A2332;
+    --color-primary-bold: #4A9BD9;
 
     /* Success - Completion, progress, positive states (Forest) */
     --color-success: #38A169;
-    --color-success-hover: #2F855A;
-    --color-success-light: #D1FAE5;
+    --color-success-bold: #2F855A;
 
     /* Danger - Errors, destructive actions (Signal) */
     --color-danger: #E8553D;
-    --color-danger-hover: #C74333;
-    --color-danger-light: #FEDDD7;
+    --color-danger-bold: #C74333;
 
-    /* Accent - CTAs, important notices, use sparingly (Sand) */
-    --color-accent: #F6E05E;
-    --color-accent-light: #FFFBEA;
+    /* Warning - Important notices, use sparingly (Sand) */
+    --color-warning: #F6E05E;
 
-    /* Foreground (text) colors */
+    /* Text colors */
     --color-foreground: #1A2332;
     --color-muted: #4A5568;
     --color-on-primary: #FFFFFF;
 
     /* Surface (background) colors */
     --color-surface: #FFFFFF;
-    --color-surface-alt: #F7F8FA;
-    --color-surface-disabled: #F3F4F6;
+    --color-surface-2: #F3F4F6;
 
     /* Border colors */
     --color-border: #D1D5DB;
-    --color-border-light: #E5E7EB;
 }
 
 
@@ -46,20 +35,28 @@
         @apply overflow-x-hidden
     }
 
+    body {
+        @apply text-foreground
+    }
+
     h1 {
-        @apply text-xl sm:text-2xl lg:text-4xl font-bold
+        @apply text-xl sm:text-2xl lg:text-4xl font-bold text-foreground
     }
 
     h2 {
-        @apply text-lg sm:text-xl lg:text-3xl font-bold
+        @apply text-lg sm:text-xl lg:text-3xl font-bold text-foreground
     }
 
     h3 {
-        @apply text-base sm:text-lg lg:text-2xl font-bold
+        @apply text-base sm:text-lg lg:text-2xl font-bold text-foreground
     }
 
     h4 {
-        @apply text-sm sm:text-base lg:text-xl font-bold
+        @apply text-sm sm:text-base lg:text-xl font-bold text-foreground
+    }
+
+    p {
+        @apply text-foreground
     }
 
     a {
@@ -67,7 +64,7 @@
     }
 
     blockquote {
-        @apply border-l-4 border-primary bg-primary-light pl-4 pr-4 py-3 my-4
+        @apply border-l-4 border-primary bg-primary/10 pl-4 pr-4 py-3 my-4
                italic text-muted rounded-r-md
     }
 
@@ -89,7 +86,7 @@
     }
 
     thead {
-        @apply bg-surface-alt border-b-2 border-border
+        @apply bg-surface-2 border-b-2 border-border
     }
 
     th {
@@ -101,7 +98,7 @@
     }
 
     tbody tr {
-        @apply border-b border-border-light hover:bg-surface-alt
+        @apply border-b border-border hover:bg-surface-2
     }
 
     tbody tr:last-child {
@@ -127,7 +124,7 @@
     select {
         @apply w-full px-3 py-2 border border-border rounded-md shadow-sm
                focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
-               disabled:bg-surface-disabled disabled:cursor-not-allowed
+               disabled:bg-surface-2 disabled:cursor-not-allowed
     }
 
     textarea {
@@ -176,27 +173,22 @@
     /* Button component variants */
     .btn-primary {
         @apply bg-primary text-on-primary
-               hover:bg-primary-hover focus:ring-primary
-    }
-
-    .btn-secondary {
-        @apply bg-secondary text-on-primary
-               hover:bg-secondary-hover focus:ring-secondary
+               hover:bg-primary-bold focus:ring-primary
     }
 
     .btn-outline {
         @apply bg-surface text-muted border border-border
-               hover:bg-surface-alt focus:ring-primary
+               hover:bg-surface-2 focus:ring-primary
     }
 
     .btn-success {
         @apply bg-success text-on-primary
-               hover:bg-success-hover focus:ring-success
+               hover:bg-success-bold focus:ring-success
     }
 
     .btn-danger {
         @apply bg-danger text-on-primary
-               hover:bg-danger-hover focus:ring-danger
+               hover:bg-danger-bold focus:ring-danger
     }
 
     .surface {

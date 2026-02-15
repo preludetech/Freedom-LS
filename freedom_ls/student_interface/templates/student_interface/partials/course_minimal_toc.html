@@ -83,13 +83,8 @@
     {% for child in children %}
         {% if child.type == "COURSE_PART" %}
             {# Course Part with expandable children #}
-            <div x-data="{
-                     expanded: localStorage.getItem('coursePart_{{ course.slug }}_{{ forloop.counter }}') === 'true',
-                     toggleExpanded() {
-                         this.expanded = !this.expanded;
-                         localStorage.setItem('coursePart_{{ course.slug }}_{{ forloop.counter }}', this.expanded);
-                     }
-                 }" class="py-1.5">
+            <div x-data="{ expanded: localStorage.getItem('coursePart_{{ course.slug }}_{{ forloop.counter }}') === 'true', toggleExpanded() { this.expanded = !this.expanded; localStorage.setItem('coursePart_{{ course.slug }}_{{ forloop.counter }}', this.expanded); } }"
+                 class="py-1.5">
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2 flex-1 min-w-0">
                         {% with parent_counter=forloop.counter is_expandable=True text_size="text-sm" counter_width="w-5" %}
@@ -103,7 +98,7 @@
                 {# Nested children of course part #}
                 <div x-show="expanded"
                      x-collapse
-                     class="ml-6 mt-1 space-y-1 border-l-2 border-border-light pl-3">
+                     class="ml-6 mt-1 space-y-1 border-l-2 border-border pl-3">
                     {% if child.children %}
                         {% for part_child in child.children %}
                             <div class="flex items-center justify-between gap-2 text-sm">

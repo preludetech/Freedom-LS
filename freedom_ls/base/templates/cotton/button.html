@@ -14,7 +14,7 @@
 />
 
 {% if dropdown %}
-{% with computed_class=class|add:" block w-full text-left px-4 py-2 text-sm text-muted hover:bg-surface-alt transition-colors no-underline cursor-pointer" %}
+{% with computed_class=class|add:" block w-full text-left px-4 py-2 text-sm text-muted hover:bg-surface-2 transition-colors no-underline cursor-pointer" %}
 <{% if href %}a href="{{ href }}"{% else %}button{% endif %}
 {% if form %} form="{{ form }}"{% endif %}
 {% if id %} id="{{ id }}"{% endif %}
@@ -51,7 +51,6 @@ Usage Examples:
   <c-button>Click me</c-button>
 
   <!-- Different variants -->
-  <c-button variant="secondary">Cancel</c-button>
   <c-button variant="danger">Delete</c-button>
   <c-button variant="outline">Outline</c-button>
 

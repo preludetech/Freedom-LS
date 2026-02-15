@@ -41,7 +41,7 @@
     <div class="surface flex flex-col">
         <div class="space-y-3 flex-1 mb-4">
             <div class="flex items-start justify-between">
-                <h4 class="text-xl font-semibold text-foreground">
+                <h4>
                     {{ course.title }}
                 </h4>
             </div>
@@ -56,9 +56,9 @@
             <div class="space-y-1 mb-4">
                 <div class="flex justify-between text-sm">
                     <span class="text-muted">Progress</span>
-                    <span class="font-medium text-foreground">{{ course.progress_percentage }}%</span>
+                    <span class="font-medium">{{ course.progress_percentage }}%</span>
                 </div>
-                <div class="w-full bg-surface-disabled rounded-full h-2">
+                <div class="w-full bg-surface-2 rounded-full h-2">
                     <div class="bg-primary h-2 rounded-full"
                          style="width: {{ course.progress_percentage }}%">
                     </div>

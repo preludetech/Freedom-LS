@@ -1,179 +1,202 @@
 {% extends 'student_interface/_course_base.html' %}
 
-{% block title %}Form Complete - {{ form.title }}{% endblock %}
+{% block title %}
+    Form Complete - {{ form.title }}
+{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto py-12">
-    <div class="text-center mb-8">
-        <div class="mb-6">
-            {% if is_failed_quiz %}
-                <i class="fas fa-times-circle text-danger text-6xl"></i>
-            {% else %}
-                <i class="fas fa-check-circle text-success text-6xl"></i>
-            {% endif %}
-        </div>
-
-        <h1 class="mb-4">
-            {% if form.strategy == "QUIZ" %}
-                {% if is_failed_quiz %}
-                    Quiz Not Passed
-                {% else %}
-                    Quiz Passed!
-                {% endif %}
-            {% else %}
-                Form Complete!
-            {% endif %}
-        </h1>
-
-        <p class="text-lg text-muted mb-8">
-            {% if is_failed_quiz %}
-                You need {{ form.quiz_pass_percentage }}% to pass. Review the material and try again.
-            {% else %}
-                Thank you for completing <strong>{{ form.title }}</strong>.
-            {% endif %}
-        </p>
-    </div>
-
-    {% if show_scores and scores %}
-    <div class="mb-8">
-        <h2 class="mb-6">Your Results</h2>
-
-        {% if form.strategy == "QUIZ" %}
-        <!-- Quiz scoring display -->
-        <div class="mb-6 p-8 bg-surface border border-border-light rounded-lg shadow-sm text-center">
+    <div class="max-w-4xl mx-auto py-12">
+        <div class="text-center mb-8">
             <div class="mb-6">
-                <div class="text-5xl font-bold text-primary mb-2" data-testid="quiz-score">
-                    {{ scores.score }} / {{ scores.max_score }}
-                </div>
-                <div class="text-2xl text-muted" data-testid="quiz-percentage">
-                    {{ form_progress.quiz_percentage }}%
-                </div>
-            </div>
-
-            <!-- Progress bar -->
-            <div class="w-full bg-surface-disabled rounded-full h-4 mb-4">
-                <div class="bg-primary h-4 rounded-full transition-all duration-500" style="width: {{ form_progress.quiz_percentage }}%"></div>
-            </div>
-
-            <p class="text-muted">
-                {% if form_progress.quiz_percentage == 100 %}
-                    Perfect score! You got all questions correct!
-                {% elif form_progress.passed %}
-                    Great job! You passed the quiz.
+                {% if is_failed_quiz %}
+                    <i class="fas fa-times-circle text-danger text-6xl"></i>
                 {% else %}
-                    Keep practicing! Review the material and try again.
+                    <i class="fas fa-check-circle text-success text-6xl"></i>
+                {% endif %}
+            </div>
+
+            <h1 class="mb-4">
+                {% if form.strategy == "QUIZ" %}
+                    {% if is_failed_quiz %}
+                        Quiz Not Passed
+                    {% else %}
+                        Quiz Passed!
+                    {% endif %}
+                {% else %}
+                    Form Complete!
+                {% endif %}
+            </h1>
+
+            <p class="text-lg text-muted mb-8">
+                {% if is_failed_quiz %}
+                    You need {{ form.quiz_pass_percentage }}% to pass. Review the material and try again.
+                {% else %}
+                    Thank you for completing <strong>{{ form.title }}</strong>.
                 {% endif %}
             </p>
         </div>
 
-        <!-- Show incorrect answers if enabled -->
-        {% if incorrect_answers and form.quiz_show_incorrect %}
-        <div class="mt-8" data-testid="incorrect-answers-section">
-            <h3 class="text-2xl font-semibold mb-4 text-foreground">Review Incorrect Answers</h3>
+        {% if show_scores and scores %}
+            <div class="mb-8">
+                <h2 class="mb-6">
+                    Your Results
+                </h2>
 
-            <div class="space-y-6">
-                {% for item in incorrect_answers %}
-                <div class="p-6 bg-danger/10 border border-danger/20 rounded-lg" data-testid="incorrect-question-{{ item.question.id }}">
-                    <!-- Question text -->
-                    <div class="mb-4">
-                        <h4 class="font-semibold text-foreground mb-2">Question {{ item.question.question_number }}</h4>
-                        <p class="text-foreground">{{ item.question.question }}</p>
-                    </div>
-
-                    <!-- Student's answer -->
-                    <div class="mb-3">
-                        <p class="text-sm font-medium text-danger mb-1">Your answer:</p>
-                        <div class="pl-4" data-testid="student-answer-{{ item.question.id }}">
-                            {% for option in item.student_selected %}
-                            <p class="text-muted">
-                                <i class="fas fa-times-circle text-danger mr-2"></i>{{ option.text }}
-                            </p>
-                            {% endfor %}
+                {% if form.strategy == "QUIZ" %}
+                    <!-- Quiz scoring display -->
+                    <div class="mb-6 p-8 bg-surface border border-border rounded-lg shadow-sm text-center">
+                        <div class="mb-6">
+                            <div class="text-5xl font-bold text-primary mb-2" data-testid="quiz-score">
+                                {{ scores.score }} / {{ scores.max_score }}
+                            </div>
+                            <div class="text-2xl text-muted" data-testid="quiz-percentage">
+                                {{ form_progress.quiz_percentage }}%
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Correct answer -->
-                    <div>
-                        <p class="text-sm font-medium text-success mb-1">Correct answer:</p>
-                        <div class="pl-4" data-testid="correct-answer-{{ item.question.id }}">
-                            {% for option in item.correct_options %}
-                            <p class="text-muted">
-                                <i class="fas fa-check-circle text-success mr-2"></i>{{ option.text }}
-                            </p>
-                            {% endfor %}
+                        <!-- Progress bar -->
+                        <div class="w-full bg-surface-2 rounded-full h-4 mb-4">
+
+                            <div class="bg-primary h-4 rounded-full transition-all duration-500"
+                                 style="width: {{ form_progress.quiz_percentage }}%">
+                            </div>
                         </div>
+
+                        <p class="text-muted">
+                            {% if form_progress.quiz_percentage == 100 %}
+                                Perfect score! You got all questions correct!
+                            {% elif form_progress.passed %}
+                                Great job! You passed the quiz.
+                            {% else %}
+                                Keep practicing! Review the material and try again.
+                            {% endif %}
+                        </p>
                     </div>
-                </div>
-                {% endfor %}
+
+                    <!-- Show incorrect answers if enabled -->
+                    {% if incorrect_answers and form.quiz_show_incorrect %}
+                        <div class="mt-8" data-testid="incorrect-answers-section">
+                            <h3 class="text-2xl font-semibold mb-4">
+                                Review Incorrect Answers
+                            </h3>
+
+                            <div class="space-y-6">
+                                {% for item in incorrect_answers %}
+                                    <div class="p-6 bg-danger/10 border border-danger/20 rounded-lg"
+                                         data-testid="incorrect-question-{{ item.question.id }}">
+                                        <!-- Question text -->
+                                        <div class="mb-4">
+                                            <h4 class="font-semibold mb-2">
+                                                Question {{ item.question.question_number }}
+                                            </h4>
+                                            <p>
+                                                {{ item.question.question }}
+                                            </p>
+                                        </div>
+
+                                        <!-- Student's answer -->
+                                        <div class="mb-3">
+                                            <p class="text-sm font-medium text-danger mb-1">
+                                                Your answer:
+                                            </p>
+                                            <div class="pl-4" data-testid="student-answer-{{ item.question.id }}">
+                                                {% for option in item.student_selected %}
+                                                    <p class="text-muted">
+                                                        <i class="fas fa-times-circle text-danger mr-2"></i>{{ option.text }}
+                                                    </p>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+
+                                        <!-- Correct answer -->
+                                        <div>
+                                            <p class="text-sm font-medium text-success mb-1">
+                                                Correct answer:
+                                            </p>
+                                            <div class="pl-4" data-testid="correct-answer-{{ item.question.id }}">
+                                                {% for option in item.correct_options %}
+                                                    <p class="text-muted">
+                                                        <i class="fas fa-check-circle text-success mr-2"></i>{{ option.text }}
+                                                    </p>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% else %}
+
+                    TODO
+                    <!-- Category-based scoring display -->
+                    {% for category, category_data in scores.items %}
+                        <div class="mb-6 p-6 bg-surface border border-border rounded-lg shadow-sm">
+                            <div class="mb-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <h3 class="text-xl font-semibold">
+                                        {{ category }}
+                                    </h3>
+                                    <span class="text-lg font-semibold text-muted">
+                                        {{ category_data.score }} / {{ category_data.max_score }}
+                                    </span>
+                                </div>
+
+                                <!-- Progress bar for category -->
+                                <div class="w-full bg-surface-2 rounded-full h-3">
+                                    {% widthratio category_data.score category_data.max_score 100 as percentage %}
+                                    <div class="bg-primary h-3 rounded-full" style="width: {{ percentage }}%">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Subcategories -->
+                            {% if category_data.sub_categories %}
+                                <div class="mt-4 space-y-3 pl-4 border-l-2 border-border">
+                                    {% for subcategory, subcategory_data in category_data.sub_categories.items %}
+                                        <div>
+                                            <div class="flex justify-between items-center mb-1">
+                                                <span class="text-sm font-medium text-muted">{{ subcategory }}</span>
+                                                <span class="text-sm text-muted">
+                                                    {{ subcategory_data.score }} / {{ subcategory_data.max_score }}
+                                                </span>
+                                            </div>
+
+                                            <!-- Progress bar for subcategory -->
+                                            <div class="w-full bg-surface-2 rounded-full h-2">
+                                                {% widthratio subcategory_data.score subcategory_data.max_score 100 as sub_percentage %}
+                                                <div class="bg-success/10 h-2 rounded-full"
+                                                     style="width: {{ sub_percentage }}%">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% endif %}
             </div>
-        </div>
         {% endif %}
-        {% else %}
 
-        TODO
-        <!-- Category-based scoring display -->
-        {% for category, category_data in scores.items %}
-        <div class="mb-6 p-6 bg-surface border border-border-light rounded-lg shadow-sm">
-            <div class="mb-4">
-                <div class="flex justify-between items-center mb-2">
-                    <h3 class="text-xl font-semibold text-foreground">{{ category }}</h3>
-                    <span class="text-lg font-semibold text-muted">
-                        {{ category_data.score }} / {{ category_data.max_score }}
-                    </span>
-                </div>
-
-                <!-- Progress bar for category -->
-                <div class="w-full bg-surface-disabled rounded-full h-3">
-                    {% widthratio category_data.score category_data.max_score 100 as percentage %}
-                    <div class="bg-primary h-3 rounded-full" style="width: {{ percentage }}%"></div>
-                </div>
-            </div>
-
-            <!-- Subcategories -->
-            {% if category_data.sub_categories %}
-            <div class="mt-4 space-y-3 pl-4 border-l-2 border-border-light">
-                {% for subcategory, subcategory_data in category_data.sub_categories.items %}
-                <div>
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-sm font-medium text-muted">{{ subcategory }}</span>
-                        <span class="text-sm text-muted">
-                            {{ subcategory_data.score }} / {{ subcategory_data.max_score }}
-                        </span>
-                    </div>
-
-                    <!-- Progress bar for subcategory -->
-                    <div class="w-full bg-surface-disabled rounded-full h-2">
-                        {% widthratio subcategory_data.score subcategory_data.max_score 100 as sub_percentage %}
-                        <div class="bg-success/10 h-2 rounded-full" style="width: {{ sub_percentage }}%"></div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-        {% endfor %}
-        {% endif %}
-    </div>
-    {% endif %}
-
-    <!-- Navigation Buttons -->
-    <div class="mt-8 flex justify-center gap-4">
-        {% if is_failed_quiz %}
-            <c-button href="{{ retry_url }}" >
-                <i class="fas fa-redo mr-2"></i>Retry Quiz
-            </c-button>
-        {% else %}
-            {% if next_url %}
-                <c-button href="{{ next_url }}" >
-                    Continue <i class="fas fa-arrow-right ml-2"></i>
+        <!-- Navigation Buttons -->
+        <div class="mt-8 flex justify-center gap-4">
+            {% if is_failed_quiz %}
+                <c-button href="{{ retry_url }}">
+                    <i class="fas fa-redo mr-2"></i>Retry Quiz
                 </c-button>
             {% else %}
-                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
-                    Return to Course <i class="fas fa-home ml-2"></i>
-                </c-button>
+                {% if next_url %}
+                    <c-button href="{{ next_url }}">
+                        Continue <i class="fas fa-arrow-right ml-2"></i>
+                    </c-button>
+                {% else %}
+                    <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
+                        Return to Course <i class="fas fa-home ml-2"></i>
+                    </c-button>
+                {% endif %}
             {% endif %}
-        {% endif %}
-    </div>
+        </div>
 
-</div>
+    </div>
 {% endblock %}

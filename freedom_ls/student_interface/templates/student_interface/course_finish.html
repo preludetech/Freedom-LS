@@ -1,48 +1,54 @@
 {% extends 'student_interface/_course_base.html' %}
 
-{% block title %}Course Complete - {{ course.title }}{% endblock %}
+{% block title %}
+    Course Complete - {{ course.title }}
+{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto py-12">
-    <div class="text-center mb-8">
-        <div class="mb-6">
-            <i class="fas fa-trophy text-accent text-6xl"></i>
+    <div class="max-w-4xl mx-auto py-12">
+        <div class="text-center mb-8">
+            <div class="mb-6">
+                <i class="fas fa-trophy text-warning text-6xl"></i>
+            </div>
+
+            <h1 class="mb-4">
+                Congratulations!
+            </h1>
+
+            <p class="text-lg text-muted mb-8">
+                You have successfully completed <strong>{{ course.title }}</strong>.
+            </p>
         </div>
 
-        <h1 class="mb-4">Congratulations!</h1>
+        <!-- Course Progress Summary -->
+        {% if course_progress %}
+            <div class="mb-8 p-6 bg-surface border border-border rounded-lg shadow-sm">
+                <h2 class="mb-4">
+                    Course Summary
+                </h2>
 
-        <p class="text-lg text-muted mb-8">
-            You have successfully completed <strong>{{ course.title }}</strong>.
-        </p>
-    </div>
-
-    <!-- Course Progress Summary -->
-    {% if course_progress %}
-    <div class="mb-8 p-6 bg-surface border border-border-light rounded-lg shadow-sm">
-        <h2 class="mb-4">Course Summary</h2>
-
-        <div class="space-y-3 text-muted">
-            <div class="flex justify-between">
-                <span class="font-medium">Started:</span>
-                <span>{{ course_progress.start_time|date:"F j, Y" }}</span>
+                <div class="space-y-3 text-muted">
+                    <div class="flex justify-between">
+                        <span class="font-medium">Started:</span>
+                        <span>{{ course_progress.start_time|date:"F j, Y" }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="font-medium">Completed:</span>
+                        <span>{{ course_progress.completed_time|date:"F j, Y" }}</span>
+                    </div>
+                </div>
             </div>
-            <div class="flex justify-between">
-                <span class="font-medium">Completed:</span>
-                <span>{{ course_progress.completed_time|date:"F j, Y" }}</span>
-            </div>
+        {% endif %}
+
+        <!-- Navigation Buttons -->
+        <div class="mt-8 flex justify-center gap-4">
+            <c-button href="{% url 'student_interface:home' %}">
+                <i class="fas fa-home mr-2"></i>Return to Home
+            </c-button>
+            <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
+                <i class="fas fa-book mr-2"></i>View Course
+            </c-button>
         </div>
-    </div>
-    {% endif %}
 
-    <!-- Navigation Buttons -->
-    <div class="mt-8 flex justify-center gap-4">
-        <c-button href="{% url 'student_interface:home' %}">
-            <i class="fas fa-home mr-2"></i>Return to Home
-        </c-button>
-        <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
-            <i class="fas fa-book mr-2"></i>View Course
-        </c-button>
     </div>
-
-</div>
 {% endblock %}

@@ -21,19 +21,19 @@ Supports levels: info, warning, error, success
 {% endpartialdef %}
 
 {% if level == "info" %}
-    {% with bg="bg-primary-light" border="border-primary" text="text-primary-dark" title_color="text-primary-dark" icon="fa-info-circle" %}
+    {% with bg="bg-primary/10" border="border-primary" text="text-foreground" title_color="text-foreground" icon="fa-info-circle" %}
         {% partial callout_box %}
     {% endwith %}
 {% elif level == "warning" %}
-    {% with bg="bg-accent/10" border="border-accent" text="text-accent" title_color="text-accent" icon="fa-exclamation-triangle" %}
+    {% with bg="bg-warning/10" border="border-warning" text="text-warning" title_color="text-warning" icon="fa-exclamation-triangle" %}
         {% partial callout_box %}
     {% endwith %}
 {% elif level == "error" %}
-    {% with bg="bg-danger/10" border="border-danger" text="text-danger-hover" title_color="text-danger-hover" icon="fa-times-circle" %}
+    {% with bg="bg-danger/10" border="border-danger" text="text-danger-bold" title_color="text-danger-bold" icon="fa-times-circle" %}
         {% partial callout_box %}
     {% endwith %}
 {% elif level == "success" %}
-    {% with bg="bg-success/10" border="border-success" text="text-success-hover" title_color="text-success-hover" icon="fa-check-circle" %}
+    {% with bg="bg-success/10" border="border-success" text="text-success-bold" title_color="text-success-bold" icon="fa-check-circle" %}
         {% partial callout_box %}
     {% endwith %}
 {% endif %}

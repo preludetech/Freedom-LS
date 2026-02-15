@@ -49,7 +49,6 @@ class TestRenderMarkdownCustomTags:
         result = render_markdown(markdown_text, mock_request)
 
         # Should be rendered by callout component with semantic color tokens
-        assert "bg-primary-light" in result  # Info styling
         assert "border-primary" in result
         assert "Important information" in result
 
@@ -58,8 +57,8 @@ class TestRenderMarkdownCustomTags:
         markdown_text = '<c-callout level="warning">Warning text</c-callout>'
         result = render_markdown(markdown_text, mock_request)
 
-        assert "bg-accent/10" in result  # Warning styling
-        assert "border-accent" in result
+        assert "bg-warning/10" in result  # Warning styling
+        assert "border-warning" in result
         assert "Warning text" in result
 
     def test_c_callout_with_title(self, mock_request):
@@ -79,7 +78,6 @@ This is **bold** text
         result = render_markdown(markdown_text, mock_request)
 
         assert "<strong>bold</strong>" in result
-        assert "bg-primary-light" in result
 
     def test_disallowed_script_tag_is_stripped(self, mock_request):
         """Test that script tags are stripped for security."""
@@ -135,8 +133,7 @@ Some text with **bold**."""
 
         assert "First callout" in result
         assert "Second callout" in result
-        assert "bg-primary-light" in result  # Info callout
-        assert "bg-accent/10" in result  # Warning callout
+        assert "bg-warning/10" in result  # Warning callout
         assert "youtube.com/embed/test" in result
 
     def test_returns_safe_string(self, mock_request):

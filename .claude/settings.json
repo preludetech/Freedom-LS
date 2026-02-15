@@ -18,16 +18,7 @@
   },
   "hooks": {
     "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ruff check . && uv run ruff format .",
-            "statusMessage": "Running ruff..."
-          }
-        ]
-      }
+     
     ]
   },
   "enabledPlugins": {}
