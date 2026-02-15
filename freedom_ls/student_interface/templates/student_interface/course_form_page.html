@@ -1,7 +1,7 @@
 {% extends "student_interface/_course_base.html" %}
 
 {% load content_tags %}
-{% load base_filters %}
+{% load fls_base_filters %}
 
 {% partialdef form-input-multiple-choice %}
     {% for option in question.options.all %}

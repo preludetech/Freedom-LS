@@ -1,15 +1,18 @@
-{% load base_filters %}
+{% load fls_base_filters %}
 
 {% with progress=object.progress|get_dict_item:column.item_id %}
     {% with status=progress.status item_type=progress.item_type %}
         {% if status == "completed" %}
             {% if item_type == "TOPIC" %}
-                <span class="text-green-600" title="Completed {{ progress.completed_date|date:'d M Y' }}">
+                <span class="text-green-600"
+                      title="Completed {{ progress.completed_date|date:'d M Y' }}">
                     {{ progress.completed_date|date:"d M Y" }}
                 </span>
             {% elif progress.is_quiz %}
                 <div class="text-green-600">
-                    <div>{{ progress.latest_score }}%</div>
+                    <div>
+                        {{ progress.latest_score }}%
+                    </div>
                     <div class="text-xs text-gray-500">
                         {{ progress.attempt_count }} attempt{{ progress.attempt_count|pluralize }}
                     </div>
