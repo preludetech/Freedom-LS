@@ -4,8 +4,15 @@ from django.http import HttpRequest
 from django.core.paginator import Paginator
 from django.urls import reverse
 from guardian.shortcuts import get_objects_for_user
-from freedom_ls.content_engine.models import Course
-from freedom_ls.student_management.models import Cohort, Student
+from freedom_ls.content_engine.models import Course, CoursePart, Topic, Form
+from freedom_ls.student_progress.models import TopicProgress, FormProgress
+from freedom_ls.student_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    CohortMembership,
+    Student,
+    StudentCourseRegistration,
+)
 
 
 def home(request: HttpRequest):
@@ -175,10 +182,91 @@ def partial_students_table(request: HttpRequest):
 def course_student_progress(request, course_slug):
     """Show student progress for a specific course."""
     course = get_object_or_404(Course, slug=course_slug)
+
+    course_items = [
+        item for item in course.children_flat() if not isinstance(item, CoursePart)
+    ]
+
+    # Get students registered directly
+    direct_student_ids = set(
+        StudentCourseRegistration.objects.filter(collection=course).values_list(
+            "student_id", flat=True
+        )
+    )
+
+    # Get students registered via cohorts
+    cohort_ids = CohortCourseRegistration.objects.filter(
+        collection=course
+    ).values_list("cohort_id", flat=True)
+    cohort_student_ids = set(
+        CohortMembership.objects.filter(cohort_id__in=cohort_ids).values_list(
+            "student_id", flat=True
+        )
+    )
+
+    all_student_ids = direct_student_ids | cohort_student_ids
+    students = Student.objects.filter(id__in=all_student_ids).select_related("user")
+
+    # Build progress matrix: {(student_id, item_id): bool}
+    user_ids = [s.user_id for s in students]
+
+    topic_ids = [item.pk for item in course_items if isinstance(item, Topic)]
+    form_ids = [item.pk for item in course_items if isinstance(item, Form)]
+
+    completed_topics = set(
+        TopicProgress.objects.filter(
+            user_id__in=user_ids, topic_id__in=topic_ids, complete_time__isnull=False
+        ).values_list("user_id", "topic_id")
+    )
+
+    completed_forms = set(
+        FormProgress.objects.filter(
+            user_id__in=user_ids, form_id__in=form_ids, completed_time__isnull=False
+        ).values_list("user_id", "form_id")
+    )
+
+    progress_matrix = {}
+    for student in students:
+        student.progress = {}
+        for item in course_items:
+            if isinstance(item, Topic):
+                completed = (student.user_id, item.pk) in completed_topics
+            elif isinstance(item, Form):
+                completed = (student.user_id, item.pk) in completed_forms
+            else:
+                completed = False
+            progress_matrix[(student.pk, item.pk)] = completed
+            student.progress[str(item.pk)] = completed
+
+    # Build data-table columns
+    columns = [
+        {
+            "header": "Student",
+            "template": "educator_interface/data-table-cells/link_to_student.html",
+        },
+    ]
+    for item in course_items:
+        columns.append(
+            {
+                "header": item.title,
+                "template": "educator_interface/data-table-cells/progress_check.html",
+                "item_id": str(item.pk),
+                "header_class": "text-center",
+                "cell_class": "text-center",
+            }
+        )
+
     return render(
         request,
         "educator_interface/course_student_progress.html",
-        {"course": course},
+        {
+            "course": course,
+            "course_items": course_items,
+            "students": students,
+            "progress_matrix": progress_matrix,
+            "columns": columns,
+            "rows": students,
+        },
     )
 
 

@@ -12,6 +12,9 @@
 
 {% block content %}
 
-    TODO: Show active students and active cohorts
+    <!-- @claude TODO: Show active students and active cohorts
+    the course titles should be links. They should go to the course progress view 
+    -->
     <c-data-table :columns=columns :rows=courses empty_message="No courses available" />
+
 {% endblock content %}
