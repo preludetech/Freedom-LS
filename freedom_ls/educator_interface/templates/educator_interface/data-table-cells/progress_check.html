@@ -1,23 +1,26 @@
 {% load base_filters %}
 
-{% with completed=object.progress|get_dict_item:column.item_id %}
-    {% if completed %}
-        <span class="text-green-600">&#10003;</span>
-    {% else %}
-        <span class="text-gray-300">&mdash;</span>
-    {% endif %}
+{% with progress=object.progress|get_dict_item:column.item_id %}
+    {% with status=progress.status item_type=progress.item_type %}
+        {% if status == "completed" %}
+            {% if item_type == "TOPIC" %}
+                <span class="text-green-600" title="Completed {{ progress.completed_date|date:'d M Y' }}">
+                    {{ progress.completed_date|date:"d M Y" }}
+                </span>
+            {% elif progress.is_quiz %}
+                <div class="text-green-600">
+                    <div>{{ progress.latest_score }}%</div>
+                    <div class="text-xs text-gray-500">
+                        {{ progress.attempt_count }} attempt{{ progress.attempt_count|pluralize }}
+                    </div>
+                </div>
+            {% else %}
+                <span class="text-green-600">&#10003;</span>
+            {% endif %}
+        {% elif status == "in_progress" %}
+            <span class="text-amber-500 text-sm">In progress</span>
+        {% else %}
+            <span class="text-gray-300">&mdash;</span>
+        {% endif %}
+    {% endwith %}
 {% endwith %}
-<!-- 
-@claude update this.
-
-if it is a Form that is a Quiz then:
-- show how many times the user filled it in
-- show the latest score 
-
-if it is a topic
-- show when it was completed 
-
-Also, show things that are in progress. 
-
-Don't hard-code colors, use theme colors from tailwind
--->
