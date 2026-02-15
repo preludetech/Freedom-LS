@@ -40,7 +40,7 @@
 
         {% if form.strategy == "QUIZ" %}
         <!-- Quiz scoring display -->
-        <div class="mb-6 p-8 bg-white border border-border-light rounded-lg shadow-sm text-center">
+        <div class="mb-6 p-8 bg-surface border border-border-light rounded-lg shadow-sm text-center">
             <div class="mb-6">
                 <div class="text-5xl font-bold text-primary mb-2" data-testid="quiz-score">
                     {{ scores.score }} / {{ scores.max_score }}
@@ -113,7 +113,7 @@
         TODO
         <!-- Category-based scoring display -->
         {% for category, category_data in scores.items %}
-        <div class="mb-6 p-6 bg-white border border-border-light rounded-lg shadow-sm">
+        <div class="mb-6 p-6 bg-surface border border-border-light rounded-lg shadow-sm">
             <div class="mb-4">
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="text-xl font-semibold text-foreground">{{ category }}</h3>

@@ -2,7 +2,7 @@
 <div class="mt-4">
     <div class="space-y-2">
         {% for category, data in form_progress.scores.items %}
-        <div class="bg-white p-2 rounded">
+        <div class="bg-surface p-2 rounded">
             <div class="flex justify-between items-center">
                 <span class="font-medium">{{ category }}</span>
                 <span class="text-sm">{{ data.score }} / {{ data.max_score }}</span>
