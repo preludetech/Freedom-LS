@@ -192,6 +192,31 @@
     }
 
     .surface {
-        @apply border border-border rounded-md py-6 px-8
+        @apply border border-border rounded-md py-4 px-4 sm:py-6 sm:px-8
+    }
+
+    /* Chip / badge component */
+    .chip {
+        @apply inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-lg
+    }
+
+    .chip-primary {
+        @apply bg-primary/15 text-primary
+    }
+
+    .chip-warning {
+        @apply bg-warning/30 text-foreground
+    }
+
+    .chip-success {
+        @apply bg-success/15 text-success-bold
+    }
+
+    .chip-danger {
+        @apply bg-danger/15 text-danger-bold
+    }
+
+    .chip-xs {
+        @apply text-xs px-2 py-0.5
     }
 }

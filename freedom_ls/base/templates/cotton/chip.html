@@ -1,0 +1,26 @@
+<c-vars variant="primary" size="" icon="" class="" />
+
+{% with computed_class=class|add:" chip chip-"|add:variant %}
+    <span class="{% if size %}chip-{{ size }}{% endif %} {{ computed_class }}"
+          {{ attrs }}>
+        {% if icon %}
+            <i class="fa-solid fa-{{ icon }}"></i>
+        {% endif %}
+        {{ slot }}
+    </span>
+{% endwith %}
+
+{% comment %}
+Usage Examples:
+
+  <c-chip>Default chip</c-chip>
+
+  <!-- Variants -->
+  <c-chip variant="primary">Level 1</c-chip>
+
+  <!-- Small size -->
+  <c-chip variant="primary" size="xs">Level 2</c-chip>
+
+  <!-- Additional classes -->
+  <c-chip class="shrink-0">No shrink</c-chip>
+{% endcomment %}
