@@ -102,12 +102,84 @@ def test_view_returns_students_registered_for_course(mock_site_context, user):
 
 
 @pytest.mark.django_db
-def test_progress_matrix_shows_completion_status(mock_site_context, user):
-    """Progress matrix maps (student_id, item_id) to completion boolean."""
+def test_progress_data_for_completed_topic(mock_site_context, user):
+    """Progress data for a completed topic includes status and completed_date."""
     course = Course.objects.create(title="Test Course", slug="test-course")
     topic = Topic.objects.create(title="Topic 1", slug="topic-1")
-    form = Form.objects.create(title="Form 1", slug="form-1", strategy="QUIZ")
     _add_child_to_course(course, topic)
+
+    student, student_user = _create_student(
+        user.__class__, "alice@example.com", "Alice", "Smith"
+    )
+    StudentCourseRegistration.objects.create(collection=course, student=student)
+
+    completed_at = timezone.now()
+    TopicProgress.objects.create(
+        user=student_user, topic=topic, complete_time=completed_at
+    )
+
+    client = Client()
+    client.force_login(user)
+    response = client.get(_get_progress_url("test-course"))
+
+    progress = response.context["students"][0].progress[str(topic.pk)]
+    assert progress["status"] == "completed"
+    assert progress["completed_date"] == completed_at
+    assert progress["item_type"] == "TOPIC"
+
+
+@pytest.mark.django_db
+def test_progress_data_for_in_progress_topic(mock_site_context, user):
+    """Progress data for an in-progress topic (started but not completed)."""
+    course = Course.objects.create(title="Test Course", slug="test-course")
+    topic = Topic.objects.create(title="Topic 1", slug="topic-1")
+    _add_child_to_course(course, topic)
+
+    student, student_user = _create_student(
+        user.__class__, "alice@example.com", "Alice", "Smith"
+    )
+    StudentCourseRegistration.objects.create(collection=course, student=student)
+
+    # Started but not completed
+    TopicProgress.objects.create(user=student_user, topic=topic)
+
+    client = Client()
+    client.force_login(user)
+    response = client.get(_get_progress_url("test-course"))
+
+    progress = response.context["students"][0].progress[str(topic.pk)]
+    assert progress["status"] == "in_progress"
+    assert progress["completed_date"] is None
+
+
+@pytest.mark.django_db
+def test_progress_data_for_not_started_topic(mock_site_context, user):
+    """Progress data for a topic with no progress record."""
+    course = Course.objects.create(title="Test Course", slug="test-course")
+    topic = Topic.objects.create(title="Topic 1", slug="topic-1")
+    _add_child_to_course(course, topic)
+
+    student, _ = _create_student(
+        user.__class__, "alice@example.com", "Alice", "Smith"
+    )
+    StudentCourseRegistration.objects.create(collection=course, student=student)
+
+    client = Client()
+    client.force_login(user)
+    response = client.get(_get_progress_url("test-course"))
+
+    progress = response.context["students"][0].progress[str(topic.pk)]
+    assert progress["status"] == "not_started"
+
+
+@pytest.mark.django_db
+def test_progress_data_for_completed_quiz(mock_site_context, user):
+    """Progress data for a completed quiz includes attempt count and latest score."""
+    course = Course.objects.create(title="Test Course", slug="test-course")
+    form = Form.objects.create(
+        title="Quiz 1", slug="quiz-1", strategy="QUIZ",
+        quiz_pass_percentage=50, quiz_show_incorrect=True,
+    )
     _add_child_to_course(course, form)
 
     student, student_user = _create_student(
@@ -115,19 +187,56 @@ def test_progress_matrix_shows_completion_status(mock_site_context, user):
     )
     StudentCourseRegistration.objects.create(collection=course, student=student)
 
-    # Mark topic as completed, form is NOT completed
-    TopicProgress.objects.create(
-        user=student_user, topic=topic, complete_time=timezone.now()
+    # Two completed attempts with scores
+    FormProgress.objects.create(
+        user=student_user, form=form,
+        completed_time=timezone.now(),
+        scores={"score": 1, "max_score": 2},
+    )
+    FormProgress.objects.create(
+        user=student_user, form=form,
+        completed_time=timezone.now(),
+        scores={"score": 2, "max_score": 2},
     )
 
     client = Client()
     client.force_login(user)
     response = client.get(_get_progress_url("test-course"))
 
-    assert response.status_code == 200
-    progress_matrix = response.context["progress_matrix"]
-    assert progress_matrix[(student.pk, topic.pk)] is True
-    assert progress_matrix[(student.pk, form.pk)] is False
+    progress = response.context["students"][0].progress[str(form.pk)]
+    assert progress["status"] == "completed"
+    assert progress["is_quiz"] is True
+    assert progress["attempt_count"] == 2
+    assert progress["latest_score"] == 100  # 2/2 * 100
+
+
+@pytest.mark.django_db
+def test_progress_data_for_in_progress_form(mock_site_context, user):
+    """Progress data for a form that has been started but not completed."""
+    course = Course.objects.create(title="Test Course", slug="test-course")
+    form = Form.objects.create(
+        title="Quiz 1", slug="quiz-1", strategy="QUIZ",
+        quiz_pass_percentage=50, quiz_show_incorrect=True,
+    )
+    _add_child_to_course(course, form)
+
+    student, student_user = _create_student(
+        user.__class__, "alice@example.com", "Alice", "Smith"
+    )
+    StudentCourseRegistration.objects.create(collection=course, student=student)
+
+    # Started but not completed
+    FormProgress.objects.create(user=student_user, form=form)
+
+    client = Client()
+    client.force_login(user)
+    response = client.get(_get_progress_url("test-course"))
+
+    progress = response.context["students"][0].progress[str(form.pk)]
+    assert progress["status"] == "in_progress"
+    assert progress["is_quiz"] is True
+    assert progress["attempt_count"] == 1
+    assert progress["latest_score"] is None
 
 
 @pytest.mark.django_db
@@ -191,3 +300,56 @@ def test_empty_message_when_no_students(mock_site_context, user):
     content = response.content.decode()
 
     assert "No students are registered for this course." in content
+
+
+@pytest.mark.django_db
+def test_template_shows_quiz_score_and_attempt_count(mock_site_context, user):
+    """Template renders quiz score and attempt count for completed quizzes."""
+    course = Course.objects.create(title="Test Course", slug="test-course")
+    form = Form.objects.create(
+        title="Quiz 1", slug="quiz-1", strategy="QUIZ",
+        quiz_pass_percentage=50, quiz_show_incorrect=True,
+    )
+    _add_child_to_course(course, form)
+
+    student, student_user = _create_student(
+        user.__class__, "alice@example.com", "Alice", "Smith"
+    )
+    StudentCourseRegistration.objects.create(collection=course, student=student)
+
+    FormProgress.objects.create(
+        user=student_user, form=form,
+        completed_time=timezone.now(),
+        scores={"score": 3, "max_score": 4},
+    )
+
+    client = Client()
+    client.force_login(user)
+    response = client.get(_get_progress_url("test-course"))
+    content = response.content.decode()
+
+    assert "75%" in content
+    assert "1 attempt" in content
+
+
+@pytest.mark.django_db
+def test_template_shows_in_progress_indicator(mock_site_context, user):
+    """Template shows in-progress indicator for started but incomplete items."""
+    course = Course.objects.create(title="Test Course", slug="test-course")
+    topic = Topic.objects.create(title="Topic 1", slug="topic-1")
+    _add_child_to_course(course, topic)
+
+    student, student_user = _create_student(
+        user.__class__, "alice@example.com", "Alice", "Smith"
+    )
+    StudentCourseRegistration.objects.create(collection=course, student=student)
+
+    # Started but not completed
+    TopicProgress.objects.create(user=student_user, topic=topic)
+
+    client = Client()
+    client.force_login(user)
+    response = client.get(_get_progress_url("test-course"))
+    content = response.content.decode()
+
+    assert "In progress" in content

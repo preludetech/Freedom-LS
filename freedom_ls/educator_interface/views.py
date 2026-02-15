@@ -207,22 +207,31 @@ def course_student_progress(request, course_slug):
     all_student_ids = direct_student_ids | cohort_student_ids
     students = Student.objects.filter(id__in=all_student_ids).select_related("user")
 
-    # Build progress matrix: {(student_id, item_id): bool}
     user_ids = [s.user_id for s in students]
 
     topic_ids = [item.pk for item in course_items if isinstance(item, Topic)]
     form_ids = [item.pk for item in course_items if isinstance(item, Form)]
 
-    completed_topics = set(
-        TopicProgress.objects.filter(
-            user_id__in=user_ids, topic_id__in=topic_ids, complete_time__isnull=False
-        ).values_list("user_id", "topic_id")
-    )
+    # Bulk-fetch topic progress keyed by (user_id, topic_id)
+    topic_progress_records = {}
+    for tp in TopicProgress.objects.filter(
+        user_id__in=user_ids, topic_id__in=topic_ids
+    ):
+        topic_progress_records[(tp.user_id, tp.topic_id)] = tp
 
-    completed_forms = set(
-        FormProgress.objects.filter(
-            user_id__in=user_ids, form_id__in=form_ids, completed_time__isnull=False
-        ).values_list("user_id", "form_id")
+    # Bulk-fetch form progress: all records grouped by (user_id, form_id)
+    form_progress_by_user_form: dict[tuple, list[FormProgress]] = {}
+    for fp in FormProgress.objects.filter(
+        user_id__in=user_ids, form_id__in=form_ids
+    ).order_by("-start_time"):
+        key = (fp.user_id, fp.form_id)
+        form_progress_by_user_form.setdefault(key, []).append(fp)
+
+    # Build a lookup of which forms are quizzes
+    quiz_form_ids = set(
+        Form.objects.filter(id__in=form_ids, strategy="QUIZ").values_list(
+            "id", flat=True
+        )
     )
 
     progress_matrix = {}
@@ -230,13 +239,50 @@ def course_student_progress(request, course_slug):
         student.progress = {}
         for item in course_items:
             if isinstance(item, Topic):
-                completed = (student.user_id, item.pk) in completed_topics
+                tp = topic_progress_records.get((student.user_id, item.pk))
+                if tp and tp.complete_time:
+                    status = "completed"
+                elif tp:
+                    status = "in_progress"
+                else:
+                    status = "not_started"
+                progress_data = {
+                    "status": status,
+                    "item_type": "TOPIC",
+                    "completed_date": tp.complete_time if tp else None,
+                }
             elif isinstance(item, Form):
-                completed = (student.user_id, item.pk) in completed_forms
+                fps = form_progress_by_user_form.get(
+                    (student.user_id, item.pk), []
+                )
+                completed_fps = [fp for fp in fps if fp.completed_time]
+                is_quiz = item.pk in quiz_form_ids
+                if completed_fps:
+                    status = "completed"
+                    latest = completed_fps[0]  # ordered by -start_time
+                    latest_score = None
+                    if is_quiz and latest.scores:
+                        latest_score = round(
+                            (latest.scores["score"] / latest.scores["max_score"])
+                            * 100
+                        )
+                else:
+                    status = "in_progress" if fps else "not_started"
+                    latest_score = None
+                progress_data = {
+                    "status": status,
+                    "item_type": "FORM",
+                    "is_quiz": is_quiz,
+                    "attempt_count": len(fps),
+                    "latest_score": latest_score,
+                }
             else:
-                completed = False
-            progress_matrix[(student.pk, item.pk)] = completed
-            student.progress[str(item.pk)] = completed
+                progress_data = {"status": "not_started", "item_type": "UNKNOWN"}
+
+            progress_matrix[(student.pk, item.pk)] = (
+                progress_data["status"] == "completed"
+            )
+            student.progress[str(item.pk)] = progress_data
 
     # Build data-table columns
     columns = [
