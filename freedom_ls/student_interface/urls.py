@@ -5,6 +5,7 @@ app_name = "student_interface"
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("all-courses/", views.all_courses, name="all_courses"),
     path("partials/courses/", views.partial_list_courses, name="partial_list_courses"),
     path(
         "partials/courses/<slug:course_slug>/toc",

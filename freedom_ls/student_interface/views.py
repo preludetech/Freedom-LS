@@ -31,6 +31,27 @@ def home(request):
     return render(request, "student_interface/home.html")
 
 
+def all_courses(request):
+    """Page listing all available courses."""
+    # TODO: make DRY
+    all_course_list = Course.objects.all()
+
+    if request.user.is_authenticated:
+        try:
+            student = Student.objects.get(user=request.user)
+            registered = student.get_course_registrations()
+            registered_ids = [course.id for course in registered]
+            all_course_list = all_course_list.exclude(id__in=registered_ids)
+        except Student.DoesNotExist:
+            pass
+
+    return render(
+        request,
+        "student_interface/all_courses.html",
+        {"all_courses": all_course_list},
+    )
+
+
 def course_home(request, course_slug):
     course = get_object_or_404(Course, slug=course_slug)
 

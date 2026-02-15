@@ -1,0 +1,11 @@
+{% extends "_base.html" %}
+
+{% block title %}
+    All Courses
+{% endblock title %}
+
+{% block content %}
+    <h1 class="mb-6 sm:mb-8 text-center">All Courses</h1>
+
+    {% include "student_interface/partials/course_list.html#all-courses" %}
+{% endblock content %}
