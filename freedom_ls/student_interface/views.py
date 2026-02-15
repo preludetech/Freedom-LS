@@ -20,6 +20,10 @@ from .utils import (
     get_course_index,
     get_is_registered,
     form_start_page_buttons,
+    get_all_courses,
+    get_completed_courses,
+    get_current_courses,
+    get_recommended_courses,
 )
 
 
@@ -33,22 +37,19 @@ def home(request):
 
 def all_courses(request):
     """Page listing all available courses."""
-    # TODO: make DRY
-    all_course_list = Course.objects.all()
+    courses = list(get_all_courses())
 
-    if request.user.is_authenticated:
-        try:
-            student = Student.objects.get(user=request.user)
-            registered = student.get_course_registrations()
-            registered_ids = [course.id for course in registered]
-            all_course_list = all_course_list.exclude(id__in=registered_ids)
-        except Student.DoesNotExist:
-            pass
+    # Annotate started courses with progress_percentage
+    current = get_current_courses(request.user)
+    progress_by_id = {c.id: c.progress_percentage for c in current}
+    for course in courses:
+        if course.id in progress_by_id:
+            course.progress_percentage = progress_by_id[course.id]
 
     return render(
         request,
         "student_interface/all_courses.html",
-        {"all_courses": all_course_list},
+        {"all_courses": courses},
     )
 
 
@@ -95,31 +96,14 @@ def partial_course_toc(request, course_slug):
 
 def partial_list_courses(request):
     """Return a partial HTML section listing all available courses."""
-
-    all_courses = Course.objects.all()
-    registered_courses = []
-    completed_courses = []
-
-    if request.user.is_authenticated:
-        try:
-            student = Student.objects.get(user=request.user)
-
-            # Get completed and current courses using Student methods
-            completed_courses = student.completed_courses()
-            registered_courses = student.current_courses()
-
-            # Exclude all registered courses (both current and completed) from all_courses
-            all_registered = student.get_course_registrations()
-            registered_course_ids = [course.id for course in all_registered]
-            all_courses = all_courses.exclude(id__in=registered_course_ids)
-
-        except Student.DoesNotExist:
-            pass
+    registered_courses = get_current_courses(request.user)
+    completed_courses = get_completed_courses(request.user)
+    recommended_courses = get_recommended_courses(request.user)
 
     context = {
-        "all_courses": all_courses,
         "registered_courses": registered_courses,
         "completed_courses": completed_courses,
+        "recommended_courses": recommended_courses,
     }
 
     return render(request, "student_interface/partials/course_list.html", context)

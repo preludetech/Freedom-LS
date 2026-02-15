@@ -87,6 +87,28 @@
     </div>
 {% endpartialdef %}
 
+{% partialdef all-courses %}
+    {% if all_courses %}
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {% for course in all_courses %}
+                {% if course.progress_percentage is not None %}
+                    {% with course_status="current" %}
+                        {% partial course-card %}
+                    {% endwith %}
+                {% else %}
+                    {% partial course-card %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% else %}
+        {% if not registered_courses %}
+            <p class="text-muted/50">
+                No courses available yet.
+            </p>
+        {% endif %}
+    {% endif %}
+{% endpartialdef %}
+
 {% partialdef current-courses %}
     <div class="surface space-y-4">
         <h2>
@@ -153,34 +175,12 @@
     </div>
 {% endpartialdef %}
 
-{% partialdef all-courses %}
-    <div class="surface space-y-4">
-        <h2>
-            {% if registered_courses %}
-                All Available Courses
-            {% else %}
-                Available Courses
-            {% endif %}
-        </h2>
-
-        {% if all_courses %}
-            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {% for course in all_courses %}
-                    {% partial course-card %}
-                {% endfor %}
-            </div>
-        {% else %}
-            {% if not registered_courses %}
-                <p class="text-muted/50">
-                    No courses available yet.
-                </p>
-            {% endif %}
-        {% endif %}
-    </div>
-{% endpartialdef %}
-
 <div class="space-y-4">
     {% partial current-courses %}
-    {% partial all-courses %}
+    {% partial recommended-courses %}
     {% partial learning-history %}
+
+    <c-button href="{% url 'student_interface:courses' %}">
+        All Courses
+    </c-button>
 </div>

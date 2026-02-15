@@ -6,8 +6,10 @@ from freedom_ls.content_engine.models import (
     CoursePart,
     FormStrategy,
 )
+from django.db.models import QuerySet
+
 from freedom_ls.student_progress.models import FormProgress, TopicProgress
-from freedom_ls.student_management.models import Student
+from freedom_ls.student_management.models import Student, RecommendedCourse
 
 # Status constants
 BLOCKED = "BLOCKED"
@@ -290,3 +292,41 @@ def form_start_page_buttons(
         buttons.append({"text": "Start Form", "action": "start"})
 
     return buttons
+
+
+def get_all_courses() -> QuerySet[Course]:
+    """Get all courses."""
+    return Course.objects.all()
+
+
+def _get_student(user) -> Student | None:
+    """Get the Student instance for a user, or None if anonymous or no student."""
+    if not user.is_authenticated:
+        return None
+    try:
+        return Student.objects.get(user=user)
+    except Student.DoesNotExist:
+        return None
+
+
+def get_completed_courses(user) -> list[Course]:
+    """Get completed courses for a user. Returns empty list for anonymous users."""
+    student = _get_student(user)
+    if student is None:
+        return []
+    return student.completed_courses()
+
+
+def get_current_courses(user) -> list[Course]:
+    """Get current (in-progress) courses for a user. Returns empty list for anonymous users."""
+    student = _get_student(user)
+    if student is None:
+        return []
+    return student.current_courses()
+
+
+def get_recommended_courses(user) -> QuerySet[RecommendedCourse]:
+    """Get recommended courses for a user. Returns empty queryset for anonymous users."""
+    if not user.is_authenticated:
+        return RecommendedCourse.objects.none()
+    return RecommendedCourse.objects.filter(user=user).select_related("collection")
