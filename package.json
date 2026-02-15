@@ -1,4 +1,5 @@
 {
+  "name": "freedom_ls",
   "dependencies": {
     "@tailwindcss/cli": "^4.1.16",
     "jq": "^1.7.2",
