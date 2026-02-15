@@ -212,10 +212,10 @@ class ContentCollectionItem(SiteAwareModel):
         DjangoContentType,
         on_delete=models.CASCADE,
         related_name="items",
-        null=True,
-        blank=True,
+        # null=True,
+        # blank=True,
     )
-    collection_id = models.UUIDField(null=True, blank=True)
+    collection_id = models.UUIDField()
     collection = GenericForeignKey("collection_type", "collection_id")
 
     # collection_old = models.ForeignKey(
