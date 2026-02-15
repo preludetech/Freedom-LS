@@ -2,18 +2,12 @@
 
 {% block head_title %}
     Student Progress - {{ course.title }}
-{% endblock %}
+{% endblock head_title %}
+
+{% block title %}
+    {{ course.title }}
+{% endblock title %}
 
 {% block content %}
-    <div>
-        <h1 class="mb-6">
-            Student Progress: {{ course.title }}
-        </h1>
-
-        <div class="bg-surface shadow-md rounded-lg p-6">
-            <p class="text-muted">
-                Student progress view coming soon...
-            </p>
-        </div>
-    </div>
+    <c-data-table :columns=columns :rows=rows empty_message="No students are registered for this course." />
 {% endblock content %}

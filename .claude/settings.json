@@ -1,27 +1,34 @@
 {
-    "permissions": {
-        "allow": [
-            "Read",
-            "Glob",
-            "Grep",
-            "Bash(git status*)",
-            "Bash(git diff*)",
-            "Bash(git log*)"
-        ],
-        "deny": ["Read(.env)", "Read(.env.*)", "Write(config/settings_prod.py)", "Bash(rm -rf *)"]
-    },
-    "hooks": {
-        "PostToolUse": [
-            {
-                "matcher": "Edit|Write",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "uv run ruff check . && uv run ruff format .",
-                        "statusMessage": "Running ruff..."
-                    }
-                ]
-            }
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(uv run pytest:*)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Write(config/settings_prod.py)",
+      "Bash(rm -rf *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ruff check . && uv run ruff format .",
+            "statusMessage": "Running ruff..."
+          }
         ]
-    }
+      }
+    ]
+  },
+  "enabledPlugins": {}
 }
