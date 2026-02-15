@@ -321,26 +321,36 @@ def course_list(request):
     courses = (
         Course.objects.all()
         .annotate(
-            cohort_count=Count("cohort_registrations", distinct=True),
-            direct_student_count=Count("student_registrations", distinct=True),
+            cohort_count=Count(
+                "cohort_registrations",
+                filter=Q(cohort_registrations__is_active=True),
+                distinct=True,
+            ),
+            direct_student_count=Count(
+                "student_registrations",
+                filter=Q(student_registrations__is_active=True),
+                distinct=True,
+            ),
         )
         .order_by("title")
     )
 
-    # Calculate total unique students (direct + through cohorts) for each course
+    # Calculate total unique active students (direct + through cohorts)
     for course in courses:
-        # Get students through cohort registrations
+        # Get students through active cohort registrations
         cohort_student_ids = set()
-        for cohort_reg in course.cohort_registrations.all():
+        for cohort_reg in course.cohort_registrations.filter(is_active=True):
             cohort_student_ids.update(
                 cohort_reg.cohort.cohortmembership_set.values_list(
                     "student_id", flat=True
                 )
             )
 
-        # Get direct student registrations
+        # Get direct active student registrations
         direct_student_ids = set(
-            course.student_registrations.values_list("student_id", flat=True)
+            course.student_registrations.filter(is_active=True).values_list(
+                "student_id", flat=True
+            )
         )
 
         # Total unique students
@@ -349,8 +359,10 @@ def course_list(request):
     columns = [
         {
             "header": "Title",
-            "template": "cotton/data-table-cells/text.html",
-            "attr": "title",
+            "template": "cotton/data-table-cells/link.html",
+            "text_attr": "title",
+            "url_name": "educator_interface:course_student_progress",
+            "url_param": "slug",
         },
         {
             "header": "Students",
