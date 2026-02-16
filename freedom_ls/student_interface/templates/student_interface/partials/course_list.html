@@ -180,7 +180,9 @@
     {% partial recommended-courses %}
     {% partial learning-history %}
 
-    <c-button href="{% url 'student_interface:courses' %}">
-        All Courses
-    </c-button>
+    <c-button-group variant="centered">
+        <c-button href="{% url 'student_interface:courses' %}">
+            All Courses
+        </c-button>
+    </c-button-group>
 </div>
