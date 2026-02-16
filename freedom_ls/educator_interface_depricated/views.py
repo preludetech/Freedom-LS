@@ -1,0 +1,395 @@
+from django.shortcuts import render, get_object_or_404
+from django.db.models import Count, Q
+from django.http import HttpRequest
+from django.core.paginator import Paginator
+from django.urls import reverse
+from guardian.shortcuts import get_objects_for_user
+from freedom_ls.content_engine.models import Course, CoursePart, Topic, Form
+from freedom_ls.student_progress.models import TopicProgress, FormProgress
+from freedom_ls.student_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    CohortMembership,
+    Student,
+    StudentCourseRegistration,
+)
+
+
+def home(request: HttpRequest):
+    """Educator interface home page."""
+    # Get cohorts that the user has view permission for
+
+    return render(request, "educator_interface/home.html")
+
+
+def cohorts_list(request):
+    cohorts = (
+        get_objects_for_user(
+            request.user,
+            "view_cohort",
+            klass=Cohort,
+        )
+        .annotate(
+            student_count=Count("cohortmembership", distinct=True),
+        )
+        .prefetch_related("course_registrations__collection")
+        .order_by("name")
+    )
+
+    columns = [
+        {
+            "header": "Cohort Name",
+            "template": "cotton/data-table-cells/link.html",
+            "text_attr": "name",
+            "url_name": "educator_interface:cohort_detail",
+            "url_param": "pk",
+        },
+        {
+            "header": "Active Students",
+            "template": "cotton/data-table-cells/text.html",
+            "attr": "student_count",
+        },
+        {
+            "header": "Registered Courses",
+            "template": "educator_interface/data-table-cells/cohort_courses.html",
+        },
+    ]
+
+    return render(
+        request,
+        "educator_interface/cohorts_list.html",
+        {"cohorts": cohorts, "columns": columns},
+    )
+
+
+def get_student_data_table_context(request):
+    # Get optional cohort filter
+    cohort_id = request.GET.get("cohort")
+
+    # Get students with direct view permission
+    students_with_direct_access = get_objects_for_user(
+        request.user,
+        "view_student",
+        klass=Student,
+    )
+
+    # Get cohorts user has access to
+    accessible_cohorts = get_objects_for_user(
+        request.user,
+        "view_cohort",
+        klass=Cohort,
+    )
+
+    # Get students from accessible cohorts
+    students_from_cohorts = Student.objects.filter(
+        cohortmembership__cohort__in=accessible_cohorts
+    )
+
+    # Combine both querysets and remove duplicates
+    students = (students_with_direct_access | students_from_cohorts).distinct()
+
+    # Filter by cohort if specified
+    if cohort_id:
+        students = students.filter(cohortmembership__cohort__pk=cohort_id)
+
+    # Handle search
+    search_query = request.GET.get("search", "").strip()
+    if search_query:
+        students = students.filter(
+            Q(user__first_name__icontains=search_query)
+            | Q(user__last_name__icontains=search_query)
+            | Q(user__email__icontains=search_query)
+        )
+
+    # Handle sorting
+    sort_by = request.GET.get("sort", "")
+    sort_order = request.GET.get("order", "asc")
+
+    # Define sort field mappings
+    sort_fields = {
+        "name": ["user__first_name", "user__last_name"],
+        "email": ["user__email"],
+    }
+
+    # Apply sorting if a valid sort field is provided
+    if sort_by in sort_fields:
+        order_fields = sort_fields[sort_by]
+        if sort_order == "desc":
+            order_fields = [f"-{field}" for field in order_fields]
+        students = students.order_by(*order_fields)
+    else:
+        # Default ordering
+        students = students.order_by("user__first_name", "user__last_name")
+        sort_by = ""
+        sort_order = "asc"
+
+    # Pagination
+    page_number = request.GET.get("page", 1)
+    paginator = Paginator(students, 15)
+    page_obj = paginator.get_page(page_number)
+
+    columns = [
+        {
+            "header": "Name",
+            "template": "educator_interface/data-table-cells/link_to_student.html",
+            "sortable": True,
+            "sort_field": "name",
+        },
+        {
+            "header": "Email",
+            "template": "cotton/data-table-cells/text.html",
+            "attr": "user.email",
+            "sortable": True,
+            "sort_field": "email",
+        },
+        {
+            "header": "Cohorts",
+            "template": "educator_interface/data-table-cells/student_cohorts.html",
+        },
+        {
+            "header": "Registered Courses",
+            "template": "educator_interface/data-table-cells/student_courses.html",
+        },
+    ]
+
+    return {
+        "rows": page_obj,
+        "columns": columns,
+        "page_obj": page_obj,
+        "sort_by": sort_by,
+        "sort_order": sort_order,
+        "base_url": reverse("educator_interface:partial_students_table"),
+        "show_search": True,
+        "search_query": search_query,
+    }
+
+
+def students_list(request: HttpRequest):
+    """List all students the user has permission to view."""
+    return render(request, "educator_interface/students_list.html")
+
+
+def partial_students_table(request: HttpRequest):
+    """Render the students data table (for HTMX requests)."""
+    context = get_student_data_table_context(request)
+    return render(
+        request,
+        "educator_interface/partials/students_table.html",
+        context,
+    )
+
+
+def course_student_progress(request, course_slug):
+    """Show student progress for a specific course."""
+    course = get_object_or_404(Course, slug=course_slug)
+
+    course_items = [
+        item for item in course.children_flat() if not isinstance(item, CoursePart)
+    ]
+
+    # Get students registered directly
+    direct_student_ids = set(
+        StudentCourseRegistration.objects.filter(collection=course).values_list(
+            "student_id", flat=True
+        )
+    )
+
+    # Get students registered via cohorts
+    cohort_ids = CohortCourseRegistration.objects.filter(
+        collection=course
+    ).values_list("cohort_id", flat=True)
+    cohort_student_ids = set(
+        CohortMembership.objects.filter(cohort_id__in=cohort_ids).values_list(
+            "student_id", flat=True
+        )
+    )
+
+    all_student_ids = direct_student_ids | cohort_student_ids
+    students = Student.objects.filter(id__in=all_student_ids).select_related("user")
+
+    user_ids = [s.user_id for s in students]
+
+    topic_ids = [item.pk for item in course_items if isinstance(item, Topic)]
+    form_ids = [item.pk for item in course_items if isinstance(item, Form)]
+
+    # Bulk-fetch topic progress keyed by (user_id, topic_id)
+    topic_progress_records = {}
+    for tp in TopicProgress.objects.filter(
+        user_id__in=user_ids, topic_id__in=topic_ids
+    ):
+        topic_progress_records[(tp.user_id, tp.topic_id)] = tp
+
+    # Bulk-fetch form progress: all records grouped by (user_id, form_id)
+    form_progress_by_user_form: dict[tuple, list[FormProgress]] = {}
+    for fp in FormProgress.objects.filter(
+        user_id__in=user_ids, form_id__in=form_ids
+    ).order_by("-start_time"):
+        key = (fp.user_id, fp.form_id)
+        form_progress_by_user_form.setdefault(key, []).append(fp)
+
+    # Build a lookup of which forms are quizzes
+    quiz_form_ids = set(
+        Form.objects.filter(id__in=form_ids, strategy="QUIZ").values_list(
+            "id", flat=True
+        )
+    )
+
+    progress_matrix = {}
+    for student in students:
+        student.progress = {}
+        for item in course_items:
+            if isinstance(item, Topic):
+                tp = topic_progress_records.get((student.user_id, item.pk))
+                if tp and tp.complete_time:
+                    status = "completed"
+                elif tp:
+                    status = "in_progress"
+                else:
+                    status = "not_started"
+                progress_data = {
+                    "status": status,
+                    "item_type": "TOPIC",
+                    "completed_date": tp.complete_time if tp else None,
+                }
+            elif isinstance(item, Form):
+                fps = form_progress_by_user_form.get(
+                    (student.user_id, item.pk), []
+                )
+                completed_fps = [fp for fp in fps if fp.completed_time]
+                is_quiz = item.pk in quiz_form_ids
+                if completed_fps:
+                    status = "completed"
+                    latest = completed_fps[0]  # ordered by -start_time
+                    latest_score = None
+                    if is_quiz and latest.scores:
+                        latest_score = round(
+                            (latest.scores["score"] / latest.scores["max_score"])
+                            * 100
+                        )
+                else:
+                    status = "in_progress" if fps else "not_started"
+                    latest_score = None
+                progress_data = {
+                    "status": status,
+                    "item_type": "FORM",
+                    "is_quiz": is_quiz,
+                    "attempt_count": len(fps),
+                    "latest_score": latest_score,
+                }
+            else:
+                progress_data = {"status": "not_started", "item_type": "UNKNOWN"}
+
+            progress_matrix[(student.pk, item.pk)] = (
+                progress_data["status"] == "completed"
+            )
+            student.progress[str(item.pk)] = progress_data
+
+    # Build data-table columns
+    columns = [
+        {
+            "header": "Student",
+            "template": "educator_interface/data-table-cells/link_to_student.html",
+        },
+    ]
+    for item in course_items:
+        columns.append(
+            {
+                "header": item.title,
+                "template": "educator_interface/data-table-cells/progress_check.html",
+                "item_id": str(item.pk),
+                "header_class": "text-center",
+                "cell_class": "text-center",
+            }
+        )
+
+    return render(
+        request,
+        "educator_interface/course_student_progress.html",
+        {
+            "course": course,
+            "course_items": course_items,
+            "students": students,
+            "progress_matrix": progress_matrix,
+            "columns": columns,
+            "rows": students,
+        },
+    )
+
+
+def course_list(request):
+    """List all courses in alphabetical order."""
+    courses = (
+        Course.objects.all()
+        .annotate(
+            cohort_count=Count(
+                "cohort_registrations",
+                filter=Q(cohort_registrations__is_active=True),
+                distinct=True,
+            ),
+            direct_student_count=Count(
+                "student_registrations",
+                filter=Q(student_registrations__is_active=True),
+                distinct=True,
+            ),
+        )
+        .order_by("title")
+    )
+
+    # Calculate total unique active students (direct + through cohorts)
+    for course in courses:
+        # Get students through active cohort registrations
+        cohort_student_ids = set()
+        for cohort_reg in course.cohort_registrations.filter(is_active=True):
+            cohort_student_ids.update(
+                cohort_reg.cohort.cohortmembership_set.values_list(
+                    "student_id", flat=True
+                )
+            )
+
+        # Get direct active student registrations
+        direct_student_ids = set(
+            course.student_registrations.filter(is_active=True).values_list(
+                "student_id", flat=True
+            )
+        )
+
+        # Total unique students
+        course.total_student_count = len(cohort_student_ids | direct_student_ids)
+
+    columns = [
+        {
+            "header": "Title",
+            "template": "cotton/data-table-cells/link.html",
+            "text_attr": "title",
+            "url_name": "educator_interface:course_student_progress",
+            "url_param": "slug",
+        },
+        {
+            "header": "Students",
+            "template": "cotton/data-table-cells/text.html",
+            "attr": "total_student_count",
+        },
+        {
+            "header": "Cohorts",
+            "template": "cotton/data-table-cells/text.html",
+            "attr": "cohort_count",
+        },
+    ]
+
+    return render(
+        request,
+        "educator_interface/course_list.html",
+        {"courses": courses, "columns": columns},
+    )
+
+
+def cohort_detail(request: HttpRequest, cohort_id: str):
+    """Display details for a specific cohort."""
+    cohort = get_object_or_404(Cohort, pk=cohort_id)
+    return render(request, "educator_interface/cohort_detail.html", {"cohort": cohort})
+
+
+def student_detail(request: HttpRequest, student_id: str):
+    """Display details for a specific student."""
+    student = get_object_or_404(Student, pk=student_id)
+    return render(request, "educator_interface/student_detail.html", {"student": student})

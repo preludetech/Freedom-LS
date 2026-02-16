@@ -1,0 +1,36 @@
+{% extends "_base.html" %}
+
+{% block body %}
+
+    <div class="flex gap-6 pt-8">
+        <!-- Left Navigation Panel -->
+        <aside class="w-64 ">
+            <nav class="sticky top-4">
+                <div class="bg-surface shadow-md rounded-lg p-4">
+                    <h2 class="text-lg font-semibold mb-4">
+                        Navigation
+                    </h2>
+                    <ul class="space-y-2">
+                        {% for item in menu_items %}
+                            <li>
+                                <a href="{{ item.url }}" class="">
+                                    {{ item.label }}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 min-w-0 space-y-4">
+            {% if heading %}
+                <h1>
+                    {{ heading }}
+                </h1>
+            {% endif %}
+            {{ content|safe }}
+        </div>
+    </div>
+{% endblock body %}

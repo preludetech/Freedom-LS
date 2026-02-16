@@ -1,1 +1,1 @@
-{% load data_table_tags %}<a href="{% url column.url_name object|getattr_str:column.url_param %}">{{ object|getattr_str:column.text_attr }}</a>
+{% load data_table_tags %}<a href="{% if column.url_path_template %}{% resolve_url_path_template object column.url_name column.url_path_template %}{% else %}{% url column.url_name object|getattr_str:column.url_param %}{% endif %}">{{ object|getattr_str:column.text_attr }}</a>
