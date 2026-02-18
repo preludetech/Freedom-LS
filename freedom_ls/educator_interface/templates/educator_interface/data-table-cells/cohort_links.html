@@ -1,0 +1,8 @@
+{% load data_table_tags %}
+{% with items=object|getattr_str:column.relation_set %}
+{% for item in items %}
+    <a href="{% resolve_url_path_template item|getattr_str:column.link_object_attr 'educator_interface:interface' 'cohorts/{pk}' %}">{{ item|getattr_str:column.link_text_attr }}</a>{% if not forloop.last %}, {% endif %}
+{% empty %}
+    -
+{% endfor %}
+{% endwith %}
