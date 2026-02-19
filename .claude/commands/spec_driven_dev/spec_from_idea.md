@@ -17,7 +17,6 @@ Always adhere to any rules or requirements set out in any CLAUDE.md files when r
 
 Read the idea carefully.
 
-
 Create sub agents to do the following:
 
 - Analyze the existing codebase
