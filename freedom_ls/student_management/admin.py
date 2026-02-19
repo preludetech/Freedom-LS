@@ -113,6 +113,7 @@ class StudentDeadlineInline(TabularInline):
 @admin.register(StudentCourseRegistration)
 class StudentCourseRegistrationAdmin(SiteAwareModelAdmin):
     list_display = ["get_student_name", "collection", "is_active", "registered_at"]
+    list_select_related = ["student__user", "collection"]
     list_filter = ["is_active", "registered_at"]
     search_fields = [
         "student__user__email",
@@ -182,6 +183,10 @@ class CohortDeadlineAdmin(SiteAwareModelAdmin):
         "deadline",
         "is_hard_deadline",
     ]
+    list_select_related = [
+        "cohort_course_registration__cohort",
+        "cohort_course_registration__collection",
+    ]
     list_filter = [
         "cohort_course_registration__cohort",
         "cohort_course_registration__collection",
@@ -220,6 +225,10 @@ class StudentDeadlineAdmin(SiteAwareModelAdmin):
         "deadline",
         "is_hard_deadline",
     ]
+    list_select_related = [
+        "student_course_registration__student__user",
+        "student_course_registration__collection",
+    ]
     list_filter = [
         "student_course_registration__collection",
         "is_hard_deadline",
@@ -256,6 +265,11 @@ class StudentCohortDeadlineOverrideAdmin(SiteAwareModelAdmin):
         "get_content_item",
         "deadline",
         "is_hard_deadline",
+    ]
+    list_select_related = [
+        "student__user",
+        "cohort_course_registration__cohort",
+        "cohort_course_registration__collection",
     ]
     list_filter = [
         "cohort_course_registration__cohort",

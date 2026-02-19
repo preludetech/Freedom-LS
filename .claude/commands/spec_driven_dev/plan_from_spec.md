@@ -39,8 +39,23 @@ This can include multiple tests and workflows.
 
 If this plan is created then reference it in the plan file as a final step. 
 
+# Review code after every task
+
+After every task in the plan:
+- use the request_code_review skill review changes made for that task
+- run all the tests in a subagent and make sure they pass
+- make a commit
+
+# Review all the code at the end
+
+When all the tasks are complete, 
+- use the request_code_review skill to review all the changes made for the entire plan.
+- run all the tests in a subagent and make sure they pass
+- make a commit
+
 # Notes
 
 - Note we will be following TDD. Do not write out all the tests at this point. 
 - Include pseudocode for desired functionality where appropriate
 - if specific functions should be used or edited, or specific files need to be edited or referenced, mention them in the task description
+

@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
 from freedom_ls.content_engine.models import (
@@ -16,6 +17,8 @@ from freedom_ls.student_management.deadline_utils import (
     is_item_locked,
     EffectiveDeadline,
 )
+
+User = get_user_model()
 
 # Status constants
 BLOCKED = "BLOCKED"
@@ -150,7 +153,8 @@ def get_course_index(user, course):
 
 
 def _get_deadlines_for_item(
-    content_item, deadlines_map: dict,
+    content_item: Topic | Form | CoursePart,
+    deadlines_map: dict[tuple[int | None, object | None], list[EffectiveDeadline]],
 ) -> list[dict]:
     """Get deadline display dicts for a content item from the pre-fetched deadlines map."""
     if not deadlines_map:
@@ -198,9 +202,15 @@ def _apply_deadline_locking(
 
 
 def create_child_dict_with_flattened_index(
-    content_item, user, course, start_index, next_status, is_registered,
-    deadlines_map: dict | None = None, student: Student | None = None,
-):
+    content_item: Topic | Form | CoursePart,
+    user: User,
+    course: Course,
+    start_index: int,
+    next_status: str,
+    is_registered: bool,
+    deadlines_map: dict[tuple[int | None, object | None], list[EffectiveDeadline]] | None = None,
+    student: Student | None = None,
+) -> tuple[dict, str, int]:
     """
     Create a child dict with proper flattened indices for nested items.
 
