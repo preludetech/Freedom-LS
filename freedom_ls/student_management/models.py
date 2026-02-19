@@ -261,6 +261,53 @@ class CohortDeadline(SiteAwareModel):
         return f"{reg.cohort} - {reg.collection} - {item_label}"
 
 
+class StudentDeadline(SiteAwareModel):
+    """Deadline for a student registered individually for a course."""
+
+    student_course_registration = models.ForeignKey(
+        StudentCourseRegistration,
+        on_delete=models.CASCADE,
+        related_name="deadlines",
+    )
+    content_type = models.ForeignKey(
+        DjangoContentType,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    object_id = models.UUIDField(null=True, blank=True)
+    content_item = GenericForeignKey("content_type", "object_id")
+    deadline = models.DateTimeField()
+    is_hard_deadline = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student_course_registration", "content_type", "object_id"],
+                name="unique_student_deadline_per_item",
+                condition=models.Q(content_type__isnull=False, object_id__isnull=False),
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.content_type is None and self.object_id is None:
+            existing = StudentDeadline.objects.filter(
+                student_course_registration=self.student_course_registration,
+                content_type__isnull=True,
+                object_id__isnull=True,
+            ).exclude(pk=self.pk)
+            if existing.exists():
+                raise ValidationError(
+                    "A course-level deadline already exists for this student registration."
+                )
+
+    def __str__(self) -> str:
+        reg = self.student_course_registration
+        item_label = str(self.content_item) if self.content_item else "Whole course"
+        return f"{reg.student} - {reg.collection} - {item_label}"
+
+
 class RecommendedCourse(SiteAwareModel):
     """
     Course recommendations for users.
