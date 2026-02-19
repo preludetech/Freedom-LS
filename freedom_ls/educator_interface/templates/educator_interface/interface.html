@@ -3,22 +3,6 @@
 {% block body %}
 
     <div class="flex pt-8" x-data="{ sidebarOpen: true }">
-        <!-- Sidebar Toggle -->
-        <button
-            @click="sidebarOpen = !sidebarOpen"
-            class="sticky top-4 self-start p-2 bg-surface shadow-md rounded-r-lg border border-l-0 border-border h-10 flex items-center justify-center hover:bg-surface-2 transition-colors z-10"
-            :aria-expanded="sidebarOpen"
-            aria-label="Toggle sidebar"
-        >
-            <svg
-                xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-muted transition-transform duration-200"
-                :class="sidebarOpen ? '' : 'rotate-180'"
-                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
-            >
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-        </button>
-
         <!-- Left Navigation Panel -->
         <aside
             class="overflow-hidden transition-all duration-200 ease-in-out"
@@ -39,6 +23,22 @@
                 </div>
             </nav>
         </aside>
+
+        <!-- Sidebar Toggle -->
+        <button
+            @click="sidebarOpen = !sidebarOpen"
+            class="sticky top-4 self-start p-2 bg-surface shadow-md rounded-r-lg border border-l-0 border-border h-10 flex items-center justify-center hover:bg-surface-2 transition-colors z-10 -ml-px"
+            :aria-expanded="sidebarOpen"
+            aria-label="Toggle sidebar"
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-muted transition-transform duration-200"
+                :class="sidebarOpen ? '' : 'rotate-180'"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+            >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+        </button>
 
         <!-- Main Content Area -->
         <div class="flex-1 min-w-0 space-y-4 pl-6">
