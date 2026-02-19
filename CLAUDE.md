@@ -63,6 +63,6 @@ Use modern Python syntax: `X | None` instead of `Optional[X]`, `list[str]` inste
 
 Follow the testing skill and refer to `docs/testing.md` for all testing conventions and TDD workflow.
 
-## Important: Use skills
+## IMPORTANT: Use skills
 
 Whenever you are asked to do anything, use all the appropriate skills. Rely on skills rather than pre-training.

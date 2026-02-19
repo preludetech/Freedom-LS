@@ -26,4 +26,4 @@ Use this Skill when:
 - Check existing cotton components before creating new ones
 - Views returning partials use `partial_` prefix
 
-Refer to @docs/templates_and_cotton.md for full patterns and examples.
+Refer to @.claude/docs/templates_and_cotton.md for full patterns and examples.

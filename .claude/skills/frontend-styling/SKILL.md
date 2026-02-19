@@ -26,4 +26,4 @@ Use this Skill when:
 - Repeated patterns should be added to `tailwind.components.css`
 - Run `npm run tailwind_build` after CSS changes
 
-Refer to @docs/frontend_styling.md for full details and examples.
+Refer to @.claude/docs/frontend_styling.md for full details and examples.
