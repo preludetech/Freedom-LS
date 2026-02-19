@@ -13,8 +13,10 @@ from django.utils import timezone
 
 User = get_user_model()
 
+class CourseItemProgress(SiteAwareModel):
+    pass
 
-class FormProgress(SiteAwareModel):
+class FormProgress(CourseItemProgress):
     """Tracks a user's progress through a form."""
 
     form = models.ForeignKey(
@@ -410,7 +412,7 @@ class QuestionAnswer(SiteAwareModel):
         return f"{self.form_progress.user} - {self.question}"
 
 
-class TopicProgress(SiteAwareModel):
+class TopicProgress(CourseItemProgress):
     """Tracks a user's progress through a topic."""
 
     user = models.ForeignKey(
