@@ -20,8 +20,6 @@ from django.db.models import Count, Q
 
 # TODO
 # Data Tables
-# sort
-# pagination
 # top level filters (searchable dropdown)
 #   use HTMX to only reload that one panel
 # Checkboxes and bulk actions (eg. Delete, add to cohort, remove from cohort)
@@ -35,7 +33,7 @@ class Panel:
     def __init__(self, instance: object):
         self.instance = instance
 
-    def render(self, request) -> str:
+    def render(self, request, base_url: str = "") -> str:
         raise NotImplementedError
 
 
@@ -43,6 +41,7 @@ class DataTable:
     """Abstract class used for rendering data tables"""
 
     page_size = 5
+    search_fields: list[str] = []
 
     def get_queryset(request):
         implement
@@ -51,10 +50,34 @@ class DataTable:
         implement
 
     @classmethod
-    def get_rows(klass, request, filters: dict | None = None):
+    def _prepare_columns(klass) -> list[dict]:
+        """Enrich columns: derive sort_field from text_attr/attr for sortable columns."""
+        columns = klass.get_columns()
+        for col in columns:
+            if col.get("sortable") and "sort_field" not in col:
+                attr = col.get("text_attr") or col.get("attr", "")
+                col["sort_field"] = attr.replace(".", "__")
+        return columns
+
+    @classmethod
+    def get_rows(klass, request, columns: list[dict], filters: dict | None = None):
         queryset = klass.get_queryset(request)
         if filters:
             queryset = queryset.filter(**filters)
+
+        search_query = request.GET.get("search", "").strip()
+        if search_query and klass.search_fields:
+            search_filter = Q()
+            for field in klass.search_fields:
+                search_filter |= Q(**{f"{field}__icontains": search_query})
+            queryset = queryset.filter(search_filter)
+
+        sort_by = request.GET.get("sort", "")
+        sort_order = request.GET.get("order", "asc")
+        sortable_fields = {col["sort_field"] for col in columns if col.get("sortable")}
+        if sort_by in sortable_fields:
+            order_expr = f"-{sort_by}" if sort_order == "desc" else sort_by
+            queryset = queryset.order_by(order_expr)
 
         page_number = request.GET.get("page", 1)
         paginator = Paginator(queryset, klass.page_size)
@@ -63,10 +86,21 @@ class DataTable:
         return page_obj
 
     @classmethod
-    def render(klass, request, filters: dict | None = None) -> str:
+    def render(klass, request, filters: dict | None = None, base_url: str = "") -> str:
+        columns = klass._prepare_columns()
+        sort_by = request.GET.get("sort", "")
+        sort_order = request.GET.get("order", "asc")
+        search_query = request.GET.get("search", "").strip()
+        page_obj = klass.get_rows(request, columns, filters=filters)
         context = {
-            "columns": klass.get_columns(),
-            "rows": klass.get_rows(request, filters=filters),
+            "columns": columns,
+            "rows": page_obj,
+            "page_obj": page_obj,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+            "base_url": base_url,
+            "show_search": bool(klass.search_fields),
+            "search_query": search_query,
         }
         return render_to_string(
             "educator_interface/partials/list_view.html", context, request=request
@@ -80,12 +114,14 @@ class DataTablePanel(Panel):
     def get_filters(self) -> dict:
         return {}
 
-    def render(self, request) -> str:
+    def render(self, request, base_url: str = "") -> str:
         parts = []
         if self.title:
             parts.append(f"<h2>{self.title}</h2>")
         parts.append(
-            self.data_table.render(request, filters=self.get_filters())
+            self.data_table.render(
+                request, filters=self.get_filters(), base_url=base_url
+            )
         )
         return "\n".join(parts)
 
@@ -108,7 +144,7 @@ class InstanceDetailsPanel(Panel):
         value = getattr(obj, field_name)
         return label, value
 
-    def render(self, request) -> str:
+    def render(self, request, base_url: str = "") -> str:
         field_data = []
         for field_path in self.fields:
             label, value = self._resolve_field(field_path)
@@ -157,6 +193,8 @@ class CohortDataTable(DataTable):
 
 
 class StudentDataTable(DataTable):
+    search_fields = ["user__first_name", "user__last_name", "user__email"]
+
     def get_queryset(request):
         # Get students with direct view permission
         students_with_direct_access = get_objects_for_user(
@@ -237,8 +275,8 @@ class ListViewConfig:
         return cls.instance_view(instance)
 
     @classmethod
-    def render(cls, request) -> str:
-        return cls.list_view.render(request)
+    def render(cls, request, base_url: str = "") -> str:
+        return cls.list_view.render(request, base_url=base_url)
 
 
 class PanelGetter:
@@ -265,11 +303,12 @@ class InstanceView:
     def panel_getter(self) -> PanelGetter:
         return PanelGetter(self.panels, self.instance)
 
-    def render(self, request) -> str:
+    def render(self, request, base_url: str = "") -> str:
         getter = self.panel_getter()
-        rendered_panels = [
-            getter[name].render(request) for name in self.panels
-        ]
+        rendered_panels = []
+        for name in self.panels:
+            panel_url = f"{base_url}__panels/{name}"
+            rendered_panels.append(getter[name].render(request, base_url=panel_url))
         title = f"<h1>{self.instance}</h1>"
         return title + "\n" + "\n".join(rendered_panels)
 
@@ -573,6 +612,8 @@ def _resolve_path(parts: list[str]) -> object:
 
 def interface(request, path_string: str = ""):
     parts = [p for p in path_string.split("/") if p]
+    is_htmx = request.headers.get("HX-Request") == "true"
+    base_url = request.path
 
     if not parts:
         rendered_content = ""
@@ -581,9 +622,13 @@ def interface(request, path_string: str = ""):
         current = _resolve_path(parts)
 
         if isinstance(current, Panel):
-            return HttpResponse(current.render(request))
+            return HttpResponse(current.render(request, base_url=base_url))
 
-        rendered_content = current.render(request)
+        rendered_content = current.render(request, base_url=base_url)
+
+        if is_htmx:
+            return HttpResponse(rendered_content)
+
         heading = current.menu_label if hasattr(current, "menu_label") else ""
 
     menu_items = [
