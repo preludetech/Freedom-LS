@@ -30,11 +30,21 @@ from django.db.models import Count, Q
 
 
 class Panel:
+    title: str = ""
+
     def __init__(self, instance: object):
         self.instance = instance
 
-    def render(self, request, base_url: str = "", panel_name: str = "") -> str:
+    def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
         raise NotImplementedError
+
+    def render(self, request, base_url: str = "", panel_name: str = "") -> str:
+        content = self.get_content(request, base_url=base_url, panel_name=panel_name)
+        return render_to_string(
+            "educator_interface/partials/panel_container.html",
+            {"title": self.title, "content": content},
+            request=request,
+        )
 
 
 class DataTable:
@@ -116,29 +126,28 @@ class DataTable:
 
 class DataTablePanel(Panel):
     data_table: type[DataTable]
-    title: str = ""
 
     def get_filters(self) -> dict:
         return {}
 
+    def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
+        table_id = f"table-{panel_name}" if panel_name else "data-table-container"
+        return self.data_table.render(
+            request,
+            filters=self.get_filters(),
+            base_url=base_url,
+            table_id=table_id,
+        )
+
     def render(self, request, base_url: str = "", panel_name: str = "") -> str:
         is_htmx = request.headers.get("HX-Request") == "true"
-        table_id = f"table-{panel_name}" if panel_name else "data-table-container"
-        parts = []
-        if self.title and not is_htmx:
-            parts.append(f"<h2>{self.title}</h2>")
-        parts.append(
-            self.data_table.render(
-                request,
-                filters=self.get_filters(),
-                base_url=base_url,
-                table_id=table_id,
-            )
-        )
-        return "\n".join(parts)
+        if is_htmx:
+            return self.get_content(request, base_url=base_url, panel_name=panel_name)
+        return super().render(request, base_url=base_url, panel_name=panel_name)
 
 
 class InstanceDetailsPanel(Panel):
+    title = "Details"
     fields: list[str] = []
 
     def _resolve_field(self, field_path: str) -> tuple[str, object]:
@@ -156,7 +165,7 @@ class InstanceDetailsPanel(Panel):
         value = getattr(obj, field_name)
         return label, value
 
-    def render(self, request, base_url: str = "", panel_name: str = "") -> str:
+    def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
         field_data = []
         for field_path in self.fields:
             label, value = self._resolve_field(field_path)
@@ -324,7 +333,8 @@ class InstanceView:
                 getter[name].render(request, base_url=panel_url, panel_name=name)
             )
         title = f"<h1>{self.instance}</h1>"
-        return title + "\n" + "\n".join(rendered_panels)
+        panels_html = '<div class="space-y-6">' + "\n".join(rendered_panels) + "</div>"
+        return title + "\n" + panels_html
 
 
 class StudentDetailsPanel(InstanceDetailsPanel):
