@@ -33,7 +33,7 @@ class Panel:
     def __init__(self, instance: object):
         self.instance = instance
 
-    def render(self, request, base_url: str = "") -> str:
+    def render(self, request, base_url: str = "", panel_name: str = "") -> str:
         raise NotImplementedError
 
 
@@ -86,7 +86,13 @@ class DataTable:
         return page_obj
 
     @classmethod
-    def render(klass, request, filters: dict | None = None, base_url: str = "") -> str:
+    def render(
+        klass,
+        request,
+        filters: dict | None = None,
+        base_url: str = "",
+        table_id: str = "data-table-container",
+    ) -> str:
         columns = klass._prepare_columns()
         sort_by = request.GET.get("sort", "")
         sort_order = request.GET.get("order", "asc")
@@ -101,6 +107,7 @@ class DataTable:
             "base_url": base_url,
             "show_search": bool(klass.search_fields),
             "search_query": search_query,
+            "table_id": table_id,
         }
         return render_to_string(
             "educator_interface/partials/list_view.html", context, request=request
@@ -114,13 +121,18 @@ class DataTablePanel(Panel):
     def get_filters(self) -> dict:
         return {}
 
-    def render(self, request, base_url: str = "") -> str:
+    def render(self, request, base_url: str = "", panel_name: str = "") -> str:
+        is_htmx = request.headers.get("HX-Request") == "true"
+        table_id = f"table-{panel_name}" if panel_name else "data-table-container"
         parts = []
-        if self.title:
+        if self.title and not is_htmx:
             parts.append(f"<h2>{self.title}</h2>")
         parts.append(
             self.data_table.render(
-                request, filters=self.get_filters(), base_url=base_url
+                request,
+                filters=self.get_filters(),
+                base_url=base_url,
+                table_id=table_id,
             )
         )
         return "\n".join(parts)
@@ -144,7 +156,7 @@ class InstanceDetailsPanel(Panel):
         value = getattr(obj, field_name)
         return label, value
 
-    def render(self, request, base_url: str = "") -> str:
+    def render(self, request, base_url: str = "", panel_name: str = "") -> str:
         field_data = []
         for field_path in self.fields:
             label, value = self._resolve_field(field_path)
@@ -307,8 +319,10 @@ class InstanceView:
         getter = self.panel_getter()
         rendered_panels = []
         for name in self.panels:
-            panel_url = f"{base_url}__panels/{name}"
-            rendered_panels.append(getter[name].render(request, base_url=panel_url))
+            panel_url = f"{base_url.rstrip('/')}/__panels/{name}"
+            rendered_panels.append(
+                getter[name].render(request, base_url=panel_url, panel_name=name)
+            )
         title = f"<h1>{self.instance}</h1>"
         return title + "\n" + "\n".join(rendered_panels)
 
