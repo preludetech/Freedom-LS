@@ -13,17 +13,39 @@ Always adhere to any rules or requirements set out in any CLAUDE.md files when r
 - Create a spec document in the same directory as the idea file. Name it `1. spec.md`
 - Print a short summary of what you did
 
-# Step 1
+# Step 1: gather information
 
-Read the idea and make sure you understand what is needed. 
+Read the idea carefully.
+
+
+Create an agent team to do the following. If agent teams are not available, use sub agents:
+
+- Analyze the existing codebase
+- Research relevant best practices
+- Examine reference implementations
+
+# Step 2: User input
 
 Ask questions if you are unsure of anything, or if you need further information.
 
 If there are edge cases that can be handled in multiple ways, then ask what to do.
 
-# Step 2 
+If there are any contradictions or ambiguity, ask what to do. 
 
-Create a specification based on the idea. Include:
+If the idea includes implementation details and you think there is a better way to do things, then make suggestions.
+
+Think carefully about what questions to ask and then ask the user to answer one question at a time. 
+
+# Step 3: Create the specification document
+
+Create a specification document based on the idea. Include:
 
 - Why different features/functionality matter
+- If decisions were made, why were they made
 - Success criteria 
+
+# Step 4: If using an agent team
+
+If using a team:
+- shut the team members down upon completion
+- clean up the team
