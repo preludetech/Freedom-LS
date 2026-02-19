@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.core.paginator import Paginator
-from django.http import Http404
+from django.http import Http404, HttpResponse
 
 from freedom_ls.student_management.models import (
     Cohort,
@@ -32,7 +32,10 @@ from django.db.models import Count, Q
 
 
 class Panel:
-    def render(self, instance, request) -> str:
+    def __init__(self, instance: object):
+        self.instance = instance
+
+    def render(self, request) -> str:
         raise NotImplementedError
 
 
@@ -74,15 +77,15 @@ class DataTablePanel(Panel):
     data_table: type[DataTable]
     title: str = ""
 
-    def get_filters(self, instance) -> dict:
+    def get_filters(self) -> dict:
         return {}
 
-    def render(self, instance, request) -> str:
+    def render(self, request) -> str:
         parts = []
         if self.title:
             parts.append(f"<h2>{self.title}</h2>")
         parts.append(
-            self.data_table.render(request, filters=self.get_filters(instance))
+            self.data_table.render(request, filters=self.get_filters())
         )
         return "\n".join(parts)
 
@@ -90,13 +93,13 @@ class DataTablePanel(Panel):
 class InstanceDetailsPanel(Panel):
     fields: list[str] = []
 
-    def _resolve_field(self, instance: object, field_path: str) -> tuple[str, object]:
+    def _resolve_field(self, field_path: str) -> tuple[str, object]:
         """Resolve a dot-notation field path to (label, value).
 
         Supports paths like "user.email" by traversing related objects.
         """
         parts = field_path.split(".")
-        obj = instance
+        obj = self.instance
         for part in parts[:-1]:
             obj = getattr(obj, part)
         field_name = parts[-1]
@@ -105,10 +108,10 @@ class InstanceDetailsPanel(Panel):
         value = getattr(obj, field_name)
         return label, value
 
-    def render(self, instance, request) -> str:
+    def render(self, request) -> str:
         field_data = []
         for field_path in self.fields:
-            label, value = self._resolve_field(instance, field_path)
+            label, value = self._resolve_field(field_path)
             field_data.append({"label": label, "value": value})
         return render_to_string(
             "educator_interface/partials/instance_details_panel.html",
@@ -194,7 +197,7 @@ class StudentDataTable(DataTable):
                 "text_attr": "user.first_name",
                 "url_name": "educator_interface:interface",
                 "url_path_template": "students/{pk}",
-                # "sortable": True,
+                "sortable": True,
             },
             {
                 "header": "Last Name",
@@ -202,7 +205,7 @@ class StudentDataTable(DataTable):
                 "text_attr": "user.last_name",
                 "url_name": "educator_interface:interface",
                 "url_path_template": "students/{pk}",
-                # "sortable": True,
+                "sortable": True,
             },
             {
                 "header": "Email",
@@ -238,17 +241,34 @@ class ListViewConfig:
         return cls.list_view.render(request)
 
 
+class PanelGetter:
+    """Subscriptable object that instantiates panels bound to an instance."""
+
+    def __init__(self, panel_classes: dict[str, type[Panel]], instance: object):
+        self._panel_classes = panel_classes
+        self._instance = instance
+
+    def __getitem__(self, name: str) -> Panel:
+        if name not in self._panel_classes:
+            raise Http404(f"Panel '{name}' not found")
+        return self._panel_classes[name](self._instance)
+
+
 class InstanceView:
     """Used for displaying specific instances. For example one User, Student, Etc"""
 
-    panels = []
+    panels: dict[str, type[Panel]] = {}
 
-    def __init__(self, instance):
+    def __init__(self, instance: object):
         self.instance = instance
 
+    def panel_getter(self) -> PanelGetter:
+        return PanelGetter(self.panels, self.instance)
+
     def render(self, request) -> str:
+        getter = self.panel_getter()
         rendered_panels = [
-            panel().render(self.instance, request) for panel in self.panels
+            getter[name].render(request) for name in self.panels
         ]
         title = f"<h1>{self.instance}</h1>"
         return title + "\n" + "\n".join(rendered_panels)
@@ -269,12 +289,15 @@ class StudentCohortsPanel(DataTablePanel):
     title = "Cohorts"
     data_table = CohortDataTable
 
-    def get_filters(self, instance) -> dict:
-        return {"cohortmembership__student": instance}
+    def get_filters(self) -> dict:
+        return {"cohortmembership__student": self.instance}
 
 
 class StudentInstanceView(InstanceView):
-    panels = [StudentDetailsPanel, StudentCohortsPanel]
+    panels = {
+        "details": StudentDetailsPanel,
+        "cohorts": StudentCohortsPanel,
+    }
 
 
 class CohortDetailsPanel(InstanceDetailsPanel):
@@ -313,24 +336,24 @@ class CohortStudentsPanel(DataTablePanel):
     title = "Students"
     data_table = StudentDataTable
 
-    def get_filters(self, instance) -> dict:
-        return {"cohortmembership__cohort": instance}
+    def get_filters(self) -> dict:
+        return {"cohortmembership__cohort": self.instance}
 
 
 class CourseRegistrationsPanel(DataTablePanel):
     title = "Course Registrations"
     data_table = CohortCourseRegistrationDataTable
 
-    def get_filters(self, instance) -> dict:
-        return {"cohort": instance}
+    def get_filters(self) -> dict:
+        return {"cohort": self.instance}
 
 
 class CohortInstanceView(InstanceView):
-    panels = [
-        CohortDetailsPanel,
-        CourseRegistrationsPanel,
-        CohortStudentsPanel,
-    ]
+    panels = {
+        "details": CohortDetailsPanel,
+        "courses": CourseRegistrationsPanel,
+        "students": CohortStudentsPanel,
+    }
 
 
 class CohortConfig(ListViewConfig):
@@ -457,8 +480,8 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
     title = "Cohort Registrations"
     data_table = CourseCohortRegistrationDataTable
 
-    def get_filters(self, instance) -> dict:
-        return {"collection": instance}
+    def get_filters(self) -> dict:
+        return {"collection": self.instance}
 
 
 class CourseStudentRegistrationDataTable(DataTable):
@@ -505,16 +528,16 @@ class CourseStudentRegistrationsPanel(DataTablePanel):
     title = "Student Registrations"
     data_table = CourseStudentRegistrationDataTable
 
-    def get_filters(self, instance) -> dict:
-        return {"collection": instance}
+    def get_filters(self) -> dict:
+        return {"collection": self.instance}
 
 
 class CourseInstanceView(InstanceView):
-    panels = [
-        CourseDetailsPanel,
-        CourseCohortRegistrationsPanel,
-        CourseStudentRegistrationsPanel,
-    ]
+    panels = {
+        "details": CourseDetailsPanel,
+        "cohorts": CourseCohortRegistrationsPanel,
+        "students": CourseStudentRegistrationsPanel,
+    }
 
 
 class CourseConfig(ListViewConfig):
@@ -530,8 +553,38 @@ interface_config = {
 }
 
 
+def _resolve_path(parts: list[str]) -> object:
+    """Walk the interface config tree according to URL path parts.
+
+    Special segments like __panels resolve to the corresponding attribute
+    on the current object, allowing further traversal.
+    """
+    current = interface_config[parts[0]]
+    for part in parts[1:]:
+        if part == "__panels":
+            current = (
+                current.panel_getter()
+            )  # panel_getter.__getitem__ instantiates the panel and returns it
+        else:
+            current = current[part]
+
+    return current
+
+
 def interface(request, path_string: str = ""):
-    parts = path_string.split("/")
+    parts = [p for p in path_string.split("/") if p]
+
+    if not parts:
+        rendered_content = ""
+        heading = ""
+    else:
+        current = _resolve_path(parts)
+
+        if isinstance(current, Panel):
+            return HttpResponse(current.render(request))
+
+        rendered_content = current.render(request)
+        heading = current.menu_label if hasattr(current, "menu_label") else ""
 
     menu_items = [
         {
@@ -542,18 +595,6 @@ def interface(request, path_string: str = ""):
         }
         for conf in interface_config.values()
     ]
-
-    parts = [p for p in parts if p]
-
-    if not parts:
-        rendered_content = ""
-        heading = ""
-    else:
-        current = interface_config[parts[0]]
-        for part in parts[1:]:
-            current = current[part]
-        rendered_content = current.render(request)
-        heading = current.menu_label if hasattr(current, "menu_label") else ""
 
     context = {
         "menu_items": menu_items,
