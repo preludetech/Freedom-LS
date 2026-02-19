@@ -182,6 +182,181 @@ def _resolve_student_deadline(
     return None
 
 
+def get_course_deadlines(
+    student: Student, course: Course
+) -> dict[tuple[int | None, object | None], list[EffectiveDeadline]]:
+    """Get all deadlines for all items in a course, optimised for the TOC view.
+
+    Returns a dict keyed by (content_type_id, object_id) tuples, where each
+    value is a list of EffectiveDeadline objects. A key of (None, None)
+    represents the course-level deadline.
+
+    Uses prefetch to minimise queries.
+    """
+    # Gather all registrations
+    cohort_ids = list(
+        CohortMembership.objects.filter(student=student).values_list("cohort_id", flat=True)
+    )
+
+    cohort_regs = list(
+        CohortCourseRegistration.objects.filter(
+            cohort_id__in=cohort_ids, collection=course, is_active=True
+        ).select_related("cohort")
+    )
+
+    student_regs = list(
+        StudentCourseRegistration.objects.filter(
+            student=student, collection=course, is_active=True
+        )
+    )
+
+    if not cohort_regs and not student_regs:
+        return {}
+
+    cohort_reg_ids = [r.id for r in cohort_regs]
+    student_reg_ids = [r.id for r in student_regs]
+
+    # Bulk fetch all deadline records
+    all_cohort_deadlines = list(
+        CohortDeadline.objects.filter(
+            cohort_course_registration_id__in=cohort_reg_ids
+        )
+    )
+    all_overrides = list(
+        StudentCohortDeadlineOverride.objects.filter(
+            cohort_course_registration_id__in=cohort_reg_ids, student=student
+        )
+    )
+    all_student_deadlines = list(
+        StudentDeadline.objects.filter(
+            student_course_registration_id__in=student_reg_ids
+        )
+    )
+
+    # Index by (reg_id, ct_id, obj_id)
+    def _index_deadlines(deadlines: list, reg_field: str) -> dict:
+        index: dict[tuple, list] = {}
+        for dl in deadlines:
+            key = (getattr(dl, reg_field), dl.content_type_id, dl.object_id)
+            index.setdefault(key, []).append(dl)
+        return index
+
+    cohort_dl_index = _index_deadlines(all_cohort_deadlines, "cohort_course_registration_id")
+    override_index = _index_deadlines(all_overrides, "cohort_course_registration_id")
+    student_dl_index = _index_deadlines(all_student_deadlines, "student_course_registration_id")
+
+    # Collect all unique (ct_id, obj_id) keys across all deadlines
+    all_keys: set[tuple[int | None, object | None]] = set()
+    for dl in all_cohort_deadlines + all_overrides + all_student_deadlines:
+        all_keys.add((dl.content_type_id, dl.object_id))
+
+    # For each unique key, resolve effective deadlines per registration
+    result: dict[tuple[int | None, object | None], list[EffectiveDeadline]] = {}
+
+    for ct_id, obj_id in all_keys:
+        effective_list: list[EffectiveDeadline] = []
+
+        for reg in cohort_regs:
+            effective = _resolve_cohort_deadline_from_index(
+                reg, student, ct_id, obj_id, cohort_dl_index, override_index
+            )
+            if effective:
+                effective_list.append(effective)
+
+        for reg in student_regs:
+            effective = _resolve_student_deadline_from_index(
+                reg, ct_id, obj_id, student_dl_index
+            )
+            if effective:
+                effective_list.append(effective)
+
+        if effective_list:
+            result[(ct_id, obj_id)] = effective_list
+
+    return result
+
+
+def _resolve_cohort_deadline_from_index(
+    reg: CohortCourseRegistration,
+    student: Student,
+    content_type_id: int | None,
+    object_id: object | None,
+    cohort_dl_index: dict,
+    override_index: dict,
+) -> EffectiveDeadline | None:
+    """Resolve a cohort deadline using pre-fetched indexes."""
+    reg_id = reg.id
+
+    if content_type_id is not None:
+        # Check override for this item
+        overrides = override_index.get((reg_id, content_type_id, object_id), [])
+        if overrides:
+            dl = overrides[0]
+            return EffectiveDeadline(
+                deadline=dl.deadline, is_hard_deadline=dl.is_hard_deadline,
+                source=f"Override for {student} in {reg.cohort}",
+            )
+
+        # Check cohort deadline for this item
+        cohort_dls = cohort_dl_index.get((reg_id, content_type_id, object_id), [])
+        if cohort_dls:
+            dl = cohort_dls[0]
+            return EffectiveDeadline(
+                deadline=dl.deadline, is_hard_deadline=dl.is_hard_deadline,
+                source=f"{reg.cohort}",
+            )
+
+    # Fall back to course-level override
+    course_overrides = override_index.get((reg_id, None, None), [])
+    if course_overrides:
+        dl = course_overrides[0]
+        return EffectiveDeadline(
+            deadline=dl.deadline, is_hard_deadline=dl.is_hard_deadline,
+            source=f"Override for {student} in {reg.cohort} (course-level)",
+        )
+
+    # Fall back to course-level cohort deadline
+    course_dls = cohort_dl_index.get((reg_id, None, None), [])
+    if course_dls:
+        dl = course_dls[0]
+        return EffectiveDeadline(
+            deadline=dl.deadline, is_hard_deadline=dl.is_hard_deadline,
+            source=f"{reg.cohort} (course-level)",
+        )
+
+    return None
+
+
+def _resolve_student_deadline_from_index(
+    reg: StudentCourseRegistration,
+    content_type_id: int | None,
+    object_id: object | None,
+    student_dl_index: dict,
+) -> EffectiveDeadline | None:
+    """Resolve a student deadline using pre-fetched indexes."""
+    reg_id = reg.id
+
+    if content_type_id is not None:
+        item_dls = student_dl_index.get((reg_id, content_type_id, object_id), [])
+        if item_dls:
+            dl = item_dls[0]
+            return EffectiveDeadline(
+                deadline=dl.deadline, is_hard_deadline=dl.is_hard_deadline,
+                source="Individual registration",
+            )
+
+    # Fall back to course-level
+    course_dls = student_dl_index.get((reg_id, None, None), [])
+    if course_dls:
+        dl = course_dls[0]
+        return EffectiveDeadline(
+            deadline=dl.deadline, is_hard_deadline=dl.is_hard_deadline,
+            source="Individual registration (course-level)",
+        )
+
+    return None
+
+
 def is_item_locked(
     student: Student,
     course: Course,
