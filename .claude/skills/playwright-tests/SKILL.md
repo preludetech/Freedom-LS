@@ -28,5 +28,5 @@ Use this Skill when:
 - Wait for elements with `wait_for_selector()` for dynamic/HTMX content
 - Test location: `tests/e2e/`
 
-Refer to @docs/playwright-testing.md for full patterns.
-Refer to @docs/testing.md for general testing guidelines.
+Refer to @.claude/docs/playwright-testing.md for full patterns.
+Refer to @.claude/docs/testing.md for general testing guidelines.

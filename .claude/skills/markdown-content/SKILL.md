@@ -26,4 +26,4 @@ Use this Skill when:
 - New components must be registered in `MARKDOWN_ALLOWED_TAGS` in `config/settings_base.py`
 - H1 in content becomes H2 (mdx_headdown)
 
-Refer to @docs/markdown_content.md for full details and examples.
+Refer to @.claude/docs/markdown_content.md for full details and examples.

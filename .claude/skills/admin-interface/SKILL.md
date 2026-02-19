@@ -26,4 +26,4 @@ Use this Skill when:
 - For object-level permissions, use `GuardedModelAdmin` — but manually `exclude = ["site"]` since it doesn't inherit from `SiteAwareModelAdmin`
 - Use `autocomplete_fields` for ForeignKey/M2M to avoid loading all options
 
-Refer to @docs/admin_interface.md for full patterns and examples.
+Refer to @.claude/docs/admin_interface.md for full patterns and examples.

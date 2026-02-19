@@ -26,4 +26,4 @@ Use this Skill when:
 - On save, `site_id` auto-populates from the current request — never set it manually
 - In tests, always use `mock_site_context` fixture
 
-Refer to @docs/multi_tenant.md for full details.
+Refer to @.claude/docs/multi_tenant.md for full details.

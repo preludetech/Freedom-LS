@@ -1,4 +1,9 @@
+import uuid
+
+from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
+from django.utils import timezone
 from freedom_ls.content_engine.models import (
     Topic,
     Form,
@@ -10,6 +15,12 @@ from django.db.models import QuerySet
 
 from freedom_ls.student_progress.models import FormProgress, TopicProgress
 from freedom_ls.student_management.models import Student, RecommendedCourse
+from freedom_ls.student_management.deadline_utils import (
+    get_course_deadlines,
+    EffectiveDeadline,
+)
+
+User = get_user_model()
 
 # Status constants
 BLOCKED = "BLOCKED"
@@ -19,7 +30,11 @@ COMPLETE = "COMPLETE"
 FAILED = "FAILED"
 
 
-def get_content_status(content_item, user, next_status):
+def get_content_status(
+    content_item: Topic | Form | CoursePart | Course,
+    user: User,
+    next_status: str,
+) -> tuple[str, str]:
     """
     Get the status for a content item based on user progress.
 
@@ -101,7 +116,7 @@ def get_content_status(content_item, user, next_status):
     return BLOCKED, BLOCKED
 
 
-def get_is_registered(user, course):
+def get_is_registered(user: User, course: Course) -> bool:
     # Check if user is registered for the course
     is_registered = False
     if user.is_authenticated:
@@ -114,20 +129,28 @@ def get_is_registered(user, course):
     return is_registered
 
 
-def get_course_index(user, course):
+def get_course_index(user: User, course: Course) -> list[dict]:
     """
     Generate an index of course children with their status and metadata.
 
-    Returns a list of dictionaries with title, status, url, type, and optionally children.
+    Returns a list of dictionaries with title, status, url, type, deadlines, and optionally children.
     """
     is_registered = get_is_registered(user, course)
+
+    # Look up student and deadlines
+    student = get_student(user)
+    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]] = {}
+    if student:
+        deadlines_map = get_course_deadlines(student, course)
+
     children = []
     next_status = READY  # First item starts as READY
     global_index = 0  # Track flattened index for nested items
 
     for child in course.children():
         child_dict, next_status, items_added = create_child_dict_with_flattened_index(
-            child, user, course, global_index, next_status, is_registered
+            child, user, course, global_index, next_status, is_registered,
+            deadlines_map=deadlines_map,
         )
         children.append(child_dict)
         global_index += items_added
@@ -135,14 +158,69 @@ def get_course_index(user, course):
     return children
 
 
+def _get_deadlines_for_item(
+    content_item: Topic | Form | CoursePart,
+    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]],
+) -> list[dict]:
+    """Get deadline display dicts for a content item from the pre-fetched deadlines map."""
+    if not deadlines_map:
+        return []
+
+    ct = ContentType.objects.get_for_model(content_item)
+    key = (ct.id, content_item.pk)
+    effective_deadlines = deadlines_map.get(key, [])
+
+    # Fall back to course-level deadlines if no item-level ones
+    if not effective_deadlines:
+        effective_deadlines = deadlines_map.get((None, None), [])
+
+    return [
+        {
+            "deadline": d.deadline,
+            "is_hard_deadline": d.is_hard_deadline,
+            "is_expired": d.deadline <= timezone.now(),
+            "source": d.source,
+        }
+        for d in effective_deadlines
+    ]
+
+
+def _apply_deadline_locking(
+    child_dict: dict,
+    deadlines: list[dict],
+) -> None:
+    """Apply hard deadline locking to a child dict if needed."""
+    if child_dict["status"] == COMPLETE:
+        return
+
+    hard_deadlines = [d for d in deadlines if d["is_hard_deadline"]]
+    if not hard_deadlines:
+        return
+
+    # Most permissive (latest) hard deadline governs access
+    most_permissive = max(hard_deadlines, key=lambda d: d["deadline"])
+    if most_permissive["is_expired"]:
+        child_dict["status"] = BLOCKED
+        child_dict["url"] = None
+
+
 def create_child_dict_with_flattened_index(
-    content_item, user, course, start_index, next_status, is_registered
-):
+    content_item: Topic | Form | CoursePart,
+    user: User,
+    course: Course,
+    start_index: int,
+    next_status: str,
+    is_registered: bool,
+    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]] | None = None,
+) -> tuple[dict, str, int]:
     """
     Create a child dict with proper flattened indices for nested items.
 
     Returns tuple of (child_dict, updated_next_status, number_of_items_added)
     """
+    if deadlines_map is None:
+        deadlines_map = {}
+
     items_added = 1  # This item itself
 
     # Handle CoursePart specially - don't calculate its status yet, process children first
@@ -166,14 +244,16 @@ def create_child_dict_with_flattened_index(
                 child_status = BLOCKED
                 child_url = ""
 
-            part_children_dicts.append(
-                {
-                    "title": part_child.title,
-                    "type": part_child.content_type,
-                    "url": child_url if child_status != BLOCKED else None,
-                    "status": child_status,
-                }
-            )
+            part_child_deadlines = _get_deadlines_for_item(part_child, deadlines_map)
+            part_child_dict = {
+                "title": part_child.title,
+                "type": part_child.content_type,
+                "url": child_url if child_status != BLOCKED else None,
+                "status": child_status,
+                "deadlines": part_child_deadlines,
+            }
+            _apply_deadline_locking(part_child_dict, part_child_deadlines)
+            part_children_dicts.append(part_child_dict)
             nested_index += 1
             items_added += 1
 
@@ -203,13 +283,19 @@ def create_child_dict_with_flattened_index(
                 status = COMPLETE
                 url = part_children_dicts[0]["url"]
 
+        # CoursePart-level deadlines (from the CoursePart itself)
+        part_deadlines = _get_deadlines_for_item(content_item, deadlines_map)
+
         child_dict = {
             "title": content_item.title,
             "status": status,
             "url": url if status != BLOCKED else None,
             "type": content_item.content_type,
             "children": part_children_dicts,
+            "deadlines": part_deadlines,
         }
+
+        _apply_deadline_locking(child_dict, part_deadlines)
 
         # Update next_status based on the last child's processing
         next_status = part_next_status
@@ -226,29 +312,31 @@ def create_child_dict_with_flattened_index(
             status = BLOCKED
             url = ""
 
+        item_deadlines = _get_deadlines_for_item(content_item, deadlines_map)
+
         child_dict = {
             "title": content_item.title,
             "status": status,
             "url": url if status != BLOCKED else None,
             "type": content_item.content_type,
+            "deadlines": item_deadlines,
         }
+
+        _apply_deadline_locking(child_dict, item_deadlines)
 
     return child_dict, next_status, items_added
 
 
 def form_start_page_buttons(
-    form, incomplete_form_progress, completed_form_progress, is_last_item
-):
+    form: Form,
+    incomplete_form_progress: FormProgress | None,
+    completed_form_progress: QuerySet[FormProgress],
+    is_last_item: bool,
+) -> list[dict[str, str]]:
     """
     Determine which buttons to show on the form start page.
 
     Returns a list of button dicts with 'text' and 'action' keys.
-
-    Args:
-        form: Form instance
-        incomplete_form_progress: FormProgress instance or None
-        completed_form_progress: QuerySet of completed FormProgress objects
-        is_last_item: Boolean indicating if this is the last item in the course
     """
     buttons = []
 
@@ -299,7 +387,7 @@ def get_all_courses() -> QuerySet[Course]:
     return Course.objects.all()
 
 
-def _get_student(user) -> Student | None:
+def get_student(user) -> Student | None:
     """Get the Student instance for a user, or None if anonymous or no student."""
     if not user.is_authenticated:
         return None
@@ -311,7 +399,7 @@ def _get_student(user) -> Student | None:
 
 def get_completed_courses(user) -> list[Course]:
     """Get completed courses for a user. Returns empty list for anonymous users."""
-    student = _get_student(user)
+    student = get_student(user)
     if student is None:
         return []
     return student.completed_courses()
@@ -319,7 +407,7 @@ def get_completed_courses(user) -> list[Course]:
 
 def get_current_courses(user) -> list[Course]:
     """Get current (in-progress) courses for a user. Returns empty list for anonymous users."""
-    student = _get_student(user)
+    student = get_student(user)
     if student is None:
         return []
     return student.current_courses()

@@ -1,4 +1,7 @@
 from django.db import models
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType as DjangoContentType
+from django.core.exceptions import ValidationError
 from freedom_ls.site_aware_models.models import SiteAwareModel
 from django.utils.translation import gettext_lazy as _
 
@@ -209,6 +212,168 @@ class CohortCourseRegistration(SiteAwareModel):
 
     def __str__(self):
         return f"{self.cohort} - {self.collection}"
+
+
+class CohortDeadline(SiteAwareModel):
+    """Deadline applied to all students in a cohort for a specific course registration."""
+
+    cohort_course_registration = models.ForeignKey(
+        CohortCourseRegistration,
+        on_delete=models.CASCADE,
+        related_name="deadlines",
+    )
+    content_type = models.ForeignKey(
+        DjangoContentType,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    object_id = models.UUIDField(null=True, blank=True)
+    content_item = GenericForeignKey("content_type", "object_id")
+    deadline = models.DateTimeField()
+    is_hard_deadline = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cohort_course_registration", "content_type", "object_id"],
+                name="unique_cohort_deadline_per_item",
+                condition=models.Q(content_type__isnull=False, object_id__isnull=False),
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.content_type is None and self.object_id is None:
+            existing = CohortDeadline.objects.filter(
+                cohort_course_registration=self.cohort_course_registration,
+                content_type__isnull=True,
+                object_id__isnull=True,
+            ).exclude(pk=self.pk)
+            if existing.exists():
+                raise ValidationError(
+                    "A course-level deadline already exists for this cohort registration."
+                )
+
+    def __str__(self) -> str:
+        reg = self.cohort_course_registration
+        item_label = str(self.content_item) if self.content_item else "Whole course"
+        return f"{reg.cohort} - {reg.collection} - {item_label}"
+
+
+class StudentDeadline(SiteAwareModel):
+    """Deadline for a student registered individually for a course."""
+
+    student_course_registration = models.ForeignKey(
+        StudentCourseRegistration,
+        on_delete=models.CASCADE,
+        related_name="deadlines",
+    )
+    content_type = models.ForeignKey(
+        DjangoContentType,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    object_id = models.UUIDField(null=True, blank=True)
+    content_item = GenericForeignKey("content_type", "object_id")
+    deadline = models.DateTimeField()
+    is_hard_deadline = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student_course_registration", "content_type", "object_id"],
+                name="unique_student_deadline_per_item",
+                condition=models.Q(content_type__isnull=False, object_id__isnull=False),
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.content_type is None and self.object_id is None:
+            existing = StudentDeadline.objects.filter(
+                student_course_registration=self.student_course_registration,
+                content_type__isnull=True,
+                object_id__isnull=True,
+            ).exclude(pk=self.pk)
+            if existing.exists():
+                raise ValidationError(
+                    "A course-level deadline already exists for this student registration."
+                )
+
+    def __str__(self) -> str:
+        reg = self.student_course_registration
+        item_label = str(self.content_item) if self.content_item else "Whole course"
+        return f"{reg.student} - {reg.collection} - {item_label}"
+
+
+class StudentCohortDeadlineOverride(SiteAwareModel):
+    """Override deadline for a specific student within a cohort."""
+
+    cohort_course_registration = models.ForeignKey(
+        CohortCourseRegistration,
+        on_delete=models.CASCADE,
+        related_name="deadline_overrides",
+    )
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name="cohort_deadline_overrides",
+    )
+    content_type = models.ForeignKey(
+        DjangoContentType,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    object_id = models.UUIDField(null=True, blank=True)
+    content_item = GenericForeignKey("content_type", "object_id")
+    deadline = models.DateTimeField()
+    is_hard_deadline = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "cohort_course_registration",
+                    "student",
+                    "content_type",
+                    "object_id",
+                ],
+                name="unique_student_cohort_override_per_item",
+                condition=models.Q(content_type__isnull=False, object_id__isnull=False),
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        # Validate student is a member of the cohort
+        if not CohortMembership.objects.filter(
+            student=self.student,
+            cohort=self.cohort_course_registration.cohort,
+        ).exists():
+            raise ValidationError(
+                "Student is not a member of the cohort for this registration."
+            )
+
+        # Validate uniqueness for course-level overrides (null content)
+        if self.content_type is None and self.object_id is None:
+            existing = StudentCohortDeadlineOverride.objects.filter(
+                cohort_course_registration=self.cohort_course_registration,
+                student=self.student,
+                content_type__isnull=True,
+                object_id__isnull=True,
+            ).exclude(pk=self.pk)
+            if existing.exists():
+                raise ValidationError(
+                    "A course-level override already exists for this student and cohort registration."
+                )
+
+    def __str__(self) -> str:
+        reg = self.cohort_course_registration
+        item_label = str(self.content_item) if self.content_item else "Whole course"
+        return f"{self.student} - {reg.cohort} - {reg.collection} - {item_label}"
 
 
 class RecommendedCourse(SiteAwareModel):

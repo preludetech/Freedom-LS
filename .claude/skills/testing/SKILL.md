@@ -26,4 +26,4 @@ Use this Skill when:
 - No conditionals in tests — one assertion focus per test
 - TDD cycle: RED (failing test) -> GREEN (minimal code) -> REFACTOR -> REPEAT
 
-Refer to @docs/testing.md for full patterns and examples.
+Refer to @.claude/docs/testing.md for full patterns and examples.
