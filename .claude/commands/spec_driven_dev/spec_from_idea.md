@@ -31,7 +31,7 @@ If there are edge cases that can be handled in multiple ways, then ask what to d
 
 If there are any contradictions or ambiguity, ask what to do. 
 
-If the idea includes implementation details and you think there is a better way to do things, then make suggestions.
+If the idea includes implementation details and you think there is a better way to do things, then make suggestions. Challenge anything that looks wrong. 
 
 Think carefully about what questions to ask and then ask the user to answer one question at a time. 
 
