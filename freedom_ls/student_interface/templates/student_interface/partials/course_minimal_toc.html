@@ -28,6 +28,22 @@
     {% endif %}
 {% endpartialdef %}
 
+{% partialdef deadline-badges %}
+    {% if child.deadlines %}
+        {% for dl in child.deadlines %}
+            {% if dl.is_hard_deadline %}
+                <span class="text-xs text-danger whitespace-nowrap" title="{{ dl.source }}">
+                    <i class="fa fa-clock"></i> {{ dl.deadline|date:"d M" }}
+                </span>
+            {% else %}
+                <span class="text-xs text-warning whitespace-nowrap" title="{{ dl.source }}">
+                    <i class="fa fa-clock"></i> {{ dl.deadline|date:"d M" }}
+                </span>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+{% endpartialdef %}
+
 {% partialdef content-icon %}
     {% if child.type == "TOPIC" %}
         <i class="fa fa-book"></i>
@@ -91,7 +107,8 @@
                             {% partial content-row-inner %}
                         {% endwith %}
                     </div>
-                    <div class="shrink-0">
+                    <div class="flex items-center gap-2 shrink-0">
+                        {% partial deadline-badges %}
                         {% partial status-icon %}
                     </div>
                 </div>
@@ -107,8 +124,9 @@
                                         {% partial content-row-inner %}
                                     {% endwith %}
                                 </div>
-                                <div class="shrink-0">
+                                <div class="flex items-center gap-2 shrink-0">
                                     {% with child=part_child %}
+                                        {% partial deadline-badges %}
                                         {% partial status-icon %}
                                     {% endwith %}
                                 </div>
@@ -127,7 +145,8 @@
                         {% partial content-row-inner %}
                     {% endwith %}
                 </div>
-                <div class="shrink-0">
+                <div class="flex items-center gap-2 shrink-0">
+                    {% partial deadline-badges %}
                     {% partial status-icon %}
                 </div>
             </div>

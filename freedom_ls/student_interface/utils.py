@@ -1,4 +1,5 @@
 from django.urls import reverse
+from django.utils import timezone
 from freedom_ls.content_engine.models import (
     Topic,
     Form,
@@ -10,6 +11,11 @@ from django.db.models import QuerySet
 
 from freedom_ls.student_progress.models import FormProgress, TopicProgress
 from freedom_ls.student_management.models import Student, RecommendedCourse
+from freedom_ls.student_management.deadline_utils import (
+    get_course_deadlines,
+    is_item_locked,
+    EffectiveDeadline,
+)
 
 # Status constants
 BLOCKED = "BLOCKED"
@@ -118,16 +124,24 @@ def get_course_index(user, course):
     """
     Generate an index of course children with their status and metadata.
 
-    Returns a list of dictionaries with title, status, url, type, and optionally children.
+    Returns a list of dictionaries with title, status, url, type, deadlines, and optionally children.
     """
     is_registered = get_is_registered(user, course)
+
+    # Look up student and deadlines
+    student = _get_student(user)
+    deadlines_map: dict = {}
+    if student:
+        deadlines_map = get_course_deadlines(student, course)
+
     children = []
     next_status = READY  # First item starts as READY
     global_index = 0  # Track flattened index for nested items
 
     for child in course.children():
         child_dict, next_status, items_added = create_child_dict_with_flattened_index(
-            child, user, course, global_index, next_status, is_registered
+            child, user, course, global_index, next_status, is_registered,
+            deadlines_map=deadlines_map, student=student,
         )
         children.append(child_dict)
         global_index += items_added
@@ -135,14 +149,66 @@ def get_course_index(user, course):
     return children
 
 
+def _get_deadlines_for_item(
+    content_item, deadlines_map: dict,
+) -> list[dict]:
+    """Get deadline display dicts for a content item from the pre-fetched deadlines map."""
+    if not deadlines_map:
+        return []
+
+    from django.contrib.contenttypes.models import ContentType as DjangoContentType
+
+    ct = DjangoContentType.objects.get_for_model(content_item)
+    key = (ct.id, content_item.pk)
+    effective_deadlines = deadlines_map.get(key, [])
+
+    # Fall back to course-level deadlines if no item-level ones
+    if not effective_deadlines:
+        effective_deadlines = deadlines_map.get((None, None), [])
+
+    return [
+        {
+            "deadline": d.deadline,
+            "is_hard_deadline": d.is_hard_deadline,
+            "is_expired": d.deadline <= timezone.now(),
+            "source": d.source,
+        }
+        for d in effective_deadlines
+    ]
+
+
+def _apply_deadline_locking(
+    child_dict: dict,
+    deadlines: list[dict],
+) -> None:
+    """Apply hard deadline locking to a child dict if needed."""
+    if child_dict["status"] == COMPLETE:
+        return
+
+    hard_deadlines = [d for d in deadlines if d["is_hard_deadline"] and d["is_expired"]]
+    if not hard_deadlines:
+        return
+
+    # Check if ALL hard deadlines are expired (most permissive governs)
+    all_hard = [d for d in deadlines if d["is_hard_deadline"]]
+    most_permissive = max(all_hard, key=lambda d: d["deadline"])
+    if most_permissive["is_expired"]:
+        child_dict["status"] = BLOCKED
+        child_dict["url"] = None
+
+
 def create_child_dict_with_flattened_index(
-    content_item, user, course, start_index, next_status, is_registered
+    content_item, user, course, start_index, next_status, is_registered,
+    deadlines_map: dict | None = None, student: Student | None = None,
 ):
     """
     Create a child dict with proper flattened indices for nested items.
 
     Returns tuple of (child_dict, updated_next_status, number_of_items_added)
     """
+    if deadlines_map is None:
+        deadlines_map = {}
+
     items_added = 1  # This item itself
 
     # Handle CoursePart specially - don't calculate its status yet, process children first
@@ -166,14 +232,16 @@ def create_child_dict_with_flattened_index(
                 child_status = BLOCKED
                 child_url = ""
 
-            part_children_dicts.append(
-                {
-                    "title": part_child.title,
-                    "type": part_child.content_type,
-                    "url": child_url if child_status != BLOCKED else None,
-                    "status": child_status,
-                }
-            )
+            part_child_deadlines = _get_deadlines_for_item(part_child, deadlines_map)
+            part_child_dict = {
+                "title": part_child.title,
+                "type": part_child.content_type,
+                "url": child_url if child_status != BLOCKED else None,
+                "status": child_status,
+                "deadlines": part_child_deadlines,
+            }
+            _apply_deadline_locking(part_child_dict, part_child_deadlines)
+            part_children_dicts.append(part_child_dict)
             nested_index += 1
             items_added += 1
 
@@ -203,13 +271,19 @@ def create_child_dict_with_flattened_index(
                 status = COMPLETE
                 url = part_children_dicts[0]["url"]
 
+        # CoursePart-level deadlines (from the CoursePart itself)
+        part_deadlines = _get_deadlines_for_item(content_item, deadlines_map)
+
         child_dict = {
             "title": content_item.title,
             "status": status,
             "url": url if status != BLOCKED else None,
             "type": content_item.content_type,
             "children": part_children_dicts,
+            "deadlines": part_deadlines,
         }
+
+        _apply_deadline_locking(child_dict, part_deadlines)
 
         # Update next_status based on the last child's processing
         next_status = part_next_status
@@ -226,12 +300,17 @@ def create_child_dict_with_flattened_index(
             status = BLOCKED
             url = ""
 
+        item_deadlines = _get_deadlines_for_item(content_item, deadlines_map)
+
         child_dict = {
             "title": content_item.title,
             "status": status,
             "url": url if status != BLOCKED else None,
             "type": content_item.content_type,
+            "deadlines": item_deadlines,
         }
+
+        _apply_deadline_locking(child_dict, item_deadlines)
 
     return child_dict, next_status, items_added
 

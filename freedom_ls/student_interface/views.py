@@ -24,7 +24,9 @@ from .utils import (
     get_completed_courses,
     get_current_courses,
     get_recommended_courses,
+    _get_student,
 )
+from freedom_ls.student_management.deadline_utils import is_item_locked
 
 
 def home(request):
@@ -137,6 +139,13 @@ def view_course_item(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
     children = course.children_flat()
     current_item = children[index - 1]
+
+    # Check if item is locked by a hard deadline
+    student = _get_student(request.user)
+    if student and not isinstance(current_item, CoursePart):
+        is_completed = _is_content_item_completed(current_item, request.user)
+        if is_item_locked(student, course, current_item, is_completed=is_completed):
+            return redirect("student_interface:course_home", course_slug=course_slug)
 
     total_children = len(children)
 
@@ -482,3 +491,16 @@ def course_finish(request, course_slug):
     }
 
     return render(request, "student_interface/course_finish.html", context)
+
+
+def _is_content_item_completed(content_item: Topic | Form, user) -> bool:
+    """Check if a content item has been completed by the user."""
+    if isinstance(content_item, Topic):
+        return TopicProgress.objects.filter(
+            user=user, topic=content_item, complete_time__isnull=False
+        ).exists()
+    elif isinstance(content_item, Form):
+        return FormProgress.objects.filter(
+            user=user, form=content_item, completed_time__isnull=False
+        ).exists()
+    return False
