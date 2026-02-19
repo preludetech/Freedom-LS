@@ -1,0 +1,10 @@
+<section class="surface">
+    {% if title %}
+        <header class="mb-4">
+            <h2>{{ title }}</h2>
+        </header>
+    {% endif %}
+    <div>
+        {{ content|safe }}
+    </div>
+</section>

@@ -7,18 +7,19 @@
         sort_order=""
         base_url=""
         show_search=""
-        search_query="" />
+        search_query=""
+        table_id="data-table-container" />
 
-<div id="data-table-container">
+<div id="{{ table_id }}">
     {% if show_search %}
         <div class="mb-4">
             <form hx-get="{{ base_url }}"
-                  hx-target="#data-table-container"
-                  hx-trigger="submit, input delay:300ms from:#search-input"
-                  hx-include="#search-input"
+                  hx-target="#{{ table_id }}"
+                  hx-trigger="submit, input delay:300ms from:#{{ table_id }}-search"
+                  hx-include="#{{ table_id }}-search"
                   hx-swap="outerHTML">
                 <input type="search"
-                       id="search-input"
+                       id="{{ table_id }}-search"
                        name="search"
                        placeholder="Search..."
                        value="{{ search_query }}"
@@ -44,7 +45,7 @@
                                     {% if sort_order == 'asc' %}
                                         <a href="?sort={{ column.sort_field }}&order=desc{% if search_query %}&search={{ search_query }}{% endif %}"
                                            hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=desc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                           hx-target="#data-table-container"
+                                           hx-target="#{{ table_id }}"
                                            hx-swap="outerHTML"
                                            class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                             {{ column.header }}
@@ -53,7 +54,7 @@
                                     {% else %}
                                         <a href="?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
                                            hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                           hx-target="#data-table-container"
+                                           hx-target="#{{ table_id }}"
                                            hx-swap="outerHTML"
                                            class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                             {{ column.header }}
@@ -64,7 +65,7 @@
                                     {% comment %}Not currently sorted{% endcomment %}
                                     <a href="?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
                                        hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                       hx-target="#data-table-container"
+                                       hx-target="#{{ table_id }}"
                                        hx-swap="outerHTML"
                                        class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                         {{ column.header }}
@@ -109,14 +110,14 @@
                 {% if page_obj.has_previous %}
                     <a href="?page=1{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
                        hx-get="{{ base_url }}?page=1{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-target="#data-table-container"
+                       hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
                        class="btn btn-outline">
                         First
                     </a>
                     <a href="?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
                        hx-get="{{ base_url }}?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-target="#data-table-container"
+                       hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
                        class="btn btn-outline">
                         Previous
@@ -131,7 +132,7 @@
                         {# Show: first 2 pages, last 2 pages, or pages within 2 of current #}
                         <a href="?page={{ num }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
                            hx-get="{{ base_url }}?page={{ num }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                           hx-target="#data-table-container"
+                           hx-target="#{{ table_id }}"
                            hx-swap="outerHTML"
                            class="btn btn-outline">
                             {{ num }}
@@ -148,14 +149,14 @@
                 {% if page_obj.has_next %}
                     <a href="?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
                        hx-get="{{ base_url }}?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-target="#data-table-container"
+                       hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
                        class="btn btn-outline">
                         Next
                     </a>
                     <a href="?page={{ page_obj.paginator.num_pages }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
                        hx-get="{{ base_url }}?page={{ page_obj.paginator.num_pages }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-target="#data-table-container"
+                       hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
                        class="btn btn-outline">
                         Last

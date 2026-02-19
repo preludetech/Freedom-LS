@@ -1,11 +1,9 @@
 from django.shortcuts import render, get_object_or_404
-from django.db.models import Count, Q
-from django.http import HttpRequest
-from django.core.paginator import Paginator
+from django.template.loader import render_to_string
 from django.urls import reverse
-from guardian.shortcuts import get_objects_for_user
-from freedom_ls.content_engine.models import Course, CoursePart, Topic, Form
-from freedom_ls.student_progress.models import TopicProgress, FormProgress
+from django.core.paginator import Paginator
+from django.http import Http404, HttpResponse
+
 from freedom_ls.student_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -13,383 +11,664 @@ from freedom_ls.student_management.models import (
     Student,
     StudentCourseRegistration,
 )
+from freedom_ls.content_engine.models import Course, CoursePart, Topic, Form
 
 
-def home(request: HttpRequest):
-    """Educator interface home page."""
-    # Get cohorts that the user has view permission for
-
-    return render(request, "educator_interface/home.html")
+from guardian.shortcuts import get_objects_for_user
+from django.db.models import Count, Q
 
 
-def cohorts_list(request):
-    cohorts = (
-        get_objects_for_user(
+# TODO
+# Data Tables
+# top level filters (searchable dropdown)
+#   use HTMX to only reload that one panel
+# Checkboxes and bulk actions (eg. Delete, add to cohort, remove from cohort)
+# Export as csv
+#
+# instance edit
+# instance, other actions (eg: send_email)
+
+
+class Panel:
+    title: str = ""
+
+    def __init__(self, instance: object):
+        self.instance = instance
+
+    def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
+        raise NotImplementedError
+
+    def render(self, request, base_url: str = "", panel_name: str = "") -> str:
+        content = self.get_content(request, base_url=base_url, panel_name=panel_name)
+        return render_to_string(
+            "educator_interface/partials/panel_container.html",
+            {"title": self.title, "content": content},
+            request=request,
+        )
+
+
+class DataTable:
+    """Abstract class used for rendering data tables"""
+
+    page_size = 5
+    search_fields: list[str] = []
+
+    def get_queryset(request):
+        implement
+
+    def get_columns():
+        implement
+
+    @classmethod
+    def _prepare_columns(klass) -> list[dict]:
+        """Enrich columns: derive sort_field from text_attr/attr for sortable columns."""
+        columns = klass.get_columns()
+        for col in columns:
+            if col.get("sortable") and "sort_field" not in col:
+                attr = col.get("text_attr") or col.get("attr", "")
+                col["sort_field"] = attr.replace(".", "__")
+        return columns
+
+    @classmethod
+    def get_rows(klass, request, columns: list[dict], filters: dict | None = None):
+        queryset = klass.get_queryset(request)
+        if filters:
+            queryset = queryset.filter(**filters)
+
+        search_query = request.GET.get("search", "").strip()
+        if search_query and klass.search_fields:
+            search_filter = Q()
+            for field in klass.search_fields:
+                search_filter |= Q(**{f"{field}__icontains": search_query})
+            queryset = queryset.filter(search_filter)
+
+        sort_by = request.GET.get("sort", "")
+        sort_order = request.GET.get("order", "asc")
+        sortable_fields = {col["sort_field"] for col in columns if col.get("sortable")}
+        if sort_by in sortable_fields:
+            order_expr = f"-{sort_by}" if sort_order == "desc" else sort_by
+            queryset = queryset.order_by(order_expr)
+
+        page_number = request.GET.get("page", 1)
+        paginator = Paginator(queryset, klass.page_size)
+        page_obj = paginator.get_page(page_number)
+
+        return page_obj
+
+    @classmethod
+    def render(
+        klass,
+        request,
+        filters: dict | None = None,
+        base_url: str = "",
+        table_id: str = "data-table-container",
+    ) -> str:
+        columns = klass._prepare_columns()
+        sort_by = request.GET.get("sort", "")
+        sort_order = request.GET.get("order", "asc")
+        search_query = request.GET.get("search", "").strip()
+        page_obj = klass.get_rows(request, columns, filters=filters)
+        context = {
+            "columns": columns,
+            "rows": page_obj,
+            "page_obj": page_obj,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+            "base_url": base_url,
+            "show_search": bool(klass.search_fields),
+            "search_query": search_query,
+            "table_id": table_id,
+        }
+        return render_to_string(
+            "educator_interface/partials/list_view.html", context, request=request
+        )
+
+
+class DataTablePanel(Panel):
+    data_table: type[DataTable]
+
+    def get_filters(self) -> dict:
+        return {}
+
+    def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
+        table_id = f"table-{panel_name}" if panel_name else "data-table-container"
+        return self.data_table.render(
+            request,
+            filters=self.get_filters(),
+            base_url=base_url,
+            table_id=table_id,
+        )
+
+    def render(self, request, base_url: str = "", panel_name: str = "") -> str:
+        is_htmx = request.headers.get("HX-Request") == "true"
+        if is_htmx:
+            return self.get_content(request, base_url=base_url, panel_name=panel_name)
+        return super().render(request, base_url=base_url, panel_name=panel_name)
+
+
+class InstanceDetailsPanel(Panel):
+    title = "Details"
+    fields: list[str] = []
+
+    def _resolve_field(self, field_path: str) -> tuple[str, object]:
+        """Resolve a dot-notation field path to (label, value).
+
+        Supports paths like "user.email" by traversing related objects.
+        """
+        parts = field_path.split(".")
+        obj = self.instance
+        for part in parts[:-1]:
+            obj = getattr(obj, part)
+        field_name = parts[-1]
+        field = obj._meta.get_field(field_name)
+        label = field.verbose_name.title()
+        value = getattr(obj, field_name)
+        return label, value
+
+    def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
+        field_data = []
+        for field_path in self.fields:
+            label, value = self._resolve_field(field_path)
+            field_data.append({"label": label, "value": value})
+        return render_to_string(
+            "educator_interface/partials/instance_details_panel.html",
+            {"fields": field_data},
+            request=request,
+        )
+
+
+class CohortDataTable(DataTable):
+    def get_queryset(request):
+        return (
+            get_objects_for_user(
+                request.user,
+                "view_cohort",
+                klass=Cohort,
+            )
+            .annotate(
+                student_count=Count("cohortmembership", distinct=True),
+            )
+            .prefetch_related("course_registrations__collection")
+            .order_by("name")
+        )
+
+    def get_columns():
+        return [
+            {
+                "header": "Cohort Name",
+                "template": "cotton/data-table-cells/link.html",
+                "text_attr": "name",
+                "url_name": "educator_interface:interface",
+                "url_path_template": "cohorts/{pk}",
+            },
+            {
+                "header": "Active Students",
+                "template": "cotton/data-table-cells/text.html",
+                "attr": "student_count",
+            },
+            {
+                "header": "Registered Courses",
+                "template": "educator_interface/data-table-cells/cohort_courses.html",
+            },
+        ]
+
+
+class StudentDataTable(DataTable):
+    search_fields = ["user__first_name", "user__last_name", "user__email"]
+
+    def get_queryset(request):
+        # Get students with direct view permission
+        students_with_direct_access = get_objects_for_user(
+            request.user,
+            "view_student",
+            klass=Student,
+        )
+
+        # Get cohorts user has access to
+        accessible_cohorts = get_objects_for_user(
             request.user,
             "view_cohort",
             klass=Cohort,
         )
-        .annotate(
-            student_count=Count("cohortmembership", distinct=True),
-        )
-        .prefetch_related("course_registrations__collection")
-        .order_by("name")
-    )
 
-    columns = [
-        {
-            "header": "Cohort Name",
-            "template": "cotton/data-table-cells/link.html",
-            "text_attr": "name",
-            "url_name": "educator_interface:cohort_detail",
-            "url_param": "pk",
-        },
-        {
-            "header": "Active Students",
-            "template": "cotton/data-table-cells/text.html",
-            "attr": "student_count",
-        },
-        {
-            "header": "Registered Courses",
-            "template": "educator_interface/data-table-cells/cohort_courses.html",
-        },
-    ]
-
-    return render(
-        request,
-        "educator_interface/cohorts_list.html",
-        {"cohorts": cohorts, "columns": columns},
-    )
-
-
-def get_student_data_table_context(request):
-    # Get optional cohort filter
-    cohort_id = request.GET.get("cohort")
-
-    # Get students with direct view permission
-    students_with_direct_access = get_objects_for_user(
-        request.user,
-        "view_student",
-        klass=Student,
-    )
-
-    # Get cohorts user has access to
-    accessible_cohorts = get_objects_for_user(
-        request.user,
-        "view_cohort",
-        klass=Cohort,
-    )
-
-    # Get students from accessible cohorts
-    students_from_cohorts = Student.objects.filter(
-        cohortmembership__cohort__in=accessible_cohorts
-    )
-
-    # Combine both querysets and remove duplicates
-    students = (students_with_direct_access | students_from_cohorts).distinct()
-
-    # Filter by cohort if specified
-    if cohort_id:
-        students = students.filter(cohortmembership__cohort__pk=cohort_id)
-
-    # Handle search
-    search_query = request.GET.get("search", "").strip()
-    if search_query:
-        students = students.filter(
-            Q(user__first_name__icontains=search_query)
-            | Q(user__last_name__icontains=search_query)
-            | Q(user__email__icontains=search_query)
+        # Get students from accessible cohorts
+        students_from_cohorts = Student.objects.filter(
+            cohortmembership__cohort__in=accessible_cohorts
         )
 
-    # Handle sorting
-    sort_by = request.GET.get("sort", "")
-    sort_order = request.GET.get("order", "asc")
-
-    # Define sort field mappings
-    sort_fields = {
-        "name": ["user__first_name", "user__last_name"],
-        "email": ["user__email"],
-    }
-
-    # Apply sorting if a valid sort field is provided
-    if sort_by in sort_fields:
-        order_fields = sort_fields[sort_by]
-        if sort_order == "desc":
-            order_fields = [f"-{field}" for field in order_fields]
-        students = students.order_by(*order_fields)
-    else:
-        # Default ordering
-        students = students.order_by("user__first_name", "user__last_name")
-        sort_by = ""
-        sort_order = "asc"
-
-    # Pagination
-    page_number = request.GET.get("page", 1)
-    paginator = Paginator(students, 15)
-    page_obj = paginator.get_page(page_number)
-
-    columns = [
-        {
-            "header": "Name",
-            "template": "educator_interface/data-table-cells/link_to_student.html",
-            "sortable": True,
-            "sort_field": "name",
-        },
-        {
-            "header": "Email",
-            "template": "cotton/data-table-cells/text.html",
-            "attr": "user.email",
-            "sortable": True,
-            "sort_field": "email",
-        },
-        {
-            "header": "Cohorts",
-            "template": "educator_interface/data-table-cells/student_cohorts.html",
-        },
-        {
-            "header": "Registered Courses",
-            "template": "educator_interface/data-table-cells/student_courses.html",
-        },
-    ]
-
-    return {
-        "rows": page_obj,
-        "columns": columns,
-        "page_obj": page_obj,
-        "sort_by": sort_by,
-        "sort_order": sort_order,
-        "base_url": reverse("educator_interface:partial_students_table"),
-        "show_search": True,
-        "search_query": search_query,
-    }
-
-
-def students_list(request: HttpRequest):
-    """List all students the user has permission to view."""
-    return render(request, "educator_interface/students_list.html")
-
-
-def partial_students_table(request: HttpRequest):
-    """Render the students data table (for HTMX requests)."""
-    context = get_student_data_table_context(request)
-    return render(
-        request,
-        "educator_interface/partials/students_table.html",
-        context,
-    )
-
-
-def course_student_progress(request, course_slug):
-    """Show student progress for a specific course."""
-    course = get_object_or_404(Course, slug=course_slug)
-
-    course_items = [
-        item for item in course.children_flat() if not isinstance(item, CoursePart)
-    ]
-
-    # Get students registered directly
-    direct_student_ids = set(
-        StudentCourseRegistration.objects.filter(collection=course).values_list(
-            "student_id", flat=True
-        )
-    )
-
-    # Get students registered via cohorts
-    cohort_ids = CohortCourseRegistration.objects.filter(
-        collection=course
-    ).values_list("cohort_id", flat=True)
-    cohort_student_ids = set(
-        CohortMembership.objects.filter(cohort_id__in=cohort_ids).values_list(
-            "student_id", flat=True
-        )
-    )
-
-    all_student_ids = direct_student_ids | cohort_student_ids
-    students = Student.objects.filter(id__in=all_student_ids).select_related("user")
-
-    user_ids = [s.user_id for s in students]
-
-    topic_ids = [item.pk for item in course_items if isinstance(item, Topic)]
-    form_ids = [item.pk for item in course_items if isinstance(item, Form)]
-
-    # Bulk-fetch topic progress keyed by (user_id, topic_id)
-    topic_progress_records = {}
-    for tp in TopicProgress.objects.filter(
-        user_id__in=user_ids, topic_id__in=topic_ids
-    ):
-        topic_progress_records[(tp.user_id, tp.topic_id)] = tp
-
-    # Bulk-fetch form progress: all records grouped by (user_id, form_id)
-    form_progress_by_user_form: dict[tuple, list[FormProgress]] = {}
-    for fp in FormProgress.objects.filter(
-        user_id__in=user_ids, form_id__in=form_ids
-    ).order_by("-start_time"):
-        key = (fp.user_id, fp.form_id)
-        form_progress_by_user_form.setdefault(key, []).append(fp)
-
-    # Build a lookup of which forms are quizzes
-    quiz_form_ids = set(
-        Form.objects.filter(id__in=form_ids, strategy="QUIZ").values_list(
-            "id", flat=True
-        )
-    )
-
-    progress_matrix = {}
-    for student in students:
-        student.progress = {}
-        for item in course_items:
-            if isinstance(item, Topic):
-                tp = topic_progress_records.get((student.user_id, item.pk))
-                if tp and tp.complete_time:
-                    status = "completed"
-                elif tp:
-                    status = "in_progress"
-                else:
-                    status = "not_started"
-                progress_data = {
-                    "status": status,
-                    "item_type": "TOPIC",
-                    "completed_date": tp.complete_time if tp else None,
-                }
-            elif isinstance(item, Form):
-                fps = form_progress_by_user_form.get(
-                    (student.user_id, item.pk), []
-                )
-                completed_fps = [fp for fp in fps if fp.completed_time]
-                is_quiz = item.pk in quiz_form_ids
-                if completed_fps:
-                    status = "completed"
-                    latest = completed_fps[0]  # ordered by -start_time
-                    latest_score = None
-                    if is_quiz and latest.scores:
-                        latest_score = round(
-                            (latest.scores["score"] / latest.scores["max_score"])
-                            * 100
-                        )
-                else:
-                    status = "in_progress" if fps else "not_started"
-                    latest_score = None
-                progress_data = {
-                    "status": status,
-                    "item_type": "FORM",
-                    "is_quiz": is_quiz,
-                    "attempt_count": len(fps),
-                    "latest_score": latest_score,
-                }
-            else:
-                progress_data = {"status": "not_started", "item_type": "UNKNOWN"}
-
-            progress_matrix[(student.pk, item.pk)] = (
-                progress_data["status"] == "completed"
+        # Combine both querysets and remove duplicates
+        return (
+            (students_with_direct_access | students_from_cohorts)
+            .distinct()
+            .select_related("user")
+            .prefetch_related(
+                "cohortmembership_set__cohort",
+                "course_registrations__collection",
             )
-            student.progress[str(item.pk)] = progress_data
+            .order_by("user__first_name", "user__last_name")
+        )
 
-    # Build data-table columns
-    columns = [
-        {
-            "header": "Student",
-            "template": "educator_interface/data-table-cells/link_to_student.html",
-        },
-    ]
-    for item in course_items:
-        columns.append(
+    def get_columns():
+        return [
             {
-                "header": item.title,
-                "template": "educator_interface/data-table-cells/progress_check.html",
-                "item_id": str(item.pk),
-                "header_class": "text-center",
-                "cell_class": "text-center",
-            }
+                "header": "First Name",
+                "template": "cotton/data-table-cells/link.html",
+                "text_attr": "user.first_name",
+                "url_name": "educator_interface:interface",
+                "url_path_template": "students/{pk}",
+                "sortable": True,
+            },
+            {
+                "header": "Last Name",
+                "template": "cotton/data-table-cells/link.html",
+                "text_attr": "user.last_name",
+                "url_name": "educator_interface:interface",
+                "url_path_template": "students/{pk}",
+                "sortable": True,
+            },
+            {
+                "header": "Email",
+                "template": "cotton/data-table-cells/text.html",
+                "attr": "user.email",
+                # "sortable": True,
+            },
+            {
+                "header": "Cohorts",
+                "template": "educator_interface/data-table-cells/cohort_links.html",
+                "relation_set": "cohortmembership_set.all",
+                "link_object_attr": "cohort",
+                "link_text_attr": "cohort.name",
+            },
+            {
+                "header": "Registered Courses",
+                "template": "educator_interface/data-table-cells/student_courses.html",
+            },
+        ]
+
+
+class ListViewConfig:
+    model = None
+    instance_view = None
+    list_view = None
+
+    def __class_getitem__(cls, pk: str):
+        instance = get_object_or_404(cls.model, pk=pk)
+        return cls.instance_view(instance)
+
+    @classmethod
+    def render(cls, request, base_url: str = "") -> str:
+        return cls.list_view.render(request, base_url=base_url)
+
+
+class PanelGetter:
+    """Subscriptable object that instantiates panels bound to an instance."""
+
+    def __init__(self, panel_classes: dict[str, type[Panel]], instance: object):
+        self._panel_classes = panel_classes
+        self._instance = instance
+
+    def __getitem__(self, name: str) -> Panel:
+        if name not in self._panel_classes:
+            raise Http404(f"Panel '{name}' not found")
+        return self._panel_classes[name](self._instance)
+
+
+class InstanceView:
+    """Used for displaying specific instances. For example one User, Student, Etc"""
+
+    panels: dict[str, type[Panel]] = {}
+
+    def __init__(self, instance: object):
+        self.instance = instance
+
+    def panel_getter(self) -> PanelGetter:
+        return PanelGetter(self.panels, self.instance)
+
+    def render(self, request, base_url: str = "") -> str:
+        getter = self.panel_getter()
+        rendered_panels = []
+        for name in self.panels:
+            panel_url = f"{base_url.rstrip('/')}/__panels/{name}"
+            rendered_panels.append(
+                getter[name].render(request, base_url=panel_url, panel_name=name)
+            )
+        title = f"<h1>{self.instance}</h1>"
+        panels_html = '<div class="space-y-6">' + "\n".join(rendered_panels) + "</div>"
+        return title + "\n" + panels_html
+
+
+class StudentDetailsPanel(InstanceDetailsPanel):
+    fields = [
+        "user.first_name",
+        "user.last_name",
+        "user.email",
+        "id_number",
+        "date_of_birth",
+        "cellphone",
+    ]
+
+
+class StudentCohortsPanel(DataTablePanel):
+    title = "Cohorts"
+    data_table = CohortDataTable
+
+    def get_filters(self) -> dict:
+        return {"cohortmembership__student": self.instance}
+
+
+class StudentInstanceView(InstanceView):
+    panels = {
+        "details": StudentDetailsPanel,
+        "cohorts": StudentCohortsPanel,
+    }
+
+
+class CohortDetailsPanel(InstanceDetailsPanel):
+    fields = ["name"]
+
+
+class CohortCourseRegistrationDataTable(DataTable):
+    def get_queryset(request):
+        return CohortCourseRegistration.objects.select_related("collection").order_by(
+            "collection__title"
         )
 
-    return render(
-        request,
-        "educator_interface/course_student_progress.html",
-        {
-            "course": course,
-            "course_items": course_items,
-            "students": students,
-            "progress_matrix": progress_matrix,
-            "columns": columns,
-            "rows": students,
-        },
-    )
+    def get_columns():
+        return [
+            {
+                "header": "Course",
+                "template": "cotton/data-table-cells/link.html",
+                "text_attr": "collection.title",
+                "url_name": "educator_interface:interface",
+                "url_path_template": "courses/{collection.pk}",
+            },
+            {
+                "header": "Active",
+                "template": "cotton/data-table-cells/boolean.html",
+                "attr": "is_active",
+            },
+            {
+                "header": "Registered",
+                "template": "cotton/data-table-cells/text.html",
+                "attr": "registered_at",
+            },
+        ]
 
 
-def course_list(request):
-    """List all courses in alphabetical order."""
-    courses = (
-        Course.objects.all()
-        .annotate(
-            cohort_count=Count(
-                "cohort_registrations",
-                filter=Q(cohort_registrations__is_active=True),
-                distinct=True,
-            ),
-            direct_student_count=Count(
+class CohortStudentsPanel(DataTablePanel):
+    title = "Students"
+    data_table = StudentDataTable
+
+    def get_filters(self) -> dict:
+        return {"cohortmembership__cohort": self.instance}
+
+
+class CourseRegistrationsPanel(DataTablePanel):
+    title = "Course Registrations"
+    data_table = CohortCourseRegistrationDataTable
+
+    def get_filters(self) -> dict:
+        return {"cohort": self.instance}
+
+
+class CohortInstanceView(InstanceView):
+    panels = {
+        "details": CohortDetailsPanel,
+        "courses": CourseRegistrationsPanel,
+        "students": CohortStudentsPanel,
+    }
+
+
+class CohortConfig(ListViewConfig):
+    url_name = "cohorts"
+    menu_label = "Cohorts"
+    model = Cohort
+    list_view = CohortDataTable
+    instance_view = CohortInstanceView
+
+
+class StudentConfig(ListViewConfig):
+    url_name = "students"
+    menu_label = "Students"
+    model = Student
+    list_view = StudentDataTable
+    instance_view = StudentInstanceView
+
+
+class CourseDataTable(DataTable):
+    def get_queryset(request):
+        courses = (
+            Course.objects.all()
+            .annotate(
+                cohort_count=Count(
+                    "cohort_registrations",
+                    filter=Q(cohort_registrations__is_active=True),
+                    distinct=True,
+                ),
+                direct_student_count=Count(
+                    "student_registrations",
+                    filter=Q(student_registrations__is_active=True),
+                    distinct=True,
+                ),
+            )
+            .prefetch_related(
+                "cohort_registrations__cohort__cohortmembership_set",
                 "student_registrations",
-                filter=Q(student_registrations__is_active=True),
-                distinct=True,
-            ),
+            )
+            .order_by("title")
         )
-        .order_by("title")
-    )
 
-    # Calculate total unique active students (direct + through cohorts)
-    for course in courses:
-        # Get students through active cohort registrations
-        cohort_student_ids = set()
-        for cohort_reg in course.cohort_registrations.filter(is_active=True):
-            cohort_student_ids.update(
-                cohort_reg.cohort.cohortmembership_set.values_list(
+        # Calculate total unique active students (direct + through cohorts)
+        for course in courses:
+            cohort_student_ids = set()
+            for cohort_reg in course.cohort_registrations.filter(is_active=True):
+                cohort_student_ids.update(
+                    cohort_reg.cohort.cohortmembership_set.values_list(
+                        "student_id", flat=True
+                    )
+                )
+
+            direct_student_ids = set(
+                course.student_registrations.filter(is_active=True).values_list(
                     "student_id", flat=True
                 )
             )
 
-        # Get direct active student registrations
-        direct_student_ids = set(
-            course.student_registrations.filter(is_active=True).values_list(
-                "student_id", flat=True
-            )
-        )
+            course.total_student_count = len(cohort_student_ids | direct_student_ids)
 
-        # Total unique students
-        course.total_student_count = len(cohort_student_ids | direct_student_ids)
+        return courses
 
-    columns = [
+    def get_columns():
+        return [
+            {
+                "header": "Title",
+                "template": "cotton/data-table-cells/link.html",
+                "text_attr": "title",
+                "url_name": "educator_interface:interface",
+                "url_path_template": "courses/{pk}",
+            },
+            {
+                "header": "Active Students",
+                "template": "cotton/data-table-cells/text.html",
+                "attr": "total_student_count",
+            },
+            {
+                "header": "Active Cohorts",
+                "template": "cotton/data-table-cells/text.html",
+                "attr": "cohort_count",
+            },
+            {
+                "header": "Cohorts",
+                "template": "educator_interface/data-table-cells/cohort_links.html",
+                "relation_set": "cohort_registrations.all",
+                "link_object_attr": "cohort",
+                "link_text_attr": "cohort.name",
+            },
+        ]
+
+
+class CourseDetailsPanel(InstanceDetailsPanel):
+    fields = ["title", "category"]
+
+
+class CourseCohortRegistrationDataTable(DataTable):
+    def get_queryset(request):
+        return CohortCourseRegistration.objects.select_related(
+            "cohort", "collection"
+        ).order_by("cohort__name")
+
+    def get_columns():
+        return [
+            {
+                "header": "Cohort",
+                "template": "cotton/data-table-cells/link.html",
+                "text_attr": "cohort.name",
+                "url_name": "educator_interface:interface",
+                "url_path_template": "cohorts/{cohort.pk}",
+            },
+            {
+                "header": "Active",
+                "template": "cotton/data-table-cells/boolean.html",
+                "attr": "is_active",
+            },
+            {
+                "header": "Registered",
+                "template": "cotton/data-table-cells/text.html",
+                "attr": "registered_at",
+            },
+        ]
+
+
+class CourseCohortRegistrationsPanel(DataTablePanel):
+    title = "Cohort Registrations"
+    data_table = CourseCohortRegistrationDataTable
+
+    def get_filters(self) -> dict:
+        return {"collection": self.instance}
+
+
+class CourseStudentRegistrationDataTable(DataTable):
+    def get_queryset(request):
+        return StudentCourseRegistration.objects.select_related(
+            "student__user", "collection"
+        ).order_by("student__user__first_name", "student__user__last_name")
+
+    def get_columns():
+        return [
+            {
+                "header": "First Name",
+                "template": "cotton/data-table-cells/link.html",
+                "text_attr": "student.user.first_name",
+                "url_name": "educator_interface:interface",
+                "url_path_template": "students/{student.pk}",
+            },
+            {
+                "header": "Last Name",
+                "template": "cotton/data-table-cells/link.html",
+                "text_attr": "student.user.last_name",
+                "url_name": "educator_interface:interface",
+                "url_path_template": "students/{student.pk}",
+            },
+            {
+                "header": "Email",
+                "template": "cotton/data-table-cells/text.html",
+                "attr": "student.user.email",
+            },
+            {
+                "header": "Active",
+                "template": "cotton/data-table-cells/boolean.html",
+                "attr": "is_active",
+            },
+            {
+                "header": "Registered",
+                "template": "cotton/data-table-cells/text.html",
+                "attr": "registered_at",
+            },
+        ]
+
+
+class CourseStudentRegistrationsPanel(DataTablePanel):
+    title = "Student Registrations"
+    data_table = CourseStudentRegistrationDataTable
+
+    def get_filters(self) -> dict:
+        return {"collection": self.instance}
+
+
+class CourseInstanceView(InstanceView):
+    panels = {
+        "details": CourseDetailsPanel,
+        "cohorts": CourseCohortRegistrationsPanel,
+        "students": CourseStudentRegistrationsPanel,
+    }
+
+
+class CourseConfig(ListViewConfig):
+    url_name = "courses"
+    menu_label = "Courses"
+    model = Course
+    list_view = CourseDataTable
+    instance_view = CourseInstanceView
+
+
+interface_config = {
+    config.url_name: config for config in [CohortConfig, StudentConfig, CourseConfig]
+}
+
+
+def _resolve_path(parts: list[str]) -> object:
+    """Walk the interface config tree according to URL path parts.
+
+    Special segments like __panels resolve to the corresponding attribute
+    on the current object, allowing further traversal.
+    """
+    current = interface_config[parts[0]]
+    for part in parts[1:]:
+        if part == "__panels":
+            current = (
+                current.panel_getter()
+            )  # panel_getter.__getitem__ instantiates the panel and returns it
+        else:
+            current = current[part]
+
+    return current
+
+
+def interface(request, path_string: str = ""):
+    parts = [p for p in path_string.split("/") if p]
+    is_htmx = request.headers.get("HX-Request") == "true"
+    base_url = request.path
+
+    if not parts:
+        rendered_content = ""
+        heading = ""
+    else:
+        current = _resolve_path(parts)
+
+        if isinstance(current, Panel):
+            return HttpResponse(current.render(request, base_url=base_url))
+
+        rendered_content = current.render(request, base_url=base_url)
+
+        if is_htmx:
+            return HttpResponse(rendered_content)
+
+        heading = current.menu_label if hasattr(current, "menu_label") else ""
+
+    menu_items = [
         {
-            "header": "Title",
-            "template": "cotton/data-table-cells/link.html",
-            "text_attr": "title",
-            "url_name": "educator_interface:course_student_progress",
-            "url_param": "slug",
-        },
-        {
-            "header": "Students",
-            "template": "cotton/data-table-cells/text.html",
-            "attr": "total_student_count",
-        },
-        {
-            "header": "Cohorts",
-            "template": "cotton/data-table-cells/text.html",
-            "attr": "cohort_count",
-        },
+            "label": conf.menu_label,
+            "url": reverse(
+                "educator_interface:interface", kwargs={"path_string": conf.url_name}
+            ),
+        }
+        for conf in interface_config.values()
     ]
 
-    return render(
-        request,
-        "educator_interface/course_list.html",
-        {"courses": courses, "columns": columns},
-    )
+    context = {
+        "menu_items": menu_items,
+        "content": rendered_content,
+        "heading": heading,
+    }
 
-
-def cohort_detail(request: HttpRequest, cohort_id: str):
-    """Display details for a specific cohort."""
-    cohort = get_object_or_404(Cohort, pk=cohort_id)
-    return render(request, "educator_interface/cohort_detail.html", {"cohort": cohort})
-
-
-def student_detail(request: HttpRequest, student_id: str):
-    """Display details for a specific student."""
-    student = get_object_or_404(Student, pk=student_id)
-    return render(request, "educator_interface/student_detail.html", {"student": student})
+    return render(request, "educator_interface/interface.html", context)
