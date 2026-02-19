@@ -18,7 +18,7 @@ Always adhere to any rules or requirements set out in any CLAUDE.md files when r
 Read the idea carefully.
 
 
-Create an agent team to do the following. If agent teams are not available, use sub agents:
+Create sub agents to do the following:
 
 - Analyze the existing codebase
 - Research relevant best practices
@@ -44,8 +44,3 @@ Create a specification document based on the idea. Include:
 - If decisions were made, why were they made
 - Success criteria 
 
-# Step 4: If using an agent team
-
-If using a team:
-- shut the team members down upon completion
-- clean up the team

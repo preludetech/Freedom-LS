@@ -24,7 +24,7 @@ from .utils import (
     get_completed_courses,
     get_current_courses,
     get_recommended_courses,
-    _get_student,
+    get_student,
 )
 from freedom_ls.student_management.deadline_utils import is_item_locked
 
@@ -141,7 +141,7 @@ def view_course_item(request, course_slug, index):
     current_item = children[index - 1]
 
     # Check if item is locked by a hard deadline
-    student = _get_student(request.user)
+    student = get_student(request.user)
     if student and not isinstance(current_item, CoursePart):
         is_completed = _is_content_item_completed(current_item, request.user)
         if is_item_locked(student, course, current_item, is_completed=is_completed):

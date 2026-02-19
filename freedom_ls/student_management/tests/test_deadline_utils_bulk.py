@@ -2,45 +2,12 @@ import pytest
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
-from freedom_ls.content_engine.models import Course, Topic
-from freedom_ls.student_management.models import (
-    Student,
-    Cohort,
-    CohortMembership,
-    CohortCourseRegistration,
-    CohortDeadline,
-)
+from freedom_ls.content_engine.models import Topic
+from freedom_ls.student_management.models import CohortDeadline
 from freedom_ls.student_management.deadline_utils import (
     get_course_deadlines,
     get_effective_deadlines,
 )
-
-
-@pytest.fixture
-def course(mock_site_context):
-    return Course.objects.create(title="Test Course", slug="test-course")
-
-
-@pytest.fixture
-def student(mock_site_context, user):
-    return Student.objects.create(user=user)
-
-
-@pytest.fixture
-def cohort(mock_site_context):
-    return Cohort.objects.create(name="Bulk Cohort")
-
-
-@pytest.fixture
-def cohort_membership(mock_site_context, student, cohort):
-    return CohortMembership.objects.create(student=student, cohort=cohort)
-
-
-@pytest.fixture
-def cohort_course_reg(mock_site_context, cohort, course):
-    return CohortCourseRegistration.objects.create(
-        cohort=cohort, collection=course
-    )
 
 
 @pytest.mark.django_db

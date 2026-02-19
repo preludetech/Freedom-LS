@@ -1,4 +1,7 @@
+import uuid
+
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from django.utils import timezone
 from freedom_ls.content_engine.models import (
@@ -14,7 +17,6 @@ from freedom_ls.student_progress.models import FormProgress, TopicProgress
 from freedom_ls.student_management.models import Student, RecommendedCourse
 from freedom_ls.student_management.deadline_utils import (
     get_course_deadlines,
-    is_item_locked,
     EffectiveDeadline,
 )
 
@@ -28,7 +30,11 @@ COMPLETE = "COMPLETE"
 FAILED = "FAILED"
 
 
-def get_content_status(content_item, user, next_status):
+def get_content_status(
+    content_item: Topic | Form | CoursePart | Course,
+    user: User,
+    next_status: str,
+) -> tuple[str, str]:
     """
     Get the status for a content item based on user progress.
 
@@ -110,7 +116,7 @@ def get_content_status(content_item, user, next_status):
     return BLOCKED, BLOCKED
 
 
-def get_is_registered(user, course):
+def get_is_registered(user: User, course: Course) -> bool:
     # Check if user is registered for the course
     is_registered = False
     if user.is_authenticated:
@@ -123,7 +129,7 @@ def get_is_registered(user, course):
     return is_registered
 
 
-def get_course_index(user, course):
+def get_course_index(user: User, course: Course) -> list[dict]:
     """
     Generate an index of course children with their status and metadata.
 
@@ -132,8 +138,8 @@ def get_course_index(user, course):
     is_registered = get_is_registered(user, course)
 
     # Look up student and deadlines
-    student = _get_student(user)
-    deadlines_map: dict = {}
+    student = get_student(user)
+    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]] = {}
     if student:
         deadlines_map = get_course_deadlines(student, course)
 
@@ -144,7 +150,7 @@ def get_course_index(user, course):
     for child in course.children():
         child_dict, next_status, items_added = create_child_dict_with_flattened_index(
             child, user, course, global_index, next_status, is_registered,
-            deadlines_map=deadlines_map, student=student,
+            deadlines_map=deadlines_map,
         )
         children.append(child_dict)
         global_index += items_added
@@ -154,15 +160,13 @@ def get_course_index(user, course):
 
 def _get_deadlines_for_item(
     content_item: Topic | Form | CoursePart,
-    deadlines_map: dict[tuple[int | None, object | None], list[EffectiveDeadline]],
+    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]],
 ) -> list[dict]:
     """Get deadline display dicts for a content item from the pre-fetched deadlines map."""
     if not deadlines_map:
         return []
 
-    from django.contrib.contenttypes.models import ContentType as DjangoContentType
-
-    ct = DjangoContentType.objects.get_for_model(content_item)
+    ct = ContentType.objects.get_for_model(content_item)
     key = (ct.id, content_item.pk)
     effective_deadlines = deadlines_map.get(key, [])
 
@@ -189,13 +193,12 @@ def _apply_deadline_locking(
     if child_dict["status"] == COMPLETE:
         return
 
-    hard_deadlines = [d for d in deadlines if d["is_hard_deadline"] and d["is_expired"]]
+    hard_deadlines = [d for d in deadlines if d["is_hard_deadline"]]
     if not hard_deadlines:
         return
 
-    # Check if ALL hard deadlines are expired (most permissive governs)
-    all_hard = [d for d in deadlines if d["is_hard_deadline"]]
-    most_permissive = max(all_hard, key=lambda d: d["deadline"])
+    # Most permissive (latest) hard deadline governs access
+    most_permissive = max(hard_deadlines, key=lambda d: d["deadline"])
     if most_permissive["is_expired"]:
         child_dict["status"] = BLOCKED
         child_dict["url"] = None
@@ -208,8 +211,7 @@ def create_child_dict_with_flattened_index(
     start_index: int,
     next_status: str,
     is_registered: bool,
-    deadlines_map: dict[tuple[int | None, object | None], list[EffectiveDeadline]] | None = None,
-    student: Student | None = None,
+    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]] | None = None,
 ) -> tuple[dict, str, int]:
     """
     Create a child dict with proper flattened indices for nested items.
@@ -326,18 +328,15 @@ def create_child_dict_with_flattened_index(
 
 
 def form_start_page_buttons(
-    form, incomplete_form_progress, completed_form_progress, is_last_item
-):
+    form: Form,
+    incomplete_form_progress: FormProgress | None,
+    completed_form_progress: QuerySet[FormProgress],
+    is_last_item: bool,
+) -> list[dict[str, str]]:
     """
     Determine which buttons to show on the form start page.
 
     Returns a list of button dicts with 'text' and 'action' keys.
-
-    Args:
-        form: Form instance
-        incomplete_form_progress: FormProgress instance or None
-        completed_form_progress: QuerySet of completed FormProgress objects
-        is_last_item: Boolean indicating if this is the last item in the course
     """
     buttons = []
 
@@ -388,7 +387,7 @@ def get_all_courses() -> QuerySet[Course]:
     return Course.objects.all()
 
 
-def _get_student(user) -> Student | None:
+def get_student(user) -> Student | None:
     """Get the Student instance for a user, or None if anonymous or no student."""
     if not user.is_authenticated:
         return None
@@ -400,7 +399,7 @@ def _get_student(user) -> Student | None:
 
 def get_completed_courses(user) -> list[Course]:
     """Get completed courses for a user. Returns empty list for anonymous users."""
-    student = _get_student(user)
+    student = get_student(user)
     if student is None:
         return []
     return student.completed_courses()
@@ -408,7 +407,7 @@ def get_completed_courses(user) -> list[Course]:
 
 def get_current_courses(user) -> list[Course]:
     """Get current (in-progress) courses for a user. Returns empty list for anonymous users."""
-    student = _get_student(user)
+    student = get_student(user)
     if student is None:
         return []
     return student.current_courses()

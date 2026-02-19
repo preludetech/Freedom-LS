@@ -3,52 +3,8 @@ from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from freedom_ls.content_engine.models import Course, Topic
-from freedom_ls.student_management.models import (
-    Student,
-    Cohort,
-    CohortMembership,
-    CohortCourseRegistration,
-    StudentCohortDeadlineOverride,
-)
-
-
-@pytest.fixture
-def course(mock_site_context):
-    """Create a test course."""
-    return Course.objects.create(title="Test Course", slug="test-course")
-
-
-@pytest.fixture
-def topic(mock_site_context):
-    """Create a test topic."""
-    return Topic.objects.create(title="Test Topic", slug="test-topic")
-
-
-@pytest.fixture
-def cohort(mock_site_context):
-    """Create a test cohort."""
-    return Cohort.objects.create(name="Test Cohort")
-
-
-@pytest.fixture
-def student(mock_site_context, user):
-    """Create a test student."""
-    return Student.objects.create(user=user)
-
-
-@pytest.fixture
-def cohort_membership(mock_site_context, student, cohort):
-    """Add student to cohort."""
-    return CohortMembership.objects.create(student=student, cohort=cohort)
-
-
-@pytest.fixture
-def cohort_course_reg(mock_site_context, cohort, course):
-    """Create a cohort course registration."""
-    return CohortCourseRegistration.objects.create(
-        cohort=cohort, collection=course
-    )
+from freedom_ls.content_engine.models import Topic
+from freedom_ls.student_management.models import StudentCohortDeadlineOverride
 
 
 @pytest.mark.django_db

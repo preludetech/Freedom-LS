@@ -3,38 +3,8 @@ from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from freedom_ls.content_engine.models import Course, Topic
-from freedom_ls.student_management.models import (
-    Student,
-    StudentCourseRegistration,
-    StudentDeadline,
-)
-
-
-@pytest.fixture
-def course(mock_site_context):
-    """Create a test course."""
-    return Course.objects.create(title="Test Course", slug="test-course")
-
-
-@pytest.fixture
-def topic(mock_site_context):
-    """Create a test topic."""
-    return Topic.objects.create(title="Test Topic", slug="test-topic")
-
-
-@pytest.fixture
-def student(mock_site_context, user):
-    """Create a test student."""
-    return Student.objects.create(user=user)
-
-
-@pytest.fixture
-def student_course_reg(mock_site_context, student, course):
-    """Create a student course registration."""
-    return StudentCourseRegistration.objects.create(
-        student=student, collection=course
-    )
+from freedom_ls.content_engine.models import Topic
+from freedom_ls.student_management.models import StudentDeadline
 
 
 @pytest.mark.django_db

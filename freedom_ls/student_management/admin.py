@@ -162,6 +162,7 @@ class StudentCohortDeadlineOverrideInline(TabularInline):
 @admin.register(CohortCourseRegistration)
 class CohortCourseRegistrationAdmin(SiteAwareModelAdmin):
     list_display = ["cohort", "collection", "is_active", "registered_at"]
+    list_select_related = ["cohort", "collection"]
     list_filter = ["is_active", "registered_at"]
     search_fields = ["cohort__name", "collection__title"]
     autocomplete_fields = ["cohort", "collection"]
