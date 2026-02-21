@@ -50,9 +50,17 @@ Before reviewing the diff, gather context:
 - Look at test files related to the changes
 - Check if there are migration files in the changes (if Django model changes are present)
 - Review the commit messages for intent
-- Review spec and or plan files if provided
 
-## Step 3: Conduct the Review
+## Step 3: Check for plan alignment
+
+If a spec or plan file was provided
+
+- Compare the implementation against the original planning document or step description
+- Identify any deviations from the planned approach, architecture, or requirements
+- Assess whether deviations are justified improvements or problematic departures
+- Verify that all planned functionality has been implemented
+
+## Step 4: Conduct the Review
 
 Review the changes against these criteria, organized by priority:
 
@@ -61,6 +69,7 @@ Review the changes against these criteria, organized by priority:
 - **Data integrity**: Missing migrations, incorrect model constraints, race conditions
 - **Bugs**: Logic errors, off-by-one errors, null reference issues, unhandled exceptions
 - **Breaking changes**: API contract violations, backwards-incompatible changes without migration path
+- **Misalignment with any provided spec or plan files**
 
 ### Important Issues (Should Fix)
 - **Missing type hints**: All functions must have type hints. No `Any` type.
@@ -83,6 +92,26 @@ Review the changes against these criteria, organized by priority:
 - Verify that code includes appropriate comments and documentation
 - Check that file headers, function documentation, and inline comments are present and accurate
 
+### Other things to look at
+
+1. **Code Quality Assessment**:
+   - Review code for adherence to established patterns and conventions
+   - Check for proper error handling, type safety, and defensive programming
+   - Evaluate code organization, naming conventions, and maintainability
+   - Assess test coverage and quality of test implementations
+   - Look for potential security vulnerabilities or performance issues
+
+2. **Architecture and Design Review**:
+   - Ensure the implementation follows SOLID principles and established architectural patterns
+   - Check for proper separation of concerns and loose coupling
+   - Verify that the code integrates well with existing systems
+   - Assess scalability and extensibility considerations
+
+3. **Documentation and Standards**:
+   - Verify that code includes appropriate comments and documentation
+   - Check that file headers, function documentation, and inline comments are present and accurate
+   - Ensure adherence to project-specific coding standards and conventions
+
 ### Things to NOT Flag
 - Do not suggest adding logging unless it's clearly missing for error scenarios
 - Do not suggest creating abstract base classes
@@ -90,7 +119,7 @@ Review the changes against these criteria, organized by priority:
 - Do not suggest adding `# type: ignore` comments
 - Do not flag code that was not changed in this diff (unless it's directly related to a bug in the changed code)
 
-## Step 4: Present Your Review
+## Step 5: Present Your Review
 
 Structure your review as follows:
 

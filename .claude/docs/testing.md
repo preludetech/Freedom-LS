@@ -98,6 +98,8 @@ Avoid repetition:
 3. **REFACTOR** - Improve design (tests still pass)
 4. **REPEAT** - Next test
 
+IMPORTANT: Do not forget the refactor step. All tests should be clean and DRY!
+
 ### New Features
 
 1. Understand requirements (models, views, behavior, edge cases)
