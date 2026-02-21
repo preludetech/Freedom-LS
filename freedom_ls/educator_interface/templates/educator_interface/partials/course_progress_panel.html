@@ -1,0 +1,159 @@
+{% load i18n %}
+
+{% if empty_state %}
+<div class="text-center py-8">
+    <p>No course registrations found for this cohort.</p>
+</div>
+{% else %}
+
+{# Course selection dropdown #}
+<div class="mb-4">
+    <label for="course-select" class="block text-sm font-medium mb-1">Course</label>
+    <select
+        id="course-select"
+        name="registration"
+        hx-get="{{ base_url }}"
+        hx-target="closest section > div"
+        hx-include="[name='registration']"
+        class="input"
+    >
+        {% for reg in registrations %}
+        <option value="{{ reg.pk }}" {% if reg.pk == selected_reg.pk %}selected{% endif %}>
+            {{ reg.collection.title }}{% if not reg.is_active %} (inactive){% endif %}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+
+{# Course-level deadline #}
+{% if course_deadline %}
+<div class="mb-4 p-2 rounded {% if course_deadline.is_hard_deadline %}bg-red-50 border border-red-200{% else %}bg-amber-50 border border-amber-200{% endif %}">
+    <span class="text-sm">
+        Course deadline: {{ course_deadline.deadline|date:"M d, Y H:i" }}
+        {% if course_deadline.is_hard_deadline %}(hard){% else %}(soft){% endif %}
+    </span>
+</div>
+{% endif %}
+
+{# Progress grid #}
+{% if rows %}
+<div class="overflow-auto max-h-[600px] relative">
+    <table class="w-full border-collapse text-sm">
+        <thead>
+            {# Row 1: CoursePart headers (if any) #}
+            {% if has_parts and visible_parts %}
+            <tr class="sticky top-0 z-20 bg-white">
+                <th class="sticky left-0 z-30 bg-white"></th>
+                {% for vp in visible_parts %}
+                <th colspan="{{ vp.span }}" class="px-2 py-1 text-center border-b font-medium">
+                    {{ vp.part.title }}
+                </th>
+                {% endfor %}
+            </tr>
+            {% endif %}
+
+            {# Row 2: Item names + cohort deadlines #}
+            <tr class="sticky {% if has_parts and visible_parts %}top-8{% else %}top-0{% endif %} z-20 bg-white">
+                <th class="sticky left-0 z-30 bg-white px-3 py-2 text-left min-w-[180px] border-b">
+                    Student
+                </th>
+                {% for item in visible_items %}
+                <th class="px-2 py-1 text-center border-b min-w-[100px] max-w-[140px]">
+                    <div class="truncate text-xs" title="{{ item.title }}">{{ item.title }}</div>
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr class="border-b hover:bg-gray-50">
+                <td class="sticky left-0 z-10 bg-white px-3 py-2 whitespace-nowrap border-r">
+                    <a href="#" class="text-primary-600 hover:underline">
+                        {{ row.display_name }}
+                    </a>
+                    <span class="text-xs text-gray-400 ml-1">({{ row.progress }}%)</span>
+                </td>
+                {% for cell in row.cells %}
+                <td class="px-2 py-1 text-center text-xs {% if cell.is_hard_overdue %}bg-red-100 border-red-300{% elif cell.is_overdue %}bg-amber-50 border-amber-200{% endif %} border">
+                    {% if cell.is_completed %}
+                        {% if cell.is_quiz is True %}
+                            {# Quiz form: show percentage + pass/fail + attempt count #}
+                            <span class="{% if cell.passed %}text-green-700{% elif cell.passed is False %}text-red-700{% else %}text-gray-700{% endif %}">
+                                {{ cell.quiz_percentage }}%
+                                {% if cell.passed is True %}Pass{% elif cell.passed is False %}Fail{% endif %}
+                            </span>
+                            {% if cell.completed_count > 0 %}
+                            <span class="text-gray-400">(x{{ cell.completed_count }})</span>
+                            {% endif %}
+                        {% else %}
+                            {# Topic or non-quiz form: checkmark + datetime #}
+                            <span class="text-green-600" title="{{ cell.completed_time|date:'M d, Y H:i' }}">&#10003;</span>
+                        {% endif %}
+                    {% elif cell.is_started %}
+                        {# Started but not complete: play icon + start time #}
+                        <span class="text-amber-500" title="{{ cell.start_time|date:'M d, Y H:i' }}">&#9654;</span>
+                    {% else %}
+                        {# Not started #}
+                        <span class="text-gray-300">&mdash;</span>
+                    {% endif %}
+                    {% if cell.override %}
+                    <div class="text-[10px] text-blue-500" title="Override: {{ cell.override.deadline|date:'M d, Y H:i' }}">
+                        &#9202; {{ cell.override.deadline|date:"M d" }}
+                    </div>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{# Pagination controls #}
+<div class="flex justify-between items-center mt-4 text-sm">
+    {# Column pagination #}
+    <div class="flex items-center gap-2">
+        <span>Items {{ col_page.start_index }}-{{ col_page.end_index }} of {{ col_page.paginator.count }}</span>
+        {% if col_page.has_previous %}
+        <button
+            hx-get="{{ base_url }}?registration={{ selected_reg.pk }}&col_page={{ col_page.previous_page_number }}&page={{ student_page.number }}"
+            hx-target="closest section > div"
+            class="btn btn-sm"
+        >&laquo; Prev</button>
+        {% endif %}
+        {% if col_page.has_next %}
+        <button
+            hx-get="{{ base_url }}?registration={{ selected_reg.pk }}&col_page={{ col_page.next_page_number }}&page={{ student_page.number }}"
+            hx-target="closest section > div"
+            class="btn btn-sm"
+        >Next &raquo;</button>
+        {% endif %}
+    </div>
+
+    {# Student pagination #}
+    <div class="flex items-center gap-2">
+        <span>Students {{ student_page.start_index }}-{{ student_page.end_index }} of {{ student_page.paginator.count }}</span>
+        {% if student_page.has_previous %}
+        <button
+            hx-get="{{ base_url }}?registration={{ selected_reg.pk }}&col_page={{ col_page.number }}&page={{ student_page.previous_page_number }}"
+            hx-target="closest section > div"
+            class="btn btn-sm"
+        >&laquo; Prev</button>
+        {% endif %}
+        {% if student_page.has_next %}
+        <button
+            hx-get="{{ base_url }}?registration={{ selected_reg.pk }}&col_page={{ col_page.number }}&page={{ student_page.next_page_number }}"
+            hx-target="closest section > div"
+            class="btn btn-sm"
+        >Next &raquo;</button>
+        {% endif %}
+    </div>
+</div>
+
+{% else %}
+<div class="text-center py-4 text-gray-500">
+    <p>No students in this cohort.</p>
+</div>
+{% endif %}
+
+{% endif %}
