@@ -191,6 +191,31 @@ def test_cell_data_fetched_only_for_visible_window(
 
 
 @pytest.mark.django_db
+def test_displayed_percentage_matches_actual_completion(
+    mock_site_context, cohort, course, cohort_course_reg, request_factory, educator_user
+):
+    """Test that displayed percentage reflects actual course progress."""
+    topic1 = Topic.objects.create(title="Topic 1", slug="topic-1")
+    topic2 = Topic.objects.create(title="Topic 2", slug="topic-2")
+    add_item_to_collection(course, topic1, order=0)
+    add_item_to_collection(course, topic2, order=1)
+
+    student = make_student(mock_site_context, "student@example.com", cohort)
+
+    # Complete 1 of 2 topics → 50% (save trigger auto-creates CourseProgress)
+    tp = TopicProgress.objects.create(user=student.user, topic=topic1)
+    tp.complete_time = timezone.now()
+    tp.save()
+
+    panel = CohortCourseProgressPanel(cohort)
+    request = request_factory.get("/")
+    request.user = educator_user
+    content = panel.get_content(request)
+
+    assert "(50%)" in content
+
+
+@pytest.mark.django_db
 def test_htmx_request_returns_panel_content_only(
     mock_site_context, cohort, course, cohort_course_reg, request_factory, educator_user
 ):
