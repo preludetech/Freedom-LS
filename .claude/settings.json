@@ -16,13 +16,21 @@
       "mcp__playwright__browser_console_messages",
       "mcp__playwright__browser_type",
       "mcp__playwright__browser_wait_for",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Skill(frontend-styling)",
+      "Bash(tail:*)",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_select_option",
+      "mcp__playwright__browser_evaluate",
+      "Bash(sleep 3:*)",
+      "mcp__playwright__browser_hover",
+      "mcp__playwright__browser_resize"
+
     ],
     "deny": [
       "Read(.env)",
       "Read(.env.*)",
-      "Write(config/settings_prod.py)",
-      "Bash(rm -rf *)"
+      "Write(config/settings_prod.py)"
     ]
   },
   "hooks": {

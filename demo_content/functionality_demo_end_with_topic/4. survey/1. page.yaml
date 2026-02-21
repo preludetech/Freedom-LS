@@ -1,0 +1,40 @@
+---
+content_type: FORM_PAGE
+description: Tell us what you thought of this course.
+title: Feedback
+uuid: 85f82ad9-67ff-4558-b3c6-d735e72207f2
+---
+category: Satisfaction
+options:
+- text: Poor
+  uuid: 5f30d6b5-af5c-48ba-a9d2-3683b502d5b2
+  value: 1
+- text: Average
+  uuid: 025a4c47-bbbe-4caa-ac8a-14971d21be07
+  value: 3
+- text: Good
+  uuid: 9f6cbe65-1ab9-458a-8c29-1e53929cb482
+  value: 5
+- text: Excellent
+  uuid: c5de3dff-c252-4378-86b4-06050b523472
+  value: 7
+question: How would you rate this course overall?
+required: true
+type: multiple_choice
+uuid: 617bd70c-aa7a-407f-ac3d-537b03578fd6
+---
+category: Recommendation
+options:
+- text: 'No'
+  uuid: 0103f488-97f8-40b7-a790-c7e0d34f55be
+  value: 0
+- text: Maybe
+  uuid: 2bc990ba-e19d-484d-97e7-5c17e3d60745
+  value: 3
+- text: 'Yes'
+  uuid: 7300aefc-7bc7-4ee5-9b95-08222d22e8ea
+  value: 5
+question: Would you recommend this course to others?
+required: true
+type: multiple_choice
+uuid: 31e68d64-64d7-4910-a6dd-880c2f9ff971
