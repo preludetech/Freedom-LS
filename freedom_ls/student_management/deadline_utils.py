@@ -363,7 +363,7 @@ def _resolve_student_deadline_from_index(
     return None
 
 
-def is_item_locked(
+def is_item_locked_by_deadline(
     student: Student,
     course: Course,
     content_item: Topic | Form | CoursePart,
