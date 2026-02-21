@@ -37,3 +37,8 @@ For each problem you find:
 # Step 3
 
 Return to Step 1 and make sure no new problems were introduced. Repeat the whole process until the spec has no unaddressed problems
+
+# Out of scope 
+
+- Do not add technical implementation details to the spec. Just check the ones already included.
+- If there are any technical concerns then raise them in a high level way, don't write unnecessary code
