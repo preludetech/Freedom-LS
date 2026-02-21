@@ -97,10 +97,12 @@
                         {% else %}
                             {# Topic or non-quiz form: checkmark + datetime #}
                             <span class="text-success" title="{{ cell.completed_time|date:'M d, Y H:i' }}" aria-label="Completed">&#10003;</span>
+                            <div class="text-[10px] text-muted">{{ cell.completed_time|date:"M d" }}</div>
                         {% endif %}
                     {% elif cell.is_started %}
                         {# Started but not complete: play icon + start time #}
                         <span class="text-primary" title="{{ cell.start_time|date:'M d, Y H:i' }}" aria-label="Started">&#9654;</span>
+                        <div class="text-[10px] text-muted">{{ cell.start_time|date:"M d" }}</div>
                     {% else %}
                         {# Not started #}
                         <span class="text-border" aria-label="Not started">&mdash;</span>
