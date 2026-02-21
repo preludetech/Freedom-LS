@@ -12,7 +12,7 @@ from freedom_ls.student_management.models import (
 )
 from freedom_ls.student_management.deadline_utils import (
     get_effective_deadlines,
-    is_item_locked,
+    is_item_locked_by_deadline,
 )
 
 
@@ -205,7 +205,7 @@ def test_course_level_deadline_resolves_for_course(
     assert result[0].deadline == course_dt
 
 
-# --- is_item_locked tests ---
+# --- is_item_locked_by_deadline tests ---
 
 
 @pytest.mark.django_db
@@ -220,7 +220,7 @@ def test_expired_hard_deadline_incomplete_locks_item(
         is_hard_deadline=True,
     )
 
-    assert is_item_locked(student, course, topic, is_completed=False) is True
+    assert is_item_locked_by_deadline(student, course, topic, is_completed=False) is True
 
 
 @pytest.mark.django_db
@@ -235,7 +235,7 @@ def test_expired_hard_deadline_completed_not_locked(
         is_hard_deadline=True,
     )
 
-    assert is_item_locked(student, course, topic, is_completed=True) is False
+    assert is_item_locked_by_deadline(student, course, topic, is_completed=True) is False
 
 
 @pytest.mark.django_db
@@ -250,7 +250,7 @@ def test_soft_deadline_never_locks(
         is_hard_deadline=False,
     )
 
-    assert is_item_locked(student, course, topic, is_completed=False) is False
+    assert is_item_locked_by_deadline(student, course, topic, is_completed=False) is False
 
 
 @pytest.mark.django_db
@@ -281,7 +281,7 @@ def test_most_permissive_deadline_governs_access(
         is_hard_deadline=True,
     )
 
-    assert is_item_locked(student, course, topic, is_completed=False) is False
+    assert is_item_locked_by_deadline(student, course, topic, is_completed=False) is False
 
 
 @pytest.mark.django_db
@@ -289,4 +289,4 @@ def test_no_deadlines_not_locked(
     mock_site_context, student, course, topic
 ):
     """No deadlines means the item is not locked."""
-    assert is_item_locked(student, course, topic, is_completed=False) is False
+    assert is_item_locked_by_deadline(student, course, topic, is_completed=False) is False

@@ -26,7 +26,7 @@ from .utils import (
     get_recommended_courses,
     get_student,
 )
-from freedom_ls.student_management.deadline_utils import is_item_locked
+from freedom_ls.student_management.deadline_utils import is_item_locked_by_deadline
 
 
 def home(request):
@@ -144,7 +144,7 @@ def view_course_item(request, course_slug, index):
     student = get_student(request.user)
     if student and not isinstance(current_item, CoursePart):
         is_completed = _is_content_item_completed(current_item, request.user)
-        if is_item_locked(student, course, current_item, is_completed=is_completed):
+        if is_item_locked_by_deadline(student, course, current_item, is_completed=is_completed):
             return redirect("student_interface:course_home", course_slug=course_slug)
 
     total_children = len(children)
