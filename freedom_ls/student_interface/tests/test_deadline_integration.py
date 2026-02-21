@@ -69,6 +69,7 @@ def test_course_index_includes_deadline_data(
 
 
 @pytest.mark.django_db
+@override_settings(DEADLINES_ACTIVE=True)
 def test_expired_hard_deadline_locks_incomplete_item(
     mock_site_context, user, course, topic, setup_cohort_registration
 ):
@@ -125,6 +126,7 @@ def test_no_deadlines_no_deadline_key(
 
 
 @pytest.mark.django_db
+@override_settings(DEADLINES_ACTIVE=True)
 def test_view_course_item_redirects_if_locked(
     client, user, course, topic, setup_cohort_registration, mock_site_context
 ):
