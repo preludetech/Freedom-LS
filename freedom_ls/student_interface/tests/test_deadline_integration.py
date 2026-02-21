@@ -172,3 +172,30 @@ def test_get_course_index_skips_deadlines_when_inactive(
 
     assert children[0]["deadlines"] == []
     assert children[0]["status"] != BLOCKED
+
+
+@pytest.mark.django_db
+@override_settings(DEADLINES_ACTIVE=False)
+def test_view_course_item_skips_lock_check_when_deadlines_inactive(
+    client, user, course, topic, setup_cohort_registration, mock_site_context
+):
+    """When DEADLINES_ACTIVE=False, expired hard deadline does not redirect."""
+    course.items.create(child=topic, order=0)
+    topic_ct = ContentType.objects.get_for_model(Topic)
+
+    CohortDeadline.objects.create(
+        cohort_course_registration=setup_cohort_registration,
+        content_type=topic_ct,
+        object_id=topic.id,
+        deadline=timezone.now() - timedelta(days=1),
+        is_hard_deadline=True,
+    )
+
+    client.force_login(user)
+    url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
