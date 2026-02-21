@@ -1,5 +1,6 @@
 import pytest
 from datetime import timedelta
+from django.test import override_settings
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
@@ -148,3 +149,26 @@ def test_view_course_item_redirects_if_locked(
 
     assert response.status_code == 302
     assert course.slug in response.url
+
+
+@pytest.mark.django_db
+@override_settings(DEADLINES_ACTIVE=False)
+def test_get_course_index_skips_deadlines_when_inactive(
+    mock_site_context, user, course, topic, setup_cohort_registration
+):
+    """When DEADLINES_ACTIVE=False, deadlines list is empty and item is not BLOCKED."""
+    course.items.create(child=topic, order=0)
+    topic_ct = ContentType.objects.get_for_model(Topic)
+
+    CohortDeadline.objects.create(
+        cohort_course_registration=setup_cohort_registration,
+        content_type=topic_ct,
+        object_id=topic.id,
+        deadline=timezone.now() - timedelta(days=1),
+        is_hard_deadline=True,
+    )
+
+    children = get_course_index(user=user, course=course)
+
+    assert children[0]["deadlines"] == []
+    assert children[0]["status"] != BLOCKED
