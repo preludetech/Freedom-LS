@@ -14,7 +14,8 @@ from django.utils import timezone
 User = get_user_model()
 
 class CourseItemProgress(SiteAwareModel):
-    pass
+    class Meta:
+        abstract = True
 
 class FormProgress(CourseItemProgress):
     """Tracks a user's progress through a form."""
@@ -445,6 +446,7 @@ class CourseProgress(SiteAwareModel):
     start_time = models.DateTimeField(auto_now_add=True)
     last_accessed_time = models.DateTimeField(auto_now=True)
     completed_time = models.DateTimeField(blank=True, null=True)
+    progress_percentage = models.IntegerField(default=0)
 
     class Meta:
         verbose_name_plural = "Course progress records"
@@ -479,6 +481,6 @@ class CourseProgress(SiteAwareModel):
                 ).exists():
                     completed_items += 1
             else:
-                raise Exception("unhandled content type: {child.content_type}")
+                raise ValueError(f"unhandled content type: {child.content_type}")
 
         return round((completed_items / total_items) * 100)
