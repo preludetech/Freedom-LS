@@ -429,6 +429,11 @@ class CohortCourseProgressPanel(Panel):
     def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
         cohort = self.instance
 
+        # @claude this function is very very big. This is bad practice.
+        # Break it into smaller functions
+        # Each function should be clearly named
+        # Each function should have a clear purpose
+
         # 1. Course selection
         registrations = list(
             CohortCourseRegistration.objects.filter(cohort=cohort)
@@ -439,7 +444,7 @@ class CohortCourseProgressPanel(Panel):
         if not registrations:
             return render_to_string(
                 "educator_interface/partials/course_progress_panel.html",
-                {"empty_state": True},
+                {"registrations": []},
                 request=request,
             )
 
@@ -676,13 +681,14 @@ class CohortCourseProgressPanel(Panel):
         for item in visible_items:
             item_ct = topic_ct if isinstance(item, Topic) else form_ct
             item_deadline = deadline_map.get((item_ct.id, item.id))
-            header_items.append({
-                "item": item,
-                "deadline": item_deadline,
-            })
+            header_items.append(
+                {
+                    "item": item,
+                    "deadline": item_deadline,
+                }
+            )
 
         context = {
-            "empty_state": False,
             "registrations": registrations,
             "selected_reg": selected_reg,
             "course": course,
