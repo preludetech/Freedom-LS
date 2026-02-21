@@ -15,6 +15,7 @@ from django.db.models import QuerySet
 
 from freedom_ls.student_progress.models import FormProgress, TopicProgress
 from freedom_ls.student_management.models import Student, RecommendedCourse
+from freedom_ls.student_management.config import config
 from freedom_ls.student_management.deadline_utils import (
     get_course_deadlines,
     EffectiveDeadline,
@@ -140,7 +141,7 @@ def get_course_index(user: User, course: Course) -> list[dict]:
     # Look up student and deadlines
     student = get_student(user)
     deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]] = {}
-    if student:
+    if student and config.DEADLINES_ACTIVE:
         deadlines_map = get_course_deadlines(student, course)
 
     children = []
