@@ -101,7 +101,7 @@ class Command(BaseCommand):
         else:
             item_name = "course-level"
 
-        deadline_obj, created = CohortDeadline.objects.get_or_create(
+        deadline_obj, created = CohortDeadline.objects.update_or_create(
             cohort_course_registration=registration,
             content_type=content_type,
             object_id=object_id,
@@ -122,9 +122,8 @@ class Command(BaseCommand):
             )
         else:
             self.stdout.write(
-                self.style.WARNING(
-                    f"Deadline already exists on {item_name}. "
-                    f"Current: {deadline_obj.deadline.strftime('%Y-%m-%d %H:%M')} "
-                    f"({'hard' if deadline_obj.is_hard_deadline else 'soft'})"
+                self.style.SUCCESS(
+                    f"Updated existing deadline on {item_name} to {deadline_type}: "
+                    f"{deadline.strftime('%Y-%m-%d %H:%M')}"
                 )
             )
