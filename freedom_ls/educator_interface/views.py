@@ -1,9 +1,12 @@
+from datetime import datetime
+
+from django.contrib.auth import get_user_model
 from django.shortcuts import render, get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
-from django.core.paginator import Paginator
+from django.core.paginator import Page, Paginator
 from django.http import Http404, HttpResponse
-from django.db.models import Count, IntegerField, OuterRef, Q, Subquery, Value
+from django.db.models import Count, F, IntegerField, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Coalesce
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 
@@ -25,6 +28,8 @@ from freedom_ls.student_progress.models import (
 from django.utils import timezone as tz
 
 from guardian.shortcuts import get_objects_for_user
+
+User = get_user_model()
 
 
 # TODO
@@ -444,14 +449,14 @@ class CohortCourseProgressPanel(Panel):
 
     def _paginate_course_items(
         self, course: Course, col_page_num: int | str,
-    ) -> tuple[list, list[dict], bool, object]:
+    ) -> tuple[list[Topic | Form], list[dict[str, CoursePart | int]], bool, Page]:
         """Paginate course items and build visible part headers.
 
         Returns (visible_items, visible_parts, has_parts, col_page).
         """
         all_flat = course.children_flat()
-        items: list = []
-        part_children_map: dict = {}
+        items: list[Topic | Form] = []
+        part_children_map: dict[CoursePart, list[Topic | Form]] = {}
         current_part = None
         for child in all_flat:
             if isinstance(child, CoursePart):
@@ -477,7 +482,7 @@ class CohortCourseProgressPanel(Panel):
 
     def _paginate_students(
         self, cohort: Cohort, course: Course, page_num: int | str,
-    ) -> object:
+    ) -> Page:
         """Return a paginated page of cohort memberships annotated with progress."""
         progress_subquery = Subquery(
             CourseProgress.objects.filter(
@@ -500,8 +505,11 @@ class CohortCourseProgressPanel(Panel):
     def _fetch_progress_maps(
         self,
         visible_user_ids: list[int],
-        visible_items: list,
-    ) -> tuple[dict, dict]:
+        visible_items: list[Topic | Form],
+    ) -> tuple[
+        dict[tuple[int, int], TopicProgress],
+        dict[tuple[int, int], dict[str, FormProgress | int]],
+    ]:
         """Fetch topic and form progress keyed by (user_id, item_id).
 
         Returns (topic_progress_map, form_progress_map).
@@ -509,21 +517,21 @@ class CohortCourseProgressPanel(Panel):
         visible_topic_ids = [item.id for item in visible_items if isinstance(item, Topic)]
         visible_form_ids = [item.id for item in visible_items if isinstance(item, Form)]
 
-        topic_progress_map: dict = {}
+        topic_progress_map: dict[tuple[int, int], TopicProgress] = {}
         if visible_topic_ids:
             for tp in TopicProgress.objects.filter(
                 user_id__in=visible_user_ids, topic_id__in=visible_topic_ids
             ).select_related("topic"):
                 topic_progress_map[(tp.user_id, tp.topic_id)] = tp
 
-        form_progress_map: dict = {}
+        form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]] = {}
         if visible_form_ids:
             for fp in (
                 FormProgress.objects.filter(
                     user_id__in=visible_user_ids, form_id__in=visible_form_ids
                 )
                 .select_related("form")
-                .order_by("-completed_time", "-start_time")
+                .order_by(F("completed_time").desc(nulls_last=True), "-start_time")
             ):
                 key = (fp.user_id, fp.form_id)
                 if key not in form_progress_map:
@@ -536,9 +544,15 @@ class CohortCourseProgressPanel(Panel):
     def _fetch_deadline_data(
         self,
         selected_reg: CohortCourseRegistration,
-        visible_items: list,
-        student_page: object,
-    ) -> tuple[object | None, dict, dict, DjangoContentType, DjangoContentType]:
+        visible_items: list[Topic | Form],
+        student_page: Page,
+    ) -> tuple[
+        CohortDeadline | None,
+        dict[tuple[int, int], CohortDeadline],
+        dict[tuple[int, int | None, int | None], StudentCohortDeadlineOverride],
+        DjangoContentType,
+        DjangoContentType,
+    ]:
         """Fetch cohort deadlines and student overrides for visible items.
 
         Returns (course_deadline, deadline_map, student_override_map, topic_ct, form_ct).
@@ -560,7 +574,7 @@ class CohortCourseProgressPanel(Panel):
             ).filter(deadline_q)
         )
 
-        deadline_map: dict = {}
+        deadline_map: dict[tuple[int, int], CohortDeadline] = {}
         course_deadline = None
         for dl in cohort_deadlines:
             if dl.content_type_id is None:
@@ -568,7 +582,9 @@ class CohortCourseProgressPanel(Panel):
             else:
                 deadline_map[(dl.content_type_id, dl.object_id)] = dl
 
-        student_override_map: dict = {}
+        student_override_map: dict[
+            tuple[int, int | None, int | None], StudentCohortDeadlineOverride
+        ] = {}
         student_ids = [m.student_id for m in student_page.object_list]
         if student_ids:
             overrides = StudentCohortDeadlineOverride.objects.filter(
@@ -586,17 +602,23 @@ class CohortCourseProgressPanel(Panel):
         self,
         item: Topic | Form,
         student: Student,
-        user: object,
+        user: "User",
         topic_ct: DjangoContentType,
         form_ct: DjangoContentType,
-        topic_progress_map: dict,
-        form_progress_map: dict,
-        deadline_map: dict,
-        student_override_map: dict,
-        now: object,
+        topic_progress_map: dict[tuple[int, int], TopicProgress],
+        form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]],
+        deadline_map: dict[tuple[int, int], CohortDeadline],
+        student_override_map: dict[tuple[int, int | None, int | None], StudentCohortDeadlineOverride],
+        now: datetime,
     ) -> dict:
         """Build the cell data dict for one student/item intersection."""
-        cell: dict = {"item": item}
+        cell: dict = {
+            "item": item,
+            "is_quiz": False,
+            "completed_count": 0,
+            "quiz_percentage": None,
+            "passed": None,
+        }
         item_ct = topic_ct if isinstance(item, Topic) else form_ct
 
         item_deadline = deadline_map.get((item_ct.id, item.id))
@@ -656,14 +678,14 @@ class CohortCourseProgressPanel(Panel):
 
     def _build_rows(
         self,
-        student_page: object,
-        visible_items: list,
+        student_page: Page,
+        visible_items: list[Topic | Form],
         topic_ct: DjangoContentType,
         form_ct: DjangoContentType,
-        topic_progress_map: dict,
-        form_progress_map: dict,
-        deadline_map: dict,
-        student_override_map: dict,
+        topic_progress_map: dict[tuple[int, int], TopicProgress],
+        form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]],
+        deadline_map: dict[tuple[int, int], CohortDeadline],
+        student_override_map: dict[tuple[int, int | None, int | None], StudentCohortDeadlineOverride],
     ) -> list[dict]:
         """Build row data for each student on the current page."""
         now = tz.now()
@@ -688,7 +710,10 @@ class CohortCourseProgressPanel(Panel):
                 "student": student,
                 "user": user,
                 "display_name": display_name,
-                "student_url": f"/educator/students/{student.pk}",
+                "student_url": reverse(
+                    "educator_interface:interface",
+                    kwargs={"path_string": f"students/{student.pk}"},
+                ),
                 "progress": membership.progress,
                 "cells": cells,
             })
@@ -696,8 +721,8 @@ class CohortCourseProgressPanel(Panel):
 
     def _build_header_items(
         self,
-        visible_items: list,
-        deadline_map: dict,
+        visible_items: list[Topic | Form],
+        deadline_map: dict[tuple[int, int], CohortDeadline],
         topic_ct: DjangoContentType,
         form_ct: DjangoContentType,
     ) -> list[dict]:

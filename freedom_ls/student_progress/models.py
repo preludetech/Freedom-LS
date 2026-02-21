@@ -94,6 +94,9 @@ class CourseItemProgress(SiteAwareModel):
         )
 
     def save(self, *args, **kwargs):
+        # Note: This hook only fires on instance.save(), not on queryset.update().
+        # If bulk updating completion fields, manually call
+        # update_course_progress_on_completion() for affected records.
         super().save(*args, **kwargs)
         current_value = getattr(self, self.completion_field_name)
         if current_value is not None and self._original_completion_value is None:
@@ -536,7 +539,7 @@ class CourseProgress(SiteAwareModel):
     start_time = models.DateTimeField(auto_now_add=True)
     last_accessed_time = models.DateTimeField(auto_now=True)
     completed_time = models.DateTimeField(blank=True, null=True)
-    progress_percentage = models.IntegerField(default=0)
+    progress_percentage = models.IntegerField(default=0, db_index=True)
 
     class Meta:
         verbose_name_plural = "Course progress records"
