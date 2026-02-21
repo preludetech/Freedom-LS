@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     *INSTALLED_APPS,
     # "django_watchfiles",
     "django_browser_reload",
+    "freedom_ls.qa_helpers",
 ]
 
 

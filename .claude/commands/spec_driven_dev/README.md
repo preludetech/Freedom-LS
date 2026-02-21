@@ -12,7 +12,18 @@ To do this:
 
 ## Step 3: make a plan 
 
-1. run plan_from_spec
+1. run plan_from_spec 
+
+This will make a plan and a qa plan.
 
 ## Execute the plan
 
+## Run the Qa 
+
+## React to QA report 
+
+If there were tests that could not be run because of missing data or similar, then run make_qa_helpers.
+
+If there were bugs detected, run:
+
+fix_qa_fails

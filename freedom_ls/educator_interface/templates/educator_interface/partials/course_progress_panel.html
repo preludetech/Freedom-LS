@@ -68,9 +68,9 @@
             {% for row in rows %}
             <tr>
                 <th scope="row" class="sticky left-0 z-10 bg-surface px-3 py-2 whitespace-nowrap border-r border-border font-normal text-left">
-                    <span class="text-sm text-primary">
+                    <a href="{{ row.student_url }}" class="text-sm text-primary hover:underline">
                         {{ row.display_name }}
-                    </span>
+                    </a>
                     <span class="text-xs text-muted ml-1">({{ row.progress }}%)</span>
                 </th>
                 {% for cell in row.cells %}

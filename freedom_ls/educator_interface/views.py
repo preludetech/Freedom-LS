@@ -660,6 +660,7 @@ class CohortCourseProgressPanel(Panel):
                 "student": student,
                 "user": user,
                 "display_name": display_name,
+                "student_url": f"/educator/students/{student.pk}",
                 "progress": membership.progress,
                 "cells": cells,
             })
