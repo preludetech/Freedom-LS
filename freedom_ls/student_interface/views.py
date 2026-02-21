@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
@@ -495,7 +499,11 @@ def course_finish(request, course_slug):
     return render(request, "student_interface/course_finish.html", context)
 
 
-def _is_content_item_completed(content_item: Topic | Form, user) -> bool:
+if TYPE_CHECKING:
+    from freedom_ls.accounts.models import User
+
+
+def _is_content_item_completed(content_item: Topic | Form, user: User) -> bool:
     """Check if a content item has been completed by the user."""
     if isinstance(content_item, Topic):
         return TopicProgress.objects.filter(
