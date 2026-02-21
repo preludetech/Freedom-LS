@@ -1,8 +1,14 @@
 import pytest
+from datetime import timedelta
+from django.contrib.contenttypes.models import ContentType as DjangoContentType
+from django.template.defaultfilters import date as django_date
 from django.utils import timezone
 from freedom_ls.content_engine.models import Course, Topic, Form, CoursePart
 from freedom_ls.educator_interface.views import CohortCourseProgressPanel
-from freedom_ls.student_management.models import CohortCourseRegistration
+from freedom_ls.student_management.models import (
+    CohortCourseRegistration,
+    CohortDeadline,
+)
 from freedom_ls.student_progress.models import CourseProgress, TopicProgress
 from freedom_ls.educator_interface.tests.conftest import make_student, add_item_to_collection
 
@@ -235,3 +241,51 @@ def test_htmx_request_returns_panel_content_only(
     request.user = educator_user
     htmx_content = panel.render(request)
     assert "<section" not in htmx_content  # Should NOT be wrapped
+
+
+@pytest.mark.django_db
+def test_item_deadlines_shown_in_column_headers(
+    mock_site_context, cohort, course, cohort_course_reg, request_factory, educator_user
+):
+    """Test that item-level deadlines appear in column headers with distinct hard/soft styling."""
+    topic1 = Topic.objects.create(title="Topic Hard", slug="topic-hard")
+    topic2 = Topic.objects.create(title="Topic Soft", slug="topic-soft")
+    add_item_to_collection(course, topic1, order=0)
+    add_item_to_collection(course, topic2, order=1)
+
+    make_student(mock_site_context, "student@example.com", cohort)
+
+    topic_ct = DjangoContentType.objects.get_for_model(Topic)
+
+    # Hard deadline on topic1
+    hard_deadline = timezone.now() + timedelta(days=5)
+    CohortDeadline.objects.create(
+        cohort_course_registration=cohort_course_reg,
+        content_type=topic_ct,
+        object_id=topic1.id,
+        deadline=hard_deadline,
+        is_hard_deadline=True,
+    )
+
+    # Soft deadline on topic2
+    soft_deadline = timezone.now() + timedelta(days=10)
+    CohortDeadline.objects.create(
+        cohort_course_registration=cohort_course_reg,
+        content_type=topic_ct,
+        object_id=topic2.id,
+        deadline=soft_deadline,
+        is_hard_deadline=False,
+    )
+
+    panel = CohortCourseProgressPanel(cohort)
+    request = request_factory.get("/")
+    request.user = educator_user
+    content = panel.get_content(request)
+
+    # Deadline dates should appear in the header area
+    assert django_date(hard_deadline, "M d") in content
+    assert django_date(soft_deadline, "M d") in content
+
+    # Hard deadline should have danger styling, soft should have warning styling
+    assert "text-danger" in content
+    assert "text-warning" in content

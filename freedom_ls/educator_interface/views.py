@@ -483,10 +483,12 @@ class CohortCourseProgressPanel(Panel):
         for part, children in part_children_map.items():
             visible_children = [c for c in children if c.pk in visible_item_pks]
             if visible_children:
-                visible_parts.append({
-                    "part": part,
-                    "span": len(visible_children),
-                })
+                visible_parts.append(
+                    {
+                        "part": part,
+                        "span": len(visible_children),
+                    }
+                )
 
         # 3. Student pagination (rows)
         progress_subquery = Subquery(
@@ -517,9 +519,7 @@ class CohortCourseProgressPanel(Panel):
         visible_topic_ids = [
             item.id for item in visible_items if isinstance(item, Topic)
         ]
-        visible_form_ids = [
-            item.id for item in visible_items if isinstance(item, Form)
-        ]
+        visible_form_ids = [item.id for item in visible_items if isinstance(item, Form)]
 
         # Topic progress: keyed by (user_id, topic_id)
         topic_progress_map: dict = {}
@@ -532,9 +532,13 @@ class CohortCourseProgressPanel(Panel):
         # Form progress: keyed by (user_id, form_id) -> latest completed + attempt count
         form_progress_map: dict = {}
         if visible_form_ids:
-            for fp in FormProgress.objects.filter(
-                user_id__in=visible_user_ids, form_id__in=visible_form_ids
-            ).select_related("form").order_by("-completed_time", "-start_time"):
+            for fp in (
+                FormProgress.objects.filter(
+                    user_id__in=visible_user_ids, form_id__in=visible_form_ids
+                )
+                .select_related("form")
+                .order_by("-completed_time", "-start_time")
+            ):
                 key = (fp.user_id, fp.form_id)
                 if key not in form_progress_map:
                     form_progress_map[key] = {
@@ -549,7 +553,9 @@ class CohortCourseProgressPanel(Panel):
         form_ct = DjangoContentType.objects.get_for_model(Form)
 
         visible_item_ids = [item.id for item in visible_items]
-        deadline_q = Q(content_type__isnull=True, object_id__isnull=True)  # course-level
+        deadline_q = Q(
+            content_type__isnull=True, object_id__isnull=True
+        )  # course-level
         if visible_item_ids:
             deadline_q |= Q(
                 content_type__in=[topic_ct, form_ct],
@@ -596,9 +602,7 @@ class CohortCourseProgressPanel(Panel):
 
                 # Get deadline info
                 item_deadline = deadline_map.get((item_ct.id, item.id))
-                override = student_override_map.get(
-                    (student.id, item_ct.id, item.id)
-                )
+                override = student_override_map.get((student.id, item_ct.id, item.id))
                 effective_deadline = override or item_deadline
                 cell["deadline"] = item_deadline
                 cell["override"] = override
@@ -656,13 +660,25 @@ class CohortCourseProgressPanel(Panel):
             name_parts = [p for p in (user.first_name, user.last_name) if p]
             display_name = " ".join(name_parts) if name_parts else user.email
 
-            rows.append({
-                "student": student,
-                "user": user,
-                "display_name": display_name,
-                "student_url": f"/educator/students/{student.pk}",
-                "progress": membership.progress,
-                "cells": cells,
+            rows.append(
+                {
+                    "student": student,
+                    "user": user,
+                    "display_name": display_name,
+                    "student_url": f"/educator/students/{student.pk}",
+                    "progress": membership.progress,
+                    "cells": cells,
+                }
+            )
+
+        # Build header items with deadline info for the template
+        header_items = []
+        for item in visible_items:
+            item_ct = topic_ct if isinstance(item, Topic) else form_ct
+            item_deadline = deadline_map.get((item_ct.id, item.id))
+            header_items.append({
+                "item": item,
+                "deadline": item_deadline,
             })
 
         context = {
@@ -672,6 +688,7 @@ class CohortCourseProgressPanel(Panel):
             "course": course,
             "course_deadline": course_deadline,
             "visible_items": visible_items,
+            "header_items": header_items,
             "visible_parts": visible_parts,
             "has_parts": bool(part_children_map),
             "col_page": col_page,
@@ -700,9 +717,9 @@ class CohortCourseProgressPanel(Panel):
 class CohortInstanceView(InstanceView):
     panels = {
         "details": CohortDetailsPanel,
+        "course_progress": CohortCourseProgressPanel,
         "courses": CourseRegistrationsPanel,
         "students": CohortStudentsPanel,
-        "course_progress": CohortCourseProgressPanel,
     }
 
 

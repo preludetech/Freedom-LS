@@ -57,9 +57,14 @@
                 <th scope="col" class="sticky left-0 z-30 bg-surface-2 px-3 py-2 text-left min-w-[180px] border-r border-border">
                     Student
                 </th>
-                {% for item in visible_items %}
+                {% for hi in header_items %}
                 <th scope="col" class="px-2 py-2 text-center min-w-[100px] max-w-[140px] border-r border-border last:border-r-0">
-                    <div class="truncate text-xs font-semibold text-foreground" title="{{ item.title }}">{{ item.title }}</div>
+                    <div class="truncate text-xs font-semibold text-foreground" title="{{ hi.item.title }}">{{ hi.item.title }}</div>
+                    {% if hi.deadline %}
+                    <div class="text-[10px] mt-0.5 {% if hi.deadline.is_hard_deadline %}text-danger font-semibold{% else %}text-warning{% endif %}">
+                        Due: {{ hi.deadline.deadline|date:"M d" }}
+                    </div>
+                    {% endif %}
                 </th>
                 {% endfor %}
             </tr>
