@@ -11,6 +11,8 @@ You are helping to take a comprehensive development plan, based on this a spec f
 - Optionally: Create a document called `3. frontend_qa.md`
 - Print a short summary of what you did
 
+DO NOT mention the frontend qa in the plan file. We will run the qa process after the plan is complete.
+
 # Step 1
 
 Read the spec carefully and make sure you understand what is needed.
@@ -47,26 +49,4 @@ If this plan is created then reference it in the plan file as a final step.
 
 # IMPORTANT 
 
-## Review code after every task
-
-After every task in the plan:
-
-1. use the request-code-review skill to review changes made for that task
-2. run all the tests make sure they pass
-3. make a commit
-
-## Review all the changed code 
-
-After every 3 tasks:
-
-1. Use the request-code-review skill to review all the changes made so far
-2. If there are changes: run all the unit tests in a subagent and make sure they pass
-3. make a commit if needed
-
-## Review all the changed code at the end
-
-When all the tasks are complete:
-
-1. use the request-code-review skill to review all the changes made for the entire plan
-2. run all the tests in a subagent and make sure they pass
-3. make a commit if needed
+If you created a `3. frontend_qa.md` file, DO NOT mention it inside `2. plan.md`

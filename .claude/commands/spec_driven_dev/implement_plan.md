@@ -23,19 +23,20 @@ Load plan, review critically, execute tasks in batches, report for review betwee
 1. Follow the step exactly (plan has bite-sized steps)
 2. Run verifications as specified
 3. Use the request-code-review skill to review what was done
-4. Report back:
-    - Show what was implemented
-    - Show verification output
-    - Say: "Ready for feedback."
-5. If there is feedback, apply changes
-6. If there is no feedback, or all changes are addressed:
+4. If there is no feedback, or all changes are addressed:
     - do a final test
     - make a commit
-7. Mode onto the next step until there are all complete
+5. Mode onto the next step until there are all complete
+
+## Double check 
+
+1. Read through all the steps and make sure you didn't miss anything
+2. If you did miss a requirement then implement it, then check again
 
 ## After all steps are complete
 
-Use the request-code-review skill to review what was done
+1. Use the request-code-review skill to review everything that was done.
+2. Run all the tests 
 
 ## When to Stop and Ask for Help
 
