@@ -18,12 +18,19 @@ from django.utils import timezone
 User = get_user_model()
 
 
-def update_course_progress_on_completion(user: "User", content_item: Topic | Form) -> None:
+def update_course_progress_on_completion(
+    user: "User", content_item: Topic | Form
+) -> None:
     """Update progress_percentage on all CourseProgress records affected by completing a content item.
 
     Traces through ContentCollectionItem to find parent courses (including
     items nested inside CourseParts) and recalculates progress for each.
     """
+    # @claude this function is very long. It needs to be refactored
+    #
+    # topic.courses() should return the courses that a topic is included in
+    # form.courses() should return the courses that the form is in
+    #
     item_ct = DjangoContentType.objects.get_for_model(content_item)
     course_ct = DjangoContentType.objects.get_for_model(Course)
     course_part_ct = DjangoContentType.objects.get_for_model(CoursePart)
@@ -97,6 +104,9 @@ class CourseItemProgress(SiteAwareModel):
         # Note: This hook only fires on instance.save(), not on queryset.update().
         # If bulk updating completion fields, manually call
         # update_course_progress_on_completion() for affected records.
+
+        # @claude calculate _original_completion_value here instead of during __init__. Remove the __init__ function
+
         super().save(*args, **kwargs)
         current_value = getattr(self, self.completion_field_name)
         if current_value is not None and self._original_completion_value is None:
@@ -529,7 +539,13 @@ class TopicProgress(CourseItemProgress):
 
 
 class CourseProgress(SiteAwareModel):
-    """Tracks a user's progress through a course."""
+    """Tracks a user's progress through a course.
+
+    IMPORTANT!! These are only created when a user EXPLICITY chooses to register a student for a course.
+    In some cases a student will register themselves for a course by choosing to start the course
+    In some cases an educator/staff user will register a student for a course.
+
+    """
 
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="course_progress"
