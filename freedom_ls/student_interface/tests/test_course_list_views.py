@@ -12,7 +12,6 @@ from freedom_ls.student_management.factories import (
     StudentCourseRegistrationFactory,
     StudentFactory,
 )
-from freedom_ls.student_management.models import Student
 from freedom_ls.student_progress.factories import CourseProgressFactory
 
 
@@ -29,33 +28,20 @@ def courses(mock_site_context) -> list[Course]:
     return result
 
 
-@pytest.fixture
-def student_user(mock_site_context):
-    """Create an authenticated user with a student profile."""
-    student = StudentFactory()
-    return student.user
-
-
-@pytest.fixture
-def authenticated_client(student_user) -> Client:
-    """Create an authenticated test client."""
-    client = Client()
-    client.force_login(student_user)
-    return client
-
-
 # --- all_courses view ---
 
 
 @pytest.mark.django_db
 def test_all_courses_started_course_has_progress_percentage(
-    authenticated_client, student_user, courses
+    mock_site_context, courses
 ):
     """Started courses in the all_courses view should have progress_percentage for progress bars."""
-    student = Student.objects.get(user=student_user)
+    student = StudentFactory()
     StudentCourseRegistrationFactory(student=student, collection=courses[0])
+    client = Client()
+    client.force_login(student.user)
 
-    response = authenticated_client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
 
     all_courses_list = list(response.context["all_courses"])
@@ -76,14 +62,14 @@ def test_partial_list_courses_anonymous_sees_empty(client, courses, mock_site_co
 
 
 @pytest.mark.django_db
-def test_partial_list_courses_current_courses(authenticated_client, student_user, courses):
+def test_partial_list_courses_current_courses(mock_site_context, courses):
     """Registered non-completed courses show up as registered_courses."""
-    student = Student.objects.get(user=student_user)
+    student = StudentFactory()
     StudentCourseRegistrationFactory(student=student, collection=courses[0])
+    client = Client()
+    client.force_login(student.user)
 
-    response = authenticated_client.get(
-        reverse("student_interface:partial_list_courses")
-    )
+    response = client.get(reverse("student_interface:partial_list_courses"))
     assert response.status_code == 200
     registered = response.context["registered_courses"]
     assert len(registered) == 1
@@ -92,34 +78,32 @@ def test_partial_list_courses_current_courses(authenticated_client, student_user
 
 @pytest.mark.django_db
 def test_partial_list_courses_current_courses_have_progress_percentage(
-    authenticated_client, student_user, courses
+    mock_site_context, courses
 ):
     """Current courses should have progress_percentage attribute for progress bars."""
-    student = Student.objects.get(user=student_user)
+    student = StudentFactory()
     StudentCourseRegistrationFactory(student=student, collection=courses[0])
+    client = Client()
+    client.force_login(student.user)
 
-    response = authenticated_client.get(
-        reverse("student_interface:partial_list_courses")
-    )
+    response = client.get(reverse("student_interface:partial_list_courses"))
     registered = response.context["registered_courses"]
     assert len(registered) == 1
     assert hasattr(registered[0], "progress_percentage")
 
 
 @pytest.mark.django_db
-def test_partial_list_courses_completed_courses(
-    authenticated_client, student_user, courses
-):
+def test_partial_list_courses_completed_courses(mock_site_context, courses):
     """Completed courses show up in completed_courses, not registered_courses."""
-    student = Student.objects.get(user=student_user)
+    student = StudentFactory()
     StudentCourseRegistrationFactory(student=student, collection=courses[0])
     CourseProgressFactory(
-        user=student_user, course=courses[0], completed_time=timezone.now()
+        user=student.user, course=courses[0], completed_time=timezone.now()
     )
+    client = Client()
+    client.force_login(student.user)
 
-    response = authenticated_client.get(
-        reverse("student_interface:partial_list_courses")
-    )
+    response = client.get(reverse("student_interface:partial_list_courses"))
     assert response.status_code == 200
     assert courses[0] in response.context["completed_courses"]
     assert courses[0] not in [c for c in response.context["registered_courses"]]
@@ -127,14 +111,15 @@ def test_partial_list_courses_completed_courses(
 
 @pytest.mark.django_db
 def test_partial_list_courses_includes_recommended_courses(
-    authenticated_client, student_user, courses
+    mock_site_context, courses
 ):
     """Recommended courses are passed to the template context."""
-    RecommendedCourseFactory(user=student_user, collection=courses[0])
+    student = StudentFactory()
+    RecommendedCourseFactory(user=student.user, collection=courses[0])
+    client = Client()
+    client.force_login(student.user)
 
-    response = authenticated_client.get(
-        reverse("student_interface:partial_list_courses")
-    )
+    response = client.get(reverse("student_interface:partial_list_courses"))
     assert response.status_code == 200
     recommended = list(response.context["recommended_courses"])
     assert len(recommended) == 1

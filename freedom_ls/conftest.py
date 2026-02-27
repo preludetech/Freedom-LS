@@ -6,22 +6,10 @@ import tempfile
 from pathlib import Path
 from django.test import RequestFactory
 from django.urls import reverse
-from freedom_ls.content_engine.factories import ContentCollectionItemFactory
-from freedom_ls.content_engine.models import ContentCollectionItem
 from freedom_ls.accounts.factories import UserFactory
 from urllib.parse import urlparse
 from playwright.sync_api import Page
 from allauth.account.models import EmailAddress
-
-
-def add_item_to_collection(collection, child, order: int = 0) -> ContentCollectionItem:
-    """Helper to add a child item to a course or course part via ContentCollectionItem."""
-    # @claude  REMOVE this function. It should be handled in the factory_boy factories
-    return ContentCollectionItemFactory(
-        collection_object=collection,
-        child_object=child,
-        order=order,
-    )
 
 
 def reverse_url(

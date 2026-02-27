@@ -2,6 +2,7 @@ import pytest
 from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
     CourseFactory,
     CoursePartFactory,
     FormFactory,
@@ -13,7 +14,6 @@ from freedom_ls.student_progress.factories import (
     FormProgressFactory,
     TopicProgressFactory,
 )
-from freedom_ls.conftest import add_item_to_collection
 
 
 @pytest.mark.django_db
@@ -37,7 +37,7 @@ def test_completing_topic_updates_progress_percentage(mock_site_context):
     user = UserFactory()
     course = CourseFactory()
     topic = TopicFactory()
-    add_item_to_collection(course, topic, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
     course_progress = CourseProgressFactory(user=user, course=course)
 
     # Complete the topic
@@ -55,7 +55,7 @@ def test_completing_form_updates_progress_percentage(mock_site_context):
     user = UserFactory()
     course = CourseFactory()
     form = FormFactory(strategy="QUIZ")
-    add_item_to_collection(course, form, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
     course_progress = CourseProgressFactory(user=user, course=course)
 
     # Complete the form via complete() method
@@ -73,8 +73,8 @@ def test_completing_item_in_course_part_updates_parent_course(mock_site_context)
     course = CourseFactory()
     part = CoursePartFactory()
     topic = TopicFactory()
-    add_item_to_collection(course, part, order=0)
-    add_item_to_collection(part, topic, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
+    ContentCollectionItemFactory(collection_object=part, child_object=topic, order=0)
     course_progress = CourseProgressFactory(user=user, course=course)
 
     tp = TopicProgressFactory(user=user, topic=topic)
@@ -93,8 +93,8 @@ def test_completing_item_in_multiple_courses_updates_all(mock_site_context):
     topic = TopicFactory()
     course2 = CourseFactory()
 
-    add_item_to_collection(course, topic, order=0)
-    add_item_to_collection(course2, topic, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
+    ContentCollectionItemFactory(collection_object=course2, child_object=topic, order=0)
 
     cp1 = CourseProgressFactory(user=user, course=course)
     cp2 = CourseProgressFactory(user=user, course=course2)
@@ -115,7 +115,7 @@ def test_progress_percentage_zero_when_no_items_complete(mock_site_context):
     user = UserFactory()
     course = CourseFactory()
     topic = TopicFactory()
-    add_item_to_collection(course, topic, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
     course_progress = CourseProgressFactory(user=user, course=course)
 
     # Start but don't complete
@@ -131,7 +131,7 @@ def test_completing_item_creates_course_progress_if_missing(mock_site_context):
     user = UserFactory()
     course = CourseFactory()
     topic = TopicFactory()
-    add_item_to_collection(course, topic, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
 
     # No CourseProgress exists yet
     assert CourseProgress.objects.filter(user=user, course=course).count() == 0
@@ -152,7 +152,7 @@ def test_partial_completion_gives_correct_percentage(mock_site_context):
     course = CourseFactory()
     topics = [TopicFactory() for _ in range(4)]
     for i, topic in enumerate(topics):
-        add_item_to_collection(course, topic, order=i)
+        ContentCollectionItemFactory(collection_object=course, child_object=topic, order=i)
 
     course_progress = CourseProgressFactory(user=user, course=course)
 

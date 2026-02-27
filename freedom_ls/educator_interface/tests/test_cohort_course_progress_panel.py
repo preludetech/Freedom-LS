@@ -9,13 +9,22 @@ from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
     CohortDeadlineFactory,
     CohortFactory,
+    CohortMembershipFactory,
+    StudentFactory,
 )
 from freedom_ls.student_progress.factories import (
     CourseProgressFactory,
     TopicProgressFactory,
 )
-from freedom_ls.conftest import add_item_to_collection
-from freedom_ls.educator_interface.tests.conftest import make_student
+from freedom_ls.content_engine.factories import ContentCollectionItemFactory
+from freedom_ls.student_management.models import Cohort, Student
+
+
+def _make_student(email: str, cohort: Cohort) -> Student:
+    """Create a student with a user and cohort membership."""
+    student = StudentFactory(user=UserFactory(email=email))
+    CohortMembershipFactory(student=student, cohort=cohort)
+    return student
 
 
 @pytest.mark.django_db
@@ -103,10 +112,10 @@ def test_students_sorted_by_progress_ascending(
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
     topic = TopicFactory(title="Topic 1")
-    add_item_to_collection(course, topic, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
 
-    student_a = make_student(mock_site_context, "student_a@example.com", cohort)
-    student_b = make_student(mock_site_context, "student_b@example.com", cohort)
+    student_a = _make_student("student_a@example.com", cohort)
+    student_b = _make_student("student_b@example.com", cohort)
 
     # student_b has progress, student_a does not
     CourseProgressFactory(
@@ -135,14 +144,10 @@ def test_students_without_course_progress_appear_first(
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
     topic = TopicFactory(title="Topic 1")
-    add_item_to_collection(course, topic, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
 
-    student_no_progress = make_student(
-        mock_site_context, "no_progress@example.com", cohort
-    )
-    student_with_progress = make_student(
-        mock_site_context, "has_progress@example.com", cohort
-    )
+    student_no_progress = _make_student("no_progress@example.com", cohort)
+    student_with_progress = _make_student("has_progress@example.com", cohort)
 
     CourseProgressFactory(
         user=student_with_progress.user, course=course, progress_percentage=50
@@ -171,9 +176,9 @@ def test_column_pagination_slices_items(
     # Create 20 topics (more than page size of 15)
     for i in range(20):
         topic = TopicFactory(title=f"Topic {i:02d}")
-        add_item_to_collection(course, topic, order=i)
+        ContentCollectionItemFactory(collection_object=course, child_object=topic, order=i)
 
-    make_student(mock_site_context, "student@example.com", cohort)
+    _make_student("student@example.com", cohort)
 
     panel = CohortCourseProgressPanel(cohort)
 
@@ -205,10 +210,10 @@ def test_cell_data_fetched_only_for_visible_window(
     topics = []
     for i in range(20):
         topic = TopicFactory(title=f"Topic {i:02d}")
-        add_item_to_collection(course, topic, order=i)
+        ContentCollectionItemFactory(collection_object=course, child_object=topic, order=i)
         topics.append(topic)
 
-    student = make_student(mock_site_context, "student@example.com", cohort)
+    student = _make_student("student@example.com", cohort)
 
     # Complete topic 16 (on page 2 of columns)
     tp = TopicProgressFactory(user=student.user, topic=topics[16])
@@ -243,10 +248,10 @@ def test_displayed_percentage_matches_actual_completion(
 
     topic1 = TopicFactory(title="Topic 1")
     topic2 = TopicFactory(title="Topic 2")
-    add_item_to_collection(course, topic1, order=0)
-    add_item_to_collection(course, topic2, order=1)
+    ContentCollectionItemFactory(collection_object=course, child_object=topic1, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=topic2, order=1)
 
-    student = make_student(mock_site_context, "student@example.com", cohort)
+    student = _make_student("student@example.com", cohort)
 
     # Complete 1 of 2 topics -> 50% (save trigger auto-creates CourseProgress)
     tp = TopicProgressFactory(user=student.user, topic=topic1)
@@ -271,7 +276,7 @@ def test_htmx_request_returns_panel_content_only(
     educator_user = UserFactory(staff=True)
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
-    make_student(mock_site_context, "student@example.com", cohort)
+    _make_student("student@example.com", cohort)
 
     panel = CohortCourseProgressPanel(cohort)
 
@@ -300,10 +305,10 @@ def test_item_deadlines_shown_in_column_headers(
 
     topic1 = TopicFactory(title="Topic Hard")
     topic2 = TopicFactory(title="Topic Soft")
-    add_item_to_collection(course, topic1, order=0)
-    add_item_to_collection(course, topic2, order=1)
+    ContentCollectionItemFactory(collection_object=course, child_object=topic1, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=topic2, order=1)
 
-    make_student(mock_site_context, "student@example.com", cohort)
+    _make_student("student@example.com", cohort)
 
     # Hard deadline on topic1
     hard_deadline = timezone.now() + timedelta(days=5)

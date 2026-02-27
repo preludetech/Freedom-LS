@@ -1,16 +1,18 @@
 import pytest
 from playwright.sync_api import Page
-from django.contrib.contenttypes.models import ContentType
-from freedom_ls.content_engine.models import (
-    Form,
-    FormPage,
-    FormQuestion,
-    QuestionOption,
-    Course,
-    ContentCollectionItem,
+
+from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
+    CourseFactory,
+    FormFactory,
+    FormPageFactory,
+    FormQuestionFactory,
+    QuestionOptionFactory,
 )
-from freedom_ls.student_management.models import Student, StudentCourseRegistration
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.student_management.factories import (
+    StudentCourseRegistrationFactory,
+    StudentFactory,
+)
 from conftest import reverse_url
 
 
@@ -118,119 +120,100 @@ def complete_quiz(page: Page, quiz_form, all_correct=True):
             submit_form(page)
 
 
-# ============================================================================
-# FACTORY FIXTURES
-# ============================================================================
+def _create_quiz_questions_on_page(form_page, questions_data: list[tuple]):
+    """Create multiple choice questions with options on a form page.
 
-
-@pytest.fixture
-def make_quiz_form(mock_site_context):
-    """Factory fixture to create quiz forms with different configurations."""
-
-    def _make_quiz_form(
-        title="Math Quiz",
-        slug="math-quiz",
-        quiz_show_incorrect=True,
-        quiz_pass_percentage=70,
-        num_pages=2,
-    ):
-        form = Form.objects.create(
-            title=title,
-            subtitle="Test your math skills",
-            slug=slug,
-            strategy="QUIZ",
-            quiz_show_incorrect=quiz_show_incorrect,
-            quiz_pass_percentage=quiz_pass_percentage,
+    Args:
+        form_page: FormPage instance
+        questions_data: List of (question_text, options_list, correct_answer) tuples
+    """
+    for q_idx, (question_text, options, correct_answer) in enumerate(questions_data):
+        question = FormQuestionFactory(
+            form_page=form_page,
+            question=question_text,
+            type="multiple_choice",
+            order=q_idx,
+            required=True,
         )
-
-        # Create pages with questions
-        questions_data = [
-            [
-                ("What is 5+3?", ["7", "8", "9"], "8"),
-                ("What is 10-4?", ["5", "6", "7"], "6"),
-            ],
-            [
-                ("What is 3*4?", ["11", "12", "13"], "12"),
-            ],
-        ]
-
-        for page_idx in range(min(num_pages, len(questions_data))):
-            page = FormPage.objects.create(
-                form=form,
-                title=f"Page {page_idx + 1}",
-                order=page_idx,
+        for opt_idx, opt_text in enumerate(options):
+            QuestionOptionFactory(
+                question=question,
+                text=opt_text,
+                value="1" if opt_text == correct_answer else "0",
+                order=opt_idx,
+                correct=(opt_text == correct_answer),
             )
 
-            for q_idx, (question_text, options, correct_answer) in enumerate(
-                questions_data[page_idx]
-            ):
-                question = FormQuestion.objects.create(
-                    form_page=page,
-                    question=question_text,
-                    type="multiple_choice",
-                    order=q_idx,
-                    required=True,
-                )
 
-                for opt_idx, opt_text in enumerate(options):
-                    QuestionOption.objects.create(
-                        question=question,
-                        text=opt_text,
-                        value="1" if opt_text == correct_answer else "0",
-                        order=opt_idx,
-                        correct=(opt_text == correct_answer),
-                    )
+def _create_quiz_form(
+    title="Math Quiz",
+    slug="math-quiz",
+    quiz_show_incorrect=True,
+    quiz_pass_percentage=70,
+    num_pages=2,
+):
+    """Create a quiz form with questions."""
+    form = FormFactory(
+        title=title,
+        subtitle="Test your math skills",
+        slug=slug,
+        strategy="QUIZ",
+        quiz_show_incorrect=quiz_show_incorrect,
+        quiz_pass_percentage=quiz_pass_percentage,
+    )
 
-        return form
+    questions_data = [
+        [
+            ("What is 5+3?", ["7", "8", "9"], "8"),
+            ("What is 10-4?", ["5", "6", "7"], "6"),
+        ],
+        [
+            ("What is 3*4?", ["11", "12", "13"], "12"),
+        ],
+    ]
 
-    return _make_quiz_form
-
-
-@pytest.fixture
-def make_course_with_form(mock_site_context):
-    """Factory fixture to create a course containing a form."""
-
-    def _make_course(form, title="Test Course", slug=None):
-        if slug is None:
-            slug = form.slug + "-course"
-
-        course = Course.objects.create(title=title, slug=slug)
-        ContentCollectionItem.objects.create(
-            collection=course,
-            child_type=ContentType.objects.get_for_model(Form),
-            child_id=form.id,
-            order=0,
+    for page_idx in range(min(num_pages, len(questions_data))):
+        form_page = FormPageFactory(
+            form=form,
+            title=f"Page {page_idx + 1}",
+            order=page_idx,
         )
-        return course
+        _create_quiz_questions_on_page(form_page, questions_data[page_idx])
 
-    return _make_course
+    return form
 
 
-@pytest.fixture
-def make_registered_student(mock_site_context):
-    """Factory fixture to create a student registered for a course."""
+def _create_course_with_form(form, title="Test Course", slug=None):
+    """Create a course containing a form."""
+    if slug is None:
+        slug = form.slug + "-course"
 
-    def _make_student(course):
-        user = UserFactory()
-        student = Student.objects.create(user=user)
-        StudentCourseRegistration.objects.create(
-            student=student, collection=course, is_active=True
-        )
-        return student
+    course = CourseFactory(title=title, slug=slug)
+    ContentCollectionItemFactory(
+        collection_object=course,
+        child_object=form,
+    )
+    return course
 
-    return _make_student
+
+def _register_student_for_course(course):
+    """Create a student registered for a course."""
+    student = StudentFactory()
+    StudentCourseRegistrationFactory(
+        student=student, collection=course, is_active=True
+    )
+    return student
 
 
 # ============================================================================
-# SPECIFIC FIXTURES FOR EXISTING TESTS
+# COMPLEX FIXTURES (not simple wrappers)
 # ============================================================================
 
 
 @pytest.fixture
-def complete_form_with_questions(mock_site_context):
+def complete_form_with_questions(mock_site_context):  # noqa: ARG001
     """Create a form with multiple pages and different question types."""
-    # Create form
-    form = Form.objects.create(
+    form = FormFactory(
         title="Test Quiz",
         subtitle="A test quiz for students",
         slug="test-quiz",
@@ -238,27 +221,22 @@ def complete_form_with_questions(mock_site_context):
     )
 
     # Page 1
-    page1 = FormPage.objects.create(
-        form=form,
-        title="Page 1",
-        order=0,
-        category="General",
-    )
+    page1 = FormPageFactory(form=form, title="Page 1", order=0, category="General")
 
     # Multiple choice question
-    mc_question = FormQuestion.objects.create(
+    mc_question = FormQuestionFactory(
         form_page=page1,
         question="What is 2+2?",
         type="multiple_choice",
         order=0,
         required=True,
     )
-    QuestionOption.objects.create(question=mc_question, text="3", value="0", order=0)
-    QuestionOption.objects.create(question=mc_question, text="4", value="1", order=1)
-    QuestionOption.objects.create(question=mc_question, text="5", value="0", order=2)
+    QuestionOptionFactory(question=mc_question, text="3", value="0", order=0)
+    QuestionOptionFactory(question=mc_question, text="4", value="1", order=1)
+    QuestionOptionFactory(question=mc_question, text="5", value="0", order=2)
 
     # Short text question
-    FormQuestion.objects.create(
+    FormQuestionFactory(
         form_page=page1,
         question="What is your name?",
         type="short_text",
@@ -267,30 +245,21 @@ def complete_form_with_questions(mock_site_context):
     )
 
     # Page 2
-    page2 = FormPage.objects.create(
-        form=form,
-        title="Page 2",
-        order=1,
-        category="Advanced",
-    )
+    page2 = FormPageFactory(form=form, title="Page 2", order=1, category="Advanced")
 
     # Checkboxes question
-    cb_question = FormQuestion.objects.create(
+    cb_question = FormQuestionFactory(
         form_page=page2,
         question="Select all that apply",
         type="checkboxes",
         order=0,
         required=False,
     )
-    QuestionOption.objects.create(
-        question=cb_question, text="Option A", value="1", order=0
-    )
-    QuestionOption.objects.create(
-        question=cb_question, text="Option B", value="1", order=1
-    )
+    QuestionOptionFactory(question=cb_question, text="Option A", value="1", order=0)
+    QuestionOptionFactory(question=cb_question, text="Option B", value="1", order=1)
 
     # Long text question
-    FormQuestion.objects.create(
+    FormQuestionFactory(
         form_page=page2,
         question="Explain your answer",
         type="long_text",
@@ -299,81 +268,6 @@ def complete_form_with_questions(mock_site_context):
     )
 
     return form
-
-
-@pytest.fixture
-def test_course(mock_site_context, complete_form_with_questions):
-    """Create a course with the test form as its first item."""
-    course = Course.objects.create(title="Test Course", slug="test-course")
-
-    # Add form to course using ContentCollectionItem
-    ContentCollectionItem.objects.create(
-        collection=course,
-        child_type=ContentType.objects.get_for_model(Form),
-        child_id=complete_form_with_questions.id,
-        order=0,
-    )
-
-    return course
-
-
-@pytest.fixture
-def student_with_registration(mock_site_context, test_course):
-    """Create a student registered for the test course."""
-    user = UserFactory()
-    student = Student.objects.create(user=user)
-
-    StudentCourseRegistration.objects.create(
-        student=student, collection=test_course, is_active=True
-    )
-
-    return student
-
-
-@pytest.fixture
-def quiz_form(make_quiz_form):
-    """Create a quiz form with quiz_show_incorrect=True."""
-    return make_quiz_form(quiz_show_incorrect=True)
-
-
-@pytest.fixture
-def quiz_course(make_course_with_form, quiz_form):
-    """Create a course with the quiz."""
-    return make_course_with_form(quiz_form, title="Math Course")
-
-
-@pytest.fixture
-def student_with_quiz_registration(make_registered_student, quiz_course):
-    """Create a student registered for the quiz course."""
-    return make_registered_student(quiz_course)
-
-
-@pytest.fixture
-def quiz_form_no_show_incorrect(make_quiz_form):
-    """Create a quiz form with quiz_show_incorrect=False."""
-    return make_quiz_form(
-        title="Private Quiz",
-        slug="private-quiz",
-        quiz_show_incorrect=False,
-        num_pages=1,  # Only need one page for this test
-    )
-
-
-@pytest.fixture
-def quiz_course_no_show_incorrect(make_course_with_form, quiz_form_no_show_incorrect):
-    """Create a course with the private quiz."""
-    return make_course_with_form(
-        quiz_form_no_show_incorrect,
-        title="Private Quiz Course",
-    )
-
-
-@pytest.fixture
-def student_with_private_quiz_registration(
-    make_registered_student, quiz_course_no_show_incorrect
-):
-    """Create a student registered for the private quiz course."""
-    return make_registered_student(quiz_course_no_show_incorrect)
 
 
 # ============================================================================
@@ -386,11 +280,13 @@ def student_with_private_quiz_registration(
 def test_view_form_landing_page(
     live_server,
     logged_in_page: Page,
-    test_course,
-    student_with_registration,
+    complete_form_with_questions,
 ):
     """Test that the form landing page displays correctly before starting."""
-    navigate_to_form(logged_in_page, live_server, test_course.slug)
+    course = _create_course_with_form(complete_form_with_questions)
+    _register_student_for_course(course)
+
+    navigate_to_form(logged_in_page, live_server, course.slug)
 
     # Assert form title is visible
     title = logged_in_page.locator("h1:has-text('Test Quiz')")
@@ -414,12 +310,13 @@ def test_view_form_landing_page(
 def test_start_and_fill_form_complete_workflow(
     live_server,
     logged_in_page: Page,
-    test_course,
     complete_form_with_questions,
-    student_with_registration,
 ):
     """Test complete workflow from start to submission."""
-    navigate_to_form(logged_in_page, live_server, test_course.slug)
+    course = _create_course_with_form(complete_form_with_questions)
+    _register_student_for_course(course)
+
+    navigate_to_form(logged_in_page, live_server, course.slug)
     start_form(logged_in_page)
 
     # Page 1: Verify page indicator
@@ -499,12 +396,13 @@ def test_start_and_fill_form_complete_workflow(
 def test_form_resumption(
     live_server,
     logged_in_page: Page,
-    test_course,
     complete_form_with_questions,
-    student_with_registration,
 ):
     """Test that users can resume incomplete forms."""
-    form_url = navigate_to_form(logged_in_page, live_server, test_course.slug)
+    course = _create_course_with_form(complete_form_with_questions)
+    _register_student_for_course(course)
+
+    form_url = navigate_to_form(logged_in_page, live_server, course.slug)
     start_form(logged_in_page)
 
     # Fill page 1
@@ -577,11 +475,13 @@ def test_form_resumption(
 def test_quiz_completion_shows_scores(
     live_server,
     logged_in_page: Page,
-    quiz_course,
-    quiz_form,
-    student_with_quiz_registration,
+    mock_site_context,
 ):
     """Test that when a student completes a quiz, they see their score and percentage."""
+    quiz_form = _create_quiz_form(quiz_show_incorrect=True)
+    quiz_course = _create_course_with_form(quiz_form, title="Math Course")
+    _register_student_for_course(quiz_course)
+
     navigate_to_form(logged_in_page, live_server, quiz_course.slug)
     start_form(logged_in_page)
     complete_quiz(logged_in_page, quiz_form, all_correct=True)
@@ -605,11 +505,13 @@ def test_quiz_completion_shows_scores(
 def test_quiz_shows_incorrect_answers_when_enabled(
     live_server,
     logged_in_page: Page,
-    quiz_course,
-    quiz_form,
-    student_with_quiz_registration,
+    mock_site_context,
 ):
     """Test that incorrect answers are shown when quiz_show_incorrect is True."""
+    quiz_form = _create_quiz_form(quiz_show_incorrect=True)
+    quiz_course = _create_course_with_form(quiz_form, title="Math Course")
+    _register_student_for_course(quiz_course)
+
     navigate_to_form(logged_in_page, live_server, quiz_course.slug)
     start_form(logged_in_page)
 
@@ -672,16 +574,23 @@ def test_quiz_shows_incorrect_answers_when_enabled(
 def test_quiz_does_not_show_incorrect_when_disabled(
     live_server,
     logged_in_page: Page,
-    quiz_course_no_show_incorrect,
-    quiz_form_no_show_incorrect,
-    student_with_private_quiz_registration,
+    mock_site_context,
 ):
     """Test that incorrect answers are NOT shown when quiz_show_incorrect is False."""
-    navigate_to_form(logged_in_page, live_server, quiz_course_no_show_incorrect.slug)
+    quiz_form = _create_quiz_form(
+        title="Private Quiz",
+        slug="private-quiz",
+        quiz_show_incorrect=False,
+        num_pages=1,
+    )
+    quiz_course = _create_course_with_form(quiz_form, title="Private Quiz Course")
+    _register_student_for_course(quiz_course)
+
+    navigate_to_form(logged_in_page, live_server, quiz_course.slug)
     start_form(logged_in_page)
 
     # Answer all questions on the page (at least one incorrect)
-    page1 = quiz_form_no_show_incorrect.pages.first()
+    page1 = quiz_form.pages.first()
     questions = list(page1.questions.all())
 
     # First question: INCORRECT
@@ -714,11 +623,13 @@ def test_quiz_does_not_show_incorrect_when_disabled(
 def test_completed_quiz_shows_scores_on_landing_page(
     live_server,
     logged_in_page: Page,
-    quiz_course,
-    quiz_form,
-    student_with_quiz_registration,
+    mock_site_context,
 ):
     """Test that completed quiz scores are shown on the quiz landing page."""
+    quiz_form = _create_quiz_form(quiz_show_incorrect=True)
+    quiz_course = _create_course_with_form(quiz_form, title="Math Course")
+    _register_student_for_course(quiz_course)
+
     quiz_url = navigate_to_form(logged_in_page, live_server, quiz_course.slug)
     start_form(logged_in_page)
     complete_quiz(logged_in_page, quiz_form, all_correct=True)
