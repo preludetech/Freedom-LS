@@ -29,14 +29,14 @@ def _make_student(email: str, cohort: Cohort) -> Student:
 
 @pytest.mark.django_db
 def test_panel_renders_empty_state_for_cohort_with_no_registrations(
-    mock_site_context, request_factory
+    mock_site_context, site_aware_request
 ):
     """Test that panel shows empty state when cohort has no course registrations."""
     cohort = CohortFactory()
     educator_user = UserFactory(staff=True)
 
     panel = CohortCourseProgressPanel(cohort)
-    request = request_factory.get("/")
+    request = site_aware_request.get("/")
     request.user = educator_user
     content = panel.get_content(request)
     assert "no course registrations" in content.lower() or "no courses" in content.lower()
@@ -44,7 +44,7 @@ def test_panel_renders_empty_state_for_cohort_with_no_registrations(
 
 @pytest.mark.django_db
 def test_panel_defaults_to_first_active_registration(
-    mock_site_context, request_factory
+    mock_site_context, site_aware_request
 ):
     """Test that panel defaults to the first active registration."""
     cohort = CohortFactory()
@@ -57,7 +57,7 @@ def test_panel_defaults_to_first_active_registration(
     CohortCourseRegistrationFactory(cohort=cohort, collection=course2, is_active=False)
 
     panel = CohortCourseProgressPanel(cohort)
-    request = request_factory.get("/")
+    request = site_aware_request.get("/")
     request.user = educator_user
     content = panel.get_content(request)
     # The active registration's course should be selected
@@ -66,7 +66,7 @@ def test_panel_defaults_to_first_active_registration(
 
 @pytest.mark.django_db
 def test_panel_selects_specific_registration_via_get_param(
-    mock_site_context, request_factory
+    mock_site_context, site_aware_request
 ):
     """Test that a specific registration can be selected via GET param."""
     cohort = CohortFactory()
@@ -78,7 +78,7 @@ def test_panel_selects_specific_registration_via_get_param(
     reg2 = CohortCourseRegistrationFactory(cohort=cohort, collection=course2)
 
     panel = CohortCourseProgressPanel(cohort)
-    request = request_factory.get(f"/?registration={reg2.pk}")
+    request = site_aware_request.get(f"/?registration={reg2.pk}")
     request.user = educator_user
     content = panel.get_content(request)
     assert "Second Course" in content
@@ -86,7 +86,7 @@ def test_panel_selects_specific_registration_via_get_param(
 
 @pytest.mark.django_db
 def test_panel_includes_inactive_registrations_in_dropdown(
-    mock_site_context, request_factory
+    mock_site_context, site_aware_request
 ):
     """Test that inactive registrations are included in the dropdown with indicator."""
     cohort = CohortFactory()
@@ -95,7 +95,7 @@ def test_panel_includes_inactive_registrations_in_dropdown(
     CohortCourseRegistrationFactory(cohort=cohort, collection=course, is_active=False)
 
     panel = CohortCourseProgressPanel(cohort)
-    request = request_factory.get("/")
+    request = site_aware_request.get("/")
     request.user = educator_user
     content = panel.get_content(request)
     assert "(inactive)" in content.lower()
@@ -103,7 +103,7 @@ def test_panel_includes_inactive_registrations_in_dropdown(
 
 @pytest.mark.django_db
 def test_students_sorted_by_progress_ascending(
-    mock_site_context, request_factory
+    mock_site_context, site_aware_request
 ):
     """Test that students are sorted by progress ascending (least progress first)."""
     cohort = CohortFactory()
@@ -123,7 +123,7 @@ def test_students_sorted_by_progress_ascending(
     )
 
     panel = CohortCourseProgressPanel(cohort)
-    request = request_factory.get("/")
+    request = site_aware_request.get("/")
     request.user = educator_user
     content = panel.get_content(request)
 
@@ -135,7 +135,7 @@ def test_students_sorted_by_progress_ascending(
 
 @pytest.mark.django_db
 def test_students_without_course_progress_appear_first(
-    mock_site_context, request_factory
+    mock_site_context, site_aware_request
 ):
     """Test that students with no CourseProgress appear first (treated as 0%)."""
     cohort = CohortFactory()
@@ -154,7 +154,7 @@ def test_students_without_course_progress_appear_first(
     )
 
     panel = CohortCourseProgressPanel(cohort)
-    request = request_factory.get("/")
+    request = site_aware_request.get("/")
     request.user = educator_user
     content = panel.get_content(request)
 
@@ -165,7 +165,7 @@ def test_students_without_course_progress_appear_first(
 
 @pytest.mark.django_db
 def test_column_pagination_slices_items(
-    mock_site_context, request_factory
+    mock_site_context, site_aware_request
 ):
     """Test that column pagination slices items correctly."""
     cohort = CohortFactory()
@@ -183,14 +183,14 @@ def test_column_pagination_slices_items(
     panel = CohortCourseProgressPanel(cohort)
 
     # Page 1 should show first 15 items
-    request = request_factory.get("/?col_page=1")
+    request = site_aware_request.get("/?col_page=1")
     request.user = educator_user
     content = panel.get_content(request)
     assert "Topic 00" in content
     assert "Topic 14" in content
 
     # Page 2 should show remaining items
-    request = request_factory.get("/?col_page=2")
+    request = site_aware_request.get("/?col_page=2")
     request.user = educator_user
     content = panel.get_content(request)
     assert "Topic 15" in content
@@ -199,7 +199,7 @@ def test_column_pagination_slices_items(
 
 @pytest.mark.django_db
 def test_cell_data_fetched_only_for_visible_window(
-    mock_site_context, request_factory
+    mock_site_context, site_aware_request
 ):
     """Test that cell data is fetched only for visible students x visible items."""
     cohort = CohortFactory()
@@ -223,14 +223,14 @@ def test_cell_data_fetched_only_for_visible_window(
     panel = CohortCourseProgressPanel(cohort)
 
     # On col_page=1, topic 16's completion should NOT be visible
-    request = request_factory.get("/?col_page=1")
+    request = site_aware_request.get("/?col_page=1")
     request.user = educator_user
     content = panel.get_content(request)
     # Topic 16 is not on page 1
     assert "Topic 16" not in content
 
     # On col_page=2, topic 16's completion SHOULD be visible
-    request = request_factory.get("/?col_page=2")
+    request = site_aware_request.get("/?col_page=2")
     request.user = educator_user
     content = panel.get_content(request)
     assert "Topic 16" in content
@@ -238,7 +238,7 @@ def test_cell_data_fetched_only_for_visible_window(
 
 @pytest.mark.django_db
 def test_displayed_percentage_matches_actual_completion(
-    mock_site_context, request_factory
+    mock_site_context, site_aware_request
 ):
     """Test that displayed percentage reflects actual course progress."""
     cohort = CohortFactory()
@@ -259,7 +259,7 @@ def test_displayed_percentage_matches_actual_completion(
     tp.save()
 
     panel = CohortCourseProgressPanel(cohort)
-    request = request_factory.get("/")
+    request = site_aware_request.get("/")
     request.user = educator_user
     content = panel.get_content(request)
 
@@ -268,7 +268,7 @@ def test_displayed_percentage_matches_actual_completion(
 
 @pytest.mark.django_db
 def test_htmx_request_returns_panel_content_only(
-    mock_site_context, request_factory
+    mock_site_context, site_aware_request
 ):
     """Test that HTMX request returns just the panel content (not wrapped in panel_container)."""
     cohort = CohortFactory()
@@ -281,13 +281,13 @@ def test_htmx_request_returns_panel_content_only(
     panel = CohortCourseProgressPanel(cohort)
 
     # Non-HTMX request
-    request = request_factory.get("/")
+    request = site_aware_request.get("/")
     request.user = educator_user
     full_content = panel.render(request)
     assert "<section" in full_content  # panel_container wraps in <section>
 
     # HTMX request
-    request = request_factory.get("/", HTTP_HX_REQUEST="true")
+    request = site_aware_request.get("/", HTTP_HX_REQUEST="true")
     request.user = educator_user
     htmx_content = panel.render(request)
     assert "<section" not in htmx_content  # Should NOT be wrapped
@@ -295,7 +295,7 @@ def test_htmx_request_returns_panel_content_only(
 
 @pytest.mark.django_db
 def test_item_deadlines_shown_in_column_headers(
-    mock_site_context, request_factory
+    mock_site_context, site_aware_request
 ):
     """Test that item-level deadlines appear in column headers with distinct hard/soft styling."""
     cohort = CohortFactory()
@@ -329,7 +329,7 @@ def test_item_deadlines_shown_in_column_headers(
     )
 
     panel = CohortCourseProgressPanel(cohort)
-    request = request_factory.get("/")
+    request = site_aware_request.get("/")
     request.user = educator_user
     content = panel.get_content(request)
 

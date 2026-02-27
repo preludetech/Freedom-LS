@@ -79,26 +79,21 @@ def test_str_without_content_item(mock_site_context):
 @pytest.mark.django_db
 def test_unique_constraint_prevents_duplicate_item_deadline(mock_site_context):
     """Cannot create two deadlines for the same content item on the same registration."""
-    from django.contrib.contenttypes.models import ContentType
     from django.db import IntegrityError
-    from freedom_ls.content_engine.models import Topic
 
     topic = TopicFactory()
     cohort_course_reg = CohortCourseRegistrationFactory()
 
-    topic_ct = ContentType.objects.get_for_model(Topic)
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct,
-        object_id=topic.id,
+        content_item=topic,
         deadline=timezone.now() + timezone.timedelta(days=7),
     )
 
     with pytest.raises(IntegrityError):
-        CohortDeadline.objects.create(
+        CohortDeadlineFactory(
             cohort_course_registration=cohort_course_reg,
-            content_type=topic_ct,
-            object_id=topic.id,
+            content_item=topic,
             deadline=timezone.now() + timezone.timedelta(days=14),
         )
 

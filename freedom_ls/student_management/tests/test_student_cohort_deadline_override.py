@@ -2,9 +2,7 @@ import pytest
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.contrib.contenttypes.models import ContentType
 from freedom_ls.content_engine.factories import TopicFactory
-from freedom_ls.content_engine.models import Topic
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -101,21 +99,18 @@ def test_unique_constraint_prevents_duplicate_item_override(mock_site_context):
     CohortMembershipFactory(student=student, cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
-    topic_ct = ContentType.objects.get_for_model(Topic)
-    StudentCohortDeadlineOverride.objects.create(
+    StudentCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         student=student,
-        content_type=topic_ct,
-        object_id=topic.id,
+        content_item=topic,
         deadline=timezone.now() + timezone.timedelta(days=7),
     )
 
     with pytest.raises(IntegrityError):
-        StudentCohortDeadlineOverride.objects.create(
+        StudentCohortDeadlineOverrideFactory(
             cohort_course_registration=cohort_course_reg,
             student=student,
-            content_type=topic_ct,
-            object_id=topic.id,
+            content_item=topic,
             deadline=timezone.now() + timezone.timedelta(days=14),
         )
 

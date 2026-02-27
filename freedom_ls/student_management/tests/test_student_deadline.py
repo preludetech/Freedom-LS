@@ -1,10 +1,8 @@
 import pytest
 from django.utils import timezone
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from freedom_ls.content_engine.factories import TopicFactory
-from freedom_ls.content_engine.models import Topic
 from freedom_ls.student_management.factories import (
     StudentCourseRegistrationFactory,
     StudentDeadlineFactory,
@@ -76,19 +74,16 @@ def test_unique_constraint_prevents_duplicate_item_deadline(mock_site_context):
     topic = TopicFactory()
     student_course_reg = StudentCourseRegistrationFactory()
 
-    topic_ct = ContentType.objects.get_for_model(Topic)
-    StudentDeadline.objects.create(
+    StudentDeadlineFactory(
         student_course_registration=student_course_reg,
-        content_type=topic_ct,
-        object_id=topic.id,
+        content_item=topic,
         deadline=timezone.now() + timezone.timedelta(days=7),
     )
 
     with pytest.raises(IntegrityError):
-        StudentDeadline.objects.create(
+        StudentDeadlineFactory(
             student_course_registration=student_course_reg,
-            content_type=topic_ct,
-            object_id=topic.id,
+            content_item=topic,
             deadline=timezone.now() + timezone.timedelta(days=14),
         )
 
