@@ -42,7 +42,7 @@ def update_course_progress_on_completion(user: "User", content_item: Topic | For
             course_part_ids.add(link.collection_id)
 
     # Batch lookup: find parent Courses for all CourseParts in one query
-    course_ids = direct_course_ids
+    course_ids = set(direct_course_ids)
     if course_part_ids:
         course_ids.update(
             ContentCollectionItem.objects.filter(
@@ -103,6 +103,7 @@ class CourseItemProgress(SiteAwareModel):
             content_item = getattr(self, self.content_item_field_name)
             update_course_progress_on_completion(self.user, content_item)
             self._original_completion_value = current_value
+
 
 class FormProgress(CourseItemProgress):
     """Tracks a user's progress through a form."""
@@ -547,33 +548,3 @@ class CourseProgress(SiteAwareModel):
 
     def __str__(self):
         return f"{self.user} - {self.course.title}"
-
-    def calculate_percentage_complete(self) -> int:
-        """
-        Calculate the percentage of course items completed.
-        Returns an integer between 0 and 100.
-        """
-        children = self.course.children()
-        if not children:
-            return 0
-
-        total_items = len(children)
-        completed_items = 0
-
-        for child in children:
-            if child.content_type == "TOPIC":
-                # Check if topic is complete
-                if TopicProgress.objects.filter(
-                    user=self.user, topic=child, complete_time__isnull=False
-                ).exists():
-                    completed_items += 1
-            elif child.content_type == "FORM":
-                # Check if form is complete
-                if FormProgress.objects.filter(
-                    user=self.user, form=child, completed_time__isnull=False
-                ).exists():
-                    completed_items += 1
-            else:
-                raise ValueError(f"unhandled content type: {child.content_type}")
-
-        return round((completed_items / total_items) * 100)

@@ -1,9 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.test import RequestFactory
 from freedom_ls.content_engine.models import (
-    ContentCollectionItem,
     Course,
     CoursePart,
     Form,
@@ -59,16 +57,3 @@ def make_student(mock_site_context, email: str, cohort: Cohort) -> Student:
     student = Student.objects.create(user=user)
     CohortMembership.objects.create(student=student, cohort=cohort)
     return student
-
-
-def add_item_to_collection(collection, child, order=0):
-    """Helper to add a child item to a course or course part."""
-    collection_ct = DjangoContentType.objects.get_for_model(collection)
-    child_ct = DjangoContentType.objects.get_for_model(child)
-    return ContentCollectionItem.objects.create(
-        collection_type=collection_ct,
-        collection_id=collection.id,
-        child_type=child_ct,
-        child_id=child.id,
-        order=order,
-    )

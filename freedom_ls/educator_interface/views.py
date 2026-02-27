@@ -631,7 +631,7 @@ class CohortCourseProgressPanel(Panel):
         if isinstance(item, Topic):
             tp = topic_progress_map.get((user.id, item.id))
             cell["progress"] = tp
-            cell["is_completed"] = tp and tp.complete_time is not None
+            cell["is_completed"] = tp is not None and tp.complete_time is not None
             cell["is_started"] = tp is not None
             cell["completed_time"] = tp.complete_time if tp else None
             cell["start_time"] = tp.start_time if tp else None

@@ -10,7 +10,8 @@ from freedom_ls.student_management.models import (
     CohortDeadline,
 )
 from freedom_ls.student_progress.models import CourseProgress, TopicProgress
-from freedom_ls.educator_interface.tests.conftest import make_student, add_item_to_collection
+from freedom_ls.conftest import add_item_to_collection
+from freedom_ls.educator_interface.tests.conftest import make_student
 
 
 @pytest.mark.django_db

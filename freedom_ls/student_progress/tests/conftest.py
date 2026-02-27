@@ -1,12 +1,10 @@
 import pytest
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from freedom_ls.content_engine.models import (
     Course,
     CoursePart,
     Topic,
     Form,
-    ContentCollectionItem,
 )
 from freedom_ls.student_progress.models import CourseProgress
 
@@ -58,19 +56,6 @@ def form_factory(mock_site_context):
         return Form.objects.create(title=title, strategy=strategy)
 
     return _create
-
-
-def add_item_to_collection(collection, child, order=0):
-    """Helper to add a child item to a course or course part via ContentCollectionItem."""
-    collection_ct = DjangoContentType.objects.get_for_model(collection)
-    child_ct = DjangoContentType.objects.get_for_model(child)
-    return ContentCollectionItem.objects.create(
-        collection_type=collection_ct,
-        collection_id=collection.id,
-        child_type=child_ct,
-        child_id=child.id,
-        order=order,
-    )
 
 
 @pytest.fixture

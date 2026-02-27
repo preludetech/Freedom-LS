@@ -1,5 +1,7 @@
 """Complete a form for students in a cohort (creates FormProgress records)."""
 
+from datetime import timedelta
+
 import djclick as click
 from django.contrib.sites.models import Site
 from django.utils import timezone
@@ -54,7 +56,7 @@ def command(
             user=user,
             site=site,
             defaults={
-                "completed_time": now - timezone.timedelta(hours=i),
+                "completed_time": now - timedelta(hours=i),
                 "scores": {
                     "Satisfaction": 5 + (i % 3),
                     "Recommendation": 3 + (i % 3),

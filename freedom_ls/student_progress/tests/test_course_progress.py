@@ -5,7 +5,7 @@ from freedom_ls.student_progress.models import (
     TopicProgress,
     FormProgress,
 )
-from freedom_ls.student_progress.tests.conftest import add_item_to_collection
+from freedom_ls.conftest import add_item_to_collection
 
 
 @pytest.mark.django_db
