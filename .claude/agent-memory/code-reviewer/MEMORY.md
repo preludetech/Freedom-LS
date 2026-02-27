@@ -1,4 +1,4 @@
-# FreedomLS Educator Interface - Code Review Memory
+# FreedomLS Code Review Memory
 
 ## Project Context
 - Multi-site Django LMS with custom site-aware user model
@@ -39,3 +39,13 @@
 - Deadline styling: danger/10 or warning/20 backgrounds with left border
 - Overdue cells: danger/15 for hard deadlines, warning/15 for soft overdue
 - Icons: Unicode characters (✓ for complete, ▶ for started, – for not started, ⏱ for clock)
+
+## Factory Boy Implementation
+- SiteAwareFactory base in `freedom_ls/site_aware_models/factories.py`
+- One `factories.py` per app, uses SiteAwareFactory base
+- GenericFK pattern: `Meta.exclude` + `Params` with convenience param, `LazyAttribute` to derive content_type/object_id
+- ContentCollectionItem has dual GenericFK (collection_object, child_object)
+- `add_item_to_collection()` helper in conftest wraps ContentCollectionItemFactory
+- QA commands pass `site=` explicitly since mock_site_context isn't active outside tests
+- Deadline factories use `content_item` param (excluded) to set nullable GenericFK fields
+- `course.items.create(child=...)` pattern still used in some test files (GenericRelation manager)
