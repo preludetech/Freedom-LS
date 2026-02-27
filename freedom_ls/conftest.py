@@ -7,13 +7,27 @@ import tempfile
 from pathlib import Path
 from django.test import RequestFactory
 from django.urls import reverse
-from freedom_ls.content_engine.models import Form, Activity
+from django.contrib.contenttypes.models import ContentType as DjangoContentType
+from freedom_ls.content_engine.models import ContentCollectionItem, Form, Activity
 from urllib.parse import urlparse
 from playwright.sync_api import Page
 from allauth.account.models import EmailAddress
 
 
 User = get_user_model()
+
+
+def add_item_to_collection(collection, child, order: int = 0) -> ContentCollectionItem:
+    """Helper to add a child item to a course or course part via ContentCollectionItem."""
+    collection_ct = DjangoContentType.objects.get_for_model(collection)
+    child_ct = DjangoContentType.objects.get_for_model(child)
+    return ContentCollectionItem.objects.create(
+        collection_type=collection_ct,
+        collection_id=collection.id,
+        child_type=child_ct,
+        child_id=child.id,
+        order=order,
+    )
 
 
 def reverse_url(

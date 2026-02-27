@@ -1,21 +1,125 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    CoursePart,
     Form,
     FormQuestion,
+    FormStrategy,
     QuestionOption,
     Topic,
-    FormStrategy,
-    Course,
 )
 from freedom_ls.site_aware_models.models import SiteAwareModel
+from freedom_ls.student_management.utils import calculate_course_progress_percentage
 from django.utils import timezone
 
 User = get_user_model()
 
 
-class FormProgress(SiteAwareModel):
+def update_course_progress_on_completion(
+    user: "User", content_item: Topic | Form
+) -> None:
+    """Update progress_percentage on all CourseProgress records affected by completing a content item.
+
+    Traces through ContentCollectionItem to find parent courses (including
+    items nested inside CourseParts) and recalculates progress for each.
+    """
+    # @claude this function is very long. It needs to be refactored
+    #
+    # topic.courses() should return the courses that a topic is included in
+    # form.courses() should return the courses that the form is in
+    #
+    item_ct = DjangoContentType.objects.get_for_model(content_item)
+    course_ct = DjangoContentType.objects.get_for_model(Course)
+    course_part_ct = DjangoContentType.objects.get_for_model(CoursePart)
+
+    # Find all ContentCollectionItems where this item is a child
+    parent_links = ContentCollectionItem.objects.filter(
+        child_type=item_ct, child_id=content_item.id
+    )
+
+    direct_course_ids: set = set()
+    course_part_ids: set = set()
+    for link in parent_links:
+        if link.collection_type_id == course_ct.id:
+            direct_course_ids.add(link.collection_id)
+        elif link.collection_type_id == course_part_ct.id:
+            course_part_ids.add(link.collection_id)
+
+    # Batch lookup: find parent Courses for all CourseParts in one query
+    course_ids = set(direct_course_ids)
+    if course_part_ids:
+        course_ids.update(
+            ContentCollectionItem.objects.filter(
+                child_type=course_part_ct,
+                child_id__in=course_part_ids,
+                collection_type=course_ct,
+            ).values_list("collection_id", flat=True)
+        )
+
+    if not course_ids:
+        return
+
+    # Get user's completed topic and form IDs
+    completed_topic_ids = set(
+        TopicProgress.objects.filter(
+            user=user, complete_time__isnull=False
+        ).values_list("topic_id", flat=True)
+    )
+    completed_form_ids = set(
+        FormProgress.objects.filter(
+            user=user, completed_time__isnull=False
+        ).values_list("form_id", flat=True)
+    )
+
+    # Update each affected course's progress (find/create CourseProgress if needed)
+    for course in Course.objects.filter(id__in=course_ids):
+        percentage = calculate_course_progress_percentage(
+            course, completed_topic_ids, completed_form_ids
+        )
+        CourseProgress.objects.update_or_create(
+            user=user,
+            course=course,
+            defaults={"progress_percentage": percentage},
+        )
+
+
+class CourseItemProgress(SiteAwareModel):
+    # Subclasses must define these class attributes
+    completion_field_name: str
+    content_item_field_name: str
+
+    class Meta:
+        abstract = True
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_completion_value = getattr(
+            self, self.completion_field_name, None
+        )
+
+    def save(self, *args, **kwargs):
+        # Note: This hook only fires on instance.save(), not on queryset.update().
+        # If bulk updating completion fields, manually call
+        # update_course_progress_on_completion() for affected records.
+
+        # @claude calculate _original_completion_value here instead of during __init__. Remove the __init__ function
+
+        super().save(*args, **kwargs)
+        current_value = getattr(self, self.completion_field_name)
+        if current_value is not None and self._original_completion_value is None:
+            content_item = getattr(self, self.content_item_field_name)
+            update_course_progress_on_completion(self.user, content_item)
+            self._original_completion_value = current_value
+
+
+class FormProgress(CourseItemProgress):
     """Tracks a user's progress through a form."""
+
+    completion_field_name = "completed_time"
+    content_item_field_name = "form"
 
     form = models.ForeignKey(
         Form, on_delete=models.CASCADE, related_name="progress_records"
@@ -410,8 +514,11 @@ class QuestionAnswer(SiteAwareModel):
         return f"{self.form_progress.user} - {self.question}"
 
 
-class TopicProgress(SiteAwareModel):
+class TopicProgress(CourseItemProgress):
     """Tracks a user's progress through a topic."""
+
+    completion_field_name = "complete_time"
+    content_item_field_name = "topic"
 
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="topic_progress"
@@ -432,7 +539,13 @@ class TopicProgress(SiteAwareModel):
 
 
 class CourseProgress(SiteAwareModel):
-    """Tracks a user's progress through a course."""
+    """Tracks a user's progress through a course.
+
+    IMPORTANT!! These are only created when a user EXPLICITY chooses to register a student for a course.
+    In some cases a student will register themselves for a course by choosing to start the course
+    In some cases an educator/staff user will register a student for a course.
+
+    """
 
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="course_progress"
@@ -443,6 +556,7 @@ class CourseProgress(SiteAwareModel):
     start_time = models.DateTimeField(auto_now_add=True)
     last_accessed_time = models.DateTimeField(auto_now=True)
     completed_time = models.DateTimeField(blank=True, null=True)
+    progress_percentage = models.IntegerField(default=0, db_index=True)
 
     class Meta:
         verbose_name_plural = "Course progress records"
@@ -450,33 +564,3 @@ class CourseProgress(SiteAwareModel):
 
     def __str__(self):
         return f"{self.user} - {self.course.title}"
-
-    def calculate_percentage_complete(self) -> int:
-        """
-        Calculate the percentage of course items completed.
-        Returns an integer between 0 and 100.
-        """
-        children = self.course.children()
-        if not children:
-            return 0
-
-        total_items = len(children)
-        completed_items = 0
-
-        for child in children:
-            if child.content_type == "TOPIC":
-                # Check if topic is complete
-                if TopicProgress.objects.filter(
-                    user=self.user, topic=child, complete_time__isnull=False
-                ).exists():
-                    completed_items += 1
-            elif child.content_type == "FORM":
-                # Check if form is complete
-                if FormProgress.objects.filter(
-                    user=self.user, form=child, completed_time__isnull=False
-                ).exists():
-                    completed_items += 1
-            else:
-                raise Exception("unhandled content type: {child.content_type}")
-
-        return round((completed_items / total_items) * 100)

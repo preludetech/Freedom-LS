@@ -37,6 +37,15 @@ Load plan, review critically, execute tasks in batches, report for review betwee
 
 1. Use the request-code-review skill to review everything that was done.
 2. Run all the tests 
+4. If there is feedback, apply changes
+5. If there is no feedback, or all changes are addressed:
+    - do a final test
+    - make a commit
+6. Mode onto the next step until there are all complete
+
+## After all steps are complete
+
+Use the request-code-review skill to review what was done
 
 ## When to Stop and Ask for Help
 

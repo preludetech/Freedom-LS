@@ -1,21 +1,35 @@
+from datetime import datetime
+
+from django.contrib.auth import get_user_model
 from django.shortcuts import render, get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
-from django.core.paginator import Paginator
+from django.core.paginator import Page, Paginator
 from django.http import Http404, HttpResponse
+from django.db.models import Count, F, IntegerField, OuterRef, Q, Subquery, Value
+from django.db.models.functions import Coalesce
+from django.contrib.contenttypes.models import ContentType as DjangoContentType
 
 from freedom_ls.student_management.models import (
     Cohort,
     CohortCourseRegistration,
+    CohortDeadline,
     CohortMembership,
     Student,
+    StudentCohortDeadlineOverride,
     StudentCourseRegistration,
 )
 from freedom_ls.content_engine.models import Course, CoursePart, Topic, Form
-
+from freedom_ls.student_progress.models import (
+    CourseProgress,
+    FormProgress,
+    TopicProgress,
+)
+from django.utils import timezone as tz
 
 from guardian.shortcuts import get_objects_for_user
-from django.db.models import Count, Q
+
+User = get_user_model()
 
 
 # TODO
@@ -411,9 +425,466 @@ class CourseRegistrationsPanel(DataTablePanel):
         return {"cohort": self.instance}
 
 
+class CohortCourseProgressPanel(Panel):
+    title = "Course Progress"
+
+    COLUMN_PAGE_SIZE = 15
+    STUDENT_PAGE_SIZE = 20
+
+    def _get_selected_registration(
+        self,
+        registrations: list[CohortCourseRegistration],
+        selected_reg_pk: str | None,
+    ) -> CohortCourseRegistration:
+        """Pick the selected registration from the list, defaulting to first active."""
+        selected_reg = None
+        if selected_reg_pk:
+            selected_reg = next(
+                (r for r in registrations if str(r.pk) == selected_reg_pk), None
+            )
+        if not selected_reg:
+            active = [r for r in registrations if r.is_active]
+            selected_reg = active[0] if active else registrations[0]
+        return selected_reg
+
+    def _paginate_course_items(
+        self,
+        course: Course,
+        col_page_num: int | str,
+    ) -> tuple[list[Topic | Form], list[dict[str, CoursePart | int]], bool, Page]:
+        """Paginate course items and build visible part headers.
+
+        Returns (visible_items, visible_parts, has_parts, col_page).
+        """
+        all_flat = course.children_flat()
+        items: list[Topic | Form] = []
+        part_children_map: dict[CoursePart, list[Topic | Form]] = {}
+        current_part = None
+        for child in all_flat:
+            if isinstance(child, CoursePart):
+                current_part = child
+                part_children_map[child] = []
+            else:
+                items.append(child)
+                if current_part is not None:
+                    part_children_map[current_part].append(child)
+
+        col_paginator = Paginator(items, self.COLUMN_PAGE_SIZE)
+        col_page = col_paginator.get_page(col_page_num)
+        visible_items = list(col_page.object_list)
+
+        visible_item_pks = {item.pk for item in visible_items}
+        visible_parts = []
+        for part, children in part_children_map.items():
+            visible_children = [c for c in children if c.pk in visible_item_pks]
+            if visible_children:
+                visible_parts.append({"part": part, "span": len(visible_children)})
+
+        return visible_items, visible_parts, bool(part_children_map), col_page
+
+    def _paginate_students(
+        self,
+        cohort: Cohort,
+        course: Course,
+        page_num: int | str,
+    ) -> Page:
+        """Return a paginated page of cohort memberships annotated with progress."""
+        progress_subquery = Subquery(
+            CourseProgress.objects.filter(
+                user=OuterRef("student__user"),
+                course=course,
+            ).values("progress_percentage")[:1],
+            output_field=IntegerField(),
+        )
+
+        memberships = (
+            CohortMembership.objects.filter(cohort=cohort)
+            .select_related("student__user")
+            .annotate(progress=Coalesce(progress_subquery, Value(0)))
+            .order_by("progress", "student__user__email")
+        )
+
+        student_paginator = Paginator(memberships, self.STUDENT_PAGE_SIZE)
+        return student_paginator.get_page(page_num)
+
+    def _fetch_progress_maps(
+        self,
+        visible_user_ids: list[int],
+        visible_items: list[Topic | Form],
+    ) -> tuple[
+        dict[tuple[int, int], TopicProgress],
+        dict[tuple[int, int], dict[str, FormProgress | int]],
+    ]:
+        """Fetch topic and form progress keyed by (user_id, item_id).
+
+        Returns (topic_progress_map, form_progress_map).
+        """
+        visible_topic_ids = [
+            item.id for item in visible_items if isinstance(item, Topic)
+        ]
+        visible_form_ids = [item.id for item in visible_items if isinstance(item, Form)]
+
+        topic_progress_map: dict[tuple[int, int], TopicProgress] = {}
+        if visible_topic_ids:
+            for tp in TopicProgress.objects.filter(
+                user_id__in=visible_user_ids, topic_id__in=visible_topic_ids
+            ).select_related("topic"):
+                topic_progress_map[(tp.user_id, tp.topic_id)] = tp
+
+        form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]] = {}
+        if visible_form_ids:
+            for fp in (
+                FormProgress.objects.filter(
+                    user_id__in=visible_user_ids, form_id__in=visible_form_ids
+                )
+                .select_related("form")
+                .order_by(F("completed_time").desc(nulls_last=True), "-start_time")
+            ):
+                key = (fp.user_id, fp.form_id)
+                if key not in form_progress_map:
+                    form_progress_map[key] = {"latest": fp, "completed_count": 0}
+                if fp.completed_time is not None:
+                    form_progress_map[key]["completed_count"] += 1
+
+        return topic_progress_map, form_progress_map
+
+    def _fetch_deadline_data(
+        self,
+        selected_reg: CohortCourseRegistration,
+        visible_items: list[Topic | Form],
+        student_page: Page,
+    ) -> tuple[
+        CohortDeadline | None,
+        dict[tuple[int, int], CohortDeadline],
+        dict[tuple[int, int | None, int | None], StudentCohortDeadlineOverride],
+        DjangoContentType,
+        DjangoContentType,
+    ]:
+        """Fetch cohort deadlines and student overrides for visible items.
+
+        Returns (course_deadline, deadline_map, student_override_map, topic_ct, form_ct).
+        """
+        topic_ct = DjangoContentType.objects.get_for_model(Topic)
+        form_ct = DjangoContentType.objects.get_for_model(Form)
+
+        visible_item_ids = [item.id for item in visible_items]
+        deadline_q = Q(content_type__isnull=True, object_id__isnull=True)
+        if visible_item_ids:
+            deadline_q |= Q(
+                content_type__in=[topic_ct, form_ct],
+                object_id__in=visible_item_ids,
+            )
+
+        cohort_deadlines = list(
+            CohortDeadline.objects.filter(
+                cohort_course_registration=selected_reg,
+            ).filter(deadline_q)
+        )
+
+        deadline_map: dict[tuple[int, int], CohortDeadline] = {}
+        course_deadline = None
+        for dl in cohort_deadlines:
+            if dl.content_type_id is None:
+                course_deadline = dl
+            else:
+                deadline_map[(dl.content_type_id, dl.object_id)] = dl
+
+        student_override_map: dict[
+            tuple[int, int | None, int | None], StudentCohortDeadlineOverride
+        ] = {}
+        student_ids = [m.student_id for m in student_page.object_list]
+        if student_ids:
+            overrides = StudentCohortDeadlineOverride.objects.filter(
+                cohort_course_registration=selected_reg,
+                student_id__in=student_ids,
+            ).filter(deadline_q)
+            for ovr in overrides:
+                student_override_map[
+                    (ovr.student_id, ovr.content_type_id, ovr.object_id)
+                ] = ovr
+
+        return course_deadline, deadline_map, student_override_map, topic_ct, form_ct
+
+    def _build_topic_cell(
+        self,
+        item: Topic,
+        user: "User",
+        topic_progress_map: dict[tuple[int, int], TopicProgress],
+    ) -> dict:
+        """Build progress fields for a Topic cell."""
+        tp = topic_progress_map.get((user.id, item.id))
+        return {
+            "progress": tp,
+            "is_completed": tp is not None and tp.complete_time is not None,
+            "is_started": tp is not None,
+            "completed_time": tp.complete_time if tp else None,
+            "start_time": tp.start_time if tp else None,
+        }
+
+    def _build_form_cell(
+        self,
+        item: Form,
+        user: "User",
+        form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]],
+    ) -> dict:
+        """Build progress fields for a Form cell."""
+        fp_data = form_progress_map.get((user.id, item.id))
+        if not fp_data:
+            return {
+                "progress": None,
+                "is_completed": False,
+                "is_started": False,
+                "completed_time": None,
+                "start_time": None,
+            }
+
+        fp = fp_data["latest"]
+        cell: dict = {
+            "progress": fp,
+            "is_completed": fp.completed_time is not None,
+            "is_started": True,
+            "completed_time": fp.completed_time,
+            "start_time": fp.start_time,
+            "completed_count": fp_data["completed_count"],
+            "is_quiz": item.strategy == "QUIZ",
+        }
+        if cell["is_completed"] and cell["is_quiz"] and fp.scores:
+            try:
+                cell["quiz_percentage"] = fp.quiz_percentage()
+                cell["passed"] = (
+                    fp.passed()
+                    if item.quiz_pass_percentage is not None
+                    else None
+                )
+            except (KeyError, ValueError):
+                cell["quiz_percentage"] = None
+                cell["passed"] = None
+        return cell
+
+    def _build_cell(
+        self,
+        item: Topic | Form,
+        student: Student,
+        user: "User",
+        topic_ct: DjangoContentType,
+        form_ct: DjangoContentType,
+        topic_progress_map: dict[tuple[int, int], TopicProgress],
+        form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]],
+        deadline_map: dict[tuple[int, int], CohortDeadline],
+        student_override_map: dict[
+            tuple[int, int | None, int | None], StudentCohortDeadlineOverride
+        ],
+        now: datetime,
+    ) -> dict:
+        """Build the cell data dict for one student/item intersection."""
+        cell: dict = {
+            "item": item,
+            "is_quiz": False,
+            "completed_count": 0,
+            "quiz_percentage": None,
+            "passed": None,
+        }
+
+        if isinstance(item, Topic):
+            cell.update(self._build_topic_cell(item, user, topic_progress_map))
+        elif isinstance(item, Form):
+            cell.update(self._build_form_cell(item, user, form_progress_map))
+        else:
+            raise NotImplementedError(
+                f"Cell building not implemented for {type(item).__name__}"
+            )
+
+        item_ct = topic_ct if isinstance(item, Topic) else form_ct
+        item_deadline = deadline_map.get((item_ct.id, item.id))
+        override = student_override_map.get((student.id, item_ct.id, item.id))
+        effective_deadline = override or item_deadline
+        cell["deadline"] = item_deadline
+        cell["override"] = override
+        cell["effective_deadline"] = effective_deadline
+
+        cell["is_overdue"] = False
+        cell["is_hard_overdue"] = False
+        if (
+            effective_deadline
+            and not cell["is_completed"]
+            and effective_deadline.deadline < now
+        ):
+            cell["is_overdue"] = True
+            cell["is_hard_overdue"] = effective_deadline.is_hard_deadline
+
+        return cell
+
+    def _build_rows(
+        self,
+        student_page: Page,
+        visible_items: list[Topic | Form],
+        topic_ct: DjangoContentType,
+        form_ct: DjangoContentType,
+        topic_progress_map: dict[tuple[int, int], TopicProgress],
+        form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]],
+        deadline_map: dict[tuple[int, int], CohortDeadline],
+        student_override_map: dict[
+            tuple[int, int | None, int | None], StudentCohortDeadlineOverride
+        ],
+    ) -> list[dict]:
+        """Build row data for each student on the current page."""
+        now = tz.now()
+        rows = []
+        for membership in student_page.object_list:
+            student = membership.student
+            user = student.user
+            cells = [
+                self._build_cell(
+                    item,
+                    student,
+                    user,
+                    topic_ct,
+                    form_ct,
+                    topic_progress_map,
+                    form_progress_map,
+                    deadline_map,
+                    student_override_map,
+                    now,
+                )
+                for item in visible_items
+            ]
+
+            name_parts = [p for p in (user.first_name, user.last_name) if p]
+            display_name = " ".join(name_parts) if name_parts else user.email
+
+            rows.append(
+                {
+                    "student": student,
+                    "user": user,
+                    "display_name": display_name,
+                    "student_url": reverse(
+                        "educator_interface:interface",
+                        kwargs={"path_string": f"students/{student.pk}"},
+                    ),
+                    "progress": membership.progress,
+                    "cells": cells,
+                }
+            )
+        return rows
+
+    def _build_header_items(
+        self,
+        visible_items: list[Topic | Form],
+        deadline_map: dict[tuple[int, int], CohortDeadline],
+        topic_ct: DjangoContentType,
+        form_ct: DjangoContentType,
+    ) -> list[dict]:
+        """Build header items with deadline info for the column headers.
+
+        Returns a list of dicts, each containing:
+        - "item": the Topic or Form instance for the column
+        - "deadline": the CohortDeadline for this item, or None if no deadline is set
+        """
+        header_items = []
+        for item in visible_items:
+            item_ct = topic_ct if isinstance(item, Topic) else form_ct
+            item_deadline = deadline_map.get((item_ct.id, item.id))
+            header_items.append({"item": item, "deadline": item_deadline})
+        return header_items
+
+    def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
+        cohort = self.instance
+
+        registrations = list(
+            CohortCourseRegistration.objects.filter(cohort=cohort)
+            .select_related("collection")
+            .order_by("-is_active", "collection__title")
+        )
+
+        if not registrations:
+            return render_to_string(
+                "educator_interface/partials/course_progress_panel.html",
+                {"registrations": []},
+                request=request,
+            )
+
+        selected_reg = self._get_selected_registration(
+            registrations,
+            request.GET.get("registration"),
+        )
+        course = selected_reg.collection
+
+        visible_items, visible_parts, has_parts, col_page = self._paginate_course_items(
+            course,
+            request.GET.get("col_page", 1),
+        )
+
+        student_page = self._paginate_students(
+            cohort,
+            course,
+            request.GET.get("page", 1),
+        )
+
+        visible_user_ids = [m.student.user.id for m in student_page.object_list]
+
+        topic_progress_map, form_progress_map = self._fetch_progress_maps(
+            visible_user_ids,
+            visible_items,
+        )
+
+        course_deadline, deadline_map, student_override_map, topic_ct, form_ct = (
+            self._fetch_deadline_data(selected_reg, visible_items, student_page)
+        )
+
+        rows = self._build_rows(
+            student_page,
+            visible_items,
+            topic_ct,
+            form_ct,
+            topic_progress_map,
+            form_progress_map,
+            deadline_map,
+            student_override_map,
+        )
+
+        header_items = self._build_header_items(
+            visible_items,
+            deadline_map,
+            topic_ct,
+            form_ct,
+        )
+
+        context = {
+            "registrations": registrations,
+            "selected_reg": selected_reg,
+            "course": course,
+            "course_deadline": course_deadline,
+            "visible_items": visible_items,
+            "header_items": header_items,
+            "visible_parts": visible_parts,
+            "has_parts": has_parts,
+            "col_page": col_page,
+            "student_page": student_page,
+            "rows": rows,
+            "deadline_map": deadline_map,
+            "topic_ct": topic_ct,
+            "form_ct": form_ct,
+            "base_url": base_url,
+            "now": tz.now(),
+        }
+
+        return render_to_string(
+            "educator_interface/partials/course_progress_panel.html",
+            context,
+            request=request,
+        )
+
+    def render(self, request, base_url: str = "", panel_name: str = "") -> str:
+        is_htmx = request.headers.get("HX-Request") == "true"
+        if is_htmx:
+            return self.get_content(request, base_url=base_url, panel_name=panel_name)
+        return super().render(request, base_url=base_url, panel_name=panel_name)
+
+
 class CohortInstanceView(InstanceView):
     panels = {
         "details": CohortDetailsPanel,
+        "course_progress": CohortCourseProgressPanel,
         "courses": CourseRegistrationsPanel,
         "students": CohortStudentsPanel,
     }
