@@ -448,7 +448,9 @@ class CohortCourseProgressPanel(Panel):
         return selected_reg
 
     def _paginate_course_items(
-        self, course: Course, col_page_num: int | str,
+        self,
+        course: Course,
+        col_page_num: int | str,
     ) -> tuple[list[Topic | Form], list[dict[str, CoursePart | int]], bool, Page]:
         """Paginate course items and build visible part headers.
 
@@ -481,7 +483,10 @@ class CohortCourseProgressPanel(Panel):
         return visible_items, visible_parts, bool(part_children_map), col_page
 
     def _paginate_students(
-        self, cohort: Cohort, course: Course, page_num: int | str,
+        self,
+        cohort: Cohort,
+        course: Course,
+        page_num: int | str,
     ) -> Page:
         """Return a paginated page of cohort memberships annotated with progress."""
         progress_subquery = Subquery(
@@ -514,7 +519,9 @@ class CohortCourseProgressPanel(Panel):
 
         Returns (topic_progress_map, form_progress_map).
         """
-        visible_topic_ids = [item.id for item in visible_items if isinstance(item, Topic)]
+        visible_topic_ids = [
+            item.id for item in visible_items if isinstance(item, Topic)
+        ]
         visible_form_ids = [item.id for item in visible_items if isinstance(item, Form)]
 
         topic_progress_map: dict[tuple[int, int], TopicProgress] = {}
@@ -598,6 +605,62 @@ class CohortCourseProgressPanel(Panel):
 
         return course_deadline, deadline_map, student_override_map, topic_ct, form_ct
 
+    def _build_topic_cell(
+        self,
+        item: Topic,
+        user: "User",
+        topic_progress_map: dict[tuple[int, int], TopicProgress],
+    ) -> dict:
+        """Build progress fields for a Topic cell."""
+        tp = topic_progress_map.get((user.id, item.id))
+        return {
+            "progress": tp,
+            "is_completed": tp is not None and tp.complete_time is not None,
+            "is_started": tp is not None,
+            "completed_time": tp.complete_time if tp else None,
+            "start_time": tp.start_time if tp else None,
+        }
+
+    def _build_form_cell(
+        self,
+        item: Form,
+        user: "User",
+        form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]],
+    ) -> dict:
+        """Build progress fields for a Form cell."""
+        fp_data = form_progress_map.get((user.id, item.id))
+        if not fp_data:
+            return {
+                "progress": None,
+                "is_completed": False,
+                "is_started": False,
+                "completed_time": None,
+                "start_time": None,
+            }
+
+        fp = fp_data["latest"]
+        cell: dict = {
+            "progress": fp,
+            "is_completed": fp.completed_time is not None,
+            "is_started": True,
+            "completed_time": fp.completed_time,
+            "start_time": fp.start_time,
+            "completed_count": fp_data["completed_count"],
+            "is_quiz": item.strategy == "QUIZ",
+        }
+        if cell["is_completed"] and cell["is_quiz"] and fp.scores:
+            try:
+                cell["quiz_percentage"] = fp.quiz_percentage()
+                cell["passed"] = (
+                    fp.passed()
+                    if item.quiz_pass_percentage is not None
+                    else None
+                )
+            except (KeyError, ValueError):
+                cell["quiz_percentage"] = None
+                cell["passed"] = None
+        return cell
+
     def _build_cell(
         self,
         item: Topic | Form,
@@ -608,7 +671,9 @@ class CohortCourseProgressPanel(Panel):
         topic_progress_map: dict[tuple[int, int], TopicProgress],
         form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]],
         deadline_map: dict[tuple[int, int], CohortDeadline],
-        student_override_map: dict[tuple[int, int | None, int | None], StudentCohortDeadlineOverride],
+        student_override_map: dict[
+            tuple[int, int | None, int | None], StudentCohortDeadlineOverride
+        ],
         now: datetime,
     ) -> dict:
         """Build the cell data dict for one student/item intersection."""
@@ -619,50 +684,23 @@ class CohortCourseProgressPanel(Panel):
             "quiz_percentage": None,
             "passed": None,
         }
-        item_ct = topic_ct if isinstance(item, Topic) else form_ct
 
+        if isinstance(item, Topic):
+            cell.update(self._build_topic_cell(item, user, topic_progress_map))
+        elif isinstance(item, Form):
+            cell.update(self._build_form_cell(item, user, form_progress_map))
+        else:
+            raise NotImplementedError(
+                f"Cell building not implemented for {type(item).__name__}"
+            )
+
+        item_ct = topic_ct if isinstance(item, Topic) else form_ct
         item_deadline = deadline_map.get((item_ct.id, item.id))
         override = student_override_map.get((student.id, item_ct.id, item.id))
         effective_deadline = override or item_deadline
         cell["deadline"] = item_deadline
         cell["override"] = override
         cell["effective_deadline"] = effective_deadline
-
-        if isinstance(item, Topic):
-            tp = topic_progress_map.get((user.id, item.id))
-            cell["progress"] = tp
-            cell["is_completed"] = tp is not None and tp.complete_time is not None
-            cell["is_started"] = tp is not None
-            cell["completed_time"] = tp.complete_time if tp else None
-            cell["start_time"] = tp.start_time if tp else None
-        elif isinstance(item, Form):
-            fp_data = form_progress_map.get((user.id, item.id))
-            if fp_data:
-                fp = fp_data["latest"]
-                cell["progress"] = fp
-                cell["is_completed"] = fp.completed_time is not None
-                cell["is_started"] = True
-                cell["completed_time"] = fp.completed_time
-                cell["start_time"] = fp.start_time
-                cell["completed_count"] = fp_data["completed_count"]
-                cell["is_quiz"] = item.strategy == "QUIZ"
-                if cell["is_completed"] and cell["is_quiz"] and fp.scores:
-                    try:
-                        cell["quiz_percentage"] = fp.quiz_percentage()
-                        cell["passed"] = (
-                            fp.passed()
-                            if item.quiz_pass_percentage is not None
-                            else None
-                        )
-                    except (KeyError, ValueError):
-                        cell["quiz_percentage"] = None
-                        cell["passed"] = None
-            else:
-                cell["progress"] = None
-                cell["is_completed"] = False
-                cell["is_started"] = False
-                cell["completed_time"] = None
-                cell["start_time"] = None
 
         cell["is_overdue"] = False
         cell["is_hard_overdue"] = False
@@ -685,7 +723,9 @@ class CohortCourseProgressPanel(Panel):
         topic_progress_map: dict[tuple[int, int], TopicProgress],
         form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]],
         deadline_map: dict[tuple[int, int], CohortDeadline],
-        student_override_map: dict[tuple[int, int | None, int | None], StudentCohortDeadlineOverride],
+        student_override_map: dict[
+            tuple[int, int | None, int | None], StudentCohortDeadlineOverride
+        ],
     ) -> list[dict]:
         """Build row data for each student on the current page."""
         now = tz.now()
@@ -695,10 +735,16 @@ class CohortCourseProgressPanel(Panel):
             user = student.user
             cells = [
                 self._build_cell(
-                    item, student, user,
-                    topic_ct, form_ct,
-                    topic_progress_map, form_progress_map,
-                    deadline_map, student_override_map, now,
+                    item,
+                    student,
+                    user,
+                    topic_ct,
+                    form_ct,
+                    topic_progress_map,
+                    form_progress_map,
+                    deadline_map,
+                    student_override_map,
+                    now,
                 )
                 for item in visible_items
             ]
@@ -706,17 +752,19 @@ class CohortCourseProgressPanel(Panel):
             name_parts = [p for p in (user.first_name, user.last_name) if p]
             display_name = " ".join(name_parts) if name_parts else user.email
 
-            rows.append({
-                "student": student,
-                "user": user,
-                "display_name": display_name,
-                "student_url": reverse(
-                    "educator_interface:interface",
-                    kwargs={"path_string": f"students/{student.pk}"},
-                ),
-                "progress": membership.progress,
-                "cells": cells,
-            })
+            rows.append(
+                {
+                    "student": student,
+                    "user": user,
+                    "display_name": display_name,
+                    "student_url": reverse(
+                        "educator_interface:interface",
+                        kwargs={"path_string": f"students/{student.pk}"},
+                    ),
+                    "progress": membership.progress,
+                    "cells": cells,
+                }
+            )
         return rows
 
     def _build_header_items(
@@ -726,7 +774,12 @@ class CohortCourseProgressPanel(Panel):
         topic_ct: DjangoContentType,
         form_ct: DjangoContentType,
     ) -> list[dict]:
-        """Build header items with deadline info for the column headers."""
+        """Build header items with deadline info for the column headers.
+
+        Returns a list of dicts, each containing:
+        - "item": the Topic or Form instance for the column
+        - "deadline": the CohortDeadline for this item, or None if no deadline is set
+        """
         header_items = []
         for item in visible_items:
             item_ct = topic_ct if isinstance(item, Topic) else form_ct
@@ -751,22 +804,27 @@ class CohortCourseProgressPanel(Panel):
             )
 
         selected_reg = self._get_selected_registration(
-            registrations, request.GET.get("registration"),
+            registrations,
+            request.GET.get("registration"),
         )
         course = selected_reg.collection
 
         visible_items, visible_parts, has_parts, col_page = self._paginate_course_items(
-            course, request.GET.get("col_page", 1),
+            course,
+            request.GET.get("col_page", 1),
         )
 
         student_page = self._paginate_students(
-            cohort, course, request.GET.get("page", 1),
+            cohort,
+            course,
+            request.GET.get("page", 1),
         )
 
         visible_user_ids = [m.student.user.id for m in student_page.object_list]
 
         topic_progress_map, form_progress_map = self._fetch_progress_maps(
-            visible_user_ids, visible_items,
+            visible_user_ids,
+            visible_items,
         )
 
         course_deadline, deadline_map, student_override_map, topic_ct, form_ct = (
@@ -774,14 +832,21 @@ class CohortCourseProgressPanel(Panel):
         )
 
         rows = self._build_rows(
-            student_page, visible_items,
-            topic_ct, form_ct,
-            topic_progress_map, form_progress_map,
-            deadline_map, student_override_map,
+            student_page,
+            visible_items,
+            topic_ct,
+            form_ct,
+            topic_progress_map,
+            form_progress_map,
+            deadline_map,
+            student_override_map,
         )
 
         header_items = self._build_header_items(
-            visible_items, deadline_map, topic_ct, form_ct,
+            visible_items,
+            deadline_map,
+            topic_ct,
+            form_ct,
         )
 
         context = {
