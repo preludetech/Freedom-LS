@@ -1,0 +1,52 @@
+---
+content_type: FORM_PAGE
+title: Knowledge Check Questions
+uuid: 9eed76ca-a745-4bec-819a-c760a287ca79
+---
+options:
+- correct: true
+  text: A way to group related content within a course
+  uuid: 39710be5-6fd4-490f-b0fd-1af115a79348
+  value: correct
+- text: A type of quiz question
+  uuid: bb8b7cd6-4b90-4cbe-a522-ef6ec2e1d43c
+  value: wrong1
+- text: A file format for storing images
+  uuid: 5ba12635-eca5-48b5-aa47-a1b2e8db37f0
+  value: wrong2
+question: What is a course part?
+required: true
+type: multiple_choice
+uuid: 2d28fa56-6a6b-4f60-a69a-c945c04e0539
+---
+options:
+- text: Topics only
+  uuid: 48cec67c-6b97-404e-ac6c-87cf415b00f0
+  value: wrong1
+- text: Forms only
+  uuid: f06bb033-26dd-433d-869d-6f69b9ddc516
+  value: wrong2
+- correct: true
+  text: Both topics and forms
+  uuid: 27eab794-9ca5-4a81-9e79-c308ee0df39f
+  value: correct
+question: What types of content can a course part contain?
+required: true
+type: multiple_choice
+uuid: 040ce8b3-c69d-42a1-a229-dd64a991e608
+---
+options:
+- correct: true
+  text: part.yaml
+  uuid: f52d5593-53ee-4a0d-be21-5db98466f0c7
+  value: correct
+- text: course.md
+  uuid: 2d64cc82-7db2-44b6-ba4f-52482a21bfe4
+  value: wrong1
+- text: form.md
+  uuid: 467ff8d4-b5b3-4605-b87b-32781da57ff4
+  value: wrong2
+question: Which file identifies a directory as a course part?
+required: true
+type: multiple_choice
+uuid: 1b756173-8755-4397-9c65-08a84d2781e3
