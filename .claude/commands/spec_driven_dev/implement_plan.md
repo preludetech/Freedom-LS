@@ -32,6 +32,8 @@ Load plan, review critically, execute tasks in batches, report for review betwee
 5. Implement any needed changes
 6. Run the tests and make sure everything works 
 
+**IMPORTANT** ALL tests need to pass. If there are broken tests fix them!
+
 ### After all steps are complete
 
 1. Use the request-code-review skill to review everything that was done.

@@ -10,6 +10,7 @@ from freedom_ls.content_engine.models import (
     ContentCollectionItem,
 )
 from freedom_ls.student_management.models import Student, StudentCourseRegistration
+from freedom_ls.accounts.factories import UserFactory
 from conftest import reverse_url
 
 
@@ -206,10 +207,11 @@ def make_course_with_form(mock_site_context):
 
 
 @pytest.fixture
-def make_registered_student(user, mock_site_context):
+def make_registered_student(mock_site_context):
     """Factory fixture to create a student registered for a course."""
 
     def _make_student(course):
+        user = UserFactory()
         student = Student.objects.create(user=user)
         StudentCourseRegistration.objects.create(
             student=student, collection=course, is_active=True
@@ -316,8 +318,9 @@ def test_course(mock_site_context, complete_form_with_questions):
 
 
 @pytest.fixture
-def student_with_registration(user, mock_site_context, test_course):
+def student_with_registration(mock_site_context, test_course):
     """Create a student registered for the test course."""
+    user = UserFactory()
     student = Student.objects.create(user=user)
 
     StudentCourseRegistration.objects.create(

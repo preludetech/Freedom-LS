@@ -16,6 +16,7 @@ from allauth.account.models import EmailAddress
 
 def add_item_to_collection(collection, child, order: int = 0) -> ContentCollectionItem:
     """Helper to add a child item to a course or course part via ContentCollectionItem."""
+    # @claude  REMOVE this function. It should be handled in the factory_boy factories
     return ContentCollectionItemFactory(
         collection_object=collection,
         child_object=child,
