@@ -1,24 +1,31 @@
 import pytest
 from datetime import timedelta
-from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.template.defaultfilters import date as django_date
 from django.utils import timezone
-from freedom_ls.content_engine.models import Course, Topic, Form, CoursePart
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.educator_interface.views import CohortCourseProgressPanel
-from freedom_ls.student_management.models import (
-    CohortCourseRegistration,
-    CohortDeadline,
+from freedom_ls.student_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortDeadlineFactory,
+    CohortFactory,
 )
-from freedom_ls.student_progress.models import CourseProgress, TopicProgress
+from freedom_ls.student_progress.factories import (
+    CourseProgressFactory,
+    TopicProgressFactory,
+)
 from freedom_ls.conftest import add_item_to_collection
 from freedom_ls.educator_interface.tests.conftest import make_student
 
 
 @pytest.mark.django_db
 def test_panel_renders_empty_state_for_cohort_with_no_registrations(
-    mock_site_context, cohort, request_factory, educator_user
+    mock_site_context, request_factory
 ):
     """Test that panel shows empty state when cohort has no course registrations."""
+    cohort = CohortFactory()
+    educator_user = UserFactory(staff=True)
+
     panel = CohortCourseProgressPanel(cohort)
     request = request_factory.get("/")
     request.user = educator_user
@@ -28,14 +35,17 @@ def test_panel_renders_empty_state_for_cohort_with_no_registrations(
 
 @pytest.mark.django_db
 def test_panel_defaults_to_first_active_registration(
-    mock_site_context, cohort, course, cohort_course_reg, request_factory, educator_user
+    mock_site_context, request_factory
 ):
     """Test that panel defaults to the first active registration."""
+    cohort = CohortFactory()
+    course = CourseFactory(title="Test Course")
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
     # Create a second inactive registration
-    course2 = Course.objects.create(title="Inactive Course", slug="inactive-course")
-    CohortCourseRegistration.objects.create(
-        cohort=cohort, collection=course2, is_active=False
-    )
+    course2 = CourseFactory(title="Inactive Course")
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course2, is_active=False)
 
     panel = CohortCourseProgressPanel(cohort)
     request = request_factory.get("/")
@@ -47,13 +57,16 @@ def test_panel_defaults_to_first_active_registration(
 
 @pytest.mark.django_db
 def test_panel_selects_specific_registration_via_get_param(
-    mock_site_context, cohort, course, cohort_course_reg, request_factory, educator_user
+    mock_site_context, request_factory
 ):
     """Test that a specific registration can be selected via GET param."""
-    course2 = Course.objects.create(title="Second Course", slug="second-course")
-    reg2 = CohortCourseRegistration.objects.create(
-        cohort=cohort, collection=course2, is_active=True
-    )
+    cohort = CohortFactory()
+    course = CourseFactory(title="Test Course")
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    course2 = CourseFactory(title="Second Course")
+    reg2 = CohortCourseRegistrationFactory(cohort=cohort, collection=course2)
 
     panel = CohortCourseProgressPanel(cohort)
     request = request_factory.get(f"/?registration={reg2.pk}")
@@ -64,12 +77,13 @@ def test_panel_selects_specific_registration_via_get_param(
 
 @pytest.mark.django_db
 def test_panel_includes_inactive_registrations_in_dropdown(
-    mock_site_context, cohort, course, request_factory, educator_user
+    mock_site_context, request_factory
 ):
     """Test that inactive registrations are included in the dropdown with indicator."""
-    CohortCourseRegistration.objects.create(
-        cohort=cohort, collection=course, is_active=False
-    )
+    cohort = CohortFactory()
+    course = CourseFactory(title="Test Course")
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course, is_active=False)
 
     panel = CohortCourseProgressPanel(cohort)
     request = request_factory.get("/")
@@ -80,17 +94,22 @@ def test_panel_includes_inactive_registrations_in_dropdown(
 
 @pytest.mark.django_db
 def test_students_sorted_by_progress_ascending(
-    mock_site_context, cohort, course, cohort_course_reg, request_factory, educator_user
+    mock_site_context, request_factory
 ):
     """Test that students are sorted by progress ascending (least progress first)."""
-    topic = Topic.objects.create(title="Topic 1", slug="topic-1")
+    cohort = CohortFactory()
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    topic = TopicFactory(title="Topic 1")
     add_item_to_collection(course, topic, order=0)
 
     student_a = make_student(mock_site_context, "student_a@example.com", cohort)
     student_b = make_student(mock_site_context, "student_b@example.com", cohort)
 
     # student_b has progress, student_a does not
-    CourseProgress.objects.create(
+    CourseProgressFactory(
         user=student_b.user, course=course, progress_percentage=100
     )
 
@@ -107,10 +126,15 @@ def test_students_sorted_by_progress_ascending(
 
 @pytest.mark.django_db
 def test_students_without_course_progress_appear_first(
-    mock_site_context, cohort, course, cohort_course_reg, request_factory, educator_user
+    mock_site_context, request_factory
 ):
     """Test that students with no CourseProgress appear first (treated as 0%)."""
-    topic = Topic.objects.create(title="Topic 1", slug="topic-1")
+    cohort = CohortFactory()
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    topic = TopicFactory(title="Topic 1")
     add_item_to_collection(course, topic, order=0)
 
     student_no_progress = make_student(
@@ -120,7 +144,7 @@ def test_students_without_course_progress_appear_first(
         mock_site_context, "has_progress@example.com", cohort
     )
 
-    CourseProgress.objects.create(
+    CourseProgressFactory(
         user=student_with_progress.user, course=course, progress_percentage=50
     )
 
@@ -136,12 +160,17 @@ def test_students_without_course_progress_appear_first(
 
 @pytest.mark.django_db
 def test_column_pagination_slices_items(
-    mock_site_context, cohort, course, cohort_course_reg, request_factory, educator_user
+    mock_site_context, request_factory
 ):
     """Test that column pagination slices items correctly."""
+    cohort = CohortFactory()
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
     # Create 20 topics (more than page size of 15)
     for i in range(20):
-        topic = Topic.objects.create(title=f"Topic {i:02d}", slug=f"topic-{i}")
+        topic = TopicFactory(title=f"Topic {i:02d}")
         add_item_to_collection(course, topic, order=i)
 
     make_student(mock_site_context, "student@example.com", cohort)
@@ -165,19 +194,24 @@ def test_column_pagination_slices_items(
 
 @pytest.mark.django_db
 def test_cell_data_fetched_only_for_visible_window(
-    mock_site_context, cohort, course, cohort_course_reg, request_factory, educator_user
+    mock_site_context, request_factory
 ):
     """Test that cell data is fetched only for visible students x visible items."""
+    cohort = CohortFactory()
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
     topics = []
     for i in range(20):
-        topic = Topic.objects.create(title=f"Topic {i:02d}", slug=f"topic-{i}")
+        topic = TopicFactory(title=f"Topic {i:02d}")
         add_item_to_collection(course, topic, order=i)
         topics.append(topic)
 
     student = make_student(mock_site_context, "student@example.com", cohort)
 
     # Complete topic 16 (on page 2 of columns)
-    tp = TopicProgress.objects.create(user=student.user, topic=topics[16])
+    tp = TopicProgressFactory(user=student.user, topic=topics[16])
     tp.complete_time = timezone.now()
     tp.save()
 
@@ -199,18 +233,23 @@ def test_cell_data_fetched_only_for_visible_window(
 
 @pytest.mark.django_db
 def test_displayed_percentage_matches_actual_completion(
-    mock_site_context, cohort, course, cohort_course_reg, request_factory, educator_user
+    mock_site_context, request_factory
 ):
     """Test that displayed percentage reflects actual course progress."""
-    topic1 = Topic.objects.create(title="Topic 1", slug="topic-1")
-    topic2 = Topic.objects.create(title="Topic 2", slug="topic-2")
+    cohort = CohortFactory()
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    topic1 = TopicFactory(title="Topic 1")
+    topic2 = TopicFactory(title="Topic 2")
     add_item_to_collection(course, topic1, order=0)
     add_item_to_collection(course, topic2, order=1)
 
     student = make_student(mock_site_context, "student@example.com", cohort)
 
-    # Complete 1 of 2 topics → 50% (save trigger auto-creates CourseProgress)
-    tp = TopicProgress.objects.create(user=student.user, topic=topic1)
+    # Complete 1 of 2 topics -> 50% (save trigger auto-creates CourseProgress)
+    tp = TopicProgressFactory(user=student.user, topic=topic1)
     tp.complete_time = timezone.now()
     tp.save()
 
@@ -224,9 +263,14 @@ def test_displayed_percentage_matches_actual_completion(
 
 @pytest.mark.django_db
 def test_htmx_request_returns_panel_content_only(
-    mock_site_context, cohort, course, cohort_course_reg, request_factory, educator_user
+    mock_site_context, request_factory
 ):
     """Test that HTMX request returns just the panel content (not wrapped in panel_container)."""
+    cohort = CohortFactory()
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
     make_student(mock_site_context, "student@example.com", cohort)
 
     panel = CohortCourseProgressPanel(cohort)
@@ -246,34 +290,35 @@ def test_htmx_request_returns_panel_content_only(
 
 @pytest.mark.django_db
 def test_item_deadlines_shown_in_column_headers(
-    mock_site_context, cohort, course, cohort_course_reg, request_factory, educator_user
+    mock_site_context, request_factory
 ):
     """Test that item-level deadlines appear in column headers with distinct hard/soft styling."""
-    topic1 = Topic.objects.create(title="Topic Hard", slug="topic-hard")
-    topic2 = Topic.objects.create(title="Topic Soft", slug="topic-soft")
+    cohort = CohortFactory()
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    topic1 = TopicFactory(title="Topic Hard")
+    topic2 = TopicFactory(title="Topic Soft")
     add_item_to_collection(course, topic1, order=0)
     add_item_to_collection(course, topic2, order=1)
 
     make_student(mock_site_context, "student@example.com", cohort)
 
-    topic_ct = DjangoContentType.objects.get_for_model(Topic)
-
     # Hard deadline on topic1
     hard_deadline = timezone.now() + timedelta(days=5)
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct,
-        object_id=topic1.id,
+        content_item=topic1,
         deadline=hard_deadline,
         is_hard_deadline=True,
     )
 
     # Soft deadline on topic2
     soft_deadline = timezone.now() + timedelta(days=10)
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct,
-        object_id=topic2.id,
+        content_item=topic2,
         deadline=soft_deadline,
         is_hard_deadline=False,
     )

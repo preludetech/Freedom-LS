@@ -1,17 +1,21 @@
 """Create a cohort with many students for testing row pagination."""
 
 import djclick as click
-from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.student_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    CohortMembershipFactory,
+    StudentFactory,
+)
 from freedom_ls.student_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
     Student,
 )
-
-User = get_user_model()
 
 
 @click.command()
@@ -45,34 +49,41 @@ def command(
     except Site.DoesNotExist:
         raise click.ClickException(f"Site with name '{site_name}' not found.")
 
-    cohort, created = Cohort.objects.get_or_create(name=cohort_name, site=site)
-    if created:
-        click.secho(f"Created cohort '{cohort_name}'", fg="green")
-    else:
+    try:
+        cohort = Cohort.objects.get(name=cohort_name, site=site)
         click.secho(f"Cohort '{cohort_name}' already exists", fg="yellow")
+    except Cohort.DoesNotExist:
+        cohort = CohortFactory(name=cohort_name, site=site)
+        click.secho(f"Created cohort '{cohort_name}'", fg="green")
 
     # Create students and add to cohort
     created_count = 0
     for i in range(1, num_students + 1):
         email = f"qa_student_{i}@example.com"
-        user, user_created = User.objects.get_or_create(
-            email=email,
-            site=site,
-            defaults={
-                "first_name": "QA Student",
-                "last_name": str(i),
-                "is_active": True,
-            },
-        )
-        if user_created:
-            user.set_password("testpass123")
-            user.save()
+        from django.contrib.auth import get_user_model
 
-        student, _ = Student.objects.get_or_create(user=user, site=site)
-        _, membership_created = CohortMembership.objects.get_or_create(
+        User = get_user_model()
+        try:
+            user = User.objects.get(email=email, site=site)
+        except User.DoesNotExist:
+            user = UserFactory(
+                email=email,
+                first_name="QA Student",
+                last_name=str(i),
+                is_active=True,
+                password="testpass123",
+                site=site,
+            )
+
+        try:
+            student = Student.objects.get(user=user, site=site)
+        except Student.DoesNotExist:
+            student = StudentFactory(user=user, site=site)
+
+        if not CohortMembership.objects.filter(
             student=student, cohort=cohort, site=site
-        )
-        if membership_created:
+        ).exists():
+            CohortMembershipFactory(student=student, cohort=cohort, site=site)
             created_count += 1
 
     click.secho(
@@ -92,10 +103,12 @@ def command(
             )
             continue
 
-        _, reg_created = CohortCourseRegistration.objects.get_or_create(
+        if not CohortCourseRegistration.objects.filter(
             collection=course, cohort=cohort, site=site
-        )
-        if reg_created:
+        ).exists():
+            CohortCourseRegistrationFactory(
+                collection=course, cohort=cohort, site=site
+            )
             click.secho(f"Registered cohort for course '{course.title}'", fg="green")
         else:
             click.secho(

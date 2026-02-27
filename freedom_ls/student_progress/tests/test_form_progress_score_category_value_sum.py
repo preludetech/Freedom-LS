@@ -1,20 +1,28 @@
 import pytest
 
-from freedom_ls.content_engine.models import FormPage, FormQuestion, QuestionOption
-from freedom_ls.student_progress.models import FormProgress, QuestionAnswer
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import (
+    FormFactory,
+    FormPageFactory,
+    FormQuestionFactory,
+    QuestionOptionFactory,
+)
+from freedom_ls.student_progress.factories import FormProgressFactory, QuestionAnswerFactory
 
 
 @pytest.mark.django_db
-def test_score_category_value_sum_single_question(mock_site_context, user, form):
+def test_score_category_value_sum_single_question(mock_site_context):
     """Test score_category_value_sum with a single question and answer."""
+    user = UserFactory()
+    form = FormFactory()
 
     # Create a page with a category
-    page = FormPage.objects.create(
+    page = FormPageFactory(
         form=form, title="Page 1", order=0, category="Wellbeing"
     )
 
     # Create a question with a category
-    question = FormQuestion.objects.create(
+    question = FormQuestionFactory(
         form_page=page,
         question="How are you feeling?",
         type="multiple_choice",
@@ -23,17 +31,17 @@ def test_score_category_value_sum_single_question(mock_site_context, user, form)
     )
 
     # Create options with values
-    option1 = QuestionOption.objects.create(
+    option1 = QuestionOptionFactory(
         question=question, text="Great", value="5", order=0
     )
-    QuestionOption.objects.create(question=question, text="Good", value="3", order=1)
-    QuestionOption.objects.create(question=question, text="Poor", value="1", order=2)
+    QuestionOptionFactory(question=question, text="Good", value="3", order=1)
+    QuestionOptionFactory(question=question, text="Poor", value="1", order=2)
 
     # Create form progress
-    form_progress = FormProgress.objects.create(user=user, form=form)
+    form_progress = FormProgressFactory(user=user, form=form)
 
     # Create an answer selecting option1 (value=5)
-    answer = QuestionAnswer.objects.create(
+    answer = QuestionAnswerFactory(
         form_progress=form_progress, question=question
     )
     answer.selected_options.add(option1)
@@ -62,17 +70,19 @@ def test_score_category_value_sum_single_question(mock_site_context, user, form)
 
 @pytest.mark.django_db
 def test_score_category_value_sum_calculates_max_score_correctly_with_unanswered_questions(
-    mock_site_context, user, form
+    mock_site_context,
 ):
     """Test that max score includes all questions, even unanswered ones."""
+    user = UserFactory()
+    form = FormFactory()
 
     # Create a page with a category
-    page = FormPage.objects.create(
+    page = FormPageFactory(
         form=form, title="Page 1", order=0, category="Wellbeing"
     )
 
     # Create 2 questions in the same category
-    question1 = FormQuestion.objects.create(
+    question1 = FormQuestionFactory(
         form_page=page,
         question="Question 1",
         type="multiple_choice",
@@ -80,7 +90,7 @@ def test_score_category_value_sum_calculates_max_score_correctly_with_unanswered
         category="Mental Health",
     )
 
-    question2 = FormQuestion.objects.create(
+    question2 = FormQuestionFactory(
         form_page=page,
         question="Question 2",
         type="multiple_choice",
@@ -89,26 +99,26 @@ def test_score_category_value_sum_calculates_max_score_correctly_with_unanswered
     )
 
     # Create options for question 1 (max value = 5)
-    option1_q1 = QuestionOption.objects.create(
+    option1_q1 = QuestionOptionFactory(
         question=question1, text="Option 1", value="5", order=0
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question1, text="Option 2", value="3", order=1
     )
 
     # Create options for question 2 (max value = 10)
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question2, text="Option 1", value="10", order=0
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question2, text="Option 2", value="7", order=1
     )
 
     # Create form progress
-    form_progress = FormProgress.objects.create(user=user, form=form)
+    form_progress = FormProgressFactory(user=user, form=form)
 
     # Answer ONLY question 1 (leave question 2 unanswered)
-    answer1 = QuestionAnswer.objects.create(
+    answer1 = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(option1_q1)
@@ -131,17 +141,19 @@ def test_score_category_value_sum_calculates_max_score_correctly_with_unanswered
 
 @pytest.mark.django_db
 def test_score_category_value_sum_categorises_questions_correctly(
-    mock_site_context, user, form
+    mock_site_context,
 ):
     """Test that questions without subcategories don't create 'Uncategorized' subcategories."""
+    user = UserFactory()
+    form = FormFactory()
 
     # Create a page with a category
-    page = FormPage.objects.create(
+    page = FormPageFactory(
         form=form, title="Anatomy Page", order=0, category="Anatomy"
     )
 
     # Create a question WITHOUT a subcategory (should be top-level)
-    question1 = FormQuestion.objects.create(
+    question1 = FormQuestionFactory(
         form_page=page,
         question="Question without subcategory",
         type="multiple_choice",
@@ -150,7 +162,7 @@ def test_score_category_value_sum_categorises_questions_correctly(
     )
 
     # Create a question WITH a subcategory
-    question2 = FormQuestion.objects.create(
+    question2 = FormQuestionFactory(
         form_page=page,
         question="Question with subcategory",
         type="multiple_choice",
@@ -159,31 +171,31 @@ def test_score_category_value_sum_categorises_questions_correctly(
     )
 
     # Create options for question 1 (max value = 5)
-    option1_q1 = QuestionOption.objects.create(
+    option1_q1 = QuestionOptionFactory(
         question=question1, text="Option 1", value="5", order=0
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question1, text="Option 2", value="3", order=1
     )
 
     # Create options for question 2 (max value = 10)
-    option1_q2 = QuestionOption.objects.create(
+    option1_q2 = QuestionOptionFactory(
         question=question2, text="Option 1", value="10", order=0
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question2, text="Option 2", value="7", order=1
     )
 
     # Create form progress
-    form_progress = FormProgress.objects.create(user=user, form=form)
+    form_progress = FormProgressFactory(user=user, form=form)
 
     # Answer both questions
-    answer1 = QuestionAnswer.objects.create(
+    answer1 = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(option1_q1)
 
-    answer2 = QuestionAnswer.objects.create(
+    answer2 = QuestionAnswerFactory(
         form_progress=form_progress, question=question2
     )
     answer2.selected_options.add(option1_q2)
@@ -215,17 +227,19 @@ def test_score_category_value_sum_categorises_questions_correctly(
 
 @pytest.mark.django_db
 def test_score_category_value_sum_with_three_level_hierarchy(
-    mock_site_context, user, form
+    mock_site_context,
 ):
     """Test that nested categories with pipe separator create 3-level hierarchy."""
+    user = UserFactory()
+    form = FormFactory()
 
     # Create a page with nested categories using pipe separator
-    page = FormPage.objects.create(
+    page = FormPageFactory(
         form=form, title="Health Page", order=0, category="Wellbeing | Physical Health"
     )
 
     # Create a question with its own category (creates 3rd level)
-    question1 = FormQuestion.objects.create(
+    question1 = FormQuestionFactory(
         form_page=page,
         question="How often do you exercise?",
         type="multiple_choice",
@@ -234,7 +248,7 @@ def test_score_category_value_sum_with_three_level_hierarchy(
     )
 
     # Create another question in the same page but different bottom-level category
-    question2 = FormQuestion.objects.create(
+    question2 = FormQuestionFactory(
         form_page=page,
         question="What's your diet like?",
         type="multiple_choice",
@@ -243,27 +257,27 @@ def test_score_category_value_sum_with_three_level_hierarchy(
     )
 
     # Create options for question 1 (max value = 5)
-    option1_q1 = QuestionOption.objects.create(
+    option1_q1 = QuestionOptionFactory(
         question=question1, text="Daily", value="5", order=0
     )
-    QuestionOption.objects.create(question=question1, text="Weekly", value="3", order=1)
+    QuestionOptionFactory(question=question1, text="Weekly", value="3", order=1)
 
     # Create options for question 2 (max value = 10)
-    option1_q2 = QuestionOption.objects.create(
+    option1_q2 = QuestionOptionFactory(
         question=question2, text="Excellent", value="10", order=0
     )
-    QuestionOption.objects.create(question=question2, text="Good", value="7", order=1)
+    QuestionOptionFactory(question=question2, text="Good", value="7", order=1)
 
     # Create form progress
-    form_progress = FormProgress.objects.create(user=user, form=form)
+    form_progress = FormProgressFactory(user=user, form=form)
 
     # Answer both questions
-    answer1 = QuestionAnswer.objects.create(
+    answer1 = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(option1_q1)
 
-    answer2 = QuestionAnswer.objects.create(
+    answer2 = QuestionAnswerFactory(
         form_progress=form_progress, question=question2
     )
     answer2.selected_options.add(option1_q2)

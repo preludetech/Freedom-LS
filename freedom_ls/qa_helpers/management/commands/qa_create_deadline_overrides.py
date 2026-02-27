@@ -1,11 +1,11 @@
 """Create student deadline overrides for QA testing."""
 
 import djclick as click
-from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.contrib.sites.models import Site
 from django.utils import timezone
 
 from freedom_ls.content_engine.models import Form, Topic
+from freedom_ls.student_management.factories import StudentCohortDeadlineOverrideFactory
 from freedom_ls.student_management.models import (
     CohortCourseRegistration,
     CohortMembership,
@@ -48,8 +48,6 @@ def command(
     days_from_now: int,
     soft: bool,
 ) -> None:
-    from freedom_ls.content_engine.models import Course  # noqa: F811
-
     try:
         site = Site.objects.get(name=site_name)
     except Site.DoesNotExist:
@@ -83,48 +81,58 @@ def command(
     is_hard = not soft
     deadline = timezone.now() + timezone.timedelta(days=days_from_now)
 
-    content_type = None
-    object_id = None
+    content_item = None
+    item_name = "course-level"
 
     if item_slug:
         topic = Topic.objects.filter(slug=item_slug, site=site).first()
         form = Form.objects.filter(slug=item_slug, site=site).first()
 
         if topic:
-            content_type = DjangoContentType.objects.get_for_model(Topic)
-            object_id = topic.id
+            content_item = topic
             item_name = topic.title
         elif form:
-            content_type = DjangoContentType.objects.get_for_model(Form)
-            object_id = form.id
+            content_item = form
             item_name = form.title
         else:
             raise click.ClickException(f"No topic or form found with slug '{item_slug}'.")
-    else:
-        item_name = "course-level"
 
-    override, created = StudentCohortDeadlineOverride.objects.get_or_create(
-        cohort_course_registration=registration,
-        student=student,
-        content_type=content_type,
-        object_id=object_id,
-        site=site,
-        defaults={
+    # Check for existing override using the unique constraint fields
+    lookup = {
+        "cohort_course_registration": registration,
+        "student": student,
+        "content_type": None,
+        "object_id": None,
+        "site": site,
+    }
+    if content_item:
+        from django.contrib.contenttypes.models import ContentType as DjangoContentType
+
+        lookup["content_type"] = DjangoContentType.objects.get_for_model(content_item)
+        lookup["object_id"] = content_item.pk
+
+    try:
+        override = StudentCohortDeadlineOverride.objects.get(**lookup)
+        click.secho(
+            f"Override already exists for '{student_email}' on {item_name}. "
+            f"Current deadline: {override.deadline.strftime('%Y-%m-%d %H:%M')}",
+            fg="yellow",
+        )
+    except StudentCohortDeadlineOverride.DoesNotExist:
+        factory_kwargs = {
+            "cohort_course_registration": registration,
+            "student": student,
             "deadline": deadline,
             "is_hard_deadline": is_hard,
-        },
-    )
+            "site": site,
+        }
+        if content_item:
+            factory_kwargs["content_item"] = content_item
+        StudentCohortDeadlineOverrideFactory(**factory_kwargs)
 
-    if created:
         deadline_type = "hard" if is_hard else "soft"
         click.secho(
             f"Created {deadline_type} deadline override for '{student_email}' "
             f"on {item_name}: {deadline.strftime('%Y-%m-%d %H:%M')}",
             fg="green",
-        )
-    else:
-        click.secho(
-            f"Override already exists for '{student_email}' on {item_name}. "
-            f"Current deadline: {override.deadline.strftime('%Y-%m-%d %H:%M')}",
-            fg="yellow",
         )

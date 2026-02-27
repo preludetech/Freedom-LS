@@ -3,23 +3,28 @@ from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from freedom_ls.content_engine.factories import TopicFactory
 from freedom_ls.content_engine.models import Topic
+from freedom_ls.student_management.factories import (
+    StudentCourseRegistrationFactory,
+    StudentDeadlineFactory,
+)
 from freedom_ls.student_management.models import StudentDeadline
 
 
 @pytest.mark.django_db
-def test_create_student_deadline_with_content_item(
-    mock_site_context, student_course_reg, topic
-):
+def test_create_student_deadline_with_content_item(mock_site_context):
     """StudentDeadline can be created pointing to a specific content item."""
-    topic_ct = ContentType.objects.get_for_model(Topic)
+    topic = TopicFactory()
+    student_course_reg = StudentCourseRegistrationFactory()
+
     deadline_dt = timezone.now() + timezone.timedelta(days=7)
 
-    deadline = StudentDeadline.objects.create(
+    deadline = StudentDeadlineFactory(
         student_course_registration=student_course_reg,
-        content_type=topic_ct,
-        object_id=topic.id,
+        content_item=topic,
         deadline=deadline_dt,
+        is_hard_deadline=True,
     )
 
     assert deadline.student_course_registration == student_course_reg
@@ -28,48 +33,49 @@ def test_create_student_deadline_with_content_item(
 
 
 @pytest.mark.django_db
-def test_create_student_deadline_for_whole_course(
-    mock_site_context, student_course_reg
-):
+def test_create_student_deadline_for_whole_course(mock_site_context):
     """StudentDeadline with null content_item applies to the whole course."""
-    deadline = StudentDeadline.objects.create(
+    student_course_reg = StudentCourseRegistrationFactory()
+
+    deadline = StudentDeadlineFactory(
         student_course_registration=student_course_reg,
-        deadline=timezone.now() + timezone.timedelta(days=7),
     )
 
     assert deadline.content_item is None
 
 
 @pytest.mark.django_db
-def test_str_with_content_item(mock_site_context, student_course_reg, topic):
+def test_str_with_content_item(mock_site_context):
     """__str__ includes the content item name."""
-    topic_ct = ContentType.objects.get_for_model(Topic)
-    deadline = StudentDeadline.objects.create(
+    topic = TopicFactory(title="Test Topic")
+    student_course_reg = StudentCourseRegistrationFactory()
+
+    deadline = StudentDeadlineFactory(
         student_course_registration=student_course_reg,
-        content_type=topic_ct,
-        object_id=topic.id,
-        deadline=timezone.now() + timezone.timedelta(days=7),
+        content_item=topic,
     )
 
     assert "Test Topic" in str(deadline)
 
 
 @pytest.mark.django_db
-def test_str_without_content_item(mock_site_context, student_course_reg):
+def test_str_without_content_item(mock_site_context):
     """__str__ shows 'Whole course' when content_item is null."""
-    deadline = StudentDeadline.objects.create(
+    student_course_reg = StudentCourseRegistrationFactory()
+
+    deadline = StudentDeadlineFactory(
         student_course_registration=student_course_reg,
-        deadline=timezone.now() + timezone.timedelta(days=7),
     )
 
     assert "Whole course" in str(deadline)
 
 
 @pytest.mark.django_db
-def test_unique_constraint_prevents_duplicate_item_deadline(
-    mock_site_context, student_course_reg, topic
-):
+def test_unique_constraint_prevents_duplicate_item_deadline(mock_site_context):
     """Cannot create two deadlines for the same content item on the same registration."""
+    topic = TopicFactory()
+    student_course_reg = StudentCourseRegistrationFactory()
+
     topic_ct = ContentType.objects.get_for_model(Topic)
     StudentDeadline.objects.create(
         student_course_registration=student_course_reg,
@@ -88,13 +94,12 @@ def test_unique_constraint_prevents_duplicate_item_deadline(
 
 
 @pytest.mark.django_db
-def test_clean_prevents_duplicate_course_level_deadline(
-    mock_site_context, student_course_reg
-):
+def test_clean_prevents_duplicate_course_level_deadline(mock_site_context):
     """clean() raises ValidationError for duplicate course-level deadlines."""
-    StudentDeadline.objects.create(
+    student_course_reg = StudentCourseRegistrationFactory()
+
+    StudentDeadlineFactory(
         student_course_registration=student_course_reg,
-        deadline=timezone.now() + timezone.timedelta(days=7),
     )
 
     duplicate = StudentDeadline(

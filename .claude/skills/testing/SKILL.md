@@ -22,8 +22,10 @@ Use this Skill when:
 - Test files: `freedom_ls/<app_name>/tests/test_<module>.py`
 - Use `@pytest.mark.django_db` for database tests
 - Use `mock_site_context` fixture for site-aware models — never manually set site
+- Use factory_boy factories for all test data creation — never use `.objects.create()` directly
 - Use `reverse()` for URLs, never hardcode
 - No conditionals in tests — one assertion focus per test
 - TDD cycle: RED (failing test) -> GREEN (minimal code) -> REFACTOR -> REPEAT
 
 Refer to @.claude/docs/testing.md for full patterns and examples.
+Refer to @.claude/docs/factory_boy.md for factory patterns and available factories.

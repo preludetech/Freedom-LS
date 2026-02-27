@@ -2,8 +2,15 @@ import pytest
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
+from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Topic
-from freedom_ls.student_management.models import CohortDeadline
+from freedom_ls.student_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortDeadlineFactory,
+    CohortFactory,
+    CohortMembershipFactory,
+    StudentFactory,
+)
 from freedom_ls.student_management.deadline_utils import (
     get_course_deadlines,
     get_effective_deadlines,
@@ -11,12 +18,16 @@ from freedom_ls.student_management.deadline_utils import (
 
 
 @pytest.mark.django_db
-def test_bulk_returns_course_level_deadline(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership
-):
+def test_bulk_returns_course_level_deadline(mock_site_context):
     """Bulk resolution includes course-level deadlines under (None, None) key."""
+    student = StudentFactory()
+    course = CourseFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
     course_dt = timezone.now() + timedelta(days=7)
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
         deadline=course_dt,
     )
@@ -29,12 +40,16 @@ def test_bulk_returns_course_level_deadline(
 
 
 @pytest.mark.django_db
-def test_bulk_returns_item_level_deadlines(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership
-):
+def test_bulk_returns_item_level_deadlines(mock_site_context):
     """Bulk resolution includes item-level deadlines under (ct_id, obj_id) keys."""
-    topic1 = Topic.objects.create(title="T1", slug="t1")
-    topic2 = Topic.objects.create(title="T2", slug="t2")
+    student = StudentFactory()
+    course = CourseFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    topic1 = TopicFactory(title="T1")
+    topic2 = TopicFactory(title="T2")
     course.items.create(child=topic1, order=0)
     course.items.create(child=topic2, order=1)
 
@@ -42,13 +57,13 @@ def test_bulk_returns_item_level_deadlines(
     dt1 = timezone.now() + timedelta(days=5)
     dt2 = timezone.now() + timedelta(days=10)
 
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct, object_id=topic1.id, deadline=dt1,
+        content_item=topic1, deadline=dt1,
     )
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct, object_id=topic2.id, deadline=dt2,
+        content_item=topic2, deadline=dt2,
     )
 
     result = get_course_deadlines(student, course)
@@ -62,17 +77,21 @@ def test_bulk_returns_item_level_deadlines(
 
 
 @pytest.mark.django_db
-def test_bulk_matches_per_item_resolution(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership
-):
+def test_bulk_matches_per_item_resolution(mock_site_context):
     """Bulk resolution matches per-item resolution for each item."""
-    topic = Topic.objects.create(title="Match Topic", slug="match-topic")
+    student = StudentFactory()
+    course = CourseFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    topic = TopicFactory(title="Match Topic")
     course.items.create(child=topic, order=0)
 
     topic_ct = ContentType.objects.get_for_model(Topic)
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct, object_id=topic.id,
+        content_item=topic,
         deadline=timezone.now() + timedelta(days=7),
     )
 
@@ -85,10 +104,14 @@ def test_bulk_matches_per_item_resolution(
 
 
 @pytest.mark.django_db
-def test_bulk_empty_when_no_deadlines(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership
-):
+def test_bulk_empty_when_no_deadlines(mock_site_context):
     """Bulk resolution returns empty dict when there are no deadlines."""
+    student = StudentFactory()
+    course = CourseFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
     result = get_course_deadlines(student, course)
 
     assert result == {}

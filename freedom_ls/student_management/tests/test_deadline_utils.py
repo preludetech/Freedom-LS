@@ -1,14 +1,16 @@
 import pytest
 from datetime import timedelta
 from django.utils import timezone
-from freedom_ls.content_engine.models import Topic
-from freedom_ls.student_management.models import (
-    Cohort,
-    CohortMembership,
-    CohortCourseRegistration,
-    CohortDeadline,
-    StudentDeadline,
-    StudentCohortDeadlineOverride,
+from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.student_management.factories import (
+    CohortFactory,
+    CohortCourseRegistrationFactory,
+    CohortDeadlineFactory,
+    CohortMembershipFactory,
+    StudentCourseRegistrationFactory,
+    StudentDeadlineFactory,
+    StudentFactory,
+    StudentCohortDeadlineOverrideFactory,
 )
 from freedom_ls.student_management.deadline_utils import (
     get_effective_deadlines,
@@ -16,25 +18,25 @@ from freedom_ls.student_management.deadline_utils import (
 )
 
 
-@pytest.fixture
-def topic2(mock_site_context):
-    return Topic.objects.create(title="Test Topic 2", slug="test-topic-2")
-
-
 # --- get_effective_deadlines tests ---
 
 
 @pytest.mark.django_db
-def test_single_cohort_deadline_resolves(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership, topic, topic_ct
-):
+def test_single_cohort_deadline_resolves(mock_site_context):
     """A single cohort deadline for a topic resolves correctly."""
+    student = StudentFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
     deadline_dt = timezone.now() + timedelta(days=7)
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct,
-        object_id=topic.id,
+        content_item=topic,
         deadline=deadline_dt,
+        is_hard_deadline=True,
     )
 
     result = get_effective_deadlines(student, course, content_item=topic)
@@ -45,24 +47,27 @@ def test_single_cohort_deadline_resolves(
 
 
 @pytest.mark.django_db
-def test_override_beats_cohort_deadline(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership, topic, topic_ct
-):
+def test_override_beats_cohort_deadline(mock_site_context):
     """StudentCohortDeadlineOverride takes precedence over CohortDeadline for that student."""
+    student = StudentFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
     cohort_dt = timezone.now() + timedelta(days=7)
     override_dt = timezone.now() + timedelta(days=14)
 
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct,
-        object_id=topic.id,
+        content_item=topic,
         deadline=cohort_dt,
     )
-    StudentCohortDeadlineOverride.objects.create(
+    StudentCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         student=student,
-        content_type=topic_ct,
-        object_id=topic.id,
+        content_item=topic,
         deadline=override_dt,
     )
 
@@ -73,26 +78,28 @@ def test_override_beats_cohort_deadline(
 
 
 @pytest.mark.django_db
-def test_two_cohort_registrations_show_both_deadlines(
-    mock_site_context, student, course, topic, topic_ct
-):
+def test_two_cohort_registrations_show_both_deadlines(mock_site_context):
     """Student in two cohorts both registered for the same course sees both deadlines."""
-    cohort_a = Cohort.objects.create(name="Cohort A2")
-    cohort_b = Cohort.objects.create(name="Cohort B")
-    CohortMembership.objects.create(student=student, cohort=cohort_a)
-    CohortMembership.objects.create(student=student, cohort=cohort_b)
+    student = StudentFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
 
-    reg_a = CohortCourseRegistration.objects.create(cohort=cohort_a, collection=course)
-    reg_b = CohortCourseRegistration.objects.create(cohort=cohort_b, collection=course)
+    cohort_a = CohortFactory(name="Cohort A2")
+    cohort_b = CohortFactory(name="Cohort B")
+    CohortMembershipFactory(student=student, cohort=cohort_a)
+    CohortMembershipFactory(student=student, cohort=cohort_b)
+
+    reg_a = CohortCourseRegistrationFactory(cohort=cohort_a, collection=course)
+    reg_b = CohortCourseRegistrationFactory(cohort=cohort_b, collection=course)
 
     dt_a = timezone.now() + timedelta(days=5)
     dt_b = timezone.now() + timedelta(days=10)
 
-    CohortDeadline.objects.create(
-        cohort_course_registration=reg_a, content_type=topic_ct, object_id=topic.id, deadline=dt_a
+    CohortDeadlineFactory(
+        cohort_course_registration=reg_a, content_item=topic, deadline=dt_a,
     )
-    CohortDeadline.objects.create(
-        cohort_course_registration=reg_b, content_type=topic_ct, object_id=topic.id, deadline=dt_b
+    CohortDeadlineFactory(
+        cohort_course_registration=reg_b, content_item=topic, deadline=dt_b,
     )
 
     result = get_effective_deadlines(student, course, content_item=topic)
@@ -103,21 +110,26 @@ def test_two_cohort_registrations_show_both_deadlines(
 
 
 @pytest.mark.django_db
-def test_cohort_plus_individual_registration_shows_both(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership,
-    student_course_reg, topic, topic_ct
-):
+def test_cohort_plus_individual_registration_shows_both(mock_site_context):
     """Student with cohort registration + individual registration sees both deadlines."""
+    student = StudentFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    student_course_reg = StudentCourseRegistrationFactory(student=student, collection=course)
+
     cohort_dt = timezone.now() + timedelta(days=5)
     student_dt = timezone.now() + timedelta(days=10)
 
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct, object_id=topic.id, deadline=cohort_dt,
+        content_item=topic, deadline=cohort_dt,
     )
-    StudentDeadline.objects.create(
+    StudentDeadlineFactory(
         student_course_registration=student_course_reg,
-        content_type=topic_ct, object_id=topic.id, deadline=student_dt,
+        content_item=topic, deadline=student_dt,
     )
 
     result = get_effective_deadlines(student, course, content_item=topic)
@@ -128,20 +140,25 @@ def test_cohort_plus_individual_registration_shows_both(
 
 
 @pytest.mark.django_db
-def test_item_level_deadline_beats_course_level(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership, topic, topic_ct
-):
+def test_item_level_deadline_beats_course_level(mock_site_context):
     """Item-level deadline takes precedence over course-level within the same registration."""
+    student = StudentFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
     course_dt = timezone.now() + timedelta(days=14)
     item_dt = timezone.now() + timedelta(days=7)
 
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
         deadline=course_dt,
     )
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct, object_id=topic.id,
+        content_item=topic,
         deadline=item_dt,
     )
 
@@ -152,13 +169,18 @@ def test_item_level_deadline_beats_course_level(
 
 
 @pytest.mark.django_db
-def test_course_level_deadline_falls_through_when_no_item_level(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership, topic, topic_ct
-):
+def test_course_level_deadline_falls_through_when_no_item_level(mock_site_context):
     """Course-level deadline applies when no item-level deadline exists."""
+    student = StudentFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
     course_dt = timezone.now() + timedelta(days=14)
 
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
         deadline=course_dt,
     )
@@ -170,16 +192,20 @@ def test_course_level_deadline_falls_through_when_no_item_level(
 
 
 @pytest.mark.django_db
-def test_inactive_registrations_ignored(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership, topic, topic_ct
-):
+def test_inactive_registrations_ignored(mock_site_context):
     """Deadlines from inactive registrations are not returned."""
-    cohort_course_reg.is_active = False
-    cohort_course_reg.save()
+    student = StudentFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(
+        cohort=cohort, collection=course, is_active=False
+    )
 
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct, object_id=topic.id,
+        content_item=topic,
         deadline=timezone.now() + timedelta(days=7),
     )
 
@@ -189,12 +215,16 @@ def test_inactive_registrations_ignored(
 
 
 @pytest.mark.django_db
-def test_course_level_deadline_resolves_for_course(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership
-):
+def test_course_level_deadline_resolves_for_course(mock_site_context):
     """Course-level deadline resolves when asking for the course itself (no content_item)."""
+    student = StudentFactory()
+    course = CourseFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
     course_dt = timezone.now() + timedelta(days=7)
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
         deadline=course_dt,
     )
@@ -209,13 +239,18 @@ def test_course_level_deadline_resolves_for_course(
 
 
 @pytest.mark.django_db
-def test_expired_hard_deadline_incomplete_locks_item(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership, topic, topic_ct
-):
+def test_expired_hard_deadline_incomplete_locks_item(mock_site_context):
     """Expired hard deadline + incomplete item = locked."""
-    CohortDeadline.objects.create(
+    student = StudentFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct, object_id=topic.id,
+        content_item=topic,
         deadline=timezone.now() - timedelta(days=1),
         is_hard_deadline=True,
     )
@@ -224,13 +259,18 @@ def test_expired_hard_deadline_incomplete_locks_item(
 
 
 @pytest.mark.django_db
-def test_expired_hard_deadline_completed_not_locked(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership, topic, topic_ct
-):
+def test_expired_hard_deadline_completed_not_locked(mock_site_context):
     """Expired hard deadline + completed item = not locked."""
-    CohortDeadline.objects.create(
+    student = StudentFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct, object_id=topic.id,
+        content_item=topic,
         deadline=timezone.now() - timedelta(days=1),
         is_hard_deadline=True,
     )
@@ -239,13 +279,18 @@ def test_expired_hard_deadline_completed_not_locked(
 
 
 @pytest.mark.django_db
-def test_soft_deadline_never_locks(
-    mock_site_context, student, course, cohort_course_reg, cohort_membership, topic, topic_ct
-):
+def test_soft_deadline_never_locks(mock_site_context):
     """Soft deadlines never lock, even if expired."""
-    CohortDeadline.objects.create(
+    student = StudentFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    cohort = CohortFactory()
+    CohortMembershipFactory(student=student, cohort=cohort)
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct, object_id=topic.id,
+        content_item=topic,
         deadline=timezone.now() - timedelta(days=1),
         is_hard_deadline=False,
     )
@@ -254,29 +299,31 @@ def test_soft_deadline_never_locks(
 
 
 @pytest.mark.django_db
-def test_most_permissive_deadline_governs_access(
-    mock_site_context, student, course, topic, topic_ct
-):
+def test_most_permissive_deadline_governs_access(mock_site_context):
     """When multiple hard deadlines exist, the latest (most permissive) governs access."""
-    cohort_a = Cohort.objects.create(name="Cohort Lock A")
-    cohort_b = Cohort.objects.create(name="Cohort Lock B")
-    CohortMembership.objects.create(student=student, cohort=cohort_a)
-    CohortMembership.objects.create(student=student, cohort=cohort_b)
+    student = StudentFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
 
-    reg_a = CohortCourseRegistration.objects.create(cohort=cohort_a, collection=course)
-    reg_b = CohortCourseRegistration.objects.create(cohort=cohort_b, collection=course)
+    cohort_a = CohortFactory(name="Cohort Lock A")
+    cohort_b = CohortFactory(name="Cohort Lock B")
+    CohortMembershipFactory(student=student, cohort=cohort_a)
+    CohortMembershipFactory(student=student, cohort=cohort_b)
+
+    reg_a = CohortCourseRegistrationFactory(cohort=cohort_a, collection=course)
+    reg_b = CohortCourseRegistrationFactory(cohort=cohort_b, collection=course)
 
     # Cohort A: expired
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=reg_a,
-        content_type=topic_ct, object_id=topic.id,
+        content_item=topic,
         deadline=timezone.now() - timedelta(days=1),
         is_hard_deadline=True,
     )
     # Cohort B: not expired yet
-    CohortDeadline.objects.create(
+    CohortDeadlineFactory(
         cohort_course_registration=reg_b,
-        content_type=topic_ct, object_id=topic.id,
+        content_item=topic,
         deadline=timezone.now() + timedelta(days=7),
         is_hard_deadline=True,
     )
@@ -285,8 +332,10 @@ def test_most_permissive_deadline_governs_access(
 
 
 @pytest.mark.django_db
-def test_no_deadlines_not_locked(
-    mock_site_context, student, course, topic
-):
+def test_no_deadlines_not_locked(mock_site_context):
     """No deadlines means the item is not locked."""
+    student = StudentFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+
     assert is_item_locked_by_deadline(student, course, topic, is_completed=False) is False

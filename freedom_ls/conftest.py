@@ -1,31 +1,24 @@
 """Shared pytest fixtures for all tests."""
 
 import pytest
-from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 import tempfile
 from pathlib import Path
 from django.test import RequestFactory
 from django.urls import reverse
-from django.contrib.contenttypes.models import ContentType as DjangoContentType
-from freedom_ls.content_engine.models import ContentCollectionItem, Form, Activity
+from freedom_ls.content_engine.factories import ContentCollectionItemFactory
+from freedom_ls.content_engine.models import ContentCollectionItem
+from freedom_ls.accounts.factories import UserFactory
 from urllib.parse import urlparse
 from playwright.sync_api import Page
 from allauth.account.models import EmailAddress
 
 
-User = get_user_model()
-
-
 def add_item_to_collection(collection, child, order: int = 0) -> ContentCollectionItem:
     """Helper to add a child item to a course or course part via ContentCollectionItem."""
-    collection_ct = DjangoContentType.objects.get_for_model(collection)
-    child_ct = DjangoContentType.objects.get_for_model(child)
-    return ContentCollectionItem.objects.create(
-        collection_type=collection_ct,
-        collection_id=collection.id,
-        child_type=child_ct,
-        child_id=child.id,
+    return ContentCollectionItemFactory(
+        collection_object=collection,
+        child_object=child,
         order=order,
     )
 
@@ -35,15 +28,6 @@ def reverse_url(
 ):
     end = reverse(viewname, urlconf, args, kwargs, current_app)
     return f"{live_server.url}{end}"
-
-
-@pytest.fixture
-def activity(mock_site_context):
-    """Create a test activity."""
-    return Activity.objects.create(
-        title="Test Activity",
-        slug="test-activity",
-    )
 
 
 @pytest.fixture
@@ -59,19 +43,6 @@ def site(request):
 
     site, _ = Site.objects.get_or_create(name=name, defaults={"domain": domain})
     return site
-
-
-@pytest.fixture
-def user(site):
-    """Create a test user."""
-    user = User(
-        email="test@example.com",
-        site=site,
-        is_active=True,
-    )
-    user.set_password("testpass")
-    user.save()
-    return user
 
 
 @pytest.fixture
@@ -134,14 +105,6 @@ def site_aware_request(mock_site_context):
 
 
 @pytest.fixture
-def form(site):
-    """Create a test form."""
-    return Form.objects.create(
-        site=site, title="Test Form", strategy="CATEGORY_VALUE_SUM"
-    )
-
-
-@pytest.fixture
 def live_server_site(live_server, site):
     # Update site domain to match the live_server
     parsed_url = urlparse(live_server.url)
@@ -151,8 +114,9 @@ def live_server_site(live_server, site):
 
 
 @pytest.fixture
-def logged_in_page(page: Page, live_server, user, db, live_server_site):
+def logged_in_page(page: Page, live_server, db, live_server_site, mock_site_context):
     """Create a logged in page with a verified email address."""
+    user = UserFactory(password="testpass")
 
     # Set the user's email as verified (required for allauth)
     # Use get_or_create to avoid duplicate email addresses

@@ -1,13 +1,22 @@
 """Tests for view_course_item with nested course structure."""
 
 import pytest
-from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
-from freedom_ls.content_engine.models import Course, CoursePart, Topic, Form, FormPage
-from freedom_ls.student_management.models import Student, StudentCourseRegistration
 
-User = get_user_model()
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import (
+    CourseFactory,
+    CoursePartFactory,
+    FormFactory,
+    FormPageFactory,
+    TopicFactory,
+)
+from freedom_ls.content_engine.models import Form, Topic
+from freedom_ls.student_management.factories import (
+    StudentCourseRegistrationFactory,
+    StudentFactory,
+)
 
 
 @pytest.fixture
@@ -26,35 +35,35 @@ def course_with_nested_structure(mock_site_context, request):
     """
     first_item_type = getattr(request, 'param', Topic)  # Default to Topic
 
-    course = Course.objects.create(title="Test Course", slug="test-course")
-    course_part = CoursePart.objects.create(title="Chapter 1", slug="chapter-1")
+    course = CourseFactory(title="Test Course", slug="test-course")
+    course_part = CoursePartFactory(title="Chapter 1", slug="chapter-1")
 
     if first_item_type == Topic:
-        first_item = Topic.objects.create(
+        first_item = TopicFactory(
             title="First Topic",
             slug="first-topic",
             content="First item inside course part"
         )
     else:  # Form
-        first_item = Form.objects.create(
+        first_item = FormFactory(
             title="First Form",
             slug="first-form",
         )
         # Add a page to the form so it can be filled out
-        FormPage.objects.create(
+        FormPageFactory(
             form=first_item,
             title="Page 1",
             slug="page-1",
             order=0,
         )
 
-    second_topic = Topic.objects.create(
+    second_topic = TopicFactory(
         title="Second Topic",
         slug="second-topic",
         content="Second item inside course part"
     )
 
-    third_topic = Topic.objects.create(
+    third_topic = TopicFactory(
         title="Third Topic",
         slug="third-topic",
         content="Direct child of course"
@@ -78,13 +87,12 @@ def course_with_nested_structure(mock_site_context, request):
 @pytest.fixture
 def registered_user(mock_site_context, course_with_nested_structure):
     """Create a user registered for the test course."""
-    user = User.objects.create_user(email="test@example.com", password="password")
-    student = Student.objects.create(user=user)
-    StudentCourseRegistration.objects.create(
+    student = StudentFactory()
+    StudentCourseRegistrationFactory(
         student=student,
         collection=course_with_nested_structure["course"]
     )
-    return user
+    return student.user
 
 
 @pytest.fixture

@@ -1,18 +1,26 @@
 import pytest
 
-from freedom_ls.content_engine.models import FormPage, FormQuestion, QuestionOption
-from freedom_ls.student_progress.models import FormProgress, QuestionAnswer
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import (
+    FormFactory,
+    FormPageFactory,
+    FormQuestionFactory,
+    QuestionOptionFactory,
+)
+from freedom_ls.student_progress.factories import FormProgressFactory, QuestionAnswerFactory
 
 
 @pytest.mark.django_db
-def test_score_quiz_single_correct_answer(mock_site_context, user, form):
+def test_score_quiz_single_correct_answer(mock_site_context):
     """Test quiz scoring with a single question answered correctly."""
+    user = UserFactory()
+    form = FormFactory()
 
     # Create a page
-    page = FormPage.objects.create(form=form, title="Quiz Page 1", order=0)
+    page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
 
     # Create a question
-    question = FormQuestion.objects.create(
+    question = FormQuestionFactory(
         form_page=page,
         question="What is 2 + 2?",
         type="multiple_choice",
@@ -20,21 +28,21 @@ def test_score_quiz_single_correct_answer(mock_site_context, user, form):
     )
 
     # Create options - one correct, others incorrect
-    correct_option = QuestionOption.objects.create(
+    correct_option = QuestionOptionFactory(
         question=question, text="4", value="4", order=0, correct=True
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question, text="3", value="3", order=1, correct=False
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question, text="5", value="5", order=2, correct=False
     )
 
     # Create form progress
-    form_progress = FormProgress.objects.create(user=user, form=form)
+    form_progress = FormProgressFactory(user=user, form=form)
 
     # Create an answer selecting the correct option
-    answer = QuestionAnswer.objects.create(
+    answer = QuestionAnswerFactory(
         form_progress=form_progress, question=question
     )
     answer.selected_options.add(correct_option)
@@ -50,14 +58,16 @@ def test_score_quiz_single_correct_answer(mock_site_context, user, form):
 
 
 @pytest.mark.django_db
-def test_score_quiz_single_incorrect_answer(mock_site_context, user, form):
+def test_score_quiz_single_incorrect_answer(mock_site_context):
     """Test quiz scoring with a single question answered incorrectly."""
+    user = UserFactory()
+    form = FormFactory()
 
     # Create a page
-    page = FormPage.objects.create(form=form, title="Quiz Page 1", order=0)
+    page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
 
     # Create a question
-    question = FormQuestion.objects.create(
+    question = FormQuestionFactory(
         form_page=page,
         question="What is 2 + 2?",
         type="multiple_choice",
@@ -65,21 +75,21 @@ def test_score_quiz_single_incorrect_answer(mock_site_context, user, form):
     )
 
     # Create options - one correct, others incorrect
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question, text="4", value="4", order=0, correct=True
     )
-    incorrect_option = QuestionOption.objects.create(
+    incorrect_option = QuestionOptionFactory(
         question=question, text="3", value="3", order=1, correct=False
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question, text="5", value="5", order=2, correct=False
     )
 
     # Create form progress
-    form_progress = FormProgress.objects.create(user=user, form=form)
+    form_progress = FormProgressFactory(user=user, form=form)
 
     # Create an answer selecting an incorrect option
-    answer = QuestionAnswer.objects.create(
+    answer = QuestionAnswerFactory(
         form_progress=form_progress, question=question
     )
     answer.selected_options.add(incorrect_option)
@@ -95,71 +105,73 @@ def test_score_quiz_single_incorrect_answer(mock_site_context, user, form):
 
 
 @pytest.mark.django_db
-def test_score_quiz_multiple_questions_mixed_answers(mock_site_context, user, form):
+def test_score_quiz_multiple_questions_mixed_answers(mock_site_context):
     """Test quiz scoring with multiple questions and mixed correct/incorrect answers."""
+    user = UserFactory()
+    form = FormFactory()
 
     # Create a page
-    page = FormPage.objects.create(form=form, title="Quiz Page 1", order=0)
+    page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
 
     # Question 1
-    question1 = FormQuestion.objects.create(
+    question1 = FormQuestionFactory(
         form_page=page,
         question="What is 2 + 2?",
         type="multiple_choice",
         order=0,
     )
-    correct_option1 = QuestionOption.objects.create(
+    correct_option1 = QuestionOptionFactory(
         question=question1, text="4", value="4", order=0, correct=True
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question1, text="3", value="3", order=1, correct=False
     )
 
     # Question 2
-    question2 = FormQuestion.objects.create(
+    question2 = FormQuestionFactory(
         form_page=page,
         question="What is 3 + 3?",
         type="multiple_choice",
         order=1,
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question2, text="6", value="6", order=0, correct=True
     )
-    incorrect_option2 = QuestionOption.objects.create(
+    incorrect_option2 = QuestionOptionFactory(
         question=question2, text="5", value="5", order=1, correct=False
     )
 
     # Question 3
-    question3 = FormQuestion.objects.create(
+    question3 = FormQuestionFactory(
         form_page=page,
         question="What is 4 + 4?",
         type="multiple_choice",
         order=2,
     )
-    correct_option3 = QuestionOption.objects.create(
+    correct_option3 = QuestionOptionFactory(
         question=question3, text="8", value="8", order=0, correct=True
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question3, text="7", value="7", order=1, correct=False
     )
 
     # Create form progress
-    form_progress = FormProgress.objects.create(user=user, form=form)
+    form_progress = FormProgressFactory(user=user, form=form)
 
     # Answer Q1 correctly
-    answer1 = QuestionAnswer.objects.create(
+    answer1 = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(correct_option1)
 
     # Answer Q2 incorrectly
-    answer2 = QuestionAnswer.objects.create(
+    answer2 = QuestionAnswerFactory(
         form_progress=form_progress, question=question2
     )
     answer2.selected_options.add(incorrect_option2)
 
     # Answer Q3 correctly
-    answer3 = QuestionAnswer.objects.create(
+    answer3 = QuestionAnswerFactory(
         form_progress=form_progress, question=question3
     )
     answer3.selected_options.add(correct_option3)
@@ -176,60 +188,62 @@ def test_score_quiz_multiple_questions_mixed_answers(mock_site_context, user, fo
 
 @pytest.mark.django_db
 def test_score_quiz_includes_unanswered_questions_in_max_score(
-    mock_site_context, user, form
+    mock_site_context,
 ):
     """Test that max_score includes all questions, even unanswered ones."""
+    user = UserFactory()
+    form = FormFactory()
 
     # Create a page
-    page = FormPage.objects.create(form=form, title="Quiz Page 1", order=0)
+    page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
 
     # Question 1
-    question1 = FormQuestion.objects.create(
+    question1 = FormQuestionFactory(
         form_page=page,
         question="What is 2 + 2?",
         type="multiple_choice",
         order=0,
     )
-    correct_option1 = QuestionOption.objects.create(
+    correct_option1 = QuestionOptionFactory(
         question=question1, text="4", value="4", order=0, correct=True
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question1, text="3", value="3", order=1, correct=False
     )
 
     # Question 2 (will be unanswered)
-    question2 = FormQuestion.objects.create(
+    question2 = FormQuestionFactory(
         form_page=page,
         question="What is 3 + 3?",
         type="multiple_choice",
         order=1,
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question2, text="6", value="6", order=0, correct=True
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question2, text="5", value="5", order=1, correct=False
     )
 
     # Question 3 (will also be unanswered)
-    question3 = FormQuestion.objects.create(
+    question3 = FormQuestionFactory(
         form_page=page,
         question="What is 4 + 4?",
         type="multiple_choice",
         order=2,
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question3, text="8", value="8", order=0, correct=True
     )
-    QuestionOption.objects.create(
+    QuestionOptionFactory(
         question=question3, text="7", value="7", order=1, correct=False
     )
 
     # Create form progress
-    form_progress = FormProgress.objects.create(user=user, form=form)
+    form_progress = FormProgressFactory(user=user, form=form)
 
     # Answer ONLY question 1 correctly (leave Q2 and Q3 unanswered)
-    answer1 = QuestionAnswer.objects.create(
+    answer1 = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(correct_option1)

@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from freedom_ls.content_engine.models import Form
 from freedom_ls.student_management.models import CohortMembership
+from freedom_ls.student_progress.factories import FormProgressFactory
 from freedom_ls.student_progress.models import FormProgress
 
 
@@ -51,19 +52,19 @@ def command(
 
     for i, membership in enumerate(memberships):
         user = membership.student.user
-        _, fp_created = FormProgress.objects.get_or_create(
-            form=form,
-            user=user,
-            site=site,
-            defaults={
-                "completed_time": now - timedelta(hours=i),
-                "scores": {
+        if not FormProgress.objects.filter(
+            form=form, user=user, site=site
+        ).exists():
+            FormProgressFactory(
+                form=form,
+                user=user,
+                site=site,
+                completed_time=now - timedelta(hours=i),
+                scores={
                     "Satisfaction": 5 + (i % 3),
                     "Recommendation": 3 + (i % 3),
                 },
-            },
-        )
-        if fp_created:
+            )
             created_count += 1
 
     click.secho(

@@ -1,48 +1,11 @@
 import pytest
-from django.contrib.auth import get_user_model
 from django.test import RequestFactory
-from freedom_ls.content_engine.models import (
-    Course,
-    CoursePart,
-    Form,
-    Topic,
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.student_management.factories import (
+    CohortMembershipFactory,
+    StudentFactory,
 )
-from freedom_ls.student_management.models import (
-    Cohort,
-    CohortCourseRegistration,
-    CohortMembership,
-    Student,
-)
-
-User = get_user_model()
-
-
-@pytest.fixture
-def educator_user(mock_site_context):
-    """Create an educator user."""
-    return User.objects.create_user(
-        email="educator@example.com", password="testpass", is_staff=True
-    )
-
-
-@pytest.fixture
-def cohort(mock_site_context):
-    """Create a test cohort."""
-    return Cohort.objects.create(name="Test Cohort")
-
-
-@pytest.fixture
-def course(mock_site_context):
-    """Create a test course."""
-    return Course.objects.create(title="Test Course", slug="test-course")
-
-
-@pytest.fixture
-def cohort_course_reg(mock_site_context, cohort, course):
-    """Create a cohort course registration."""
-    return CohortCourseRegistration.objects.create(
-        cohort=cohort, collection=course, is_active=True
-    )
+from freedom_ls.student_management.models import Cohort, Student
 
 
 @pytest.fixture
@@ -53,7 +16,6 @@ def request_factory(mock_site_context):
 
 def make_student(mock_site_context, email: str, cohort: Cohort) -> Student:
     """Create a student with a user and cohort membership."""
-    user = User.objects.create_user(email=email, password="testpass")
-    student = Student.objects.create(user=user)
-    CohortMembership.objects.create(student=student, cohort=cohort)
+    student = StudentFactory(user=UserFactory(email=email))
+    CohortMembershipFactory(student=student, cohort=cohort)
     return student
