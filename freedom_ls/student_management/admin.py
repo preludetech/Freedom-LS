@@ -1,6 +1,7 @@
 from django.contrib import admin
 from unfold.admin import TabularInline
 
+from freedom_ls.accounts.admin import SiteAwareGuardedModelAdminMixin
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 from .models import (
     Student,
@@ -94,7 +95,7 @@ class CohortCourseRegistrationInline(TabularInline):
 
 
 @admin.register(Cohort)
-class CohortAdmin(GuardedModelAdmin):
+class CohortAdmin(SiteAwareGuardedModelAdminMixin, GuardedModelAdmin):
     list_display = ["name"]
     search_fields = ["name"]
     inlines = [CohortMembershipInline, CohortCourseRegistrationInline]
