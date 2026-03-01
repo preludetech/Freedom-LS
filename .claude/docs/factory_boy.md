@@ -153,14 +153,3 @@ def test_cohort_membership(mock_site_context):
     assert membership.cohort == cohort
     # membership.student was auto-created by SubFactory
 ```
-
-## Factory Files
-
-| File | Factories |
-|------|-----------|
-| `freedom_ls/site_aware_models/factories.py` | `SiteAwareFactory` (abstract base) |
-| `freedom_ls/accounts/factories.py` | `UserFactory` |
-| `freedom_ls/app_authentication/factories.py` | `ClientFactory` |
-| `freedom_ls/content_engine/factories.py` | `TopicFactory`, `ActivityFactory`, `CourseFactory`, `CoursePartFactory`, `FormFactory`, `FormPageFactory`, `FormContentFactory`, `FormQuestionFactory`, `QuestionOptionFactory`, `ContentCollectionItemFactory`, `FileFactory` |
-| `freedom_ls/student_management/factories.py` | `StudentFactory`, `CohortFactory`, `CohortMembershipFactory`, `StudentCourseRegistrationFactory`, `CohortCourseRegistrationFactory`, `CohortDeadlineFactory`, `StudentDeadlineFactory`, `StudentCohortDeadlineOverrideFactory`, `RecommendedCourseFactory` |
-| `freedom_ls/student_progress/factories.py` | `CourseProgressFactory`, `TopicProgressFactory`, `FormProgressFactory`, `QuestionAnswerFactory` |
