@@ -1,0 +1,9 @@
+{% extends "emails/base_email.txt" %}
+
+{% block content %}
+Someone tried to reset the password for {{ email }}, but no account with this email address exists on {{ current_site.name }}.
+
+If this was you, you can create an account instead.
+
+Create an Account: {{ signup_url }}
+{% endblock %}

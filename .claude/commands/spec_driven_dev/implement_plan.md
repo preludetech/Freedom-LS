@@ -7,9 +7,12 @@ allowed-tools: Read, Glob, Write
 
 ## Overview
 
-Load plan, review critically, execute tasks in batches, report for review between batches.
+Load plan, review critically, execute tasks in batches.
 
-**Core principle:** Batch execution with checkpoints for architect review.
+Make use of the request-code-review skill after every batch of tasks.
+Make use of the request-code-review skill once all the batches of tasks are complete
+
+**Core principle:** Batch execution with checkpoints code review.
 
 ## The Process
 
@@ -33,6 +36,8 @@ Load plan, review critically, execute tasks in batches, report for review betwee
 6. Run the tests and make sure everything works
 
 **IMPORTANT** ALL tests need to pass. If there are broken tests fix them!
+
+**IMPORTANT** Make use fo the request-code-review skill at the end of a batch of tasks. Use it more often if there are significant code changes.
 
 ### After all steps are complete
 

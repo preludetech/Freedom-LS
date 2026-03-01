@@ -1,0 +1,5 @@
+{% extends "emails/base_notification_email.txt" %}
+
+{% block notification_content %}
+Your email address has been confirmed.
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends "emails/base_notification_email.html" %}
+
+{% block notification_content %}
+<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">The email address {{ deleted_email }} has been removed from your account.</p>
+<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">If you didn't make this change, please contact us immediately.</p>
+{% endblock %}

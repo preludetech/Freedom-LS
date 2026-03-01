@@ -1,0 +1,13 @@
+{% extends "emails/base_email.txt" %}
+
+{% block content %}
+{% block notification_content %}{% endblock %}
+
+{% block security_info %}
+{% if ip or user_agent or timestamp %}
+Security Information:
+{% if ip %}- IP Address: {{ ip }}
+{% endif %}{% if user_agent %}- Browser: {{ user_agent }}
+{% endif %}{% if timestamp %}- Time: {{ timestamp }}
+{% endif %}{% endif %}{% endblock %}
+{% endblock %}

@@ -4,10 +4,21 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.contrib.sites.shortcuts import get_current_site
 
-from .models import SiteSignupPolicy
+from .models import SiteSignupPolicy, User
 
 
 class AccountAdapter(DefaultAccountAdapter):
+    def send_notification_mail(
+        self,
+        template_prefix: str,
+        user: User,
+        context: dict | None = None,
+        email: str | None = None,
+    ) -> None:
+        context = context or {}
+        context["user"] = user
+        super().send_notification_mail(template_prefix, user, context, email=email)
+
     def is_open_for_signup(self, request):
         """
         Signup is controlled per-site via accounts.SiteSignupPolicy.
