@@ -24,7 +24,7 @@
         <div>
             {% if previous_url %}
                 <c-button href="{{ previous_url }}" variant="outline">
-                    <i class="fa fa-arrow-left"></i> Previous
+                    <c-icon name="previous" class="size-5" /> Previous
                 </c-button>
             {% endif %}
         </div>
@@ -41,7 +41,7 @@
                 </c-button>
             </form>
         {% elif next_url %}
-            <c-button href="{{ next_url }}" icon-left="arrow-right">
+            <c-button href="{{ next_url }}" icon-left="next">
                 Next
             </c-button>
         {% elif is_last_item %}

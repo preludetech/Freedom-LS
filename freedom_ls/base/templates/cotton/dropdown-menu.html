@@ -1,5 +1,4 @@
 {# djlint:off H037 H026 H021 #}
-
 <c-vars trigger=""
         class=""
         trigger_class="p-2 hover:bg-surface-2 rounded-md transition-colors" />
@@ -14,7 +13,7 @@
         {% if trigger %}
             {{ trigger }}
         {% else %}
-            <i class="fa fa-ellipsis-v" aria-hidden="true"></i>
+            <c-icon name="more_options" class="size-5" />
         {% endif %}
     </button>
 
@@ -55,8 +54,8 @@ Usage Examples:
       <c-button dropdown="true">Delete</c-button>
   </c-dropdown-menu>
 
-  <!-- Custom trigger with HTML -->
-  <c-dropdown-menu trigger='<i class="fa fa-cog"></i>'>
+  <!-- Custom trigger with icon component -->
+  <c-dropdown-menu trigger='<c-icon name="settings" class="size-5" />'>
       <c-button dropdown="true">Settings</c-button>
       <c-button dropdown="true">Preferences</c-button>
   </c-dropdown-menu>

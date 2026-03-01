@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "unfold.contrib.constance",  # optional, if django-constance package is used
     "django.contrib.admin",  # required
     "guardian",
+    "heroicons",
     # CUSTOM APPS
     # "app_authentication",
     # xapi_learning_record_store

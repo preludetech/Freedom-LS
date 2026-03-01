@@ -1,7 +1,6 @@
 <c-vars level="info" title="" />
 
 {% load content_tags %}
-
 {% comment %}
 Callout component for displaying informational alerts and notices.
 Supports levels: info, warning, error, success
@@ -11,7 +10,7 @@ Supports levels: info, warning, error, success
 <div class="my-6 p-4 {{ bg }} border-l-4 {{ border }} rounded-r-lg">
     {% if title %}
     <h4 class="text-xl font-semibold {{ title_color }} mb-2">
-        <i class="fas {{ icon }} mr-2"></i>{{ title }}
+        <c-icon :name="icon" class="size-5 mr-2" />{{ title }}
     </h4>
     {% endif %}
     <div class="{{ text }} px-4 space-y-4 pt-2">
@@ -21,19 +20,19 @@ Supports levels: info, warning, error, success
 {% endpartialdef %}
 
 {% if level == "info" %}
-    {% with bg="bg-primary/10" border="border-primary" text="text-foreground" title_color="text-foreground" icon="fa-info-circle" %}
+    {% with bg="bg-primary/10" border="border-primary" text="text-foreground" title_color="text-foreground" icon="info" %}
         {% partial callout_box %}
     {% endwith %}
 {% elif level == "warning" %}
-    {% with bg="bg-warning/10" border="border-warning" text="text-warning" title_color="text-warning" icon="fa-exclamation-triangle" %}
+    {% with bg="bg-warning/10" border="border-warning" text="text-warning" title_color="text-warning" icon="warning" %}
         {% partial callout_box %}
     {% endwith %}
 {% elif level == "error" %}
-    {% with bg="bg-danger/10" border="border-danger" text="text-danger-bold" title_color="text-danger-bold" icon="fa-times-circle" %}
+    {% with bg="bg-danger/10" border="border-danger" text="text-danger-bold" title_color="text-danger-bold" icon="error" %}
         {% partial callout_box %}
     {% endwith %}
 {% elif level == "success" %}
-    {% with bg="bg-success/10" border="border-success" text="text-success-bold" title_color="text-success-bold" icon="fa-check-circle" %}
+    {% with bg="bg-success/10" border="border-success" text="text-success-bold" title_color="text-success-bold" icon="success" %}
         {% partial callout_box %}
     {% endwith %}
 {% endif %}

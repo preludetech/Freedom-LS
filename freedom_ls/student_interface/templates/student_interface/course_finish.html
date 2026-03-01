@@ -8,7 +8,7 @@
     <div class="max-w-4xl mx-auto py-12">
         <div class="text-center mb-8">
             <div class="mb-6">
-                <i class="fas fa-trophy text-warning text-6xl"></i>
+                <c-icon name="achievement" class="size-16 text-warning" />
             </div>
 
             <h1 class="mb-4">
@@ -43,10 +43,10 @@
         <!-- Navigation Buttons -->
         <div class="mt-8 flex justify-center gap-4">
             <c-button href="{% url 'student_interface:home' %}">
-                <i class="fas fa-home mr-2"></i>Return to Home
+                <c-icon name="home" class="size-5 mr-2" />Return to Home
             </c-button>
             <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
-                <i class="fas fa-book mr-2"></i>View Course
+                <c-icon name="reading" class="size-5 mr-2" />View Course
             </c-button>
         </div>
 

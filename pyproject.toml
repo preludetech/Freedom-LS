@@ -21,6 +21,7 @@ dependencies = [
     "django-template-partials>=25.2",
     "whitenoise>=6.11.0",
     "django-storages[s3]>=1.14.6",
+    "heroicons[django]>=2.13.0,<3",
 ]
 
 [tool.setuptools.packages.find]
@@ -191,14 +192,14 @@ module = [
     "django_extensions.*", "corsheaders.*", "storages.*",
     "boto3.*", "botocore.*", "redis.*", "PIL.*",
     "allauth.*", "djclick.*", "frontmatter.*",
-    "markdown.*", "unfold.*", "factory.*",
+    "markdown.*", "unfold.*", "factory.*", "django_cotton.*",
 ]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "*.tests.*"
 disallow_untyped_defs = false
-disable_error_code = ["attr-defined", "assignment", "arg-type", "misc", "comparison-overlap"]  # factory-boy is untyped; its metaclass makes mypy think Factory() returns the factory, not the model
+disable_error_code = ["attr-defined", "assignment", "arg-type", "misc", "comparison-overlap", "import-untyped"]  # factory-boy is untyped; its metaclass makes mypy think Factory() returns the factory, not the model
 
 [[tool.mypy.overrides]]
 module = "freedom_ls.xapi_learning_record_store.*"

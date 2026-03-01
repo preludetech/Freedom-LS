@@ -35,12 +35,12 @@
                     {% if course_progress.completed_time %}
                         <span class="text-muted text-sm">Completed</span>
                         <span class="font-medium text-base text-success">
-                            <i class="fa fa-check-circle"></i> {{ course_progress.completed_time|date:"M d, Y" }}
+                            <c-icon name="success" class="size-5" /> {{ course_progress.completed_time|date:"M d, Y" }}
                         </span>
                     {% else %}
                         <span class="text-muted text-sm">Status</span>
                         <span class="font-medium text-base text-primary">
-                            <i class="fa fa-spinner"></i> In Progress
+                            <c-icon name="loading" class="size-5 animate-spin" /> In Progress
                         </span>
                     {% endif %}
                 </div>

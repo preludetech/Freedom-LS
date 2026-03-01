@@ -10,18 +10,18 @@
 Usage Examples:
 
   <c-header-button>
-      <i class="fa-solid fa-user"></i>
+      <c-icon name="user" class="size-5" />
       <span>Profile</span>
   </c-header-button>
 
   <!-- With custom classes -->
   <c-header-button class="text-primary hover:text-primary-bold">
-      <i class="fa-solid fa-bell"></i>
+      <c-icon name="notifications" class="size-5" />
       <span>Notifications</span>
   </c-header-button>
 
   <!-- With HTMX or other attributes -->
   <c-header-button hx-get="/notifications" hx-target="#notifications-panel">
-      <i class="fa-solid fa-bell"></i>
+      <c-icon name="notifications" class="size-5" />
   </c-header-button>
 {% endcomment %}

@@ -1,6 +1,6 @@
 <c-vars message id />
 
 <div id="{{ id|default:'loading' }}" class="htmx-indicator text-center py-12 {{ c.attrs.class }}">
-    <i class="fas fa-spinner fa-spin text-3xl text-muted/50"></i>
+    <c-icon name="loading" class="size-8 animate-spin text-muted/50" />
     <p class="mt-4 text-muted">{{ message|default:"Loading..." }}</p>
 </div>

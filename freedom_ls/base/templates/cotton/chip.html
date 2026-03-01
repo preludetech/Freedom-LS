@@ -4,7 +4,7 @@
     <span class="{% if size %}chip-{{ size }}{% endif %} {{ computed_class }}"
           {{ attrs }}>
         {% if icon %}
-            <i class="fa-solid fa-{{ icon }}"></i>
+            <c-icon :name="icon" class="size-4" />
         {% endif %}
         {{ slot }}
     </span>

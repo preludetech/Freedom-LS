@@ -9,9 +9,9 @@
         <div class="text-center mb-8">
             <div class="mb-6">
                 {% if is_failed_quiz %}
-                    <i class="fas fa-times-circle text-danger text-6xl"></i>
+                    <c-icon name="error" class="size-16 text-danger" />
                 {% else %}
-                    <i class="fas fa-check-circle text-success text-6xl"></i>
+                    <c-icon name="success" class="size-16 text-success" />
                 {% endif %}
             </div>
 
@@ -102,7 +102,7 @@
                                             <div class="pl-4" data-testid="student-answer-{{ item.question.id }}">
                                                 {% for option in item.student_selected %}
                                                     <p class="text-muted">
-                                                        <i class="fas fa-times-circle text-danger mr-2"></i>{{ option.text }}
+                                                        <c-icon name="error" class="size-5 text-danger mr-2" />{{ option.text }}
                                                     </p>
                                                 {% endfor %}
                                             </div>
@@ -116,7 +116,7 @@
                                             <div class="pl-4" data-testid="correct-answer-{{ item.question.id }}">
                                                 {% for option in item.correct_options %}
                                                     <p class="text-muted">
-                                                        <i class="fas fa-check-circle text-success mr-2"></i>{{ option.text }}
+                                                        <c-icon name="success" class="size-5 text-success mr-2" />{{ option.text }}
                                                     </p>
                                                 {% endfor %}
                                             </div>
@@ -183,16 +183,16 @@
         <div class="mt-8 flex justify-center gap-4">
             {% if is_failed_quiz %}
                 <c-button href="{{ retry_url }}">
-                    <i class="fas fa-redo mr-2"></i>Retry Quiz
+                    <c-icon name="retry" class="size-5 mr-2" />Retry Quiz
                 </c-button>
             {% else %}
                 {% if next_url %}
                     <c-button href="{{ next_url }}">
-                        Continue <i class="fas fa-arrow-right ml-2"></i>
+                        Continue <c-icon name="next" class="size-5 ml-2" />
                     </c-button>
                 {% else %}
                     <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
-                        Return to Course <i class="fas fa-home ml-2"></i>
+                        Return to Course <c-icon name="home" class="size-5 ml-2" />
                     </c-button>
                 {% endif %}
             {% endif %}
