@@ -6,7 +6,7 @@ Use update the tests to use factories defined using factoryboy. Factories should
 
 Every time you trite a test, run it to make sure it passes before moving onto anything else.
 
-# Github action for unit testing 
+# Github action for unit testing
 
 Create a github action that runs unit tests every time code is pushed or a PR is created.
 
@@ -22,5 +22,5 @@ Ruff configuration should target Django-specific rules. In pyproject.toml, enabl
 
 
 Me:
-- type checking 
+- type checking
 - https://claude.ai/chat/472ac9ff-c7c3-4b02-88c6-73d434f317d1

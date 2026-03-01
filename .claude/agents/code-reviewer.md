@@ -1,8 +1,8 @@
 ---
 name: code-reviewer
 description: |-
-  Use this agent when the user wants a review of recent code changes. This includes reviewing all changes in a branch compared to main, reviewing specific commits, or reviewing uncommitted/staged changes. 
-  
+  Use this agent when the user wants a review of recent code changes. This includes reviewing all changes in a branch compared to main, reviewing specific commits, or reviewing uncommitted/staged changes.
+
   Examples:
   - User: "Review my changes"
     Assistant: "I'll use the code-reviewer agent to review your recent code changes."
@@ -212,5 +212,3 @@ Grep with pattern="<search term>" path="./.claude/agent-memory/code-reviewer/" g
 Grep with pattern="<search term>" path="~/.claude/projects/???" glob="*.jsonl"
 ```
 Use narrow search terms (error messages, file paths, function names) rather than broad keywords.
-
-

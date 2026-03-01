@@ -42,6 +42,7 @@ def resolve_url_path_template(obj: object, url_name: str, path_template: str) ->
     Usage: {% resolve_url_path_template object "educator_interface:interface" "cohorts/{pk}" %}
     Produces: /educator/cohorts/42
     """
+
     def replace_attr(match: re.Match[str]) -> str:
         attr_name = match.group(1)
         value = obj

@@ -27,7 +27,9 @@ def test_bulk_returns_course_level_deadline(mock_site_context):
     course: Course = CourseFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(student=student, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    cohort_course_reg = CohortCourseRegistrationFactory(
+        cohort=cohort, collection=course
+    )
 
     course_dt = timezone.now() + timedelta(days=7)
     CohortDeadlineFactory(
@@ -49,7 +51,9 @@ def test_bulk_returns_item_level_deadlines(mock_site_context):
     course: Course = CourseFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(student=student, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    cohort_course_reg = CohortCourseRegistrationFactory(
+        cohort=cohort, collection=course
+    )
 
     topic1: Topic = TopicFactory(title="T1")
     topic2: Topic = TopicFactory(title="T2")
@@ -62,11 +66,13 @@ def test_bulk_returns_item_level_deadlines(mock_site_context):
 
     CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_item=topic1, deadline=dt1,
+        content_item=topic1,
+        deadline=dt1,
     )
     CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_item=topic2, deadline=dt2,
+        content_item=topic2,
+        deadline=dt2,
     )
 
     result = get_course_deadlines(student, course)
@@ -86,7 +92,9 @@ def test_bulk_matches_per_item_resolution(mock_site_context):
     course: Course = CourseFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(student=student, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    cohort_course_reg = CohortCourseRegistrationFactory(
+        cohort=cohort, collection=course
+    )
 
     topic: Topic = TopicFactory(title="Match Topic")
     course.items.create(child=topic, order=0)

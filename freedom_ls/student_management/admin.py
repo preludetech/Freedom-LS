@@ -195,11 +195,15 @@ class CohortDeadlineAdmin(SiteAwareModelAdmin):
     ]
     autocomplete_fields = ["cohort_course_registration"]
 
-    @admin.display(description="Cohort", ordering="cohort_course_registration__cohort__name")
+    @admin.display(
+        description="Cohort", ordering="cohort_course_registration__cohort__name"
+    )
     def get_cohort_name(self, obj: CohortDeadline) -> str:
         return obj.cohort_course_registration.cohort.name
 
-    @admin.display(description="Course", ordering="cohort_course_registration__collection__title")
+    @admin.display(
+        description="Course", ordering="cohort_course_registration__collection__title"
+    )
     def get_course_name(self, obj: CohortDeadline) -> str:
         return obj.cohort_course_registration.collection.title
 

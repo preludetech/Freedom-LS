@@ -198,9 +198,7 @@ def _create_course_with_form(form, title="Test Course", slug=None):
 def _register_student_for_course(course):
     """Create a student registered for a course."""
     student = StudentFactory()
-    StudentCourseRegistrationFactory(
-        student=student, collection=course, is_active=True
-    )
+    StudentCourseRegistrationFactory(student=student, collection=course, is_active=True)
     return student
 
 

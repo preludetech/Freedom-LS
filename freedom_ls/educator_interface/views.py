@@ -679,9 +679,7 @@ class CohortCourseProgressPanel(Panel):
             try:
                 cell["quiz_percentage"] = fp.quiz_percentage()
                 cell["passed"] = (
-                    fp.passed()
-                    if item.quiz_pass_percentage is not None
-                    else None
+                    fp.passed() if item.quiz_pass_percentage is not None else None
                 )
             except (KeyError, ValueError):
                 cell["quiz_percentage"] = None
@@ -1162,7 +1160,9 @@ def interface(request, path_string: str = ""):
         if isinstance(current, Panel):
             return HttpResponse(current.render(request, base_url=base_url))
 
-        if isinstance(current, InstanceView) or (isinstance(current, type) and issubclass(current, ListViewConfig)):
+        if isinstance(current, InstanceView) or (
+            isinstance(current, type) and issubclass(current, ListViewConfig)
+        ):
             rendered_content = current.render(request, base_url=base_url)
         else:
             raise Http404("Unexpected path resolution")

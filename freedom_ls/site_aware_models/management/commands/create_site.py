@@ -31,7 +31,7 @@ def command(site_name, site_domain, email, password):
             "is_superuser": True,
             "is_active": True,
             "site": site,
-        }
+        },
     )
 
     if user_created:
@@ -39,7 +39,5 @@ def command(site_name, site_domain, email, password):
         user.save()
 
     EmailAddress.objects.get_or_create(
-        user=user,
-        email=user.email,
-        defaults={"verified": True, "primary": True}
+        user=user, email=user.email, defaults={"verified": True, "primary": True}
     )

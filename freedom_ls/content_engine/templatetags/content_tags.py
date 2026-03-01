@@ -44,7 +44,6 @@ def markdown(context, value):
     return render_markdown(value, request)
 
 
-
 @register.filter
 def get_content_by_path(file_path, content_instance):
     """

@@ -65,9 +65,7 @@ class BaseContentModel(BaseBaseContentModel):
     category: str | None = Field(
         None, description="Optional category for this activity"
     )
-    image: str | None = Field(
-        None, description="Optional category for this activity"
-    )
+    image: str | None = Field(None, description="Optional category for this activity")
 
 
 class MarkdownContentModel(BaseModel):
@@ -81,9 +79,7 @@ class Topic(BaseContentModel, MarkdownContentModel, content_type=ContentType.TOP
 class Activity(
     BaseContentModel, MarkdownContentModel, content_type=ContentType.ACTIVITY
 ):
-    level: int | None = Field(
-        None, description="level 1 is easiest, 2 is harder, etc"
-    )
+    level: int | None = Field(None, description="level 1 is easiest, 2 is harder, etc")
 
 
 class Child(BaseModel):

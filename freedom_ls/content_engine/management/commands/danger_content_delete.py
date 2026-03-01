@@ -60,9 +60,7 @@ def command(yes: bool) -> None:
     # Confirm deletion
     if not yes:
         click.secho(
-            "\nWARNING: This will permanently delete ALL content!",
-            fg="red",
-            bold=True
+            "\nWARNING: This will permanently delete ALL content!", fg="red", bold=True
         )
         if not click.confirm("Are you sure you want to continue?"):
             click.secho("Deletion cancelled.", fg="green")

@@ -43,7 +43,7 @@ docker compose exec web python manage.py migrate
 
 ### 4. Set up some initial data
 
-We need a Site in the database for everything to run. 
+We need a Site in the database for everything to run.
 
 Replace the site name, domain and content path with something realistic.
 
@@ -53,7 +53,7 @@ Replace the site name, domain and content path with something realistic.
 docker compose exec web python manage.py create_site Demo staging.freedomlearningsystem.org
 
 # copy the content into the container
-docker compose cp  ./demo_content  web:/app/content 
+docker compose cp  ./demo_content  web:/app/content
 
 # save the content to the db
 docker compose exec web python manage.py content_save  /app/content Demo
@@ -101,7 +101,7 @@ docker-compose restart web
 docker-compose exec web python manage.py <command>
 ```
 
-### Open an interactive shell 
+### Open an interactive shell
 
 ```bash
 docker compose exec -it web /bin/sh

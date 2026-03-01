@@ -1,4 +1,4 @@
-## Step 1 
+## Step 1
 
 Fetch the PR comments made by claude by using this command
 
@@ -6,7 +6,7 @@ Fetch the PR comments made by claude by using this command
 gh pr view {pr_id} --comments --json comments
 ```
 
-## Step 2 
+## Step 2
 
 For each issue that was raised:
 

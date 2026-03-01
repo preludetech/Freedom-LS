@@ -141,7 +141,9 @@ def get_course_index(user: User, course: Course) -> list[dict]:
 
     # Look up student and deadlines
     student = get_student(user)
-    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]] = {}
+    deadlines_map: dict[
+        tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]
+    ] = {}
     if student and config.DEADLINES_ACTIVE:
         deadlines_map = get_course_deadlines(student, course)
 
@@ -151,7 +153,12 @@ def get_course_index(user: User, course: Course) -> list[dict]:
 
     for child in course.children():
         child_dict, next_status, items_added = create_child_dict_with_flattened_index(
-            child, user, course, global_index, next_status, is_registered,
+            child,
+            user,
+            course,
+            global_index,
+            next_status,
+            is_registered,
             deadlines_map=deadlines_map,
         )
         children.append(child_dict)
@@ -213,7 +220,8 @@ def create_child_dict_with_flattened_index(
     start_index: int,
     next_status: str,
     is_registered: bool,
-    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]] | None = None,
+    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]]
+    | None = None,
 ) -> tuple[dict, str, int]:
     """
     Create a child dict with proper flattened indices for nested items.

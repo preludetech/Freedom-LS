@@ -35,4 +35,3 @@ class Config:
 
 
 config = Config(defaults)
-

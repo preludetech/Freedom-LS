@@ -1,4 +1,4 @@
-- send emails 
+- send emails
 - allow students to initiate messages
 - use channels instead of polling
 

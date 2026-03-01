@@ -67,7 +67,7 @@ class ModelAdmin(SiteAwareModelAdmin):
     search_fields = ("field1", "field2__related")
     list_filter = ("category", "created_at")
     readonly_fields = ("slug", "created_at")
-    exclude = ("site",)  # Only if not using SiteAwareModelAdmin
+    exclude = ["site"]  # Only if not using SiteAwareModelAdmin
 ```
 
 ### With Inlines

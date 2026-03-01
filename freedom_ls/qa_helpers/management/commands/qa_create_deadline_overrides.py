@@ -98,7 +98,9 @@ def command(
             content_item = form
             item_name = form.title
         else:
-            raise click.ClickException(f"No topic or form found with slug '{item_slug}'.")
+            raise click.ClickException(
+                f"No topic or form found with slug '{item_slug}'."
+            )
 
     # Check for existing override using the unique constraint fields
     lookup = {

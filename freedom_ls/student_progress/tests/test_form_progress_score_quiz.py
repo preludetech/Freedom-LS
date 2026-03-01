@@ -79,9 +79,7 @@ def test_score_quiz_single_incorrect_answer(mock_site_context):
     )
 
     # Create options - one correct, others incorrect
-    QuestionOptionFactory(
-        question=question, text="4", value="4", order=0, correct=True
-    )
+    QuestionOptionFactory(question=question, text="4", value="4", order=0, correct=True)
     incorrect_option = QuestionOptionFactory(
         question=question, text="3", value="3", order=1, correct=False
     )

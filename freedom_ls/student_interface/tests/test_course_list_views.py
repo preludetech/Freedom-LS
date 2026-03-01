@@ -33,9 +33,7 @@ def courses(mock_site_context) -> list[Course]:
 
 
 @pytest.mark.django_db
-def test_all_courses_started_course_has_progress_percentage(
-    mock_site_context, courses
-):
+def test_all_courses_started_course_has_progress_percentage(mock_site_context, courses):
     """Started courses in the all_courses view should have progress_percentage for progress bars."""
     student = StudentFactory()
     StudentCourseRegistrationFactory(student=student, collection=courses[0])
@@ -111,9 +109,7 @@ def test_partial_list_courses_completed_courses(mock_site_context, courses):
 
 
 @pytest.mark.django_db
-def test_partial_list_courses_includes_recommended_courses(
-    mock_site_context, courses
-):
+def test_partial_list_courses_includes_recommended_courses(mock_site_context, courses):
     """Recommended courses are passed to the template context."""
     student = StudentFactory()
     RecommendedCourseFactory(user=student.user, collection=courses[0])

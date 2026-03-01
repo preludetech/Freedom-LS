@@ -163,18 +163,22 @@ def update_file_with_option_uuids(file_path, question_uuid, option_uuids):
     # Find the question section with matching UUID
     for idx, section in enumerate(sections):
         section_data = yaml.safe_load(section)
-        if section_data and section_data.get("uuid") == str(question_uuid) and section_data.get("options"):
-                for opt_idx, opt_uuid in option_uuids:
-                    if opt_idx < len(section_data["options"]):
-                        section_data["options"][opt_idx]["uuid"] = str(opt_uuid)
+        if (
+            section_data
+            and section_data.get("uuid") == str(question_uuid)
+            and section_data.get("options")
+        ):
+            for opt_idx, opt_uuid in option_uuids:
+                if opt_idx < len(section_data["options"]):
+                    section_data["options"][opt_idx]["uuid"] = str(opt_uuid)
 
-                sections[idx] = yaml.dump(
-                    section_data,
-                    Dumper=PreservingDumper,
-                    default_flow_style=False,
-                    allow_unicode=True,
-                ).strip()
-                break
+            sections[idx] = yaml.dump(
+                section_data,
+                Dumper=PreservingDumper,
+                default_flow_style=False,
+                allow_unicode=True,
+            ).strip()
+            break
 
     new_content = "---\n" + "\n---\n".join(sections) + "\n"
 

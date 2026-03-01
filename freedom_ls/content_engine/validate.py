@@ -318,9 +318,7 @@ def validate(path):
     try:
         all_file_paths = get_all_files(path)
     except Exception as e:
-        raise ValueError(
-            f"\n❌ Error scanning directory {path}\nError: {e!s}"
-        ) from e
+        raise ValueError(f"\n❌ Error scanning directory {path}\nError: {e!s}") from e
 
     # Check if we found any content files
     content_files = [f for f in all_file_paths if f.suffix in [".md", ".yaml", ".yml"]]

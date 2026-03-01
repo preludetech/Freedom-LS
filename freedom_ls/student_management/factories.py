@@ -115,9 +115,7 @@ class StudentDeadlineFactory(SiteAwareFactory):
     class Params:
         content_item = None
 
-    student_course_registration = factory.SubFactory(
-        StudentCourseRegistrationFactory
-    )
+    student_course_registration = factory.SubFactory(StudentCourseRegistrationFactory)
     deadline = factory.LazyFunction(lambda: timezone.now() + timedelta(days=30))
     is_hard_deadline = False
 

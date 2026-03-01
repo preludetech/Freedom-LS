@@ -218,7 +218,6 @@ class ContentCollectionItemAdmin(SiteAwareModelAdmin):
     ordering = ("collection", "order")
 
 
-
 @admin.register(Form)
 class FormAdmin(SiteAwareModelAdmin):
     list_display = ["title", "subtitle", "strategy"]

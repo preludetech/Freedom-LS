@@ -21,9 +21,7 @@ def test_score_category_value_sum_single_question(mock_site_context):
     form = FormFactory()
 
     # Create a page with a category
-    page = FormPageFactory(
-        form=form, title="Page 1", order=0, category="Wellbeing"
-    )
+    page = FormPageFactory(form=form, title="Page 1", order=0, category="Wellbeing")
 
     # Create a question with a category
     question = FormQuestionFactory(
@@ -35,9 +33,7 @@ def test_score_category_value_sum_single_question(mock_site_context):
     )
 
     # Create options with values
-    option1 = QuestionOptionFactory(
-        question=question, text="Great", value="5", order=0
-    )
+    option1 = QuestionOptionFactory(question=question, text="Great", value="5", order=0)
     QuestionOptionFactory(question=question, text="Good", value="3", order=1)
     QuestionOptionFactory(question=question, text="Poor", value="1", order=2)
 
@@ -81,9 +77,7 @@ def test_score_category_value_sum_calculates_max_score_correctly_with_unanswered
     form = FormFactory()
 
     # Create a page with a category
-    page = FormPageFactory(
-        form=form, title="Page 1", order=0, category="Wellbeing"
-    )
+    page = FormPageFactory(form=form, title="Page 1", order=0, category="Wellbeing")
 
     # Create 2 questions in the same category
     question1 = FormQuestionFactory(
@@ -106,17 +100,11 @@ def test_score_category_value_sum_calculates_max_score_correctly_with_unanswered
     option1_q1 = QuestionOptionFactory(
         question=question1, text="Option 1", value="5", order=0
     )
-    QuestionOptionFactory(
-        question=question1, text="Option 2", value="3", order=1
-    )
+    QuestionOptionFactory(question=question1, text="Option 2", value="3", order=1)
 
     # Create options for question 2 (max value = 10)
-    QuestionOptionFactory(
-        question=question2, text="Option 1", value="10", order=0
-    )
-    QuestionOptionFactory(
-        question=question2, text="Option 2", value="7", order=1
-    )
+    QuestionOptionFactory(question=question2, text="Option 1", value="10", order=0)
+    QuestionOptionFactory(question=question2, text="Option 2", value="7", order=1)
 
     # Create form progress
     form_progress: FormProgress = FormProgressFactory(user=user, form=form)
@@ -152,9 +140,7 @@ def test_score_category_value_sum_categorises_questions_correctly(
     form = FormFactory()
 
     # Create a page with a category
-    page = FormPageFactory(
-        form=form, title="Anatomy Page", order=0, category="Anatomy"
-    )
+    page = FormPageFactory(form=form, title="Anatomy Page", order=0, category="Anatomy")
 
     # Create a question WITHOUT a subcategory (should be top-level)
     question1 = FormQuestionFactory(
@@ -178,17 +164,13 @@ def test_score_category_value_sum_categorises_questions_correctly(
     option1_q1 = QuestionOptionFactory(
         question=question1, text="Option 1", value="5", order=0
     )
-    QuestionOptionFactory(
-        question=question1, text="Option 2", value="3", order=1
-    )
+    QuestionOptionFactory(question=question1, text="Option 2", value="3", order=1)
 
     # Create options for question 2 (max value = 10)
     option1_q2 = QuestionOptionFactory(
         question=question2, text="Option 1", value="10", order=0
     )
-    QuestionOptionFactory(
-        question=question2, text="Option 2", value="7", order=1
-    )
+    QuestionOptionFactory(question=question2, text="Option 2", value="7", order=1)
 
     # Create form progress
     form_progress: FormProgress = FormProgressFactory(user=user, form=form)

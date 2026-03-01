@@ -25,7 +25,9 @@ class UserFactory(SiteAwareFactory):
     is_staff = False
 
     @factory.post_generation
-    def password(self: User, create: bool, extracted: str | None, **kwargs: object) -> None:
+    def password(
+        self: User, create: bool, extracted: str | None, **kwargs: object
+    ) -> None:
         """Set password equal to the user's email address, or to the extracted value."""
         self.set_password(extracted or self.email)
         if create:

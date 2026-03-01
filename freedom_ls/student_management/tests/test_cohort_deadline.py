@@ -56,7 +56,9 @@ def test_str_with_content_item(mock_site_context):
     topic = TopicFactory(title="Test Topic")
     cohort = CohortFactory(name="Test Cohort")
     course = CourseFactory(title="Test Course")
-    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    cohort_course_reg = CohortCourseRegistrationFactory(
+        cohort=cohort, collection=course
+    )
 
     deadline = CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
@@ -71,7 +73,9 @@ def test_str_without_content_item(mock_site_context):
     """__str__ shows 'Whole course' when content_item is null."""
     cohort = CohortFactory(name="Test Cohort")
     course = CourseFactory(title="Test Course")
-    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    cohort_course_reg = CohortCourseRegistrationFactory(
+        cohort=cohort, collection=course
+    )
 
     deadline = CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,

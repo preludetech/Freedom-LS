@@ -1,8 +1,8 @@
-# How to use this in another project 
+# How to use this in another project
 
 This Learning System is designed to be extended and overwritten.  You can run it as a standalone project and it will work, but the real power is that you can build your own student interfaces on top of it.
 
-## Set up 
+## Set up
 
 ```
 uv init
@@ -24,7 +24,7 @@ django-admin startproject config .
 Set up a suitable .gitignore
 
 
-### Useful dependencies 
+### Useful dependencies
 
 ```
 uv add --dev django-debug-toolbar
@@ -32,27 +32,27 @@ uv add --dev django-browser-reload.
 ipython
 ```
 
-### 
+###
 
 python manage.py create_site $SITE_NAME $HOST_DOMAIN --email $SUPER_EMAIL --password $SUPER_PASSWORD
 
 
 
-### urls.py 
+### urls.py
 
 TODO
 
 
 
-### settings.py 
+### settings.py
 
 TODO:
 
-INSTALLED_APPS 
-make sure to add contrib.sites 
+INSTALLED_APPS
+make sure to add contrib.sites
 
-MIDDLEWARE 
-TEMPLATES 
+MIDDLEWARE
+TEMPLATES
 
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
@@ -88,11 +88,11 @@ ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_ADAPTER = "accounts.allauth_account_adapter.AccountAdapter"
 
-### Tailwind set up 
+### Tailwind set up
 
 copy `package-lock.json` and `package.json` and `tailwind.input.css` into your own project root.
 
-run `npm i` 
+run `npm i`
 
 Add this to your gitignore:
 
@@ -106,12 +106,12 @@ Run `npm run tailwind_watch`
 You can now edit `tailwind.input.css` to make it do what you want.
 
 
-### Conftest: 
-copy it across 
+### Conftest:
+copy it across
 
-### playwright 
+### playwright
 
-run playwright install 
+run playwright install
 
 ## Dev dependencies
 install manually

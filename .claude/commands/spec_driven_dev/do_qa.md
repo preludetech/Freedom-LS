@@ -8,7 +8,7 @@ Act like a human QA expert. Execute the given test plan
 # Useful info
 
 - Base url: http://127.0.0.1:8000/
-- Admin email and password: demodev@email.com 
+- Admin email and password: demodev@email.com
 - to run the server: `uv run python manage.py runserver`
 
 # CRITICAL
@@ -23,7 +23,7 @@ Before doing anything else, use playwright to open the base url and make sure it
 
 # Instructions
 
-## Step 1 
+## Step 1
 
 Make sure the playwright MCP is available. If it is not available then say:
 "Please install the playwright mcp server, then try again"
@@ -44,7 +44,7 @@ Take screenshots of relevant functionality and put them in a "screenshots" direc
 
 If anything unrelated to the current feature under test seems out of place or broken then use a sub agent to explore it.
 
-## Step 4: Repeat the whole QA test for mobile 
+## Step 4: Repeat the whole QA test for mobile
 
 Execute the whole test again, but this time size the browser as though it were a mobile phone.
 
@@ -63,5 +63,3 @@ For each error:
 If anything was not tested for any reason, or if there were any difficulties, then explain.
 
 If anything unrelated to the current tests, or tangentiual to the functionality under test seemed out of place then include that in the report.
-
-

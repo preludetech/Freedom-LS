@@ -53,9 +53,7 @@ def command(
 
     for i, membership in enumerate(memberships):
         user = membership.student.user
-        if not FormProgress.objects.filter(
-            form=form, user=user, site=site
-        ).exists():
+        if not FormProgress.objects.filter(form=form, user=user, site=site).exists():
             FormProgressFactory(
                 form=form,
                 user=user,

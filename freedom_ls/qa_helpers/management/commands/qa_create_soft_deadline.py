@@ -78,7 +78,9 @@ def command(
             content_item = form
             item_name = form.title
         else:
-            raise click.ClickException(f"No topic or form found with slug '{item_slug}'.")
+            raise click.ClickException(
+                f"No topic or form found with slug '{item_slug}'."
+            )
 
     # Use update_or_create for idempotency: look up by the unique constraint fields,
     # then create via factory or update the existing record.

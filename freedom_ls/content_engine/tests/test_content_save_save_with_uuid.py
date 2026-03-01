@@ -124,7 +124,9 @@ def test_form_page_with_uuid_no_duplicates_on_multiple_saves(
 
 
 @pytest.mark.django_db
-def test_saving_form_questions_and_text_adds_uuids_to_file(mock_site_context, make_temp_file):
+def test_saving_form_questions_and_text_adds_uuids_to_file(
+    mock_site_context, make_temp_file
+):
     """Test that saving form questions and text adds UUIDs to the file."""
     form = FormFactory()
 
@@ -161,8 +163,12 @@ content: This is some instructional text
     # Save to database
 
     page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
-    question = save_form_question(parsed[1], page, mock_site_context, temp_file.parent, order=0)
-    text = save_form_content(parsed[2], page, mock_site_context, temp_file.parent, order=1)
+    question = save_form_question(
+        parsed[1], page, mock_site_context, temp_file.parent, order=0
+    )
+    text = save_form_content(
+        parsed[2], page, mock_site_context, temp_file.parent, order=1
+    )
 
     # Read file back
     with open(temp_file) as f:
@@ -193,7 +199,9 @@ content: This is some instructional text
 
 
 @pytest.mark.django_db
-def test_saving_form_question_options_saves_uuids_to_file(mock_site_context, make_temp_file):
+def test_saving_form_question_options_saves_uuids_to_file(
+    mock_site_context, make_temp_file
+):
     """Test that saving a form question with options preserves the options correctly and adds UUID."""
     form = FormFactory()
 
@@ -228,7 +236,9 @@ options:
 
     # Save to database
     page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
-    question = save_form_question(parsed[1], page, mock_site_context, temp_file.parent, order=0)
+    question = save_form_question(
+        parsed[1], page, mock_site_context, temp_file.parent, order=0
+    )
 
     # Read file back
     with open(temp_file) as f:
@@ -287,7 +297,9 @@ def test_yaml_dump_does_not_add_excessive_whitespace(mock_site_context, make_tem
 
 
 @pytest.mark.django_db
-def test_yaml_dump_doesnt_reformat_multi_line_text_fields(mock_site_context, make_temp_file):
+def test_yaml_dump_doesnt_reformat_multi_line_text_fields(
+    mock_site_context, make_temp_file
+):
     """Test that yaml.dump preserves multi-line text formatting."""
     form = FormFactory()
 

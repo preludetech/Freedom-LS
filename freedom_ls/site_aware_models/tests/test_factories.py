@@ -21,7 +21,9 @@ class ConcreteUserFactory(SiteAwareFactory):
 
 @pytest.mark.django_db
 class TestSiteAwareFactory:
-    def test_picks_up_site_from_mock_site_context(self, mock_site_context: Site) -> None:
+    def test_picks_up_site_from_mock_site_context(
+        self, mock_site_context: Site
+    ) -> None:
         """SiteAwareFactory subclass should automatically get site from thread-local context."""
         user = ConcreteUserFactory()
         assert user.site == mock_site_context

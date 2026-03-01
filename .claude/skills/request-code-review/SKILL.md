@@ -32,11 +32,11 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 Use the code-reviewer agent.
 
-Tell it: 
+Tell it:
 - BASE_SHA: The starting commit
 - HEAD_SHA: the ending commit
-- What you implemented 
-- If you are working on a tasks file: what task files you are working off, and which tasks it should review 
+- What you implemented
+- If you are working on a tasks file: what task files you are working off, and which tasks it should review
 
 **3. Act on feedback:**
 - Fix Critical issues immediately
@@ -100,4 +100,4 @@ You: [Fix progress indicators]
 - Show code/tests that prove it works
 - Request clarification
 
-See template at: requesting-code-review/code-reviewer.md
+See template at: @.claude/skills/requesting-code-review/code-reviewer.md

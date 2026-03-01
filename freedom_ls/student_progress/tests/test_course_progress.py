@@ -158,9 +158,11 @@ def test_partial_completion_gives_correct_percentage(mock_site_context):
     course = CourseFactory()
     topics = [TopicFactory() for _ in range(4)]
     for i, topic in enumerate(topics):
-        ContentCollectionItemFactory(collection_object=course, child_object=topic, order=i)
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=i
+        )
 
-    course_progress:CourseProgress = CourseProgressFactory(user=user, course=course)
+    course_progress: CourseProgress = CourseProgressFactory(user=user, course=course)
 
     # Complete 2 of 4 topics
     for topic in topics[:2]:
