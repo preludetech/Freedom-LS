@@ -1,6 +1,7 @@
 from allauth.account.adapter import DefaultAccountAdapter
 
 from django.conf import settings
+from django.contrib.sites.models import Site
 from django.contrib.sites.shortcuts import get_current_site
 
 from .models import SiteSignupPolicy
@@ -18,9 +19,11 @@ class AccountAdapter(DefaultAccountAdapter):
         if request is None:
             return default_allow
 
-        site = get_current_site(request)
+        current_site = get_current_site(request)
+        if not isinstance(current_site, Site):
+            return default_allow
 
-        qs = SiteSignupPolicy.objects.filter(site=site)
+        qs = SiteSignupPolicy.objects.filter(site=current_site)
         if qs.exists():
             return qs.get().allow_signups
 

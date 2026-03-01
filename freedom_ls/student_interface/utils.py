@@ -1,6 +1,8 @@
-import uuid
+from __future__ import annotations
 
-from django.contrib.auth import get_user_model
+import uuid
+from typing import TYPE_CHECKING
+
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import QuerySet
 from django.urls import reverse
@@ -21,7 +23,8 @@ from freedom_ls.student_management.deadline_utils import (
 from freedom_ls.student_management.models import RecommendedCourse, Student
 from freedom_ls.student_progress.models import FormProgress, TopicProgress
 
-User = get_user_model()
+if TYPE_CHECKING:
+    from freedom_ls.accounts.models import User
 
 # Status constants
 BLOCKED = "BLOCKED"
@@ -106,15 +109,13 @@ def get_content_status(
         else:
             return BLOCKED, BLOCKED
 
-    elif isinstance(content_item, Course):
+    else:
         # For courses, check if all direct children are complete
         # TODO: implement proper recursive course completion checking
         if next_status == READY:
             return READY, BLOCKED
         else:
             return BLOCKED, BLOCKED
-
-    return BLOCKED, BLOCKED
 
 
 def get_is_registered(user: User, course: Course) -> bool:
@@ -393,7 +394,8 @@ def get_student(user) -> Student | None:
     if not user.is_authenticated:
         return None
     try:
-        return Student.objects.get(user=user)
+        student: Student = Student.objects.get(user=user)
+        return student
     except Student.DoesNotExist:
         return None
 

@@ -49,6 +49,6 @@ def render_markdown(markdown_text, request, context=None):
                 Path(temp.name).stem, context=context, request=request, using=None
             )
     else:
-        content = rendered_content
+        content = mark_safe(rendered_content)  # noqa: S308
 
-    return mark_safe(content)  # noqa: S308
+    return content

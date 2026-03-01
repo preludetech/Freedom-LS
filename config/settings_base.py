@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(BASE_DIR, "concrete_apps"))
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS: list[str] = []
 
 
 # Application definition

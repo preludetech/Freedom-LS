@@ -14,7 +14,9 @@ def _get_current_site() -> Site | None:
 
     request = getattr(_thread_locals, "request", None)
     if request:
-        return get_current_site(request)
+        result = get_current_site(request)
+        if isinstance(result, Site):
+            return result
     return None
 
 

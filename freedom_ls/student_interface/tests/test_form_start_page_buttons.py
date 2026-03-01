@@ -39,7 +39,7 @@ def test_started_form_shows_continue_button(mock_site_context):
     """When user has started but not completed the form, show Continue button."""
     user = UserFactory()
     form = FormFactory()
-    incomplete_progress = FormProgressFactory(user=user, form=form)
+    incomplete_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     buttons = form_start_page_buttons(
         form=form,
@@ -58,7 +58,7 @@ def test_completed_non_quiz_not_last_shows_next_button(mock_site_context):
     """When user completed a non-quiz form (not last item), show Next button."""
     user = UserFactory()
     form = FormFactory()
-    completed_progress = FormProgressFactory(
+    completed_progress: FormProgress = FormProgressFactory(
         user=user, form=form, completed_time=timezone.now()
     )
 
@@ -81,7 +81,7 @@ def test_completed_non_quiz_last_shows_finish_course_button(
     """When user completed a non-quiz form (last item), show Finish Course button."""
     user = UserFactory()
     form = FormFactory()
-    completed_progress = FormProgressFactory(
+    completed_progress: FormProgress = FormProgressFactory(
         user=user, form=form, completed_time=timezone.now()
     )
 
@@ -110,7 +110,7 @@ def test_passed_quiz_not_last_shows_next_button(mock_site_context):
     QuestionOptionFactory(question=question, text="4", correct=True, order=0)
 
     # Create completed progress with passing score
-    completed_progress = FormProgressFactory(
+    completed_progress: FormProgress = FormProgressFactory(
         user=user,
         form=quiz,
         completed_time=timezone.now(),
@@ -141,7 +141,7 @@ def test_passed_quiz_last_shows_finish_course_button(mock_site_context):
     )
 
     # Create completed progress with passing score
-    completed_progress = FormProgressFactory(
+    completed_progress: FormProgress = FormProgressFactory(
         user=user,
         form=quiz,
         completed_time=timezone.now(),
@@ -172,7 +172,7 @@ def test_failed_quiz_shows_try_again_button(mock_site_context):
     )
 
     # Create completed progress with failing score
-    completed_progress = FormProgressFactory(
+    completed_progress: FormProgress = FormProgressFactory(
         user=user,
         form=quiz,
         completed_time=timezone.now(),
@@ -203,7 +203,7 @@ def test_failed_quiz_last_item_shows_only_try_again(mock_site_context):
     )
 
     # Create completed progress with failing score
-    completed_progress = FormProgressFactory(
+    completed_progress: FormProgress = FormProgressFactory(
         user=user,
         form=quiz,
         completed_time=timezone.now(),

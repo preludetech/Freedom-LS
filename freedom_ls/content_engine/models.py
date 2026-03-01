@@ -31,6 +31,8 @@ class FormStrategy(models.TextChoices):
 class BaseContent(SiteAwareModel):
     """Base model for all content types."""
 
+    CONTENT_TYPE: str  # Defined on subclasses
+
     file_path = models.CharField(
         max_length=500,
         help_text=_("Relative path to the source file"),
@@ -240,7 +242,8 @@ class ContentCollectionItem(SiteAwareModel):
         ordering = ["order"]
 
     def __str__(self):
-        return f"{self.collection.title} - {self.child} (order={self.order})"
+        collection_title = self.collection.title if self.collection else "Unknown"
+        return f"{collection_title} - {self.child} (order={self.order})"
 
 
 class Form(TitledContent, MarkdownContent):

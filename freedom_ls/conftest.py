@@ -122,7 +122,7 @@ def logged_in_page(page: Page, live_server, db, live_server_site, mock_site_cont
     page.goto(login_url)
 
     # Fill in login form
-    page.fill('input[name="login"]', user.email)
+    page.fill('input[name="login"]', str(user.email))
     page.fill('input[name="password"]', "testpass")
 
     # Submit the form

@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TypedDict
+from uuid import UUID
 
 from guardian.shortcuts import get_objects_for_user
 
-from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.core.paginator import Page, Paginator
-from django.db.models import Count, F, IntegerField, OuterRef, Q, Subquery, Value
+from django.db.models import Count, F, IntegerField, Model, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Coalesce
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -13,6 +16,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone as tz
 
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
 from freedom_ls.student_management.models import (
     Cohort,
@@ -29,7 +33,10 @@ from freedom_ls.student_progress.models import (
     TopicProgress,
 )
 
-User = get_user_model()
+
+class FormProgressData(TypedDict):
+    latest: FormProgress
+    completed_count: int
 
 
 # TODO
@@ -46,7 +53,7 @@ User = get_user_model()
 class Panel:
     title: str = ""
 
-    def __init__(self, instance: object):
+    def __init__(self, instance: Model):
         self.instance = instance
 
     def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
@@ -76,13 +83,14 @@ class DataTable:
         raise NotImplementedError
 
     @classmethod
-    def _prepare_columns(cls) -> list[dict]:
+    def _prepare_columns(cls) -> list[dict[str, object]]:
         """Enrich columns: derive sort_field from text_attr/attr for sortable columns."""
-        columns = cls.get_columns()
+        columns: list[dict[str, object]] = cls.get_columns()
         for col in columns:
             if col.get("sortable") and "sort_field" not in col:
                 attr = col.get("text_attr") or col.get("attr", "")
-                col["sort_field"] = attr.replace(".", "__")
+                if isinstance(attr, str):
+                    col["sort_field"] = attr.replace(".", "__")
         return columns
 
     @classmethod
@@ -172,12 +180,15 @@ class InstanceDetailsPanel(Panel):
         Supports paths like "user.email" by traversing related objects.
         """
         parts = field_path.split(".")
-        obj = self.instance
+        obj: Model = self.instance
         for part in parts[:-1]:
-            obj = getattr(obj, part)
+            related = getattr(obj, part)
+            if not isinstance(related, Model):
+                raise ValueError(f"Expected Model at '{part}', got {type(related)}")
+            obj = related
         field_name = parts[-1]
         field = obj._meta.get_field(field_name)
-        label = field.verbose_name.title()
+        label = str(getattr(field, "verbose_name", field_name)).title()
         value = getattr(obj, field_name)
         return label, value
 
@@ -307,23 +318,29 @@ class StudentDataTable(DataTable):
 
 
 class ListViewConfig:
-    model = None
-    instance_view = None
-    list_view = None
+    model: type[Model] | None = None
+    instance_view: type[InstanceView] | None = None
+    list_view: type[DataTable] | None = None
+    url_name: str = ""
+    menu_label: str = ""
 
-    def __class_getitem__(cls, pk: str):
+    def __class_getitem__(cls, pk: str) -> InstanceView:
+        if cls.model is None or cls.instance_view is None:
+            raise ValueError(f"{cls.__name__} must define model and instance_view")
         instance = get_object_or_404(cls.model, pk=pk)
         return cls.instance_view(instance)
 
     @classmethod
     def render(cls, request, base_url: str = "") -> str:
+        if cls.list_view is None:
+            raise ValueError(f"{cls.__name__} must define list_view")
         return cls.list_view.render(request, base_url=base_url)
 
 
 class PanelGetter:
     """Subscriptable object that instantiates panels bound to an instance."""
 
-    def __init__(self, panel_classes: dict[str, type[Panel]], instance: object):
+    def __init__(self, panel_classes: dict[str, type[Panel]], instance: Model):
         self._panel_classes = panel_classes
         self._instance = instance
 
@@ -338,7 +355,7 @@ class InstanceView:
 
     panels: dict[str, type[Panel]] = {}
 
-    def __init__(self, instance: object):
+    def __init__(self, instance: Model):
         self.instance = instance
 
     def panel_getter(self) -> PanelGetter:
@@ -459,7 +476,7 @@ class CohortCourseProgressPanel(Panel):
         self,
         course: Course,
         col_page_num: int | str,
-    ) -> tuple[list[Topic | Form], list[dict[str, CoursePart | int]], bool, Page]:
+    ) -> tuple[list[Topic | Form], list[dict[str, object]], bool, Page]:
         """Paginate course items and build visible part headers.
 
         Returns (visible_items, visible_parts, has_parts, col_page).
@@ -520,8 +537,8 @@ class CohortCourseProgressPanel(Panel):
         visible_user_ids: list[int],
         visible_items: list[Topic | Form],
     ) -> tuple[
-        dict[tuple[int, int], TopicProgress],
-        dict[tuple[int, int], dict[str, FormProgress | int]],
+        dict[tuple[int, UUID], TopicProgress],
+        dict[tuple[int, UUID], FormProgressData],
     ]:
         """Fetch topic and form progress keyed by (user_id, item_id).
 
@@ -532,14 +549,14 @@ class CohortCourseProgressPanel(Panel):
         ]
         visible_form_ids = [item.id for item in visible_items if isinstance(item, Form)]
 
-        topic_progress_map: dict[tuple[int, int], TopicProgress] = {}
+        topic_progress_map: dict[tuple[int, UUID], TopicProgress] = {}
         if visible_topic_ids:
             for tp in TopicProgress.objects.filter(
                 user_id__in=visible_user_ids, topic_id__in=visible_topic_ids
             ).select_related("topic"):
                 topic_progress_map[(tp.user_id, tp.topic_id)] = tp
 
-        form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]] = {}
+        form_progress_map: dict[tuple[int, UUID], FormProgressData] = {}
         if visible_form_ids:
             for fp in (
                 FormProgress.objects.filter(
@@ -550,7 +567,9 @@ class CohortCourseProgressPanel(Panel):
             ):
                 key = (fp.user_id, fp.form_id)
                 if key not in form_progress_map:
-                    form_progress_map[key] = {"latest": fp, "completed_count": 0}
+                    form_progress_map[key] = FormProgressData(
+                        latest=fp, completed_count=0
+                    )
                 if fp.completed_time is not None:
                     form_progress_map[key]["completed_count"] += 1
 
@@ -563,8 +582,8 @@ class CohortCourseProgressPanel(Panel):
         student_page: Page,
     ) -> tuple[
         CohortDeadline | None,
-        dict[tuple[int, int], CohortDeadline],
-        dict[tuple[int, int | None, int | None], StudentCohortDeadlineOverride],
+        dict[tuple[int, UUID | None], CohortDeadline],
+        dict[tuple[UUID, int | None, UUID | None], StudentCohortDeadlineOverride],
         DjangoContentType,
         DjangoContentType,
     ]:
@@ -589,7 +608,7 @@ class CohortCourseProgressPanel(Panel):
             ).filter(deadline_q)
         )
 
-        deadline_map: dict[tuple[int, int], CohortDeadline] = {}
+        deadline_map: dict[tuple[int, UUID | None], CohortDeadline] = {}
         course_deadline = None
         for dl in cohort_deadlines:
             if dl.content_type_id is None:
@@ -598,7 +617,7 @@ class CohortCourseProgressPanel(Panel):
                 deadline_map[(dl.content_type_id, dl.object_id)] = dl
 
         student_override_map: dict[
-            tuple[int, int | None, int | None], StudentCohortDeadlineOverride
+            tuple[UUID, int | None, UUID | None], StudentCohortDeadlineOverride
         ] = {}
         student_ids = [m.student_id for m in student_page.object_list]
         if student_ids:
@@ -616,9 +635,9 @@ class CohortCourseProgressPanel(Panel):
     def _build_topic_cell(
         self,
         item: Topic,
-        user: "User",
-        topic_progress_map: dict[tuple[int, int], TopicProgress],
-    ) -> dict:
+        user: User,
+        topic_progress_map: dict[tuple[int, UUID], TopicProgress],
+    ) -> dict[str, object]:
         """Build progress fields for a Topic cell."""
         tp = topic_progress_map.get((user.id, item.id))
         return {
@@ -632,9 +651,9 @@ class CohortCourseProgressPanel(Panel):
     def _build_form_cell(
         self,
         item: Form,
-        user: "User",
-        form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]],
-    ) -> dict:
+        user: User,
+        form_progress_map: dict[tuple[int, UUID], FormProgressData],
+    ) -> dict[str, object]:
         """Build progress fields for a Form cell."""
         fp_data = form_progress_map.get((user.id, item.id))
         if not fp_data:
@@ -647,7 +666,7 @@ class CohortCourseProgressPanel(Panel):
             }
 
         fp = fp_data["latest"]
-        cell: dict = {
+        cell: dict[str, object] = {
             "progress": fp,
             "is_completed": fp.completed_time is not None,
             "is_started": True,
@@ -673,19 +692,19 @@ class CohortCourseProgressPanel(Panel):
         self,
         item: Topic | Form,
         student: Student,
-        user: "User",
+        user: User,
         topic_ct: DjangoContentType,
         form_ct: DjangoContentType,
-        topic_progress_map: dict[tuple[int, int], TopicProgress],
-        form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]],
-        deadline_map: dict[tuple[int, int], CohortDeadline],
+        topic_progress_map: dict[tuple[int, UUID], TopicProgress],
+        form_progress_map: dict[tuple[int, UUID], FormProgressData],
+        deadline_map: dict[tuple[int, UUID | None], CohortDeadline],
         student_override_map: dict[
-            tuple[int, int | None, int | None], StudentCohortDeadlineOverride
+            tuple[UUID, int | None, UUID | None], StudentCohortDeadlineOverride
         ],
         now: datetime,
-    ) -> dict:
+    ) -> dict[str, object]:
         """Build the cell data dict for one student/item intersection."""
-        cell: dict = {
+        cell: dict[str, object] = {
             "item": item,
             "is_quiz": False,
             "completed_count": 0,
@@ -728,13 +747,13 @@ class CohortCourseProgressPanel(Panel):
         visible_items: list[Topic | Form],
         topic_ct: DjangoContentType,
         form_ct: DjangoContentType,
-        topic_progress_map: dict[tuple[int, int], TopicProgress],
-        form_progress_map: dict[tuple[int, int], dict[str, FormProgress | int]],
-        deadline_map: dict[tuple[int, int], CohortDeadline],
+        topic_progress_map: dict[tuple[int, UUID], TopicProgress],
+        form_progress_map: dict[tuple[int, UUID], FormProgressData],
+        deadline_map: dict[tuple[int, UUID | None], CohortDeadline],
         student_override_map: dict[
-            tuple[int, int | None, int | None], StudentCohortDeadlineOverride
+            tuple[UUID, int | None, UUID | None], StudentCohortDeadlineOverride
         ],
-    ) -> list[dict]:
+    ) -> list[dict[str, object]]:
         """Build row data for each student on the current page."""
         now = tz.now()
         rows = []
@@ -778,17 +797,17 @@ class CohortCourseProgressPanel(Panel):
     def _build_header_items(
         self,
         visible_items: list[Topic | Form],
-        deadline_map: dict[tuple[int, int], CohortDeadline],
+        deadline_map: dict[tuple[int, UUID | None], CohortDeadline],
         topic_ct: DjangoContentType,
         form_ct: DjangoContentType,
-    ) -> list[dict]:
+    ) -> list[dict[str, object]]:
         """Build header items with deadline info for the column headers.
 
         Returns a list of dicts, each containing:
         - "item": the Topic or Form instance for the column
         - "deadline": the CohortDeadline for this item, or None if no deadline is set
         """
-        header_items = []
+        header_items: list[dict[str, object]] = []
         for item in visible_items:
             item_ct = topic_ct if isinstance(item, Topic) else form_ct
             item_deadline = deadline_map.get((item_ct.id, item.id))
@@ -796,6 +815,8 @@ class CohortCourseProgressPanel(Panel):
         return header_items
 
     def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
+        if not isinstance(self.instance, Cohort):
+            raise TypeError(f"Expected Cohort instance, got {type(self.instance)}")
         cohort = self.instance
 
         registrations = list(
@@ -815,7 +836,7 @@ class CohortCourseProgressPanel(Panel):
             registrations,
             request.GET.get("registration"),
         )
-        course = selected_reg.collection
+        course: Course = selected_reg.collection
 
         visible_items, visible_parts, has_parts, col_page = self._paginate_course_items(
             course,
@@ -940,7 +961,7 @@ class CourseDataTable(DataTable):
 
         # Calculate total unique active students (direct + through cohorts)
         for course in courses:
-            cohort_student_ids = set()
+            cohort_student_ids: set[UUID] = set()
             for cohort_reg in course.cohort_registrations.filter(is_active=True):
                 cohort_student_ids.update(
                     cohort_reg.cohort.cohortmembership_set.values_list(
@@ -1096,21 +1117,33 @@ class CourseConfig(ListViewConfig):
     instance_view = CourseInstanceView
 
 
-interface_config = {
+interface_config: dict[str, type[ListViewConfig]] = {
     config.url_name: config for config in [CohortConfig, StudentConfig, CourseConfig]
 }
 
 
-def _resolve_path(parts: list[str]) -> object:
+def _resolve_path(
+    parts: list[str],
+) -> type[ListViewConfig] | InstanceView | PanelGetter | Panel:
     """Walk the interface config tree according to URL path parts.
 
     Special segments like __panels resolve to the corresponding attribute
     on the current object, allowing further traversal.
     """
-    current = interface_config[parts[0]]
+    current: type[ListViewConfig] | InstanceView | PanelGetter | Panel = (
+        interface_config[parts[0]]
+    )
     for part in parts[1:]:
-        # panel_getter.__getitem__ instantiates the panel and returns it
-        current = current.panel_getter() if part == "__panels" else current[part]
+        if part == "__panels":
+            if not isinstance(current, InstanceView):
+                raise Http404(f"Cannot resolve __panels on {type(current)}")
+            current = current.panel_getter()
+        elif isinstance(current, (PanelGetter,)):
+            current = current[part]
+        elif isinstance(current, type) and issubclass(current, ListViewConfig):
+            current = current.__class_getitem__(part)
+        else:
+            raise Http404(f"Cannot resolve path segment '{part}'")
 
     return current
 
@@ -1129,7 +1162,10 @@ def interface(request, path_string: str = ""):
         if isinstance(current, Panel):
             return HttpResponse(current.render(request, base_url=base_url))
 
-        rendered_content = current.render(request, base_url=base_url)
+        if isinstance(current, InstanceView) or (isinstance(current, type) and issubclass(current, ListViewConfig)):
+            rendered_content = current.render(request, base_url=base_url)
+        else:
+            raise Http404("Unexpected path resolution")
 
         if is_htmx:
             return HttpResponse(rendered_content)

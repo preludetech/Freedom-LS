@@ -11,6 +11,7 @@ from freedom_ls.student_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
 )
+from freedom_ls.student_progress.models import FormProgress, QuestionAnswer
 
 
 @pytest.mark.django_db
@@ -41,10 +42,10 @@ def test_score_category_value_sum_single_question(mock_site_context):
     QuestionOptionFactory(question=question, text="Poor", value="1", order=2)
 
     # Create form progress
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Create an answer selecting option1 (value=5)
-    answer = QuestionAnswerFactory(
+    answer: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question
     )
     answer.selected_options.add(option1)
@@ -118,10 +119,10 @@ def test_score_category_value_sum_calculates_max_score_correctly_with_unanswered
     )
 
     # Create form progress
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Answer ONLY question 1 (leave question 2 unanswered)
-    answer1 = QuestionAnswerFactory(
+    answer1: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(option1_q1)
@@ -190,15 +191,15 @@ def test_score_category_value_sum_categorises_questions_correctly(
     )
 
     # Create form progress
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Answer both questions
-    answer1 = QuestionAnswerFactory(
+    answer1: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(option1_q1)
 
-    answer2 = QuestionAnswerFactory(
+    answer2: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question2
     )
     answer2.selected_options.add(option1_q2)
@@ -272,15 +273,15 @@ def test_score_category_value_sum_with_three_level_hierarchy(
     QuestionOptionFactory(question=question2, text="Good", value="7", order=1)
 
     # Create form progress
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Answer both questions
-    answer1 = QuestionAnswerFactory(
+    answer1: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(option1_q1)
 
-    answer2 = QuestionAnswerFactory(
+    answer2: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question2
     )
     answer2.selected_options.add(option1_q2)

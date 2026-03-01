@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.content_engine.models import Topic
+from freedom_ls.content_engine.models import Course, Topic
 from freedom_ls.student_management.deadline_utils import (
     get_course_deadlines,
     get_effective_deadlines,
@@ -24,7 +24,7 @@ from freedom_ls.student_management.factories import (
 def test_bulk_returns_course_level_deadline(mock_site_context):
     """Bulk resolution includes course-level deadlines under (None, None) key."""
     student = StudentFactory()
-    course = CourseFactory()
+    course: Course = CourseFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(student=student, cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
@@ -46,13 +46,13 @@ def test_bulk_returns_course_level_deadline(mock_site_context):
 def test_bulk_returns_item_level_deadlines(mock_site_context):
     """Bulk resolution includes item-level deadlines under (ct_id, obj_id) keys."""
     student = StudentFactory()
-    course = CourseFactory()
+    course: Course = CourseFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(student=student, cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
-    topic1 = TopicFactory(title="T1")
-    topic2 = TopicFactory(title="T2")
+    topic1: Topic = TopicFactory(title="T1")
+    topic2: Topic = TopicFactory(title="T2")
     course.items.create(child=topic1, order=0)
     course.items.create(child=topic2, order=1)
 
@@ -83,12 +83,12 @@ def test_bulk_returns_item_level_deadlines(mock_site_context):
 def test_bulk_matches_per_item_resolution(mock_site_context):
     """Bulk resolution matches per-item resolution for each item."""
     student = StudentFactory()
-    course = CourseFactory()
+    course: Course = CourseFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(student=student, cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
-    topic = TopicFactory(title="Match Topic")
+    topic: Topic = TopicFactory(title="Match Topic")
     course.items.create(child=topic, order=0)
 
     topic_ct = ContentType.objects.get_for_model(Topic)

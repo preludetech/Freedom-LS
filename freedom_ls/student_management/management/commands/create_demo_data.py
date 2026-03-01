@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
@@ -9,7 +11,7 @@ from freedom_ls.student_management.models import Cohort, CohortMembership, Stude
 client_api_key = "W8tuA0ReonfZsAKywAZz9-IMGNCIq3TVGDiiar0LJqRoLEMceqgYjllfXU7iz6s7"
 client_name = "Student Interface"
 
-demo_sites = [
+demo_sites: list[dict[str, Any]] = [
     {
         "name": "Demo",
         "domain": "127.0.0.1",

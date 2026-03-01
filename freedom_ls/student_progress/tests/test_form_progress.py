@@ -43,7 +43,7 @@ def test_get_current_page_number_no_answers(mock_site_context):
         order=0,
     )
 
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Should return 1 (first page) since no questions are answered
     assert form_progress.get_current_page_number() == 1
@@ -70,7 +70,7 @@ def test_get_current_page_number_partially_answered(mock_site_context):
         form_page=page3, question="Question 3", type="short_text", order=0
     )
 
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Answer questions on page 1
     QuestionAnswerFactory(
@@ -98,7 +98,7 @@ def test_get_current_page_number_all_answered(mock_site_context):
         form_page=page2, question="Question 2", type="short_text", order=0
     )
 
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Answer all questions
     QuestionAnswerFactory(
@@ -130,7 +130,7 @@ def test_get_current_page_number_page_with_text_only(mock_site_context):
         form_page=page2, question="Question 2", type="short_text", order=0
     )
 
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Should skip page 1 (no questions) and go to page 2
     assert form_progress.get_current_page_number() == 2
@@ -160,7 +160,7 @@ def test_get_or_create_incomplete_returns_existing_incomplete(
     form = FormFactory()
 
     # Create an incomplete progress
-    existing = FormProgressFactory(user=user, form=form)
+    existing: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Should return the existing one
     progress = FormProgress.get_or_create_incomplete(user, form)
@@ -178,7 +178,7 @@ def test_get_or_create_incomplete_creates_new_when_completed(
     form = FormFactory()
 
     # Create a completed progress
-    completed = FormProgressFactory(
+    completed: FormProgress = FormProgressFactory(
         user=user, form=form, completed_time=timezone.now()
     )
 
@@ -199,14 +199,14 @@ def test_get_or_create_incomplete_returns_latest_incomplete(
     form = FormFactory()
 
     # Create an older incomplete progress
-    older = FormProgressFactory(user=user, form=form)
+    older: FormProgress = FormProgressFactory(user=user, form=form)
     # Set the start_time to be older
     FormProgress.objects.filter(pk=older.pk).update(
         start_time=timezone.now() - timedelta(seconds=10)
     )
 
     # Create a newer incomplete progress
-    newer = FormProgressFactory(user=user, form=form)
+    newer: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Should return the newer one
     progress = FormProgress.get_or_create_incomplete(user, form)

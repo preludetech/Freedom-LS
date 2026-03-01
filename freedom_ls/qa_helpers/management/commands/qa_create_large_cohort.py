@@ -64,6 +64,7 @@ def command(
         from django.contrib.auth import get_user_model
 
         user_model = get_user_model()
+        user = None
         try:
             user = user_model.objects.get(email=email, site=site)
         except user_model.DoesNotExist:

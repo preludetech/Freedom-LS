@@ -12,7 +12,7 @@ from freedom_ls.content_engine.factories import (
     FormPageFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Form, Topic
+from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
 from freedom_ls.student_management.factories import (
     StudentCourseRegistrationFactory,
     StudentFactory,
@@ -35,8 +35,8 @@ def course_with_nested_structure(mock_site_context, request):
     """
     first_item_type = getattr(request, 'param', Topic)  # Default to Topic
 
-    course = CourseFactory(title="Test Course", slug="test-course")
-    course_part = CoursePartFactory(title="Chapter 1", slug="chapter-1")
+    course: Course = CourseFactory(title="Test Course", slug="test-course")
+    course_part: CoursePart = CoursePartFactory(title="Chapter 1", slug="chapter-1")
 
     if first_item_type == Topic:
         first_item = TopicFactory(

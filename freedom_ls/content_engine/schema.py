@@ -49,7 +49,7 @@ class BaseBaseContentModel(BaseModel):
     file_path: Path = Field(..., description="Path to the content file")
     uuid: str | None = Field(None, description="Optional unique identifier")
 
-    _registry: ClassVar[dict[ContentType, type["BaseContentModel"]]] = {}
+    _registry: ClassVar[dict[ContentType, type["BaseBaseContentModel"]]] = {}
 
     def __init_subclass__(cls, content_type: ContentType | None = None, **kwargs):
         super().__init_subclass__(**kwargs)

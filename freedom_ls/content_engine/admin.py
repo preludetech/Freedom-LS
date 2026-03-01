@@ -28,7 +28,7 @@ class QuestionOptionInline(admin.TabularInline):
 
 @admin.register(QuestionOption)
 class QuestionOptionAdmin(SiteAwareModelAdmin):
-    list_display = ("text", "value", "question", "order")
+    list_display = ["text", "value", "question", "order"]
     list_filter = ("question__form_page__form",)
     search_fields = ("text", "question__question")
     ordering = ("question", "order")
@@ -56,42 +56,38 @@ class FormQuestionInline(admin.StackedInline):
 
 @admin.register(FormContent)
 class FormContentAdmin(SiteAwareModelAdmin):
-    list_display = (
+    list_display = [
         "content_preview",
         "form_page",
         "order",
-    )
+    ]
     list_filter = ("form_page__form",)
     search_fields = ("content", "form_page__title")
     ordering = ("form_page", "order")
-    exclude = ("site",)
 
+    @admin.display(description="Content")
     def content_preview(self, obj):
         return obj.content[:50]
-
-    content_preview.short_description = "Content"
 
 
 @admin.register(FormQuestion)
 class FormQuestionAdmin(SiteAwareModelAdmin):
-    list_display = (
+    list_display = [
         "question_preview",
         "type",
         "required",
         "category",
         "form_page",
         "order",
-    )
+    ]
     list_filter = ("type", "required", "category", "form_page__form")
     search_fields = ("question", "category", "form_page__title")
     ordering = ("form_page", "order")
     inlines = [QuestionOptionInline]
-    exclude = ("site",)
 
+    @admin.display(description="Question")
     def question_preview(self, obj):
         return obj.question[:50]
-
-    question_preview.short_description = "Question"
 
 
 class FormPageInline(admin.StackedInline):
@@ -105,13 +101,13 @@ class FormPageInline(admin.StackedInline):
 
 @admin.register(FormPage)
 class FormPageAdmin(SiteAwareModelAdmin):
-    list_display = ("title", "subtitle", "form", "order")
+    list_display = ["title", "subtitle", "form", "order"]
     list_filter = ("form",)
     search_fields = ("title", "subtitle", "description", "form__title")
     ordering = ("form", "order")
     readonly_fields = ("slug",)
     inlines = [FormContentInline, FormQuestionInline]
-    exclude = ("site",)
+
     fieldsets = (
         (
             None,
@@ -133,7 +129,7 @@ class FormPageAdmin(SiteAwareModelAdmin):
 
 @admin.register(Topic)
 class TopicAdmin(SiteAwareModelAdmin):
-    list_display = ("title", "subtitle", "file_path")
+    list_display = ["title", "subtitle", "file_path"]
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("slug",)
@@ -145,7 +141,7 @@ class TopicAdmin(SiteAwareModelAdmin):
 
 @admin.register(Activity)
 class ActivityAdmin(SiteAwareModelAdmin):
-    list_display = ("title", "category", "level", "file_path")
+    list_display = ["title", "category", "level", "file_path"]
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("slug", "content_preview")
@@ -166,14 +162,13 @@ class ActivityAdmin(SiteAwareModelAdmin):
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
+    @admin.display(description="Content Preview")
     def content_preview(self, obj: Activity) -> str:
         from django.utils.safestring import mark_safe
 
         if not obj.content:
             return ""
-        return mark_safe(obj.rendered_content())  # noqa: S308
-
-    content_preview.short_description = "Content Preview"
+        return str(mark_safe(obj.rendered_content()))  # noqa: S308
 
 
 class ContentCollectionItemInline(GenericTabularInline):
@@ -189,12 +184,12 @@ class ContentCollectionItemInline(GenericTabularInline):
 
 @admin.register(Course)
 class CourseAdmin(SiteAwareModelAdmin):
-    list_display = ("title", "subtitle")
+    list_display = ["title", "subtitle"]
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("slug",)
     inlines = [ContentCollectionItemInline]
-    exclude = ("site",)
+
     fieldsets = (
         (None, {"fields": ("title", "subtitle", "description", "slug")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
@@ -203,12 +198,12 @@ class CourseAdmin(SiteAwareModelAdmin):
 
 @admin.register(CoursePart)
 class CoursePartAdmin(SiteAwareModelAdmin):
-    list_display = ("title", "subtitle")
+    list_display = ["title", "subtitle"]
     list_filter = ("tags",)
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("slug",)
     inlines = [ContentCollectionItemInline]
-    exclude = ("site",)
+
     fieldsets = (
         (None, {"fields": ("title", "subtitle", "description", "slug")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
@@ -217,21 +212,21 @@ class CoursePartAdmin(SiteAwareModelAdmin):
 
 @admin.register(ContentCollectionItem)
 class ContentCollectionItemAdmin(SiteAwareModelAdmin):
-    list_display = ("collection", "child", "order")
+    list_display = ["collection", "child", "order"]
     list_filter = ("collection",)
     search_fields = ("collection__title",)
     ordering = ("collection", "order")
-    exclude = ("site",)
+
 
 
 @admin.register(Form)
 class FormAdmin(SiteAwareModelAdmin):
-    list_display = ("title", "subtitle", "strategy")
+    list_display = ["title", "subtitle", "strategy"]
     list_filter = ("strategy", "tags")
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("slug",)
     inlines = [FormPageInline]
-    exclude = ("site",)
+
     fieldsets = (
         (
             None,
@@ -252,15 +247,15 @@ class FormAdmin(SiteAwareModelAdmin):
 
 @admin.register(File)
 class FileAdmin(SiteAwareModelAdmin):
-    list_display = (
+    list_display = [
         "original_filename",
         "file_type",
         "mime_type",
         "file_path",
-    )
+    ]
     list_filter = ("file_type",)
     search_fields = ("original_filename", "file_path", "mime_type")
-    exclude = ("site",)
+
     fieldsets = (
         (None, {"fields": ("file", "file_type", "original_filename")}),
         (

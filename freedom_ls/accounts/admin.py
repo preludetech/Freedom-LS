@@ -3,6 +3,7 @@ import contextlib
 from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 
 from django.contrib import admin
+from django.contrib.admin.exceptions import NotRegistered
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 
@@ -11,7 +12,7 @@ from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 User = get_user_model()
 
 # Unregister Django's default Group
-with contextlib.suppress(admin.sites.NotRegistered):
+with contextlib.suppress(NotRegistered):
     admin.site.unregister(Group)
 
 

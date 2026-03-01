@@ -1,5 +1,7 @@
 """Create student deadline overrides for QA testing."""
 
+from datetime import timedelta
+
 import djclick as click
 
 from django.contrib.sites.models import Site
@@ -80,7 +82,7 @@ def command(
 
     student = membership.student
     is_hard = not soft
-    deadline = timezone.now() + timezone.timedelta(days=days_from_now)
+    deadline = timezone.now() + timedelta(days=days_from_now)
 
     content_item = None
     item_name = "course-level"

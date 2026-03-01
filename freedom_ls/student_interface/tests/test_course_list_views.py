@@ -22,7 +22,7 @@ def courses(mock_site_context) -> list[Course]:
     result = []
     for i, title in enumerate(["Course A", "Course B", "Course C"]):
         slug = title.lower().replace(" ", "-")
-        course = CourseFactory(title=title, slug=slug)
+        course: Course = CourseFactory(title=title, slug=slug)
         topic = TopicFactory(title=f"Topic {i}", slug=f"topic-{i}", content="content")
         course.items.create(child=topic, order=0)
         result.append(course)

@@ -54,10 +54,10 @@ def all_courses(request):
 
     # Annotate started courses with progress_percentage
     current = get_current_courses(request.user)
-    progress_by_id = {c.id: c.progress_percentage for c in current}
+    progress_by_id = {c.id: getattr(c, "progress_percentage", 0) for c in current}
     for course in courses:
         if course.id in progress_by_id:
-            course.progress_percentage = progress_by_id[course.id]
+            setattr(course, "progress_percentage", progress_by_id[course.id])  # noqa: B010
 
     return render(
         request,
@@ -510,8 +510,7 @@ def _is_content_item_completed(content_item: Topic | Form, user: User) -> bool:
         return TopicProgress.objects.filter(
             user=user, topic=content_item, complete_time__isnull=False
         ).exists()
-    elif isinstance(content_item, Form):
+    else:
         return FormProgress.objects.filter(
             user=user, form=content_item, completed_time__isnull=False
         ).exists()
-    return False

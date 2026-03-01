@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from threading import local
 
@@ -28,7 +30,7 @@ class SiteAwareManager(models.Manager):
 class SiteAwareModelBase(models.Model):
     site = models.ForeignKey(Site, on_delete=models.PROTECT)
 
-    objects = SiteAwareManager()
+    objects: models.Manager = SiteAwareManager()
 
     class Meta:
         abstract = True

@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.models import Course
 from freedom_ls.student_interface.utils import (
     get_all_courses,
     get_completed_courses,
@@ -110,7 +111,7 @@ def test_get_current_courses_user_without_student(mock_site_context):
 def test_get_current_courses_returns_non_completed_registered(mock_site_context):
     """get_current_courses returns registered courses that are not completed."""
     student = StudentFactory()
-    course = CourseFactory()
+    course: Course = CourseFactory()
     topic = TopicFactory(content="content")
     course.items.create(child=topic, order=0)
     StudentCourseRegistrationFactory(student=student, collection=course)
@@ -124,7 +125,7 @@ def test_get_current_courses_returns_non_completed_registered(mock_site_context)
 def test_get_current_courses_excludes_completed(mock_site_context):
     """get_current_courses excludes courses that are completed."""
     student = StudentFactory()
-    course = CourseFactory()
+    course: Course = CourseFactory()
     topic = TopicFactory(content="content")
     course.items.create(child=topic, order=0)
     StudentCourseRegistrationFactory(student=student, collection=course)
@@ -140,7 +141,7 @@ def test_get_current_courses_excludes_completed(mock_site_context):
 def test_get_current_courses_have_progress_percentage(mock_site_context):
     """get_current_courses attaches progress_percentage to each course."""
     student = StudentFactory()
-    course = CourseFactory()
+    course: Course = CourseFactory()
     topic = TopicFactory(content="content")
     course.items.create(child=topic, order=0)
     StudentCourseRegistrationFactory(student=student, collection=course)

@@ -19,16 +19,21 @@ from freedom_ls.student_management.factories import (
     CohortMembershipFactory,
     StudentFactory,
 )
-from freedom_ls.student_management.models import Cohort, Student
+from freedom_ls.student_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    Student,
+)
 from freedom_ls.student_progress.factories import (
     CourseProgressFactory,
     TopicProgressFactory,
 )
+from freedom_ls.student_progress.models import TopicProgress
 
 
 def _make_student(email: str, cohort: Cohort) -> Student:
     """Create a student with a user and cohort membership."""
-    student = StudentFactory(user=UserFactory(email=email))
+    student: Student = StudentFactory(user=UserFactory(email=email))
     CohortMembershipFactory(student=student, cohort=cohort)
     return student
 
@@ -81,7 +86,7 @@ def test_panel_selects_specific_registration_via_get_param(
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
     course2 = CourseFactory(title="Second Course")
-    reg2 = CohortCourseRegistrationFactory(cohort=cohort, collection=course2)
+    reg2: CohortCourseRegistration = CohortCourseRegistrationFactory(cohort=cohort, collection=course2)
 
     panel = CohortCourseProgressPanel(cohort)
     request = site_aware_request.get(f"/?registration={reg2.pk}")
@@ -222,7 +227,7 @@ def test_cell_data_fetched_only_for_visible_window(
     student = _make_student("student@example.com", cohort)
 
     # Complete topic 16 (on page 2 of columns)
-    tp = TopicProgressFactory(user=student.user, topic=topics[16])
+    tp: TopicProgress = TopicProgressFactory(user=student.user, topic=topics[16])
     tp.complete_time = timezone.now()
     tp.save()
 
@@ -260,7 +265,7 @@ def test_displayed_percentage_matches_actual_completion(
     student = _make_student("student@example.com", cohort)
 
     # Complete 1 of 2 topics -> 50% (save trigger auto-creates CourseProgress)
-    tp = TopicProgressFactory(user=student.user, topic=topic1)
+    tp: TopicProgress = TopicProgressFactory(user=student.user, topic=topic1)
     tp.complete_time = timezone.now()
     tp.save()
 

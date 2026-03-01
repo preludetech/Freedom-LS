@@ -82,7 +82,7 @@ class CohortDeadlineFactory(SiteAwareFactory):
 
     class Meta:
         model = CohortDeadline
-        exclude = ("content_item",)
+        exclude = ["content_item"]
 
     class Params:
         content_item = None
@@ -110,7 +110,7 @@ class StudentDeadlineFactory(SiteAwareFactory):
 
     class Meta:
         model = StudentDeadline
-        exclude = ("content_item",)
+        exclude = ["content_item"]
 
     class Params:
         content_item = None
@@ -140,7 +140,7 @@ class StudentCohortDeadlineOverrideFactory(SiteAwareFactory):
 
     class Meta:
         model = StudentCohortDeadlineOverride
-        exclude = ("content_item",)
+        exclude = ["content_item"]
 
     class Params:
         content_item = None

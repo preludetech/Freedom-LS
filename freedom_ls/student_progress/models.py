@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.db import models
@@ -20,7 +22,7 @@ User = get_user_model()
 
 
 def update_course_progress_on_completion(
-    user: "User", content_item: Topic | Form
+    user: models.Model, content_item: Topic | Form
 ) -> None:
     """Update progress_percentage on all CourseProgress records affected by completing a content item.
 
@@ -91,6 +93,7 @@ class CourseItemProgress(SiteAwareModel):
     # Subclasses must define these class attributes
     completion_field_name: str
     content_item_field_name: str
+    user: models.Model  # Declared here for mypy; actual FK field on subclasses
 
     class Meta:
         abstract = True
@@ -112,7 +115,8 @@ class CourseItemProgress(SiteAwareModel):
         current_value = getattr(self, self.completion_field_name)
         if current_value is not None and self._original_completion_value is None:
             content_item = getattr(self, self.content_item_field_name)
-            update_course_progress_on_completion(self.user, content_item)
+            user = self.user
+            update_course_progress_on_completion(user, content_item)
             self._original_completion_value = current_value
 
 
@@ -309,7 +313,8 @@ class FormProgress(CourseItemProgress):
                     selected_options = answer.selected_options.all()
                     if selected_options.exists():
                         selected_option = selected_options.first()
-                        value = int(selected_option.value)
+                        if selected_option is not None:
+                            value = int(selected_option.value)
                 except (QuestionAnswer.DoesNotExist, ValueError, TypeError):
                     # Question not answered or invalid value, keep value as 0
                     pass
@@ -328,7 +333,7 @@ class FormProgress(CourseItemProgress):
                 )
 
         # 2. Calculate the final scores for each category and subcategory
-        scores = {}
+        scores: dict[str, dict] = {}
 
         def parse_categories(page_category, question_category):
             """Parse category strings into a list of category levels."""
@@ -454,7 +459,7 @@ class FormProgress(CourseItemProgress):
 
         We will use this function in multiple places. Sometimes we'll want to show the incorrect answers to the teacher. Even if we dont want to show the answers to the student, this function should work
         """
-        incorrect_answers = []
+        incorrect_answers: list[dict] = []
 
         if self.form.strategy != FormStrategy.QUIZ:
             return incorrect_answers

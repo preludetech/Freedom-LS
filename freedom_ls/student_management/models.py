@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
@@ -21,7 +23,7 @@ class Student(SiteAwareModel):
             return f"{self.user.first_name} {self.user.last_name}".strip()
         return self.user.email or f"Student {self.pk}"
 
-    def get_course_registrations(self):
+    def get_course_registrations(self) -> list:
         """Get all active course registrations for this student."""
         registered_collections = set()
 
@@ -43,12 +45,12 @@ class Student(SiteAwareModel):
                 cohort=membership.cohort
             ).select_related("collection")
 
-            for reg in cohort_registrations:
-                registered_collections.add(reg.collection)
+            for cohort_reg in cohort_registrations:
+                registered_collections.add(cohort_reg.collection)
 
         return list(registered_collections)
 
-    def completed_courses(self):
+    def completed_courses(self) -> list:
         """Get all completed courses for this student."""
         from freedom_ls.student_progress.models import CourseProgress
 
@@ -68,7 +70,7 @@ class Student(SiteAwareModel):
 
         return completed
 
-    def current_courses(self):
+    def current_courses(self) -> list:
         """Get all current (non-completed) courses for this student."""
         from freedom_ls.student_management.utils import (
             calculate_course_progress_percentage,

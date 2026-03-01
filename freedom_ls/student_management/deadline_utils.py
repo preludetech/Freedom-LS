@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -15,6 +16,9 @@ from freedom_ls.student_management.models import (
     StudentCourseRegistration,
     StudentDeadline,
 )
+
+type _DeadlineType = CohortDeadline | StudentDeadline | StudentCohortDeadlineOverride
+type _IndexKey = tuple[uuid.UUID, int | None, uuid.UUID | None]
 
 
 @dataclass
@@ -68,8 +72,8 @@ def get_effective_deadlines(
         is_active=True,
     )
 
-    for reg in student_regs:
-        effective = _resolve_student_deadline(reg, content_type_id, object_id)
+    for student_reg in student_regs:
+        effective = _resolve_student_deadline(student_reg, content_type_id, object_id)
         if effective is not None:
             results.append(effective)
 
@@ -235,13 +239,10 @@ def get_course_deadlines(
     )
 
     # Index by (reg_id, ct_id, obj_id)
-    type _deadline_type = CohortDeadline | StudentDeadline | StudentCohortDeadlineOverride
-    type _index_key = tuple[uuid.UUID, int | None, uuid.UUID | None]
-
     def _index_deadlines(
-        deadlines: list[_deadline_type], reg_field: str,
-    ) -> dict[_index_key, list[_deadline_type]]:
-        index: dict[_index_key, list[_deadline_type]] = {}
+        deadlines: Sequence[_DeadlineType], reg_field: str,
+    ) -> dict[_IndexKey, list[_DeadlineType]]:
+        index: dict[_IndexKey, list[_DeadlineType]] = {}
         for dl in deadlines:
             key = (getattr(dl, reg_field), dl.content_type_id, dl.object_id)
             index.setdefault(key, []).append(dl)
@@ -269,9 +270,9 @@ def get_course_deadlines(
             if effective:
                 effective_list.append(effective)
 
-        for reg in student_regs:
+        for student_reg in student_regs:
             effective = _resolve_student_deadline_from_index(
-                reg, ct_id, obj_id, student_dl_index
+                student_reg, ct_id, obj_id, student_dl_index
             )
             if effective:
                 effective_list.append(effective)
@@ -287,8 +288,8 @@ def _resolve_cohort_deadline_from_index(
     student: Student,
     content_type_id: int | None,
     object_id: uuid.UUID | None,
-    cohort_dl_index: dict[tuple[uuid.UUID, int | None, uuid.UUID | None], list[CohortDeadline]],
-    override_index: dict[tuple[uuid.UUID, int | None, uuid.UUID | None], list[StudentCohortDeadlineOverride]],
+    cohort_dl_index: dict[_IndexKey, list[_DeadlineType]],
+    override_index: dict[_IndexKey, list[_DeadlineType]],
 ) -> EffectiveDeadline | None:
     """Resolve a cohort deadline using pre-fetched indexes."""
     reg_id = reg.id
@@ -337,7 +338,7 @@ def _resolve_student_deadline_from_index(
     reg: StudentCourseRegistration,
     content_type_id: int | None,
     object_id: uuid.UUID | None,
-    student_dl_index: dict[tuple[uuid.UUID, int | None, uuid.UUID | None], list[StudentDeadline]],
+    student_dl_index: dict[_IndexKey, list[_DeadlineType]],
 ) -> EffectiveDeadline | None:
     """Resolve a student deadline using pre-fetched indexes."""
     reg_id = reg.id

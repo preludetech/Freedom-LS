@@ -76,7 +76,7 @@ class PreservingDumper(yaml.SafeDumper):
 
         # If we explicitly set style to '|' (literal), keep it
         # even if the string has special characters
-        if self.event.style == "|":
+        if self.event and hasattr(self.event, "style") and self.event.style == "|":
             return "|"
 
         return style

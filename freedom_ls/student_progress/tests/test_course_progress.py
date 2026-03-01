@@ -15,20 +15,24 @@ from freedom_ls.student_progress.factories import (
     FormProgressFactory,
     TopicProgressFactory,
 )
-from freedom_ls.student_progress.models import CourseProgress
+from freedom_ls.student_progress.models import (
+    CourseProgress,
+    FormProgress,
+    TopicProgress,
+)
 
 
 @pytest.mark.django_db
 def test_course_progress_has_progress_percentage_field(mock_site_context):
     """Test that CourseProgress has a progress_percentage field that defaults to 0."""
-    course_progress = CourseProgressFactory()
+    course_progress: CourseProgress = CourseProgressFactory()
     assert course_progress.progress_percentage == 0
 
 
 @pytest.mark.django_db
 def test_course_progress_progress_percentage_can_be_set(mock_site_context):
     """Test that progress_percentage can be set to a specific value."""
-    progress = CourseProgressFactory(progress_percentage=50)
+    progress: CourseProgress = CourseProgressFactory(progress_percentage=50)
     progress.refresh_from_db()
     assert progress.progress_percentage == 50
 
@@ -40,10 +44,10 @@ def test_completing_topic_updates_progress_percentage(mock_site_context):
     course = CourseFactory()
     topic = TopicFactory()
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
-    course_progress = CourseProgressFactory(user=user, course=course)
+    course_progress: CourseProgress = CourseProgressFactory(user=user, course=course)
 
     # Complete the topic
-    tp = TopicProgressFactory(user=user, topic=topic)
+    tp: TopicProgress = TopicProgressFactory(user=user, topic=topic)
     tp.complete_time = timezone.now()
     tp.save()
 
@@ -58,10 +62,10 @@ def test_completing_form_updates_progress_percentage(mock_site_context):
     course = CourseFactory()
     form = FormFactory(strategy="QUIZ")
     ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
-    course_progress = CourseProgressFactory(user=user, course=course)
+    course_progress: CourseProgress = CourseProgressFactory(user=user, course=course)
 
     # Complete the form via complete() method
-    fp = FormProgressFactory(user=user, form=form)
+    fp: FormProgress = FormProgressFactory(user=user, form=form)
     fp.complete()
 
     course_progress.refresh_from_db()
@@ -77,9 +81,9 @@ def test_completing_item_in_course_part_updates_parent_course(mock_site_context)
     topic = TopicFactory()
     ContentCollectionItemFactory(collection_object=course, child_object=part, order=0)
     ContentCollectionItemFactory(collection_object=part, child_object=topic, order=0)
-    course_progress = CourseProgressFactory(user=user, course=course)
+    course_progress: CourseProgress = CourseProgressFactory(user=user, course=course)
 
-    tp = TopicProgressFactory(user=user, topic=topic)
+    tp: TopicProgress = TopicProgressFactory(user=user, topic=topic)
     tp.complete_time = timezone.now()
     tp.save()
 
@@ -98,10 +102,10 @@ def test_completing_item_in_multiple_courses_updates_all(mock_site_context):
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
     ContentCollectionItemFactory(collection_object=course2, child_object=topic, order=0)
 
-    cp1 = CourseProgressFactory(user=user, course=course)
-    cp2 = CourseProgressFactory(user=user, course=course2)
+    cp1: CourseProgress = CourseProgressFactory(user=user, course=course)
+    cp2: CourseProgress = CourseProgressFactory(user=user, course=course2)
 
-    tp = TopicProgressFactory(user=user, topic=topic)
+    tp: TopicProgress = TopicProgressFactory(user=user, topic=topic)
     tp.complete_time = timezone.now()
     tp.save()
 
@@ -118,7 +122,7 @@ def test_progress_percentage_zero_when_no_items_complete(mock_site_context):
     course = CourseFactory()
     topic = TopicFactory()
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
-    course_progress = CourseProgressFactory(user=user, course=course)
+    course_progress: CourseProgress = CourseProgressFactory(user=user, course=course)
 
     # Start but don't complete
     TopicProgressFactory(user=user, topic=topic)
@@ -138,7 +142,7 @@ def test_completing_item_creates_course_progress_if_missing(mock_site_context):
     # No CourseProgress exists yet
     assert CourseProgress.objects.filter(user=user, course=course).count() == 0
 
-    tp = TopicProgressFactory(user=user, topic=topic)
+    tp: TopicProgress = TopicProgressFactory(user=user, topic=topic)
     tp.complete_time = timezone.now()
     tp.save()
 
@@ -156,11 +160,11 @@ def test_partial_completion_gives_correct_percentage(mock_site_context):
     for i, topic in enumerate(topics):
         ContentCollectionItemFactory(collection_object=course, child_object=topic, order=i)
 
-    course_progress = CourseProgressFactory(user=user, course=course)
+    course_progress:CourseProgress = CourseProgressFactory(user=user, course=course)
 
     # Complete 2 of 4 topics
     for topic in topics[:2]:
-        tp = TopicProgressFactory(user=user, topic=topic)
+        tp: TopicProgress = TopicProgressFactory(user=user, topic=topic)
         tp.complete_time = timezone.now()
         tp.save()
 

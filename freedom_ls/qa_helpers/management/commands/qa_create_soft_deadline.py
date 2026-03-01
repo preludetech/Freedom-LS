@@ -1,5 +1,7 @@
 """Create a soft cohort deadline for QA testing overdue styling."""
 
+from datetime import timedelta
+
 import djclick as click
 
 from django.contrib.sites.models import Site
@@ -60,7 +62,7 @@ def command(
             f"No course registration found for cohort '{cohort_name}' and course '{course_slug}'."
         ) from e
 
-    deadline = timezone.now() + timezone.timedelta(days=days_from_now)
+    deadline = timezone.now() + timedelta(days=days_from_now)
 
     content_item = None
     item_name = "course-level"

@@ -3,9 +3,10 @@ import contextlib
 from unfold.admin import ModelAdmin
 
 from django.contrib import admin
+from django.contrib.admin.exceptions import NotRegistered
 from django.contrib.sites.models import Site
 
-with contextlib.suppress(admin.sites.NotRegistered):
+with contextlib.suppress(NotRegistered):
     admin.site.unregister(Site)
 
 
