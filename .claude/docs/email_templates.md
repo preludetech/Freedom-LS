@@ -64,14 +64,14 @@ All templates are in `freedom_ls/accounts/templates/account/email/`.
 | Email confirmation | `email_confirmation` | `base_email` | `activate_url` |
 | Email confirmation (signup) | `email_confirmation_signup` | Includes `email_confirmation` | `activate_url` |
 | Password reset | `password_reset_key` | `base_email` | `password_reset_url` |
-| Unknown account | `unknown_account` | `base_email` | `login_url`, `signup_url` |
+| Unknown account | `unknown_account` | `base_email` | `signup_url` |
 | Login code | `login_code` | `base_email` | `code` |
-| Account already exists | `account_already_exists` | `base_email` | `login_url`, `password_reset_url` |
+| Account already exists | `account_already_exists` | `base_email` | `password_reset_url` |
 | Password changed | `password_changed` | `base_notification_email` | `user`, `ip`, `user_agent`, `timestamp` |
 | Password set | `password_set` | `base_notification_email` | `user`, `ip`, `user_agent`, `timestamp` |
-| Email changed | `email_changed` | `base_notification_email` | `user`, `from_email_address`, `to_email_address` |
-| Email confirmed | `email_confirm` | `base_notification_email` | `user`, `email_address` |
-| Email deleted | `email_deleted` | `base_notification_email` | `user`, `email_address` |
+| Email changed | `email_changed` | `base_notification_email` | `user`, `from_email`, `to_email` |
+| Email confirmed | `email_confirm` | `base_notification_email` | `user` |
+| Email deleted | `email_deleted` | `base_notification_email` | `user`, `deleted_email` |
 
 Each type has three files: `*_subject.txt`, `*_message.html`, `*_message.txt`.
 

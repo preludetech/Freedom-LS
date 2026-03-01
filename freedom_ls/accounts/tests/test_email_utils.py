@@ -1,3 +1,5 @@
+import pytest
+
 from freedom_ls.accounts.email_utils import parse_tailwind_colors
 
 
@@ -20,10 +22,10 @@ def test_parse_tailwind_colors_from_css_file(make_temp_file):
     }
 
 
-def test_parse_tailwind_colors_missing_file():
-    """Test that a missing file returns an empty dict."""
-    result = parse_tailwind_colors("/nonexistent/path/to/file.css")
-    assert result == {}
+def test_parse_tailwind_colors_missing_file_raises():
+    """Test that a missing file raises FileNotFoundError."""
+    with pytest.raises(FileNotFoundError, match="CSS file not found"):
+        parse_tailwind_colors("/nonexistent/path/to/file.css")
 
 
 def test_parse_tailwind_colors_only_captures_color_properties(make_temp_file):
@@ -42,6 +44,25 @@ def test_parse_tailwind_colors_only_captures_color_properties(make_temp_file):
     assert result == {
         "primary": "#2B6CB0",
         "success": "#38A169",
+    }
+
+
+def test_parse_tailwind_colors_handles_hyphenated_names(make_temp_file):
+    """Test that hyphenated color names like primary-bold are parsed correctly."""
+    css_content = """
+@theme {
+    --color-primary: #2B6CB0;
+    --color-primary-bold: #1A4B8C;
+    --color-success-bold: #276749;
+}
+"""
+    css_file = make_temp_file(".css", css_content)
+    result = parse_tailwind_colors(str(css_file))
+
+    assert result == {
+        "primary": "#2B6CB0",
+        "primary-bold": "#1A4B8C",
+        "success-bold": "#276749",
     }
 
 

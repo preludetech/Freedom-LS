@@ -16,7 +16,14 @@ def signup_policy(request: HttpRequest) -> dict[str, bool]:
 
 
 def email_settings(request: HttpRequest) -> dict[str, str | None]:
-    """Expose email template settings to all templates."""
+    """Expose email template settings to all templates.
+
+    Registered globally in TEMPLATES because Django's email rendering uses the
+    same template engine and context processors as regular views. There is no
+    email-only context processor hook, so global registration is the simplest
+    way to ensure these values are available when allauth renders email templates.
+    The overhead is negligible (a few getattr calls on settings per request).
+    """
     return {
         "email_color_primary": settings.EMAIL_COLOR_PRIMARY,
         "email_color_foreground": settings.EMAIL_COLOR_FOREGROUND,

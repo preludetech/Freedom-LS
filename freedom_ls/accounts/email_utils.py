@@ -10,7 +10,7 @@ def parse_tailwind_colors(css_file_path: str) -> dict[str, str]:
     """
     path = Path(css_file_path)
     if not path.exists():
-        return {}
+        raise FileNotFoundError(f"CSS file not found: {css_file_path}")
 
     content = path.read_text()
     pattern = re.compile(r"--color-([\w-]+):\s*(#[0-9A-Fa-f]{3,8});")
