@@ -1,5 +1,4 @@
 {% extends "_base.html" %}
-{% load icon_tags %}
 
 {% block title %}
     {{ course.title }}
@@ -36,12 +35,12 @@
                     {% if course_progress.completed_time %}
                         <span class="text-muted text-sm">Completed</span>
                         <span class="font-medium text-base text-success">
-                            {% icon "success" class="size-5" %} {{ course_progress.completed_time|date:"M d, Y" }}
+                            <c-icon name="success" class="size-5" /> {{ course_progress.completed_time|date:"M d, Y" }}
                         </span>
                     {% else %}
                         <span class="text-muted text-sm">Status</span>
                         <span class="font-medium text-base text-primary">
-                            {% icon "loading" class="size-5 animate-spin" %} In Progress
+                            <c-icon name="loading" class="size-5 animate-spin" /> In Progress
                         </span>
                     {% endif %}
                 </div>

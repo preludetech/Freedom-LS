@@ -1,4 +1,3 @@
-{% load icon_tags %}
 <c-vars columns=""
         rows=""
         empty_message="No data available"
@@ -50,7 +49,7 @@
                                            hx-swap="outerHTML"
                                            class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                             {{ column.header }}
-                                            {% icon "sort_asc" class="size-4" %}
+                                            <c-icon name="sort_asc" class="size-4" />
                                         </a>
                                     {% else %}
                                         <a href="?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
@@ -59,7 +58,7 @@
                                            hx-swap="outerHTML"
                                            class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                             {{ column.header }}
-                                            {% icon "sort_desc" class="size-4" %}
+                                            <c-icon name="sort_desc" class="size-4" />
                                         </a>
                                     {% endif %}
                                 {% else %}
@@ -70,7 +69,7 @@
                                        hx-swap="outerHTML"
                                        class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                         {{ column.header }}
-                                        {% icon "sort_neutral" class="size-4 text-muted" %}
+                                        <c-icon name="sort_neutral" class="size-4 text-muted" />
                                     </a>
                                 {% endif %}
                             {% else %}

@@ -1,9 +1,8 @@
-{% load icon_tags %}
 <c-dropdown-menu trigger_class="{{ trigger_class|default:'text-on-primary p-2 cursor-pointer' }}">
     <c-slot name="trigger">
         <span class="hidden sm:inline">{{ user.display_name }}</span>
-        <span class="sm:hidden">{% icon "user" class="size-5" %}</span>
-        {% icon "dropdown" class="size-4 ml-1" %}
+        <span class="sm:hidden"><c-icon name="user" class="size-5" /></span>
+        <c-icon name="dropdown" class="size-4 ml-1" />
     </c-slot>
 
     <c-button dropdown="true" href="{% url 'account_profile' %}">

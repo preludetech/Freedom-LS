@@ -1,5 +1,4 @@
 {% extends "_base.html" %}
-{% load icon_tags %}
 
 {% block body %}
     <div x-data="{ tocOpen: localStorage.getItem('courseTocOpen') !== null ? localStorage.getItem('courseTocOpen') === 'true' : window.matchMedia('(min-width: 1024px)').matches, toggleToc() { this.tocOpen = !this.tocOpen; localStorage.setItem('courseTocOpen', this.tocOpen); } }"
@@ -13,7 +12,7 @@
                 class="self-start mt-1 flex items-center gap-1.5 shrink-0 px-2 py-1.5 rounded-md text-sm font-medium text-muted bg-surface-2 hover:bg-surface-2 hover:text-foreground transition-colors cursor-pointer"
                 aria-label="Open table of contents">
 
-            {% icon "menu_open" class="size-4" %}
+            <c-icon name="menu_open" class="size-4" />
 
         </button>
 
@@ -33,7 +32,7 @@
                 <button @click="toggleToc()"
                         class="px-2 py-1.5 rounded-md text-muted/50 hover:text-muted hover:bg-surface-2 transition-colors cursor-pointer"
                         aria-label="Collapse table of contents">
-                    {% icon "menu_close" class="size-5" %}
+                    <c-icon name="menu_close" class="size-5" />
                 </button>
             </div>
 

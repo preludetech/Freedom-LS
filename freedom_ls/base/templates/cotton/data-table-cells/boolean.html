@@ -1,1 +1,1 @@
-{% load data_table_tags %}{% load icon_tags %}{% with value=object|getattr_str:column.attr %}{% if value %}{% icon "boolean_true" class="size-5 text-success" %}{% else %}{% icon "boolean_false" class="size-5 text-danger" %}{% endif %}{% endwith %}
+{% load data_table_tags %}{% with value=object|getattr_str:column.attr %}{% if value %}<c-icon name="boolean_true" class="size-5 text-success" />{% else %}<c-icon name="boolean_false" class="size-5 text-danger" />{% endif %}{% endwith %}

@@ -38,7 +38,9 @@
 - Empty states with text-muted color
 - Deadline styling: danger/10 or warning/20 backgrounds with left border
 - Overdue cells: danger/15 for hard deadlines, warning/15 for soft overdue
-- Icons: Use `{% icon "semantic_name" %}` template tag (registry in `freedom_ls/base/icons.py`)
+- Icons: Use `<c-icon name="semantic_name" />` cotton component (registry in `freedom_ls/base/icons.py`)
+- Icon internals: `icon_name` filter in `icon_tags.py` + `{% heroicon_* %}` tags in `cotton/icon.html`
+- All icons are informative by default (role="img", aria-label set to semantic name)
 - Alpine.js icon toggling: `x-show` on wrapper spans or `rotate-180` for directional flips
 - Icon sizing: size-3 (badges), size-4 (compact), size-5 (standard), size-6 (emphasis), size-8 (large), size-16 (hero)
 

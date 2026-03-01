@@ -1,4 +1,3 @@
-{% load icon_tags %}
 <div id="course-progress-content">
 {% if not registrations %}
     <div class="text-center py-8 text-muted">
@@ -121,7 +120,7 @@
                                             {# Topic or non-quiz form: checkmark + datetime #}
                                             <span class="text-success"
                                                   title="{{ cell.completed_time|date:'M d, Y H:i' }}"
-                                                  aria-label="Completed">{% icon "complete" class="size-4" %}</span>
+                                                  aria-label="Completed"><c-icon name="complete" class="size-4" /></span>
                                             <div class="text-[10px] text-muted">
                                                 {{ cell.completed_time|date:"M d" }}
                                             </div>
@@ -130,18 +129,18 @@
                                         {# Started but not complete: play icon + start time #}
                                         <span class="text-primary"
                                               title="{{ cell.start_time|date:'M d, Y H:i' }}"
-                                              aria-label="Started">{% icon "in_progress" class="size-4" %}</span>
+                                              aria-label="Started"><c-icon name="in_progress" class="size-4" /></span>
                                         <div class="text-[10px] text-muted">
                                             {{ cell.start_time|date:"M d" }}
                                         </div>
                                     {% else %}
                                         {# Not started #}
-                                        <span class="text-border" aria-label="Not started">{% icon "not_started" class="size-4" %}</span>
+                                        <span class="text-border" aria-label="Not started"><c-icon name="not_started" class="size-4" /></span>
                                     {% endif %}
                                     {% if cell.override %}
                                         <div class="text-[10px] text-primary mt-0.5"
                                              title="Override: {{ cell.override.deadline|date:'M d, Y H:i' }}">
-                                            {% icon "deadline_override" class="size-4 inline" %} {{ cell.override.deadline|date:"M d" }}
+                                            <c-icon name="deadline_override" class="size-4 inline" /> {{ cell.override.deadline|date:"M d" }}
                                         </div>
                                     {% endif %}
                                 </td>

@@ -1,5 +1,4 @@
 {% extends "_base.html" %}
-{% load icon_tags %}
 
 {% block body %}
 
@@ -34,7 +33,7 @@
         >
             <span class="w-5 h-5 text-muted transition-transform duration-200"
                   :class="sidebarOpen ? '' : 'rotate-180'">
-                {% icon "menu_close" class="size-5" %}
+                <c-icon name="menu_close" class="size-5" />
             </span>
         </button>
 

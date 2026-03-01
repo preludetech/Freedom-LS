@@ -1,5 +1,4 @@
 {% extends "student_interface/_course_base.html" %}
-{% load icon_tags %}
 
 {% block content %}
 
@@ -25,7 +24,7 @@
         <div>
             {% if previous_url %}
                 <c-button href="{{ previous_url }}" variant="outline">
-                    {% icon "previous" class="size-5" %} Previous
+                    <c-icon name="previous" class="size-5" /> Previous
                 </c-button>
             {% endif %}
         </div>

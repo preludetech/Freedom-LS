@@ -1,4 +1,3 @@
-{% load icon_tags %}
 {% if messages %}
     <div aria-live="assertive" class="fixed top-24 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 pointer-events-none z-50">
         <div class="flex flex-col gap-3">
@@ -31,13 +30,13 @@
                     <!-- Icon indicator -->
                     <div class="shrink-0 mt-0.5">
                         {% if 'success' in message.tags %}
-                            {% icon "success" class="size-5 text-success" %}
+                            <c-icon name="success" class="size-5 text-success" />
                         {% elif 'error' in message.tags %}
-                            {% icon "error" class="size-5 text-danger" %}
+                            <c-icon name="error" class="size-5 text-danger" />
                         {% elif 'warning' in message.tags %}
-                            {% icon "warning" class="size-5 text-warning" %}
+                            <c-icon name="warning" class="size-5 text-warning" />
                         {% else %}
-                            {% icon "info" class="size-5 text-primary" %}
+                            <c-icon name="info" class="size-5 text-primary" />
                         {% endif %}
                     </div>
 
@@ -52,7 +51,7 @@
                         class="shrink-0 text-muted hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary rounded"
                         aria-label="Dismiss"
                     >
-                        {% icon "close" class="size-4" %}
+                        <c-icon name="close" class="size-4" />
                     </button>
                 </div>
             {% endfor %}

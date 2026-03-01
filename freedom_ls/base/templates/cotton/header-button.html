@@ -10,18 +10,18 @@
 Usage Examples:
 
   <c-header-button>
-      {% icon "user" class="size-5" %}
+      <c-icon name="user" class="size-5" />
       <span>Profile</span>
   </c-header-button>
 
   <!-- With custom classes -->
   <c-header-button class="text-primary hover:text-primary-bold">
-      {% icon "notifications" class="size-5" %}
+      <c-icon name="notifications" class="size-5" />
       <span>Notifications</span>
   </c-header-button>
 
   <!-- With HTMX or other attributes -->
   <c-header-button hx-get="/notifications" hx-target="#notifications-panel">
-      {% icon "notifications" class="size-5" %}
+      <c-icon name="notifications" class="size-5" />
   </c-header-button>
 {% endcomment %}

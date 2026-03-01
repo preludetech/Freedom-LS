@@ -43,5 +43,28 @@ def test_no_inline_svg_icons_in_templates() -> None:
                 rel_path = path.relative_to(TEMPLATE_DIR)
                 violations.append(f"{rel_path}: inline SVG icon found")
     assert not violations, (
-        "Inline SVG icons found (use {% icon %} instead):\n" + "\n".join(violations)
+        "Inline SVG icons found (use <c-icon /> instead):\n" + "\n".join(violations)
+    )
+
+
+COTTON_ICON_PATH = Path("base/templates/cotton/icon.html")
+
+
+def test_no_direct_icon_tags_load_outside_cotton() -> None:
+    """Ensure {% load icon_tags %} only appears in cotton/icon.html.
+
+    All templates must use <c-icon /> instead of loading icon_tags directly.
+    """
+    icon_tags_pattern = re.compile(r"\{%\s*load\s+icon_tags\b")
+    violations: list[str] = []
+    for path in _get_template_files():
+        rel_path = path.relative_to(TEMPLATE_DIR)
+        if rel_path == COTTON_ICON_PATH:
+            continue
+        content = path.read_text()
+        if icon_tags_pattern.search(content):
+            violations.append(str(rel_path))
+    assert not violations, (
+        "Templates must use <c-icon /> instead of {% load icon_tags %} directly:\n"
+        + "\n".join(violations)
     )
