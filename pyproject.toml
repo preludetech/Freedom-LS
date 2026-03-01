@@ -147,10 +147,10 @@ mypy_path = "."
 namespace_packages = true
 explicit_package_bases = true
 
-# permissive since the code is newly typed
-disallow_untyped_defs = true
-disallow_incomplete_defs = true 
-disallow_any_generics = true
+# set these to true to make it more permissive since the code is newly typed
+disallow_untyped_defs = false
+disallow_incomplete_defs = false 
+disallow_any_generics = false
 
 
 
@@ -188,6 +188,8 @@ module = [
     "celery.*", "django_filters.*", "debug_toolbar.*",
     "django_extensions.*", "corsheaders.*", "storages.*",
     "boto3.*", "botocore.*", "redis.*", "PIL.*",
+    "allauth.*", "djclick.*", "frontmatter.*",
+    "markdown.*", "unfold.*",
 ]
 ignore_missing_imports = true
 

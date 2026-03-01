@@ -26,7 +26,8 @@
       "Bash(sleep 3:*)",
       "mcp__playwright__browser_hover",
       "mcp__playwright__browser_resize",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(ls:*)"
     ],
     "deny": [
       "Read(.env)",
