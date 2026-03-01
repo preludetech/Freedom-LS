@@ -57,7 +57,7 @@ class SiteRoleAssignment(SiteAwareModel):
         ]
 
     def __str__(self) -> str:
-        return f"{self.user} - {self.role} @ {self.site}"
+        return f"{self.user} - {self.role}"
 
 
 class ObjectRoleAssignment(SiteAwareModel):
@@ -92,4 +92,4 @@ class ObjectRoleAssignment(SiteAwareModel):
         ]
 
     def __str__(self) -> str:
-        return f"{self.user} - {self.role} on {self.content_type}:{self.object_id}"
+        return f"{self.user} - {self.role} on {self.target}"

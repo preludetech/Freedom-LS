@@ -48,10 +48,10 @@ PERMISSIONS: dict[str, str] = {
     # --- student_management app (label: freedom_ls_student_management) ---
     # ACTIVE — used in educator_interface and role assignments
     "freedom_ls_student_management.view_cohort": "Can view cohort",
-    "freedom_ls_student_management.view_student": "Can view student",
     "freedom_ls_student_management.add_cohort": "Can add cohort",
     "freedom_ls_student_management.change_cohort": "Can change cohort",
     "freedom_ls_student_management.delete_cohort": "Can delete cohort",
+    "freedom_ls_student_management.view_student": "Can view student",
     "freedom_ls_student_management.add_student": "Can add student",
     "freedom_ls_student_management.change_student": "Can change student",
     "freedom_ls_student_management.delete_student": "Can delete student",

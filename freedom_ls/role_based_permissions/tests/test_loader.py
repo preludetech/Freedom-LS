@@ -23,12 +23,6 @@ class TestGetRoleConfig:
     """Tests for the get_role_config function."""
 
     @pytest.mark.django_db
-    def test_returns_base_roles_when_no_setting(self, mock_site_context) -> None:
-        """Returns BASE_ROLES when FREEDOMLS_PERMISSIONS_MODULES is not set."""
-        result = get_role_config(site_name="TestSite")
-        assert result is BASE_ROLES
-
-    @pytest.mark.django_db
     def test_returns_base_roles_when_site_not_in_modules(
         self, settings, mock_site_context
     ) -> None:

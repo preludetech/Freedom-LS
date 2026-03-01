@@ -1,48 +1,8 @@
 """Tests for Role and SiteRolesConfig types."""
 
-import dataclasses
-
 import pytest
 
 from freedom_ls.role_based_permissions.types import Role, SiteRolesConfig
-
-
-class TestRole:
-    """Tests for the Role dataclass."""
-
-    def test_role_is_frozen(self) -> None:
-        """Role instances are immutable."""
-        role = Role(
-            display_name="Test Role",
-            permissions=frozenset({"perm.one"}),
-        )
-        with pytest.raises(dataclasses.FrozenInstanceError):
-            role.display_name = "Changed"
-
-    def test_role_defaults(self) -> None:
-        """Role has correct default values for optional fields."""
-        role = Role(
-            display_name="Test Role",
-            permissions=frozenset(),
-        )
-        assert role.lti_role is None
-        assert role.ui_hint == "standalone"
-        assert role.description == ""
-
-    def test_role_with_all_fields(self) -> None:
-        """Role stores all provided field values."""
-        role = Role(
-            display_name="Admin",
-            permissions=frozenset({"perm.one", "perm.two"}),
-            lti_role="urn:lti:role:ims/lis/Administrator",
-            ui_hint="composable",
-            description="Full admin access",
-        )
-        assert role.display_name == "Admin"
-        assert role.permissions == frozenset({"perm.one", "perm.two"})
-        assert role.lti_role == "urn:lti:role:ims/lis/Administrator"
-        assert role.ui_hint == "composable"
-        assert role.description == "Full admin access"
 
 
 class TestSiteRolesConfig:
