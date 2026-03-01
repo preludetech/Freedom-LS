@@ -1,7 +1,6 @@
 # Testing
 
 ## Setup
-
 - Framework: pytest (pytest-django)
 - Settings: `pyproject.toml`
 - Default settings: `config.settings_dev`
@@ -15,6 +14,7 @@ Use factory_boy factories for all test data creation. Never use `.objects.create
 - Override only the fields relevant to the test; let factories provide sensible defaults
 - Always check existing factories before creating new ones
 - See `@.claude/docs/factory_boy.md` for the full factory reference, patterns, and the list of all available factories
+- Avoid creating fixtures that are thin wrappers around factories. Rather just use the factories
 
 ## Test Patterns
 

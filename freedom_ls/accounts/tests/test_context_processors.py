@@ -6,23 +6,6 @@ from freedom_ls.accounts.context_processors import email_settings
 
 
 @pytest.mark.django_db
-def test_email_settings_context_processor(mock_site_context):
-    """Test that email_settings returns all expected email template settings."""
-    request = RequestFactory().get("/")
-    context = email_settings(request)
-
-    assert "email_color_primary" in context
-    assert "email_color_foreground" in context
-    assert "email_color_muted" in context
-    assert "email_color_surface" in context
-    assert "email_color_surface_2" in context
-    assert "email_color_on_primary" in context
-    assert "email_color_border" in context
-    assert "email_font_family" in context
-    assert "email_logo_static_path" in context
-
-
-@pytest.mark.django_db
 def test_email_settings_values_match_django_settings(mock_site_context, settings):
     """Test that context processor values match Django settings."""
     request = RequestFactory().get("/")

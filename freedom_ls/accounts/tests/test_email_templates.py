@@ -40,18 +40,6 @@ def base_context(mock_site_context: object) -> dict[str, object]:
     }
 
 
-@pytest.fixture
-def user_with_name(mock_site_context: object) -> object:
-    """Create a user with a first name."""
-    return UserFactory(first_name="Alice", last_name="Smith")
-
-
-@pytest.fixture
-def user_without_name(mock_site_context: object) -> object:
-    """Create a user without a first name."""
-    return UserFactory(first_name="", last_name="")
-
-
 # ---------------------------------------------------------------------------
 # 1. Base template rendering tests
 # ---------------------------------------------------------------------------
@@ -270,7 +258,6 @@ class TestAllauthMessageEmails:
     def test_html_template_renders_with_expected_content(
         self,
         base_context: dict[str, object],
-        user_with_name: object,
         template_name: str,
         extra_context: dict[str, str],
         expected_html_snippets: list[str],
@@ -278,7 +265,8 @@ class TestAllauthMessageEmails:
         expected_subject: str,
     ) -> None:
         """HTML message template should render and contain expected content."""
-        context = {**base_context, "user": user_with_name, **extra_context}
+        user = UserFactory(first_name="Alice", last_name="Smith")
+        context = {**base_context, "user": user, **extra_context}
         html = render_to_string(f"account/email/{template_name}_message.html", context)
 
         assert html.strip(), f"HTML template for {template_name} rendered empty"
@@ -301,7 +289,6 @@ class TestAllauthMessageEmails:
     def test_txt_template_renders_with_expected_content(
         self,
         base_context: dict[str, object],
-        user_with_name: object,
         template_name: str,
         extra_context: dict[str, str],
         expected_html_snippets: list[str],
@@ -309,7 +296,8 @@ class TestAllauthMessageEmails:
         expected_subject: str,
     ) -> None:
         """Text message template should render and contain expected content."""
-        context = {**base_context, "user": user_with_name, **extra_context}
+        user = UserFactory(first_name="Alice", last_name="Smith")
+        context = {**base_context, "user": user, **extra_context}
         txt = render_to_string(f"account/email/{template_name}_message.txt", context)
 
         assert txt.strip(), f"Text template for {template_name} rendered empty"
@@ -364,7 +352,6 @@ class TestAllauthNotificationEmails:
     def test_html_notification_renders_with_expected_content(
         self,
         base_context: dict[str, object],
-        user_with_name: object,
         template_name: str,
         extra_context: dict[str, str],
         expected_html_snippets: list[str],
@@ -372,9 +359,10 @@ class TestAllauthNotificationEmails:
         expected_subject: str,
     ) -> None:
         """HTML notification template should render and contain expected content."""
+        user = UserFactory(first_name="Alice", last_name="Smith")
         context = {
             **base_context,
-            "user": user_with_name,
+            "user": user,
             **SECURITY_CONTEXT,
             **extra_context,
         }
@@ -400,7 +388,6 @@ class TestAllauthNotificationEmails:
     def test_txt_notification_renders_with_expected_content(
         self,
         base_context: dict[str, object],
-        user_with_name: object,
         template_name: str,
         extra_context: dict[str, str],
         expected_html_snippets: list[str],
@@ -408,9 +395,10 @@ class TestAllauthNotificationEmails:
         expected_subject: str,
     ) -> None:
         """Text notification template should render and contain expected content."""
+        user = UserFactory(first_name="Alice", last_name="Smith")
         context = {
             **base_context,
-            "user": user_with_name,
+            "user": user,
             **SECURITY_CONTEXT,
             **extra_context,
         }
@@ -463,7 +451,6 @@ class TestAllauthNotificationEmails:
     def test_notification_html_contains_security_info(
         self,
         base_context: dict[str, object],
-        user_with_name: object,
         template_name: str,
         extra_context: dict[str, str],
         expected_html_snippets: list[str],
@@ -471,9 +458,10 @@ class TestAllauthNotificationEmails:
         expected_subject: str,
     ) -> None:
         """Notification HTML emails should include security information section."""
+        user = UserFactory(first_name="Alice", last_name="Smith")
         context = {
             **base_context,
-            "user": user_with_name,
+            "user": user,
             **SECURITY_CONTEXT,
             **extra_context,
         }
@@ -525,20 +513,20 @@ class TestGreetingPersonalization:
     def test_greeting_includes_first_name_when_present(
         self,
         base_context: dict[str, object],
-        user_with_name: object,
     ) -> None:
         """Greeting should say 'Hi Alice,' when user has a first name."""
-        context = {**base_context, "user": user_with_name}
+        user = UserFactory(first_name="Alice", last_name="Smith")
+        context = {**base_context, "user": user}
         html = render_to_string("emails/base_email.html", context)
         assert "Hi Alice," in html
 
     def test_greeting_omits_name_when_no_first_name(
         self,
         base_context: dict[str, object],
-        user_without_name: object,
     ) -> None:
         """Greeting should say 'Hi,' when user has no first name."""
-        context = {**base_context, "user": user_without_name}
+        user = UserFactory(first_name="", last_name="")
+        context = {**base_context, "user": user}
         html = render_to_string("emails/base_email.html", context)
         assert "Hi," in html
         # Should not have "Hi ," with extra space
@@ -616,12 +604,12 @@ class TestEmailSizeConstraints:
     def test_html_email_under_100kb(
         self,
         base_context: dict[str, object],
-        user_with_name: object,
         template_path: str,
         extra_context: dict[str, str],
     ) -> None:
         """Each HTML email template should render to less than 100KB."""
-        context = {**base_context, "user": user_with_name, **extra_context}
+        user = UserFactory(first_name="Alice", last_name="Smith")
+        context = {**base_context, "user": user, **extra_context}
         html = render_to_string(template_path, context)
         size = len(html.encode("utf-8"))
         assert size < MAX_EMAIL_SIZE_BYTES, (
