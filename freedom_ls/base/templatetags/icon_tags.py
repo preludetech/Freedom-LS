@@ -2,6 +2,8 @@ import uuid
 from copy import deepcopy
 from xml.etree import ElementTree
 
+# _load_icon is an internal API but the only way to get raw SVG Elements
+# for custom attribute handling. Version is pinned to <3 in pyproject.toml.
 from heroicons import _load_icon
 
 from django import template
@@ -15,12 +17,9 @@ register = template.Library()
 @register.simple_tag
 def icon(name: str, variant: str = "outline", **kwargs: str) -> str:
     class_ = kwargs.get("class", "size-5")
-    force = kwargs.get("force", False)
-    aria_label = kwargs.get("aria_label")
-
-    # Convert string "True"/"False" from template to bool
-    if isinstance(force, str):
-        force = force.lower() in ("true", "1", "yes")
+    force_raw = kwargs.get("force", "")
+    force = str(force_raw).lower() in ("true", "1", "yes") if force_raw else False
+    aria_label = kwargs.get("aria_label", "") or None
 
     heroicon_name = ICONS[name] if not force else name  # KeyError if not in registry
 

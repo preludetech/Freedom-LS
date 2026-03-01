@@ -69,3 +69,9 @@ class TestIconTemplateTag:
         result = self._render('{% icon "next" class="size-6 text-red-500" %}')
         assert 'class="size-6 text-red-500"' in result
         assert 'class="size-5"' not in result
+
+    def test_force_with_invalid_heroicon_raises_error(self) -> None:
+        from heroicons import IconDoesNotExist
+
+        with pytest.raises(IconDoesNotExist):
+            self._render('{% icon "not-a-real-heroicon" force=True %}')

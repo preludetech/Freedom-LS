@@ -32,7 +32,7 @@ def test_no_font_awesome_patterns_in_templates() -> None:
 
 def test_no_inline_svg_icons_in_templates() -> None:
     svg_icon_pattern = re.compile(
-        r"<svg[^>]*viewBox=\"0 0 24 24\"[^>]*>.*?</svg>",
+        r"<svg[^>]*viewBox=\"0 0 \d+ \d+\"[^>]*>.*?</svg>",
         re.DOTALL,
     )
     violations: list[str] = []
