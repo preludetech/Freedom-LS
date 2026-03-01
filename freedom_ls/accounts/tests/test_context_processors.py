@@ -14,6 +14,10 @@ def test_email_settings_context_processor(mock_site_context):
     assert "email_color_primary" in context
     assert "email_color_foreground" in context
     assert "email_color_muted" in context
+    assert "email_color_surface" in context
+    assert "email_color_surface_2" in context
+    assert "email_color_on_primary" in context
+    assert "email_color_border" in context
     assert "email_font_family" in context
     assert "email_logo_static_path" in context
 
@@ -27,5 +31,9 @@ def test_email_settings_values_match_django_settings(mock_site_context, settings
     assert context["email_color_primary"] == settings.EMAIL_COLOR_PRIMARY
     assert context["email_color_foreground"] == settings.EMAIL_COLOR_FOREGROUND
     assert context["email_color_muted"] == settings.EMAIL_COLOR_MUTED
+    assert context["email_color_surface"] == settings.EMAIL_COLOR_SURFACE
+    assert context["email_color_surface_2"] == settings.EMAIL_COLOR_SURFACE_2
+    assert context["email_color_on_primary"] == settings.EMAIL_COLOR_ON_PRIMARY
+    assert context["email_color_border"] == settings.EMAIL_COLOR_BORDER
     assert context["email_font_family"] == settings.EMAIL_FONT_FAMILY
     assert context["email_logo_static_path"] == settings.EMAIL_LOGO_STATIC_PATH

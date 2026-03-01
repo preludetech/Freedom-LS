@@ -4,7 +4,7 @@
     {% if email_logo_static_path %}
     <img src="{% static email_logo_static_path %}" alt="{{ current_site.name }}" style="max-height: 48px; width: auto;" />
     {% else %}
-    <h1 style="margin: 0; color: #FFFFFF; font-size: 24px; font-weight: bold;">{{ current_site.name }}</h1>
+    <h1 style="margin: 0; color: {{ email_color_on_primary }}; font-size: 24px; font-weight: bold;">{{ current_site.name }}</h1>
     {% endif %}
   </td>
 </tr>

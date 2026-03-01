@@ -26,6 +26,7 @@
       "Bash(sleep 3:*)",
       "mcp__playwright__browser_hover",
       "mcp__playwright__browser_resize",
+      "mcp__playwright__*",
       "Bash(git add:*)",
       "Bash(ls:*)"
     ],

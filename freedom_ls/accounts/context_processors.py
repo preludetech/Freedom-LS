@@ -21,6 +21,10 @@ def email_settings(request: HttpRequest) -> dict[str, str | None]:
         "email_color_primary": settings.EMAIL_COLOR_PRIMARY,
         "email_color_foreground": settings.EMAIL_COLOR_FOREGROUND,
         "email_color_muted": settings.EMAIL_COLOR_MUTED,
+        "email_color_surface": settings.EMAIL_COLOR_SURFACE,
+        "email_color_surface_2": settings.EMAIL_COLOR_SURFACE_2,
+        "email_color_on_primary": settings.EMAIL_COLOR_ON_PRIMARY,
+        "email_color_border": settings.EMAIL_COLOR_BORDER,
         "email_font_family": settings.EMAIL_FONT_FAMILY,
         "email_logo_static_path": settings.EMAIL_LOGO_STATIC_PATH,
     }

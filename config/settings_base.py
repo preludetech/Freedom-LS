@@ -250,5 +250,9 @@ _tw_colors = parse_tailwind_colors(str(BASE_DIR / "tailwind.components.css"))
 EMAIL_COLOR_PRIMARY = _tw_colors.get("primary", "#2B6CB0")
 EMAIL_COLOR_FOREGROUND = _tw_colors.get("foreground", "#1A2332")
 EMAIL_COLOR_MUTED = _tw_colors.get("muted", "#4A5568")
+EMAIL_COLOR_SURFACE = _tw_colors.get("surface", "#FFFFFF")
+EMAIL_COLOR_SURFACE_2 = _tw_colors.get("surface-2", "#F3F4F6")
+EMAIL_COLOR_ON_PRIMARY = _tw_colors.get("on-primary", "#FFFFFF")
+EMAIL_COLOR_BORDER = _tw_colors.get("border", "#D1D5DB")
 
 LOGIN_REDIRECT_URL = "/"

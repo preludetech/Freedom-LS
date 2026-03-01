@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block subject %}{% endblock %}</title>
   <style>
-    body { margin: 0; padding: 0; background-color: #F3F4F6; }
+    body { margin: 0; padding: 0; background-color: {{ email_color_surface_2 }}; }
     .email-body { font-family: {{ email_font_family }}; color: {{ email_color_foreground }}; font-size: 16px; line-height: 1.5; }
-    .email-content { background-color: #FFFFFF; padding: 32px 24px; }
-    .email-button { display: inline-block; background-color: {{ email_color_primary }}; color: #FFFFFF; text-decoration: none; padding: 12px 32px; border-radius: 6px; font-weight: bold; font-size: 16px; }
+    .email-content { background-color: {{ email_color_surface }}; padding: 32px 24px; }
+    .email-button { display: inline-block; background-color: {{ email_color_primary }}; color: {{ email_color_on_primary }}; text-decoration: none; padding: 12px 32px; border-radius: 6px; font-weight: bold; font-size: 16px; }
     .email-footer { color: {{ email_color_muted }}; font-size: 13px; line-height: 1.5; text-align: center; padding: 24px; }
     .email-footer a { color: {{ email_color_muted }}; text-decoration: underline; }
     a { color: {{ email_color_primary }}; }
   </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #F3F4F6;">
-  <table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; background-color: #F3F4F6;">
+<body style="margin: 0; padding: 0; background-color: {{ email_color_surface_2 }};">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; background-color: {{ email_color_surface_2 }};">
     <tr>
       <td style="padding: 24px 0;" align="center">
         <table role="presentation" cellpadding="0" cellspacing="0" class="email-body" style="max-width: 600px; width: 100%;">
