@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from django.contrib.sites.shortcuts import get_current_site
 from ninja import Router, Schema
 from pydantic import ConfigDict
+
+from django.contrib.sites.shortcuts import get_current_site
 
 # router = Router(tags=["xapi"]) # TODO, what are tags for?
 router = Router()

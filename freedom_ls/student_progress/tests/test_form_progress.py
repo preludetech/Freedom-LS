@@ -1,18 +1,23 @@
 """Tests for FormProgress model."""
 
 from datetime import timedelta
+
 import pytest
+
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
-    FormFactory,
     FormContentFactory,
+    FormFactory,
     FormPageFactory,
     FormQuestionFactory,
 )
+from freedom_ls.student_progress.factories import (
+    FormProgressFactory,
+    QuestionAnswerFactory,
+)
 from freedom_ls.student_progress.models import FormProgress
-from freedom_ls.student_progress.factories import FormProgressFactory, QuestionAnswerFactory
 
 
 @pytest.mark.django_db

@@ -1,20 +1,21 @@
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
-from .models import (
-    Topic,
-    Course,
-    CoursePart,
-    ContentCollectionItem,
-    Form,
-    FormPage,
-    FormContent,
-    FormQuestion,
-    QuestionOption,
-    File,
-    Activity,
-)
 
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+
+from .models import (
+    Activity,
+    ContentCollectionItem,
+    Course,
+    CoursePart,
+    File,
+    Form,
+    FormContent,
+    FormPage,
+    FormQuestion,
+    QuestionOption,
+    Topic,
+)
 
 
 class QuestionOptionInline(admin.TabularInline):
@@ -170,7 +171,7 @@ class ActivityAdmin(SiteAwareModelAdmin):
 
         if not obj.content:
             return ""
-        return mark_safe(obj.rendered_content())
+        return mark_safe(obj.rendered_content())  # noqa: S308
 
     content_preview.short_description = "Content Preview"
 

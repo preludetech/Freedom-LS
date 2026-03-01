@@ -1,6 +1,7 @@
 """Context processors for site-aware functionality."""
 
 from django.conf import settings
+
 from .models import get_cached_site
 
 

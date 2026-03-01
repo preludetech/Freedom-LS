@@ -1,6 +1,8 @@
 from django.contrib import admin
-from .models import FormProgress, QuestionAnswer, TopicProgress, CourseProgress
+
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+
+from .models import CourseProgress, FormProgress, QuestionAnswer, TopicProgress
 
 
 class QuestionAnswerInline(admin.TabularInline):

@@ -1,18 +1,20 @@
-import pytest
 from datetime import timedelta
+
+import pytest
+
 from django.test import override_settings
-from django.utils import timezone
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.student_interface.utils import BLOCKED, get_course_index
 from freedom_ls.student_management.factories import (
-    StudentFactory,
-    CohortFactory,
-    CohortMembershipFactory,
     CohortCourseRegistrationFactory,
     CohortDeadlineFactory,
+    CohortFactory,
+    CohortMembershipFactory,
+    StudentFactory,
 )
-from freedom_ls.student_interface.utils import get_course_index, BLOCKED
 
 
 def _setup_cohort_registration(student, course):

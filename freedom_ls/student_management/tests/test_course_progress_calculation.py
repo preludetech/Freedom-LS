@@ -1,4 +1,5 @@
 import pytest
+
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartFactory,

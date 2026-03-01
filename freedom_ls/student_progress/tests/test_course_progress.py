@@ -1,5 +1,7 @@
 import pytest
+
 from django.utils import timezone
+
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
@@ -8,12 +10,12 @@ from freedom_ls.content_engine.factories import (
     FormFactory,
     TopicFactory,
 )
-from freedom_ls.student_progress.models import CourseProgress
 from freedom_ls.student_progress.factories import (
     CourseProgressFactory,
     FormProgressFactory,
     TopicProgressFactory,
 )
+from freedom_ls.student_progress.models import CourseProgress
 
 
 @pytest.mark.django_db

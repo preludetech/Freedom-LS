@@ -7,7 +7,10 @@ from freedom_ls.content_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.student_progress.factories import FormProgressFactory, QuestionAnswerFactory
+from freedom_ls.student_progress.factories import (
+    FormProgressFactory,
+    QuestionAnswerFactory,
+)
 
 
 @pytest.mark.django_db
@@ -158,7 +161,7 @@ def test_score_category_value_sum_categorises_questions_correctly(
         question="Question without subcategory",
         type="multiple_choice",
         order=0,
-        category=None,  # No subcategory
+        category="",  # No subcategory
     )
 
     # Create a question WITH a subcategory

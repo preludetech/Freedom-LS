@@ -1,6 +1,8 @@
 from django.contrib import admin
-from .models import Client
+
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+
+from .models import Client
 
 
 @admin.register(Client)

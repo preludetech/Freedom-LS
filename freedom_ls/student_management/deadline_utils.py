@@ -5,15 +5,15 @@ from datetime import datetime
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
-from freedom_ls.content_engine.models import Course, Topic, Form, CoursePart
+from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
 from freedom_ls.student_management.models import (
-    Student,
-    CohortMembership,
     CohortCourseRegistration,
-    StudentCourseRegistration,
     CohortDeadline,
-    StudentDeadline,
+    CohortMembership,
+    Student,
     StudentCohortDeadlineOverride,
+    StudentCourseRegistration,
+    StudentDeadline,
 )
 
 
@@ -235,13 +235,13 @@ def get_course_deadlines(
     )
 
     # Index by (reg_id, ct_id, obj_id)
-    _DeadlineType = CohortDeadline | StudentDeadline | StudentCohortDeadlineOverride
-    _IndexKey = tuple[uuid.UUID, int | None, uuid.UUID | None]
+    type _deadline_type = CohortDeadline | StudentDeadline | StudentCohortDeadlineOverride
+    type _index_key = tuple[uuid.UUID, int | None, uuid.UUID | None]
 
     def _index_deadlines(
-        deadlines: list[_DeadlineType], reg_field: str,
-    ) -> dict[_IndexKey, list[_DeadlineType]]:
-        index: dict[_IndexKey, list[_DeadlineType]] = {}
+        deadlines: list[_deadline_type], reg_field: str,
+    ) -> dict[_index_key, list[_deadline_type]]:
+        index: dict[_index_key, list[_deadline_type]] = {}
         for dl in deadlines:
             key = (getattr(dl, reg_field), dl.content_type_id, dl.object_id)
             index.setdefault(key, []).append(dl)

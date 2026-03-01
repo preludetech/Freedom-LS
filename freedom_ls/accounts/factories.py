@@ -25,11 +25,11 @@ class UserFactory(SiteAwareFactory):
     is_staff = False
 
     @factory.post_generation
-    def password(obj: User, create: bool, extracted: str | None, **kwargs: object) -> None:
+    def password(self: User, create: bool, extracted: str | None, **kwargs: object) -> None:
         """Set password equal to the user's email address, or to the extracted value."""
-        obj.set_password(extracted or obj.email)
+        self.set_password(extracted or self.email)
         if create:
-            obj.save(update_fields=["password"])
+            self.save(update_fields=["password"])
 
     class Params:
         staff = factory.Trait(is_staff=True)

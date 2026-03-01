@@ -1,6 +1,7 @@
 """Base factory for site-aware models."""
 
 import factory
+
 from django.contrib.sites.models import Site
 from django.db import models as django_models
 

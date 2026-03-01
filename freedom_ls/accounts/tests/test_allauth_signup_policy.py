@@ -1,4 +1,5 @@
 import pytest
+
 from django.test import RequestFactory
 
 from freedom_ls.accounts.allauth_account_adapter import AccountAdapter

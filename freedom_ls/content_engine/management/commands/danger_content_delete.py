@@ -1,17 +1,18 @@
 import djclick as click
+
 from django.db import transaction
 
 from freedom_ls.content_engine.models import (
-    Topic,
     Activity,
-    Course,
     ContentCollectionItem,
+    Course,
+    File,
     Form,
-    FormPage,
     FormContent,
+    FormPage,
     FormQuestion,
     QuestionOption,
-    File,
+    Topic,
 )
 
 

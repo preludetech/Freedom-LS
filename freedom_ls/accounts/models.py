@@ -1,14 +1,15 @@
-from django.db import models
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
     PermissionsMixin,
 )
 from django.contrib.sites.shortcuts import get_current_site
+from django.db import models
+
 from freedom_ls.site_aware_models.models import (
-    _thread_locals,
-    SiteAwareModelBase,
     SiteAwareModel,
+    SiteAwareModelBase,
+    _thread_locals,
 )
 
 
@@ -57,8 +58,8 @@ class UserManager(BaseUserManager):
 class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
 
-    first_name = models.CharField(null=True, max_length=200)
-    last_name = models.CharField(null=True, max_length=200)
+    first_name = models.CharField(blank=True, default="", max_length=200)
+    last_name = models.CharField(blank=True, default="", max_length=200)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

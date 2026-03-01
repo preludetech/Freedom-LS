@@ -1,20 +1,20 @@
-from django.db import models
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.core.exceptions import ValidationError
-from freedom_ls.site_aware_models.models import SiteAwareModel
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from django.contrib.auth import get_user_model
+from freedom_ls.site_aware_models.models import SiteAwareModel
 
 User = get_user_model()
 
 
 class Student(SiteAwareModel):
     user = models.ForeignKey(User, on_delete=models.PROTECT)
-    id_number = models.CharField(max_length=50, blank=True, null=True)
+    id_number = models.CharField(max_length=50, blank=True, default="")
     date_of_birth = models.DateField(blank=True, null=True)
-    cellphone = models.CharField(max_length=20, blank=True, null=True)
+    cellphone = models.CharField(max_length=20, blank=True, default="")
 
     def __str__(self):
         if self.user.first_name or self.user.last_name:
@@ -70,13 +70,13 @@ class Student(SiteAwareModel):
 
     def current_courses(self):
         """Get all current (non-completed) courses for this student."""
-        from freedom_ls.student_progress.models import (
-            CourseProgress,
-            TopicProgress,
-            FormProgress,
-        )
         from freedom_ls.student_management.utils import (
             calculate_course_progress_percentage,
+        )
+        from freedom_ls.student_progress.models import (
+            CourseProgress,
+            FormProgress,
+            TopicProgress,
         )
 
         # Get all registered courses

@@ -1,19 +1,21 @@
-from django.contrib import admin
+from guardian.admin import GuardedModelAdmin
 from unfold.admin import TabularInline
 
+from django.contrib import admin
+
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+
 from .models import (
-    Student,
     Cohort,
-    CohortMembership,
-    StudentCourseRegistration,
     CohortCourseRegistration,
     CohortDeadline,
-    StudentDeadline,
-    StudentCohortDeadlineOverride,
+    CohortMembership,
     RecommendedCourse,
+    Student,
+    StudentCohortDeadlineOverride,
+    StudentCourseRegistration,
+    StudentDeadline,
 )
-from guardian.admin import GuardedModelAdmin
 
 
 class StudentCohortMembershipInline(TabularInline):

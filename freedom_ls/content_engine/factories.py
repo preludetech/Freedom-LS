@@ -1,6 +1,7 @@
 """Factories for content_engine models."""
 
 import factory
+
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.utils.text import slugify
 

@@ -1,15 +1,19 @@
 from datetime import datetime
 
+from guardian.shortcuts import get_objects_for_user
+
 from django.contrib.auth import get_user_model
-from django.shortcuts import render, get_object_or_404
-from django.template.loader import render_to_string
-from django.urls import reverse
+from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.core.paginator import Page, Paginator
-from django.http import Http404, HttpResponse
 from django.db.models import Count, F, IntegerField, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Coalesce
-from django.contrib.contenttypes.models import ContentType as DjangoContentType
+from django.http import Http404, HttpResponse
+from django.shortcuts import get_object_or_404, render
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils import timezone as tz
 
+from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
 from freedom_ls.student_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -19,15 +23,11 @@ from freedom_ls.student_management.models import (
     StudentCohortDeadlineOverride,
     StudentCourseRegistration,
 )
-from freedom_ls.content_engine.models import Course, CoursePart, Topic, Form
 from freedom_ls.student_progress.models import (
     CourseProgress,
     FormProgress,
     TopicProgress,
 )
-from django.utils import timezone as tz
-
-from guardian.shortcuts import get_objects_for_user
 
 User = get_user_model()
 
@@ -67,16 +67,18 @@ class DataTable:
     page_size = 5
     search_fields: list[str] = []
 
+    @staticmethod
     def get_queryset(request):
-        implement
+        raise NotImplementedError
 
+    @staticmethod
     def get_columns():
-        implement
+        raise NotImplementedError
 
     @classmethod
-    def _prepare_columns(klass) -> list[dict]:
+    def _prepare_columns(cls) -> list[dict]:
         """Enrich columns: derive sort_field from text_attr/attr for sortable columns."""
-        columns = klass.get_columns()
+        columns = cls.get_columns()
         for col in columns:
             if col.get("sortable") and "sort_field" not in col:
                 attr = col.get("text_attr") or col.get("attr", "")
@@ -84,15 +86,15 @@ class DataTable:
         return columns
 
     @classmethod
-    def get_rows(klass, request, columns: list[dict], filters: dict | None = None):
-        queryset = klass.get_queryset(request)
+    def get_rows(cls, request, columns: list[dict], filters: dict | None = None):
+        queryset = cls.get_queryset(request)
         if filters:
             queryset = queryset.filter(**filters)
 
         search_query = request.GET.get("search", "").strip()
-        if search_query and klass.search_fields:
+        if search_query and cls.search_fields:
             search_filter = Q()
-            for field in klass.search_fields:
+            for field in cls.search_fields:
                 search_filter |= Q(**{f"{field}__icontains": search_query})
             queryset = queryset.filter(search_filter)
 
@@ -104,24 +106,24 @@ class DataTable:
             queryset = queryset.order_by(order_expr)
 
         page_number = request.GET.get("page", 1)
-        paginator = Paginator(queryset, klass.page_size)
+        paginator = Paginator(queryset, cls.page_size)
         page_obj = paginator.get_page(page_number)
 
         return page_obj
 
     @classmethod
     def render(
-        klass,
+        cls,
         request,
         filters: dict | None = None,
         base_url: str = "",
         table_id: str = "data-table-container",
     ) -> str:
-        columns = klass._prepare_columns()
+        columns = cls._prepare_columns()
         sort_by = request.GET.get("sort", "")
         sort_order = request.GET.get("order", "asc")
         search_query = request.GET.get("search", "").strip()
-        page_obj = klass.get_rows(request, columns, filters=filters)
+        page_obj = cls.get_rows(request, columns, filters=filters)
         context = {
             "columns": columns,
             "rows": page_obj,
@@ -129,7 +131,7 @@ class DataTable:
             "sort_by": sort_by,
             "sort_order": sort_order,
             "base_url": base_url,
-            "show_search": bool(klass.search_fields),
+            "show_search": bool(cls.search_fields),
             "search_query": search_query,
             "table_id": table_id,
         }
@@ -192,6 +194,7 @@ class InstanceDetailsPanel(Panel):
 
 
 class CohortDataTable(DataTable):
+    @staticmethod
     def get_queryset(request):
         return (
             get_objects_for_user(
@@ -206,6 +209,7 @@ class CohortDataTable(DataTable):
             .order_by("name")
         )
 
+    @staticmethod
     def get_columns():
         return [
             {
@@ -230,6 +234,7 @@ class CohortDataTable(DataTable):
 class StudentDataTable(DataTable):
     search_fields = ["user__first_name", "user__last_name", "user__email"]
 
+    @staticmethod
     def get_queryset(request):
         # Get students with direct view permission
         students_with_direct_access = get_objects_for_user(
@@ -262,6 +267,7 @@ class StudentDataTable(DataTable):
             .order_by("user__first_name", "user__last_name")
         )
 
+    @staticmethod
     def get_columns():
         return [
             {
@@ -382,11 +388,13 @@ class CohortDetailsPanel(InstanceDetailsPanel):
 
 
 class CohortCourseRegistrationDataTable(DataTable):
+    @staticmethod
     def get_queryset(request):
         return CohortCourseRegistration.objects.select_related("collection").order_by(
             "collection__title"
         )
 
+    @staticmethod
     def get_columns():
         return [
             {
@@ -907,6 +915,7 @@ class StudentConfig(ListViewConfig):
 
 
 class CourseDataTable(DataTable):
+    @staticmethod
     def get_queryset(request):
         courses = (
             Course.objects.all()
@@ -949,6 +958,7 @@ class CourseDataTable(DataTable):
 
         return courses
 
+    @staticmethod
     def get_columns():
         return [
             {
@@ -983,11 +993,13 @@ class CourseDetailsPanel(InstanceDetailsPanel):
 
 
 class CourseCohortRegistrationDataTable(DataTable):
+    @staticmethod
     def get_queryset(request):
         return CohortCourseRegistration.objects.select_related(
             "cohort", "collection"
         ).order_by("cohort__name")
 
+    @staticmethod
     def get_columns():
         return [
             {
@@ -1019,11 +1031,13 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
 
 
 class CourseStudentRegistrationDataTable(DataTable):
+    @staticmethod
     def get_queryset(request):
         return StudentCourseRegistration.objects.select_related(
             "student__user", "collection"
         ).order_by("student__user__first_name", "student__user__last_name")
 
+    @staticmethod
     def get_columns():
         return [
             {
@@ -1095,12 +1109,8 @@ def _resolve_path(parts: list[str]) -> object:
     """
     current = interface_config[parts[0]]
     for part in parts[1:]:
-        if part == "__panels":
-            current = (
-                current.panel_getter()
-            )  # panel_getter.__getitem__ instantiates the panel and returns it
-        else:
-            current = current[part]
+        # panel_getter.__getitem__ instantiates the panel and returns it
+        current = current.panel_getter() if part == "__panels" else current[part]
 
     return current
 

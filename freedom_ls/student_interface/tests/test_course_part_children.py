@@ -1,17 +1,16 @@
 import pytest
 
-from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartFactory,
     FormFactory,
     TopicFactory,
 )
+from freedom_ls.student_interface.utils import BLOCKED, READY, get_course_index
 from freedom_ls.student_management.factories import (
     StudentCourseRegistrationFactory,
     StudentFactory,
 )
-from freedom_ls.student_interface.utils import get_course_index, READY, BLOCKED
 
 
 @pytest.mark.django_db

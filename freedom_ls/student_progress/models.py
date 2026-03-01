@@ -1,6 +1,8 @@
-from django.db import models
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
+from django.db import models
+from django.utils import timezone
+
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
@@ -13,7 +15,6 @@ from freedom_ls.content_engine.models import (
 )
 from freedom_ls.site_aware_models.models import SiteAwareModel
 from freedom_ls.student_management.utils import calculate_course_progress_percentage
-from django.utils import timezone
 
 User = get_user_model()
 
@@ -227,7 +228,7 @@ class FormProgress(CourseItemProgress):
             field_name = f"question_{question.id}"
 
             # Get or create the answer
-            answer, created = QuestionAnswer.objects.get_or_create(
+            answer, _created = QuestionAnswer.objects.get_or_create(
                 form_progress=self, question=question, site=self.site
             )
 
@@ -504,7 +505,7 @@ class QuestionAnswer(SiteAwareModel):
     selected_options = models.ManyToManyField(
         QuestionOption, blank=True
     )  # For checkbox/multiple choice questions
-    text_answer = models.TextField(blank=True, null=True)  # For text questions
+    text_answer = models.TextField(blank=True, default="")  # For text questions
     last_updated_time = models.DateTimeField(auto_now=True)
 
     class Meta:

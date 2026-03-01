@@ -1,19 +1,22 @@
-import pytest
 from datetime import timedelta
-from django.utils import timezone
+
+import pytest
+
 from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
+
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Topic
+from freedom_ls.student_management.deadline_utils import (
+    get_course_deadlines,
+    get_effective_deadlines,
+)
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
     CohortDeadlineFactory,
     CohortFactory,
     CohortMembershipFactory,
     StudentFactory,
-)
-from freedom_ls.student_management.deadline_utils import (
-    get_course_deadlines,
-    get_effective_deadlines,
 )
 
 

@@ -2,24 +2,24 @@ import uuid
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import QuerySet
 from django.urls import reverse
 from django.utils import timezone
+
 from freedom_ls.content_engine.models import (
-    Topic,
-    Form,
     Course,
     CoursePart,
+    Form,
     FormStrategy,
+    Topic,
 )
-from django.db.models import QuerySet
-
-from freedom_ls.student_progress.models import FormProgress, TopicProgress
-from freedom_ls.student_management.models import Student, RecommendedCourse
 from freedom_ls.student_management.config import config
 from freedom_ls.student_management.deadline_utils import (
-    get_course_deadlines,
     EffectiveDeadline,
+    get_course_deadlines,
 )
+from freedom_ls.student_management.models import RecommendedCourse, Student
+from freedom_ls.student_progress.models import FormProgress, TopicProgress
 
 User = get_user_model()
 

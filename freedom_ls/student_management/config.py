@@ -14,7 +14,6 @@ Usage::
 
 from django.conf import settings
 
-
 defaults: dict[str, object] = {
     "DEADLINES_ACTIVE": True,
 }
@@ -31,8 +30,8 @@ class Config:
             return getattr(settings, name)
         try:
             return self._defaults[name]
-        except KeyError:
-            raise AttributeError(f"Config has no setting '{name}'")
+        except KeyError as e:
+            raise AttributeError(f"Config has no setting '{name}'") from e
 
 
 config = Config(defaults)

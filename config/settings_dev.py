@@ -1,12 +1,13 @@
-from .settings_base import *  # noqa: F403, F405
-import sys
 import os
+import sys
+
+from .settings_base import *  # noqa: F403
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-j7(y+5*bk359kji$691f-gpevyhm*id37y_)7me%scmurdd&pv"
+SECRET_KEY = "django-insecure-j7(y+5*bk359kji$691f-gpevyhm*id37y_)7me%scmurdd&pv"  # noqa: S105
 
 
 AUTH_PASSWORD_VALIDATORS = []
@@ -67,4 +68,4 @@ DATABASES = {
 }
 
 
-MIDDLEWARE = MIDDLEWARE + ["django_browser_reload.middleware.BrowserReloadMiddleware"]
+MIDDLEWARE = [*MIDDLEWARE, "django_browser_reload.middleware.BrowserReloadMiddleware"]

@@ -1,6 +1,7 @@
 """Tests for markdown_utils.py - focusing on custom cotton tag functionality."""
 
 import pytest
+
 from django.utils.safestring import SafeString
 
 from freedom_ls.content_engine.markdown_utils import render_markdown

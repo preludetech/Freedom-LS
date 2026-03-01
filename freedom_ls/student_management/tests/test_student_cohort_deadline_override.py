@@ -1,7 +1,9 @@
 import pytest
-from django.utils import timezone
+
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.utils import timezone
+
 from freedom_ls.content_engine.factories import TopicFactory
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,

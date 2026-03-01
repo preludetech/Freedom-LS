@@ -1,6 +1,7 @@
 """Tests for view_course_item with nested course structure."""
 
 import pytest
+
 from django.test import Client
 from django.urls import reverse
 

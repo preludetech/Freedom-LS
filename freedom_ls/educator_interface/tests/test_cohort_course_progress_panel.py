@@ -1,9 +1,16 @@
-import pytest
 from datetime import timedelta
+
+import pytest
+
 from django.template.defaultfilters import date as django_date
 from django.utils import timezone
+
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
+    CourseFactory,
+    TopicFactory,
+)
 from freedom_ls.educator_interface.views import CohortCourseProgressPanel
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
@@ -12,12 +19,11 @@ from freedom_ls.student_management.factories import (
     CohortMembershipFactory,
     StudentFactory,
 )
+from freedom_ls.student_management.models import Cohort, Student
 from freedom_ls.student_progress.factories import (
     CourseProgressFactory,
     TopicProgressFactory,
 )
-from freedom_ls.content_engine.factories import ContentCollectionItemFactory
-from freedom_ls.student_management.models import Cohort, Student
 
 
 def _make_student(email: str, cohort: Cohort) -> Student:
@@ -114,7 +120,7 @@ def test_students_sorted_by_progress_ascending(
     topic = TopicFactory(title="Topic 1")
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
 
-    student_a = _make_student("student_a@example.com", cohort)
+    _make_student("student_a@example.com", cohort)
     student_b = _make_student("student_b@example.com", cohort)
 
     # student_b has progress, student_a does not
@@ -146,7 +152,7 @@ def test_students_without_course_progress_appear_first(
     topic = TopicFactory(title="Topic 1")
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
 
-    student_no_progress = _make_student("no_progress@example.com", cohort)
+    _make_student("no_progress@example.com", cohort)
     student_with_progress = _make_student("has_progress@example.com", cohort)
 
     CourseProgressFactory(

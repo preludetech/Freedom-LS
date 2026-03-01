@@ -1,6 +1,7 @@
 """Tests for all_courses and partial_list_courses views."""
 
 import pytest
+
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
@@ -106,7 +107,7 @@ def test_partial_list_courses_completed_courses(mock_site_context, courses):
     response = client.get(reverse("student_interface:partial_list_courses"))
     assert response.status_code == 200
     assert courses[0] in response.context["completed_courses"]
-    assert courses[0] not in [c for c in response.context["registered_courses"]]
+    assert courses[0] not in list(response.context["registered_courses"])
 
 
 @pytest.mark.django_db

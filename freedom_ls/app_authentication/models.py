@@ -1,5 +1,7 @@
-from django.db import models
 import secrets
+
+from django.db import models
+
 from freedom_ls.site_aware_models.models import SiteAwareModel
 
 

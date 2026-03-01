@@ -1,12 +1,14 @@
-from django.template import loader
-import tempfile
-from pathlib import Path
-import markdown
-from django.utils.safestring import mark_safe
-from django.conf import settings
-import nh3
-from copy import deepcopy
 import os
+import tempfile
+from copy import deepcopy
+from pathlib import Path
+
+import markdown
+import nh3
+
+from django.conf import settings
+from django.template import loader
+from django.utils.safestring import mark_safe
 
 
 def render_markdown(markdown_text, request, context=None):
@@ -38,15 +40,15 @@ def render_markdown(markdown_text, request, context=None):
     # do the cotton rendering
 
     if settings.MARKDOWN_TEMPLATE_RENDER_ON:
-        os.makedirs("/tmp/lms_templates", exist_ok=True)
-        temp = tempfile.NamedTemporaryFile(prefix="template_", dir="/tmp/lms_templates")
-
-        temp.write(str.encode(rendered_content))
-        temp.seek(0)
-        content = loader.render_to_string(
-            Path(temp.name).stem, context=context, request=request, using=None
-        )
+        template_dir = "/tmp/lms_templates"  # noqa: S108
+        os.makedirs(template_dir, exist_ok=True)
+        with tempfile.NamedTemporaryFile(prefix="template_", dir=template_dir) as temp:
+            temp.write(str.encode(rendered_content))
+            temp.seek(0)
+            content = loader.render_to_string(
+                Path(temp.name).stem, context=context, request=request, using=None
+            )
     else:
         content = rendered_content
 
-    return mark_safe(content)
+    return mark_safe(content)  # noqa: S308

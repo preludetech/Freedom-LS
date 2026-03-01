@@ -1,10 +1,13 @@
-from django.db import models
+from pathlib import Path
+
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
-from django.utils.translation import gettext_lazy as _
+from django.db import models
 from django.urls import reverse
-from pathlib import Path
+from django.utils.translation import gettext_lazy as _
+
 from freedom_ls.site_aware_models.models import SiteAwareModel
+
 from .markdown_utils import render_markdown
 from .schema import ContentType as SchemaContentTypes
 
@@ -67,10 +70,7 @@ class BaseContent(SiteAwareModel):
         result = parent_dir
 
         for part in other_relative_path.parts:
-            if part == "..":
-                result = result.parent
-            else:
-                result = result / part
+            result = result.parent if part == ".." else result / part
 
         return result.as_posix()
 
@@ -79,9 +79,9 @@ class TitledContent(BaseContent):
     """Base content model with title and subtitle."""
 
     title = models.CharField(max_length=500)
-    subtitle = models.CharField(max_length=500, null=True, blank=True)
+    subtitle = models.CharField(max_length=500, blank=True, default="")
     description = models.TextField(
-        null=True, blank=True, help_text=_("Optional description")
+        blank=True, default="", help_text=_("Optional description")
     )
     slug = models.SlugField(
         max_length=500,
@@ -98,12 +98,12 @@ class TitledContent(BaseContent):
 class MarkdownContent(BaseContent):
     """Base content model with markdown content."""
 
-    content = models.TextField(null=True, blank=True, help_text=_("Markdown content"))
+    content = models.TextField(blank=True, default="", help_text=_("Markdown content"))
 
     def rendered_content(self):
         from threading import local
 
-        if self.content is None:
+        if not self.content:
             return ""
 
         _thread_locals = local()
@@ -121,7 +121,7 @@ class Topic(TitledContent, MarkdownContent):
 
     CONTENT_TYPE = SchemaContentTypes.TOPIC
 
-    category = models.CharField(max_length=200, null=True, blank=True)
+    category = models.CharField(max_length=200, blank=True, default="")
 
     class Meta:
         unique_together = ["site", "slug"]
@@ -135,7 +135,7 @@ class Activity(TitledContent, MarkdownContent):
 
     CONTENT_TYPE = SchemaContentTypes.ACTIVITY
 
-    category = models.CharField(max_length=200, null=True, blank=True)
+    category = models.CharField(max_length=200, blank=True, default="")
     level = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
@@ -148,7 +148,7 @@ class Course(MarkdownContent, TitledContent):
 
     CONTENT_TYPE = SchemaContentTypes.COURSE
 
-    category = models.CharField(max_length=200, null=True, blank=True)
+    category = models.CharField(max_length=200, blank=True, default="")
     items = GenericRelation(
         "ContentCollectionItem",
         content_type_field="collection_type",
@@ -185,7 +185,7 @@ class CoursePart(TitledContent):
 
     CONTENT_TYPE = SchemaContentTypes.COURSE_PART
 
-    category = models.CharField(max_length=200, null=True, blank=True)
+    category = models.CharField(max_length=200, blank=True, default="")
     items = GenericRelation(
         "ContentCollectionItem",
         content_type_field="collection_type",
@@ -277,7 +277,7 @@ class FormPage(TitledContent):
 
     form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name="pages")
     order = models.PositiveIntegerField(default=0)
-    category = models.CharField(max_length=200, null=True, blank=True)
+    category = models.CharField(max_length=200, blank=True, default="")
 
     def children(self):
         """
@@ -326,7 +326,7 @@ class FormQuestion(BaseContent):
         FormPage, on_delete=models.CASCADE, related_name="questions"
     )
     order = models.PositiveIntegerField(default=0)
-    category = models.CharField(max_length=200, null=True, blank=True)
+    category = models.CharField(max_length=200, blank=True, default="")
 
     question = models.TextField()
     type = models.CharField(
@@ -389,7 +389,8 @@ def file_upload_handler(instance, filepath):
     ext = filepath.suffix
     stem = filepath.stem
     pk = instance.pk
-    assert pk
+    if not pk:
+        raise ValueError("Instance must be saved before uploading files")
     return f"content_engine/{stem}{pk}{ext}"
 
 

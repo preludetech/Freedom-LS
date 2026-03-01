@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 import factory
+
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 

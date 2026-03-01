@@ -1,25 +1,24 @@
 """Tests for course helper functions in student_interface.utils."""
 
 import pytest
+
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.student_management.factories import (
-    RecommendedCourseFactory,
-    StudentCourseRegistrationFactory,
-    StudentFactory,
-)
-from freedom_ls.student_progress.factories import CourseProgressFactory
-
 from freedom_ls.student_interface.utils import (
     get_all_courses,
     get_completed_courses,
     get_current_courses,
     get_recommended_courses,
 )
-
+from freedom_ls.student_management.factories import (
+    RecommendedCourseFactory,
+    StudentCourseRegistrationFactory,
+    StudentFactory,
+)
+from freedom_ls.student_progress.factories import CourseProgressFactory
 
 # --- get_all_courses ---
 

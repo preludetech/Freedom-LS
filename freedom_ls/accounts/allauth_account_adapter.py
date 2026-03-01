@@ -1,7 +1,9 @@
 from allauth.account.adapter import DefaultAccountAdapter
-from django.contrib.sites.shortcuts import get_current_site
-from .models import SiteSignupPolicy
+
 from django.conf import settings
+from django.contrib.sites.shortcuts import get_current_site
+
+from .models import SiteSignupPolicy
 
 
 class AccountAdapter(DefaultAccountAdapter):

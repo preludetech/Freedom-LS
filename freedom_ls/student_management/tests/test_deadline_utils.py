@@ -1,22 +1,24 @@
-import pytest
 from datetime import timedelta
+
+import pytest
+
 from django.utils import timezone
+
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.student_management.factories import (
-    CohortFactory,
-    CohortCourseRegistrationFactory,
-    CohortDeadlineFactory,
-    CohortMembershipFactory,
-    StudentCourseRegistrationFactory,
-    StudentDeadlineFactory,
-    StudentFactory,
-    StudentCohortDeadlineOverrideFactory,
-)
 from freedom_ls.student_management.deadline_utils import (
     get_effective_deadlines,
     is_item_locked_by_deadline,
 )
-
+from freedom_ls.student_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortDeadlineFactory,
+    CohortFactory,
+    CohortMembershipFactory,
+    StudentCohortDeadlineOverrideFactory,
+    StudentCourseRegistrationFactory,
+    StudentDeadlineFactory,
+    StudentFactory,
+)
 
 # --- get_effective_deadlines tests ---
 

@@ -1,6 +1,7 @@
 """Tests for form_start_page_buttons function."""
 
 import pytest
+
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
@@ -11,15 +12,15 @@ from freedom_ls.content_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy
+from freedom_ls.student_interface.utils import form_start_page_buttons
 from freedom_ls.student_progress.factories import FormProgressFactory
 from freedom_ls.student_progress.models import FormProgress
-from freedom_ls.student_interface.utils import form_start_page_buttons
 
 
 @pytest.mark.django_db
 def test_not_started_form_shows_start_button(mock_site_context):
     """When user hasn't started the form, show Start button."""
-    user = UserFactory()
+    UserFactory()
     form = FormFactory()
     buttons = form_start_page_buttons(
         form=form,

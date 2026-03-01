@@ -1,6 +1,7 @@
 """Create a cohort with many students for testing row pagination."""
 
 import djclick as click
+
 from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.factories import UserFactory
@@ -46,8 +47,8 @@ def command(
 
     try:
         site = Site.objects.get(name=site_name)
-    except Site.DoesNotExist:
-        raise click.ClickException(f"Site with name '{site_name}' not found.")
+    except Site.DoesNotExist as e:
+        raise click.ClickException(f"Site with name '{site_name}' not found.") from e
 
     try:
         cohort = Cohort.objects.get(name=cohort_name, site=site)
@@ -62,16 +63,16 @@ def command(
         email = f"qa_student_{i}@example.com"
         from django.contrib.auth import get_user_model
 
-        User = get_user_model()
+        user_model = get_user_model()
         try:
-            user = User.objects.get(email=email, site=site)
-        except User.DoesNotExist:
+            user = user_model.objects.get(email=email, site=site)
+        except user_model.DoesNotExist:
             user = UserFactory(
                 email=email,
                 first_name="QA Student",
                 last_name=str(i),
                 is_active=True,
-                password="testpass123",
+                password="testpass123",  # noqa: S106
                 site=site,
             )
 

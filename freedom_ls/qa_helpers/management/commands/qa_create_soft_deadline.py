@@ -1,6 +1,7 @@
 """Create a soft cohort deadline for QA testing overdue styling."""
 
 import djclick as click
+
 from django.contrib.sites.models import Site
 from django.utils import timezone
 
@@ -43,8 +44,8 @@ def command(
 ) -> None:
     try:
         site = Site.objects.get(name=site_name)
-    except Site.DoesNotExist:
-        raise click.ClickException(f"Site with name '{site_name}' not found.")
+    except Site.DoesNotExist as e:
+        raise click.ClickException(f"Site with name '{site_name}' not found.") from e
 
     try:
         registration = CohortCourseRegistration.objects.select_related(
@@ -54,10 +55,10 @@ def command(
             collection__slug=course_slug,
             site=site,
         )
-    except CohortCourseRegistration.DoesNotExist:
+    except CohortCourseRegistration.DoesNotExist as e:
         raise click.ClickException(
             f"No course registration found for cohort '{cohort_name}' and course '{course_slug}'."
-        )
+        ) from e
 
     deadline = timezone.now() + timezone.timedelta(days=days_from_now)
 
