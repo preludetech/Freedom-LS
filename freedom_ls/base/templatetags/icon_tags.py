@@ -6,7 +6,7 @@ register = template.Library()
 
 
 @register.filter
-def icon_name(name: str, force: str = "") -> str:
+def icon_from_name(name: str, force: str = "") -> str:
     """Resolve a semantic icon name to a heroicon name.
 
     Used internally by the <c-icon /> cotton component.

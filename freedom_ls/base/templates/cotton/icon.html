@@ -2,7 +2,7 @@
 
 {% load icon_tags heroicons %}
 
-{% with resolved=name|icon_name:force label=aria_label|default:name %}
+{% with resolved=name|icon_from_name:force label=aria_label|default:name %}
     {% if variant == "solid" %}
         {% heroicon_solid resolved size=None class=class aria_label=label role="img" %}
     {% elif variant == "mini" %}

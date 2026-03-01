@@ -1,4 +1,4 @@
-"""Tests for the icon_name filter and <c-icon /> cotton component."""
+"""Tests for the icon_from_name filter and <c-icon /> cotton component."""
 
 import re
 
@@ -8,33 +8,33 @@ from django_cotton.compiler_regex import CottonCompiler
 from django.template import Context, Template
 
 from freedom_ls.base.icons import ICONS
-from freedom_ls.base.templatetags.icon_tags import icon_name
+from freedom_ls.base.templatetags.icon_tags import icon_from_name
 
 
 class TestIconNameFilter:
-    """Tests for the icon_name template filter."""
+    """Tests for the icon_from_name template filter."""
 
     def test_resolves_semantic_name(self) -> None:
-        assert icon_name("next") == "arrow-right"
+        assert icon_from_name("next")
 
     def test_unknown_name_raises_key_error(self) -> None:
         with pytest.raises(KeyError):
-            icon_name("nonexistent_icon_xyz")
+            icon_from_name("nonexistent_icon_xyz")
 
     def test_force_bypasses_registry(self) -> None:
-        result = icon_name("arrow-right", force="true")
+        result = icon_from_name("arrow-right", force="true")
         assert result == "arrow-right"
 
     def test_force_with_yes(self) -> None:
-        result = icon_name("some-icon", force="yes")
+        result = icon_from_name("some-icon", force="yes")
         assert result == "some-icon"
 
     def test_force_with_1(self) -> None:
-        result = icon_name("some-icon", force="1")
+        result = icon_from_name("some-icon", force="1")
         assert result == "some-icon"
 
     def test_force_false_uses_registry(self) -> None:
-        result = icon_name("next", force="false")
+        result = icon_from_name("next", force="false")
         assert result == "arrow-right"
 
 
@@ -44,12 +44,12 @@ class TestIconRegistryValidation:
     def test_all_registry_values_are_valid_heroicons(self) -> None:
         from heroicons import _load_icon
 
-        for semantic_name, heroicon_name in ICONS.items():
+        for semantic_name, heroicon_from_name in ICONS.items():
             try:
-                _load_icon("outline", heroicon_name)
+                _load_icon("outline", heroicon_from_name)
             except Exception as e:
                 pytest.fail(
-                    f"ICONS[{semantic_name!r}] = {heroicon_name!r} is not a valid heroicon: {e}"
+                    f"ICONS[{semantic_name!r}] = {heroicon_from_name!r} is not a valid heroicon: {e}"
                 )
 
 
