@@ -2,6 +2,7 @@
 
 import yaml
 import pytest
+from freedom_ls.content_engine.factories import FormFactory
 from freedom_ls.content_engine.models import FormPage
 from freedom_ls.content_engine.management.commands.content_save import (
     save_form_page,
@@ -64,9 +65,10 @@ def test_preserving_dumper_uses_literal_style_for_html_content():
 
 @pytest.mark.django_db
 def test_form_page_with_uuid_no_duplicates_on_multiple_saves(
-    site, form, make_temp_file
+    mock_site_context, make_temp_file
 ):
     """Test that saving a FormPage with same UUID multiple times doesn't create duplicates."""
+    form = FormFactory()
 
     # Create a temporary yaml file for a FormPage without UUID
     yaml_content = {
@@ -87,7 +89,7 @@ def test_form_page_with_uuid_no_duplicates_on_multiple_saves(
 
     # Save to database (should create UUID and update file)
     initial_count = FormPage.objects.count()
-    page1 = save_form_page(item1, form, site, temp_file.parent, order=0)
+    page1 = save_form_page(item1, form, mock_site_context, temp_file.parent, order=0)
 
     assert FormPage.objects.count() == initial_count + 1
     created_uuid = page1.id
@@ -108,7 +110,7 @@ def test_form_page_with_uuid_no_duplicates_on_multiple_saves(
     assert item2.uuid == str(created_uuid)
 
     # Save again (should update, not create new)
-    page2 = save_form_page(item2, form, site, temp_file.parent, order=0)
+    page2 = save_form_page(item2, form, mock_site_context, temp_file.parent, order=0)
 
     # Assert UUID unchanged and no duplicates
     assert FormPage.objects.count() == initial_count + 1
@@ -121,8 +123,9 @@ def test_form_page_with_uuid_no_duplicates_on_multiple_saves(
 
 
 @pytest.mark.django_db
-def test_saving_form_questions_and_text_adds_uuids_to_file(site, form, make_temp_file):
+def test_saving_form_questions_and_text_adds_uuids_to_file(mock_site_context, make_temp_file):
     """Test that saving form questions and text adds UUIDs to the file."""
+    form = FormFactory()
 
     # Create YAML with form page, question, and text
     original_yaml = """---
@@ -156,9 +159,9 @@ content: This is some instructional text
 
     # Save to database
 
-    page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
-    question = save_form_question(parsed[1], page, site, temp_file.parent, order=0)
-    text = save_form_content(parsed[2], page, site, temp_file.parent, order=1)
+    page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
+    question = save_form_question(parsed[1], page, mock_site_context, temp_file.parent, order=0)
+    text = save_form_content(parsed[2], page, mock_site_context, temp_file.parent, order=1)
 
     # Read file back
     with open(temp_file, "r") as f:
@@ -189,8 +192,9 @@ content: This is some instructional text
 
 
 @pytest.mark.django_db
-def test_saving_form_question_options_saves_uuids_to_file(site, form, make_temp_file):
+def test_saving_form_question_options_saves_uuids_to_file(mock_site_context, make_temp_file):
     """Test that saving a form question with options preserves the options correctly and adds UUID."""
+    form = FormFactory()
 
     # Create YAML with form page and question with options
     original_yaml = """---
@@ -222,8 +226,8 @@ options:
     assert parsed[1].uuid is None
 
     # Save to database
-    page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
-    question = save_form_question(parsed[1], page, site, temp_file.parent, order=0)
+    page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
+    question = save_form_question(parsed[1], page, mock_site_context, temp_file.parent, order=0)
 
     # Read file back
     with open(temp_file, "r") as f:
@@ -251,8 +255,9 @@ options:
 
 
 @pytest.mark.django_db
-def test_yaml_dump_does_not_add_excessive_whitespace(site, form, make_temp_file):
+def test_yaml_dump_does_not_add_excessive_whitespace(mock_site_context, make_temp_file):
     """Test that yaml.dump doesn't add blank lines when updating multi-document file with UUIDs."""
+    form = FormFactory()
 
     # Create original multi-document YAML with specific compact format
     original_yaml = "---\ncontent_type: FORM_PAGE\ntitle: Test Page\n---\ncontent_type: FORM_CONTENT\ncontent: Some text\n"
@@ -260,8 +265,8 @@ def test_yaml_dump_does_not_add_excessive_whitespace(site, form, make_temp_file)
 
     # Save to add UUIDs
     parsed = parse_single_file(temp_file)
-    page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
-    save_form_content(parsed[1], page, site, temp_file.parent, order=0)
+    page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
+    save_form_content(parsed[1], page, mock_site_context, temp_file.parent, order=0)
 
     # Read back
     with open(temp_file, "r") as f:
@@ -281,8 +286,10 @@ def test_yaml_dump_does_not_add_excessive_whitespace(site, form, make_temp_file)
 
 
 @pytest.mark.django_db
-def test_yaml_dump_doesnt_reformat_multi_line_text_fields(site, form, make_temp_file):
+def test_yaml_dump_doesnt_reformat_multi_line_text_fields(mock_site_context, make_temp_file):
     """Test that yaml.dump preserves multi-line text formatting."""
+    form = FormFactory()
+
     # Create YAML with multi-line text field
     original_yaml = """---
 content_type: FORM_PAGE
@@ -299,8 +306,8 @@ content: |
 
     # Save the content
     parsed = parse_single_file(temp_file)
-    page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
-    save_form_content(parsed[1], page, site, temp_file.parent, order=0)
+    page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
+    save_form_content(parsed[1], page, mock_site_context, temp_file.parent, order=0)
 
     # Read back
     with open(temp_file, "r") as f:
@@ -334,7 +341,7 @@ content: |
 
 @pytest.mark.django_db
 def test_yaml_dump_preserves_multi_line_content_with_html_tags(
-    site, form, make_temp_file
+    mock_site_context, make_temp_file
 ):
     """Test that yaml.dump preserves multi-line text with HTML/XML tags using literal block style.
 
@@ -347,6 +354,8 @@ def test_yaml_dump_preserves_multi_line_content_with_html_tags(
     To the incorrect format:
         content: "Text here\\n<c-picture src=\\"...\\" />\\nMore text"
     """
+    form = FormFactory()
+
     # Create YAML with multi-line content containing HTML-like tags
     original_yaml = """---
 content_type: FORM_PAGE
@@ -367,8 +376,8 @@ content: |
 
     # Save the content
     parsed = parse_single_file(temp_file)
-    page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
-    save_form_content(parsed[1], page, site, temp_file.parent, order=0)
+    page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
+    save_form_content(parsed[1], page, mock_site_context, temp_file.parent, order=0)
 
     # Read back
     with open(temp_file, "r") as f:
@@ -415,7 +424,7 @@ content: |
 
 @pytest.mark.django_db
 def test_updating_question_options_preserves_other_sections_multi_line_format(
-    site, form, make_temp_file
+    mock_site_context, make_temp_file
 ):
     """Test that adding UUIDs to question options preserves multi-line formatting in other sections.
 
@@ -437,6 +446,8 @@ def test_updating_question_options_preserves_other_sections_multi_line_format(
     The bug must be that PreservingDumper is NOT properly preserving multi-line
     strings with special characters like < and >.
     """
+    form = FormFactory()
+
     # Create YAML where question has UUID but options don't, and there's
     # multi-line content in another section
     original_yaml = """---
@@ -481,9 +492,9 @@ options:
 
     # Save to database - the question has UUID but options don't,
     # so update_file_with_option_uuids will be called
-    page = save_form_page(parsed[0], form, site, temp_file.parent, order=0)
-    save_form_content(parsed[1], page, site, temp_file.parent, order=0)
-    save_form_question(parsed[2], page, site, temp_file.parent, order=1)
+    page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
+    save_form_content(parsed[1], page, mock_site_context, temp_file.parent, order=0)
+    save_form_question(parsed[2], page, mock_site_context, temp_file.parent, order=1)
 
     # Read the file back
     with open(temp_file, "r") as f:

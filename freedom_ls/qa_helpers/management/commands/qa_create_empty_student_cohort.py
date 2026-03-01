@@ -4,6 +4,10 @@ import djclick as click
 from django.contrib.sites.models import Site
 
 from freedom_ls.content_engine.models import Course
+from freedom_ls.student_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+)
 from freedom_ls.student_management.models import Cohort, CohortCourseRegistration
 
 
@@ -30,11 +34,12 @@ def command(
     except Site.DoesNotExist:
         raise click.ClickException(f"Site with name '{site_name}' not found.")
 
-    cohort, created = Cohort.objects.get_or_create(name=cohort_name, site=site)
-    if created:
-        click.secho(f"Created cohort '{cohort_name}' (no students)", fg="green")
-    else:
+    try:
+        cohort = Cohort.objects.get(name=cohort_name, site=site)
         click.secho(f"Cohort '{cohort_name}' already exists", fg="yellow")
+    except Cohort.DoesNotExist:
+        cohort = CohortFactory(name=cohort_name, site=site)
+        click.secho(f"Created cohort '{cohort_name}' (no students)", fg="green")
 
     for slug in course_slug:
         try:
@@ -43,10 +48,12 @@ def command(
             click.secho(f"Course with slug '{slug}' not found", fg="red")
             continue
 
-        _, reg_created = CohortCourseRegistration.objects.get_or_create(
+        if not CohortCourseRegistration.objects.filter(
             collection=course, cohort=cohort, site=site
-        )
-        if reg_created:
+        ).exists():
+            CohortCourseRegistrationFactory(
+                collection=course, cohort=cohort, site=site
+            )
             click.secho(f"Registered cohort for course '{course.title}'", fg="green")
         else:
             click.secho(f"Already registered for '{course.title}'", fg="yellow")

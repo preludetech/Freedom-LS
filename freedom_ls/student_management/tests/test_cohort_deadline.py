@@ -1,43 +1,43 @@
 import pytest
 from django.utils import timezone
-from freedom_ls.content_engine.models import Topic
+from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.student_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortDeadlineFactory,
+    CohortFactory,
+)
 from freedom_ls.student_management.models import CohortDeadline
 
 
 @pytest.mark.django_db
-def test_create_cohort_deadline_with_content_item(
-    mock_site_context, cohort_course_reg, topic
-):
+def test_create_cohort_deadline_with_content_item(mock_site_context):
     """CohortDeadline can be created pointing to a specific content item."""
-    from django.contrib.contenttypes.models import ContentType
+    topic = TopicFactory(title="Test Topic")
+    cohort_course_reg = CohortCourseRegistrationFactory()
 
-    topic_ct = ContentType.objects.get_for_model(Topic)
     deadline_dt = timezone.now() + timezone.timedelta(days=7)
 
-    deadline = CohortDeadline.objects.create(
+    deadline = CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct,
-        object_id=topic.id,
+        content_item=topic,
         deadline=deadline_dt,
+        is_hard_deadline=True,
     )
 
     assert deadline.cohort_course_registration == cohort_course_reg
-    assert deadline.content_type == topic_ct
-    assert deadline.object_id == topic.id
     assert deadline.content_item == topic
     assert deadline.deadline == deadline_dt
     assert deadline.is_hard_deadline is True
 
 
 @pytest.mark.django_db
-def test_create_cohort_deadline_for_whole_course(mock_site_context, cohort_course_reg):
+def test_create_cohort_deadline_for_whole_course(mock_site_context):
     """CohortDeadline with null content_item applies to the whole course."""
+    cohort_course_reg = CohortCourseRegistrationFactory()
     deadline_dt = timezone.now() + timezone.timedelta(days=7)
 
-    deadline = CohortDeadline.objects.create(
+    deadline = CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=None,
-        object_id=None,
         deadline=deadline_dt,
     )
 
@@ -47,67 +47,66 @@ def test_create_cohort_deadline_for_whole_course(mock_site_context, cohort_cours
 
 
 @pytest.mark.django_db
-def test_str_with_content_item(mock_site_context, cohort_course_reg, topic):
+def test_str_with_content_item(mock_site_context):
     """__str__ includes the content item name."""
-    from django.contrib.contenttypes.models import ContentType
+    topic = TopicFactory(title="Test Topic")
+    cohort = CohortFactory(name="Test Cohort")
+    course = CourseFactory(title="Test Course")
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
-    topic_ct = ContentType.objects.get_for_model(Topic)
-    deadline = CohortDeadline.objects.create(
+    deadline = CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct,
-        object_id=topic.id,
-        deadline=timezone.now() + timezone.timedelta(days=7),
+        content_item=topic,
     )
 
     assert str(deadline) == "Test Cohort - Test Course - Test Topic"
 
 
 @pytest.mark.django_db
-def test_str_without_content_item(mock_site_context, cohort_course_reg):
+def test_str_without_content_item(mock_site_context):
     """__str__ shows 'Whole course' when content_item is null."""
-    deadline = CohortDeadline.objects.create(
+    cohort = CohortFactory(name="Test Cohort")
+    course = CourseFactory(title="Test Course")
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    deadline = CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        deadline=timezone.now() + timezone.timedelta(days=7),
     )
 
     assert str(deadline) == "Test Cohort - Test Course - Whole course"
 
 
 @pytest.mark.django_db
-def test_unique_constraint_prevents_duplicate_item_deadline(
-    mock_site_context, cohort_course_reg, topic
-):
+def test_unique_constraint_prevents_duplicate_item_deadline(mock_site_context):
     """Cannot create two deadlines for the same content item on the same registration."""
-    from django.contrib.contenttypes.models import ContentType
     from django.db import IntegrityError
 
-    topic_ct = ContentType.objects.get_for_model(Topic)
-    CohortDeadline.objects.create(
+    topic = TopicFactory()
+    cohort_course_reg = CohortCourseRegistrationFactory()
+
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        content_type=topic_ct,
-        object_id=topic.id,
+        content_item=topic,
         deadline=timezone.now() + timezone.timedelta(days=7),
     )
 
     with pytest.raises(IntegrityError):
-        CohortDeadline.objects.create(
+        CohortDeadlineFactory(
             cohort_course_registration=cohort_course_reg,
-            content_type=topic_ct,
-            object_id=topic.id,
+            content_item=topic,
             deadline=timezone.now() + timezone.timedelta(days=14),
         )
 
 
 @pytest.mark.django_db
-def test_clean_prevents_duplicate_course_level_deadline(
-    mock_site_context, cohort_course_reg
-):
+def test_clean_prevents_duplicate_course_level_deadline(mock_site_context):
     """clean() raises ValidationError for duplicate course-level deadlines."""
     from django.core.exceptions import ValidationError
 
-    CohortDeadline.objects.create(
+    cohort_course_reg = CohortCourseRegistrationFactory()
+
+    CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
-        deadline=timezone.now() + timezone.timedelta(days=7),
     )
 
     duplicate = CohortDeadline(
@@ -120,8 +119,10 @@ def test_clean_prevents_duplicate_course_level_deadline(
 
 
 @pytest.mark.django_db
-def test_default_is_hard_deadline(mock_site_context, cohort_course_reg):
+def test_default_is_hard_deadline(mock_site_context):
     """is_hard_deadline defaults to True."""
+    cohort_course_reg = CohortCourseRegistrationFactory()
+
     deadline = CohortDeadline.objects.create(
         cohort_course_registration=cohort_course_reg,
         deadline=timezone.now() + timezone.timedelta(days=7),

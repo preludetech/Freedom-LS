@@ -7,6 +7,15 @@
 - Default settings: `config.settings_dev`
 - Run specific test: `pytest path/to/test_file.py::test_name`
 
+## Creating Test Data
+
+Use factory_boy factories for all test data creation. Never use `.objects.create()` directly.
+
+- Import factories from the app's `factories.py` (e.g., `from freedom_ls.accounts.factories import UserFactory`)
+- Override only the fields relevant to the test; let factories provide sensible defaults
+- Always check existing factories before creating new ones
+- See `@.claude/docs/factory_boy.md` for the full factory reference, patterns, and the list of all available factories
+
 ## Test Patterns
 
 ### Model Tests
@@ -15,7 +24,7 @@
 @pytest.mark.django_db
 def test_model_method(mock_site_context):
     """Test a specific model method."""
-    instance = ModelName.objects.create(field1="value")
+    instance = MyModelFactory(field1="value")
     result = instance.some_method()
     assert result == expected_value
 ```
@@ -24,8 +33,9 @@ def test_model_method(mock_site_context):
 
 ```python
 @pytest.mark.django_db
-def test_endpoint(client, user, mock_site_context):
+def test_endpoint(client, mock_site_context):
     """Test endpoint returns expected response."""
+    user = UserFactory()
     client.force_login(user)
     response = client.get(reverse('app:endpoint'))
     assert response.status_code == 200
@@ -48,7 +58,7 @@ def test_utility_function():
 def test_requires_field(mock_site_context):
     """Test that field is required."""
     with pytest.raises(IntegrityError):
-        Model.objects.create(required_field=None)
+        MyModelFactory(required_field=None)
 ```
 
 ## Best Practices
@@ -76,7 +86,7 @@ Always use `mock_site_context` fixture:
 ```python
 @pytest.mark.django_db
 def test_creation(mock_site_context):
-    instance = Model.objects.create(field="value")
+    instance = MyModelFactory()
     assert instance.site is not None
 ```
 
@@ -85,8 +95,8 @@ def test_creation(mock_site_context):
 ### Keep Tests DRY
 
 Avoid repetition:
-- Create helper functions
-- Create fixtures in `conftest.py`
+- Use factories with overrides instead of duplicating setup code
+- Create helper functions for complex multi-step setup
 - Use parameterized tests
 
 ## TDD Workflow
@@ -103,7 +113,7 @@ IMPORTANT: Do not forget the refactor step. All tests should be clean and DRY!
 ### New Features
 
 1. Understand requirements (models, views, behavior, edge cases)
-2. Follow RED → GREEN → REFACTOR → REPEAT
+2. Follow RED -> GREEN -> REFACTOR -> REPEAT
 
 ### Bug Fixes
 
@@ -137,6 +147,7 @@ Cover these for each feature:
 1. Write tests BEFORE implementation (TDD)
 2. Make one test at a time
 3. Use `mock_site_context` for site-aware models
-4. Don't hardcode URLs - use `reverse()`
-5. Be explicit in assertions
-6. Keep tests focused and DRY
+4. Use factory_boy factories for test data — never `.objects.create()`
+5. Don't hardcode URLs - use `reverse()`
+6. Be explicit in assertions
+7. Keep tests focused and DRY

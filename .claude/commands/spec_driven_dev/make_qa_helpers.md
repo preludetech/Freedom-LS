@@ -1,20 +1,22 @@
 You are an expert software engineer. You are helping our QA tester with their tests.
 
-# Step 1 
+# Step 1
 
 Read over the test report and see which tests could not be run and why.
 
-# Step 2 
+# Step 2
 
-Look over the existing commands inside the freedom_ls.qa_helpers app to see what exists. 
+Look over the existing commands inside the freedom_ls.qa_helpers app to see what exists.
 
-# Step 3 
+# Step 3
 
-Create commands within the freedom_ls.qa_helpers app that the QA engineer can use to set up whatever data they need. 
+Create commands within the freedom_ls.qa_helpers app that the QA engineer can use to set up whatever data they need.
+
+When creating objects in QA helper commands, use factory_boy factories instead of `.objects.create()`. Import factories from the relevant app's `factories.py` (e.g., `from freedom_ls.accounts.factories import UserFactory`). See `.claude/docs/factory_boy.md` for available factories and patterns.
 
 # Step 4
 
-Update the frontend_qa.md file in the same directory. Explain the different commands that the QA engineer can use to set things up as needed. 
+Update the frontend_qa.md file in the same directory. Explain the different commands that the QA engineer can use to set things up as needed.
 
 This can include commands you made, and existing commands.
 

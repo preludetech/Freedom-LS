@@ -1,5 +1,6 @@
 import pytest
-from freedom_ls.content_engine.models import Form
+
+from freedom_ls.content_engine.factories import FormFactory
 
 
 test_data = [
@@ -16,17 +17,10 @@ test_data = [
 ]
 
 
-@pytest.fixture
-def form(site):
-    """Create a test form."""
-    return Form.objects.create(
-        site=site, title="Test Form", strategy="CATEGORY_VALUE_SUM"
-    )
-
-
 @pytest.mark.django_db
 @pytest.mark.parametrize("self_path,other_path,result", test_data)
-def test_all(self_path, other_path, result, form):
+def test_all(self_path, other_path, result, mock_site_context):
+    form = FormFactory(title="Test Form")
     form.file_path = self_path
     form.save()
 

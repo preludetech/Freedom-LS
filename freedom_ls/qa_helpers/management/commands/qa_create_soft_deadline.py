@@ -1,11 +1,11 @@
 """Create a soft cohort deadline for QA testing overdue styling."""
 
 import djclick as click
-from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.contrib.sites.models import Site
 from django.utils import timezone
 
 from freedom_ls.content_engine.models import Form, Topic
+from freedom_ls.student_management.factories import CohortDeadlineFactory
 from freedom_ls.student_management.models import (
     CohortCourseRegistration,
     CohortDeadline,
@@ -61,36 +61,53 @@ def command(
 
     deadline = timezone.now() + timezone.timedelta(days=days_from_now)
 
-    content_type = None
-    object_id = None
+    content_item = None
+    item_name = "course-level"
 
     if item_slug:
         topic = Topic.objects.filter(slug=item_slug, site=site).first()
         form = Form.objects.filter(slug=item_slug, site=site).first()
 
         if topic:
-            content_type = DjangoContentType.objects.get_for_model(Topic)
-            object_id = topic.id
+            content_item = topic
             item_name = topic.title
         elif form:
-            content_type = DjangoContentType.objects.get_for_model(Form)
-            object_id = form.id
+            content_item = form
             item_name = form.title
         else:
             raise click.ClickException(f"No topic or form found with slug '{item_slug}'.")
-    else:
-        item_name = "course-level"
 
-    deadline_obj, created = CohortDeadline.objects.update_or_create(
-        cohort_course_registration=registration,
-        content_type=content_type,
-        object_id=object_id,
-        site=site,
-        defaults={
+    # Use update_or_create for idempotency: look up by the unique constraint fields,
+    # then create via factory or update the existing record.
+    lookup = {
+        "cohort_course_registration": registration,
+        "content_type": None,
+        "object_id": None,
+        "site": site,
+    }
+    if content_item:
+        from django.contrib.contenttypes.models import ContentType as DjangoContentType
+
+        lookup["content_type"] = DjangoContentType.objects.get_for_model(content_item)
+        lookup["object_id"] = content_item.pk
+
+    try:
+        deadline_obj = CohortDeadline.objects.get(**lookup)
+        deadline_obj.deadline = deadline
+        deadline_obj.is_hard_deadline = hard
+        deadline_obj.save(update_fields=["deadline", "is_hard_deadline"])
+        created = False
+    except CohortDeadline.DoesNotExist:
+        factory_kwargs = {
+            "cohort_course_registration": registration,
             "deadline": deadline,
             "is_hard_deadline": hard,
-        },
-    )
+            "site": site,
+        }
+        if content_item:
+            factory_kwargs["content_item"] = content_item
+        CohortDeadlineFactory(**factory_kwargs)
+        created = True
 
     deadline_type = "hard" if hard else "soft"
     if created:
