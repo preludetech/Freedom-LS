@@ -5,6 +5,12 @@
     "cSpell.words": [
         "djlint"
     ],
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv"
-
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
+    "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.ruff": "explicit",
+        "source.organizeImports.ruff": "explicit"
+    }}
 }

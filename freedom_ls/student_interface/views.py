@@ -1,37 +1,43 @@
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING
 
-from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+
 from freedom_ls.content_engine.models import (
-    Topic,
-    Form,
     Course,
     CoursePart,
+    Form,
     FormStrategy,
-)
-from freedom_ls.student_progress.models import (
-    FormProgress,
-    TopicProgress,
-    CourseProgress,
-)
-from freedom_ls.student_management.models import Student, StudentCourseRegistration
-from freedom_ls.student_management.models import RecommendedCourse
-from .utils import (
-    get_course_index,
-    get_is_registered,
-    form_start_page_buttons,
-    get_all_courses,
-    get_completed_courses,
-    get_current_courses,
-    get_recommended_courses,
-    get_student,
+    Topic,
 )
 from freedom_ls.student_management.config import config
 from freedom_ls.student_management.deadline_utils import is_item_locked_by_deadline
+from freedom_ls.student_management.models import (
+    RecommendedCourse,
+    Student,
+    StudentCourseRegistration,
+)
+from freedom_ls.student_progress.models import (
+    CourseProgress,
+    FormProgress,
+    TopicProgress,
+)
+
+from .utils import (
+    form_start_page_buttons,
+    get_all_courses,
+    get_completed_courses,
+    get_course_index,
+    get_current_courses,
+    get_is_registered,
+    get_recommended_courses,
+    get_student,
+)
 
 
 def home(request):
@@ -48,10 +54,10 @@ def all_courses(request):
 
     # Annotate started courses with progress_percentage
     current = get_current_courses(request.user)
-    progress_by_id = {c.id: c.progress_percentage for c in current}
+    progress_by_id = {c.id: getattr(c, "progress_percentage", 0) for c in current}
     for course in courses:
         if course.id in progress_by_id:
-            course.progress_percentage = progress_by_id[course.id]
+            setattr(course, "progress_percentage", progress_by_id[course.id])  # noqa: B010
 
     return render(
         request,
@@ -69,12 +75,9 @@ def course_home(request, course_slug):
     # Get course progress if user is authenticated
     course_progress = None
     if request.user.is_authenticated:
-        try:
-            course_progress = CourseProgress.objects.get(
-                user=request.user, course=course
-            )
-        except CourseProgress.DoesNotExist:
-            pass
+        course_progress = CourseProgress.objects.filter(
+            user=request.user, course=course
+        ).first()
 
     return render(
         request,
@@ -150,8 +153,12 @@ def view_course_item(request, course_slug, index):
         student = get_student(request.user)
         if student and not isinstance(current_item, CoursePart):
             is_completed = _is_content_item_completed(current_item, request.user)
-            if is_item_locked_by_deadline(student, course, current_item, is_completed=is_completed):
-                return redirect("student_interface:course_home", course_slug=course_slug)
+            if is_item_locked_by_deadline(
+                student, course, current_item, is_completed=is_completed
+            ):
+                return redirect(
+                    "student_interface:course_home", course_slug=course_slug
+                )
 
     total_children = len(children)
 
@@ -227,11 +234,11 @@ def view_topic(request, topic, course, next_url, previous_url, is_last_item=Fals
 
     # Check if the course is already complete
     is_course_complete = False
-    try:
-        course_progress = CourseProgress.objects.get(user=request.user, course=course)
+    course_progress = CourseProgress.objects.filter(
+        user=request.user, course=course
+    ).first()
+    if course_progress:
         is_course_complete = course_progress.completed_time is not None
-    except CourseProgress.DoesNotExist:
-        pass
 
     context = {
         "course": course,
@@ -434,10 +441,8 @@ def course_form_complete(request, course_slug, index):
     # Determine if this is a failed quiz
     is_failed_quiz = False
     if form_progress and form.strategy == FormStrategy.QUIZ:
-        try:
+        with contextlib.suppress(ValueError):
             is_failed_quiz = not form_progress.passed()
-        except ValueError:
-            pass
 
     # Calculate next URL for continue button
     total_children = len(children)
@@ -509,8 +514,7 @@ def _is_content_item_completed(content_item: Topic | Form, user: User) -> bool:
         return TopicProgress.objects.filter(
             user=user, topic=content_item, complete_time__isnull=False
         ).exists()
-    elif isinstance(content_item, Form):
+    else:
         return FormProgress.objects.filter(
             user=user, form=content_item, completed_time__isnull=False
         ).exists()
-    return False

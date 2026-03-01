@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 import djclick as click
+
 from django.contrib.sites.models import Site
 from django.utils import timezone
 
@@ -31,13 +32,13 @@ def command(
 ) -> None:
     try:
         site = Site.objects.get(name=site_name)
-    except Site.DoesNotExist:
-        raise click.ClickException(f"Site with name '{site_name}' not found.")
+    except Site.DoesNotExist as e:
+        raise click.ClickException(f"Site with name '{site_name}' not found.") from e
 
     try:
         form = Form.objects.get(slug=form_slug, site=site)
-    except Form.DoesNotExist:
-        raise click.ClickException(f"Form with slug '{form_slug}' not found.")
+    except Form.DoesNotExist as e:
+        raise click.ClickException(f"Form with slug '{form_slug}' not found.") from e
 
     memberships = CohortMembership.objects.filter(
         cohort__name=cohort_name,
@@ -52,9 +53,7 @@ def command(
 
     for i, membership in enumerate(memberships):
         user = membership.student.user
-        if not FormProgress.objects.filter(
-            form=form, user=user, site=site
-        ).exists():
+        if not FormProgress.objects.filter(form=form, user=user, site=site).exists():
             FormProgressFactory(
                 form=form,
                 user=user,

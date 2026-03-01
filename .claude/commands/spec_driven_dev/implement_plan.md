@@ -18,7 +18,7 @@ Load plan, review critically, execute tasks in batches, report for review betwee
 3. If concerns: Raise them with your human partner before starting
 4. If no concerns: Begin implementing the plan
 
-### Implementing the plan 
+### Implementing the plan
 
 1. Separate the tasks into batches
 2. Each batch should be implemented by a sub agent
@@ -30,7 +30,7 @@ Load plan, review critically, execute tasks in batches, report for review betwee
 3. Mode onto the next step until there are all complete
 4. Use the request-code-review skill to review what was done
 5. Implement any needed changes
-6. Run the tests and make sure everything works 
+6. Run the tests and make sure everything works
 
 **IMPORTANT** ALL tests need to pass. If there are broken tests fix them!
 

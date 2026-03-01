@@ -4,7 +4,7 @@ Schema for yaml structures like this:
 
 from enum import Enum
 from pathlib import Path
-from typing import Any, ClassVar, Optional, Union
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -41,17 +41,17 @@ class FormStrategy(str, Enum):
 class BaseBaseContentModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    meta: Optional[dict[str, Any]] = Field(
+    meta: dict[str, Any] | None = Field(
         None, description="Optional metadata as key-value pairs"
     )
-    tags: Optional[list[str]] = Field(None, description="Optional list of tags")
+    tags: list[str] | None = Field(None, description="Optional list of tags")
     content_type: ContentType = Field(..., description="Type of content")
     file_path: Path = Field(..., description="Path to the content file")
-    uuid: Optional[str] = Field(None, description="Optional unique identifier")
+    uuid: str | None = Field(None, description="Optional unique identifier")
 
-    _registry: ClassVar[dict[ContentType, type["BaseContentModel"]]] = {}
+    _registry: ClassVar[dict[ContentType, type["BaseBaseContentModel"]]] = {}
 
-    def __init_subclass__(cls, content_type: Optional[ContentType] = None, **kwargs):
+    def __init_subclass__(cls, content_type: ContentType | None = None, **kwargs):
         super().__init_subclass__(**kwargs)
         if content_type is not None:
             BaseBaseContentModel._registry[content_type] = cls
@@ -59,19 +59,17 @@ class BaseBaseContentModel(BaseModel):
 
 class BaseContentModel(BaseBaseContentModel):
     title: str = Field(..., description="Title of the content item")
-    subtitle: Optional[str] = Field(None, description="Optional subtitle")
-    description: Optional[str] = Field(None, description="Optional description")
+    subtitle: str | None = Field(None, description="Optional subtitle")
+    description: str | None = Field(None, description="Optional description")
 
-    category: Optional[str] = Field(
+    category: str | None = Field(
         None, description="Optional category for this activity"
     )
-    image: Optional[str] = Field(
-        None, description="Optional category for this activity"
-    )
+    image: str | None = Field(None, description="Optional category for this activity")
 
 
 class MarkdownContentModel(BaseModel):
-    content: Optional[str] = Field(None, description="Markdown content body")
+    content: str | None = Field(None, description="Markdown content body")
 
 
 class Topic(BaseContentModel, MarkdownContentModel, content_type=ContentType.TOPIC):
@@ -81,9 +79,7 @@ class Topic(BaseContentModel, MarkdownContentModel, content_type=ContentType.TOP
 class Activity(
     BaseContentModel, MarkdownContentModel, content_type=ContentType.ACTIVITY
 ):
-    level: Optional[int] = Field(
-        None, description="level 1 is easiest, 2 is harder, etc"
-    )
+    level: int | None = Field(None, description="level 1 is easiest, 2 is harder, etc")
 
 
 class Child(BaseModel):
@@ -92,7 +88,7 @@ class Child(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     path: Path = Field(..., description="Path to the child content file")
-    overrides: Optional[dict[str, Any]] = Field(
+    overrides: dict[str, Any] | None = Field(
         None, description="Optional overrides as key-value pairs"
     )
 
@@ -109,7 +105,7 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
         description="List of child content references with optional overrides",
     )
 
-    content: Optional[str] = Field(None, description="Markdown content body")
+    content: str | None = Field(None, description="Markdown content body")
 
 
 class CoursePart(BaseContentModel, content_type=ContentType.COURSE_PART):
@@ -135,11 +131,11 @@ class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM
     """
 
     strategy: FormStrategy = Field(..., description="Strategy for form scoring")
-    quiz_show_incorrect: Optional[bool] = Field(
+    quiz_show_incorrect: bool | None = Field(
         None,
         description="Required if strategy is QUIZ. Should incorrect answers be shown after completion?",
     )
-    quiz_pass_percentage: Optional[int] = Field(
+    quiz_pass_percentage: int | None = Field(
         None,
         description="Required if strategy is QUIZ. Percentage (0-100) required to pass the quiz",
     )
@@ -186,10 +182,10 @@ class QuestionOption(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     text: str = Field(..., description="Display text for the option")
-    value: Union[int, str] = Field(..., description="Value associated with this option")
-    uuid: Optional[str] = Field(None, description="Unique identifier for the option")
+    value: int | str = Field(..., description="Value associated with this option")
+    uuid: str | None = Field(None, description="Unique identifier for the option")
 
-    correct: Optional[bool] = Field(
+    correct: bool | None = Field(
         None, description="Used in Quizzes: Is this the correct answer?"
     )
 
@@ -228,8 +224,8 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
         description="Question type (multiple_choice, checkboxes, short_text, long_text)",
     )
     required: bool = Field(True, description="Whether the question is required")
-    category: Optional[str] = Field(None, description="Question category")
-    options: Optional[list[QuestionOption]] = Field(
+    category: str | None = Field(None, description="Question category")
+    options: list[QuestionOption] | None = Field(
         None, description="Options for multiple choice questions"
     )
 

@@ -1,27 +1,29 @@
-from django.db import models
+from __future__ import annotations
+
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.core.exceptions import ValidationError
-from freedom_ls.site_aware_models.models import SiteAwareModel
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from django.contrib.auth import get_user_model
+from freedom_ls.site_aware_models.models import SiteAwareModel
 
 User = get_user_model()
 
 
 class Student(SiteAwareModel):
     user = models.ForeignKey(User, on_delete=models.PROTECT)
-    id_number = models.CharField(max_length=50, blank=True, null=True)
+    id_number = models.CharField(max_length=50, blank=True, default="")
     date_of_birth = models.DateField(blank=True, null=True)
-    cellphone = models.CharField(max_length=20, blank=True, null=True)
+    cellphone = models.CharField(max_length=20, blank=True, default="")
 
     def __str__(self):
         if self.user.first_name or self.user.last_name:
             return f"{self.user.first_name} {self.user.last_name}".strip()
         return self.user.email or f"Student {self.pk}"
 
-    def get_course_registrations(self):
+    def get_course_registrations(self) -> list:
         """Get all active course registrations for this student."""
         registered_collections = set()
 
@@ -43,12 +45,12 @@ class Student(SiteAwareModel):
                 cohort=membership.cohort
             ).select_related("collection")
 
-            for reg in cohort_registrations:
-                registered_collections.add(reg.collection)
+            for cohort_reg in cohort_registrations:
+                registered_collections.add(cohort_reg.collection)
 
         return list(registered_collections)
 
-    def completed_courses(self):
+    def completed_courses(self) -> list:
         """Get all completed courses for this student."""
         from freedom_ls.student_progress.models import CourseProgress
 
@@ -68,15 +70,15 @@ class Student(SiteAwareModel):
 
         return completed
 
-    def current_courses(self):
+    def current_courses(self) -> list:
         """Get all current (non-completed) courses for this student."""
-        from freedom_ls.student_progress.models import (
-            CourseProgress,
-            TopicProgress,
-            FormProgress,
-        )
         from freedom_ls.student_management.utils import (
             calculate_course_progress_percentage,
+        )
+        from freedom_ls.student_progress.models import (
+            CourseProgress,
+            FormProgress,
+            TopicProgress,
         )
 
         # Get all registered courses

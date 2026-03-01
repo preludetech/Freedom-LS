@@ -1,4 +1,5 @@
 import os
+
 from django.http import HttpRequest
 
 
@@ -12,8 +13,8 @@ def posthog_config(_request: HttpRequest) -> dict[str, str | None]:
     Returns:
         dict: Dictionary containing posthog_api_key if defined in environment
     """
-    posthog_api_key = os.environ.get('POSTHOG_API_KEY')
+    posthog_api_key = os.environ.get("POSTHOG_API_KEY")
 
     return {
-        'posthog_api_key': posthog_api_key,
+        "posthog_api_key": posthog_api_key,
     }

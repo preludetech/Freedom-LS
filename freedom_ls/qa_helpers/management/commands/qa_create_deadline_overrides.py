@@ -1,6 +1,9 @@
 """Create student deadline overrides for QA testing."""
 
+from datetime import timedelta
+
 import djclick as click
+
 from django.contrib.sites.models import Site
 from django.utils import timezone
 
@@ -50,8 +53,8 @@ def command(
 ) -> None:
     try:
         site = Site.objects.get(name=site_name)
-    except Site.DoesNotExist:
-        raise click.ClickException(f"Site with name '{site_name}' not found.")
+    except Site.DoesNotExist as e:
+        raise click.ClickException(f"Site with name '{site_name}' not found.") from e
 
     try:
         registration = CohortCourseRegistration.objects.select_related(
@@ -61,10 +64,10 @@ def command(
             collection__slug=course_slug,
             site=site,
         )
-    except CohortCourseRegistration.DoesNotExist:
+    except CohortCourseRegistration.DoesNotExist as e:
         raise click.ClickException(
             f"No course registration found for cohort '{cohort_name}' and course '{course_slug}'."
-        )
+        ) from e
 
     try:
         membership = CohortMembership.objects.select_related("student__user").get(
@@ -72,14 +75,14 @@ def command(
             student__user__email=student_email,
             site=site,
         )
-    except CohortMembership.DoesNotExist:
+    except CohortMembership.DoesNotExist as e:
         raise click.ClickException(
             f"Student '{student_email}' is not a member of cohort '{cohort_name}'."
-        )
+        ) from e
 
     student = membership.student
     is_hard = not soft
-    deadline = timezone.now() + timezone.timedelta(days=days_from_now)
+    deadline = timezone.now() + timedelta(days=days_from_now)
 
     content_item = None
     item_name = "course-level"
@@ -95,7 +98,9 @@ def command(
             content_item = form
             item_name = form.title
         else:
-            raise click.ClickException(f"No topic or form found with slug '{item_slug}'.")
+            raise click.ClickException(
+                f"No topic or form found with slug '{item_slug}'."
+            )
 
     # Check for existing override using the unique constraint fields
     lookup = {

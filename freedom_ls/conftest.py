@@ -1,15 +1,18 @@
 """Shared pytest fixtures for all tests."""
 
-import pytest
-from django.contrib.sites.models import Site
 import tempfile
 from pathlib import Path
+from urllib.parse import urlparse
+
+import pytest
+from allauth.account.models import EmailAddress
+from playwright.sync_api import Page
+
+from django.contrib.sites.models import Site
 from django.test import RequestFactory
 from django.urls import reverse
+
 from freedom_ls.accounts.factories import UserFactory
-from urllib.parse import urlparse
-from playwright.sync_api import Page
-from allauth.account.models import EmailAddress
 
 
 def reverse_url(
@@ -56,8 +59,9 @@ def make_temp_file():
 @pytest.fixture
 def mock_site_context(site, mocker):
     """Mock the thread local request and get_current_site for SiteAwareModel and templates."""
-    from freedom_ls.site_aware_models.models import _thread_locals
     from django.contrib.sites.models import SITE_CACHE
+
+    from freedom_ls.site_aware_models.models import _thread_locals
 
     # Check if request attribute already exists
     had_request = hasattr(_thread_locals, "request")
@@ -105,7 +109,7 @@ def live_server_site(live_server, site):
 @pytest.fixture
 def logged_in_page(page: Page, live_server, db, live_server_site, mock_site_context):
     """Create a logged in page with a verified email address."""
-    user = UserFactory(password="testpass")
+    user = UserFactory(password="testpass")  # noqa: S106
 
     # Set the user's email as verified (required for allauth)
     # Use get_or_create to avoid duplicate email addresses
@@ -118,7 +122,7 @@ def logged_in_page(page: Page, live_server, db, live_server_site, mock_site_cont
     page.goto(login_url)
 
     # Fill in login form
-    page.fill('input[name="login"]', user.email)
+    page.fill('input[name="login"]', str(user.email))
     page.fill('input[name="password"]', "testpass")
 
     # Submit the form
@@ -127,4 +131,4 @@ def logged_in_page(page: Page, live_server, db, live_server_site, mock_site_cont
     # Wait for navigation to complete
     page.wait_for_load_state("networkidle")
 
-    yield page
+    return page

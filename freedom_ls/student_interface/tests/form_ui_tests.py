@@ -1,6 +1,7 @@
 import pytest
 from playwright.sync_api import Page
 
+from conftest import reverse_url
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
@@ -13,8 +14,6 @@ from freedom_ls.student_management.factories import (
     StudentCourseRegistrationFactory,
     StudentFactory,
 )
-from conftest import reverse_url
-
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -199,9 +198,7 @@ def _create_course_with_form(form, title="Test Course", slug=None):
 def _register_student_for_course(course):
     """Create a student registered for a course."""
     student = StudentFactory()
-    StudentCourseRegistrationFactory(
-        student=student, collection=course, is_active=True
-    )
+    StudentCourseRegistrationFactory(student=student, collection=course, is_active=True)
     return student
 
 
@@ -211,7 +208,7 @@ def _register_student_for_course(course):
 
 
 @pytest.fixture
-def complete_form_with_questions(mock_site_context):  # noqa: ARG001
+def complete_form_with_questions(mock_site_context):
     """Create a form with multiple pages and different question types."""
     form = FormFactory(
         title="Test Quiz",
@@ -343,7 +340,7 @@ def test_start_and_fill_form_complete_workflow(
         .first()
         .options.all()
     )
-    correct_option = [opt for opt in mc_options if opt.text == "4"][0]
+    correct_option = next(opt for opt in mc_options if opt.text == "4")
     radio_button = logged_in_page.locator(
         f"input[type='radio'][value='{correct_option.id}']"
     )
@@ -412,7 +409,7 @@ def test_form_resumption(
         .first()
         .options.all()
     )
-    correct_option = [opt for opt in mc_options if opt.text == "4"][0]
+    correct_option = next(opt for opt in mc_options if opt.text == "4")
     radio_button = logged_in_page.locator(
         f"input[type='radio'][value='{correct_option.id}']"
     )

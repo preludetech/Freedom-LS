@@ -1,11 +1,13 @@
-from django.contrib import admin
-from django.contrib.sites.models import Site
+import contextlib
+
 from unfold.admin import ModelAdmin
 
-try:
+from django.contrib import admin
+from django.contrib.admin.exceptions import NotRegistered
+from django.contrib.sites.models import Site
+
+with contextlib.suppress(NotRegistered):
     admin.site.unregister(Site)
-except admin.sites.NotRegistered:
-    pass
 
 
 class SiteAwareModelAdmin(ModelAdmin):

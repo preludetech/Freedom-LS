@@ -1,7 +1,8 @@
 import djclick as click
-from django.contrib.sites.models import Site
-from django.contrib.auth import get_user_model
 from allauth.account.models import EmailAddress
+
+from django.contrib.auth import get_user_model
+from django.contrib.sites.models import Site
 
 User = get_user_model()
 
@@ -12,7 +13,7 @@ User = get_user_model()
 @click.option("--email", default=None, help="Email address for the superuser")
 @click.option("--password", default=None, help="Password for the superuser")
 def command(site_name, site_domain, email, password):
-    site, created = Site.objects.get_or_create(
+    site, _created = Site.objects.get_or_create(
         name=site_name,
         defaults={"domain": site_domain},
     )
@@ -30,7 +31,7 @@ def command(site_name, site_domain, email, password):
             "is_superuser": True,
             "is_active": True,
             "site": site,
-        }
+        },
     )
 
     if user_created:
@@ -38,7 +39,5 @@ def command(site_name, site_domain, email, password):
         user.save()
 
     EmailAddress.objects.get_or_create(
-        user=user,
-        email=user.email,
-        defaults={"verified": True, "primary": True}
+        user=user, email=user.email, defaults={"verified": True, "primary": True}
     )

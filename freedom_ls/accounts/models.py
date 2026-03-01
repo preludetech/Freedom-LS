@@ -1,24 +1,29 @@
-from django.db import models
+from __future__ import annotations
+
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
     PermissionsMixin,
 )
+from django.contrib.sites.models import Site
 from django.contrib.sites.shortcuts import get_current_site
+from django.db import models
+
 from freedom_ls.site_aware_models.models import (
-    _thread_locals,
-    SiteAwareModelBase,
     SiteAwareModel,
+    SiteAwareModelBase,
+    _thread_locals,
 )
 
 
-class UserManager(BaseUserManager):
+class UserManager(BaseUserManager["User"]):
     def get_queryset(self):
         queryset = super().get_queryset()
         request = getattr(_thread_locals, "request", None)
         if request:
             site = get_current_site(request)
-            return queryset.filter(site_id=site)
+            if isinstance(site, Site):
+                return queryset.filter(site=site)
         return queryset
 
     def create_user(
@@ -57,8 +62,8 @@ class UserManager(BaseUserManager):
 class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
 
-    first_name = models.CharField(null=True, max_length=200)
-    last_name = models.CharField(null=True, max_length=200)
+    first_name = models.CharField(blank=True, default="", max_length=200)
+    last_name = models.CharField(blank=True, default="", max_length=200)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -69,7 +74,7 @@ class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
     # The fields required when user is created. Email and password are required by default
     REQUIRED_FIELDS = []
 
-    objects = UserManager()
+    objects: models.Manager = UserManager()
 
     @property
     def username(self) -> str:

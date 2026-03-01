@@ -1,7 +1,9 @@
 import pytest
-from django.utils import timezone
+
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.utils import timezone
+
 from freedom_ls.content_engine.factories import TopicFactory
 from freedom_ls.student_management.factories import (
     StudentCourseRegistrationFactory,
@@ -18,7 +20,7 @@ def test_create_student_deadline_with_content_item(mock_site_context):
 
     deadline_dt = timezone.now() + timezone.timedelta(days=7)
 
-    deadline = StudentDeadlineFactory(
+    deadline: StudentDeadline = StudentDeadlineFactory(
         student_course_registration=student_course_reg,
         content_item=topic,
         deadline=deadline_dt,
@@ -35,7 +37,7 @@ def test_create_student_deadline_for_whole_course(mock_site_context):
     """StudentDeadline with null content_item applies to the whole course."""
     student_course_reg = StudentCourseRegistrationFactory()
 
-    deadline = StudentDeadlineFactory(
+    deadline: StudentDeadline = StudentDeadlineFactory(
         student_course_registration=student_course_reg,
     )
 

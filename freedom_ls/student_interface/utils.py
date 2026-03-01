@@ -1,27 +1,30 @@
-import uuid
+from __future__ import annotations
 
-from django.contrib.auth import get_user_model
+import uuid
+from typing import TYPE_CHECKING
+
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import QuerySet
 from django.urls import reverse
 from django.utils import timezone
+
 from freedom_ls.content_engine.models import (
-    Topic,
-    Form,
     Course,
     CoursePart,
+    Form,
     FormStrategy,
+    Topic,
 )
-from django.db.models import QuerySet
-
-from freedom_ls.student_progress.models import FormProgress, TopicProgress
-from freedom_ls.student_management.models import Student, RecommendedCourse
 from freedom_ls.student_management.config import config
 from freedom_ls.student_management.deadline_utils import (
-    get_course_deadlines,
     EffectiveDeadline,
+    get_course_deadlines,
 )
+from freedom_ls.student_management.models import RecommendedCourse, Student
+from freedom_ls.student_progress.models import FormProgress, TopicProgress
 
-User = get_user_model()
+if TYPE_CHECKING:
+    from freedom_ls.accounts.models import User
 
 # Status constants
 BLOCKED = "BLOCKED"
@@ -106,15 +109,13 @@ def get_content_status(
         else:
             return BLOCKED, BLOCKED
 
-    elif isinstance(content_item, Course):
+    else:
         # For courses, check if all direct children are complete
         # TODO: implement proper recursive course completion checking
         if next_status == READY:
             return READY, BLOCKED
         else:
             return BLOCKED, BLOCKED
-
-    return BLOCKED, BLOCKED
 
 
 def get_is_registered(user: User, course: Course) -> bool:
@@ -140,7 +141,9 @@ def get_course_index(user: User, course: Course) -> list[dict]:
 
     # Look up student and deadlines
     student = get_student(user)
-    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]] = {}
+    deadlines_map: dict[
+        tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]
+    ] = {}
     if student and config.DEADLINES_ACTIVE:
         deadlines_map = get_course_deadlines(student, course)
 
@@ -150,7 +153,12 @@ def get_course_index(user: User, course: Course) -> list[dict]:
 
     for child in course.children():
         child_dict, next_status, items_added = create_child_dict_with_flattened_index(
-            child, user, course, global_index, next_status, is_registered,
+            child,
+            user,
+            course,
+            global_index,
+            next_status,
+            is_registered,
             deadlines_map=deadlines_map,
         )
         children.append(child_dict)
@@ -212,7 +220,8 @@ def create_child_dict_with_flattened_index(
     start_index: int,
     next_status: str,
     is_registered: bool,
-    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]] | None = None,
+    deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]]
+    | None = None,
 ) -> tuple[dict, str, int]:
     """
     Create a child dict with proper flattened indices for nested items.
@@ -393,7 +402,8 @@ def get_student(user) -> Student | None:
     if not user.is_authenticated:
         return None
     try:
-        return Student.objects.get(user=user)
+        student: Student = Student.objects.get(user=user)
+        return student
     except Student.DoesNotExist:
         return None
 

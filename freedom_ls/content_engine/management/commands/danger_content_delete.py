@@ -1,17 +1,18 @@
 import djclick as click
+
 from django.db import transaction
 
 from freedom_ls.content_engine.models import (
-    Topic,
     Activity,
-    Course,
     ContentCollectionItem,
+    Course,
+    File,
     Form,
-    FormPage,
     FormContent,
+    FormPage,
     FormQuestion,
     QuestionOption,
-    File,
+    Topic,
 )
 
 
@@ -59,9 +60,7 @@ def command(yes: bool) -> None:
     # Confirm deletion
     if not yes:
         click.secho(
-            "\nWARNING: This will permanently delete ALL content!",
-            fg="red",
-            bold=True
+            "\nWARNING: This will permanently delete ALL content!", fg="red", bold=True
         )
         if not click.confirm("Are you sure you want to continue?"):
             click.secho("Deletion cancelled.", fg="green")

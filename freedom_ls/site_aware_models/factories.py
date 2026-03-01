@@ -1,6 +1,7 @@
 """Base factory for site-aware models."""
 
 import factory
+
 from django.contrib.sites.models import Site
 from django.db import models as django_models
 
@@ -13,7 +14,9 @@ def _get_current_site() -> Site | None:
 
     request = getattr(_thread_locals, "request", None)
     if request:
-        return get_current_site(request)
+        result = get_current_site(request)
+        if isinstance(result, Site):
+            return result
     return None
 
 

@@ -1,6 +1,7 @@
 """Create a cohort with course registrations but no students."""
 
 import djclick as click
+
 from django.contrib.sites.models import Site
 
 from freedom_ls.content_engine.models import Course
@@ -31,8 +32,8 @@ def command(
 ) -> None:
     try:
         site = Site.objects.get(name=site_name)
-    except Site.DoesNotExist:
-        raise click.ClickException(f"Site with name '{site_name}' not found.")
+    except Site.DoesNotExist as e:
+        raise click.ClickException(f"Site with name '{site_name}' not found.") from e
 
     try:
         cohort = Cohort.objects.get(name=cohort_name, site=site)
@@ -51,9 +52,7 @@ def command(
         if not CohortCourseRegistration.objects.filter(
             collection=course, cohort=cohort, site=site
         ).exists():
-            CohortCourseRegistrationFactory(
-                collection=course, cohort=cohort, site=site
-            )
+            CohortCourseRegistrationFactory(collection=course, cohort=cohort, site=site)
             click.secho(f"Registered cohort for course '{course.title}'", fg="green")
         else:
             click.secho(f"Already registered for '{course.title}'", fg="yellow")

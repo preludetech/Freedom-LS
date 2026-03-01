@@ -7,7 +7,11 @@ from freedom_ls.content_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.student_progress.factories import FormProgressFactory, QuestionAnswerFactory
+from freedom_ls.student_progress.factories import (
+    FormProgressFactory,
+    QuestionAnswerFactory,
+)
+from freedom_ls.student_progress.models import FormProgress, QuestionAnswer
 
 
 @pytest.mark.django_db
@@ -17,9 +21,7 @@ def test_score_category_value_sum_single_question(mock_site_context):
     form = FormFactory()
 
     # Create a page with a category
-    page = FormPageFactory(
-        form=form, title="Page 1", order=0, category="Wellbeing"
-    )
+    page = FormPageFactory(form=form, title="Page 1", order=0, category="Wellbeing")
 
     # Create a question with a category
     question = FormQuestionFactory(
@@ -31,17 +33,15 @@ def test_score_category_value_sum_single_question(mock_site_context):
     )
 
     # Create options with values
-    option1 = QuestionOptionFactory(
-        question=question, text="Great", value="5", order=0
-    )
+    option1 = QuestionOptionFactory(question=question, text="Great", value="5", order=0)
     QuestionOptionFactory(question=question, text="Good", value="3", order=1)
     QuestionOptionFactory(question=question, text="Poor", value="1", order=2)
 
     # Create form progress
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Create an answer selecting option1 (value=5)
-    answer = QuestionAnswerFactory(
+    answer: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question
     )
     answer.selected_options.add(option1)
@@ -77,9 +77,7 @@ def test_score_category_value_sum_calculates_max_score_correctly_with_unanswered
     form = FormFactory()
 
     # Create a page with a category
-    page = FormPageFactory(
-        form=form, title="Page 1", order=0, category="Wellbeing"
-    )
+    page = FormPageFactory(form=form, title="Page 1", order=0, category="Wellbeing")
 
     # Create 2 questions in the same category
     question1 = FormQuestionFactory(
@@ -102,23 +100,17 @@ def test_score_category_value_sum_calculates_max_score_correctly_with_unanswered
     option1_q1 = QuestionOptionFactory(
         question=question1, text="Option 1", value="5", order=0
     )
-    QuestionOptionFactory(
-        question=question1, text="Option 2", value="3", order=1
-    )
+    QuestionOptionFactory(question=question1, text="Option 2", value="3", order=1)
 
     # Create options for question 2 (max value = 10)
-    QuestionOptionFactory(
-        question=question2, text="Option 1", value="10", order=0
-    )
-    QuestionOptionFactory(
-        question=question2, text="Option 2", value="7", order=1
-    )
+    QuestionOptionFactory(question=question2, text="Option 1", value="10", order=0)
+    QuestionOptionFactory(question=question2, text="Option 2", value="7", order=1)
 
     # Create form progress
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Answer ONLY question 1 (leave question 2 unanswered)
-    answer1 = QuestionAnswerFactory(
+    answer1: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(option1_q1)
@@ -148,9 +140,7 @@ def test_score_category_value_sum_categorises_questions_correctly(
     form = FormFactory()
 
     # Create a page with a category
-    page = FormPageFactory(
-        form=form, title="Anatomy Page", order=0, category="Anatomy"
-    )
+    page = FormPageFactory(form=form, title="Anatomy Page", order=0, category="Anatomy")
 
     # Create a question WITHOUT a subcategory (should be top-level)
     question1 = FormQuestionFactory(
@@ -158,7 +148,7 @@ def test_score_category_value_sum_categorises_questions_correctly(
         question="Question without subcategory",
         type="multiple_choice",
         order=0,
-        category=None,  # No subcategory
+        category="",  # No subcategory
     )
 
     # Create a question WITH a subcategory
@@ -174,28 +164,24 @@ def test_score_category_value_sum_categorises_questions_correctly(
     option1_q1 = QuestionOptionFactory(
         question=question1, text="Option 1", value="5", order=0
     )
-    QuestionOptionFactory(
-        question=question1, text="Option 2", value="3", order=1
-    )
+    QuestionOptionFactory(question=question1, text="Option 2", value="3", order=1)
 
     # Create options for question 2 (max value = 10)
     option1_q2 = QuestionOptionFactory(
         question=question2, text="Option 1", value="10", order=0
     )
-    QuestionOptionFactory(
-        question=question2, text="Option 2", value="7", order=1
-    )
+    QuestionOptionFactory(question=question2, text="Option 2", value="7", order=1)
 
     # Create form progress
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Answer both questions
-    answer1 = QuestionAnswerFactory(
+    answer1: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(option1_q1)
 
-    answer2 = QuestionAnswerFactory(
+    answer2: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question2
     )
     answer2.selected_options.add(option1_q2)
@@ -269,15 +255,15 @@ def test_score_category_value_sum_with_three_level_hierarchy(
     QuestionOptionFactory(question=question2, text="Good", value="7", order=1)
 
     # Create form progress
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Answer both questions
-    answer1 = QuestionAnswerFactory(
+    answer1: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(option1_q1)
 
-    answer2 = QuestionAnswerFactory(
+    answer2: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question2
     )
     answer2.selected_options.add(option1_q2)

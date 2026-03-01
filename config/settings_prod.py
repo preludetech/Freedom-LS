@@ -1,8 +1,9 @@
-from .settings_base import *  # noqa: F403, F405
 import os
 
+from .settings_base import *  # noqa: F403
 
-HOST_DOMAIN = os.getenv("HOST_DOMAIN")
+HOST_DOMAIN = os.environ["HOST_DOMAIN"]
+
 
 DEBUG = False
 

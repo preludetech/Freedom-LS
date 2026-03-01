@@ -99,7 +99,7 @@ Use `Meta.exclude` and `Params` to accept a convenience parameter, then derive `
 class CohortDeadlineFactory(SiteAwareFactory):
     class Meta:
         model = CohortDeadline
-        exclude = ("content_item",)
+        exclude = ["content_item"]
 
     class Params:
         content_item = None

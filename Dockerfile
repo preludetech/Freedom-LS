@@ -69,7 +69,7 @@ USER appuser
 ENV DJANGO_SETTINGS_MODULE=config.settings_prod
 
 # Collect static files
-RUN python manage.py collectstatic --noinput 
+RUN python manage.py collectstatic --noinput
 
 # Expose port
 EXPOSE 8000

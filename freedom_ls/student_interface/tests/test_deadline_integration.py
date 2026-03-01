@@ -1,18 +1,21 @@
-import pytest
 from datetime import timedelta
+
+import pytest
+
 from django.test import override_settings
-from django.utils import timezone
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.models import Course
+from freedom_ls.student_interface.utils import BLOCKED, get_course_index
 from freedom_ls.student_management.factories import (
-    StudentFactory,
-    CohortFactory,
-    CohortMembershipFactory,
     CohortCourseRegistrationFactory,
     CohortDeadlineFactory,
+    CohortFactory,
+    CohortMembershipFactory,
+    StudentFactory,
 )
-from freedom_ls.student_interface.utils import get_course_index, BLOCKED
 
 
 def _setup_cohort_registration(student, course):
@@ -26,7 +29,7 @@ def _setup_cohort_registration(student, course):
 @override_settings(DEADLINES_ACTIVE=True)
 def test_course_index_includes_deadline_data(mock_site_context):
     """get_course_index includes deadline info in child dicts."""
-    course = CourseFactory(title="Test Course", slug="test-course")
+    course: Course = CourseFactory(title="Test Course", slug="test-course")
     topic = TopicFactory(title="Test Topic", slug="test-topic")
     student = StudentFactory()
     course.items.create(child=topic, order=0)
@@ -52,7 +55,7 @@ def test_course_index_includes_deadline_data(mock_site_context):
 @override_settings(DEADLINES_ACTIVE=True)
 def test_expired_hard_deadline_locks_incomplete_item(mock_site_context):
     """Expired hard deadline + incomplete item = BLOCKED with no URL."""
-    course = CourseFactory(title="Test Course", slug="test-course")
+    course: Course = CourseFactory(title="Test Course", slug="test-course")
     topic = TopicFactory(title="Test Topic", slug="test-topic")
     student = StudentFactory()
     course.items.create(child=topic, order=0)
@@ -76,7 +79,7 @@ def test_expired_hard_deadline_locks_incomplete_item(mock_site_context):
 @override_settings(DEADLINES_ACTIVE=True)
 def test_soft_deadline_does_not_lock(mock_site_context):
     """Soft deadlines never change the access status."""
-    course = CourseFactory(title="Test Course", slug="test-course")
+    course: Course = CourseFactory(title="Test Course", slug="test-course")
     topic = TopicFactory(title="Test Topic", slug="test-topic")
     student = StudentFactory()
     course.items.create(child=topic, order=0)
@@ -99,7 +102,7 @@ def test_soft_deadline_does_not_lock(mock_site_context):
 @pytest.mark.django_db
 def test_no_deadlines_no_deadline_key(mock_site_context):
     """When no deadlines exist, child dicts have empty deadlines list."""
-    course = CourseFactory(title="Test Course", slug="test-course")
+    course: Course = CourseFactory(title="Test Course", slug="test-course")
     topic = TopicFactory(title="Test Topic", slug="test-topic")
     student = StudentFactory()
     course.items.create(child=topic, order=0)
@@ -115,7 +118,7 @@ def test_no_deadlines_no_deadline_key(mock_site_context):
 @override_settings(DEADLINES_ACTIVE=True)
 def test_view_course_item_redirects_if_locked(client, mock_site_context):
     """Direct URL access to a locked item redirects to the course home."""
-    course = CourseFactory(title="Test Course", slug="test-course")
+    course: Course = CourseFactory(title="Test Course", slug="test-course")
     topic = TopicFactory(title="Test Topic", slug="test-topic")
     student = StudentFactory()
     course.items.create(child=topic, order=0)
@@ -144,7 +147,7 @@ def test_view_course_item_redirects_if_locked(client, mock_site_context):
 @override_settings(DEADLINES_ACTIVE=False)
 def test_get_course_index_skips_deadlines_when_inactive(mock_site_context):
     """When DEADLINES_ACTIVE=False, deadlines list is empty and item is not BLOCKED."""
-    course = CourseFactory(title="Test Course", slug="test-course")
+    course: Course = CourseFactory(title="Test Course", slug="test-course")
     topic = TopicFactory(title="Test Topic", slug="test-topic")
     student = StudentFactory()
     course.items.create(child=topic, order=0)
@@ -170,7 +173,7 @@ def test_view_course_item_skips_lock_check_when_deadlines_inactive(
     client, mock_site_context
 ):
     """When DEADLINES_ACTIVE=False, expired hard deadline does not redirect."""
-    course = CourseFactory(title="Test Course", slug="test-course")
+    course: Course = CourseFactory(title="Test Course", slug="test-course")
     topic = TopicFactory(title="Test Topic", slug="test-topic")
     student = StudentFactory()
     course.items.create(child=topic, order=0)

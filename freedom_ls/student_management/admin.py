@@ -1,19 +1,21 @@
-from django.contrib import admin
+from guardian.admin import GuardedModelAdmin
 from unfold.admin import TabularInline
 
+from django.contrib import admin
+
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+
 from .models import (
-    Student,
     Cohort,
-    CohortMembership,
-    StudentCourseRegistration,
     CohortCourseRegistration,
     CohortDeadline,
-    StudentDeadline,
-    StudentCohortDeadlineOverride,
+    CohortMembership,
     RecommendedCourse,
+    Student,
+    StudentCohortDeadlineOverride,
+    StudentCourseRegistration,
+    StudentDeadline,
 )
-from guardian.admin import GuardedModelAdmin
 
 
 class StudentCohortMembershipInline(TabularInline):
@@ -52,27 +54,22 @@ class StudentAdmin(SiteAwareModelAdmin):
     autocomplete_fields = ["user"]
     exclude = ["site"]
 
+    @admin.display(description="Full Name", ordering="user__first_name")
     def get_full_name(self, obj):
         """Display the student's full name from user."""
         if obj.user.first_name or obj.user.last_name:
             return f"{obj.user.first_name} {obj.user.last_name}".strip()
         return "-"
 
-    get_full_name.short_description = "Full Name"
-    get_full_name.admin_order_field = "user__first_name"
-
+    @admin.display(description="Email", ordering="user__email")
     def get_email(self, obj):
         """Display the student's email from user."""
         return obj.user.email
 
-    get_email.short_description = "Email"
-    get_email.admin_order_field = "user__email"
-
+    @admin.display(description="Cohorts")
     def get_cohorts(self, obj):
         cohorts = Cohort.objects.filter(cohortmembership__student=obj)
         return ", ".join([cohort.name for cohort in cohorts])
-
-    get_cohorts.short_description = "Cohorts"
 
 
 class CohortMembershipInline(TabularInline):
@@ -131,14 +128,12 @@ class StudentCourseRegistrationAdmin(SiteAwareModelAdmin):
         ("Timestamps", {"fields": ("registered_at",), "classes": ("collapse",)}),
     )
 
+    @admin.display(description="Student", ordering="student__user__first_name")
     def get_student_name(self, obj):
         """Display student's full name."""
         if obj.student.user.first_name or obj.student.user.last_name:
             return f"{obj.student.user.first_name} {obj.student.user.last_name}".strip()
         return obj.student.user.email
-
-    get_student_name.short_description = "Student"
-    get_student_name.admin_order_field = "student__user__first_name"
 
 
 class CohortDeadlineInline(TabularInline):
@@ -200,22 +195,21 @@ class CohortDeadlineAdmin(SiteAwareModelAdmin):
     ]
     autocomplete_fields = ["cohort_course_registration"]
 
+    @admin.display(
+        description="Cohort", ordering="cohort_course_registration__cohort__name"
+    )
     def get_cohort_name(self, obj: CohortDeadline) -> str:
         return obj.cohort_course_registration.cohort.name
 
-    get_cohort_name.short_description = "Cohort"
-    get_cohort_name.admin_order_field = "cohort_course_registration__cohort__name"
-
+    @admin.display(
+        description="Course", ordering="cohort_course_registration__collection__title"
+    )
     def get_course_name(self, obj: CohortDeadline) -> str:
         return obj.cohort_course_registration.collection.title
 
-    get_course_name.short_description = "Course"
-    get_course_name.admin_order_field = "cohort_course_registration__collection__title"
-
+    @admin.display(description="Content Item")
     def get_content_item(self, obj: CohortDeadline) -> str:
         return str(obj.content_item) if obj.content_item else "Whole course"
-
-    get_content_item.short_description = "Content Item"
 
 
 @admin.register(StudentDeadline)
@@ -242,20 +236,17 @@ class StudentDeadlineAdmin(SiteAwareModelAdmin):
     ]
     autocomplete_fields = ["student_course_registration"]
 
+    @admin.display(description="Student")
     def get_student_name(self, obj: StudentDeadline) -> str:
         return str(obj.student_course_registration.student)
 
-    get_student_name.short_description = "Student"
-
+    @admin.display(description="Course")
     def get_course_name(self, obj: StudentDeadline) -> str:
         return obj.student_course_registration.collection.title
 
-    get_course_name.short_description = "Course"
-
+    @admin.display(description="Content Item")
     def get_content_item(self, obj: StudentDeadline) -> str:
         return str(obj.content_item) if obj.content_item else "Whole course"
-
-    get_content_item.short_description = "Content Item"
 
 
 @admin.register(StudentCohortDeadlineOverride)
@@ -286,25 +277,21 @@ class StudentCohortDeadlineOverrideAdmin(SiteAwareModelAdmin):
     ]
     autocomplete_fields = ["cohort_course_registration", "student"]
 
+    @admin.display(description="Student")
     def get_student_name(self, obj: StudentCohortDeadlineOverride) -> str:
         return str(obj.student)
 
-    get_student_name.short_description = "Student"
-
+    @admin.display(description="Cohort")
     def get_cohort_name(self, obj: StudentCohortDeadlineOverride) -> str:
         return obj.cohort_course_registration.cohort.name
 
-    get_cohort_name.short_description = "Cohort"
-
+    @admin.display(description="Course")
     def get_course_name(self, obj: StudentCohortDeadlineOverride) -> str:
         return obj.cohort_course_registration.collection.title
 
-    get_course_name.short_description = "Course"
-
+    @admin.display(description="Content Item")
     def get_content_item(self, obj: StudentCohortDeadlineOverride) -> str:
         return str(obj.content_item) if obj.content_item else "Whole course"
-
-    get_content_item.short_description = "Content Item"
 
 
 @admin.register(RecommendedCourse)

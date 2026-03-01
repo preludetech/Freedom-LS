@@ -3,42 +3,43 @@ example usage:
 python manage.py content_save  ../bloom_content Bloom
 """
 
+import contextlib
 import logging
-import uuid
 import mimetypes
+import re
+import uuid
+from collections import defaultdict
+from pathlib import Path
+
+import djclick as click
 import frontmatter
 import yaml
-import re
-from pathlib import Path
-from collections import defaultdict
 
+from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.contrib.sites.models import Site
 from django.core.files import File as DjangoFile
 from django.db import transaction
 from django.utils.text import slugify
 
-import djclick as click
-
-from freedom_ls.content_engine.validate import (
-    validate,
-    get_all_files,
-    parse_single_file,
-)
-from freedom_ls.content_engine.schema import ContentType as SchemaContentType
 from freedom_ls.content_engine.models import (
-    Topic,
     Activity,
+    ContentCollectionItem,
     Course,
     CoursePart,
-    ContentCollectionItem,
+    File,
     Form,
-    FormPage,
     FormContent,
+    FormPage,
     FormQuestion,
     QuestionOption,
-    File,
+    Topic,
 )
-from django.contrib.contenttypes.models import ContentType as DjangoContentType
+from freedom_ls.content_engine.schema import ContentType as SchemaContentType
+from freedom_ls.content_engine.validate import (
+    get_all_files,
+    parse_single_file,
+    validate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ class PreservingDumper(yaml.SafeDumper):
 
         # If we explicitly set style to '|' (literal), keep it
         # even if the string has special characters
-        if self.event.style == "|":
+        if self.event and hasattr(self.event, "style") and self.event.style == "|":
             return "|"
 
         return style
@@ -95,7 +96,7 @@ def update_file_with_uuid(file_path, item_uuid):
     """
     if file_path.suffix in [".yaml", ".yml"]:
         # Handle YAML file
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
         sections = content.split("---")
@@ -150,7 +151,7 @@ def update_file_with_option_uuids(file_path, question_uuid, option_uuids):
     if file_path.suffix not in [".yaml", ".yml"]:
         return
 
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         content = f.read()
 
     sections = content.split("---")
@@ -162,20 +163,22 @@ def update_file_with_option_uuids(file_path, question_uuid, option_uuids):
     # Find the question section with matching UUID
     for idx, section in enumerate(sections):
         section_data = yaml.safe_load(section)
-        if section_data and section_data.get("uuid") == str(question_uuid):
-            # Update options with UUIDs
-            if "options" in section_data and section_data["options"]:
-                for opt_idx, opt_uuid in option_uuids:
-                    if opt_idx < len(section_data["options"]):
-                        section_data["options"][opt_idx]["uuid"] = str(opt_uuid)
+        if (
+            section_data
+            and section_data.get("uuid") == str(question_uuid)
+            and section_data.get("options")
+        ):
+            for opt_idx, opt_uuid in option_uuids:
+                if opt_idx < len(section_data["options"]):
+                    section_data["options"][opt_idx]["uuid"] = str(opt_uuid)
 
-                sections[idx] = yaml.dump(
-                    section_data,
-                    Dumper=PreservingDumper,
-                    default_flow_style=False,
-                    allow_unicode=True,
-                ).strip()
-                break
+            sections[idx] = yaml.dump(
+                section_data,
+                Dumper=PreservingDumper,
+                default_flow_style=False,
+                allow_unicode=True,
+            ).strip()
+            break
 
     new_content = "---\n" + "\n---\n".join(sections) + "\n"
 
@@ -207,10 +210,8 @@ def get_unique_slug(model_class, site, base_slug, existing_uuid=None):
 
         # If we're updating an existing object, exclude it from the check
         if existing_uuid:
-            try:
+            with contextlib.suppress(ValueError, AttributeError):
                 queryset = queryset.exclude(id=uuid.UUID(existing_uuid))
-            except (ValueError, AttributeError):
-                pass  # Invalid UUID or None, continue without exclusion
 
         if not queryset.exists():
             return slug

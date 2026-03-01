@@ -63,6 +63,146 @@ dev = [
     "djlint>=1.36.4",
     "factory-boy>=3.3.3",
     "pytest-cov>=7.0.0",
+    "django-stubs[compatible-mypy]>=5.2.9",
+    "pre-commit>=4.5.1",
+    "detect-secrets>=1.5.0",
 ]
 
 
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+target-version = "py313"
+extend-exclude = ["migrations", "staticfiles", "media"]
+src = ["."]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # Pyflakes
+    "W",      # pycodestyle warnings
+    "I",      # isort import sorting
+    "N",      # pep8-naming
+    "DJ",     # flake8-django
+    "UP",     # pyupgrade (modern Python syntax)
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "S",      # flake8-bandit (security)
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez
+    "T20",    # flake8-print (no print in production)
+    "PT",     # flake8-pytest-style
+    "RUF",    # Ruff-specific rules
+]
+ignore = [
+    "E501",   # line too long — handled by ruff format
+    "RUF012", # mutable class attributes — Django model fields by design
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.per-file-ignores]
+# Auto-generated files — allow long lines, import order issues, wildcard imports, uppercase vars, and skip Django rules
+"*/migrations/*.py" = ["E501", "E402", "F401", "F403", "N806", "DJ"]
+# Settings files — allow late imports, unused imports, and wildcard imports (e.g. from .base import *)
+"*/settings.py" = ["E402", "F401", "F403"]
+"*/settings/*.py" = ["E402", "F401", "F403"]
+# __init__.py — allow re-exports and wildcard imports
+"*/__init__.py" = ["F401", "F403"]
+# manage.py — allow Django-specific patterns (env default, settings module reference)
+"manage.py" = ["DJ001", "DJ008"]
+# Tests — allow assert, unusual naming (e.g. camelCase test methods), assert True/False, and hardcoded passwords
+"**/tests/**/*.py" = ["S101", "N802", "N806", "B011", "S106"]
+# Conftest — allow unused imports (fixtures are imported for side effects)
+"conftest.py" = ["F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["freedom_ls"]
+known-third-party = []
+section-order = [
+    "future", "standard-library", "third-party",
+    "django", "first-party", "local-folder",
+]
+
+[tool.ruff.lint.isort.sections]
+"django" = ["django", "rest_framework"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "django.utils.translation.gettext_lazy",
+    "django.utils.translation.pgettext_lazy",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+
+
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["mypy_django_plugin.main"]
+mypy_path = "."
+namespace_packages = true
+explicit_package_bases = true
+
+# set these to true to make it more permissive since the code is newly typed
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_any_generics = false
+
+
+
+check_untyped_defs = true
+
+
+strict_optional = true
+no_implicit_optional = true
+disallow_untyped_calls = false        # too noisy with Django internals
+disallow_untyped_decorators = false   # Django decorators often untyped
+
+# Warnings
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_no_return = true
+
+# Misc
+strict_equality = true
+extra_checks = true
+show_error_codes = true
+show_column_numbers = true
+pretty = true
+
+exclude = ["migrations/", "manage\\.py"]
+
+[[tool.mypy.overrides]]
+module = "*.migrations.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "celery.*", "django_filters.*", "debug_toolbar.*",
+    "django_extensions.*", "corsheaders.*", "storages.*",
+    "boto3.*", "botocore.*", "redis.*", "PIL.*",
+    "allauth.*", "djclick.*", "frontmatter.*",
+    "markdown.*", "unfold.*", "factory.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "*.tests.*"
+disallow_untyped_defs = false
+disable_error_code = ["attr-defined", "assignment", "arg-type", "misc", "comparison-overlap"]  # factory-boy is untyped; its metaclass makes mypy think Factory() returns the factory, not the model
+
+[[tool.mypy.overrides]]
+module = "freedom_ls.xapi_learning_record_store.*"
+ignore_errors = true  # WIP module with broken imports (api_urls imports non-existent 'api')
+
+[tool.django-stubs]
+django_settings_module = "config.settings_dev"

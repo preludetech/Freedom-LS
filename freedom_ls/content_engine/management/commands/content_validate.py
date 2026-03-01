@@ -1,6 +1,6 @@
-from freedom_ls.content_engine.validate import validate
-
 import djclick as click
+
+from freedom_ls.content_engine.validate import validate
 
 
 @click.command()

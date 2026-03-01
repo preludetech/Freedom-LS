@@ -1,25 +1,25 @@
 import pytest
 
-from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartFactory,
     FormFactory,
     TopicFactory,
 )
+from freedom_ls.content_engine.models import Course, CoursePart
+from freedom_ls.student_interface.utils import BLOCKED, READY, get_course_index
 from freedom_ls.student_management.factories import (
     StudentCourseRegistrationFactory,
     StudentFactory,
 )
-from freedom_ls.student_interface.utils import get_course_index, READY, BLOCKED
 
 
 @pytest.mark.django_db
 def test_course_part_children_have_status_and_url(mock_site_context):
     """Test that CoursePart children have proper status and url fields."""
     # Create a course with a CoursePart that contains children
-    course = CourseFactory(title="Test Course", slug="test-course")
-    course_part = CoursePartFactory(title="Chapter 1", slug="chapter-1")
+    course: Course = CourseFactory(title="Test Course", slug="test-course")
+    course_part: CoursePart = CoursePartFactory(title="Chapter 1", slug="chapter-1")
     topic = TopicFactory(title="Topic 1", slug="topic-1", content="Test content")
     form = FormFactory(title="Quiz 1", slug="quiz-1")
 
@@ -65,8 +65,8 @@ def test_course_part_children_have_status_and_url(mock_site_context):
 def test_course_part_status_based_on_children(mock_site_context):
     """Test that CoursePart status is calculated based on its children."""
     # Create a course with a CoursePart
-    course = CourseFactory(title="Test Course", slug="test-course")
-    course_part = CoursePartFactory(title="Chapter 1", slug="chapter-1")
+    course: Course = CourseFactory(title="Test Course", slug="test-course")
+    course_part: CoursePart = CoursePartFactory(title="Chapter 1", slug="chapter-1")
     topic = TopicFactory(title="Topic 1", slug="topic-1", content="Test content")
 
     course.items.create(child=course_part, order=0)

@@ -1,6 +1,6 @@
 # Project: Freedom Learning System (FLS)
 
-This is a fully functioning Learner Management System. 
+This is a fully functioning Learner Management System.
 
 It is designed to be installed into other Django projects. FLS will work out of the box, but is designed to be extended and customized.
 
@@ -17,7 +17,7 @@ Use modern Python syntax: `X | None` instead of `Optional[X]`, `list[str]` inste
 - `uv run pytest` — run tests
 - `uv run manage.py makemigrations` - make migrations
 - `uv run manage.py migrate` - migrate
-- `npm run tailwind_build` Build tailwind 
+- `npm run tailwind_build` Build tailwind
 
 ## Key directories
 
@@ -69,5 +69,5 @@ Whenever you are asked to do anything, use all the appropriate skills. Rely on s
 
 
 ## IMPORTANT
-Do not EVER delete TODO or @claude comments in the code unless those TODOS have been completed. 
+Do not EVER delete TODO or @claude comments in the code unless those TODOS have been completed.
 If you are told not to implement a feature immeditately then that does not mean the feature should never be implemented. Leave the comments and TODOs in place

@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 import factory
+
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
@@ -81,7 +82,7 @@ class CohortDeadlineFactory(SiteAwareFactory):
 
     class Meta:
         model = CohortDeadline
-        exclude = ("content_item",)
+        exclude = ["content_item"]
 
     class Params:
         content_item = None
@@ -109,14 +110,12 @@ class StudentDeadlineFactory(SiteAwareFactory):
 
     class Meta:
         model = StudentDeadline
-        exclude = ("content_item",)
+        exclude = ["content_item"]
 
     class Params:
         content_item = None
 
-    student_course_registration = factory.SubFactory(
-        StudentCourseRegistrationFactory
-    )
+    student_course_registration = factory.SubFactory(StudentCourseRegistrationFactory)
     deadline = factory.LazyFunction(lambda: timezone.now() + timedelta(days=30))
     is_hard_deadline = False
 
@@ -139,7 +138,7 @@ class StudentCohortDeadlineOverrideFactory(SiteAwareFactory):
 
     class Meta:
         model = StudentCohortDeadlineOverride
-        exclude = ("content_item",)
+        exclude = ["content_item"]
 
     class Params:
         content_item = None

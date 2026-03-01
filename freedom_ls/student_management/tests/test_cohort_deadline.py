@@ -1,5 +1,9 @@
+from datetime import timedelta
+
 import pytest
+
 from django.utils import timezone
+
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
@@ -15,9 +19,9 @@ def test_create_cohort_deadline_with_content_item(mock_site_context):
     topic = TopicFactory(title="Test Topic")
     cohort_course_reg = CohortCourseRegistrationFactory()
 
-    deadline_dt = timezone.now() + timezone.timedelta(days=7)
+    deadline_dt = timezone.now() + timedelta(days=7)
 
-    deadline = CohortDeadlineFactory(
+    deadline: CohortDeadline = CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
         content_item=topic,
         deadline=deadline_dt,
@@ -34,9 +38,9 @@ def test_create_cohort_deadline_with_content_item(mock_site_context):
 def test_create_cohort_deadline_for_whole_course(mock_site_context):
     """CohortDeadline with null content_item applies to the whole course."""
     cohort_course_reg = CohortCourseRegistrationFactory()
-    deadline_dt = timezone.now() + timezone.timedelta(days=7)
+    deadline_dt = timezone.now() + timedelta(days=7)
 
-    deadline = CohortDeadlineFactory(
+    deadline: CohortDeadline = CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
         deadline=deadline_dt,
     )
@@ -52,7 +56,9 @@ def test_str_with_content_item(mock_site_context):
     topic = TopicFactory(title="Test Topic")
     cohort = CohortFactory(name="Test Cohort")
     course = CourseFactory(title="Test Course")
-    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    cohort_course_reg = CohortCourseRegistrationFactory(
+        cohort=cohort, collection=course
+    )
 
     deadline = CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
@@ -67,7 +73,9 @@ def test_str_without_content_item(mock_site_context):
     """__str__ shows 'Whole course' when content_item is null."""
     cohort = CohortFactory(name="Test Cohort")
     course = CourseFactory(title="Test Course")
-    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    cohort_course_reg = CohortCourseRegistrationFactory(
+        cohort=cohort, collection=course
+    )
 
     deadline = CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
@@ -87,14 +95,14 @@ def test_unique_constraint_prevents_duplicate_item_deadline(mock_site_context):
     CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
         content_item=topic,
-        deadline=timezone.now() + timezone.timedelta(days=7),
+        deadline=timezone.now() + timedelta(days=7),
     )
 
     with pytest.raises(IntegrityError):
         CohortDeadlineFactory(
             cohort_course_registration=cohort_course_reg,
             content_item=topic,
-            deadline=timezone.now() + timezone.timedelta(days=14),
+            deadline=timezone.now() + timedelta(days=14),
         )
 
 
@@ -111,7 +119,7 @@ def test_clean_prevents_duplicate_course_level_deadline(mock_site_context):
 
     duplicate = CohortDeadline(
         cohort_course_registration=cohort_course_reg,
-        deadline=timezone.now() + timezone.timedelta(days=14),
+        deadline=timezone.now() + timedelta(days=14),
     )
 
     with pytest.raises(ValidationError):
@@ -125,7 +133,7 @@ def test_default_is_hard_deadline(mock_site_context):
 
     deadline = CohortDeadline.objects.create(
         cohort_course_registration=cohort_course_reg,
-        deadline=timezone.now() + timezone.timedelta(days=7),
+        deadline=timezone.now() + timedelta(days=7),
     )
 
     assert deadline.is_hard_deadline is True

@@ -1,9 +1,16 @@
-import pytest
 from datetime import timedelta
+
+import pytest
+
 from django.template.defaultfilters import date as django_date
 from django.utils import timezone
+
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
+    CourseFactory,
+    TopicFactory,
+)
 from freedom_ls.educator_interface.views import CohortCourseProgressPanel
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
@@ -12,17 +19,21 @@ from freedom_ls.student_management.factories import (
     CohortMembershipFactory,
     StudentFactory,
 )
+from freedom_ls.student_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    Student,
+)
 from freedom_ls.student_progress.factories import (
     CourseProgressFactory,
     TopicProgressFactory,
 )
-from freedom_ls.content_engine.factories import ContentCollectionItemFactory
-from freedom_ls.student_management.models import Cohort, Student
+from freedom_ls.student_progress.models import TopicProgress
 
 
 def _make_student(email: str, cohort: Cohort) -> Student:
     """Create a student with a user and cohort membership."""
-    student = StudentFactory(user=UserFactory(email=email))
+    student: Student = StudentFactory(user=UserFactory(email=email))
     CohortMembershipFactory(student=student, cohort=cohort)
     return student
 
@@ -39,7 +50,9 @@ def test_panel_renders_empty_state_for_cohort_with_no_registrations(
     request = site_aware_request.get("/")
     request.user = educator_user
     content = panel.get_content(request)
-    assert "no course registrations" in content.lower() or "no courses" in content.lower()
+    assert (
+        "no course registrations" in content.lower() or "no courses" in content.lower()
+    )
 
 
 @pytest.mark.django_db
@@ -75,7 +88,9 @@ def test_panel_selects_specific_registration_via_get_param(
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
     course2 = CourseFactory(title="Second Course")
-    reg2 = CohortCourseRegistrationFactory(cohort=cohort, collection=course2)
+    reg2: CohortCourseRegistration = CohortCourseRegistrationFactory(
+        cohort=cohort, collection=course2
+    )
 
     panel = CohortCourseProgressPanel(cohort)
     request = site_aware_request.get(f"/?registration={reg2.pk}")
@@ -102,9 +117,7 @@ def test_panel_includes_inactive_registrations_in_dropdown(
 
 
 @pytest.mark.django_db
-def test_students_sorted_by_progress_ascending(
-    mock_site_context, site_aware_request
-):
+def test_students_sorted_by_progress_ascending(mock_site_context, site_aware_request):
     """Test that students are sorted by progress ascending (least progress first)."""
     cohort = CohortFactory()
     course = CourseFactory()
@@ -114,13 +127,11 @@ def test_students_sorted_by_progress_ascending(
     topic = TopicFactory(title="Topic 1")
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
 
-    student_a = _make_student("student_a@example.com", cohort)
+    _make_student("student_a@example.com", cohort)
     student_b = _make_student("student_b@example.com", cohort)
 
     # student_b has progress, student_a does not
-    CourseProgressFactory(
-        user=student_b.user, course=course, progress_percentage=100
-    )
+    CourseProgressFactory(user=student_b.user, course=course, progress_percentage=100)
 
     panel = CohortCourseProgressPanel(cohort)
     request = site_aware_request.get("/")
@@ -146,7 +157,7 @@ def test_students_without_course_progress_appear_first(
     topic = TopicFactory(title="Topic 1")
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
 
-    student_no_progress = _make_student("no_progress@example.com", cohort)
+    _make_student("no_progress@example.com", cohort)
     student_with_progress = _make_student("has_progress@example.com", cohort)
 
     CourseProgressFactory(
@@ -164,9 +175,7 @@ def test_students_without_course_progress_appear_first(
 
 
 @pytest.mark.django_db
-def test_column_pagination_slices_items(
-    mock_site_context, site_aware_request
-):
+def test_column_pagination_slices_items(mock_site_context, site_aware_request):
     """Test that column pagination slices items correctly."""
     cohort = CohortFactory()
     course = CourseFactory()
@@ -176,7 +185,9 @@ def test_column_pagination_slices_items(
     # Create 20 topics (more than page size of 15)
     for i in range(20):
         topic = TopicFactory(title=f"Topic {i:02d}")
-        ContentCollectionItemFactory(collection_object=course, child_object=topic, order=i)
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=i
+        )
 
     _make_student("student@example.com", cohort)
 
@@ -210,13 +221,15 @@ def test_cell_data_fetched_only_for_visible_window(
     topics = []
     for i in range(20):
         topic = TopicFactory(title=f"Topic {i:02d}")
-        ContentCollectionItemFactory(collection_object=course, child_object=topic, order=i)
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=i
+        )
         topics.append(topic)
 
     student = _make_student("student@example.com", cohort)
 
     # Complete topic 16 (on page 2 of columns)
-    tp = TopicProgressFactory(user=student.user, topic=topics[16])
+    tp: TopicProgress = TopicProgressFactory(user=student.user, topic=topics[16])
     tp.complete_time = timezone.now()
     tp.save()
 
@@ -254,7 +267,7 @@ def test_displayed_percentage_matches_actual_completion(
     student = _make_student("student@example.com", cohort)
 
     # Complete 1 of 2 topics -> 50% (save trigger auto-creates CourseProgress)
-    tp = TopicProgressFactory(user=student.user, topic=topic1)
+    tp: TopicProgress = TopicProgressFactory(user=student.user, topic=topic1)
     tp.complete_time = timezone.now()
     tp.save()
 
@@ -267,9 +280,7 @@ def test_displayed_percentage_matches_actual_completion(
 
 
 @pytest.mark.django_db
-def test_htmx_request_returns_panel_content_only(
-    mock_site_context, site_aware_request
-):
+def test_htmx_request_returns_panel_content_only(mock_site_context, site_aware_request):
     """Test that HTMX request returns just the panel content (not wrapped in panel_container)."""
     cohort = CohortFactory()
     course = CourseFactory()
@@ -294,14 +305,14 @@ def test_htmx_request_returns_panel_content_only(
 
 
 @pytest.mark.django_db
-def test_item_deadlines_shown_in_column_headers(
-    mock_site_context, site_aware_request
-):
+def test_item_deadlines_shown_in_column_headers(mock_site_context, site_aware_request):
     """Test that item-level deadlines appear in column headers with distinct hard/soft styling."""
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    cohort_course_reg = CohortCourseRegistrationFactory(
+        cohort=cohort, collection=course
+    )
 
     topic1 = TopicFactory(title="Topic Hard")
     topic2 = TopicFactory(title="Topic Soft")

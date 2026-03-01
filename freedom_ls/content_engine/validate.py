@@ -6,11 +6,13 @@ from the command line run: python validate.py /path/to/content/directory_or_item
 The path can either be a file or a directory. if it is a directory then recurse over all files and validate each one.
 """
 
-import frontmatter
 import logging
-import yaml
 from pathlib import Path
+
+import frontmatter
+import yaml
 from pydantic import ValidationError
+
 from .schema import SCHEMAS
 
 logger = logging.getLogger(__name__)
@@ -140,19 +142,19 @@ def parse_yaml_file(path):
         list: List of validated pydantic model instances
     """
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             content = f.read()
-    except FileNotFoundError:
-        raise ValueError(f"\n❌ File not found: {path}")
-    except PermissionError:
-        raise ValueError(f"\n❌ Permission denied when reading: {path}")
+    except FileNotFoundError as e:
+        raise ValueError(f"\n❌ File not found: {path}") from e
+    except PermissionError as e:
+        raise ValueError(f"\n❌ Permission denied when reading: {path}") from e
     except UnicodeDecodeError as e:
         raise ValueError(
             f"\n❌ File encoding error in {path}\n"
             f"The file is not valid UTF-8. Please ensure it's saved with UTF-8 encoding."
         ) from e
     except Exception as e:
-        raise ValueError(f"\n❌ Error reading file {path}: {str(e)}") from e
+        raise ValueError(f"\n❌ Error reading file {path}: {e!s}") from e
 
     # Split content by --- to get individual YAML documents
     sections = [s.strip() for s in content.split("---") if s.strip()]
@@ -171,7 +173,7 @@ def parse_yaml_file(path):
             # Build a user-friendly error message for YAML parsing errors
             section_label = f"section {idx} of " if len(sections) > 1 else ""
             error_lines = [f"\n❌ YAML parsing failed in {section_label}{path}"]
-            error_lines.append(f"\nYAML Error: {str(e)}")
+            error_lines.append(f"\nYAML Error: {e!s}")
 
             # Show a preview of the problematic section (first 5 lines)
             section_preview = "\n".join(section.split("\n")[:5])
@@ -206,14 +208,14 @@ def parse_markdown_file(path):
     # Load the yaml frontmatter
     try:
         post = frontmatter.load(path)
-    except FileNotFoundError:
-        raise ValueError(f"\n❌ File not found: {path}")
-    except PermissionError:
-        raise ValueError(f"\n❌ Permission denied when reading: {path}")
+    except FileNotFoundError as e:
+        raise ValueError(f"\n❌ File not found: {path}") from e
+    except PermissionError as e:
+        raise ValueError(f"\n❌ Permission denied when reading: {path}") from e
     except yaml.YAMLError as e:
         raise ValueError(
             f"\n❌ YAML frontmatter parsing failed in {path}\n"
-            f"\nYAML Error: {str(e)}\n"
+            f"\nYAML Error: {e!s}\n"
             f"\nPlease check the frontmatter section at the top of your markdown file."
         ) from e
     except UnicodeDecodeError as e:
@@ -223,7 +225,7 @@ def parse_markdown_file(path):
         ) from e
     except Exception as e:
         raise ValueError(
-            f"\n❌ Error reading markdown file {path}\nError: {str(e)}"
+            f"\n❌ Error reading markdown file {path}\nError: {e!s}"
         ) from e
 
     data = post.metadata
@@ -265,7 +267,7 @@ def validate_yaml_file(path):
         # Re-raise ValueError as-is (already has user-friendly message)
         raise
     except Exception as e:
-        print(f"\n❌ Unexpected error while validating {path}\nError: {str(e)}")
+        logger.error(f"Unexpected error while validating {path}: {e!s}")
         raise
 
 
@@ -280,7 +282,7 @@ def validate_markdown_file(path):
         # Re-raise ValueError as-is (already has user-friendly message)
         raise
     except Exception as e:
-        print(f"\n❌ Unexpected error while validating {path}\nError: {str(e)}")
+        logger.error(f"Unexpected error while validating {path}: {e!s}")
         raise
 
 
@@ -316,9 +318,7 @@ def validate(path):
     try:
         all_file_paths = get_all_files(path)
     except Exception as e:
-        raise ValueError(
-            f"\n❌ Error scanning directory {path}\nError: {str(e)}"
-        ) from e
+        raise ValueError(f"\n❌ Error scanning directory {path}\nError: {e!s}") from e
 
     # Check if we found any content files
     content_files = [f for f in all_file_paths if f.suffix in [".md", ".yaml", ".yml"]]
@@ -345,7 +345,7 @@ def validate(path):
         error_report.append(f"❌ Validation failed for {len(failed_files)} file(s):")
         error_report.append("=" * 80)
 
-        for file_path, error_msg in failed_files:
+        for _file_path, error_msg in failed_files:
             error_report.append(error_msg)
             error_report.append("-" * 80)
 

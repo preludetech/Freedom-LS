@@ -1,7 +1,9 @@
 import pytest
-from django.utils import timezone
+
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.utils import timezone
+
 from freedom_ls.content_engine.factories import TopicFactory
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
@@ -24,7 +26,7 @@ def test_create_override_with_content_item(mock_site_context):
 
     deadline_dt = timezone.now() + timezone.timedelta(days=7)
 
-    override = StudentCohortDeadlineOverrideFactory(
+    override: StudentCohortDeadlineOverride = StudentCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         student=student,
         content_item=topic,
@@ -46,7 +48,7 @@ def test_create_override_for_whole_course(mock_site_context):
     CohortMembershipFactory(student=student, cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
-    override = StudentCohortDeadlineOverrideFactory(
+    override: StudentCohortDeadlineOverride = StudentCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         student=student,
     )

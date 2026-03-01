@@ -32,7 +32,7 @@ options:
   correct: true
   uuid: 51bf3301-7baa-4f7d-8703-8ec42cf19e38
   value: one
-  
+
 - text: option 2 text
   uuid: 4ff80f47-dc34-4922-98d9-bcf434d2f3b6
   value: two

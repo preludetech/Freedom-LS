@@ -1,15 +1,16 @@
 """Test UUID handling in content_save.py"""
 
-import yaml
 import pytest
+import yaml
+
 from freedom_ls.content_engine.factories import FormFactory
-from freedom_ls.content_engine.models import FormPage
 from freedom_ls.content_engine.management.commands.content_save import (
-    save_form_page,
-    save_form_content,
-    save_form_question,
     PreservingDumper,
+    save_form_content,
+    save_form_page,
+    save_form_question,
 )
+from freedom_ls.content_engine.models import FormPage
 from freedom_ls.content_engine.validate import parse_single_file
 
 
@@ -95,7 +96,7 @@ def test_form_page_with_uuid_no_duplicates_on_multiple_saves(
     created_uuid = page1.id
 
     # Verify file was updated with UUID
-    with open(temp_file, "r") as f:
+    with open(temp_file) as f:
         updated_content = yaml.safe_load(f.read().split("---")[1])
         assert "uuid" in updated_content
         assert updated_content["uuid"] == str(created_uuid)
@@ -117,13 +118,15 @@ def test_form_page_with_uuid_no_duplicates_on_multiple_saves(
     assert page2.id == created_uuid
 
     # Verify file UUID hasn't changed
-    with open(temp_file, "r") as f:
+    with open(temp_file) as f:
         final_content = yaml.safe_load(f.read().split("---")[1])
         assert final_content["uuid"] == str(created_uuid)
 
 
 @pytest.mark.django_db
-def test_saving_form_questions_and_text_adds_uuids_to_file(mock_site_context, make_temp_file):
+def test_saving_form_questions_and_text_adds_uuids_to_file(
+    mock_site_context, make_temp_file
+):
     """Test that saving form questions and text adds UUIDs to the file."""
     form = FormFactory()
 
@@ -160,11 +163,15 @@ content: This is some instructional text
     # Save to database
 
     page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
-    question = save_form_question(parsed[1], page, mock_site_context, temp_file.parent, order=0)
-    text = save_form_content(parsed[2], page, mock_site_context, temp_file.parent, order=1)
+    question = save_form_question(
+        parsed[1], page, mock_site_context, temp_file.parent, order=0
+    )
+    text = save_form_content(
+        parsed[2], page, mock_site_context, temp_file.parent, order=1
+    )
 
     # Read file back
-    with open(temp_file, "r") as f:
+    with open(temp_file) as f:
         result = f.read()
 
     # Parse sections
@@ -192,7 +199,9 @@ content: This is some instructional text
 
 
 @pytest.mark.django_db
-def test_saving_form_question_options_saves_uuids_to_file(mock_site_context, make_temp_file):
+def test_saving_form_question_options_saves_uuids_to_file(
+    mock_site_context, make_temp_file
+):
     """Test that saving a form question with options preserves the options correctly and adds UUID."""
     form = FormFactory()
 
@@ -227,10 +236,12 @@ options:
 
     # Save to database
     page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
-    question = save_form_question(parsed[1], page, mock_site_context, temp_file.parent, order=0)
+    question = save_form_question(
+        parsed[1], page, mock_site_context, temp_file.parent, order=0
+    )
 
     # Read file back
-    with open(temp_file, "r") as f:
+    with open(temp_file) as f:
         result = f.read()
 
     # Parse sections
@@ -269,7 +280,7 @@ def test_yaml_dump_does_not_add_excessive_whitespace(mock_site_context, make_tem
     save_form_content(parsed[1], page, mock_site_context, temp_file.parent, order=0)
 
     # Read back
-    with open(temp_file, "r") as f:
+    with open(temp_file) as f:
         result = f.read()
 
     # Parse to get UUIDs
@@ -281,12 +292,14 @@ def test_yaml_dump_does_not_add_excessive_whitespace(mock_site_context, make_tem
     expected_result = f"---\ncontent_type: FORM_PAGE\ntitle: Test Page\nuuid: {section1_data['uuid']}\n---\ncontent: Some text\ncontent_type: FORM_CONTENT\nuuid: {section2_data['uuid']}\n"
 
     assert result == expected_result, (
-        f"YAML formatting incorrect.\nExpected:\n{repr(expected_result)}\nGot:\n{repr(result)}"
+        f"YAML formatting incorrect.\nExpected:\n{expected_result!r}\nGot:\n{result!r}"
     )
 
 
 @pytest.mark.django_db
-def test_yaml_dump_doesnt_reformat_multi_line_text_fields(mock_site_context, make_temp_file):
+def test_yaml_dump_doesnt_reformat_multi_line_text_fields(
+    mock_site_context, make_temp_file
+):
     """Test that yaml.dump preserves multi-line text formatting."""
     form = FormFactory()
 
@@ -310,7 +323,7 @@ content: |
     save_form_content(parsed[1], page, mock_site_context, temp_file.parent, order=0)
 
     # Read back
-    with open(temp_file, "r") as f:
+    with open(temp_file) as f:
         result = f.read()
 
     # Parse to get UUIDs
@@ -320,7 +333,7 @@ content: |
     # Verify multi-line text is preserved (using literal block style, not quoted)
     # Accept both | and |- as valid literal block styles
     assert "content: |" in result, (
-        f"Multi-line text should use literal block style (|), got:\n{repr(result)}"
+        f"Multi-line text should use literal block style (|), got:\n{result!r}"
     )
 
     # Verify the parsed content is correct (multi-line text preserved)
@@ -331,7 +344,7 @@ content: |
             "hello there\nthis is a multi-line\nstring\n",  # | style (keeps trailing newline)
             "hello there\nthis is a multi-line\nstring",  # |- style (strips trailing newline)
         ]
-    ), f"Multi-line text content incorrect: {repr(section2_data['content'])}"
+    ), f"Multi-line text content incorrect: {section2_data['content']!r}"
 
     # Verify no extra blank lines were added (should have exactly 2 sections)
     assert len([s for s in sections if s.strip()]) == 2, (
@@ -380,7 +393,7 @@ content: |
     save_form_content(parsed[1], page, mock_site_context, temp_file.parent, order=0)
 
     # Read back
-    with open(temp_file, "r") as f:
+    with open(temp_file) as f:
         result = f.read()
 
     # Parse to get UUIDs
@@ -391,20 +404,20 @@ content: |
     # It should use the literal block style (|)
     assert "content: |" in result, (
         f"Multi-line text with HTML tags should use literal block style (|), "
-        f"not quoted strings with \\n escapes.\nGot:\n{repr(result)}"
+        f"not quoted strings with \\n escapes.\nGot:\n{result!r}"
     )
 
     # Verify it does NOT use the incorrect quoted format with \n escapes
     assert 'content: "' not in result, (
-        f"Content should not use quoted string format with \\n escapes.\nGot:\n{repr(result)}"
+        f"Content should not use quoted string format with \\n escapes.\nGot:\n{result!r}"
     )
 
     # Verify the actual HTML tag is preserved on its own lines, not escaped
     assert "<c-picture" in result, (
-        f"HTML tag should be preserved literally, not escaped.\nGot:\n{repr(result)}"
+        f"HTML tag should be preserved literally, not escaped.\nGot:\n{result!r}"
     )
     assert 'src="../images/graph1.drawio.svg"' in result, (
-        f"HTML attributes should be preserved literally.\nGot:\n{repr(result)}"
+        f"HTML attributes should be preserved literally.\nGot:\n{result!r}"
     )
 
     # Verify the parsed content is correct (newlines preserved, not escaped)
@@ -418,7 +431,7 @@ content: |
     # If they were escaped as \n, the parsed content wouldn't have real newlines
     assert "\n" in section2_data["content"], (
         f"Content should contain actual newlines, not escaped \\n sequences.\n"
-        f"Got:\n{repr(section2_data['content'])}"
+        f"Got:\n{section2_data['content']!r}"
     )
 
 
@@ -497,24 +510,24 @@ options:
     save_form_question(parsed[2], page, mock_site_context, temp_file.parent, order=1)
 
     # Read the file back
-    with open(temp_file, "r") as f:
+    with open(temp_file) as f:
         result = f.read()
 
     # THE BUG: The FormContent section should STILL have literal block style
     assert "content: |" in result, (
         f"Multi-line text with HTML tags should use literal block style (|), "
-        f"but got quoted strings with \\n escapes instead.\nGot:\n{repr(result)}"
+        f"but got quoted strings with \\n escapes instead.\nGot:\n{result!r}"
     )
 
     # Verify it does NOT use the incorrect quoted format with \n escapes
     assert 'content: "' not in result, (
-        f"Content should not use quoted string format with \\n escapes.\nGot:\n{repr(result)}"
+        f"Content should not use quoted string format with \\n escapes.\nGot:\n{result!r}"
     )
 
     # Verify the actual HTML tag is preserved on its own lines, not escaped
     assert "<c-picture" in result, (
-        f"HTML tag should be preserved literally, not escaped.\nGot:\n{repr(result)}"
+        f"HTML tag should be preserved literally, not escaped.\nGot:\n{result!r}"
     )
     assert 'src="../images/graph1.drawio.svg"' in result, (
-        f"HTML attributes should be preserved literally.\nGot:\n{repr(result)}"
+        f"HTML attributes should be preserved literally.\nGot:\n{result!r}"
     )

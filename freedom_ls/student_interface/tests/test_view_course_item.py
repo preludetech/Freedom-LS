@@ -1,6 +1,7 @@
 """Tests for view_course_item with nested course structure."""
 
 import pytest
+
 from django.test import Client
 from django.urls import reverse
 
@@ -11,7 +12,7 @@ from freedom_ls.content_engine.factories import (
     FormPageFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Form, Topic
+from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
 from freedom_ls.student_management.factories import (
     StudentCourseRegistrationFactory,
     StudentFactory,
@@ -32,16 +33,16 @@ def course_with_nested_structure(mock_site_context, request):
     Can be parameterized with first_item_type to use Topic or Form.
     Returns dict with course and all content items.
     """
-    first_item_type = getattr(request, 'param', Topic)  # Default to Topic
+    first_item_type = getattr(request, "param", Topic)  # Default to Topic
 
-    course = CourseFactory(title="Test Course", slug="test-course")
-    course_part = CoursePartFactory(title="Chapter 1", slug="chapter-1")
+    course: Course = CourseFactory(title="Test Course", slug="test-course")
+    course_part: CoursePart = CoursePartFactory(title="Chapter 1", slug="chapter-1")
 
     if first_item_type == Topic:
         first_item = TopicFactory(
             title="First Topic",
             slug="first-topic",
-            content="First item inside course part"
+            content="First item inside course part",
         )
     else:  # Form
         first_item = FormFactory(
@@ -59,13 +60,11 @@ def course_with_nested_structure(mock_site_context, request):
     second_topic = TopicFactory(
         title="Second Topic",
         slug="second-topic",
-        content="Second item inside course part"
+        content="Second item inside course part",
     )
 
     third_topic = TopicFactory(
-        title="Third Topic",
-        slug="third-topic",
-        content="Direct child of course"
+        title="Third Topic", slug="third-topic", content="Direct child of course"
     )
 
     # Build the structure
@@ -88,8 +87,7 @@ def authenticated_client(mock_site_context, course_with_nested_structure):
     """Create an authenticated test client with a user registered for the test course."""
     student = StudentFactory()
     StudentCourseRegistrationFactory(
-        student=student,
-        collection=course_with_nested_structure["course"]
+        student=student, collection=course_with_nested_structure["course"]
     )
     client = Client()
     client.force_login(student.user)
@@ -111,13 +109,15 @@ def test_accessing_topic_inside_course_part_should_display_topic(
     # The first topic inside the course part should be at index 2
     url = reverse(
         "student_interface:view_course_item",
-        kwargs={"course_slug": "test-course", "index": 2}
+        kwargs={"course_slug": "test-course", "index": 2},
     )
 
     response = authenticated_client.get(url)
 
     # Should display the correct topic, not redirect
-    assert response.status_code == 200, f"Should return 200, not redirect. Got {response.status_code}"
+    assert response.status_code == 200, (
+        f"Should return 200, not redirect. Got {response.status_code}"
+    )
     assert "topic" in response.context, "Should have topic in context"
     actual_topic = response.context["topic"]
     assert actual_topic == first_topic, (
@@ -126,7 +126,7 @@ def test_accessing_topic_inside_course_part_should_display_topic(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('course_with_nested_structure', [Form], indirect=True)
+@pytest.mark.parametrize("course_with_nested_structure", [Form], indirect=True)
 def test_starting_form_inside_course_part_should_work(
     course_with_nested_structure, authenticated_client
 ):
@@ -140,7 +140,7 @@ def test_starting_form_inside_course_part_should_work(
     # The first form inside the course part should be at index 2
     url = reverse(
         "student_interface:form_start",
-        kwargs={"course_slug": "test-course", "index": 2}
+        kwargs={"course_slug": "test-course", "index": 2},
     )
 
     response = authenticated_client.get(url, follow=True)
@@ -155,7 +155,7 @@ def test_starting_form_inside_course_part_should_work(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('course_with_nested_structure', [Form], indirect=True)
+@pytest.mark.parametrize("course_with_nested_structure", [Form], indirect=True)
 def test_form_complete_inside_course_part_should_work(
     course_with_nested_structure, authenticated_client
 ):
@@ -169,7 +169,7 @@ def test_form_complete_inside_course_part_should_work(
     # The first form inside the course part should be at index 2
     url = reverse(
         "student_interface:course_form_complete",
-        kwargs={"course_slug": "test-course", "index": 2}
+        kwargs={"course_slug": "test-course", "index": 2},
     )
 
     response = authenticated_client.get(url)

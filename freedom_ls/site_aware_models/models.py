@@ -1,8 +1,11 @@
-from django.contrib.sites.models import Site
-from django.db import models
+from __future__ import annotations
+
 import uuid
-from django.contrib.sites.shortcuts import get_current_site
 from threading import local
+
+from django.contrib.sites.models import Site
+from django.contrib.sites.shortcuts import get_current_site
+from django.db import models
 
 _thread_locals = local()
 
@@ -27,7 +30,10 @@ class SiteAwareManager(models.Manager):
 class SiteAwareModelBase(models.Model):
     site = models.ForeignKey(Site, on_delete=models.PROTECT)
 
-    objects = SiteAwareManager()
+    objects: models.Manager = SiteAwareManager()
+
+    class Meta:
+        abstract = True
 
     def save(self, *args, **kwargs):
         # Automatically set site_id if not already set
@@ -37,9 +43,6 @@ class SiteAwareModelBase(models.Model):
             if request:
                 self.site = get_cached_site(request)
         super().save(*args, **kwargs)
-
-    class Meta:
-        abstract = True
 
 
 class SiteAwareModel(SiteAwareModelBase):

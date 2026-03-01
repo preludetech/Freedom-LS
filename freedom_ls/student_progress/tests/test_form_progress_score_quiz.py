@@ -7,7 +7,11 @@ from freedom_ls.content_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.student_progress.factories import FormProgressFactory, QuestionAnswerFactory
+from freedom_ls.student_progress.factories import (
+    FormProgressFactory,
+    QuestionAnswerFactory,
+)
+from freedom_ls.student_progress.models import FormProgress, QuestionAnswer
 
 
 @pytest.mark.django_db
@@ -39,10 +43,10 @@ def test_score_quiz_single_correct_answer(mock_site_context):
     )
 
     # Create form progress
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Create an answer selecting the correct option
-    answer = QuestionAnswerFactory(
+    answer: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question
     )
     answer.selected_options.add(correct_option)
@@ -75,9 +79,7 @@ def test_score_quiz_single_incorrect_answer(mock_site_context):
     )
 
     # Create options - one correct, others incorrect
-    QuestionOptionFactory(
-        question=question, text="4", value="4", order=0, correct=True
-    )
+    QuestionOptionFactory(question=question, text="4", value="4", order=0, correct=True)
     incorrect_option = QuestionOptionFactory(
         question=question, text="3", value="3", order=1, correct=False
     )
@@ -86,10 +88,10 @@ def test_score_quiz_single_incorrect_answer(mock_site_context):
     )
 
     # Create form progress
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Create an answer selecting an incorrect option
-    answer = QuestionAnswerFactory(
+    answer: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question
     )
     answer.selected_options.add(incorrect_option)
@@ -156,22 +158,22 @@ def test_score_quiz_multiple_questions_mixed_answers(mock_site_context):
     )
 
     # Create form progress
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Answer Q1 correctly
-    answer1 = QuestionAnswerFactory(
+    answer1: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(correct_option1)
 
     # Answer Q2 incorrectly
-    answer2 = QuestionAnswerFactory(
+    answer2: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question2
     )
     answer2.selected_options.add(incorrect_option2)
 
     # Answer Q3 correctly
-    answer3 = QuestionAnswerFactory(
+    answer3: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question3
     )
     answer3.selected_options.add(correct_option3)
@@ -240,10 +242,10 @@ def test_score_quiz_includes_unanswered_questions_in_max_score(
     )
 
     # Create form progress
-    form_progress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
 
     # Answer ONLY question 1 correctly (leave Q2 and Q3 unanswered)
-    answer1 = QuestionAnswerFactory(
+    answer1: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question1
     )
     answer1.selected_options.add(correct_option1)

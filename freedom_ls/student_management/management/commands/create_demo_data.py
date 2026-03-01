@@ -1,13 +1,17 @@
+from typing import Any
+
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
-from freedom_ls.student_management.models import Student, Cohort, CohortMembership
+
+from freedom_ls.student_management.models import Cohort, CohortMembership, Student
+
 # from app_authentication.models import Client
 
 client_api_key = "W8tuA0ReonfZsAKywAZz9-IMGNCIq3TVGDiiar0LJqRoLEMceqgYjllfXU7iz6s7"
 client_name = "Student Interface"
 
-demo_sites = [
+demo_sites: list[dict[str, Any]] = [
     {
         "name": "Demo",
         "domain": "127.0.0.1",
@@ -43,7 +47,7 @@ class Command(BaseCommand):
     help = "Create a superuser and 2 sites for initial setup"
 
     def handle(self, *args, **options):
-        User = get_user_model()
+        user_model = get_user_model()
 
         # Create sites and users
         for site_data in demo_sites:
@@ -60,8 +64,8 @@ class Command(BaseCommand):
 
             # Create user for this site
             user_email = f"{site_data['name'].lower()}@email.com"
-            if not User.objects.filter(email=user_email).exists():
-                user = User(
+            if not user_model.objects.filter(email=user_email).exists():
+                user = user_model(
                     email=user_email,
                     is_staff=True,
                     is_superuser=True,
@@ -127,7 +131,7 @@ class Command(BaseCommand):
                 email = f"{site_prefix}_s{i}@email.com"
 
                 # Create or get the user first
-                student_user, user_created = User.objects.get_or_create(
+                student_user, user_created = user_model.objects.get_or_create(
                     email=email,
                     site=site,
                     defaults={
@@ -161,7 +165,7 @@ class Command(BaseCommand):
             if created_cohorts and created_students:
                 first_cohort = created_cohorts[0]
                 for student in created_students:
-                    membership, created = CohortMembership.objects.get_or_create(
+                    _membership, created = CohortMembership.objects.get_or_create(
                         student=student,
                         cohort=first_cohort,
                         site=site,

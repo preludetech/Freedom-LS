@@ -235,13 +235,13 @@ font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
   --fls-bright-blue: #3B82F6;
   --fls-emerald: #10B981;
   --fls-amber: #F59E0B;
-  
+
   /* Neutrals */
   --fls-dark-slate: #1E293B;
   --fls-slate: #64748B;
   --fls-light-slate: #F1F5F9;
   --fls-white: #FFFFFF;
-  
+
   /* Typography */
   --fls-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --fls-font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;

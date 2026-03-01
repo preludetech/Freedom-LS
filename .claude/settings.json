@@ -25,18 +25,40 @@
       "mcp__playwright__browser_evaluate",
       "Bash(sleep 3:*)",
       "mcp__playwright__browser_hover",
-      "mcp__playwright__browser_resize"
-
+      "mcp__playwright__browser_resize",
+      "Bash(git add:*)",
+      "Bash(ls:*)"
     ],
     "deny": [
       "Read(.env)",
       "Read(.env.*)",
-      "Write(config/settings_prod.py)"
+      "Write(config/settings_prod.py)",
+      "Bash(git commit --no-verify:*)",
+      "Bash(git push --force:*)"
     ]
   },
   "hooks": {
     "PostToolUse": [
-     
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ruff check --fix $CLAUDE_FILE_PATHS && ruff format $CLAUDE_FILE_PATHS"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit:*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ruff check . && uv run mypy . && uv run pytest --tb=short -q"
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {}

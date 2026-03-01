@@ -1,6 +1,7 @@
 from django import template
-from freedom_ls.content_engine.models import File, Topic, Form
+
 from freedom_ls.content_engine.markdown_utils import render_markdown
+from freedom_ls.content_engine.models import File, Form, Topic
 
 register = template.Library()
 
@@ -41,7 +42,6 @@ def markdown(context, value):
     """
     request = context.get("request")
     return render_markdown(value, request)
-
 
 
 @register.filter
