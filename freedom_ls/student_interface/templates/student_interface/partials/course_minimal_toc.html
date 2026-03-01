@@ -1,27 +1,28 @@
+{% load icon_tags %}
 {% partialdef status-icon %}
     {% if child.status == "BLOCKED" %}
         <span class="text-sm text-muted/50">
-            <i class="fa fa-lock"></i>
+            {% icon "locked" class="size-4" %}
         </span>
     {% elif child.status == "READY" %}
         <a href="{{ child.url }}"
            class="text-primary hover:text-primary no-underline">
-            <i class="fa fa-play"></i>
+            {% icon "in_progress" class="size-4" %}
         </a>
     {% elif child.status == "IN_PROGRESS" %}
         <a href="{{ child.url }}"
            class="text-primary hover:text-primary no-underline">
-            <i class="fa fa-play"></i>
+            {% icon "in_progress" class="size-4" %}
         </a>
     {% elif child.status == "COMPLETE" %}
         <a href="{{ child.url }}"
            class="text-success hover:text-success no-underline">
-            <i class="fa fa-check"></i>
+            {% icon "complete" class="size-4" %}
         </a>
     {% elif child.status == "FAILED" %}
         <a href="{{ child.url }}"
            class="text-danger hover:text-danger no-underline">
-            <i class="fa fa-repeat"></i>
+            {% icon "retry" class="size-4" %}
         </a>
     {% else %}
         <span class="text-sm text-danger">Unknown status "{{ child.status }}"</span>
@@ -33,11 +34,11 @@
         {% for dl in child.deadlines %}
             {% if dl.is_hard_deadline %}
                 <span class="text-xs text-danger whitespace-nowrap" title="{{ dl.source }}">
-                    <i class="fa fa-clock"></i> {{ dl.deadline|date:"d M" }}
+                    {% icon "deadline" class="size-3" %} {{ dl.deadline|date:"d M" }}
                 </span>
             {% else %}
                 <span class="text-xs text-warning whitespace-nowrap" title="{{ dl.source }}">
-                    <i class="fa fa-clock"></i> {{ dl.deadline|date:"d M" }}
+                    {% icon "deadline" class="size-3" %} {{ dl.deadline|date:"d M" }}
                 </span>
             {% endif %}
         {% endfor %}
@@ -46,13 +47,13 @@
 
 {% partialdef content-icon %}
     {% if child.type == "TOPIC" %}
-        <i class="fa fa-book"></i>
+        {% icon "reading" class="size-4" %}
     {% elif child.type == "FORM" %}
-        <i class="fa fa-edit"></i>
+        {% icon "quiz" class="size-4" %}
     {% elif child.type == "COURSE" %}
-        <i class="fa fa-graduation-cap"></i>
+        {% icon "assessment" class="size-4" %}
     {% elif child.type == "COURSE_PART" %}
-        <i class="fa fa-folder"></i>
+        {% icon "section" class="size-4" %}
     {% endif %}
 {% endpartialdef %}
 
@@ -79,7 +80,8 @@
         <button @click="toggleExpanded()"
                 class="flex items-center gap-2 text-left hover:text-primary transition-colors cursor-pointer flex-1 min-w-0">
             <span class="text-muted shrink-0 {{ text_size }}">
-                <i class="fa" :class="expanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                <span x-show="expanded" x-cloak>{% icon "expand" class="size-4" %}</span>
+                <span x-show="!expanded">{% icon "collapse" class="size-4" %}</span>
             </span>
             <span class="flex-1 min-w-0 truncate {{ text_size }}">
                 {% partial content-title %}

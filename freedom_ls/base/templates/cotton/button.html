@@ -13,6 +13,8 @@
     icon_right=""
 />
 
+{% load icon_tags %}
+
 {% if dropdown %}
 {% with computed_class=class|add:" block w-full text-left px-4 py-2 text-sm text-muted hover:bg-surface-2 transition-colors no-underline cursor-pointer" %}
 <{% if href %}a href="{{ href }}"{% else %}button{% endif %}
@@ -25,7 +27,7 @@
 class="{{ computed_class }}"
 {{ attrs }}
 >
-{% if icon_left %}<i class="fa-solid fa-{{ icon_left }} mr-2"></i>{% endif %}{{ slot }}{% if icon_right %}<i class="fa-solid fa-{{ icon_right }} ml-2"></i>{% endif %}
+{% if icon_left %}{% icon icon_left class="size-5 mr-2" %}{% endif %}{{ slot }}{% if icon_right %}{% icon icon_right class="size-5 ml-2" %}{% endif %}
 </{% if href %}a{% else %}button{% endif %}>
 {% endwith %}
 {% else %}
@@ -40,7 +42,7 @@ class="{{ computed_class }}"
 class="{{ computed_class }}"
 {{ attrs }}
 >
-{% if icon_left %}<i class="fa-solid fa-{{ icon_left }} mr-2"></i>{% endif %}{{ slot }}{% if icon_right %}<i class="fa-solid fa-{{ icon_right }} ml-2"></i>{% endif %}
+{% if icon_left %}{% icon icon_left class="size-5 mr-2" %}{% endif %}{{ slot }}{% if icon_right %}{% icon icon_right class="size-5 ml-2" %}{% endif %}
 </{% if href %}a{% else %}button{% endif %}>
 {% endwith %}
 {% endif %}
@@ -69,8 +71,8 @@ Usage Examples:
   <!-- Dropdown menu style -->
   <c-button dropdown="true">Dropdown menu item</c-button>
 
-  <!-- With icons (Font Awesome) -->
+  <!-- With icons -->
   <c-button icon_left="user">Profile</c-button>
-  <c-button icon_right="arrow-right">Next</c-button>
-  <c-button icon_left="save" variant="primary">Save Changes</c-button>
+  <c-button icon_right="next">Next</c-button>
+  <c-button icon_left="check" variant="primary">Save Changes</c-button>
 {% endcomment %}

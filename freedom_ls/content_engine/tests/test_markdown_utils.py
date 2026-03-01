@@ -69,7 +69,7 @@ class TestRenderMarkdownCustomTags:
 
         assert "Note" in result
         assert "Content here" in result
-        assert "fa-info-circle" in result
+        assert "<svg" in result  # Icon rendered as SVG via heroicons
 
     def test_c_callout_with_markdown_content(self, mock_request):
         """Test that markdown inside c-callout is processed."""

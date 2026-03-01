@@ -1,10 +1,12 @@
 <c-vars variant="primary" size="" icon="" class="" />
 
+{% load icon_tags %}
+
 {% with computed_class=class|add:" chip chip-"|add:variant %}
     <span class="{% if size %}chip-{{ size }}{% endif %} {{ computed_class }}"
           {{ attrs }}>
         {% if icon %}
-            <i class="fa-solid fa-{{ icon }}"></i>
+            {% icon icon class="size-4" %}
         {% endif %}
         {{ slot }}
     </span>

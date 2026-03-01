@@ -1,6 +1,7 @@
 <c-vars src alt caption="" />
 
 {% load content_tags %}
+{% load icon_tags %}
 
 {% comment %}
 Look up the File object by file_path to get the actual file URL
@@ -34,7 +35,7 @@ Look up the File object by file_path to get the actual file URL
 
                 <button class="absolute top-0 right-0 bg-surface opacity-50 hover:opacity-70 "
                         @click="open = false">
-                    <i class="fa fa-times text-5xl text-foreground "></i>
+                    {% icon "close" class="size-12 text-foreground" %}
 
                 </button>
 
