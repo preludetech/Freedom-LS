@@ -1,0 +1,17 @@
+{% extends "emails/base_email.html" %}
+
+{% block content %}
+<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">Someone tried to reset the password for {{ email }}, but no account with this email address exists on {{ current_site.name }}.</p>
+<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">If this was you, you can create an account instead.</p>
+{% endblock %}
+
+{% block cta %}
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+  <tr>
+    <td style="background-color: {{ email_color_primary }}; border-radius: 6px;">
+      <a href="{{ signup_url }}" style="display: inline-block; padding: 12px 32px; color: #FFFFFF; text-decoration: none; font-weight: bold; font-size: 16px;">Create an Account</a>
+    </td>
+  </tr>
+</table>
+<p style="margin: 8px 0 0 0; font-size: 13px; color: {{ email_color_muted }};">Or copy this link: {{ signup_url }}</p>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "emails/base_email.txt" %}
+
+{% block content %}
+Your login code is:
+
+    {{ code }}
+
+This code will expire shortly.
+{% endblock %}

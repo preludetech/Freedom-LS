@@ -1,0 +1,9 @@
+{% extends "emails/base_email.txt" %}
+
+{% block content %}
+An account with the email address {{ email }} already exists on {{ current_site.name }}.
+
+If you forgot your password, you can reset it.
+
+Reset Password: {{ password_reset_url }}
+{% endblock %}

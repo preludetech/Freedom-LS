@@ -14,6 +14,8 @@ import os
 import sys
 from pathlib import Path
 
+from freedom_ls.accounts.email_utils import parse_tailwind_colors
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, os.path.join(BASE_DIR, "concrete_apps"))
@@ -65,6 +67,7 @@ INSTALLED_APPS = [
     # STUDENT INTERFACE
     "freedom_ls.student_interface",
     #########
+    "django_premailer",
     # AllAuth is at the end because we need to override many of its templates
     "allauth",
     "allauth.account",
@@ -127,6 +130,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "freedom_ls.site_aware_models.context_processors.site_config",
                 "freedom_ls.accounts.context_processors.signup_policy",
+                "freedom_ls.accounts.context_processors.email_settings",
             ],
             "builtins": [
                 "django_cotton.templatetags.cotton",
@@ -235,5 +239,16 @@ ALLOW_SIGN_UPS = True
 # HEADLESS_FRONTEND_URLS = TODO
 
 # HEADLESS_TOKEN_STRATEGY = default = allauth.headless.tokens.sessions.SessionTokenStrategy
+
+# Email template settings
+EMAIL_LOGO_STATIC_PATH = None  # e.g., "images/logo.png"
+EMAIL_FONT_FAMILY = "Arial, Helvetica, sans-serif"
+ACCOUNT_EMAIL_NOTIFICATIONS = True
+
+
+_tw_colors = parse_tailwind_colors(str(BASE_DIR / "tailwind.components.css"))
+EMAIL_COLOR_PRIMARY = _tw_colors.get("primary", "#2B6CB0")
+EMAIL_COLOR_FOREGROUND = _tw_colors.get("foreground", "#1A2332")
+EMAIL_COLOR_MUTED = _tw_colors.get("muted", "#4A5568")
 
 LOGIN_REDIRECT_URL = "/"

@@ -21,6 +21,7 @@ dependencies = [
     "django-template-partials>=25.2",
     "whitenoise>=6.11.0",
     "django-storages[s3]>=1.14.6",
+    "django-premailer>=0.2.0",
 ]
 
 [tool.setuptools.packages.find]

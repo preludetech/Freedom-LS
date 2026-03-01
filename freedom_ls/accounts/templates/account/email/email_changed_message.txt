@@ -1,0 +1,7 @@
+{% extends "emails/base_notification_email.txt" %}
+
+{% block notification_content %}
+Your email address has been changed from {{ from_email }} to {{ to_email }}.
+
+If you didn't make this change, please contact us immediately.
+{% endblock %}

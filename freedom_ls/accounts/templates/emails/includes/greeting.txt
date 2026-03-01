@@ -1,0 +1,1 @@
+Hi{% if user and user.first_name %} {{ user.first_name }}{% endif %},

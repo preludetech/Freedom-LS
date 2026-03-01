@@ -1,0 +1,2 @@
+Cheers,
+The {{ current_site.name }} Team

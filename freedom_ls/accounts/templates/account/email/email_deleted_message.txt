@@ -1,0 +1,7 @@
+{% extends "emails/base_notification_email.txt" %}
+
+{% block notification_content %}
+The email address {{ deleted_email }} has been removed from your account.
+
+If you didn't make this change, please contact us immediately.
+{% endblock %}

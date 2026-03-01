@@ -1,0 +1,9 @@
+{% autoescape off %}{% include "emails/includes/greeting.txt" %}
+
+{% block content %}{% endblock %}
+
+{% include "emails/includes/sign_off.txt" %}
+
+---
+{{ current_site.name }} | {{ current_site.domain }}
+{% endautoescape %}
