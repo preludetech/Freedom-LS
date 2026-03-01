@@ -1,3 +1,9 @@
+---
+name: using-icons
+description: Use this skill when making use of any icons in any part of the frontend.
+allowed-tools: Read, Grep, Glob
+---
+
 # Icon Usage Skill
 
 ## When to use
