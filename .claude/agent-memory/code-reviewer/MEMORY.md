@@ -38,7 +38,9 @@
 - Empty states with text-muted color
 - Deadline styling: danger/10 or warning/20 backgrounds with left border
 - Overdue cells: danger/15 for hard deadlines, warning/15 for soft overdue
-- Icons: Unicode characters (✓ for complete, ▶ for started, – for not started, ⏱ for clock)
+- Icons: Use `{% icon "semantic_name" %}` template tag (registry in `freedom_ls/base/icons.py`)
+- Alpine.js icon toggling: `x-show` on wrapper spans or `rotate-180` for directional flips
+- Icon sizing: size-3 (badges), size-4 (compact), size-5 (standard), size-6 (emphasis), size-8 (large), size-16 (hero)
 
 ## Factory Boy Implementation
 - SiteAwareFactory base in `freedom_ls/site_aware_models/factories.py`
