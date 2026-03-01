@@ -41,12 +41,16 @@ This can include multiple tests and workflows.
 
 If this plan is created then reference it in the plan file as a final step.
 
-# Notes
+## Notes
 
 - Note we will be following TDD. Do not write out all the tests at this point.
 - Include pseudocode for desired functionality where appropriate
 - if specific functions should be used or edited, or specific files need to be edited or referenced, mention them in the task description
 
-# IMPORTANT
+## IMPORTANT
 
 If you created a `3. frontend_qa.md` file, DO NOT mention it inside `2. plan.md`
+
+# Step 6
+
+Create a subagent to review the plan and frontend_qa plan against the spec file. Make sure that everything that needs to be implemented is mentioned and that the success criteria will be met.

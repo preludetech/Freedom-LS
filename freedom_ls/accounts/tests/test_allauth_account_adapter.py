@@ -20,7 +20,7 @@ def test_send_notification_mail_adds_user_to_context(mock_site_context: object) 
     ) as mock_super:
         adapter.send_notification_mail("account/email/test", user, context)
 
-    mock_super.assert_called_once_with("account/email/test", user, context)
+    mock_super.assert_called_once_with("account/email/test", user, context, email=None)
     assert context["user"] is user
 
 
