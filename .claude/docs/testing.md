@@ -13,7 +13,7 @@ Use factory_boy factories for all test data creation. Never use `.objects.create
 - Import factories from the app's `factories.py` (e.g., `from freedom_ls.accounts.factories import UserFactory`)
 - Override only the fields relevant to the test; let factories provide sensible defaults
 - Always check existing factories before creating new ones
-- See `@.claude/docs/factory_boy.md` for the full factory reference, patterns, and the list of all available factories
+- See `@.claude/docs/factory_boy.md` for the full factory reference
 - Avoid creating fixtures that are thin wrappers around factories. Rather just use the factories
 
 ## Test Patterns
