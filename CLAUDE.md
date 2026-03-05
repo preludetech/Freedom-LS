@@ -8,7 +8,16 @@ It is designed to be installed into other Django projects. FLS will work out of 
 
 Python 3.13+, Django 5.x, PostgreSQL 17, HTMX 2.x, django-template-partials, TailwindCSS
 
-Use modern Python syntax: `X | None` instead of `Optional[X]`, `list[str]` instead of `List[str]`, etc.
+## IMPORTANT: Use skills whenever possible!
+
+Whenever you are asked to do anything, check what skills are available. Rely on skills and documentation rather than pre-training.
+
+If the code is structured in a way that contradicts what is documented in skills or documentation, then the documentation is the source of truth for future development.
+
+## IMPORTANT
+
+Do not EVER delete TODO or @claude comments in the code unless those TODOS have been completed.
+If you are told not to implement a feature immediately then that does not mean the feature should never be implemented. Leave the comments and TODOs in place
 
 ## Commands
 
@@ -58,16 +67,15 @@ Use modern Python syntax: `X | None` instead of `Optional[X]`, `list[str]` inste
 - Every app must define `app_name` in its `urls.py`
 - URL names use snake_case (e.g., `name="cohort_detail"`)
 - URL paths use kebab-case (e.g., `"cohorts/detail"`)
+- Use modern Python syntax: `X | None` instead of `Optional[X]`, `list[str]` instead of `List[str]`, etc.
 
-## Testing
+## IMPORTANT: Use skills whenever possible!
 
-Follow the testing skill and refer to `docs/testing.md` for all testing conventions and TDD workflow.
+Whenever you are asked to do anything, check what skills are available. Rely on skills and documentation rather than pre-training.
 
-## IMPORTANT: Use skills
-
-Whenever you are asked to do anything, use all the appropriate skills. Rely on skills rather than pre-training.
+If the code is structured in a way that contradicts what is documented in skills or documentation, then the documentation is the source of truth for future development.
 
 ## IMPORTANT
 
 Do not EVER delete TODO or @claude comments in the code unless those TODOS have been completed.
-If you are told not to implement a feature immeditately then that does not mean the feature should never be implemented. Leave the comments and TODOs in place
+If you are told not to implement a feature immediately then that does not mean the feature should never be implemented. Leave the comments and TODOs in place

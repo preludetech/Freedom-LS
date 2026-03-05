@@ -17,7 +17,7 @@ cat tailwind.components.css
 ## Base Styles (Auto-Applied)
 
 Typography and forms have automatic styling via `@layer base`:
-- `h1-h4` - Pre-sized and bold
+- `h1-h4` - Pre-sized
 - `a` - link styling
 - `ul`, `ol` - List styling
 - `input`, `textarea`, `select`, `label` - Form styling

@@ -29,7 +29,7 @@ Write the plan document.
 
 # Step 4
 
-Look over all the available skills and mcps. Update the plan to say what skills and mcps should be used where.
+Use a subagent to look over all the available skills and mcps. Update the plan to say what skills and mcps should be used where.
 
 # Step 5
 
