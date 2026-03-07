@@ -61,7 +61,39 @@ def test_requires_field(mock_site_context):
         MyModelFactory(required_field=None)
 ```
 
-## Best Practices
+## Writing High-Value Tests
+
+Every test must justify its existence. A test has value when it catches real bugs, documents important behaviour, or protects against meaningful regressions. Tests that merely exercise code without asserting anything interesting are noise.
+
+### What to test
+
+- **Business logic and domain rules** — the core "why" of the feature. If a method calculates scores, enforces permissions, or applies rules, test those rules thoroughly.
+- **Edge cases that have bitten you** — empty collections, None values, boundary conditions, off-by-one errors.
+- **Integration points** — where two systems meet (view + model, serializer + database, HTMX partial + context). These are where bugs hide.
+- **Error paths that matter** — invalid user input, missing objects, permission denied. Only test error handling that could realistically occur.
+
+### What NOT to test
+
+- **Django/framework internals** — don't test that `CharField` stores strings, that `ForeignKey` creates a column, or that `reverse()` resolves a URL you just defined. Trust the framework.
+- **Trivial CRUD with no logic** — a model with only auto-generated fields and no custom methods rarely needs its own test. If `MyModelFactory()` succeeds, you already know the model works.
+- **Implementation details** — don't assert the exact SQL query, the number of times a method was called, or internal state that could change during refactoring. Test observable behaviour, not how it's achieved.
+- **Duplicate coverage** — if one test already proves a code path works, don't write another that proves the same thing with slightly different data unless the variation exercises a genuinely different branch.
+
+### Qualities of a good test
+
+1. **Focused** — tests exactly one behaviour or rule. If the test name needs "and" in it, split it.
+2. **Readable** — a developer can understand what's being tested and why without reading the implementation. The test name and docstring are the spec.
+3. **Resilient** — doesn't break when you refactor internals. Tests that are tightly coupled to implementation details create drag, not safety.
+4. **Fast** — avoids unnecessary setup. Only create the data the test actually needs.
+5. **Honest** — fails when the behaviour is broken, passes when it works. No tests that pass by coincidence.
+
+### Red flags in tests
+
+- A test with no meaningful assertions (or only `assert response.status_code == 200` when the view does complex work)
+- A test that creates 10 objects but only uses 2
+- Multiple tests that are copy-pasted with one field changed — use `@pytest.mark.parametrize`
+- A test that mocks so much that it's no longer testing real behaviour
+- A test file with 50 tests for a model that has 2 methods
 
 ### Writing Tests
 
