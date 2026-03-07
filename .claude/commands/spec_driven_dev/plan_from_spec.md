@@ -53,4 +53,4 @@ If you created a `3. frontend_qa.md` file, DO NOT mention it inside `2. plan.md`
 
 # Step 6
 
-Create a subagent to review the plan and frontend_qa plan against the spec file. Make sure that everything that needs to be implemented is mentioned and that the success criteria will be met.
+Create a subagent to review the plan and frontend_qa plan against the spec file. Make sure that all the success criteria will be met.

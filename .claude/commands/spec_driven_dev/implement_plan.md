@@ -5,70 +5,52 @@ allowed-tools: Read, Glob, Write
 
 # Executing Plans
 
-## Overview
+## Step 1: Read and Review the Plan
 
-Load plan, review critically, execute tasks in batches.
+1. Read the plan file
+2. Before implementing anything, check for:
+   - Missing or ambiguous steps
+   - Steps that depend on things not covered earlier in the plan
+   - Unclear success criteria
+   - Missing dependencies or prerequisites
+3. If you find issues: raise them with the user before starting
+4. If the plan is clear: proceed to Step 2
 
-Make use of the request-code-review skill after every batch of tasks.
-Make use of the request-code-review skill once all the batches of tasks are complete
+## Step 2: Batch and Execute
 
-**Core principle:** Batch execution with checkpoints code review.
+Split the plan's tasks into batches of related steps. Each batch should be a coherent unit of work (e.g. "add model + migration", "add views + templates + urls").
 
-## The Process
+For each batch, delegate to a **sub-agent** that does the following:
 
-1. Read plan file
-2. Review critically - identify any questions or concerns about the plan
-3. If concerns: Raise them with your human partner before starting
-4. If no concerns: Begin implementing the plan
+1. Implement each step exactly as written in the plan
+2. Run any verifications the plan specifies after each step
+3. After all steps in the batch are done, run `uv run pytest` — all tests must pass
+4. Use the `request-code-review` skill to review the batch's changes
+5. Fix any issues raised by the review
+6. Re-run tests after fixes
 
-### Implementing the plan
+**All tests must pass before moving to the next batch.**
 
-1. Separate the tasks into batches
-2. Each batch should be implemented by a sub agent
+## Step 3: Final Verification
 
-### The sub agent should do the following for its batch of tasks
+After all batches are complete:
 
-1. Follow the step exactly (plan has bite-sized steps)
-2. Run verifications as specified
-3. Mode onto the next step until there are all complete
-4. Use the request-code-review skill to review what was done
-5. Implement any needed changes
-6. Run the tests and make sure everything works
+1. Use the `request-code-review` skill to review all changes end-to-end
+2. Run `uv run pytest` in a sub-agent to confirm everything passes
+3. Check each success criterion from the plan — is it met?
+4. If any criterion is unmet: fix it with a sub-agent, then repeat from step 1
+5. Once everything passes and review feedback is addressed: commit the changes
 
-**IMPORTANT** ALL tests need to pass. If there are broken tests fix them!
+## When to Stop and Ask
 
-**IMPORTANT** Make use fo the request-code-review skill at the end of a batch of tasks. Use it more often if there are significant code changes.
+**Stop immediately when:**
+- A step is unclear or ambiguous
+- A test fails and the cause isn't obvious
+- You hit a missing dependency or prerequisite
+- The plan has a gap that blocks progress
 
-### After all steps are complete
+**Ask for clarification rather than guessing. Don't force through blockers.**
 
-1. Use the request-code-review skill to review everything that was done.
-2. Run all the tests in a sub agent, make sure all functionality works
-3. Make sure all the steps were completed and review the success criteria for the plan. If the success criteria are not being met then use subagents to develop any missing or broken functionality. Then go back to `1. Use the request-code-review skill to review everything that was done.`
-4. If there is no feedback, or all changes are addressed, commit the changes
+## Branch Safety
 
-
-## When to Stop and Ask for Help
-
-**STOP executing immediately when:**
-- Hit a blocker mid-step (missing dependency, test fails, instruction unclear)
-- Plan has critical gaps
-- You don't understand an instruction
-- Verification fails repeatedly
-
-**Ask for clarification rather than guessing.**
-
-## When to Revisit Earlier Steps
-
-- Partner updates the plan based on your feedback
-- Fundamental approach needs rethinking
-
-**Don't force through blockers** - stop and ask.
-
-## Remember
-- Review plan critically first
-- Follow plan steps exactly
-- Don't skip verifications
-- Reference skills when plan says to
-- Between steps: just report and wait
-- Stop when blocked, don't guess
-- Never start implementation on main/master branch without explicit user consent
+Never start implementation on main/master branch without explicit user consent.
