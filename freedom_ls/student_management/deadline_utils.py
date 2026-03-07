@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
@@ -11,13 +14,15 @@ from freedom_ls.student_management.models import (
     CohortCourseRegistration,
     CohortDeadline,
     CohortMembership,
-    Student,
-    StudentCohortDeadlineOverride,
-    StudentCourseRegistration,
     StudentDeadline,
+    UserCohortDeadlineOverride,
+    UserCourseRegistration,
 )
 
-type _DeadlineType = CohortDeadline | StudentDeadline | StudentCohortDeadlineOverride
+if TYPE_CHECKING:
+    from freedom_ls.accounts.models import User
+
+type _DeadlineType = CohortDeadline | StudentDeadline | UserCohortDeadlineOverride
 type _IndexKey = tuple[uuid.UUID, int | None, uuid.UUID | None]
 
 
@@ -29,17 +34,17 @@ class EffectiveDeadline:
 
 
 def get_effective_deadlines(
-    student: Student,
+    user: User,
     course: Course,
     content_item: Topic | Form | CoursePart | None = None,
 ) -> list[EffectiveDeadline]:
-    """Resolve all effective deadlines for a student on a content item (or the course).
+    """Resolve all effective deadlines for a user on a content item (or the course).
 
     Returns a list of EffectiveDeadline, one per registration that produces a deadline.
 
     Resolution per registration:
     1. Cohort registrations: override > cohort deadline > course-level fallback
-    2. Student registrations: item-level > course-level fallback
+    2. Individual registrations: item-level > course-level fallback
     3. Only active registrations are considered
     """
     content_type_id = None
@@ -52,7 +57,7 @@ def get_effective_deadlines(
     results: list[EffectiveDeadline] = []
 
     # --- Cohort-based registrations ---
-    cohort_ids = CohortMembership.objects.filter(student=student).values_list(
+    cohort_ids = CohortMembership.objects.filter(user=user).values_list(
         "cohort_id", flat=True
     )
 
@@ -63,13 +68,13 @@ def get_effective_deadlines(
     ).select_related("cohort")
 
     for reg in cohort_regs:
-        effective = _resolve_cohort_deadline(reg, student, content_type_id, object_id)
+        effective = _resolve_cohort_deadline(reg, user, content_type_id, object_id)
         if effective is not None:
             results.append(effective)
 
     # --- Individual student registrations ---
-    student_regs = StudentCourseRegistration.objects.filter(
-        student=student,
+    student_regs = UserCourseRegistration.objects.filter(
+        user=user,
         collection=course,
         is_active=True,
     )
@@ -84,19 +89,19 @@ def get_effective_deadlines(
 
 def _resolve_cohort_deadline(
     reg: CohortCourseRegistration,
-    student: Student,
+    user: User,
     content_type_id: int | None,
     object_id: uuid.UUID | None,
 ) -> EffectiveDeadline | None:
     """Resolve the effective deadline for a single cohort registration.
 
-    Priority: StudentCohortDeadlineOverride > CohortDeadline > course-level fallback.
+    Priority: UserCohortDeadlineOverride > CohortDeadline > course-level fallback.
     """
-    # 1. Check for student-specific override for this item
+    # 1. Check for user-specific override for this item
     if content_type_id is not None:
-        override = StudentCohortDeadlineOverride.objects.filter(
+        override = UserCohortDeadlineOverride.objects.filter(
             cohort_course_registration=reg,
-            student=student,
+            user=user,
             content_type_id=content_type_id,
             object_id=object_id,
         ).first()
@@ -104,7 +109,7 @@ def _resolve_cohort_deadline(
             return EffectiveDeadline(
                 deadline=override.deadline,
                 is_hard_deadline=override.is_hard_deadline,
-                source=f"Override for {student} in {reg.cohort}",
+                source=f"Override for {user} in {reg.cohort}",
             )
 
         # 2. Check for cohort-level deadline for this item
@@ -121,9 +126,9 @@ def _resolve_cohort_deadline(
             )
 
     # 3. Fall back to course-level override
-    course_override = StudentCohortDeadlineOverride.objects.filter(
+    course_override = UserCohortDeadlineOverride.objects.filter(
         cohort_course_registration=reg,
-        student=student,
+        user=user,
         content_type__isnull=True,
         object_id__isnull=True,
     ).first()
@@ -131,7 +136,7 @@ def _resolve_cohort_deadline(
         return EffectiveDeadline(
             deadline=course_override.deadline,
             is_hard_deadline=course_override.is_hard_deadline,
-            source=f"Override for {student} in {reg.cohort} (course-level)",
+            source=f"Override for {user} in {reg.cohort} (course-level)",
         )
 
     # 4. Fall back to course-level cohort deadline
@@ -151,7 +156,7 @@ def _resolve_cohort_deadline(
 
 
 def _resolve_student_deadline(
-    reg: StudentCourseRegistration,
+    reg: UserCourseRegistration,
     content_type_id: int | None,
     object_id: uuid.UUID | None,
 ) -> EffectiveDeadline | None:
@@ -190,7 +195,7 @@ def _resolve_student_deadline(
 
 
 def get_course_deadlines(
-    student: Student, course: Course
+    user: User, course: Course
 ) -> dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]]:
     """Get all deadlines for all items in a course, optimised for the TOC view.
 
@@ -202,9 +207,7 @@ def get_course_deadlines(
     """
     # Gather all registrations
     cohort_ids = list(
-        CohortMembership.objects.filter(student=student).values_list(
-            "cohort_id", flat=True
-        )
+        CohortMembership.objects.filter(user=user).values_list("cohort_id", flat=True)
     )
 
     cohort_regs = list(
@@ -214,8 +217,8 @@ def get_course_deadlines(
     )
 
     student_regs = list(
-        StudentCourseRegistration.objects.filter(
-            student=student, collection=course, is_active=True
+        UserCourseRegistration.objects.filter(
+            user=user, collection=course, is_active=True
         )
     )
 
@@ -230,8 +233,8 @@ def get_course_deadlines(
         CohortDeadline.objects.filter(cohort_course_registration_id__in=cohort_reg_ids)
     )
     all_overrides = list(
-        StudentCohortDeadlineOverride.objects.filter(
-            cohort_course_registration_id__in=cohort_reg_ids, student=student
+        UserCohortDeadlineOverride.objects.filter(
+            cohort_course_registration_id__in=cohort_reg_ids, user=user
         )
     )
     all_student_deadlines = list(
@@ -272,7 +275,7 @@ def get_course_deadlines(
 
         for reg in cohort_regs:
             effective = _resolve_cohort_deadline_from_index(
-                reg, student, ct_id, obj_id, cohort_dl_index, override_index
+                reg, user, ct_id, obj_id, cohort_dl_index, override_index
             )
             if effective:
                 effective_list.append(effective)
@@ -292,7 +295,7 @@ def get_course_deadlines(
 
 def _resolve_cohort_deadline_from_index(
     reg: CohortCourseRegistration,
-    student: Student,
+    user: User,
     content_type_id: int | None,
     object_id: uuid.UUID | None,
     cohort_dl_index: dict[_IndexKey, list[_DeadlineType]],
@@ -309,7 +312,7 @@ def _resolve_cohort_deadline_from_index(
             return EffectiveDeadline(
                 deadline=dl.deadline,
                 is_hard_deadline=dl.is_hard_deadline,
-                source=f"Override for {student} in {reg.cohort}",
+                source=f"Override for {user} in {reg.cohort}",
             )
 
         # Check cohort deadline for this item
@@ -329,7 +332,7 @@ def _resolve_cohort_deadline_from_index(
         return EffectiveDeadline(
             deadline=dl.deadline,
             is_hard_deadline=dl.is_hard_deadline,
-            source=f"Override for {student} in {reg.cohort} (course-level)",
+            source=f"Override for {user} in {reg.cohort} (course-level)",
         )
 
     # Fall back to course-level cohort deadline
@@ -346,7 +349,7 @@ def _resolve_cohort_deadline_from_index(
 
 
 def _resolve_student_deadline_from_index(
-    reg: StudentCourseRegistration,
+    reg: UserCourseRegistration,
     content_type_id: int | None,
     object_id: uuid.UUID | None,
     student_dl_index: dict[_IndexKey, list[_DeadlineType]],
@@ -378,7 +381,7 @@ def _resolve_student_deadline_from_index(
 
 
 def is_item_locked_by_deadline(
-    student: Student,
+    user: User,
     course: Course,
     content_item: Topic | Form | CoursePart,
     is_completed: bool,
@@ -392,7 +395,7 @@ def is_item_locked_by_deadline(
     if is_completed:
         return False
 
-    deadlines = get_effective_deadlines(student, course, content_item=content_item)
+    deadlines = get_effective_deadlines(user, course, content_item=content_item)
 
     hard_deadlines = [d for d in deadlines if d.is_hard_deadline]
     if not hard_deadlines:

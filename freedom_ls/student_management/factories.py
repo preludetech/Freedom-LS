@@ -16,20 +16,10 @@ from freedom_ls.student_management.models import (
     CohortDeadline,
     CohortMembership,
     RecommendedCourse,
-    Student,
-    StudentCohortDeadlineOverride,
-    StudentCourseRegistration,
     StudentDeadline,
+    UserCohortDeadlineOverride,
+    UserCourseRegistration,
 )
-
-
-class StudentFactory(SiteAwareFactory):
-    """Factory for creating Student instances."""
-
-    class Meta:
-        model = Student
-
-    user = factory.SubFactory(UserFactory)
 
 
 class CohortFactory(SiteAwareFactory):
@@ -47,17 +37,17 @@ class CohortMembershipFactory(SiteAwareFactory):
     class Meta:
         model = CohortMembership
 
-    student = factory.SubFactory(StudentFactory)
+    user = factory.SubFactory(UserFactory)
     cohort = factory.SubFactory(CohortFactory)
 
 
-class StudentCourseRegistrationFactory(SiteAwareFactory):
-    """Factory for creating StudentCourseRegistration instances."""
+class UserCourseRegistrationFactory(SiteAwareFactory):
+    """Factory for creating UserCourseRegistration instances."""
 
     class Meta:
-        model = StudentCourseRegistration
+        model = UserCourseRegistration
 
-    student = factory.SubFactory(StudentFactory)
+    user = factory.SubFactory(UserFactory)
     collection = factory.SubFactory(CourseFactory)
     is_active = True
 
@@ -115,7 +105,7 @@ class StudentDeadlineFactory(SiteAwareFactory):
     class Params:
         content_item = None
 
-    student_course_registration = factory.SubFactory(StudentCourseRegistrationFactory)
+    student_course_registration = factory.SubFactory(UserCourseRegistrationFactory)
     deadline = factory.LazyFunction(lambda: timezone.now() + timedelta(days=30))
     is_hard_deadline = False
 
@@ -129,22 +119,22 @@ class StudentDeadlineFactory(SiteAwareFactory):
     )
 
 
-class StudentCohortDeadlineOverrideFactory(SiteAwareFactory):
-    """Factory for creating StudentCohortDeadlineOverride instances.
+class UserCohortDeadlineOverrideFactory(SiteAwareFactory):
+    """Factory for creating UserCohortDeadlineOverride instances.
 
     Pass ``content_item=<model instance>`` to set the GenericFK fields.
     When omitted, content_type and object_id default to None (course-level override).
     """
 
     class Meta:
-        model = StudentCohortDeadlineOverride
+        model = UserCohortDeadlineOverride
         exclude = ["content_item"]
 
     class Params:
         content_item = None
 
     cohort_course_registration = factory.SubFactory(CohortCourseRegistrationFactory)
-    student = factory.SubFactory(StudentFactory)
+    user = factory.SubFactory(UserFactory)
     deadline = factory.LazyFunction(lambda: timezone.now() + timedelta(days=30))
     is_hard_deadline = False
 

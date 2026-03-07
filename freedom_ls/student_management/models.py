@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
@@ -10,136 +11,6 @@ from django.utils.translation import gettext_lazy as _
 from freedom_ls.site_aware_models.models import SiteAwareModel
 
 User = get_user_model()
-
-
-class Student(SiteAwareModel):
-    user = models.ForeignKey(User, on_delete=models.PROTECT)
-    id_number = models.CharField(max_length=50, blank=True, default="")
-    date_of_birth = models.DateField(blank=True, null=True)
-    cellphone = models.CharField(max_length=20, blank=True, default="")
-
-    def __str__(self):
-        if self.user.first_name or self.user.last_name:
-            return f"{self.user.first_name} {self.user.last_name}".strip()
-        return self.user.email or f"Student {self.pk}"
-
-    def get_course_registrations(self) -> list:
-        """Get all active course registrations for this student."""
-        registered_collections = set()
-
-        # Get direct student registrations
-        student_registrations = StudentCourseRegistration.objects.filter(
-            student=self
-        ).select_related("collection")
-
-        for reg in student_registrations:
-            registered_collections.add(reg.collection)
-
-        # Get cohort-based registrations through cohort memberships
-        cohort_memberships = CohortMembership.objects.filter(
-            student=self
-        ).select_related("cohort")
-
-        for membership in cohort_memberships:
-            cohort_registrations = CohortCourseRegistration.objects.filter(
-                cohort=membership.cohort
-            ).select_related("collection")
-
-            for cohort_reg in cohort_registrations:
-                registered_collections.add(cohort_reg.collection)
-
-        return list(registered_collections)
-
-    def completed_courses(self) -> list:
-        """Get all completed courses for this student."""
-        from freedom_ls.student_progress.models import CourseProgress
-
-        # Get all registered courses
-        all_registered = self.get_course_registrations()
-        completed = []
-
-        for course in all_registered:
-            try:
-                course_progress = CourseProgress.objects.get(
-                    user=self.user, course=course
-                )
-                if course_progress.completed_time:
-                    completed.append(course)
-            except CourseProgress.DoesNotExist:
-                pass
-
-        return completed
-
-    def current_courses(self) -> list:
-        """Get all current (non-completed) courses for this student."""
-        from freedom_ls.student_management.utils import (
-            calculate_course_progress_percentage,
-        )
-        from freedom_ls.student_progress.models import (
-            CourseProgress,
-            FormProgress,
-            TopicProgress,
-        )
-
-        # Get all registered courses
-        all_registered = self.get_course_registrations()
-        current = []
-
-        # Fetch all course progress for this user in one query
-        course_progress_dict = {
-            cp.course_id: cp
-            for cp in CourseProgress.objects.filter(
-                user=self.user, course__in=all_registered
-            ).select_related("course")
-        }
-
-        # Collect all topic and form IDs (including nested in CourseParts)
-        topic_ids = []
-        form_ids = []
-
-        def collect_ids(children):
-            """Recursively collect topic and form IDs from children."""
-            for child in children:
-                if child.content_type == "COURSE_PART":
-                    collect_ids(child.children())
-                elif child.content_type == "TOPIC":
-                    topic_ids.append(child.id)
-                elif child.content_type == "FORM":
-                    form_ids.append(child.id)
-
-        for course in all_registered:
-            collect_ids(course.children())
-
-        # Get completed topics and forms
-        completed_topics = set(
-            TopicProgress.objects.filter(
-                user=self.user, topic_id__in=topic_ids, complete_time__isnull=False
-            ).values_list("topic_id", flat=True)
-        )
-
-        completed_forms = set(
-            FormProgress.objects.filter(
-                user=self.user, form_id__in=form_ids, completed_time__isnull=False
-            ).values_list("form_id", flat=True)
-        )
-
-        for course in all_registered:
-            course_progress = course_progress_dict.get(course.id)
-
-            # Only include non-completed courses
-            if course_progress and course_progress.completed_time:
-                continue
-
-            # Calculate percentage complete using utility function
-            percentage = calculate_course_progress_percentage(
-                course, completed_topics, completed_forms
-            )
-
-            # Attach percentage to course object as an attribute
-            course.progress_percentage = percentage
-            current.append(course)
-
-        return current
 
 
 class Cohort(SiteAwareModel):
@@ -157,37 +28,43 @@ class Cohort(SiteAwareModel):
 
 
 class CohortMembership(SiteAwareModel):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
     cohort = models.ForeignKey(Cohort, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "cohort"],
+                name="unique_user_cohort_membership",
+            )
+        ]
 
     def __str__(self):
-        return ""
+        return f"{self.user} - {self.cohort}"
 
 
-class StudentCourseRegistration(SiteAwareModel):
-    """Individual student registration for a course."""
+class UserCourseRegistration(SiteAwareModel):
+    """Individual user registration for a course."""
 
     collection = models.ForeignKey(
         "freedom_ls_content_engine.Course",
         on_delete=models.CASCADE,
-        related_name="student_registrations",
+        related_name="user_registrations",
     )
-    student = models.ForeignKey(
-        Student, on_delete=models.CASCADE, related_name="course_registrations"
-    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     is_active = models.BooleanField(default=True)
     registered_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["site_id", "collection", "student"],
-                name="unique_student_course_registration",
+                fields=["site_id", "collection", "user"],
+                name="unique_user_course_registration",
             )
         ]
 
     def __str__(self):
-        return f"{self.student} - {self.collection}"
+        return f"{self.user} - {self.collection}"
 
 
 class CohortCourseRegistration(SiteAwareModel):
@@ -267,7 +144,7 @@ class StudentDeadline(SiteAwareModel):
     """Deadline for a student registered individually for a course."""
 
     student_course_registration = models.ForeignKey(
-        StudentCourseRegistration,
+        UserCourseRegistration,
         on_delete=models.CASCADE,
         related_name="deadlines",
     )
@@ -307,22 +184,18 @@ class StudentDeadline(SiteAwareModel):
     def __str__(self) -> str:
         reg = self.student_course_registration
         item_label = str(self.content_item) if self.content_item else "Whole course"
-        return f"{reg.student} - {reg.collection} - {item_label}"
+        return f"{reg.user} - {reg.collection} - {item_label}"
 
 
-class StudentCohortDeadlineOverride(SiteAwareModel):
-    """Override deadline for a specific student within a cohort."""
+class UserCohortDeadlineOverride(SiteAwareModel):
+    """Override deadline for a specific user within a cohort."""
 
     cohort_course_registration = models.ForeignKey(
         CohortCourseRegistration,
         on_delete=models.CASCADE,
         related_name="deadline_overrides",
     )
-    student = models.ForeignKey(
-        Student,
-        on_delete=models.CASCADE,
-        related_name="cohort_deadline_overrides",
-    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     content_type = models.ForeignKey(
         DjangoContentType,
         on_delete=models.CASCADE,
@@ -339,43 +212,43 @@ class StudentCohortDeadlineOverride(SiteAwareModel):
             models.UniqueConstraint(
                 fields=[
                     "cohort_course_registration",
-                    "student",
+                    "user",
                     "content_type",
                     "object_id",
                 ],
-                name="unique_student_cohort_override_per_item",
+                name="unique_user_cohort_override_per_item",
                 condition=models.Q(content_type__isnull=False, object_id__isnull=False),
             ),
         ]
 
     def clean(self) -> None:
         super().clean()
-        # Validate student is a member of the cohort
+        # Validate user is a member of the cohort
         if not CohortMembership.objects.filter(
-            student=self.student,
+            user=self.user,
             cohort=self.cohort_course_registration.cohort,
         ).exists():
             raise ValidationError(
-                "Student is not a member of the cohort for this registration."
+                "User is not a member of the cohort for this registration."
             )
 
         # Validate uniqueness for course-level overrides (null content)
         if self.content_type is None and self.object_id is None:
-            existing = StudentCohortDeadlineOverride.objects.filter(
+            existing = UserCohortDeadlineOverride.objects.filter(
                 cohort_course_registration=self.cohort_course_registration,
-                student=self.student,
+                user=self.user,
                 content_type__isnull=True,
                 object_id__isnull=True,
             ).exclude(pk=self.pk)
             if existing.exists():
                 raise ValidationError(
-                    "A course-level override already exists for this student and cohort registration."
+                    "A course-level override already exists for this user and cohort registration."
                 )
 
     def __str__(self) -> str:
         reg = self.cohort_course_registration
         item_label = str(self.content_item) if self.content_item else "Whole course"
-        return f"{self.student} - {reg.cohort} - {reg.collection} - {item_label}"
+        return f"{self.user} - {reg.cohort} - {reg.collection} - {item_label}"
 
 
 class RecommendedCourse(SiteAwareModel):

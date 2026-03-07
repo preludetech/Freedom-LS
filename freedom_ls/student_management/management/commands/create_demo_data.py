@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 
-from freedom_ls.student_management.models import Cohort, CohortMembership, Student
+from freedom_ls.student_management.models import Cohort, CohortMembership
 
 # from app_authentication.models import Client
 
@@ -84,25 +84,6 @@ class Command(BaseCommand):
                     self.style.WARNING(f"User '{user_email}' already exists")
                 )
 
-            # Create or update API client for this site
-            # client, created = Client.objects.update_or_create(
-            #     name=client_name,
-            #     site=site,
-            #     defaults={"api_key": client_api_key, "is_active": True},
-            # )
-            # if created:
-            #     self.stdout.write(
-            #         self.style.SUCCESS(
-            #             f"API Client '{client_name}' created for site '{site.name}'"
-            #         )
-            #     )
-            # else:
-            #     self.stdout.write(
-            #         self.style.SUCCESS(
-            #             f"API Client '{client_name}' updated for site '{site.name}'"
-            #         )
-            #     )
-
             # Create cohorts for this site
             created_cohorts = []
             for cohort_name in site_data.get("cohorts", []):
@@ -122,15 +103,15 @@ class Command(BaseCommand):
                         self.style.WARNING(f"Cohort '{cohort_name}' already exists")
                     )
 
-            # Create students for this site (3 students per site)
-            created_students = []
+            # Create student users for this site
+            created_users = []
             site_prefix = site_data["name"].lower()
             max_students = site_data.get("num_students", 3) + 1
-            for i in range(1, max_students):  # Create 3 students (s1, s2, s3)
+            for i in range(1, max_students):
                 full_name = f"{site_prefix}_s{i}"
                 email = f"{site_prefix}_s{i}@email.com"
 
-                # Create or get the user first
+                # Create or get the user
                 student_user, user_created = user_model.objects.get_or_create(
                     email=email,
                     site=site,
@@ -144,37 +125,32 @@ class Command(BaseCommand):
                     student_user.set_password(email)
                     student_user.save()
 
-                # Create or get the student
-                student, created = Student.objects.get_or_create(
-                    user=student_user,
-                    site=site,
-                )
-                created_students.append(student)
-                if created:
+                created_users.append(student_user)
+                if user_created:
                     self.stdout.write(
                         self.style.SUCCESS(
-                            f"Student '{full_name}' created for site '{site.name}'"
+                            f"User '{full_name}' created for site '{site.name}'"
                         )
                     )
                 else:
                     self.stdout.write(
-                        self.style.WARNING(f"Student '{full_name}' already exists")
+                        self.style.WARNING(f"User '{full_name}' already exists")
                     )
 
-            # Add students to first cohort if available
-            if created_cohorts and created_students:
+            # Add users to first cohort if available
+            if created_cohorts and created_users:
                 first_cohort = created_cohorts[0]
-                for student in created_students:
+                for student_user in created_users:
                     _membership, created = CohortMembership.objects.get_or_create(
-                        student=student,
+                        user=student_user,
                         cohort=first_cohort,
                         site=site,
                     )
                     if created:
-                        student_name = f"{student.user.first_name} {student.user.last_name}".strip()
+                        user_name = f"{student_user.first_name} {student_user.last_name}".strip()
                         self.stdout.write(
                             self.style.SUCCESS(
-                                f"Added '{student_name}' to cohort '{first_cohort.name}'"
+                                f"Added '{user_name}' to cohort '{first_cohort.name}'"
                             )
                         )
 
