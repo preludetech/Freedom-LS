@@ -30,7 +30,7 @@ from freedom_ls.role_based_permissions.utils import (
     remove_system_role,
     sync_user_object_permissions,
 )
-from freedom_ls.student_management.factories import CohortFactory, StudentFactory
+from freedom_ls.student_management.factories import CohortFactory
 
 
 @pytest.fixture(autouse=True)
@@ -84,18 +84,23 @@ class TestAssignObjectRole:
         assert "view_cohort" in perms
 
     @pytest.mark.django_db
-    def test_sets_guardian_permissions_matching_target_content_type(self) -> None:
+    def test_sets_guardian_permissions_matching_target_content_type(
+        self, mock_site_context: Site
+    ) -> None:
         """Only permissions matching the target's content type are synced."""
         user = UserFactory()
-        student = StudentFactory()
 
-        # Instructor has view_cohort, view_student, change_student
-        # On a Student object, only view_student and change_student match
-        assign_object_role(user, student, "instructor")
-        perms = get_perms(user, student)
-        assert "view_student" in perms
-        assert "change_student" in perms
+        # Instructor has cohort-scoped permissions (view_cohort, etc.)
+        # On a Site object, none of those match the Site content type
+        assign_object_role(user, mock_site_context, "instructor")
+        perms = get_perms(user, mock_site_context)
         assert "view_cohort" not in perms
+
+        # But on a Cohort object, view_cohort should match
+        cohort = CohortFactory()
+        assign_object_role(user, cohort, "instructor")
+        cohort_perms = get_perms(user, cohort)
+        assert "view_cohort" in cohort_perms
 
     @pytest.mark.django_db
     def test_reactivates_inactive_assignment(self) -> None:
