@@ -4,6 +4,7 @@ from collections.abc import Generator
 from unittest.mock import patch
 
 import pytest
+from click import ClickException
 from guardian.models import UserObjectPermission
 from guardian.shortcuts import assign_perm
 from pytest_mock import MockerFixture
@@ -11,7 +12,6 @@ from pytest_mock import MockerFixture
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.core.management import call_command
-from django.core.management.base import CommandError
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.role_based_permissions.factories import (
@@ -201,7 +201,7 @@ class TestValidateRolePermissionsInvalidRoleName:
                 "freedom_ls.role_based_permissions.management.commands.validate_role_permissions.get_role_config",
                 return_value=bad_config,
             ),
-            pytest.raises(CommandError, match="not-valid-identifier"),
+            pytest.raises(ClickException, match="not-valid-identifier"),
         ):
             _call_validate()
 
@@ -229,7 +229,7 @@ class TestValidateRolePermissionsUnknownPermission:
                 "freedom_ls.role_based_permissions.management.commands.validate_role_permissions.get_role_config",
                 return_value=bad_config,
             ),
-            pytest.raises(CommandError, match=r"nonexistent_app\.nonexistent_perm"),
+            pytest.raises(ClickException, match=r"nonexistent_app\.nonexistent_perm"),
         ):
             _call_validate()
 
@@ -254,7 +254,7 @@ class TestValidateRolePermissionsInvalidRoleType:
                 "freedom_ls.role_based_permissions.management.commands.validate_role_permissions.get_role_config",
                 return_value=bad_config,
             ),
-            pytest.raises(CommandError, match="invalid_hint"),
+            pytest.raises(ClickException, match="invalid_hint"),
         ):
             _call_validate()
 
@@ -271,7 +271,7 @@ class TestValidateRolePermissionsOrphanedDbAssignment:
             user=user, role="nonexistent_role_xyz", is_active=True
         )
 
-        with pytest.raises(CommandError, match="nonexistent_role_xyz"):
+        with pytest.raises(ClickException, match="nonexistent_role_xyz"):
             _call_validate()
 
 
@@ -304,7 +304,7 @@ class TestValidateRolePermissionsMultipleConfigs:
                 "freedom_ls.role_based_permissions.management.commands.validate_role_permissions._get_permissions_modules",
                 return_value={"bad_site": "some.module"},
             ),
-            pytest.raises(CommandError, match="bad role name!"),
+            pytest.raises(ClickException, match="bad role name!"),
         ):
             _call_validate()
 
@@ -316,17 +316,21 @@ class TestValidateRolePermissionsMultipleConfigs:
 
 def _call_sync(*args: str) -> str:
     """Call sync_role_permissions and return stdout."""
+    from contextlib import redirect_stdout
     from io import StringIO
 
     out = StringIO()
-    call_command("sync_role_permissions", *args, stdout=out)
+    with redirect_stdout(out):
+        call_command("sync_role_permissions", *args)
     return out.getvalue()
 
 
 def _call_validate(*args: str) -> str:
     """Call validate_role_permissions and return stdout."""
+    from contextlib import redirect_stdout
     from io import StringIO
 
     out = StringIO()
-    call_command("validate_role_permissions", *args, stdout=out)
+    with redirect_stdout(out):
+        call_command("validate_role_permissions", *args)
     return out.getvalue()
