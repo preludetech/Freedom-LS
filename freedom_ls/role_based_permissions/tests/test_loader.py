@@ -6,17 +6,17 @@ from unittest.mock import patch
 
 import pytest
 
-from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.loader import clear_caches, get_role_config
 from freedom_ls.role_based_permissions.roles import BASE_ROLES
 from freedom_ls.role_based_permissions.types import Role, SiteRolesConfig
 
 
 @pytest.fixture(autouse=True)
 def clear_loader_cache() -> Generator[None]:
-    """Clear the lru_cache on get_role_config between every test."""
-    get_role_config.cache_clear()
+    """Clear role permission caches between every test."""
+    clear_caches()
     yield
-    get_role_config.cache_clear()
+    clear_caches()
 
 
 class TestGetRoleConfig:

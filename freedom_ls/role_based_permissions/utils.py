@@ -1,7 +1,9 @@
 """Utility functions for role assignment, permission sync, and queries."""
 
+from __future__ import annotations
+
 from functools import lru_cache
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 from guardian.models import UserObjectPermission
 from guardian.shortcuts import assign_perm, remove_perm
@@ -12,8 +14,10 @@ from django.contrib.sites.models import Site
 from django.db import transaction
 from django.db.models import Model
 
-from freedom_ls.accounts.models import User
 from freedom_ls.role_based_permissions.loader import get_role_config
+
+if TYPE_CHECKING:
+    from freedom_ls.accounts.models import User
 from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
     SiteRoleAssignment,

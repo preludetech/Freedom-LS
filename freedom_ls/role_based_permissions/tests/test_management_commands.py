@@ -19,26 +19,21 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.role_based_permissions.factories import (
     ObjectRoleAssignmentFactory,
 )
-from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.loader import clear_caches, get_role_config
 from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
     SystemRoleAssignment,
 )
 from freedom_ls.role_based_permissions.types import Role, SiteRolesConfig
-from freedom_ls.role_based_permissions.utils import (
-    _get_valid_codenames_for_content_type,
-)
 from freedom_ls.student_management.factories import CohortFactory
 
 
 @pytest.fixture(autouse=True)
 def _clear_caches() -> Generator[None]:
     """Clear the loader and permission caches between tests."""
-    get_role_config.cache_clear()
-    _get_valid_codenames_for_content_type.cache_clear()
+    clear_caches()
     yield
-    get_role_config.cache_clear()
-    _get_valid_codenames_for_content_type.cache_clear()
+    clear_caches()
 
 
 @pytest.fixture(autouse=True)
@@ -300,7 +295,7 @@ class TestValidateRolePermissionsMultipleConfigs:
         def mock_get_config(site_name: str | None = None) -> SiteRolesConfig:
             if site_name == "bad_site":
                 return bad_site_config
-            return get_role_config.__wrapped__(site_name)
+            return get_role_config(site_name)
 
         with (
             patch(

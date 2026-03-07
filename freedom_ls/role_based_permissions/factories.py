@@ -54,7 +54,14 @@ class ObjectRoleAssignmentFactory(SiteAwareFactory):
     is_active = True
     assigned_by = None
 
-    target_object = None
+    target_object = factory.LazyFunction(
+        lambda: (_ for _ in ()).throw(
+            ValueError(
+                "ObjectRoleAssignmentFactory requires target_object. "
+                "Usage: ObjectRoleAssignmentFactory(target_object=some_model_instance)"
+            )
+        )
+    )
 
     content_type = factory.LazyAttribute(
         lambda obj: ContentType.objects.get_for_model(obj.target_object)

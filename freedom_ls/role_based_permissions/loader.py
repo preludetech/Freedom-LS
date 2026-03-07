@@ -28,7 +28,16 @@ def load_base_config() -> SiteRolesConfig:
     return _load_module_config(_BASE_MODULE)
 
 
-@cache
+def clear_caches() -> None:
+    """Clear all role permission caches. Intended for use in tests."""
+    from freedom_ls.role_based_permissions.utils import (
+        _get_valid_codenames_for_content_type,
+    )
+
+    _get_role_config_cached.cache_clear()
+    _get_valid_codenames_for_content_type.cache_clear()
+
+
 def get_role_config(site_name: str | None = None) -> SiteRolesConfig:
     """
     Load the role config for the given site name.
@@ -39,6 +48,12 @@ def get_role_config(site_name: str | None = None) -> SiteRolesConfig:
     if site_name is None:
         site_name = Site.objects.get_current().name
 
+    return _get_role_config_cached(site_name)
+
+
+@cache
+def _get_role_config_cached(site_name: str) -> SiteRolesConfig:
+    """Cached inner function — site_name is always a concrete string."""
     modules: dict[str, str] = getattr(settings, "FREEDOMLS_PERMISSIONS_MODULES", {})
     module_path = modules.get(site_name, _BASE_MODULE)
     return _load_module_config(module_path)

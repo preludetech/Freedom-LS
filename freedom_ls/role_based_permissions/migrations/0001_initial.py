@@ -32,8 +32,11 @@ class Migration(migrations.Migration):
             ],
             options={
                 'indexes': [models.Index(fields=['user', 'is_active'], name='freedom_ls__user_id_cbbe08_idx'), models.Index(fields=['content_type', 'object_id', 'role', 'is_active'], name='freedom_ls__content_cacc76_idx')],
-                'unique_together': {('user', 'content_type', 'object_id', 'role')},
             },
+        ),
+        migrations.AddConstraint(
+            model_name='objectroleassignment',
+            constraint=models.UniqueConstraint(fields=('user', 'content_type', 'object_id', 'role'), name='unique_object_role_per_user'),
         ),
         migrations.CreateModel(
             name='SiteRoleAssignment',
@@ -48,8 +51,11 @@ class Migration(migrations.Migration):
             ],
             options={
                 'indexes': [models.Index(fields=['user', 'is_active'], name='freedom_ls__user_id_022e7c_idx'), models.Index(fields=['site', 'role'], name='freedom_ls__site_id_9ab52c_idx')],
-                'unique_together': {('user', 'site', 'role')},
             },
+        ),
+        migrations.AddConstraint(
+            model_name='siteroleassignment',
+            constraint=models.UniqueConstraint(fields=('user', 'site', 'role'), name='unique_site_role_per_user'),
         ),
         migrations.CreateModel(
             name='SystemRoleAssignment',
@@ -61,8 +67,9 @@ class Migration(migrations.Migration):
                 ('assigned_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to=settings.AUTH_USER_MODEL)),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='system_roles', to=settings.AUTH_USER_MODEL)),
             ],
-            options={
-                'unique_together': {('user', 'role')},
-            },
+        ),
+        migrations.AddConstraint(
+            model_name='systemroleassignment',
+            constraint=models.UniqueConstraint(fields=('user', 'role'), name='unique_system_role_per_user'),
         ),
     ]

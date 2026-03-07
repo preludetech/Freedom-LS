@@ -7,7 +7,7 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 
-from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.loader import get_role_config, load_base_config
 from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
     SiteRoleAssignment,
@@ -24,19 +24,24 @@ from freedom_ls.role_based_permissions.utils import sync_user_object_permissions
     is_flag=True,
     help="Detect guardian perms with no matching role assignment.",
 )
-def command(dry_run: bool, report_orphans: bool) -> None:
+@click.option(
+    "--site",
+    default=None,
+    help="Site name to load config for. Falls back to base config if not specified.",
+)
+def command(dry_run: bool, report_orphans: bool, site: str | None) -> None:
     """Sync guardian permissions with role assignments and detect drift."""
-    config = get_role_config()
+    config = get_role_config(site) if site else load_base_config()
 
     # Phase 1: Ensure permission objects exist
     _ensure_permissions_exist(config)
 
     # Phase 2: Sync ObjectRoleAssignments
     drifted = 0
-    drifted += _sync_object_assignments(config, dry_run)
+    drifted += _sync_object_assignments(dry_run)
 
     # Phase 3: Sync SiteRoleAssignments
-    drifted += _sync_site_assignments(config, dry_run)
+    drifted += _sync_site_assignments(dry_run)
 
     # Phase 4: Validate SystemRoleAssignments
     _validate_system_assignments(config)
@@ -87,7 +92,7 @@ def _ensure_permissions_exist(config: SiteRolesConfig) -> None:
         )
 
 
-def _sync_object_assignments(config: SiteRolesConfig, dry_run: bool) -> int:
+def _sync_object_assignments(dry_run: bool) -> int:
     """Sync guardian perms for all active ObjectRoleAssignments. Returns drift count."""
     drifted = 0
     pairs_seen: set[tuple[int, int, str]] = set()
@@ -128,7 +133,7 @@ def _sync_object_assignments(config: SiteRolesConfig, dry_run: bool) -> int:
     return drifted
 
 
-def _sync_site_assignments(config: SiteRolesConfig, dry_run: bool) -> int:
+def _sync_site_assignments(dry_run: bool) -> int:
     """Sync guardian perms for all active SiteRoleAssignments. Returns drift count."""
     drifted = 0
     pairs_seen: set[tuple[int, int]] = set()

@@ -204,3 +204,7 @@ class SiteRolesConfig:
         for role in self._roles.values():
             result |= role.permissions
         return result
+
+    def __repr__(self) -> str:
+        role_names = ", ".join(sorted(self._roles.keys()))
+        return f"SiteRolesConfig([{role_names}])"
