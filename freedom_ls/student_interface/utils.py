@@ -25,7 +25,6 @@ from freedom_ls.student_management.models import (
     RecommendedCourse,
     UserCourseRegistration,
 )
-from freedom_ls.student_management.utils import calculate_course_progress_percentage
 from freedom_ls.student_progress.models import (
     CourseProgress,
     FormProgress,
@@ -455,36 +454,6 @@ def get_current_courses(user: RequestUser) -> list[Course]:
         ).select_related("course")
     }
 
-    # Collect all topic and form IDs (including nested in CourseParts)
-    topic_ids: list = []
-    form_ids: list = []
-
-    def collect_ids(children: list) -> None:
-        """Recursively collect topic and form IDs from children."""
-        for child in children:
-            if child.content_type == "COURSE_PART":
-                collect_ids(child.children())
-            elif child.content_type == "TOPIC":
-                topic_ids.append(child.id)
-            elif child.content_type == "FORM":
-                form_ids.append(child.id)
-
-    for course in all_registered:
-        collect_ids(course.children())
-
-    # Get completed topics and forms
-    completed_topics = set(
-        TopicProgress.objects.filter(
-            user=user, topic_id__in=topic_ids, complete_time__isnull=False
-        ).values_list("topic_id", flat=True)
-    )
-
-    completed_forms = set(
-        FormProgress.objects.filter(
-            user=user, form_id__in=form_ids, completed_time__isnull=False
-        ).values_list("form_id", flat=True)
-    )
-
     current = []
     for course in all_registered:
         course_progress = course_progress_dict.get(course.id)
@@ -493,12 +462,8 @@ def get_current_courses(user: RequestUser) -> list[Course]:
         if course_progress and course_progress.completed_time:
             continue
 
-        # Calculate percentage complete using utility function
-        percentage = calculate_course_progress_percentage(
-            course, completed_topics, completed_forms
-        )
-
-        # Attach percentage to course object as an attribute
+        # Use the stored progress_percentage from CourseProgress
+        percentage = course_progress.progress_percentage if course_progress else 0
         setattr(course, "progress_percentage", percentage)  # noqa: B010
         current.append(course)
 
