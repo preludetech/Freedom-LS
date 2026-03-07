@@ -1,5 +1,6 @@
 import pytest
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartFactory,
@@ -9,8 +10,7 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.content_engine.models import Course, CoursePart
 from freedom_ls.student_interface.utils import BLOCKED, READY, get_course_index
 from freedom_ls.student_management.factories import (
-    StudentCourseRegistrationFactory,
-    StudentFactory,
+    UserCourseRegistrationFactory,
 )
 
 
@@ -31,11 +31,11 @@ def test_course_part_children_have_status_and_url(mock_site_context):
     course_part.items.create(child=form, order=1)
 
     # Create a user and register them for the course
-    student = StudentFactory()
-    StudentCourseRegistrationFactory(student=student, collection=course)
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course)
 
     # Get the course index
-    children = get_course_index(user=student.user, course=course)
+    children = get_course_index(user=user, course=course)
 
     # Find the course part in the children
     course_part_dict = children[0]
@@ -73,11 +73,11 @@ def test_course_part_status_based_on_children(mock_site_context):
     course_part.items.create(child=topic, order=0)
 
     # Create a user and register them
-    student = StudentFactory()
-    StudentCourseRegistrationFactory(student=student, collection=course)
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course)
 
     # Get the course index
-    children = get_course_index(user=student.user, course=course)
+    children = get_course_index(user=user, course=course)
     course_part_dict = children[0]
 
     # CoursePart should have READY status if first child is READY

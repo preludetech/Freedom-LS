@@ -6,12 +6,12 @@ from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.student_management.factories import (
     RecommendedCourseFactory,
-    StudentCourseRegistrationFactory,
-    StudentFactory,
+    UserCourseRegistrationFactory,
 )
 from freedom_ls.student_progress.factories import CourseProgressFactory
 
@@ -35,10 +35,10 @@ def courses(mock_site_context) -> list[Course]:
 @pytest.mark.django_db
 def test_all_courses_started_course_has_progress_percentage(mock_site_context, courses):
     """Started courses in the all_courses view should have progress_percentage for progress bars."""
-    student = StudentFactory()
-    StudentCourseRegistrationFactory(student=student, collection=courses[0])
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = Client()
-    client.force_login(student.user)
+    client.force_login(user)
 
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
@@ -63,10 +63,10 @@ def test_partial_list_courses_anonymous_sees_empty(client, courses, mock_site_co
 @pytest.mark.django_db
 def test_partial_list_courses_current_courses(mock_site_context, courses):
     """Registered non-completed courses show up as registered_courses."""
-    student = StudentFactory()
-    StudentCourseRegistrationFactory(student=student, collection=courses[0])
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = Client()
-    client.force_login(student.user)
+    client.force_login(user)
 
     response = client.get(reverse("student_interface:partial_list_courses"))
     assert response.status_code == 200
@@ -80,10 +80,10 @@ def test_partial_list_courses_current_courses_have_progress_percentage(
     mock_site_context, courses
 ):
     """Current courses should have progress_percentage attribute for progress bars."""
-    student = StudentFactory()
-    StudentCourseRegistrationFactory(student=student, collection=courses[0])
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = Client()
-    client.force_login(student.user)
+    client.force_login(user)
 
     response = client.get(reverse("student_interface:partial_list_courses"))
     registered = response.context["registered_courses"]
@@ -94,13 +94,11 @@ def test_partial_list_courses_current_courses_have_progress_percentage(
 @pytest.mark.django_db
 def test_partial_list_courses_completed_courses(mock_site_context, courses):
     """Completed courses show up in completed_courses, not registered_courses."""
-    student = StudentFactory()
-    StudentCourseRegistrationFactory(student=student, collection=courses[0])
-    CourseProgressFactory(
-        user=student.user, course=courses[0], completed_time=timezone.now()
-    )
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    CourseProgressFactory(user=user, course=courses[0], completed_time=timezone.now())
     client = Client()
-    client.force_login(student.user)
+    client.force_login(user)
 
     response = client.get(reverse("student_interface:partial_list_courses"))
     assert response.status_code == 200
@@ -111,10 +109,10 @@ def test_partial_list_courses_completed_courses(mock_site_context, courses):
 @pytest.mark.django_db
 def test_partial_list_courses_includes_recommended_courses(mock_site_context, courses):
     """Recommended courses are passed to the template context."""
-    student = StudentFactory()
-    RecommendedCourseFactory(user=student.user, collection=courses[0])
+    user = UserFactory()
+    RecommendedCourseFactory(user=user, collection=courses[0])
     client = Client()
-    client.force_login(student.user)
+    client.force_login(user)
 
     response = client.get(reverse("student_interface:partial_list_courses"))
     assert response.status_code == 200

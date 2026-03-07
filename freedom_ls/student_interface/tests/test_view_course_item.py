@@ -5,6 +5,7 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartFactory,
@@ -14,8 +15,7 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
 from freedom_ls.student_management.factories import (
-    StudentCourseRegistrationFactory,
-    StudentFactory,
+    UserCourseRegistrationFactory,
 )
 
 
@@ -85,12 +85,12 @@ def course_with_nested_structure(mock_site_context, request):
 @pytest.fixture
 def authenticated_client(mock_site_context, course_with_nested_structure):
     """Create an authenticated test client with a user registered for the test course."""
-    student = StudentFactory()
-    StudentCourseRegistrationFactory(
-        student=student, collection=course_with_nested_structure["course"]
+    user = UserFactory()
+    UserCourseRegistrationFactory(
+        user=user, collection=course_with_nested_structure["course"]
     )
     client = Client()
-    client.force_login(student.user)
+    client.force_login(user)
     return client
 
 

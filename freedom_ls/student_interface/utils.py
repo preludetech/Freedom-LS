@@ -4,7 +4,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.urls import reverse
 from django.utils import timezone
 
@@ -20,11 +20,24 @@ from freedom_ls.student_management.deadline_utils import (
     EffectiveDeadline,
     get_course_deadlines,
 )
-from freedom_ls.student_management.models import RecommendedCourse, Student
-from freedom_ls.student_progress.models import FormProgress, TopicProgress
+from freedom_ls.student_management.models import (
+    CohortCourseRegistration,
+    RecommendedCourse,
+    UserCourseRegistration,
+)
+from freedom_ls.student_management.utils import calculate_course_progress_percentage
+from freedom_ls.student_progress.models import (
+    CourseProgress,
+    FormProgress,
+    TopicProgress,
+)
 
 if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+
     from freedom_ls.accounts.models import User
+
+    type RequestUser = User | AnonymousUser | AbstractBaseUser
 
 # Status constants
 BLOCKED = "BLOCKED"
@@ -118,17 +131,30 @@ def get_content_status(
             return BLOCKED, BLOCKED
 
 
-def get_is_registered(user: User, course: Course) -> bool:
-    # Check if user is registered for the course
-    is_registered = False
-    if user.is_authenticated:
-        try:
-            student = Student.objects.get(user=user)
-            registered_courses = student.get_course_registrations()
-            is_registered = course in registered_courses
-        except Student.DoesNotExist:
-            is_registered = False
-    return is_registered
+def get_is_registered(user: RequestUser, course: Course) -> bool:
+    """Check if user is registered for the course (directly or via cohort)."""
+    if not user.is_authenticated:
+        return False
+    direct = UserCourseRegistration.objects.filter(
+        user=user, collection=course, is_active=True
+    ).exists()
+    if direct:
+        return True
+    cohort = CohortCourseRegistration.objects.filter(
+        cohort__cohortmembership__user=user, collection=course, is_active=True
+    ).exists()
+    return cohort
+
+
+def get_course_registrations(user: RequestUser) -> list[Course]:
+    """Get all courses a user is registered for (directly or via cohort)."""
+    direct = UserCourseRegistration.objects.filter(
+        user=user, is_active=True
+    ).values_list("collection", flat=True)
+    cohort = CohortCourseRegistration.objects.filter(
+        cohort__cohortmembership__user=user, is_active=True
+    ).values_list("collection", flat=True)
+    return list(Course.objects.filter(Q(pk__in=direct) | Q(pk__in=cohort)).distinct())
 
 
 def get_course_index(user: User, course: Course) -> list[dict]:
@@ -139,13 +165,12 @@ def get_course_index(user: User, course: Course) -> list[dict]:
     """
     is_registered = get_is_registered(user, course)
 
-    # Look up student and deadlines
-    student = get_student(user)
+    # Look up deadlines
     deadlines_map: dict[
         tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]
     ] = {}
-    if student and config.DEADLINES_ACTIVE:
-        deadlines_map = get_course_deadlines(student, course)
+    if user.is_authenticated and config.DEADLINES_ACTIVE:
+        deadlines_map = get_course_deadlines(user, course)
 
     children = []
     next_status = READY  # First item starts as READY
@@ -397,34 +422,90 @@ def get_all_courses() -> QuerySet[Course]:
     return Course.objects.all()
 
 
-def get_student(user) -> Student | None:
-    """Get the Student instance for a user, or None if anonymous or no student."""
-    if not user.is_authenticated:
-        return None
-    try:
-        student: Student = Student.objects.get(user=user)
-        return student
-    except Student.DoesNotExist:
-        return None
-
-
-def get_completed_courses(user) -> list[Course]:
+def get_completed_courses(user: RequestUser) -> list[Course]:
     """Get completed courses for a user. Returns empty list for anonymous users."""
-    student = get_student(user)
-    if student is None:
+    if not user.is_authenticated:
         return []
-    return student.completed_courses()
+    all_registered = get_course_registrations(user)
+    if not all_registered:
+        return []
+    completed_course_ids = set(
+        CourseProgress.objects.filter(
+            user=user,
+            course__in=all_registered,
+            completed_time__isnull=False,
+        ).values_list("course_id", flat=True)
+    )
+    return [c for c in all_registered if c.id in completed_course_ids]
 
 
-def get_current_courses(user) -> list[Course]:
+def get_current_courses(user: RequestUser) -> list[Course]:
     """Get current (in-progress) courses for a user. Returns empty list for anonymous users."""
-    student = get_student(user)
-    if student is None:
+    if not user.is_authenticated:
         return []
-    return student.current_courses()
+    all_registered = get_course_registrations(user)
+    if not all_registered:
+        return []
+
+    # Fetch all course progress for this user in one query
+    course_progress_dict = {
+        cp.course_id: cp
+        for cp in CourseProgress.objects.filter(
+            user=user, course__in=all_registered
+        ).select_related("course")
+    }
+
+    # Collect all topic and form IDs (including nested in CourseParts)
+    topic_ids: list = []
+    form_ids: list = []
+
+    def collect_ids(children: list) -> None:
+        """Recursively collect topic and form IDs from children."""
+        for child in children:
+            if child.content_type == "COURSE_PART":
+                collect_ids(child.children())
+            elif child.content_type == "TOPIC":
+                topic_ids.append(child.id)
+            elif child.content_type == "FORM":
+                form_ids.append(child.id)
+
+    for course in all_registered:
+        collect_ids(course.children())
+
+    # Get completed topics and forms
+    completed_topics = set(
+        TopicProgress.objects.filter(
+            user=user, topic_id__in=topic_ids, complete_time__isnull=False
+        ).values_list("topic_id", flat=True)
+    )
+
+    completed_forms = set(
+        FormProgress.objects.filter(
+            user=user, form_id__in=form_ids, completed_time__isnull=False
+        ).values_list("form_id", flat=True)
+    )
+
+    current = []
+    for course in all_registered:
+        course_progress = course_progress_dict.get(course.id)
+
+        # Only include non-completed courses
+        if course_progress and course_progress.completed_time:
+            continue
+
+        # Calculate percentage complete using utility function
+        percentage = calculate_course_progress_percentage(
+            course, completed_topics, completed_forms
+        )
+
+        # Attach percentage to course object as an attribute
+        setattr(course, "progress_percentage", percentage)  # noqa: B010
+        current.append(course)
+
+    return current
 
 
-def get_recommended_courses(user) -> QuerySet[RecommendedCourse]:
+def get_recommended_courses(user: RequestUser) -> QuerySet[RecommendedCourse]:
     """Get recommended courses for a user. Returns empty queryset for anonymous users."""
     if not user.is_authenticated:
         return RecommendedCourse.objects.none()

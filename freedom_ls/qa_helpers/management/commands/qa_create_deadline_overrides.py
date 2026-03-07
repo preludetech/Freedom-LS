@@ -8,11 +8,11 @@ from django.contrib.sites.models import Site
 from django.utils import timezone
 
 from freedom_ls.content_engine.models import Form, Topic
-from freedom_ls.student_management.factories import StudentCohortDeadlineOverrideFactory
+from freedom_ls.student_management.factories import UserCohortDeadlineOverrideFactory
 from freedom_ls.student_management.models import (
     CohortCourseRegistration,
     CohortMembership,
-    StudentCohortDeadlineOverride,
+    UserCohortDeadlineOverride,
 )
 
 
@@ -70,9 +70,9 @@ def command(
         ) from e
 
     try:
-        membership = CohortMembership.objects.select_related("student__user").get(
+        membership = CohortMembership.objects.select_related("user").get(
             cohort=registration.cohort,
-            student__user__email=student_email,
+            user__email=student_email,
             site=site,
         )
     except CohortMembership.DoesNotExist as e:
@@ -80,7 +80,7 @@ def command(
             f"Student '{student_email}' is not a member of cohort '{cohort_name}'."
         ) from e
 
-    student = membership.student
+    user = membership.user
     is_hard = not soft
     deadline = timezone.now() + timedelta(days=days_from_now)
 
@@ -105,7 +105,7 @@ def command(
     # Check for existing override using the unique constraint fields
     lookup = {
         "cohort_course_registration": registration,
-        "student": student,
+        "user": user,
         "content_type": None,
         "object_id": None,
         "site": site,
@@ -117,23 +117,23 @@ def command(
         lookup["object_id"] = content_item.pk
 
     try:
-        override = StudentCohortDeadlineOverride.objects.get(**lookup)
+        override = UserCohortDeadlineOverride.objects.get(**lookup)
         click.secho(
             f"Override already exists for '{student_email}' on {item_name}. "
             f"Current deadline: {override.deadline.strftime('%Y-%m-%d %H:%M')}",
             fg="yellow",
         )
-    except StudentCohortDeadlineOverride.DoesNotExist:
+    except UserCohortDeadlineOverride.DoesNotExist:
         factory_kwargs = {
             "cohort_course_registration": registration,
-            "student": student,
+            "user": user,
             "deadline": deadline,
             "is_hard_deadline": is_hard,
             "site": site,
         }
         if content_item:
             factory_kwargs["content_item"] = content_item
-        StudentCohortDeadlineOverrideFactory(**factory_kwargs)
+        UserCohortDeadlineOverrideFactory(**factory_kwargs)
 
         deadline_type = "hard" if is_hard else "soft"
         click.secho(

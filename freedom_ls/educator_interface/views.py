@@ -23,9 +23,8 @@ from freedom_ls.student_management.models import (
     CohortCourseRegistration,
     CohortDeadline,
     CohortMembership,
-    Student,
-    StudentCohortDeadlineOverride,
-    StudentCourseRegistration,
+    UserCohortDeadlineOverride,
+    UserCourseRegistration,
 )
 from freedom_ls.student_progress.models import (
     CourseProgress,
@@ -242,18 +241,11 @@ class CohortDataTable(DataTable):
         ]
 
 
-class StudentDataTable(DataTable):
-    search_fields = ["user__first_name", "user__last_name", "user__email"]
+class UserDataTable(DataTable):
+    search_fields = ["first_name", "last_name", "email"]
 
     @staticmethod
     def get_queryset(request):
-        # Get students with direct view permission
-        students_with_direct_access = get_objects_for_user(
-            request.user,
-            "view_student",
-            klass=Student,
-        )
-
         # Get cohorts user has access to
         accessible_cohorts = get_objects_for_user(
             request.user,
@@ -261,21 +253,15 @@ class StudentDataTable(DataTable):
             klass=Cohort,
         )
 
-        # Get students from accessible cohorts
-        students_from_cohorts = Student.objects.filter(
-            cohortmembership__cohort__in=accessible_cohorts
-        )
-
-        # Combine both querysets and remove duplicates
+        # Get users from accessible cohorts
         return (
-            (students_with_direct_access | students_from_cohorts)
+            User.objects.filter(cohortmembership__cohort__in=accessible_cohorts)
             .distinct()
-            .select_related("user")
             .prefetch_related(
                 "cohortmembership_set__cohort",
-                "course_registrations__collection",
+                "usercourseregistration_set__collection",
             )
-            .order_by("user__first_name", "user__last_name")
+            .order_by("first_name", "last_name")
         )
 
     @staticmethod
@@ -284,23 +270,23 @@ class StudentDataTable(DataTable):
             {
                 "header": "First Name",
                 "template": "cotton/data-table-cells/link.html",
-                "text_attr": "user.first_name",
+                "text_attr": "first_name",
                 "url_name": "educator_interface:interface",
-                "url_path_template": "students/{pk}",
+                "url_path_template": "users/{pk}",
                 "sortable": True,
             },
             {
                 "header": "Last Name",
                 "template": "cotton/data-table-cells/link.html",
-                "text_attr": "user.last_name",
+                "text_attr": "last_name",
                 "url_name": "educator_interface:interface",
-                "url_path_template": "students/{pk}",
+                "url_path_template": "users/{pk}",
                 "sortable": True,
             },
             {
                 "header": "Email",
                 "template": "cotton/data-table-cells/text.html",
-                "attr": "user.email",
+                "attr": "email",
                 # "sortable": True,
             },
             {
@@ -312,7 +298,7 @@ class StudentDataTable(DataTable):
             },
             {
                 "header": "Registered Courses",
-                "template": "educator_interface/data-table-cells/student_courses.html",
+                "template": "educator_interface/data-table-cells/user_courses.html",
             },
         ]
 
@@ -351,7 +337,7 @@ class PanelGetter:
 
 
 class InstanceView:
-    """Used for displaying specific instances. For example one User, Student, Etc"""
+    """Used for displaying specific instances. For example one User, Cohort, etc."""
 
     panels: dict[str, type[Panel]] = {}
 
@@ -374,29 +360,26 @@ class InstanceView:
         return title + "\n" + panels_html
 
 
-class StudentDetailsPanel(InstanceDetailsPanel):
+class UserDetailsPanel(InstanceDetailsPanel):
     fields = [
-        "user.first_name",
-        "user.last_name",
-        "user.email",
-        "id_number",
-        "date_of_birth",
-        "cellphone",
+        "first_name",
+        "last_name",
+        "email",
     ]
 
 
-class StudentCohortsPanel(DataTablePanel):
+class UserCohortsPanel(DataTablePanel):
     title = "Cohorts"
     data_table = CohortDataTable
 
     def get_filters(self) -> dict:
-        return {"cohortmembership__student": self.instance}
+        return {"cohortmembership__user": self.instance}
 
 
-class StudentInstanceView(InstanceView):
+class UserInstanceView(InstanceView):
     panels = {
-        "details": StudentDetailsPanel,
-        "cohorts": StudentCohortsPanel,
+        "details": UserDetailsPanel,
+        "cohorts": UserCohortsPanel,
     }
 
 
@@ -436,7 +419,7 @@ class CohortCourseRegistrationDataTable(DataTable):
 
 class CohortStudentsPanel(DataTablePanel):
     title = "Students"
-    data_table = StudentDataTable
+    data_table = UserDataTable
 
     def get_filters(self) -> dict:
         return {"cohortmembership__cohort": self.instance}
@@ -516,7 +499,7 @@ class CohortCourseProgressPanel(Panel):
         """Return a paginated page of cohort memberships annotated with progress."""
         progress_subquery = Subquery(
             CourseProgress.objects.filter(
-                user=OuterRef("student__user"),
+                user=OuterRef("user"),
                 course=course,
             ).values("progress_percentage")[:1],
             output_field=IntegerField(),
@@ -524,9 +507,9 @@ class CohortCourseProgressPanel(Panel):
 
         memberships = (
             CohortMembership.objects.filter(cohort=cohort)
-            .select_related("student__user")
+            .select_related("user")
             .annotate(progress=Coalesce(progress_subquery, Value(0)))
-            .order_by("progress", "student__user__email")
+            .order_by("progress", "user__email")
         )
 
         student_paginator = Paginator(memberships, self.STUDENT_PAGE_SIZE)
@@ -583,7 +566,7 @@ class CohortCourseProgressPanel(Panel):
     ) -> tuple[
         CohortDeadline | None,
         dict[tuple[int, UUID | None], CohortDeadline],
-        dict[tuple[UUID, int | None, UUID | None], StudentCohortDeadlineOverride],
+        dict[tuple[int, int | None, UUID | None], UserCohortDeadlineOverride],
         DjangoContentType,
         DjangoContentType,
     ]:
@@ -617,17 +600,17 @@ class CohortCourseProgressPanel(Panel):
                 deadline_map[(dl.content_type_id, dl.object_id)] = dl
 
         student_override_map: dict[
-            tuple[UUID, int | None, UUID | None], StudentCohortDeadlineOverride
+            tuple[int, int | None, UUID | None], UserCohortDeadlineOverride
         ] = {}
-        student_ids = [m.student_id for m in student_page.object_list]
-        if student_ids:
-            overrides = StudentCohortDeadlineOverride.objects.filter(
+        user_ids = [m.user_id for m in student_page.object_list]
+        if user_ids:
+            overrides = UserCohortDeadlineOverride.objects.filter(
                 cohort_course_registration=selected_reg,
-                student_id__in=student_ids,
+                user_id__in=user_ids,
             ).filter(deadline_q)
             for ovr in overrides:
                 student_override_map[
-                    (ovr.student_id, ovr.content_type_id, ovr.object_id)
+                    (ovr.user_id, ovr.content_type_id, ovr.object_id)
                 ] = ovr
 
         return course_deadline, deadline_map, student_override_map, topic_ct, form_ct
@@ -689,7 +672,6 @@ class CohortCourseProgressPanel(Panel):
     def _build_cell(
         self,
         item: Topic | Form,
-        student: Student,
         user: User,
         topic_ct: DjangoContentType,
         form_ct: DjangoContentType,
@@ -697,11 +679,11 @@ class CohortCourseProgressPanel(Panel):
         form_progress_map: dict[tuple[int, UUID], FormProgressData],
         deadline_map: dict[tuple[int, UUID | None], CohortDeadline],
         student_override_map: dict[
-            tuple[UUID, int | None, UUID | None], StudentCohortDeadlineOverride
+            tuple[int, int | None, UUID | None], UserCohortDeadlineOverride
         ],
         now: datetime,
     ) -> dict[str, object]:
-        """Build the cell data dict for one student/item intersection."""
+        """Build the cell data dict for one user/item intersection."""
         cell: dict[str, object] = {
             "item": item,
             "is_quiz": False,
@@ -721,7 +703,7 @@ class CohortCourseProgressPanel(Panel):
 
         item_ct = topic_ct if isinstance(item, Topic) else form_ct
         item_deadline = deadline_map.get((item_ct.id, item.id))
-        override = student_override_map.get((student.id, item_ct.id, item.id))
+        override = student_override_map.get((user.id, item_ct.id, item.id))
         effective_deadline = override or item_deadline
         cell["deadline"] = item_deadline
         cell["override"] = override
@@ -749,19 +731,17 @@ class CohortCourseProgressPanel(Panel):
         form_progress_map: dict[tuple[int, UUID], FormProgressData],
         deadline_map: dict[tuple[int, UUID | None], CohortDeadline],
         student_override_map: dict[
-            tuple[UUID, int | None, UUID | None], StudentCohortDeadlineOverride
+            tuple[int, int | None, UUID | None], UserCohortDeadlineOverride
         ],
     ) -> list[dict[str, object]]:
         """Build row data for each student on the current page."""
         now = tz.now()
         rows = []
         for membership in student_page.object_list:
-            student = membership.student
-            user = student.user
+            user = membership.user
             cells = [
                 self._build_cell(
                     item,
-                    student,
                     user,
                     topic_ct,
                     form_ct,
@@ -779,12 +759,11 @@ class CohortCourseProgressPanel(Panel):
 
             rows.append(
                 {
-                    "student": student,
                     "user": user,
                     "display_name": display_name,
                     "student_url": reverse(
                         "educator_interface:interface",
-                        kwargs={"path_string": f"students/{student.pk}"},
+                        kwargs={"path_string": f"users/{user.pk}"},
                     ),
                     "progress": membership.progress,
                     "cells": cells,
@@ -847,7 +826,7 @@ class CohortCourseProgressPanel(Panel):
             request.GET.get("page", 1),
         )
 
-        visible_user_ids = [m.student.user.id for m in student_page.object_list]
+        visible_user_ids = [m.user.id for m in student_page.object_list]
 
         topic_progress_map, form_progress_map = self._fetch_progress_maps(
             visible_user_ids,
@@ -925,12 +904,12 @@ class CohortConfig(ListViewConfig):
     instance_view = CohortInstanceView
 
 
-class StudentConfig(ListViewConfig):
-    url_name = "students"
-    menu_label = "Students"
-    model = Student
-    list_view = StudentDataTable
-    instance_view = StudentInstanceView
+class UserConfig(ListViewConfig):
+    url_name = "users"
+    menu_label = "Users"
+    model = User
+    list_view = UserDataTable
+    instance_view = UserInstanceView
 
 
 class CourseDataTable(DataTable):
@@ -945,35 +924,35 @@ class CourseDataTable(DataTable):
                     distinct=True,
                 ),
                 direct_student_count=Count(
-                    "student_registrations",
-                    filter=Q(student_registrations__is_active=True),
+                    "user_registrations",
+                    filter=Q(user_registrations__is_active=True),
                     distinct=True,
                 ),
             )
             .prefetch_related(
                 "cohort_registrations__cohort__cohortmembership_set",
-                "student_registrations",
+                "user_registrations",
             )
             .order_by("title")
         )
 
-        # Calculate total unique active students (direct + through cohorts)
+        # Calculate total unique active users (direct + through cohorts)
         for course in courses:
-            cohort_student_ids: set[UUID] = set()
+            cohort_user_ids: set[UUID] = set()
             for cohort_reg in course.cohort_registrations.filter(is_active=True):
-                cohort_student_ids.update(
+                cohort_user_ids.update(
                     cohort_reg.cohort.cohortmembership_set.values_list(
-                        "student_id", flat=True
+                        "user_id", flat=True
                     )
                 )
 
-            direct_student_ids = set(
-                course.student_registrations.filter(is_active=True).values_list(
-                    "student_id", flat=True
+            direct_user_ids = set(
+                course.user_registrations.filter(is_active=True).values_list(
+                    "user_id", flat=True
                 )
             )
 
-            course.total_student_count = len(cohort_student_ids | direct_student_ids)
+            course.total_student_count = len(cohort_user_ids | direct_user_ids)
 
         return courses
 
@@ -1052,9 +1031,9 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
 class CourseStudentRegistrationDataTable(DataTable):
     @staticmethod
     def get_queryset(request):
-        return StudentCourseRegistration.objects.select_related(
-            "student__user", "collection"
-        ).order_by("student__user__first_name", "student__user__last_name")
+        return UserCourseRegistration.objects.select_related(
+            "user", "collection"
+        ).order_by("user__first_name", "user__last_name")
 
     @staticmethod
     def get_columns():
@@ -1062,21 +1041,21 @@ class CourseStudentRegistrationDataTable(DataTable):
             {
                 "header": "First Name",
                 "template": "cotton/data-table-cells/link.html",
-                "text_attr": "student.user.first_name",
+                "text_attr": "user.first_name",
                 "url_name": "educator_interface:interface",
-                "url_path_template": "students/{student.pk}",
+                "url_path_template": "users/{user.pk}",
             },
             {
                 "header": "Last Name",
                 "template": "cotton/data-table-cells/link.html",
-                "text_attr": "student.user.last_name",
+                "text_attr": "user.last_name",
                 "url_name": "educator_interface:interface",
-                "url_path_template": "students/{student.pk}",
+                "url_path_template": "users/{user.pk}",
             },
             {
                 "header": "Email",
                 "template": "cotton/data-table-cells/text.html",
-                "attr": "student.user.email",
+                "attr": "user.email",
             },
             {
                 "header": "Active",
@@ -1092,7 +1071,7 @@ class CourseStudentRegistrationDataTable(DataTable):
 
 
 class CourseStudentRegistrationsPanel(DataTablePanel):
-    title = "Student Registrations"
+    title = "Direct Registrations"
     data_table = CourseStudentRegistrationDataTable
 
     def get_filters(self) -> dict:
@@ -1116,7 +1095,7 @@ class CourseConfig(ListViewConfig):
 
 
 interface_config: dict[str, type[ListViewConfig]] = {
-    config.url_name: config for config in [CohortConfig, StudentConfig, CourseConfig]
+    config.url_name: config for config in [CohortConfig, UserConfig, CourseConfig]
 }
 
 

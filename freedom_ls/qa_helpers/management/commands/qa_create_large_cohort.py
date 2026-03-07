@@ -9,13 +9,11 @@ from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
-    StudentFactory,
 )
 from freedom_ls.student_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
-    Student,
 )
 
 
@@ -57,7 +55,7 @@ def command(
         cohort = CohortFactory(name=cohort_name, site=site)
         click.secho(f"Created cohort '{cohort_name}'", fg="green")
 
-    # Create students and add to cohort
+    # Create users and add to cohort
     created_count = 0
     for i in range(1, num_students + 1):
         email = f"qa_student_{i}@example.com"
@@ -77,15 +75,10 @@ def command(
                 site=site,
             )
 
-        try:
-            student = Student.objects.get(user=user, site=site)
-        except Student.DoesNotExist:
-            student = StudentFactory(user=user, site=site)
-
         if not CohortMembership.objects.filter(
-            student=student, cohort=cohort, site=site
+            user=user, cohort=cohort, site=site
         ).exists():
-            CohortMembershipFactory(student=student, cohort=cohort, site=site)
+            CohortMembershipFactory(user=user, cohort=cohort, site=site)
             created_count += 1
 
     click.secho(

@@ -19,8 +19,7 @@ from freedom_ls.student_management.config import config
 from freedom_ls.student_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.student_management.models import (
     RecommendedCourse,
-    Student,
-    StudentCourseRegistration,
+    UserCourseRegistration,
 )
 from freedom_ls.student_progress.models import (
     CourseProgress,
@@ -36,7 +35,6 @@ from .utils import (
     get_current_courses,
     get_is_registered,
     get_recommended_courses,
-    get_student,
 )
 
 
@@ -125,12 +123,9 @@ def register_for_course(request, course_slug):
 
     course = get_object_or_404(Course, slug=course_slug)
 
-    # Get or create Student instance for this user
-    student, _ = Student.objects.get_or_create(user=request.user)
-
-    # Create the course registration
-    StudentCourseRegistration.objects.get_or_create(
-        student=student,
+    # Create the course registration directly with user
+    UserCourseRegistration.objects.get_or_create(
+        user=request.user,
         collection=course,
         defaults={"is_active": True},
     )
@@ -149,16 +144,16 @@ def view_course_item(request, course_slug, index):
     current_item = children[index - 1]
 
     # Check if item is locked by a hard deadline
-    if config.DEADLINES_ACTIVE:
-        student = get_student(request.user)
-        if student and not isinstance(current_item, CoursePart):
-            is_completed = _is_content_item_completed(current_item, request.user)
-            if is_item_locked_by_deadline(
-                student, course, current_item, is_completed=is_completed
-            ):
-                return redirect(
-                    "student_interface:course_home", course_slug=course_slug
-                )
+    if (
+        config.DEADLINES_ACTIVE
+        and request.user.is_authenticated
+        and not isinstance(current_item, CoursePart)
+    ):
+        is_completed = _is_content_item_completed(current_item, request.user)
+        if is_item_locked_by_deadline(
+            request.user, course, current_item, is_completed=is_completed
+        ):
+            return redirect("student_interface:course_home", course_slug=course_slug)
 
     total_children = len(children)
 
