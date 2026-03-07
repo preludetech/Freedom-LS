@@ -10,7 +10,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.role_based_permissions.factories import (
     ObjectRoleAssignmentFactory,
 )
@@ -26,8 +25,6 @@ from freedom_ls.role_based_permissions.utils import (
     assign_site_role,
     assign_system_role,
     check_role_name_in_config,
-    get_cohort_roles,
-    get_course_roles,
     get_object_roles,
     remove_object_role,
     remove_site_role,
@@ -338,30 +335,6 @@ class TestGetObjectRoles:
 
         roles = get_object_roles(user, cohort)
         assert roles == set()
-
-
-class TestConvenienceWrappers:
-    """Tests for get_course_roles and get_cohort_roles."""
-
-    @pytest.mark.django_db
-    def test_get_course_roles(self) -> None:
-        """get_course_roles returns correct roles for a course."""
-        user = UserFactory()
-        course = CourseFactory()
-        assign_object_role(user, course, "instructor")
-
-        roles = get_course_roles(user, course)
-        assert roles == {"instructor"}
-
-    @pytest.mark.django_db
-    def test_get_cohort_roles(self) -> None:
-        """get_cohort_roles returns correct roles for a cohort."""
-        user = UserFactory()
-        cohort = CohortFactory()
-        assign_object_role(user, cohort, "ta")
-
-        roles = get_cohort_roles(user, cohort)
-        assert roles == {"ta"}
 
 
 class TestGuardianIntegration:

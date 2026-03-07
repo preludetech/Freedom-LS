@@ -4,6 +4,8 @@ from freedom_ls.role_based_permissions.types import Role, SiteRolesConfig
 # As features are built, add the relevant permissions from the
 # commented lists below and create data migrations for them.
 
+# TODO: update these so there is no mention of students, only Users
+
 BASE_ROLES = SiteRolesConfig(
     {
         # --- Roles with currently-existing permissions ---

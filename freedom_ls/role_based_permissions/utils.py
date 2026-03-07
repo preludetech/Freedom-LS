@@ -13,14 +13,12 @@ from django.db import transaction
 from django.db.models import Model
 
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.models import Course
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
     SiteRoleAssignment,
     SystemRoleAssignment,
 )
-from freedom_ls.student_management.models import Cohort
 
 
 class SyncResult(TypedDict):
@@ -289,13 +287,3 @@ def remove_system_role(
         role=role,
     ).update(is_active=False)
     # TODO: AuditLog entry for system role removal
-
-
-def get_course_roles(user: User, course: Course) -> set[str]:
-    """Convenience wrapper: return active roles for user on a Course."""
-    return get_object_roles(user, course)
-
-
-def get_cohort_roles(user: User, cohort: Cohort) -> set[str]:
-    """Convenience wrapper: return active roles for user on a Cohort."""
-    return get_object_roles(user, cohort)

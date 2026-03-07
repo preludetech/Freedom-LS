@@ -73,12 +73,10 @@ def _ensure_permissions_exist(config: SiteRolesConfig) -> None:
                 app_label=app_label, model=model_name
             ).first()
         if ct is None:
-            # Fall back to first ContentType for the app if model name doesn't match
-            ct = ContentType.objects.filter(app_label=app_label).first()
-        if ct is None:
             click.echo(
-                f"Warning: No ContentType for app_label '{app_label}', "
-                f"skipping permission '{perm_string}'.",
+                f"Warning: No ContentType found for permission '{perm_string}' "
+                f"(tried app_label='{app_label}', model='{model_name}'). "
+                f"Skipping.",
                 err=True,
             )
             continue
@@ -94,9 +92,11 @@ def _sync_object_assignments(config: SiteRolesConfig, dry_run: bool) -> int:
     drifted = 0
     pairs_seen: set[tuple[int, int, str]] = set()
 
-    for assignment in ObjectRoleAssignment.objects.filter(
-        is_active=True
-    ).select_related("user", "content_type"):
+    for assignment in (
+        ObjectRoleAssignment.objects.filter(is_active=True)
+        .select_related("user", "content_type")
+        .iterator()
+    ):
         pair_key = (
             assignment.user_id,
             assignment.content_type_id,
@@ -133,8 +133,10 @@ def _sync_site_assignments(config: SiteRolesConfig, dry_run: bool) -> int:
     drifted = 0
     pairs_seen: set[tuple[int, int]] = set()
 
-    for assignment in SiteRoleAssignment.objects.filter(is_active=True).select_related(
-        "user", "site"
+    for assignment in (
+        SiteRoleAssignment.objects.filter(is_active=True)
+        .select_related("user", "site")
+        .iterator()
     ):
         pair_key = (assignment.user_id, assignment.site_id)
         if pair_key in pairs_seen:

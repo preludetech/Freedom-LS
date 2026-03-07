@@ -1,6 +1,8 @@
 """Tests for role_based_permissions management commands."""
 
 from collections.abc import Generator
+from contextlib import redirect_stdout
+from io import StringIO
 from unittest.mock import patch
 
 import pytest
@@ -321,9 +323,6 @@ class TestValidateRolePermissionsMultipleConfigs:
 
 def _call_sync(*args: str) -> str:
     """Call sync_role_permissions and return stdout."""
-    from contextlib import redirect_stdout
-    from io import StringIO
-
     out = StringIO()
     with redirect_stdout(out):
         call_command("sync_role_permissions", *args)
@@ -332,9 +331,6 @@ def _call_sync(*args: str) -> str:
 
 def _call_validate(*args: str) -> str:
     """Call validate_role_permissions and return stdout."""
-    from contextlib import redirect_stdout
-    from io import StringIO
-
     out = StringIO()
     with redirect_stdout(out):
         call_command("validate_role_permissions", *args)

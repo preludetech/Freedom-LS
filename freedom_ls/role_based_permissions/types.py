@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
-    from collections.abc import ItemsView, KeysView
+    from collections.abc import ItemsView, KeysView, ValuesView
 
-ROLE_TYPE_STANDALONE = "standalone"
-ROLE_TYPE_COMPOSABLE = "composable"
-ROLE_TYPE_DEFAULT = ROLE_TYPE_STANDALONE
+RoleType = Literal["standalone", "composable"]
+ROLE_TYPE_STANDALONE: RoleType = "standalone"
+ROLE_TYPE_COMPOSABLE: RoleType = "composable"
+ROLE_TYPE_DEFAULT: RoleType = ROLE_TYPE_STANDALONE
 
 
 @dataclass(frozen=True)
@@ -19,7 +20,7 @@ class Role:
     display_name: str
     permissions: frozenset[str]
     lti_role: str | None = None
-    role_type: str = ROLE_TYPE_DEFAULT
+    role_type: RoleType = ROLE_TYPE_DEFAULT
     description: str = ""
 
 
@@ -86,11 +87,20 @@ def _build_role_from_spec(
         if raw_lti_role is not None
         else (parent_role.lti_role if parent_role else None)
     )
-    role_type = (
-        str(raw_role_type)
-        if raw_role_type is not None
-        else (parent_role.role_type if parent_role else ROLE_TYPE_DEFAULT)
-    )
+    _valid_role_types: dict[str, RoleType] = {
+        ROLE_TYPE_STANDALONE: ROLE_TYPE_STANDALONE,
+        ROLE_TYPE_COMPOSABLE: ROLE_TYPE_COMPOSABLE,
+    }
+    if raw_role_type is not None:
+        raw_role_type_str = str(raw_role_type)
+        if raw_role_type_str not in _valid_role_types:
+            raise ValueError(
+                f"Invalid role_type '{raw_role_type_str}' for role '{name}'. "
+                f"Must be '{ROLE_TYPE_STANDALONE}' or '{ROLE_TYPE_COMPOSABLE}'."
+            )
+        role_type: RoleType = _valid_role_types[raw_role_type_str]
+    else:
+        role_type = parent_role.role_type if parent_role else ROLE_TYPE_DEFAULT
     description = (
         str(raw_description)
         if raw_description is not None
@@ -110,7 +120,8 @@ class SiteRolesConfig:
     """
     Container for a complete role configuration.
     Supports extending a base config with overrides,
-    additions, and single-level inheritance.
+    additions, and inheritance (including chained inheritance
+    via successive extend() calls).
     """
 
     def __init__(self, roles: dict[str, Role]) -> None:
@@ -184,6 +195,9 @@ class SiteRolesConfig:
 
     def keys(self) -> KeysView[str]:
         return self._roles.keys()
+
+    def values(self) -> ValuesView[Role]:
+        return self._roles.values()
 
     def all_permission_strings(self) -> set[str]:
         result: set[str] = set()
