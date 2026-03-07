@@ -1,10 +1,23 @@
-"""Management command to validate role permission configuration."""
+"""Validate role permission configuration.
+
+Run this command in CI or before deploying to catch configuration errors early.
+It checks that:
+
+- All role names are valid Python identifiers.
+- All permissions referenced by roles exist in the permission registry.
+- All role_type values are either 'standalone' or 'composable'.
+- No active role assignments in the database reference roles that have been
+  removed from the configuration (orphaned assignments).
+
+Usage:
+    manage.py validate_role_permissions
+"""
 
 import djclick as click
 
 from django.conf import settings
 
-from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.loader import get_role_config, load_base_config
 from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
     SiteRoleAssignment,
@@ -29,7 +42,7 @@ def command() -> None:
     errors: list[str] = []
 
     # Validate base config
-    base_config = get_role_config()
+    base_config = load_base_config()
     errors.extend(_validate_config(base_config, "base"))
 
     # Validate site-specific configs

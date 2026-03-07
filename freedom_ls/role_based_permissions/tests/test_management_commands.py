@@ -205,7 +205,7 @@ class TestValidateRolePermissionsInvalidRoleName:
         )
         with (
             patch(
-                "freedom_ls.role_based_permissions.management.commands.validate_role_permissions.get_role_config",
+                "freedom_ls.role_based_permissions.management.commands.validate_role_permissions.load_base_config",
                 return_value=bad_config,
             ),
             pytest.raises(ClickException, match="not-valid-identifier"),
@@ -233,7 +233,7 @@ class TestValidateRolePermissionsUnknownPermission:
         )
         with (
             patch(
-                "freedom_ls.role_based_permissions.management.commands.validate_role_permissions.get_role_config",
+                "freedom_ls.role_based_permissions.management.commands.validate_role_permissions.load_base_config",
                 return_value=bad_config,
             ),
             pytest.raises(ClickException, match=r"nonexistent_app\.nonexistent_perm"),
@@ -258,7 +258,7 @@ class TestValidateRolePermissionsInvalidRoleType:
         )
         with (
             patch(
-                "freedom_ls.role_based_permissions.management.commands.validate_role_permissions.get_role_config",
+                "freedom_ls.role_based_permissions.management.commands.validate_role_permissions.load_base_config",
                 return_value=bad_config,
             ),
             pytest.raises(ClickException, match="invalid_hint"),
