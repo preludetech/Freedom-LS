@@ -44,6 +44,15 @@
 - Alpine.js icon toggling: `x-show` on wrapper spans or `rotate-180` for directional flips
 - Icon sizing: size-3 (badges), size-4 (compact), size-5 (standard), size-6 (emphasis), size-8 (large), size-16 (hero)
 
+## Student Model Refactoring (Completed)
+- Student model removed; all FKs now point to User directly
+- Models renamed: StudentCourseRegistration -> UserCourseRegistration, StudentCohortDeadlineOverride -> UserCohortDeadlineOverride
+- StudentDeadline was NOT renamed (left as-is per plan)
+- StudentDeadline.student_course_registration FK field name also NOT changed (points to UserCourseRegistration)
+- Migrations 0006-0012 handle the full refactoring chain
+- related_name on UserCourseRegistration.collection is "user_registrations"
+- CohortMembership has no unique constraint on (user, cohort)
+
 ## Factory Boy Implementation
 - SiteAwareFactory base in `freedom_ls/site_aware_models/factories.py`
 - One `factories.py` per app, uses SiteAwareFactory base
