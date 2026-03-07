@@ -7,7 +7,11 @@ from freedom_ls.site_aware_models.models import SiteAwareModel
 
 
 class SystemRoleAssignment(models.Model):
-    """Assigns a system-wide role to a user (not site-specific)."""
+    """Assigns a system-wide role to a user (not site-specific).
+
+    Uses BigAutoField (not UUIDField) because this intentionally does not
+    extend SiteAwareModel — system roles are global, not site-scoped.
+    """
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -25,7 +29,11 @@ class SystemRoleAssignment(models.Model):
     assigned_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ["user", "role"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "role"], name="unique_system_role_per_user"
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.user} - {self.role}"
@@ -50,7 +58,11 @@ class SiteRoleAssignment(SiteAwareModel):
     assigned_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ["user", "site", "role"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "site", "role"], name="unique_site_role_per_user"
+            ),
+        ]
         indexes = [
             models.Index(fields=["user", "is_active"]),
             models.Index(fields=["site", "role"]),
@@ -85,7 +97,12 @@ class ObjectRoleAssignment(SiteAwareModel):
     assigned_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ["user", "content_type", "object_id", "role"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "content_type", "object_id", "role"],
+                name="unique_object_role_per_user",
+            ),
+        ]
         indexes = [
             models.Index(fields=["user", "is_active"]),
             models.Index(fields=["content_type", "object_id", "role", "is_active"]),

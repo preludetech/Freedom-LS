@@ -21,7 +21,12 @@ def get_role_config(site_name: str | None = None) -> SiteRolesConfig:
     modules: dict[str, str] = getattr(settings, "FREEDOMLS_PERMISSIONS_MODULES", {})
     module_path = modules.get(site_name, "freedom_ls.role_based_permissions.roles")
     module = import_module(module_path)
-    config: SiteRolesConfig = (
-        module.ROLES if hasattr(module, "ROLES") else module.BASE_ROLES
-    )
+    if hasattr(module, "ROLES"):
+        config: SiteRolesConfig = module.ROLES
+    elif hasattr(module, "BASE_ROLES"):
+        config = module.BASE_ROLES
+    else:
+        raise ImportError(
+            f"Module '{module_path}' has neither 'ROLES' nor 'BASE_ROLES' attribute"
+        )
     return config

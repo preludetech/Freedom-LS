@@ -21,6 +21,7 @@ from freedom_ls.role_based_permissions.models import (
     SystemRoleAssignment,
 )
 from freedom_ls.role_based_permissions.utils import (
+    _get_valid_codenames_for_content_type,
     assign_object_role,
     assign_site_role,
     assign_system_role,
@@ -37,11 +38,13 @@ from freedom_ls.student_management.factories import CohortFactory, StudentFactor
 
 
 @pytest.fixture(autouse=True)
-def _clear_role_config_cache() -> Generator[None]:
-    """Clear the loader cache between tests."""
+def _clear_caches() -> Generator[None]:
+    """Clear the loader and permission caches between tests."""
     get_role_config.cache_clear()
+    _get_valid_codenames_for_content_type.cache_clear()
     yield
     get_role_config.cache_clear()
+    _get_valid_codenames_for_content_type.cache_clear()
 
 
 @pytest.fixture(autouse=True)

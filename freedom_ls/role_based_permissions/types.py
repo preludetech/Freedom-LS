@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import ItemsView, KeysView
 
 ROLE_TYPE_STANDALONE = "standalone"
 ROLE_TYPE_COMPOSABLE = "composable"
@@ -40,10 +44,10 @@ def _apply_permission_changes(
 ) -> frozenset[str]:
     """Apply add/remove permission changes to a base permission set."""
     add_perms = spec.get("add_permissions")
-    if isinstance(add_perms, set):
+    if isinstance(add_perms, (set, frozenset)):
         base_perms |= add_perms
     remove_perms = spec.get("remove_permissions")
-    if isinstance(remove_perms, set):
+    if isinstance(remove_perms, (set, frozenset)):
         base_perms -= remove_perms
     return frozenset(base_perms)
 
@@ -169,14 +173,17 @@ class SiteRolesConfig:
     def __contains__(self, key: object) -> bool:
         return key in self._roles
 
+    def __len__(self) -> int:
+        return len(self._roles)
+
     def __iter__(self) -> Iterator[str]:
         return iter(self._roles)
 
-    def items(self) -> Iterator[tuple[str, Role]]:
-        return iter(self._roles.items())
+    def items(self) -> ItemsView[str, Role]:
+        return self._roles.items()
 
-    def keys(self) -> Iterator[str]:
-        return iter(self._roles.keys())
+    def keys(self) -> KeysView[str]:
+        return self._roles.keys()
 
     def all_permission_strings(self) -> set[str]:
         result: set[str] = set()

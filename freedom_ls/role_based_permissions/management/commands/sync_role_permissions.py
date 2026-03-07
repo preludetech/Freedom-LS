@@ -7,7 +7,6 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 
-from freedom_ls.accounts.models import User
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
@@ -63,7 +62,19 @@ def _ensure_permissions_exist(config: SiteRolesConfig) -> None:
         if exists:
             continue
 
-        ct = ContentType.objects.filter(app_label=app_label).first()
+        # Derive model name from codename (e.g. "view_cohort" -> "cohort")
+        # Django's default permission codenames follow the pattern: action_modelname
+        parts = codename.split("_", 1)
+        model_name = parts[1] if len(parts) > 1 else None
+
+        ct = None
+        if model_name:
+            ct = ContentType.objects.filter(
+                app_label=app_label, model=model_name
+            ).first()
+        if ct is None:
+            # Fall back to first ContentType for the app if model name doesn't match
+            ct = ContentType.objects.filter(app_label=app_label).first()
         if ct is None:
             click.echo(
                 f"Warning: No ContentType for app_label '{app_label}', "
@@ -99,7 +110,8 @@ def _sync_object_assignments(config: SiteRolesConfig, dry_run: bool) -> int:
         if model_class is None:
             continue
         try:
-            obj = model_class._default_manager.get(pk=assignment.object_id)
+            # Use _base_manager to avoid site-filtering from SiteAwareModel's default manager
+            obj = model_class._base_manager.get(pk=assignment.object_id)
         except model_class.DoesNotExist:
             click.echo(
                 f"Warning: Target object "
@@ -153,81 +165,56 @@ def _validate_system_assignments(config: SiteRolesConfig) -> None:
 
 def _report_orphans(config: SiteRolesConfig) -> int:
     """Scan UserObjectPermission for rows not traceable to any active role assignment."""
-    orphan_count = 0
+    # Prefetch all active assignments to avoid N+1 queries
+    # Key: (user_id, content_type_id, object_id) -> set of role names
+    object_role_lookup: dict[tuple[int, int, str], set[str]] = {}
+    for assignment in ObjectRoleAssignment.objects.filter(is_active=True):
+        key = (assignment.user_id, assignment.content_type_id, assignment.object_id)
+        object_role_lookup.setdefault(key, set()).add(assignment.role)
 
+    # Key: (user_id, site_id) -> set of role names
+    site_role_lookup: dict[tuple[int, int], set[str]] = {}
+    for assignment in SiteRoleAssignment.objects.filter(is_active=True):
+        site_key = (assignment.user_id, assignment.site_id)
+        site_role_lookup.setdefault(site_key, set()).add(assignment.role)
+
+    site_ct = ContentType.objects.get_for_model(Site)
+
+    orphan_count = 0
     for uop in UserObjectPermission.objects.select_related(
         "permission__content_type", "user"
-    ).all():
+    ).iterator():
         perm_string = (
             f"{uop.permission.content_type.app_label}.{uop.permission.codename}"
         )
-        user = uop.user
-        ct = uop.content_type
-        object_pk = uop.object_pk
 
-        if _perm_traceable_to_object_role(config, user, ct, object_pk, perm_string):
+        # Check object role assignments
+        obj_key = (uop.user_id, uop.content_type_id, uop.object_pk)
+        obj_roles = object_role_lookup.get(obj_key, set())
+        if any(
+            role in config and perm_string in config[role].permissions
+            for role in obj_roles
+        ):
             continue
 
-        if _perm_traceable_to_site_role(config, user, ct, object_pk, perm_string):
-            continue
+        # Check site role assignments
+        if uop.content_type_id == site_ct.id:
+            try:
+                site_id = int(uop.object_pk)
+            except (ValueError, TypeError):
+                pass
+            else:
+                site_roles = site_role_lookup.get((uop.user_id, site_id), set())
+                if any(
+                    role in config and perm_string in config[role].permissions
+                    for role in site_roles
+                ):
+                    continue
 
         orphan_count += 1
         click.echo(
-            f"  Orphan: user={user}, perm={perm_string}, object={ct}:{object_pk}"
+            f"  Orphan: user={uop.user}, perm={perm_string}, "
+            f"object={uop.content_type}:{uop.object_pk}"
         )
 
     return orphan_count
-
-
-def _perm_traceable_to_object_role(
-    config: SiteRolesConfig,
-    user: User,
-    ct: ContentType,
-    object_pk: str,
-    perm_string: str,
-) -> bool:
-    """Check if a guardian perm is traceable to an active ObjectRoleAssignment."""
-    assignments = ObjectRoleAssignment.objects.filter(
-        user=user,
-        content_type=ct,
-        object_id=object_pk,
-        is_active=True,
-    )
-    for assignment in assignments:
-        if (
-            assignment.role in config
-            and perm_string in config[assignment.role].permissions
-        ):
-            return True
-    return False
-
-
-def _perm_traceable_to_site_role(
-    config: SiteRolesConfig,
-    user: User,
-    ct: ContentType,
-    object_pk: str,
-    perm_string: str,
-) -> bool:
-    """Check if a guardian perm is traceable to an active SiteRoleAssignment."""
-    site_ct = ContentType.objects.get_for_model(Site)
-    if ct != site_ct:
-        return False
-
-    try:
-        site_id = int(object_pk)
-    except (ValueError, TypeError):
-        return False
-
-    assignments = SiteRoleAssignment.objects.filter(
-        user=user,
-        site_id=site_id,
-        is_active=True,
-    )
-    for assignment in assignments:
-        if (
-            assignment.role in config
-            and perm_string in config[assignment.role].permissions
-        ):
-            return True
-    return False

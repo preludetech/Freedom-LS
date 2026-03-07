@@ -1,5 +1,6 @@
 """Utility functions for role assignment, permission sync, and queries."""
 
+from functools import lru_cache
 from typing import TypedDict
 
 from guardian.models import UserObjectPermission
@@ -80,6 +81,19 @@ def _get_guardian_perms_as_full_strings(user: User, obj: Model) -> set[str]:
     return {f"{app_label}.{codename}" for app_label, codename in tuples}
 
 
+@lru_cache(maxsize=64)
+def _get_valid_codenames_for_content_type(ct_pk: int) -> frozenset[str]:
+    """Return the set of valid permission codenames for a content type pk.
+
+    Cached to avoid repeated DB queries for the same content type.
+    """
+    return frozenset(
+        Permission.objects.filter(content_type_id=ct_pk).values_list(
+            "codename", flat=True
+        )
+    )
+
+
 def _filter_perms_for_content_type(perms: set[str], ct: ContentType) -> set[str]:
     """Filter permission strings to only those matching the given content type.
 
@@ -88,9 +102,7 @@ def _filter_perms_for_content_type(perms: set[str], ct: ContentType) -> set[str]
     get_perms/get_objects_for_user. This filters out permissions that belong
     to a different model's content type.
     """
-    valid_codenames = set(
-        Permission.objects.filter(content_type=ct).values_list("codename", flat=True)
-    )
+    valid_codenames = _get_valid_codenames_for_content_type(ct.pk)
     return {perm for perm in perms if perm.split(".", 1)[1] in valid_codenames}
 
 
@@ -174,7 +186,6 @@ def remove_object_role(
     user: User,
     target: Model,
     role: str,
-    removed_by: User | None = None,
 ) -> None:
     """Remove an object-level role from a user on a target object.
 
@@ -223,7 +234,6 @@ def assign_site_role(
 def remove_site_role(
     user: User,
     role: str,
-    removed_by: User | None = None,
 ) -> None:
     """Remove a site-level role from a user on the current site.
 
@@ -269,7 +279,6 @@ def assign_system_role(
 def remove_system_role(
     user: User,
     role: str,
-    removed_by: User | None = None,
 ) -> None:
     """Remove a system-level role from a user.
 
