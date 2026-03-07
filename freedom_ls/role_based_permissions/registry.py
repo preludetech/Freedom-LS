@@ -55,6 +55,7 @@ PERMISSIONS: dict[str, str] = {
     "freedom_ls_student_management.add_student": "Can add student",
     "freedom_ls_student_management.change_student": "Can change student",
     "freedom_ls_student_management.delete_student": "Can delete student",
+    # TODO: update these so they point to the user model, not the student model
     # "freedom_ls_student_management.view_cohortmembership": "Can view cohort membership",
     # "freedom_ls_student_management.add_cohortmembership": "Can add cohort membership",
     # "freedom_ls_student_management.change_cohortmembership": "Can change cohort membership",

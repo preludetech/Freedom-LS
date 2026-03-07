@@ -10,7 +10,11 @@ from freedom_ls.role_based_permissions.models import (
     SystemRoleAssignment,
 )
 from freedom_ls.role_based_permissions.registry import PERMISSIONS
-from freedom_ls.role_based_permissions.types import SiteRolesConfig
+from freedom_ls.role_based_permissions.types import (
+    ROLE_TYPE_COMPOSABLE,
+    ROLE_TYPE_STANDALONE,
+    SiteRolesConfig,
+)
 
 
 def _get_permissions_modules() -> dict[str, str]:
@@ -63,11 +67,11 @@ class Command(BaseCommand):
                         f"unknown permission '{perm}' (not in registry)."
                     )
 
-            # Check: ui_hint is valid
-            if role.ui_hint not in ("standalone", "composable"):
+            # Check: role_type is valid
+            if role.role_type not in (ROLE_TYPE_STANDALONE, ROLE_TYPE_COMPOSABLE):
                 errors.append(
-                    f"[{label}] Role '{role_name}' has invalid ui_hint "
-                    f"'{role.ui_hint}' (must be 'standalone' or 'composable')."
+                    f"[{label}] Role '{role_name}' has invalid role_type "
+                    f"'{role.role_type}' (must be 'standalone' or 'composable')."
                 )
 
         return errors

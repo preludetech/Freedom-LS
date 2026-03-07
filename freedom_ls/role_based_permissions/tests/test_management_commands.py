@@ -234,18 +234,18 @@ class TestValidateRolePermissionsUnknownPermission:
             _call_validate()
 
 
-class TestValidateRolePermissionsInvalidUiHint:
-    """Test validate command detects invalid ui_hint."""
+class TestValidateRolePermissionsInvalidRoleType:
+    """Test validate command detects invalid role_type."""
 
     @pytest.mark.django_db
-    def test_invalid_ui_hint_reports_error(self) -> None:
-        """ui_hint that is neither 'standalone' nor 'composable' is reported."""
+    def test_invalid_role_type_reports_error(self) -> None:
+        """role_type that is neither 'standalone' nor 'composable' is reported."""
         bad_config = SiteRolesConfig(
             {
                 "test_role": Role(
                     display_name="Test Role",
                     permissions=frozenset(),
-                    ui_hint="invalid_hint",
+                    role_type="invalid_hint",
                 ),
             }
         )

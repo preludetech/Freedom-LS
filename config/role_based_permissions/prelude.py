@@ -23,7 +23,7 @@ ROLES = BASE_ROLES.extend(
         #     display_name="Course Announcer",
         #     description="Can send announcements only.",
         #     lti_role=None,
-        #     ui_hint="composable",
+        #     role_type="composable",
         #     permissions=frozenset({
         #         "freedom_ls_content_engine.view_course",
         #         "freedom_ls_content_engine.send_announcements",

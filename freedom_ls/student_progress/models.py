@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.db import models

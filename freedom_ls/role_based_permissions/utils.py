@@ -30,14 +30,14 @@ class SyncResult(TypedDict):
     removed: set[str]
 
 
-def validate_role(role_name: str) -> None:
+def check_role_name_in_config(role_name: str) -> None:
     """Raise ValueError if role_name is not in the current site's role config."""
     config = get_role_config()
     if role_name not in config:
         raise ValueError(f"Unknown role: {role_name!r}")
 
 
-def _get_active_roles_for_user_on_object(user: User, obj: Model) -> set[str]:
+def get_object_roles(user: User, obj: Model) -> set[str]:
     """Return set of active role names for user on the given object."""
     ct = ContentType.objects.get_for_model(obj)
     return set(
@@ -109,7 +109,7 @@ def sync_user_object_permissions(
     if isinstance(obj, Site):
         roles = _get_active_roles_for_user_on_site(user, obj)
     else:
-        roles = _get_active_roles_for_user_on_object(user, obj)
+        roles = get_object_roles(user, obj)
 
     all_desired: set[str] = set()
     for role_name in roles:
@@ -150,7 +150,7 @@ def assign_object_role(
 
     Creates or reactivates an ObjectRoleAssignment, then syncs guardian permissions.
     """
-    validate_role(role)
+    check_role_name_in_config(role)
     ct = ContentType.objects.get_for_model(target)
     assignment: ObjectRoleAssignment
     assignment, created = ObjectRoleAssignment.objects.get_or_create(
@@ -201,7 +201,7 @@ def assign_site_role(
     Creates or reactivates a SiteRoleAssignment, then syncs guardian permissions
     on the Site object.
     """
-    validate_role(role)
+    check_role_name_in_config(role)
     site = Site.objects.get_current()
     assignment: SiteRoleAssignment
     assignment, created = SiteRoleAssignment.objects.get_or_create(
@@ -250,7 +250,7 @@ def assign_system_role(
     Creates or reactivates a SystemRoleAssignment. No guardian sync
     (system roles have no object to scope to).
     """
-    validate_role(role)
+    check_role_name_in_config(role)
     assignment: SystemRoleAssignment
     assignment, created = SystemRoleAssignment.objects.get_or_create(
         user=user,
@@ -280,11 +280,6 @@ def remove_system_role(
         role=role,
     ).update(is_active=False)
     # TODO: AuditLog entry for system role removal
-
-
-def get_object_roles(user: User, obj: Model) -> set[str]:
-    """Return set of active role names for user on any object."""
-    return _get_active_roles_for_user_on_object(user, obj)
 
 
 def get_course_roles(user: User, course: Course) -> set[str]:

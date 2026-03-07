@@ -2,7 +2,12 @@
 
 import pytest
 
-from freedom_ls.role_based_permissions.types import Role, SiteRolesConfig
+from freedom_ls.role_based_permissions.types import (
+    ROLE_TYPE_COMPOSABLE,
+    ROLE_TYPE_STANDALONE,
+    Role,
+    SiteRolesConfig,
+)
 
 
 class TestSiteRolesConfig:
@@ -17,7 +22,7 @@ class TestSiteRolesConfig:
                     display_name="Editor",
                     permissions=frozenset({"content.edit", "content.view"}),
                     lti_role="urn:lti:role:editor",
-                    ui_hint="standalone",
+                    role_type=ROLE_TYPE_STANDALONE,
                     description="Can edit content",
                 ),
                 "viewer": Role(
@@ -143,7 +148,7 @@ class TestSiteRolesConfig:
     def test_extend_preserves_parent_fields_when_not_overridden(
         self, base_config: SiteRolesConfig
     ) -> None:
-        """extend() with inherits preserves parent's display_name, lti_role, ui_hint, description."""
+        """extend() with inherits preserves parent's display_name, lti_role, role_type, description."""
         extended = base_config.extend(
             {
                 "senior_editor": {
@@ -155,7 +160,7 @@ class TestSiteRolesConfig:
         child = extended["senior_editor"]
         assert child.display_name == parent.display_name
         assert child.lti_role == parent.lti_role
-        assert child.ui_hint == parent.ui_hint
+        assert child.role_type == parent.role_type
         assert child.description == parent.description
 
     def test_extend_overrides_parent_fields_when_specified(
@@ -168,7 +173,7 @@ class TestSiteRolesConfig:
                     "inherits": "editor",
                     "display_name": "Senior Editor",
                     "lti_role": "urn:lti:role:senior",
-                    "ui_hint": "composable",
+                    "role_type": ROLE_TYPE_COMPOSABLE,
                     "description": "A senior editor",
                 }
             }
@@ -176,7 +181,7 @@ class TestSiteRolesConfig:
         child = extended["senior_editor"]
         assert child.display_name == "Senior Editor"
         assert child.lti_role == "urn:lti:role:senior"
-        assert child.ui_hint == "composable"
+        assert child.role_type == ROLE_TYPE_COMPOSABLE
         assert child.description == "A senior editor"
 
     def test_extend_does_not_mutate_original(
@@ -195,7 +200,7 @@ class TestSiteRolesConfig:
         )
         assert extended["editor"].display_name == "Editor"
         assert extended["editor"].lti_role == "urn:lti:role:editor"
-        assert extended["editor"].ui_hint == "standalone"
+        assert extended["editor"].role_type == ROLE_TYPE_STANDALONE
         assert extended["editor"].description == "Can edit content"
 
     def test_single_level_inheritance_chain(self) -> None:

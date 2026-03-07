@@ -24,6 +24,7 @@ from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     assign_site_role,
     assign_system_role,
+    check_role_name_in_config,
     get_cohort_roles,
     get_course_roles,
     get_object_roles,
@@ -31,7 +32,6 @@ from freedom_ls.role_based_permissions.utils import (
     remove_site_role,
     remove_system_role,
     sync_user_object_permissions,
-    validate_role,
 )
 from freedom_ls.student_management.factories import CohortFactory, StudentFactory
 
@@ -53,19 +53,19 @@ def _mock_get_current_site(mock_site_context: Site, mocker: MockerFixture) -> No
     )
 
 
-class TestValidateRole:
-    """Tests for validate_role."""
+class TestCheckRoleNameInConfig:
+    """Tests for check_role_name_in_config."""
 
     @pytest.mark.django_db
     def test_valid_role_passes(self) -> None:
         """Known role does not raise."""
-        validate_role("instructor")
+        check_role_name_in_config("instructor")
 
     @pytest.mark.django_db
     def test_unknown_role_raises_value_error(self) -> None:
         """Unknown role raises ValueError."""
         with pytest.raises(ValueError, match="Unknown role"):
-            validate_role("nonexistent_role")
+            check_role_name_in_config("nonexistent_role")
 
 
 class TestAssignObjectRole:
