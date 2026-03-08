@@ -62,8 +62,11 @@ def _resolve_parent_role(
     """Find the parent role to inherit field defaults from."""
     if parent_name is not None:
         parent = existing_roles.get(parent_name)
-        if parent is not None:
-            return parent
+        if parent is None:
+            raise ValueError(
+                f"Role '{name}' inherits from unknown role '{parent_name}'"
+            )
+        return parent
     return existing_roles.get(name)
 
 
