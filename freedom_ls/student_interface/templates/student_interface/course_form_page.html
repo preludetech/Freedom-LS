@@ -51,7 +51,7 @@
 {% endpartialdef %}
 
 {% partialdef form-input-long-text %}
-    <div class="ml-4">
+    <div class="sm:ml-4">
         <textarea name="question_{{question.id}}"
                   rows="5"
                   class="w-full"
@@ -159,29 +159,26 @@
 
             <!-- Navigation -->
 
-            <div class="flex justify-between items-center pt-6 border-t border-border">
-                <div>
-                    {% if previous_page_url %}
-
-                        <c-button href="{{ previous_page_url }}">
-                            Back
-                        </c-button>
-                    {% else %}
-                        <div class="w-20">
-                        </div>
-                    {% endif %}
-                </div>
-                <div>
+            <div class="flex flex-col sm:flex-row sm:justify-between gap-3 pt-6 border-t border-border">
+                <div class="order-first sm:order-none w-full sm:w-auto">
 
                     {% if has_next_page %}
 
-                        <c-button type="submit">
+                        <c-button type="submit" class="w-full sm:w-auto">
                             Next
                         </c-button>
                     {% else %}
                         {# Last page - show Submit button #}
-                        <c-button type="submit">
+                        <c-button type="submit" class="w-full sm:w-auto">
                             Finish
+                        </c-button>
+                    {% endif %}
+                </div>
+                <div class="w-full sm:w-auto">
+                    {% if previous_page_url %}
+
+                        <c-button href="{{ previous_page_url }}" class="w-full sm:w-auto">
+                            Back
                         </c-button>
                     {% endif %}
                 </div>

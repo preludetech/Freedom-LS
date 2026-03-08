@@ -1,19 +1,19 @@
 <c-vars number="" is_current="False" is_accessible="False" url="" title="" />
 
 {% if is_current == "True" or is_current == True %}
-    <span class="px-3 py-1 bg-primary text-on-primary rounded font-medium text-sm"
+    <span class="px-4 py-3 sm:px-3 sm:py-1 bg-primary text-on-primary rounded font-medium text-sm"
           {{ attrs }}>
         {{ number }}
     </span>
 {% elif is_accessible == "True" or is_accessible == True %}
     <a href="{{ url }}"
-       class="no-underline px-3 py-1 bg-surface border border-border text-muted rounded hover:bg-surface-2 text-sm"
+       class="no-underline px-4 py-3 sm:px-3 sm:py-1 bg-surface border border-border text-muted rounded hover:bg-surface-2 text-sm"
        title="{{ title }}"
        {{ attrs }}>
         {{ number }}
     </a>
 {% else %}
-    <span class="px-3 py-1 bg-surface text-muted/50 rounded text-sm cursor-not-allowed"
+    <span class="px-4 py-3 sm:px-3 sm:py-1 bg-surface text-muted/50 rounded text-sm cursor-not-allowed"
           {{ attrs }}>
         {{ number }}
     </span>
