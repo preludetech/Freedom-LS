@@ -12,6 +12,15 @@ ROLE_TYPE_STANDALONE: RoleType = "standalone"
 ROLE_TYPE_COMPOSABLE: RoleType = "composable"
 ROLE_TYPE_DEFAULT: RoleType = ROLE_TYPE_STANDALONE
 VALID_ROLE_TYPES: set[RoleType] = {ROLE_TYPE_STANDALONE, ROLE_TYPE_COMPOSABLE}
+VALID_SPEC_KEYS: set[str] = {
+    "inherits",
+    "add_permissions",
+    "remove_permissions",
+    "display_name",
+    "lti_role",
+    "role_type",
+    "description",
+}
 
 
 @dataclass(frozen=True)
@@ -48,10 +57,18 @@ def _apply_permission_changes(
 ) -> frozenset[str]:
     """Apply add/remove permission changes to a base permission set."""
     add_perms = spec.get("add_permissions")
-    if isinstance(add_perms, (set, frozenset)):
+    if add_perms is not None:
+        if not isinstance(add_perms, (set, frozenset)):
+            raise TypeError(
+                f"add_permissions must be a set or frozenset, got {type(add_perms).__name__}"
+            )
         base_perms |= add_perms
     remove_perms = spec.get("remove_permissions")
-    if isinstance(remove_perms, (set, frozenset)):
+    if remove_perms is not None:
+        if not isinstance(remove_perms, (set, frozenset)):
+            raise TypeError(
+                f"remove_permissions must be a set or frozenset, got {type(remove_perms).__name__}"
+            )
         base_perms -= remove_perms
     return frozenset(base_perms)
 
@@ -76,6 +93,12 @@ def _build_role_from_spec(
     existing_roles: dict[str, Role],
 ) -> Role:
     """Build a Role from a dict spec, resolving inheritance and permission changes."""
+    unknown_keys = set(spec.keys()) - VALID_SPEC_KEYS
+    if unknown_keys:
+        raise ValueError(
+            f"Unknown keys {sorted(unknown_keys)} in spec for role '{name}'. "
+            f"Valid keys are: {sorted(VALID_SPEC_KEYS)}"
+        )
     base_perms, parent_name = _resolve_base_permissions(name, spec, existing_roles)
     permissions = _apply_permission_changes(base_perms, spec)
     parent_role = _resolve_parent_role(name, parent_name, existing_roles)
@@ -179,6 +202,11 @@ class SiteRolesConfig(Mapping[str, Role]):
                 new_roles[name] = spec
             elif isinstance(spec, dict):
                 new_roles[name] = _build_role_from_spec(name, spec, new_roles)
+            else:
+                raise TypeError(
+                    f"Override for role '{name}' must be a Role or dict, "
+                    f"got {type(spec).__name__}"
+                )
 
         return SiteRolesConfig(new_roles)
 

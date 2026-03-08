@@ -251,3 +251,35 @@ class TestSiteRolesConfig:
         )
         assert extended["new_role"].display_name == "New Role"
         assert extended["new_role"].permissions == frozenset({"custom.perm"})
+
+    def test_extend_rejects_non_role_non_dict_spec(
+        self, base_config: SiteRolesConfig
+    ) -> None:
+        """extend() raises TypeError when spec is neither Role nor dict."""
+        with pytest.raises(TypeError, match="must be a Role or dict, got str"):
+            base_config.extend({"editor": "invalid"})  # type: ignore[dict-item]
+
+    def test_extend_rejects_unknown_spec_keys(
+        self, base_config: SiteRolesConfig
+    ) -> None:
+        """extend() raises ValueError for typos or unknown keys in spec dict."""
+        with pytest.raises(ValueError, match=r"Unknown keys.*ad_permissions"):
+            base_config.extend({"editor": {"ad_permissions": {"content.publish"}}})
+
+    @pytest.mark.parametrize("field", ["add_permissions", "remove_permissions"])
+    def test_extend_rejects_non_set_permissions(
+        self, base_config: SiteRolesConfig, field: str
+    ) -> None:
+        """extend() raises TypeError when add/remove_permissions is not a set."""
+        with pytest.raises(TypeError, match=f"{field} must be a set or frozenset"):
+            base_config.extend({"editor": {field: "content.publish"}})
+
+    @pytest.mark.parametrize("field", ["add_permissions", "remove_permissions"])
+    def test_extend_rejects_list_permissions(
+        self, base_config: SiteRolesConfig, field: str
+    ) -> None:
+        """extend() raises TypeError when add/remove_permissions is a list."""
+        with pytest.raises(TypeError, match=f"{field} must be a set or frozenset"):
+            base_config.extend(
+                {"editor": {field: ["content.publish"]}}  # type: ignore[dict-item]
+            )
