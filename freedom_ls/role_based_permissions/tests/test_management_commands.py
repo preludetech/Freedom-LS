@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 from click import ClickException
-from guardian.models import UserObjectPermission
+from guardian.models import GroupObjectPermission, UserObjectPermission
 from guardian.shortcuts import assign_perm
 from pytest_mock import MockerFixture
 
@@ -167,6 +167,23 @@ class TestSyncRolePermissionsReportOrphans:
         out = _call_sync("--report-orphans")
 
         assert "orphan" in out.lower()
+
+    @pytest.mark.django_db
+    def test_report_orphans_detects_group_object_permissions(self) -> None:
+        """--report-orphans detects GroupObjectPermission rows as orphans."""
+        from django.contrib.auth.models import Group
+
+        group = Group.objects.create(name="test-group")
+        cohort = CohortFactory()
+
+        assign_perm("freedom_ls_student_management.add_cohort", group, cohort)
+
+        assert GroupObjectPermission.objects.count() == 1
+
+        out = _call_sync("--report-orphans")
+
+        assert "orphan" in out.lower()
+        assert "test-group" in out.lower()
 
 
 # ============================================================

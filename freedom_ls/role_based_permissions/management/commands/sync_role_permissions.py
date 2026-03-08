@@ -1,7 +1,7 @@
 """Management command to sync guardian permissions with role assignments."""
 
 import djclick as click
-from guardian.models import UserObjectPermission
+from guardian.models import GroupObjectPermission, UserObjectPermission
 
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
@@ -171,7 +171,12 @@ def _validate_system_assignments(config: SiteRolesConfig) -> None:
 
 
 def _report_orphans(config: SiteRolesConfig) -> int:
-    """Scan UserObjectPermission for rows not traceable to any active role assignment."""
+    """Scan guardian object permissions for rows not traceable to any active role assignment.
+
+    Checks both UserObjectPermission and GroupObjectPermission. Since the role
+    system only manages user-level permissions, all GroupObjectPermission rows
+    are considered orphans.
+    """
     # Prefetch all active assignments to avoid N+1 queries
     # Key: (user_id, content_type_id, object_id) -> set of role names
     object_role_lookup: dict[tuple[int, int, str], set[str]] = {}
@@ -222,6 +227,20 @@ def _report_orphans(config: SiteRolesConfig) -> int:
         click.echo(
             f"  Orphan: user={uop.user}, perm={perm_string}, "
             f"object={uop.content_type}:{uop.object_pk}"
+        )
+
+    # Group-level object permissions are never created by the role system,
+    # so any that exist are orphans (e.g. manually assigned via admin).
+    for gop in GroupObjectPermission.objects.select_related(
+        "permission__content_type", "group"
+    ).iterator():
+        perm_string = (
+            f"{gop.permission.content_type.app_label}.{gop.permission.codename}"
+        )
+        orphan_count += 1
+        click.echo(
+            f"  Orphan: group={gop.group.name}, perm={perm_string}, "
+            f"object={gop.content_type}:{gop.object_pk}"
         )
 
     return orphan_count
