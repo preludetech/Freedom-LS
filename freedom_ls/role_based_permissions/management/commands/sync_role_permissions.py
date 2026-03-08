@@ -88,7 +88,7 @@ def _ensure_permissions_exist(config: SiteRolesConfig) -> None:
         Permission.objects.create(
             content_type=ct,
             codename=codename,
-            name=f"Can {codename}",
+            name=f"Can {codename.replace('_', ' ')}",
         )
 
 

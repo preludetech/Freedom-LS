@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
@@ -25,7 +25,9 @@ class Role:
 
 
 def _resolve_base_permissions(
-    name: str, spec: dict[str, str | set[str]], existing_roles: dict[str, Role]
+    name: str,
+    spec: dict[str, str | set[str] | frozenset[str]],
+    existing_roles: dict[str, Role],
 ) -> tuple[set[str], str | None]:
     """Resolve base permissions and parent name from a spec dict."""
     parent_name = str(spec["inherits"]) if "inherits" in spec else None
@@ -41,7 +43,7 @@ def _resolve_base_permissions(
 
 
 def _apply_permission_changes(
-    base_perms: set[str], spec: dict[str, str | set[str]]
+    base_perms: set[str], spec: dict[str, str | set[str] | frozenset[str]]
 ) -> frozenset[str]:
     """Apply add/remove permission changes to a base permission set."""
     add_perms = spec.get("add_permissions")
@@ -65,7 +67,9 @@ def _resolve_parent_role(
 
 
 def _build_role_from_spec(
-    name: str, spec: dict[str, str | set[str]], existing_roles: dict[str, Role]
+    name: str,
+    spec: dict[str, str | set[str] | frozenset[str]],
+    existing_roles: dict[str, Role],
 ) -> Role:
     """Build a Role from a dict spec, resolving inheritance and permission changes."""
     base_perms, parent_name = _resolve_base_permissions(name, spec, existing_roles)
@@ -116,7 +120,7 @@ def _build_role_from_spec(
     )
 
 
-class SiteRolesConfig:
+class SiteRolesConfig(Mapping[str, Role]):
     """
     Container for a complete role configuration.
     Supports extending a base config with overrides,
@@ -128,7 +132,7 @@ class SiteRolesConfig:
         self._roles = dict(roles)
 
     def extend(
-        self, overrides: dict[str, Role | dict[str, str | set[str]]]
+        self, overrides: dict[str, Role | dict[str, str | set[str] | frozenset[str]]]
     ) -> SiteRolesConfig:
         """
         Return a new SiteRolesConfig layering overrides onto this one.

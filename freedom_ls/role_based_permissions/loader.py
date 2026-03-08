@@ -30,12 +30,10 @@ def load_base_config() -> SiteRolesConfig:
 
 def clear_caches() -> None:
     """Clear all role permission caches. Intended for use in tests."""
-    from freedom_ls.role_based_permissions.utils import (
-        _get_valid_codenames_for_content_type,
-    )
+    from freedom_ls.role_based_permissions.utils import clear_permission_cache
 
     _get_role_config_cached.cache_clear()
-    _get_valid_codenames_for_content_type.cache_clear()
+    clear_permission_cache()
 
 
 def get_role_config(site_name: str | None = None) -> SiteRolesConfig:

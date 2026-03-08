@@ -23,6 +23,7 @@ class SystemRoleAssignment(models.Model):
     assigned_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
+        blank=True,
         on_delete=models.SET_NULL,
         related_name="+",
     )
@@ -33,6 +34,9 @@ class SystemRoleAssignment(models.Model):
             models.UniqueConstraint(
                 fields=["user", "role"], name="unique_system_role_per_user"
             ),
+        ]
+        indexes = [
+            models.Index(fields=["user", "is_active"]),
         ]
 
     def __str__(self) -> str:
@@ -52,6 +56,7 @@ class SiteRoleAssignment(SiteAwareModel):
     assigned_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
+        blank=True,
         on_delete=models.SET_NULL,
         related_name="+",
     )
@@ -91,6 +96,7 @@ class ObjectRoleAssignment(SiteAwareModel):
     assigned_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
+        blank=True,
         on_delete=models.SET_NULL,
         related_name="+",
     )
@@ -109,4 +115,4 @@ class ObjectRoleAssignment(SiteAwareModel):
         ]
 
     def __str__(self) -> str:
-        return f"{self.user} - {self.role} on {self.target}"
+        return f"{self.user} - {self.role} on {self.content_type}:{self.object_id}"

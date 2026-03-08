@@ -25,6 +25,11 @@ from freedom_ls.role_based_permissions.models import (
 )
 
 
+def clear_permission_cache() -> None:
+    """Clear the permission codename cache. Intended for use in tests."""
+    _get_valid_codenames_for_content_type.cache_clear()
+
+
 class SyncResult(TypedDict):
     user: int
     object: str
@@ -105,7 +110,12 @@ def _filter_perms_for_content_type(perms: set[str], ct: ContentType) -> set[str]
     to a different model's content type.
     """
     valid_codenames = _get_valid_codenames_for_content_type(ct.pk)
-    return {perm for perm in perms if perm.split(".", 1)[1] in valid_codenames}
+    return {
+        perm
+        for perm in perms
+        if perm.split(".", 1)[0] == ct.app_label
+        and perm.split(".", 1)[1] in valid_codenames
+    }
 
 
 def sync_user_object_permissions(
@@ -193,6 +203,7 @@ def remove_object_role(
 
     Deactivates the ObjectRoleAssignment, then resyncs guardian permissions.
     """
+    check_role_name_in_config(role)
     ct = ContentType.objects.get_for_model(target)
     ObjectRoleAssignment.objects.filter(
         user=user,
@@ -242,6 +253,7 @@ def remove_site_role(
     Deactivates the SiteRoleAssignment, then resyncs guardian permissions
     on the Site object.
     """
+    check_role_name_in_config(role)
     site = Site.objects.get_current()
     SiteRoleAssignment.objects.filter(
         user=user,
@@ -286,6 +298,7 @@ def remove_system_role(
 
     Deactivates the SystemRoleAssignment. No guardian sync.
     """
+    check_role_name_in_config(role)
     SystemRoleAssignment.objects.filter(
         user=user,
         role=role,
