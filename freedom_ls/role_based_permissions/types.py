@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 if TYPE_CHECKING:
     from collections.abc import ItemsView, KeysView, ValuesView
@@ -11,6 +11,7 @@ RoleType = Literal["standalone", "composable"]
 ROLE_TYPE_STANDALONE: RoleType = "standalone"
 ROLE_TYPE_COMPOSABLE: RoleType = "composable"
 ROLE_TYPE_DEFAULT: RoleType = ROLE_TYPE_STANDALONE
+VALID_ROLE_TYPES: set[RoleType] = {ROLE_TYPE_STANDALONE, ROLE_TYPE_COMPOSABLE}
 
 
 @dataclass(frozen=True)
@@ -91,18 +92,14 @@ def _build_role_from_spec(
         if raw_lti_role is not None
         else (parent_role.lti_role if parent_role else None)
     )
-    _valid_role_types: dict[str, RoleType] = {
-        ROLE_TYPE_STANDALONE: ROLE_TYPE_STANDALONE,
-        ROLE_TYPE_COMPOSABLE: ROLE_TYPE_COMPOSABLE,
-    }
     if raw_role_type is not None:
         raw_role_type_str = str(raw_role_type)
-        if raw_role_type_str not in _valid_role_types:
+        if raw_role_type_str not in VALID_ROLE_TYPES:
             raise ValueError(
                 f"Invalid role_type '{raw_role_type_str}' for role '{name}'. "
-                f"Must be '{ROLE_TYPE_STANDALONE}' or '{ROLE_TYPE_COMPOSABLE}'."
+                f"Must be one of {sorted(VALID_ROLE_TYPES)}."
             )
-        role_type: RoleType = _valid_role_types[raw_role_type_str]
+        role_type: RoleType = cast(RoleType, raw_role_type_str)
     else:
         role_type = parent_role.role_type if parent_role else ROLE_TYPE_DEFAULT
     description = (
