@@ -13,7 +13,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.role_based_permissions.factories import (
     ObjectRoleAssignmentFactory,
 )
-from freedom_ls.role_based_permissions.loader import clear_caches
+from freedom_ls.role_based_permissions.loader import clear_caches, get_role_config
 from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
     SiteRoleAssignment,
@@ -135,6 +135,24 @@ class TestAssignObjectRole:
             user=user, content_type=ct, object_id=str(cohort.pk)
         ).exists()
 
+    @pytest.mark.django_db
+    def test_reassigning_active_role_updates_assigned_by(self) -> None:
+        """Re-assigning an already-active role updates the assigned_by field."""
+        user = UserFactory()
+        original_assigner = UserFactory()
+        new_assigner = UserFactory()
+        cohort = CohortFactory()
+
+        assignment = assign_object_role(
+            user, cohort, "instructor", assigned_by=original_assigner
+        )
+        assert assignment.assigned_by == original_assigner
+
+        assignment = assign_object_role(
+            user, cohort, "instructor", assigned_by=new_assigner
+        )
+        assert assignment.assigned_by == new_assigner
+
 
 class TestRemoveObjectRole:
     """Tests for remove_object_role."""
@@ -235,6 +253,36 @@ class TestSyncUserObjectPermissions:
         assert get_perms(user, cohort) == []
 
 
+class TestSyncUserObjectPermissionsSiteConfig:
+    """Tests that sync_user_object_permissions uses the correct site config."""
+
+    @pytest.mark.django_db
+    def test_site_object_resolves_config_from_site_name(
+        self, mock_site_context: Site, mocker: MockerFixture
+    ) -> None:
+        """When syncing a Site object, config is loaded for that site's name."""
+        spy = mocker.patch(
+            "freedom_ls.role_based_permissions.utils.get_role_config",
+            wraps=get_role_config,
+        )
+        user = UserFactory()
+        sync_user_object_permissions(user, mock_site_context)
+        spy.assert_called_once_with(mock_site_context.name)
+
+    @pytest.mark.django_db
+    def test_explicit_site_name_overrides_auto_detection(
+        self, mock_site_context: Site, mocker: MockerFixture
+    ) -> None:
+        """Explicit site_name parameter takes precedence."""
+        spy = mocker.patch(
+            "freedom_ls.role_based_permissions.utils.get_role_config",
+            wraps=get_role_config,
+        )
+        user = UserFactory()
+        sync_user_object_permissions(user, mock_site_context, site_name="custom_site")
+        spy.assert_called_once_with("custom_site")
+
+
 class TestSiteRoleFunctions:
     """Tests for assign_site_role and remove_site_role."""
 
@@ -263,6 +311,21 @@ class TestSiteRoleFunctions:
         assert not SiteRoleAssignment.objects.filter(
             user=user, role="site_admin", is_active=True
         ).exists()
+
+    @pytest.mark.django_db
+    def test_reassigning_active_site_role_updates_assigned_by(
+        self, mock_site_context: Site
+    ) -> None:
+        """Re-assigning an already-active site role updates the assigned_by field."""
+        user = UserFactory()
+        original_assigner = UserFactory()
+        new_assigner = UserFactory()
+
+        assignment = assign_site_role(user, "site_admin", assigned_by=original_assigner)
+        assert assignment.assigned_by == original_assigner
+
+        assignment = assign_site_role(user, "site_admin", assigned_by=new_assigner)
+        assert assignment.assigned_by == new_assigner
 
     @pytest.mark.django_db
     def test_remove_site_role_preserves_other_active_roles(
@@ -298,6 +361,21 @@ class TestSystemRoleFunctions:
         assert SystemRoleAssignment.objects.filter(
             user=user, role="system_admin", is_active=True
         ).exists()
+
+    @pytest.mark.django_db
+    def test_reassigning_active_system_role_updates_assigned_by(self) -> None:
+        """Re-assigning an already-active system role updates the assigned_by field."""
+        user = UserFactory()
+        original_assigner = UserFactory()
+        new_assigner = UserFactory()
+
+        assignment = assign_system_role(
+            user, "system_admin", assigned_by=original_assigner
+        )
+        assert assignment.assigned_by == original_assigner
+
+        assignment = assign_system_role(user, "system_admin", assigned_by=new_assigner)
+        assert assignment.assigned_by == new_assigner
 
     @pytest.mark.django_db
     def test_remove_system_role_deactivates_assignment(self) -> None:

@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, cast
-
-if TYPE_CHECKING:
-    from collections.abc import ItemsView, KeysView, ValuesView
+from typing import Literal, cast
 
 RoleType = Literal["standalone", "composable"]
 ROLE_TYPE_STANDALONE: RoleType = "standalone"
@@ -76,14 +73,13 @@ def _apply_permission_changes(
 def _resolve_parent_role(
     name: str, parent_name: str | None, existing_roles: dict[str, Role]
 ) -> Role | None:
-    """Find the parent role to inherit field defaults from."""
+    """Find the parent role to inherit field defaults from.
+
+    When parent_name is provided, _resolve_base_permissions has already
+    validated that it exists in existing_roles, so we can look it up directly.
+    """
     if parent_name is not None:
-        parent = existing_roles.get(parent_name)
-        if parent is None:
-            raise ValueError(
-                f"Role '{name}' inherits from unknown role '{parent_name}'"
-            )
-        return parent
+        return existing_roles[parent_name]
     return existing_roles.get(name)
 
 
@@ -221,15 +217,6 @@ class SiteRolesConfig(Mapping[str, Role]):
 
     def __iter__(self) -> Iterator[str]:
         return iter(self._roles)
-
-    def items(self) -> ItemsView[str, Role]:
-        return self._roles.items()
-
-    def keys(self) -> KeysView[str]:
-        return self._roles.keys()
-
-    def values(self) -> ValuesView[Role]:
-        return self._roles.values()
 
     def all_permission_strings(self) -> set[str]:
         result: set[str] = set()

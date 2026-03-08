@@ -119,16 +119,22 @@ def _filter_perms_for_content_type(perms: set[str], ct: ContentType) -> set[str]
 
 
 def sync_user_object_permissions(
-    user: User, obj: Model, dry_run: bool = False
+    user: User, obj: Model, dry_run: bool = False, site_name: str | None = None
 ) -> SyncResult:
     """Sync guardian object permissions to match user's active roles on obj.
 
     Only permissions whose content type matches the object's content type
     are synced, as guardian requires this for its permission queries to work.
 
+    Args:
+        site_name: Site name to load config for. If not provided, resolves
+            from the object (for Site instances) or falls back to the current site.
+
     Returns a dict describing the changes made (or that would be made).
     """
-    config = get_role_config()
+    if site_name is None and isinstance(obj, Site):
+        site_name = obj.name
+    config = get_role_config(site_name)
 
     if isinstance(obj, Site):
         roles = _get_active_roles_for_user_on_site(user, obj)
@@ -184,10 +190,16 @@ def assign_object_role(
         role=role,
         defaults={"assigned_by": assigned_by, "is_active": True},
     )
-    if not created and not assignment.is_active:
-        assignment.is_active = True
-        assignment.assigned_by = assigned_by
-        assignment.save(update_fields=["is_active", "assigned_by"])
+    if not created:
+        fields_to_update: list[str] = []
+        if not assignment.is_active:
+            assignment.is_active = True
+            fields_to_update.append("is_active")
+        if assignment.assigned_by != assigned_by:
+            assignment.assigned_by = assigned_by
+            fields_to_update.append("assigned_by")
+        if fields_to_update:
+            assignment.save(update_fields=fields_to_update)
 
     sync_user_object_permissions(user, target)
     # TODO: AuditLog entry for role assignment
@@ -234,10 +246,16 @@ def assign_site_role(
         role=role,
         defaults={"assigned_by": assigned_by, "is_active": True},
     )
-    if not created and not assignment.is_active:
-        assignment.is_active = True
-        assignment.assigned_by = assigned_by
-        assignment.save(update_fields=["is_active", "assigned_by"])
+    if not created:
+        fields_to_update: list[str] = []
+        if not assignment.is_active:
+            assignment.is_active = True
+            fields_to_update.append("is_active")
+        if assignment.assigned_by != assigned_by:
+            assignment.assigned_by = assigned_by
+            fields_to_update.append("assigned_by")
+        if fields_to_update:
+            assignment.save(update_fields=fields_to_update)
 
     sync_user_object_permissions(user, site)
     # TODO: AuditLog entry for site role assignment
@@ -281,10 +299,16 @@ def assign_system_role(
         role=role,
         defaults={"assigned_by": assigned_by, "is_active": True},
     )
-    if not created and not assignment.is_active:
-        assignment.is_active = True
-        assignment.assigned_by = assigned_by
-        assignment.save(update_fields=["is_active", "assigned_by"])
+    if not created:
+        fields_to_update: list[str] = []
+        if not assignment.is_active:
+            assignment.is_active = True
+            fields_to_update.append("is_active")
+        if assignment.assigned_by != assigned_by:
+            assignment.assigned_by = assigned_by
+            fields_to_update.append("assigned_by")
+        if fields_to_update:
+            assignment.save(update_fields=fields_to_update)
 
     # TODO: AuditLog entry for system role assignment
     return assignment

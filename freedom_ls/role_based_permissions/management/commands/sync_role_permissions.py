@@ -3,6 +3,7 @@
 import djclick as click
 from guardian.models import GroupObjectPermission, UserObjectPermission
 
+from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
@@ -43,8 +44,8 @@ def command(dry_run: bool, report_orphans: bool, site: str | None) -> None:
     # Phase 3: Sync SiteRoleAssignments
     drifted += _sync_site_assignments(dry_run)
 
-    # Phase 4: Validate SystemRoleAssignments
-    _validate_system_assignments(config)
+    # Phase 4: Validate SystemRoleAssignments (check against all configs)
+    _validate_system_assignments()
 
     # Phase 5: Report orphans
     if report_orphans:
@@ -67,21 +68,20 @@ def _ensure_permissions_exist(config: SiteRolesConfig) -> None:
         if exists:
             continue
 
-        # Derive model name from codename (e.g. "view_cohort" -> "cohort")
-        # Django's default permission codenames follow the pattern: action_modelname
-        parts = codename.split("_", 1)
-        model_name = parts[1] if len(parts) > 1 else None
-
+        # Try to find a matching ContentType. First attempt: derive model name
+        # from Django's default pattern (action_modelname, e.g. "view_cohort" -> "cohort").
+        # Fallback: try all ContentTypes for the app_label, since custom permissions
+        # (e.g. "manage_enrolment") may not follow the convention.
         ct = None
-        if model_name:
-            ct = ContentType.objects.filter(
-                app_label=app_label, model=model_name
-            ).first()
+        parts = codename.split("_", 1)
+        if len(parts) > 1:
+            ct = ContentType.objects.filter(app_label=app_label, model=parts[1]).first()
+        if ct is None:
+            ct = ContentType.objects.filter(app_label=app_label).first()
         if ct is None:
             click.echo(
                 f"Warning: No ContentType found for permission '{perm_string}' "
-                f"(tried app_label='{app_label}', model='{model_name}'). "
-                f"Skipping.",
+                f"(app_label='{app_label}'). Skipping.",
                 err=True,
             )
             continue
@@ -157,12 +157,22 @@ def _sync_site_assignments(dry_run: bool) -> int:
     return drifted
 
 
-def _validate_system_assignments(config: SiteRolesConfig) -> None:
-    """Validate that all active SystemRoleAssignments have roles in config."""
+def _validate_system_assignments() -> None:
+    """Validate that all active SystemRoleAssignments have roles in some config.
+
+    SystemRoleAssignment records are global (not site-scoped), so we check
+    against the union of all known role names across all configs.
+    """
+    all_role_names: set[str] = set(load_base_config().keys())
+    modules: dict[str, str] = getattr(settings, "FREEDOMLS_PERMISSIONS_MODULES", {})
+    for site_name in modules:
+        site_config = get_role_config(site_name)
+        all_role_names.update(site_config.keys())
+
     for assignment in SystemRoleAssignment.objects.filter(
         is_active=True
     ).select_related("user"):
-        if assignment.role not in config:
+        if assignment.role not in all_role_names:
             click.echo(
                 f"Warning: SystemRoleAssignment for user {assignment.user} "
                 f"has unknown role '{assignment.role}'.",
