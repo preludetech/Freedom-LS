@@ -1,0 +1,376 @@
+"""Utility functions for role assignment, permission sync, and queries."""
+
+from __future__ import annotations
+
+from functools import lru_cache
+from typing import TYPE_CHECKING, TypedDict
+
+from guardian.models import UserObjectPermission
+from guardian.shortcuts import assign_perm, remove_perm
+
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.sites.models import Site
+from django.db import transaction
+from django.db.models import Model
+
+from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.types import AssignmentScope
+
+if TYPE_CHECKING:
+    from freedom_ls.accounts.models import User
+from freedom_ls.role_based_permissions.models import (
+    ObjectRoleAssignment,
+    SiteRoleAssignment,
+    SystemRoleAssignment,
+)
+
+
+def clear_permission_cache() -> None:
+    """Clear the permission codename cache. Intended for use in tests."""
+    _get_valid_codenames_for_content_type.cache_clear()
+
+
+class SyncResult(TypedDict):
+    user: int
+    object: str
+    roles: list[str]
+    added: set[str]
+    removed: set[str]
+
+
+def check_role_name_in_config(role_name: str, site_name: str | None = None) -> None:
+    """Raise ValueError if role_name is not in the role config.
+
+    Args:
+        role_name: The role name to validate.
+        site_name: Site name to load config for. If not provided, uses the current site.
+    """
+    config = get_role_config(site_name)
+    if role_name not in config:
+        raise ValueError(f"Unknown role: {role_name!r}")
+
+
+def _check_assignment_scope(
+    role_name: str, expected_scope: AssignmentScope, site_name: str | None = None
+) -> None:
+    """Raise ValueError if the role's assignment_scope doesn't match expected_scope."""
+    config = get_role_config(site_name)
+    role = config[role_name]
+    if role.assignment_scope != expected_scope:
+        raise ValueError(
+            f"Role {role_name!r} has assignment_scope={role.assignment_scope!r}, "
+            f"but {expected_scope!r} is required for this assignment type."
+        )
+
+
+def get_object_roles(user: User, obj: Model) -> set[str]:
+    """Return set of active role names for user on the given object."""
+    ct = ContentType.objects.get_for_model(obj)
+    return set(
+        ObjectRoleAssignment.objects.filter(
+            user=user,
+            content_type=ct,
+            object_id=str(obj.pk),
+            is_active=True,
+        ).values_list("role", flat=True)
+    )
+
+
+def _get_active_roles_for_user_on_site(user: User, site: Site) -> set[str]:
+    """Return set of active site role names for user on the given site."""
+    return set(
+        SiteRoleAssignment.objects.filter(
+            user=user,
+            site=site,
+            is_active=True,
+        ).values_list("role", flat=True)
+    )
+
+
+def _get_guardian_perms_as_full_strings(user: User, obj: Model) -> set[str]:
+    """Return current guardian permissions as 'app_label.codename' strings."""
+    ct = ContentType.objects.get_for_model(obj)
+    tuples = (
+        UserObjectPermission.objects.filter(
+            user=user,
+            content_type=ct,
+            object_pk=str(obj.pk),
+        )
+        .select_related("permission__content_type")
+        .values_list(
+            "permission__content_type__app_label",
+            "permission__codename",
+        )
+        .distinct()
+    )
+    return {f"{app_label}.{codename}" for app_label, codename in tuples}
+
+
+@lru_cache(maxsize=64)
+def _get_valid_codenames_for_content_type(ct_pk: int) -> frozenset[str]:
+    """Return the set of valid permission codenames for a content type pk.
+
+    Cached to avoid repeated DB queries for the same content type.
+    """
+    return frozenset(
+        Permission.objects.filter(content_type_id=ct_pk).values_list(
+            "codename", flat=True
+        )
+    )
+
+
+def _filter_perms_for_content_type(perms: set[str], ct: ContentType) -> set[str]:
+    """Filter permission strings to only those matching the given content type.
+
+    Guardian requires that a permission's content_type matches the object's
+    content_type when using assign_perm/remove_perm and when querying with
+    get_perms/get_objects_for_user. This filters out permissions that belong
+    to a different model's content type.
+    """
+    valid_codenames = _get_valid_codenames_for_content_type(ct.pk)
+    result = set()
+    for perm in perms:
+        app_label, codename = perm.split(".", 1)
+        if app_label == ct.app_label and codename in valid_codenames:
+            result.add(perm)
+    return result
+
+
+def sync_user_object_permissions(
+    user: User, obj: Model, dry_run: bool = False, site_name: str | None = None
+) -> SyncResult:
+    """Sync guardian object permissions to match user's active roles on obj.
+
+    Only permissions whose content type matches the object's content type
+    are synced, as guardian requires this for its permission queries to work.
+
+    Args:
+        site_name: Site name to load config for. If not provided, resolves
+            from the object (for Site instances) or falls back to the current site.
+
+    Returns a dict describing the changes made (or that would be made).
+    """
+    if site_name is None and isinstance(obj, Site):
+        site_name = obj.name
+    config = get_role_config(site_name)
+
+    if isinstance(obj, Site):
+        roles = _get_active_roles_for_user_on_site(user, obj)
+    else:
+        roles = get_object_roles(user, obj)
+
+    all_desired: set[str] = set()
+    for role_name in roles:
+        if role_name in config:
+            all_desired |= config[role_name].permissions
+
+    ct = ContentType.objects.get_for_model(obj)
+    desired = _filter_perms_for_content_type(all_desired, ct)
+
+    current = _get_guardian_perms_as_full_strings(user, obj)
+
+    to_add = desired - current
+    to_remove = current - desired
+
+    if not dry_run:
+        with transaction.atomic():
+            for perm in to_add:
+                assign_perm(perm, user, obj)
+            for perm in to_remove:
+                remove_perm(perm, user, obj)
+
+    return {
+        "user": user.pk,
+        "object": repr(obj),
+        "roles": list(roles),
+        "added": to_add,
+        "removed": to_remove,
+    }
+
+
+def assign_object_role(
+    user: User,
+    target: Model,
+    role: str,
+    assigned_by: User | None = None,
+) -> ObjectRoleAssignment:
+    """Assign an object-level role to a user on a target object.
+
+    Creates or reactivates an ObjectRoleAssignment, then syncs guardian permissions.
+    """
+    check_role_name_in_config(role)
+    _check_assignment_scope(role, "object")
+    ct = ContentType.objects.get_for_model(target)
+    assignment: ObjectRoleAssignment
+    assignment, created = ObjectRoleAssignment.objects.get_or_create(
+        user=user,
+        content_type=ct,
+        object_id=str(target.pk),
+        role=role,
+        defaults={"assigned_by": assigned_by, "is_active": True},
+    )
+    if not created:
+        fields_to_update: list[str] = []
+        if not assignment.is_active:
+            assignment.is_active = True
+            fields_to_update.append("is_active")
+        if assignment.assigned_by != assigned_by:
+            assignment.assigned_by = assigned_by
+            fields_to_update.append("assigned_by")
+        if fields_to_update:
+            assignment.save(update_fields=fields_to_update)
+
+    sync_user_object_permissions(user, target)
+    # TODO: AuditLog entry for role assignment
+    return assignment
+
+
+def remove_object_role(
+    user: User,
+    target: Model,
+    role: str,
+    removed_by: User | None = None,
+) -> None:
+    """Remove an object-level role from a user on a target object.
+
+    Deactivates the ObjectRoleAssignment, then resyncs guardian permissions.
+    """
+    check_role_name_in_config(role)
+    ct = ContentType.objects.get_for_model(target)
+    ObjectRoleAssignment.objects.filter(
+        user=user,
+        content_type=ct,
+        object_id=str(target.pk),
+        role=role,
+    ).update(is_active=False)
+    sync_user_object_permissions(user, target)
+    # TODO: AuditLog entry for role removal (use removed_by)
+
+
+def assign_site_role(
+    user: User,
+    role: str,
+    assigned_by: User | None = None,
+    site: Site | None = None,
+) -> SiteRoleAssignment:
+    """Assign a site-level role to a user on a site.
+
+    Creates or reactivates a SiteRoleAssignment, then syncs guardian permissions
+    on the Site object.
+
+    Args:
+        site: The site to assign the role on. Defaults to the current site.
+    """
+    if site is None:
+        site = Site.objects.get_current()
+    check_role_name_in_config(role, site_name=site.name)
+    _check_assignment_scope(role, "site", site_name=site.name)
+    assignment: SiteRoleAssignment
+    assignment, created = SiteRoleAssignment.objects.get_or_create(
+        user=user,
+        site=site,
+        role=role,
+        defaults={"assigned_by": assigned_by, "is_active": True},
+    )
+    if not created:
+        fields_to_update: list[str] = []
+        if not assignment.is_active:
+            assignment.is_active = True
+            fields_to_update.append("is_active")
+        if assignment.assigned_by != assigned_by:
+            assignment.assigned_by = assigned_by
+            fields_to_update.append("assigned_by")
+        if fields_to_update:
+            assignment.save(update_fields=fields_to_update)
+
+    sync_user_object_permissions(user, site)
+    # TODO: AuditLog entry for site role assignment
+    return assignment
+
+
+def remove_site_role(
+    user: User,
+    role: str,
+    site: Site | None = None,
+    removed_by: User | None = None,
+) -> None:
+    """Remove a site-level role from a user on a site.
+
+    Deactivates the SiteRoleAssignment, then resyncs guardian permissions
+    on the Site object.
+
+    Args:
+        site: The site to remove the role from. Defaults to the current site.
+        removed_by: The user performing the removal (for future audit logging).
+    """
+    if site is None:
+        site = Site.objects.get_current()
+    check_role_name_in_config(role, site_name=site.name)
+    SiteRoleAssignment.objects.filter(
+        user=user,
+        site=site,
+        role=role,
+    ).update(is_active=False)
+    sync_user_object_permissions(user, site)
+    # TODO: AuditLog entry for site role removal (use removed_by)
+
+
+def assign_system_role(
+    user: User,
+    role: str,
+    assigned_by: User | None = None,
+) -> SystemRoleAssignment:
+    """Assign a system-level role to a user.
+
+    Creates or reactivates a SystemRoleAssignment. No guardian sync
+    (system roles have no object to scope to).
+    """
+    check_role_name_in_config(role)
+    _check_assignment_scope(role, "system")
+    assignment: SystemRoleAssignment
+    assignment, created = SystemRoleAssignment.objects.get_or_create(
+        user=user,
+        role=role,
+        defaults={"assigned_by": assigned_by, "is_active": True},
+    )
+    if not created:
+        fields_to_update: list[str] = []
+        if not assignment.is_active:
+            assignment.is_active = True
+            fields_to_update.append("is_active")
+        if assignment.assigned_by != assigned_by:
+            assignment.assigned_by = assigned_by
+            fields_to_update.append("assigned_by")
+        if fields_to_update:
+            assignment.save(update_fields=fields_to_update)
+
+    # TODO: AuditLog entry for system role assignment
+    return assignment
+
+
+def remove_system_role(
+    user: User,
+    role: str,
+    removed_by: User | None = None,
+) -> None:
+    """Remove a system-level role from a user.
+
+    Deactivates the SystemRoleAssignment. No guardian sync.
+    """
+    check_role_name_in_config(role)
+    SystemRoleAssignment.objects.filter(
+        user=user,
+        role=role,
+    ).update(is_active=False)
+    # TODO: AuditLog entry for system role removal (use removed_by)
+
+
+def get_course_roles(user: User, course: Model) -> set[str]:
+    """Return set of active role names for user on the given course."""
+    return get_object_roles(user, course)
+
+
+def get_cohort_roles(user: User, cohort: Model) -> set[str]:
+    """Return set of active role names for user on the given cohort."""
+    return get_object_roles(user, cohort)

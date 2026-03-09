@@ -69,3 +69,11 @@ DATABASES = {
 
 
 MIDDLEWARE = [*MIDDLEWARE, "django_browser_reload.middleware.BrowserReloadMiddleware"]
+
+
+#####
+# ROLE-BASED PERMISSIONS
+
+FREEDOMLS_PERMISSIONS_MODULES = {
+    "DemoDev": "config.role_based_permissions.demodev",
+}
