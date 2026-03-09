@@ -32,43 +32,7 @@
         </div>
     {% endif %}
 
-    <div x-data="{
-           scrolledPastFirst: false,
-           firstColWidth: 0,
-           init() {
-             const container = this.$refs.scrollContainer;
-             if (!container) return;
-             if (window.matchMedia('(min-width: 768px)').matches) return;
-
-             const firstTh = container.querySelector('thead th');
-             if (firstTh) this.firstColWidth = firstTh.offsetWidth;
-
-             container.querySelectorAll('tbody tr').forEach(tr => {
-               const firstCell = tr.querySelector('td');
-               if (!firstCell) return;
-               const text = firstCell.textContent.trim();
-               if (!text) return;
-
-               const label = document.createElement('span');
-               label.textContent = text;
-               label.className = 'scroll-row-label hidden md:!hidden text-xs font-medium whitespace-nowrap bg-surface-2 text-foreground px-1.5 py-0.5 rounded shadow-sm mr-2';
-               label.style.cssText = 'position:sticky; left:0; z-index:5;';
-               firstCell.prepend(label);
-             });
-
-             container.addEventListener('scroll', () => {
-               const scrolled = container.scrollLeft > this.firstColWidth;
-               if (scrolled !== this.scrolledPastFirst) {
-                 this.scrolledPastFirst = scrolled;
-                 container.querySelectorAll('.scroll-row-label').forEach(el => {
-                   el.classList.toggle('hidden', !scrolled);
-                   el.classList.toggle('inline-block', scrolled);
-                 });
-               }
-             });
-           }
-         }">
-        <div class="overflow-x-auto {{ class }}" x-ref="scrollContainer">
+    <c-scroll-table-labels class="overflow-x-auto {{ class }}">
             <table>
                 <thead>
                     <tr>
@@ -137,8 +101,7 @@
                     {% endif %}
                 </tbody>
             </table>
-        </div>
-    </div>
+    </c-scroll-table-labels>
 
     {% if page_obj and page_obj.paginator.num_pages > 1 %}
         <div class="flex items-center justify-between mt-6 px-4">

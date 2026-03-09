@@ -46,44 +46,9 @@
 
     {# Progress grid #}
     {% if rows %}
-        <div x-data="{
-               scrolledPastFirst: false,
-               firstColWidth: 0,
-               init() {
-                 const container = this.$refs.progressScrollContainer;
-                 if (!container) return;
-                 if (window.matchMedia('(min-width: 768px)').matches) return;
-
-                 const firstTh = container.querySelector('thead tr:last-child th');
-                 if (firstTh) this.firstColWidth = firstTh.offsetWidth;
-
-                 container.querySelectorAll('tbody tr').forEach(tr => {
-                   const firstCell = tr.querySelector('th[scope=row], td');
-                   if (!firstCell) return;
-                   const text = firstCell.textContent.trim();
-                   if (!text) return;
-
-                   const label = document.createElement('span');
-                   label.textContent = text;
-                   label.className = 'scroll-row-label hidden md:!hidden text-xs font-medium whitespace-nowrap bg-surface-2 text-foreground px-1.5 py-0.5 rounded shadow-sm mr-2';
-                   label.style.cssText = 'position:sticky; left:0; z-index:5;';
-                   firstCell.prepend(label);
-                 });
-
-                 container.addEventListener('scroll', () => {
-                   const scrolled = container.scrollLeft > this.firstColWidth;
-                   if (scrolled !== this.scrolledPastFirst) {
-                     this.scrolledPastFirst = scrolled;
-                     container.querySelectorAll('.scroll-row-label').forEach(el => {
-                       el.classList.toggle('hidden', !scrolled);
-                       el.classList.toggle('inline-block', scrolled);
-                     });
-                   }
-                 });
-               }
-             }">
-        <div class="overflow-auto max-h-[600px] relative border border-border rounded-md"
-             x-ref="progressScrollContainer">
+        <c-scroll-table-labels header_selector="thead tr:last-child th"
+                               cell_selector="th[scope=row], td"
+                               class="overflow-auto max-h-[600px] border border-border rounded-md">
             <table class="text-sm">
                 <thead>
                     {# Row 1: CoursePart headers (if any) #}
@@ -186,8 +151,7 @@
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-        </div>
+        </c-scroll-table-labels>
 
         {# Pagination controls #}
         <div class="flex flex-wrap justify-between items-center mt-4 gap-4 text-sm text-muted">

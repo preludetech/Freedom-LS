@@ -1,0 +1,59 @@
+<c-vars header_selector="thead th" cell_selector="td" class="" />
+
+{% comment %}
+Wraps a scrollable table with floating row labels on mobile.
+When the user scrolls horizontally past the first column on mobile (<768px),
+labels showing the first column's text appear as an overlay at each row position.
+Labels are built at init time. This works because HTMX swaps replace
+the entire component, triggering Alpine re-initialization.
+{% endcomment %}
+
+<div x-data="{
+       scrolledPastFirst: false,
+       firstColWidth: 0,
+       init() {
+         const container = this.$refs.scrollTableContainer;
+         const overlay = this.$refs.scrollTableOverlay;
+         if (!container || !overlay) return;
+         if (window.matchMedia('(min-width: 768px)').matches) return;
+
+         const firstTh = container.querySelector('{{ header_selector }}');
+         if (firstTh) this.firstColWidth = firstTh.offsetWidth;
+
+         container.addEventListener('scroll', () => {
+           const scrolled = container.scrollLeft > this.firstColWidth;
+           if (scrolled !== this.scrolledPastFirst) {
+             this.scrolledPastFirst = scrolled;
+             overlay.classList.toggle('hidden', !scrolled);
+           }
+           if (scrolled) {
+             overlay.style.top = -container.scrollTop + 'px';
+           }
+         });
+
+         this._buildLabels(container, overlay);
+       },
+       _buildLabels(container, overlay) {
+         overlay.innerHTML = '';
+         container.querySelectorAll('tbody tr').forEach(tr => {
+           const firstCell = tr.querySelector('{{ cell_selector }}');
+           if (!firstCell) return;
+           const text = firstCell.textContent.trim();
+           if (!text) return;
+
+           const label = document.createElement('div');
+           label.textContent = text;
+           label.className = 'text-xs font-medium whitespace-nowrap bg-surface-2 text-foreground px-1.5 py-0.5 rounded shadow-sm';
+           label.style.cssText = 'position:absolute; left:4px; top:' + (tr.offsetTop) + 'px;';
+           overlay.appendChild(label);
+         });
+       }
+     }">
+    <div class="relative">
+        <div class="{{ class }}" x-ref="scrollTableContainer">
+            {{ slot }}
+        </div>
+        <div x-ref="scrollTableOverlay"
+             class="hidden md:!hidden absolute inset-0 pointer-events-none z-10 overflow-hidden"></div>
+    </div>
+</div>
