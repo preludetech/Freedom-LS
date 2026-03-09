@@ -31,7 +31,11 @@ the entire component, triggering Alpine re-initialization.
            }
          });
 
-         this._buildLabels(container, overlay);
+         requestAnimationFrame(() => this._buildLabels(container, overlay));
+
+         new ResizeObserver(() => {
+           requestAnimationFrame(() => this._buildLabels(container, overlay));
+         }).observe(container);
        },
        _buildLabels(container, overlay) {
          overlay.innerHTML = '';
