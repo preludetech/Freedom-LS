@@ -14,7 +14,7 @@
         },
         toggle() { this.sidebarOpen = !this.sidebarOpen; }
      }"
-     class="flex {{ class }}"
+     class="flex relative {{ class }}"
      {{ attrs }}>
 
     <!-- Toggle button: visible when sidebar is collapsed -->
@@ -22,7 +22,7 @@
             x-show="!sidebarOpen"
             x-transition
             @click="toggle()"
-            class="self-start mt-1 flex items-center gap-1.5 shrink-0 px-1 sm:px-2 py-1.5 rounded-md text-sm font-medium text-muted bg-surface-2 hover:bg-surface-2 hover:text-foreground transition-colors cursor-pointer"
+            class="absolute left-0 top-0 z-10 mt-1 flex items-center gap-1.5 shrink-0 px-1 sm:px-2 py-1.5 rounded-md text-sm font-medium text-muted bg-surface-2 hover:bg-surface-2 hover:text-foreground transition-colors cursor-pointer"
             aria-label="Open sidebar">
         <c-icon name="menu_open" class="size-4" />
     </button>

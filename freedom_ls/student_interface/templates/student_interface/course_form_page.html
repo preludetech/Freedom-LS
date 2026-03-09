@@ -160,7 +160,13 @@
             <!-- Navigation -->
 
             <div class="flex flex-col sm:flex-row sm:justify-between gap-3 pt-6 border-t border-border">
-                <div class="order-first sm:order-none w-full sm:w-auto">
+                <div class="order-first sm:order-none w-full sm:w-auto space-y-3">
+
+                    {% if previous_page_url %}
+                        <c-button href="{{ previous_page_url }}" class="w-full sm:w-auto">
+                            Back
+                        </c-button>
+                    {% endif %}
 
                     {% if has_next_page %}
 
@@ -174,14 +180,7 @@
                         </c-button>
                     {% endif %}
                 </div>
-                <div class="w-full sm:w-auto">
-                    {% if previous_page_url %}
 
-                        <c-button href="{{ previous_page_url }}" class="w-full sm:w-auto">
-                            Back
-                        </c-button>
-                    {% endif %}
-                </div>
             </div>
 
         </form>
