@@ -53,6 +53,18 @@
 - related_name on UserCourseRegistration.collection is "user_registrations"
 - CohortMembership has no unique constraint on (user, cohort)
 
+## Role-Based Permissions System
+- App: `freedom_ls/role_based_permissions/`
+- Three assignment models: SystemRoleAssignment (plain Model), SiteRoleAssignment (SiteAwareModel), ObjectRoleAssignment (SiteAwareModel)
+- Role dataclass has `assignment_scope` field (system/site/object) but it's NOT enforced in utils.py assignment functions
+- Spec uses `ui_hint` but implementation renamed to `role_type` (same values: standalone/composable)
+- `get_course_roles`/`get_cohort_roles` convenience wrappers from plan not implemented
+- `removed_by` parameter from plan not implemented on remove functions
+- Config loading: `FREEDOMLS_PERMISSIONS_MODULES` maps site names to module paths
+- DemoDev site config at `config/role_based_permissions/demodev.py`
+- Management commands use djclick
+- `_report_orphans` in sync command uses single config, may produce false positives in multi-site setups
+
 ## Factory Boy Implementation
 - SiteAwareFactory base in `freedom_ls/site_aware_models/factories.py`
 - One `factories.py` per app, uses SiteAwareFactory base
