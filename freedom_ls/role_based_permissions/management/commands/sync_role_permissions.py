@@ -99,7 +99,7 @@ def _sync_object_assignments(dry_run: bool) -> int:
 
     for assignment in (
         ObjectRoleAssignment.objects.filter(is_active=True)
-        .select_related("user", "content_type")
+        .select_related("user", "content_type", "site")
         .iterator()
     ):
         pair_key = (
@@ -126,7 +126,9 @@ def _sync_object_assignments(dry_run: bool) -> int:
             )
             continue
 
-        result = sync_user_object_permissions(assignment.user, obj, dry_run=dry_run)
+        result = sync_user_object_permissions(
+            assignment.user, obj, dry_run=dry_run, site_name=assignment.site.name
+        )
         if result["added"] or result["removed"]:
             drifted += 1
 

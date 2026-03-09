@@ -38,9 +38,14 @@ class SyncResult(TypedDict):
     removed: set[str]
 
 
-def check_role_name_in_config(role_name: str) -> None:
-    """Raise ValueError if role_name is not in the current site's role config."""
-    config = get_role_config()
+def check_role_name_in_config(role_name: str, site_name: str | None = None) -> None:
+    """Raise ValueError if role_name is not in the role config.
+
+    Args:
+        role_name: The role name to validate.
+        site_name: Site name to load config for. If not provided, uses the current site.
+    """
+    config = get_role_config(site_name)
     if role_name not in config:
         raise ValueError(f"Unknown role: {role_name!r}")
 
@@ -231,14 +236,19 @@ def assign_site_role(
     user: User,
     role: str,
     assigned_by: User | None = None,
+    site: Site | None = None,
 ) -> SiteRoleAssignment:
-    """Assign a site-level role to a user on the current site.
+    """Assign a site-level role to a user on a site.
 
     Creates or reactivates a SiteRoleAssignment, then syncs guardian permissions
     on the Site object.
+
+    Args:
+        site: The site to assign the role on. Defaults to the current site.
     """
-    check_role_name_in_config(role)
-    site = Site.objects.get_current()
+    if site is None:
+        site = Site.objects.get_current()
+    check_role_name_in_config(role, site_name=site.name)
     assignment: SiteRoleAssignment
     assignment, created = SiteRoleAssignment.objects.get_or_create(
         user=user,
@@ -265,14 +275,19 @@ def assign_site_role(
 def remove_site_role(
     user: User,
     role: str,
+    site: Site | None = None,
 ) -> None:
-    """Remove a site-level role from a user on the current site.
+    """Remove a site-level role from a user on a site.
 
     Deactivates the SiteRoleAssignment, then resyncs guardian permissions
     on the Site object.
+
+    Args:
+        site: The site to remove the role from. Defaults to the current site.
     """
-    check_role_name_in_config(role)
-    site = Site.objects.get_current()
+    if site is None:
+        site = Site.objects.get_current()
+    check_role_name_in_config(role, site_name=site.name)
     SiteRoleAssignment.objects.filter(
         user=user,
         site=site,
