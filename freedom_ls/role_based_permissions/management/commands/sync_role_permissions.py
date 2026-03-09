@@ -49,7 +49,7 @@ def command(dry_run: bool, report_orphans: bool, site: str | None) -> None:
 
     # Phase 5: Report orphans
     if report_orphans:
-        orphan_count = _report_orphans(config)
+        orphan_count = _report_orphans()
         click.echo(f"Found {orphan_count} orphan permission(s).")
 
     prefix = "[DRY RUN] " if dry_run else ""
@@ -70,6 +70,8 @@ def _ensure_permissions_exist(config: SiteRolesConfig) -> None:
 
         # Try to find a matching ContentType. First attempt: derive model name
         # from Django's default pattern (action_modelname, e.g. "view_cohort" -> "cohort").
+        # Note: this heuristic fails for multi-word model names (e.g. "view_cohort_membership"
+        # tries "cohort_membership" but Django stores "cohortmembership" in ContentType.model).
         # Fallback: try all ContentTypes for the app_label, since custom permissions
         # (e.g. "manage_enrolment") may not follow the convention.
         ct = None
@@ -182,13 +184,37 @@ def _validate_system_assignments() -> None:
             )
 
 
-def _report_orphans(config: SiteRolesConfig) -> int:
+def _build_all_configs_union() -> dict[str, set[str]]:
+    """Build a union mapping role_name -> all permissions across all configs.
+
+    Merges the base config and every site-specific config so that orphan
+    detection does not produce false positives in multi-site setups.
+    """
+    role_perms: dict[str, set[str]] = {}
+    configs: list[SiteRolesConfig] = [load_base_config()]
+    modules: dict[str, str] = getattr(settings, "FREEDOMLS_PERMISSIONS_MODULES", {})
+    for site_name in modules:
+        configs.append(get_role_config(site_name))
+
+    for config in configs:
+        for role_name, role in config.items():
+            role_perms.setdefault(role_name, set()).update(role.permissions)
+
+    return role_perms
+
+
+def _report_orphans() -> int:
     """Scan guardian object permissions for rows not traceable to any active role assignment.
 
     Checks both UserObjectPermission and GroupObjectPermission. Since the role
     system only manages user-level permissions, all GroupObjectPermission rows
     are considered orphans.
+
+    Uses the union of all configs (base + all sites) so that permissions
+    legitimately granted by any site config are not flagged as orphans.
     """
+    all_role_perms = _build_all_configs_union()
+
     # Prefetch all active assignments to avoid N+1 queries
     # Key: (user_id, content_type_id, object_id) -> set of role names
     object_role_lookup: dict[tuple[int, int, str], set[str]] = {}
@@ -216,7 +242,7 @@ def _report_orphans(config: SiteRolesConfig) -> int:
         obj_key = (uop.user_id, uop.content_type_id, uop.object_pk)
         obj_roles = object_role_lookup.get(obj_key, set())
         if any(
-            role in config and perm_string in config[role].permissions
+            role in all_role_perms and perm_string in all_role_perms[role]
             for role in obj_roles
         ):
             continue
@@ -230,7 +256,7 @@ def _report_orphans(config: SiteRolesConfig) -> int:
             else:
                 site_roles = site_role_lookup.get((uop.user_id, site_id), set())
                 if any(
-                    role in config and perm_string in config[role].permissions
+                    role in all_role_perms and perm_string in all_role_perms[role]
                     for role in site_roles
                 ):
                     continue

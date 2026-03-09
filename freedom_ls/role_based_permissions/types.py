@@ -35,7 +35,9 @@ class Role:
     permissions: frozenset[str]
     assignment_scope: AssignmentScope
     lti_role: str | None = None
-    role_type: RoleType = ROLE_TYPE_DEFAULT
+    role_type: RoleType = (
+        ROLE_TYPE_DEFAULT  # called ui_hint in spec; renamed for clarity
+    )
     description: str = ""
 
 

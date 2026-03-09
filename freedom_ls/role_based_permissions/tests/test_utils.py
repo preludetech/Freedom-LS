@@ -24,6 +24,7 @@ from freedom_ls.role_based_permissions.utils import (
     assign_site_role,
     assign_system_role,
     check_role_name_in_config,
+    get_cohort_roles,
     get_object_roles,
     remove_object_role,
     remove_site_role,
@@ -91,8 +92,17 @@ class TestAssignObjectRole:
         user = UserFactory()
 
         # Instructor has cohort-scoped permissions (view_cohort, etc.)
-        # On a Site object, none of those match the Site content type
-        assign_object_role(user, mock_site_context, "instructor")
+        # When synced against a Site object, none of those match the Site content type.
+        # Create assignment manually to bypass scope enforcement (testing content type filtering).
+        ct = ContentType.objects.get_for_model(mock_site_context)
+        ObjectRoleAssignment.objects.create(
+            user=user,
+            content_type=ct,
+            object_id=str(mock_site_context.pk),
+            role="instructor",
+            site=mock_site_context,
+        )
+        sync_user_object_permissions(user, mock_site_context)
         perms = get_perms(user, mock_site_context)
         assert "view_cohort" not in perms
 
@@ -179,18 +189,15 @@ class TestRemoveObjectRole:
         user = UserFactory()
         cohort = CohortFactory()
 
-        # site_admin has all cohort perms, instructor has view_cohort
-        assign_object_role(user, cohort, "site_admin")
+        # instructor has view_cohort + view/change_student; ta has view_cohort + view_student
         assign_object_role(user, cohort, "instructor")
+        assign_object_role(user, cohort, "ta")
 
-        # Remove site_admin — instructor's view_cohort should remain
-        remove_object_role(user, cohort, "site_admin")
+        # Remove instructor — ta's view_cohort should remain
+        remove_object_role(user, cohort, "instructor")
 
         perms = get_perms(user, cohort)
         assert "view_cohort" in perms
-        # site_admin-only cohort perms should be gone
-        assert "add_cohort" not in perms
-        assert "delete_cohort" not in perms
 
 
 class TestSyncUserObjectPermissions:
@@ -334,16 +341,21 @@ class TestSiteRoleFunctions:
         """Removing one site role preserves other active site role assignments."""
         user = UserFactory()
         assign_site_role(user, "site_admin")
-        assign_site_role(user, "instructor")
+
+        # Manually create a second site role assignment to test preservation
+        # (only site_admin has assignment_scope="site" in the base config)
+        SiteRoleAssignment.objects.create(
+            user=user, role="other_role", site=mock_site_context, is_active=True
+        )
 
         remove_site_role(user, "site_admin")
 
-        # site_admin should be deactivated, instructor should remain
+        # site_admin should be deactivated, other_role should remain
         assert not SiteRoleAssignment.objects.filter(
             user=user, role="site_admin", is_active=True
         ).exists()
         assert SiteRoleAssignment.objects.filter(
-            user=user, role="instructor", is_active=True
+            user=user, role="other_role", is_active=True
         ).exists()
 
 
@@ -436,3 +448,53 @@ class TestGuardianIntegration:
         )
         assert cohort in accessible
         assert other_cohort not in accessible
+
+
+class TestAssignmentScopeEnforcement:
+    """Tests that assignment functions enforce the role's assignment_scope."""
+
+    @pytest.mark.django_db
+    def test_assign_object_role_rejects_site_scoped_role(self) -> None:
+        """Cannot use assign_object_role with a site-scoped role."""
+        user = UserFactory()
+        cohort = CohortFactory()
+        with pytest.raises(ValueError, match="assignment_scope='site'"):
+            assign_object_role(user, cohort, "site_admin")
+
+    @pytest.mark.django_db
+    def test_assign_object_role_rejects_system_scoped_role(self) -> None:
+        """Cannot use assign_object_role with a system-scoped role."""
+        user = UserFactory()
+        cohort = CohortFactory()
+        with pytest.raises(ValueError, match="assignment_scope='system'"):
+            assign_object_role(user, cohort, "system_admin")
+
+    @pytest.mark.django_db
+    def test_assign_site_role_rejects_object_scoped_role(
+        self, mock_site_context: Site
+    ) -> None:
+        """Cannot use assign_site_role with an object-scoped role."""
+        user = UserFactory()
+        with pytest.raises(ValueError, match="assignment_scope='object'"):
+            assign_site_role(user, "instructor")
+
+    @pytest.mark.django_db
+    def test_assign_system_role_rejects_object_scoped_role(self) -> None:
+        """Cannot use assign_system_role with an object-scoped role."""
+        user = UserFactory()
+        with pytest.raises(ValueError, match="assignment_scope='object'"):
+            assign_system_role(user, "instructor")
+
+
+class TestConvenienceRoleQueries:
+    """Tests for get_cohort_roles convenience wrapper."""
+
+    @pytest.mark.django_db
+    def test_get_cohort_roles_returns_active_roles(self) -> None:
+        """get_cohort_roles returns the same result as get_object_roles."""
+        user = UserFactory()
+        cohort = CohortFactory()
+        assign_object_role(user, cohort, "instructor")
+
+        assert get_cohort_roles(user, cohort) == {"instructor"}
+        assert get_cohort_roles(user, cohort) == get_object_roles(user, cohort)

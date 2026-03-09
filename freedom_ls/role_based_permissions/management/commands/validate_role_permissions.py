@@ -5,7 +5,7 @@ It checks that:
 
 - All role names are valid Python identifiers.
 - All permissions referenced by roles exist in the permission registry.
-- All role_type values are either 'standalone' or 'composable'. (in VALID_ASSIGNMENT_SCOPES)
+- All role_type values are either 'standalone' or 'composable'. (in VALID_ROLE_TYPES)
 - All assignment_scope values are 'system', 'site', or 'object'. (in VALID_ASSIGNMENT_SCOPES)
 - No active role assignments in the database reference roles that have been
   removed from the configuration (orphaned assignments).

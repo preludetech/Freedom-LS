@@ -15,6 +15,7 @@ from django.db import transaction
 from django.db.models import Model
 
 from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.types import AssignmentScope
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
@@ -48,6 +49,19 @@ def check_role_name_in_config(role_name: str, site_name: str | None = None) -> N
     config = get_role_config(site_name)
     if role_name not in config:
         raise ValueError(f"Unknown role: {role_name!r}")
+
+
+def _check_assignment_scope(
+    role_name: str, expected_scope: AssignmentScope, site_name: str | None = None
+) -> None:
+    """Raise ValueError if the role's assignment_scope doesn't match expected_scope."""
+    config = get_role_config(site_name)
+    role = config[role_name]
+    if role.assignment_scope != expected_scope:
+        raise ValueError(
+            f"Role {role_name!r} has assignment_scope={role.assignment_scope!r}, "
+            f"but {expected_scope!r} is required for this assignment type."
+        )
 
 
 def get_object_roles(user: User, obj: Model) -> set[str]:
@@ -115,12 +129,12 @@ def _filter_perms_for_content_type(perms: set[str], ct: ContentType) -> set[str]
     to a different model's content type.
     """
     valid_codenames = _get_valid_codenames_for_content_type(ct.pk)
-    return {
-        perm
-        for perm in perms
-        if perm.split(".", 1)[0] == ct.app_label
-        and perm.split(".", 1)[1] in valid_codenames
-    }
+    result = set()
+    for perm in perms:
+        app_label, codename = perm.split(".", 1)
+        if app_label == ct.app_label and codename in valid_codenames:
+            result.add(perm)
+    return result
 
 
 def sync_user_object_permissions(
@@ -186,6 +200,7 @@ def assign_object_role(
     Creates or reactivates an ObjectRoleAssignment, then syncs guardian permissions.
     """
     check_role_name_in_config(role)
+    _check_assignment_scope(role, "object")
     ct = ContentType.objects.get_for_model(target)
     assignment: ObjectRoleAssignment
     assignment, created = ObjectRoleAssignment.objects.get_or_create(
@@ -215,6 +230,7 @@ def remove_object_role(
     user: User,
     target: Model,
     role: str,
+    removed_by: User | None = None,
 ) -> None:
     """Remove an object-level role from a user on a target object.
 
@@ -229,7 +245,7 @@ def remove_object_role(
         role=role,
     ).update(is_active=False)
     sync_user_object_permissions(user, target)
-    # TODO: AuditLog entry for role removal
+    # TODO: AuditLog entry for role removal (use removed_by)
 
 
 def assign_site_role(
@@ -249,6 +265,7 @@ def assign_site_role(
     if site is None:
         site = Site.objects.get_current()
     check_role_name_in_config(role, site_name=site.name)
+    _check_assignment_scope(role, "site", site_name=site.name)
     assignment: SiteRoleAssignment
     assignment, created = SiteRoleAssignment.objects.get_or_create(
         user=user,
@@ -276,6 +293,7 @@ def remove_site_role(
     user: User,
     role: str,
     site: Site | None = None,
+    removed_by: User | None = None,
 ) -> None:
     """Remove a site-level role from a user on a site.
 
@@ -284,6 +302,7 @@ def remove_site_role(
 
     Args:
         site: The site to remove the role from. Defaults to the current site.
+        removed_by: The user performing the removal (for future audit logging).
     """
     if site is None:
         site = Site.objects.get_current()
@@ -294,7 +313,7 @@ def remove_site_role(
         role=role,
     ).update(is_active=False)
     sync_user_object_permissions(user, site)
-    # TODO: AuditLog entry for site role removal
+    # TODO: AuditLog entry for site role removal (use removed_by)
 
 
 def assign_system_role(
@@ -308,6 +327,7 @@ def assign_system_role(
     (system roles have no object to scope to).
     """
     check_role_name_in_config(role)
+    _check_assignment_scope(role, "system")
     assignment: SystemRoleAssignment
     assignment, created = SystemRoleAssignment.objects.get_or_create(
         user=user,
@@ -332,6 +352,7 @@ def assign_system_role(
 def remove_system_role(
     user: User,
     role: str,
+    removed_by: User | None = None,
 ) -> None:
     """Remove a system-level role from a user.
 
@@ -342,4 +363,14 @@ def remove_system_role(
         user=user,
         role=role,
     ).update(is_active=False)
-    # TODO: AuditLog entry for system role removal
+    # TODO: AuditLog entry for system role removal (use removed_by)
+
+
+def get_course_roles(user: User, course: Model) -> set[str]:
+    """Return set of active role names for user on the given course."""
+    return get_object_roles(user, course)
+
+
+def get_cohort_roles(user: User, cohort: Model) -> set[str]:
+    """Return set of active role names for user on the given cohort."""
+    return get_object_roles(user, cohort)

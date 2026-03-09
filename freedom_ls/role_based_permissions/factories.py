@@ -37,6 +37,13 @@ class SiteRoleAssignmentFactory(SiteAwareFactory):
     assigned_by = None
 
 
+def _require_target_object() -> None:
+    raise ValueError(
+        "ObjectRoleAssignmentFactory requires target_object. "
+        "Usage: ObjectRoleAssignmentFactory(target_object=some_model_instance)"
+    )
+
+
 class ObjectRoleAssignmentFactory(SiteAwareFactory):
     """Factory for ObjectRoleAssignment.
 
@@ -54,14 +61,7 @@ class ObjectRoleAssignmentFactory(SiteAwareFactory):
     is_active = True
     assigned_by = None
 
-    target_object = factory.LazyFunction(
-        lambda: (_ for _ in ()).throw(
-            ValueError(
-                "ObjectRoleAssignmentFactory requires target_object. "
-                "Usage: ObjectRoleAssignmentFactory(target_object=some_model_instance)"
-            )
-        )
-    )
+    target_object = factory.LazyFunction(_require_target_object)
 
     content_type = factory.LazyAttribute(
         lambda obj: ContentType.objects.get_for_model(obj.target_object)

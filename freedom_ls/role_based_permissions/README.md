@@ -93,6 +93,7 @@ The referenced module must define a `ROLES` attribute (a `SiteRolesConfig`). Typ
 ```python
 # myproject/permissions.py
 from freedom_ls.role_based_permissions.roles import BASE_ROLES
+from freedom_ls.role_based_permissions.types import Role, SCOPE_OBJECT
 
 ROLES = BASE_ROLES.extend({
     # Add permissions to an existing role
@@ -114,6 +115,7 @@ ROLES = BASE_ROLES.extend({
     # Replace a role entirely
     "observer": Role(
         display_name="Observer",
+        assignment_scope=SCOPE_OBJECT,
         permissions=frozenset({
             "freedom_ls_student_management.view_cohort",
         }),
