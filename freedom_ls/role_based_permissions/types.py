@@ -9,6 +9,12 @@ ROLE_TYPE_STANDALONE: RoleType = "standalone"
 ROLE_TYPE_COMPOSABLE: RoleType = "composable"
 ROLE_TYPE_DEFAULT: RoleType = ROLE_TYPE_STANDALONE
 VALID_ROLE_TYPES: set[RoleType] = {ROLE_TYPE_STANDALONE, ROLE_TYPE_COMPOSABLE}
+
+AssignmentScope = Literal["system", "site", "object"]
+SCOPE_SYSTEM: AssignmentScope = "system"
+SCOPE_SITE: AssignmentScope = "site"
+SCOPE_OBJECT: AssignmentScope = "object"
+VALID_ASSIGNMENT_SCOPES: set[AssignmentScope] = {SCOPE_SYSTEM, SCOPE_SITE, SCOPE_OBJECT}
 VALID_SPEC_KEYS: set[str] = {
     "inherits",
     "add_permissions",
@@ -17,6 +23,7 @@ VALID_SPEC_KEYS: set[str] = {
     "lti_role",
     "role_type",
     "description",
+    "assignment_scope",
 }
 
 
@@ -26,6 +33,7 @@ class Role:
 
     display_name: str
     permissions: frozenset[str]
+    assignment_scope: AssignmentScope
     lti_role: str | None = None
     role_type: RoleType = ROLE_TYPE_DEFAULT
     description: str = ""
@@ -103,6 +111,7 @@ def _build_role_from_spec(
     raw_lti_role = spec.get("lti_role")
     raw_role_type = spec.get("role_type")
     raw_description = spec.get("description")
+    raw_assignment_scope = spec.get("assignment_scope")
 
     display_name = (
         str(raw_display_name)
@@ -124,6 +133,21 @@ def _build_role_from_spec(
         role_type: RoleType = cast(RoleType, raw_role_type_str)
     else:
         role_type = parent_role.role_type if parent_role else ROLE_TYPE_DEFAULT
+    if raw_assignment_scope is not None:
+        raw_scope_str = str(raw_assignment_scope)
+        if raw_scope_str not in VALID_ASSIGNMENT_SCOPES:
+            raise ValueError(
+                f"Invalid assignment_scope '{raw_scope_str}' for role '{name}'. "
+                f"Must be one of {sorted(VALID_ASSIGNMENT_SCOPES)}."
+            )
+        assignment_scope: AssignmentScope = cast(AssignmentScope, raw_scope_str)
+    elif parent_role:
+        assignment_scope = parent_role.assignment_scope
+    else:
+        raise ValueError(
+            f"Role '{name}' must specify an assignment_scope "
+            f"(one of {sorted(VALID_ASSIGNMENT_SCOPES)})."
+        )
     description = (
         str(raw_description)
         if raw_description is not None
@@ -133,6 +157,7 @@ def _build_role_from_spec(
     return Role(
         display_name=display_name,
         permissions=permissions,
+        assignment_scope=assignment_scope,
         lti_role=lti_role,
         role_type=role_type,
         description=description,

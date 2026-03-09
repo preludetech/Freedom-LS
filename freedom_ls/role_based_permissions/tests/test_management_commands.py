@@ -24,7 +24,7 @@ from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
     SystemRoleAssignment,
 )
-from freedom_ls.role_based_permissions.types import Role, SiteRolesConfig
+from freedom_ls.role_based_permissions.types import SCOPE_SITE, Role, SiteRolesConfig
 from freedom_ls.student_management.factories import CohortFactory
 
 
@@ -212,6 +212,7 @@ class TestValidateRolePermissionsInvalidRoleName:
                 "not-valid-identifier": Role(
                     display_name="Bad Role",
                     permissions=frozenset(),
+                    assignment_scope=SCOPE_SITE,
                 ),
             }
         )
@@ -240,6 +241,7 @@ class TestValidateRolePermissionsUnknownPermission:
                             "nonexistent_app.nonexistent_perm",
                         }
                     ),
+                    assignment_scope=SCOPE_SITE,
                 ),
             }
         )
@@ -264,6 +266,7 @@ class TestValidateRolePermissionsInvalidRoleType:
                 "test_role": Role(
                     display_name="Test Role",
                     permissions=frozenset(),
+                    assignment_scope=SCOPE_SITE,
                     role_type="invalid_hint",
                 ),
             }
@@ -305,6 +308,7 @@ class TestValidateRolePermissionsMultipleConfigs:
                 "bad role name!": Role(
                     display_name="Bad",
                     permissions=frozenset(),
+                    assignment_scope=SCOPE_SITE,
                 ),
             }
         )

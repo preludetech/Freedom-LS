@@ -6,6 +6,7 @@ It checks that:
 - All role names are valid Python identifiers.
 - All permissions referenced by roles exist in the permission registry.
 - All role_type values are either 'standalone' or 'composable'.
+- All assignment_scope values are 'system', 'site', or 'object'.
 - No active role assignments in the database reference roles that have been
   removed from the configuration (orphaned assignments).
 
@@ -27,6 +28,7 @@ from freedom_ls.role_based_permissions.registry import PERMISSIONS
 from freedom_ls.role_based_permissions.types import (
     ROLE_TYPE_COMPOSABLE,
     ROLE_TYPE_STANDALONE,
+    VALID_ASSIGNMENT_SCOPES,
     SiteRolesConfig,
 )
 
@@ -85,6 +87,13 @@ def _validate_config(config: SiteRolesConfig, label: str) -> list[str]:
             errors.append(
                 f"[{label}] Role '{role_name}' has invalid role_type "
                 f"'{role.role_type}' (must be 'standalone' or 'composable')."
+            )
+
+        # Check: assignment_scope is valid
+        if role.assignment_scope not in VALID_ASSIGNMENT_SCOPES:
+            errors.append(
+                f"[{label}] Role '{role_name}' has invalid assignment_scope "
+                f"'{role.assignment_scope}' (must be one of {sorted(VALID_ASSIGNMENT_SCOPES)})."
             )
 
     return errors

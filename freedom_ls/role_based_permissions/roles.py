@@ -1,16 +1,23 @@
-from freedom_ls.role_based_permissions.types import Role, SiteRolesConfig
+from freedom_ls.role_based_permissions.types import (
+    SCOPE_OBJECT,
+    SCOPE_SITE,
+    SCOPE_SYSTEM,
+    Role,
+    SiteRolesConfig,
+)
 
 # V1: Only includes permissions that exist in code today.
 # As features are built, add the relevant permissions from the
 # commented lists below and create data migrations for them.
 
-# TODO: update these so there is no mention of students, only Users
+# TODO: update these so there is no mention of rights over students, only rights over users
 
 BASE_ROLES = SiteRolesConfig(
     {
         # --- Roles with currently-existing permissions ---
         "site_admin": Role(
             display_name="Site Administrator",
+            assignment_scope=SCOPE_SITE,
             lti_role=None,  # FUTURE: assign LTI URI when LTI is implemented
             description="Manages courses, users, and settings within a site.",
             permissions=frozenset(
@@ -30,6 +37,7 @@ BASE_ROLES = SiteRolesConfig(
         ),
         "instructor": Role(
             display_name="Instructor",
+            assignment_scope=SCOPE_OBJECT,
             lti_role=None,  # FUTURE: assign LTI URI when LTI is implemented
             description="Full course management: content, grading, communication.",
             permissions=frozenset(
@@ -44,6 +52,7 @@ BASE_ROLES = SiteRolesConfig(
         ),
         "ta": Role(
             display_name="Teaching Assistant",
+            assignment_scope=SCOPE_OBJECT,
             lti_role=None,  # FUTURE: assign LTI URI when LTI is implemented
             description="Supports instruction with grading and roster access.",
             permissions=frozenset(
@@ -60,6 +69,7 @@ BASE_ROLES = SiteRolesConfig(
         # sets until the relevant features are built.
         "system_admin": Role(
             display_name="System Administrator",
+            assignment_scope=SCOPE_SYSTEM,
             lti_role=None,
             description="Full platform access.",
             permissions=frozenset(),
@@ -68,6 +78,7 @@ BASE_ROLES = SiteRolesConfig(
         ),
         "student": Role(
             display_name="Student",
+            assignment_scope=SCOPE_OBJECT,
             lti_role=None,
             description="Standard learner role.",
             permissions=frozenset(),
@@ -76,6 +87,7 @@ BASE_ROLES = SiteRolesConfig(
         ),
         "observer": Role(
             display_name="Observer",
+            assignment_scope=SCOPE_OBJECT,
             lti_role=None,
             description="Read-only access for parents or mentors.",
             permissions=frozenset(),

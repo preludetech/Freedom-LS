@@ -5,6 +5,8 @@ import pytest
 from freedom_ls.role_based_permissions.types import (
     ROLE_TYPE_COMPOSABLE,
     ROLE_TYPE_STANDALONE,
+    SCOPE_OBJECT,
+    SCOPE_SITE,
     Role,
     SiteRolesConfig,
 )
@@ -21,6 +23,7 @@ class TestSiteRolesConfig:
                 "editor": Role(
                     display_name="Editor",
                     permissions=frozenset({"content.edit", "content.view"}),
+                    assignment_scope=SCOPE_SITE,
                     lti_role="urn:lti:role:editor",
                     role_type=ROLE_TYPE_STANDALONE,
                     description="Can edit content",
@@ -28,6 +31,7 @@ class TestSiteRolesConfig:
                 "viewer": Role(
                     display_name="Viewer",
                     permissions=frozenset({"content.view"}),
+                    assignment_scope=SCOPE_SITE,
                 ),
             }
         )
@@ -75,6 +79,7 @@ class TestSiteRolesConfig:
         new_role = Role(
             display_name="Super Editor",
             permissions=frozenset({"content.edit", "content.view", "content.publish"}),
+            assignment_scope=SCOPE_SITE,
         )
         extended = base_config.extend({"editor": new_role})
         assert extended["editor"].display_name == "Super Editor"
@@ -210,6 +215,7 @@ class TestSiteRolesConfig:
                 "base_role": Role(
                     display_name="Base",
                     permissions=frozenset({"perm.a"}),
+                    assignment_scope=SCOPE_OBJECT,
                 ),
             }
         )
@@ -245,6 +251,7 @@ class TestSiteRolesConfig:
             {
                 "new_role": {
                     "display_name": "New Role",
+                    "assignment_scope": "site",
                     "add_permissions": {"custom.perm"},
                 }
             }

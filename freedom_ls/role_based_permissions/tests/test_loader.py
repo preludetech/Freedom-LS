@@ -8,7 +8,7 @@ import pytest
 
 from freedom_ls.role_based_permissions.loader import clear_caches, get_role_config
 from freedom_ls.role_based_permissions.roles import BASE_ROLES
-from freedom_ls.role_based_permissions.types import Role, SiteRolesConfig
+from freedom_ls.role_based_permissions.types import SCOPE_SITE, Role, SiteRolesConfig
 
 
 @pytest.fixture(autouse=True)
@@ -39,6 +39,7 @@ class TestGetRoleConfig:
                 "custom_role": Role(
                     display_name="Custom",
                     permissions=frozenset(),
+                    assignment_scope=SCOPE_SITE,
                 ),
             }
         )
