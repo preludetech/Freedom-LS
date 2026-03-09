@@ -104,8 +104,37 @@
     </c-scroll-table-labels>
 
     {% if page_obj and page_obj.paginator.num_pages > 1 %}
-        <div class="flex items-center justify-between mt-6 px-4">
+        {# Mobile pagination: Previous / Page X of Y / Next #}
+        <div class="flex sm:hidden items-center justify-between mt-6 px-4">
+            <div>
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                       hx-get="{{ base_url }}?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                       hx-target="#{{ table_id }}"
+                       hx-swap="outerHTML"
+                       class="btn btn-outline">
+                        Previous
+                    </a>
+                {% endif %}
+            </div>
+            <span class="text-sm text-muted">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+            <div>
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                       hx-get="{{ base_url }}?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                       hx-target="#{{ table_id }}"
+                       hx-swap="outerHTML"
+                       class="btn btn-outline">
+                        Next
+                    </a>
+                {% endif %}
+            </div>
+        </div>
 
+        {# Desktop pagination: full page numbers #}
+        <div class="hidden sm:flex items-center justify-between mt-6 px-4">
             <div class="flex gap-2">
                 {% if page_obj.has_previous %}
                     <a href="?page=1{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
