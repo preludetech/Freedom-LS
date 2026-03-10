@@ -35,7 +35,6 @@ INSTALLED_APPS = [
     # "template_partials",
     "whitenoise.runserver_nostatic",
     "django_cotton.apps.SimpleAppConfig",
-    "template_partials.apps.SimpleAppConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -113,16 +112,11 @@ TEMPLATES = [
         "OPTIONS": {
             "loaders": [
                 (
-                    "template_partials.loader.Loader",
+                    "django.template.loaders.cached.Loader",
                     [
-                        (
-                            "django.template.loaders.cached.Loader",
-                            [
-                                "django_cotton.cotton_loader.Loader",
-                                "django.template.loaders.filesystem.Loader",
-                                "django.template.loaders.app_directories.Loader",
-                            ],
-                        )
+                        "django_cotton.cotton_loader.Loader",
+                        "django.template.loaders.filesystem.Loader",
+                        "django.template.loaders.app_directories.Loader",
                     ],
                 )
             ],
@@ -136,7 +130,6 @@ TEMPLATES = [
             ],
             "builtins": [
                 "django_cotton.templatetags.cotton",
-                "template_partials.templatetags.partials",
             ],
         },
     },
