@@ -6,7 +6,7 @@ It is designed to be installed into other Django projects. FLS will work out of 
 
 ## Stack
 
-Python 3.13+, Django 5.x, PostgreSQL 17, HTMX 2.x, django-template-partials, TailwindCSS
+Python 3.13+, Django 6.x, PostgreSQL 17, HTMX 2.x, TailwindCSS
 
 ## IMPORTANT: Use skills whenever possible!
 

@@ -97,7 +97,9 @@ Usage:
 <div hx-get="{% url 'app:partial' %}" hx-trigger="load"></div>
 ```
 
-### Inline Partials (django-template-partials)
+### Inline Partials (Django built-in)
+
+Inline partials are a Django 6+ built-in feature (`{% partialdef %}` / `{% partial %}` tags are part of the Django Template Language).
 
 ```django
 {% partialdef "partial_name" %}
