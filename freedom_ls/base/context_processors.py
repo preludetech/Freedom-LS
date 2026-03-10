@@ -1,28 +1,17 @@
 import colorsys
+import functools
 import hashlib
 import os
-from enum import Enum
 from pathlib import Path
 
 from django.conf import settings
 from django.http import HttpRequest
 
 
-class _Sentinel(Enum):
-    UNSET = "UNSET"
-
-
-_cached_branch: str | None | _Sentinel = _Sentinel.UNSET
-
-
+@functools.lru_cache(maxsize=1)
 def get_current_branch() -> str | None:
-    global _cached_branch
-    if not isinstance(_cached_branch, _Sentinel):
-        return _cached_branch
-
     git_path = settings.BASE_DIR / ".git"
     if not git_path.exists():
-        _cached_branch = None
         return None
 
     if git_path.is_file():
@@ -33,7 +22,6 @@ def get_current_branch() -> str | None:
                 git_dir = (git_path.parent / git_dir).resolve()
             head_path = git_dir / "HEAD"
         else:
-            _cached_branch = None
             return None
     else:
         head_path = git_path / "HEAD"
@@ -41,14 +29,11 @@ def get_current_branch() -> str | None:
     try:
         head_content = head_path.read_text().strip()
     except (FileNotFoundError, OSError):
-        _cached_branch = None
         return None
 
     if head_content.startswith("ref: refs/heads/"):
-        _cached_branch = head_content[len("ref: refs/heads/") :]
-    else:
-        _cached_branch = head_content[:7]
-    return _cached_branch
+        return head_content[len("ref: refs/heads/") :]
+    return head_content[:7]
 
 
 def branch_name_to_color(name: str) -> str:
