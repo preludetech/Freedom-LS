@@ -46,14 +46,16 @@
 
     {# Progress grid #}
     {% if rows %}
-        <div class="overflow-auto max-h-[600px] relative border border-border rounded-md">
+        <c-scroll-table-labels header_selector="thead tr:last-child th"
+                               cell_selector="th[scope=row], td"
+                               class="overflow-auto max-h-[600px] border border-border rounded-md">
             <table class="text-sm">
                 <thead>
                     {# Row 1: CoursePart headers (if any) #}
                     {% if has_parts and visible_parts %}
                         <tr class="sticky top-0 z-20 bg-surface-2 border-b border-border">
                             <th scope="col"
-                                class="sticky left-0 z-30 bg-surface-2 border-r border-border">
+                                class="md:sticky md:left-0 z-30 bg-surface-2 border-r border-border">
                             </th>
                             {% for vp in visible_parts %}
                                 <th scope="col"
@@ -68,7 +70,7 @@
                     {# Row 2: Item names + cohort deadlines #}
                     <tr class="sticky {% if has_parts and visible_parts %}top-[33px]{% else %}top-0{% endif %} z-20 bg-surface-2">
                         <th scope="col"
-                            class="sticky left-0 z-30 bg-surface-2 px-3 py-2 text-left min-w-[180px] border-r border-border">
+                            class="md:sticky md:left-0 z-30 bg-surface-2 px-3 py-2 text-left min-w-[180px] border-r border-border">
                             Student
                         </th>
                         {% for hi in header_items %}
@@ -91,7 +93,7 @@
                     {% for row in rows %}
                         <tr>
                             <th scope="row"
-                                class="sticky left-0 z-10 bg-surface px-3 py-2 whitespace-nowrap border-r border-border font-normal text-left">
+                                class="md:sticky md:left-0 z-10 bg-surface px-3 py-2 whitespace-nowrap border-r border-border font-normal text-left">
                                 <a href="{{ row.student_url }}"
                                    class="text-sm text-primary hover:underline">
                                     {{ row.display_name }}
@@ -149,7 +151,7 @@
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
+        </c-scroll-table-labels>
 
         {# Pagination controls #}
         <div class="flex flex-wrap justify-between items-center mt-4 gap-4 text-sm text-muted">
@@ -160,7 +162,7 @@
                     <button hx-get="{{ base_url }}?registration={{ selected_reg.pk }}&col_page={{ col_page.previous_page_number }}&page={{ student_page.number }}"
                             hx-target="#course-progress-content"
                             hx-swap="outerHTML"
-                            class="btn btn-outline px-3 py-1 text-xs">
+                            class="btn btn-outline px-4 py-3 sm:px-3 sm:py-1 text-xs">
                         « Prev
                     </button>
                 {% endif %}
@@ -168,7 +170,7 @@
                     <button hx-get="{{ base_url }}?registration={{ selected_reg.pk }}&col_page={{ col_page.next_page_number }}&page={{ student_page.number }}"
                             hx-target="#course-progress-content"
                             hx-swap="outerHTML"
-                            class="btn btn-outline px-3 py-1 text-xs">
+                            class="btn btn-outline px-4 py-3 sm:px-3 sm:py-1 text-xs">
                         Next »
                     </button>
                 {% endif %}
@@ -181,7 +183,7 @@
                     <button hx-get="{{ base_url }}?registration={{ selected_reg.pk }}&col_page={{ col_page.number }}&page={{ student_page.previous_page_number }}"
                             hx-target="#course-progress-content"
                             hx-swap="outerHTML"
-                            class="btn btn-outline px-3 py-1 text-xs">
+                            class="btn btn-outline px-4 py-3 sm:px-3 sm:py-1 text-xs">
                         « Prev
                     </button>
                 {% endif %}
@@ -189,7 +191,7 @@
                     <button hx-get="{{ base_url }}?registration={{ selected_reg.pk }}&col_page={{ col_page.number }}&page={{ student_page.next_page_number }}"
                             hx-target="#course-progress-content"
                             hx-swap="outerHTML"
-                            class="btn btn-outline px-3 py-1 text-xs">
+                            class="btn btn-outline px-4 py-3 sm:px-3 sm:py-1 text-xs">
                         Next »
                     </button>
                 {% endif %}

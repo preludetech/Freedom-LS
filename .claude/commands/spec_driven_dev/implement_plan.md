@@ -1,6 +1,6 @@
 ---
 name: implement-plan
-allowed-tools: Read, Glob, Write
+allowed-tools: Read, Glob, Write, Skill
 ---
 
 # Executing Plans

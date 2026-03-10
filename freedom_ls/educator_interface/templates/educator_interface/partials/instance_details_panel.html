@@ -1,4 +1,15 @@
-<table>
+{# Mobile stacked layout #}
+<dl class="md:hidden space-y-3">
+  {% for field in fields %}
+    <div>
+      <dt class="text-sm font-semibold text-muted">{{ field.label }}</dt>
+      <dd class="mt-1">{{ field.value }}</dd>
+    </div>
+  {% endfor %}
+</dl>
+
+{# Desktop table layout #}
+<table class="hidden md:table">
   <tbody>
     {% for field in fields %}
       <tr>

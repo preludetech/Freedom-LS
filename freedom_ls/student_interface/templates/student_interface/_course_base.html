@@ -1,52 +1,18 @@
 {% extends "_base.html" %}
 
 {% block body %}
-    <div x-data="{ tocOpen: localStorage.getItem('courseTocOpen') !== null ? localStorage.getItem('courseTocOpen') === 'true' : window.matchMedia('(min-width: 1024px)').matches, toggleToc() { this.tocOpen = !this.tocOpen; localStorage.setItem('courseTocOpen', this.tocOpen); } }"
-         class="flex gap-6 py-12">
 
-        <!-- Toggle button: visible when panel is collapsed -->
-        <button x-cloak
-                x-show="!tocOpen"
-                x-transition
-                @click="toggleToc()"
-                class="self-start mt-1 flex items-center gap-1.5 shrink-0 px-2 py-1.5 rounded-md text-sm font-medium text-muted bg-surface-2 hover:bg-surface-2 hover:text-foreground transition-colors cursor-pointer"
-                aria-label="Open table of contents">
-
-            <c-icon name="menu_open" class="size-4" />
-
-        </button>
-
-        <!-- Side panel -->
-        <div x-cloak
-             x-show="tocOpen"
-             x-transition:enter="transition-all duration-300 ease-out"
-             x-transition:enter-start="opacity-0 -translate-x-2"
-             x-transition:enter-end="opacity-100 translate-x-0"
-             x-transition:leave="transition-all duration-200 ease-in"
-             x-transition:leave-start="opacity-100 translate-x-0"
-             x-transition:leave-end="opacity-0 -translate-x-2"
-             class="w-64 shrink-0 md:mr-8">
-
-            <!-- Collapse chevron -->
-            <div class="flex justify-end mb-2">
-                <button @click="toggleToc()"
-                        class="px-2 py-1.5 rounded-md text-muted/50 hover:text-muted hover:bg-surface-2 transition-colors cursor-pointer"
-                        aria-label="Collapse table of contents">
-                    <c-icon name="menu_close" class="size-5" />
-                </button>
-            </div>
-
-            <div hx-get="{% url 'student_interface:partial_course_toc' course.slug %}"
-                 hx-trigger="load"
-                 hx-indicator="#course-loading">
-                <c-loading-indicator id="course-loading" message="Loading courses..." />
-            </div>
+    <c-sidebar storage_key="sidebar-course-toc" class="gap-2 sm:gap-6 py-12">
+        <div hx-get="{% url 'student_interface:partial_course_toc' course.slug %}"
+             hx-trigger="load"
+             hx-indicator="#course-loading">
+            <c-loading-indicator id="course-loading" message="Loading courses..." />
         </div>
 
-        <div class="w-full">
+        <c-slot name="content">
             {% block content %}
             {% endblock content %}
-        </div>
-    </div>
+        </c-slot>
+    </c-sidebar>
 
 {% endblock body %}

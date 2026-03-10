@@ -76,7 +76,7 @@ class TestIconCottonComponent:
 
     def test_default_class_is_size_5(self) -> None:
         result = self._render('<c-icon name="next" />')
-        assert 'class="size-5"' in result
+        assert 'class="inline size-5"' in result
 
     def test_default_role_is_img(self) -> None:
         result = self._render('<c-icon name="next" />')
@@ -98,7 +98,7 @@ class TestIconCottonComponent:
 
     def test_custom_class(self) -> None:
         result = self._render('<c-icon name="next" class="size-6 text-red-500" />')
-        assert 'class="size-6 text-red-500"' in result
+        assert 'class="inline size-6 text-red-500"' in result
 
     def test_force_bypass(self) -> None:
         result = self._render('<c-icon name="arrow-right" force="true" />')

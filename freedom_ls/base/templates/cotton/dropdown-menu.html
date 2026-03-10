@@ -3,7 +3,26 @@
         class=""
         trigger_class="p-2 hover:bg-surface-2 rounded-md transition-colors" />
 
-<div class="relative inline-block {{ class }}" x-data="{ open: false }">
+<div class="relative inline-block {{ class }}" x-data="{
+        open: false,
+        positionMenu() {
+            const rect = this.$refs.menuButton.getBoundingClientRect();
+            const menu = this.$refs.menuDropdown;
+            const menuWidth = menu.offsetWidth || 160;
+            const menuHeight = menu.offsetHeight;
+
+            let x = rect.right - menuWidth;
+            let y = rect.bottom + 8;
+
+            if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 8;
+            if (x < 8) x = 8;
+            if (y + menuHeight > window.innerHeight) y = rect.top - menuHeight;
+
+            menu.style.top = y + 'px';
+            menu.style.left = x + 'px';
+        }
+     }"
+     x-init="$watch('open', value => { if (value) $nextTick(() => positionMenu()); })">
     <!-- 3-dots menu button -->
     <button type="button"
             @click="open = !open"
@@ -29,7 +48,7 @@
          x-transition:leave-end="transform opacity-0 scale-95"
          class="fixed w-40 bg-surface border border-border rounded-md shadow-lg z-[9999]"
          style="display: none"
-         x-init="$watch('open', value => { if (value) { const rect = $refs.menuButton.getBoundingClientRect(); $el.style.top = rect.bottom + 8 + 'px'; $el.style.left = rect.right - 160 + 'px'; } })">
+         x-ref="menuDropdown">
         <div class="py-1 space-y-1">
             {{ slot }}
         </div>

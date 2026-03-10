@@ -32,80 +32,110 @@
         </div>
     {% endif %}
 
-    <div class="overflow-x-auto {{ class }}">
+    <c-scroll-table-labels class="overflow-x-auto {{ class }}">
         <table>
-            <thead>
-                <tr>
-                    {% for column in columns %}
-                        <th {% if column.header_class %}class="{{ column.header_class }}"{% endif %}>
-                            {% if column.sortable %}
-                                {% comment %}Sortable header{% endcomment %}
-                                {% if sort_by == column.sort_field %}
-                                    {% comment %}Currently sorted by this column{% endcomment %}
-                                    {% if sort_order == 'asc' %}
-                                        <a href="?sort={{ column.sort_field }}&order=desc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                           hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=desc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                           hx-target="#{{ table_id }}"
-                                           hx-swap="outerHTML"
-                                           class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
-                                            {{ column.header }}
-                                            <c-icon name="sort_asc" class="size-4" />
-                                        </a>
+                <thead>
+                    <tr>
+                        {% for column in columns %}
+                            <th {% if column.header_class %}class="{{ column.header_class }}"{% endif %}>
+                                {% if column.sortable %}
+                                    {% comment %}Sortable header{% endcomment %}
+                                    {% if sort_by == column.sort_field %}
+                                        {% comment %}Currently sorted by this column{% endcomment %}
+                                        {% if sort_order == 'asc' %}
+                                            <a href="?sort={{ column.sort_field }}&order=desc{% if search_query %}&search={{ search_query }}{% endif %}"
+                                               hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=desc{% if search_query %}&search={{ search_query }}{% endif %}"
+                                               hx-target="#{{ table_id }}"
+                                               hx-swap="outerHTML"
+                                               class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
+                                                {{ column.header }}
+                                                <c-icon name="sort_asc" class="size-4" />
+                                            </a>
+                                        {% else %}
+                                            <a href="?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
+                                               hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
+                                               hx-target="#{{ table_id }}"
+                                               hx-swap="outerHTML"
+                                               class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
+                                                {{ column.header }}
+                                                <c-icon name="sort_desc" class="size-4" />
+                                            </a>
+                                        {% endif %}
                                     {% else %}
+                                        {% comment %}Not currently sorted{% endcomment %}
                                         <a href="?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
                                            hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
                                            hx-target="#{{ table_id }}"
                                            hx-swap="outerHTML"
                                            class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                             {{ column.header }}
-                                            <c-icon name="sort_desc" class="size-4" />
+                                            <c-icon name="sort_neutral" class="size-4 text-muted" />
                                         </a>
                                     {% endif %}
                                 {% else %}
-                                    {% comment %}Not currently sorted{% endcomment %}
-                                    <a href="?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                       hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                       hx-target="#{{ table_id }}"
-                                       hx-swap="outerHTML"
-                                       class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
-                                        {{ column.header }}
-                                        <c-icon name="sort_neutral" class="size-4 text-muted" />
-                                    </a>
+                                    {% comment %}Non-sortable header{% endcomment %}
+                                    {{ column.header }}
                                 {% endif %}
-                            {% else %}
-                                {% comment %}Non-sortable header{% endcomment %}
-                                {{ column.header }}
-                            {% endif %}
-                        </th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% if rows %}
-                    {% for row in rows %}
-                        <tr>
-                            {% for column in columns %}
-                                <td {% if column.cell_class %}class="{{ column.cell_class }}"{% endif %}>
-                                    {% include column.template with object=row column=column %}
-
-                                </td>
-                            {% endfor %}
-                        </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="{{ columns|length }}" class="text-center text-muted py-8">
-                            {{ empty_message }}
-                        </td>
+                            </th>
+                        {% endfor %}
                     </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    {% if rows %}
+                        {% for row in rows %}
+                            <tr>
+                                {% for column in columns %}
+                                    <td {% if column.cell_class %}class="{{ column.cell_class }}"{% endif %}>
+                                        {% include column.template with object=row column=column %}
+
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="{{ columns|length }}" class="text-center text-muted py-8">
+                                {{ empty_message }}
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+    </c-scroll-table-labels>
 
     {% if page_obj and page_obj.paginator.num_pages > 1 %}
-        <div class="flex items-center justify-between mt-6 px-4">
+        {# Mobile pagination: Previous / Page X of Y / Next #}
+        {# Note: URL/HTMX logic is intentionally duplicated from desktop pagination for clarity #}
+        <div class="flex sm:hidden items-center justify-between mt-6 px-4">
+            <div>
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                       hx-get="{{ base_url }}?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                       hx-target="#{{ table_id }}"
+                       hx-swap="outerHTML"
+                       class="btn btn-outline px-4 py-3">
+                        Previous
+                    </a>
+                {% endif %}
+            </div>
+            <span class="text-sm text-muted">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+            <div>
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                       hx-get="{{ base_url }}?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                       hx-target="#{{ table_id }}"
+                       hx-swap="outerHTML"
+                       class="btn btn-outline px-4 py-3">
+                        Next
+                    </a>
+                {% endif %}
+            </div>
+        </div>
 
+        {# Desktop pagination: full page numbers #}
+        <div class="hidden sm:flex items-center justify-between mt-6 px-4">
             <div class="flex gap-2">
                 {% if page_obj.has_previous %}
                     <a href="?page=1{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
