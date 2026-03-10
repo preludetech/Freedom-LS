@@ -159,6 +159,7 @@
 
             <!-- Navigation -->
 
+            {# flex-col-reverse: on mobile, Next/Finish appears above Back as the primary action #}
             <div class="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-6 border-t border-border">
                 {% if previous_page_url %}
                     <div class="w-full sm:w-auto">
@@ -168,7 +169,7 @@
                     </div>
                 {% endif %}
 
-                <div class="w-full sm:w-auto">
+                <div class="w-full sm:w-auto sm:ml-auto">
                     {% if has_next_page %}
                         <c-button type="submit" class="w-full sm:w-auto">
                             Next

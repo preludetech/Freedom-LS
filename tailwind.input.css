@@ -1,3 +1,4 @@
 @import "tailwindcss";
+@source "./freedom_ls/**/templates/**/*.html";
 
 @import "./tailwind.components.css"

@@ -11,6 +11,9 @@ the entire component, triggering Alpine re-initialization.
 <div x-data="{
        scrolledPastFirst: false,
        firstColWidth: 0,
+       _scrollHandler: null,
+       _resizeObserver: null,
+       _resizeTimeout: null,
        init() {
          const container = this.$refs.scrollTableContainer;
          const overlay = this.$refs.scrollTableOverlay;
@@ -20,7 +23,7 @@ the entire component, triggering Alpine re-initialization.
          const firstTh = container.querySelector('{{ header_selector }}');
          if (firstTh) this.firstColWidth = firstTh.offsetWidth;
 
-         container.addEventListener('scroll', () => {
+         this._scrollHandler = () => {
            const scrolled = container.scrollLeft > this.firstColWidth;
            if (scrolled !== this.scrolledPastFirst) {
              this.scrolledPastFirst = scrolled;
@@ -29,13 +32,28 @@ the entire component, triggering Alpine re-initialization.
            if (scrolled) {
              overlay.style.top = -container.scrollTop + 'px';
            }
-         });
+         };
+         container.addEventListener('scroll', this._scrollHandler);
 
          requestAnimationFrame(() => this._buildLabels(container, overlay));
 
-         new ResizeObserver(() => {
-           requestAnimationFrame(() => this._buildLabels(container, overlay));
-         }).observe(container);
+         this._resizeObserver = new ResizeObserver(() => {
+           clearTimeout(this._resizeTimeout);
+           this._resizeTimeout = setTimeout(() => {
+             requestAnimationFrame(() => this._buildLabels(container, overlay));
+           }, 150);
+         });
+         this._resizeObserver.observe(container);
+       },
+       destroy() {
+         const container = this.$refs.scrollTableContainer;
+         if (container && this._scrollHandler) {
+           container.removeEventListener('scroll', this._scrollHandler);
+         }
+         if (this._resizeObserver) {
+           this._resizeObserver.disconnect();
+         }
+         clearTimeout(this._resizeTimeout);
        },
        _buildLabels(container, overlay) {
          overlay.innerHTML = '';
@@ -57,6 +75,7 @@ the entire component, triggering Alpine re-initialization.
         <div class="{{ class }}" x-ref="scrollTableContainer">
             {{ slot }}
         </div>
+        {# md:!hidden uses !important because JS toggles the hidden class on mobile; without it the overlay could reappear on desktop #}
         <div x-ref="scrollTableOverlay"
              class="hidden md:!hidden absolute inset-0 pointer-events-none z-10 overflow-hidden"></div>
     </div>

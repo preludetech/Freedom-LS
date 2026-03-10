@@ -36,7 +36,8 @@
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
          @click="sidebarOpen = false"
-         class="fixed inset-0 z-30 bg-black/50">
+         class="fixed inset-0 z-30 bg-black/50"
+         aria-hidden="true">
     </div>
 
     <!-- Sidebar panel -->
@@ -53,7 +54,7 @@
         <!-- Close button inside sidebar -->
         <div class="flex justify-end mb-2">
             <button @click="toggle()"
-                    class="px-2 py-1.5 rounded-md text-muted/50 hover:text-muted hover:bg-surface-2 transition-colors cursor-pointer"
+                    class="p-3 lg:px-2 lg:py-1.5 rounded-md text-muted/50 hover:text-muted hover:bg-surface-2 transition-colors cursor-pointer"
                     aria-label="Close sidebar">
                 <c-icon name="menu_close" class="size-5" />
             </button>

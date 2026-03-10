@@ -29,7 +29,24 @@
          x-transition:leave-end="transform opacity-0 scale-95"
          class="fixed w-40 bg-surface border border-border rounded-md shadow-lg z-[9999]"
          style="display: none"
-         x-init="$watch('open', value => { if (value) { const rect = $refs.menuButton.getBoundingClientRect(); let x = rect.right - 160; let y = rect.bottom + 8; const menuEl = $el; const menuWidth = 160; const menuHeight = menuEl.offsetHeight || 200; const viewportWidth = window.innerWidth; const viewportHeight = window.innerHeight; if (x + menuWidth > viewportWidth) { x = viewportWidth - menuWidth - 8; } if (x < 8) { x = 8; } if (y + menuHeight > viewportHeight) { y = rect.top - menuHeight; } $el.style.top = y + 'px'; $el.style.left = x + 'px'; } })">
+         x-init="$watch('open', value => {
+           if (!value) return;
+           $nextTick(() => {
+             const rect = $refs.menuButton.getBoundingClientRect();
+             const menuWidth = 160;
+             const menuHeight = $el.offsetHeight;
+
+             let x = rect.right - menuWidth;
+             let y = rect.bottom + 8;
+
+             if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 8;
+             if (x < 8) x = 8;
+             if (y + menuHeight > window.innerHeight) y = rect.top - menuHeight;
+
+             $el.style.top = y + 'px';
+             $el.style.left = x + 'px';
+           });
+         })">
         <div class="py-1 space-y-1">
             {{ slot }}
         </div>

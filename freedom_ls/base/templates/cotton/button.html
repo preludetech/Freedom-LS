@@ -14,7 +14,7 @@
 />
 
 {% if dropdown %}
-{% with computed_class=class|add:" block w-full text-left px-4 py-2 text-sm text-muted hover:bg-surface-2 transition-colors no-underline cursor-pointer" %}
+{% with computed_class="block w-full text-left px-4 py-2 text-sm text-muted hover:bg-surface-2 transition-colors no-underline cursor-pointer "|add:class %}
 <{% if href %}a href="{{ href }}"{% else %}button{% endif %}
 {% if form %} form="{{ form }}"{% endif %}
 {% if id %} id="{{ id }}"{% endif %}
@@ -29,7 +29,7 @@ class="{{ computed_class }}"
 </{% if href %}a{% else %}button{% endif %}>
 {% endwith %}
 {% else %}
-{% with computed_class=class|add:" btn btn-"|add:variant %}
+{% with computed_class="btn btn-"|add:variant|add:" "|add:class %}
 <{% if href %}a href="{{ href }}"{% else %}button{% endif %}
 {% if form %} form="{{ form }}"{% endif %}
 {% if id %} id="{{ id }}"{% endif %}

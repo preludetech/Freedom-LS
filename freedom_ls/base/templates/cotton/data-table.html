@@ -33,7 +33,7 @@
     {% endif %}
 
     <c-scroll-table-labels class="overflow-x-auto {{ class }}">
-            <table>
+        <table>
                 <thead>
                     <tr>
                         {% for column in columns %}
@@ -112,7 +112,7 @@
                        hx-get="{{ base_url }}?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-outline">
+                       class="btn btn-outline px-4 py-3">
                         Previous
                     </a>
                 {% endif %}
@@ -126,7 +126,7 @@
                        hx-get="{{ base_url }}?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-outline">
+                       class="btn btn-outline px-4 py-3">
                         Next
                     </a>
                 {% endif %}
