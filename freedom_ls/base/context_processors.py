@@ -1,6 +1,90 @@
+import colorsys
+import hashlib
 import os
+from enum import Enum
+from pathlib import Path
 
+from django.conf import settings
 from django.http import HttpRequest
+
+
+class _Sentinel(Enum):
+    UNSET = "UNSET"
+
+
+_cached_branch: str | None | _Sentinel = _Sentinel.UNSET
+
+
+def get_current_branch() -> str | None:
+    global _cached_branch
+    if not isinstance(_cached_branch, _Sentinel):
+        return _cached_branch
+
+    git_path = settings.BASE_DIR / ".git"
+    if not git_path.exists():
+        _cached_branch = None
+        return None
+
+    if git_path.is_file():
+        content = git_path.read_text().strip()
+        if content.startswith("gitdir:"):
+            git_dir = Path(content.split("gitdir:", 1)[1].strip())
+            if not git_dir.is_absolute():
+                git_dir = (git_path.parent / git_dir).resolve()
+            head_path = git_dir / "HEAD"
+        else:
+            _cached_branch = None
+            return None
+    else:
+        head_path = git_path / "HEAD"
+
+    try:
+        head_content = head_path.read_text().strip()
+    except (FileNotFoundError, OSError):
+        _cached_branch = None
+        return None
+
+    if head_content.startswith("ref: refs/heads/"):
+        _cached_branch = head_content[len("ref: refs/heads/") :]
+    else:
+        _cached_branch = head_content[:7]
+    return _cached_branch
+
+
+def branch_name_to_color(name: str) -> str:
+    hash_hex = hashlib.md5(name.encode()).hexdigest()  # noqa: S324
+    hue = int(hash_hex[:8], 16) % 360
+    sat = 0.45 + (int(hash_hex[8:16], 16) % 100) / 100 * 0.30
+    light = 0.40 + (int(hash_hex[16:24], 16) % 100) / 100 * 0.20
+
+    r, g, b = colorsys.hls_to_rgb(hue / 360, light, sat)
+    return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+
+
+def get_text_color(bg_hex: str) -> str:
+    r = int(bg_hex[1:3], 16) / 255
+    g = int(bg_hex[3:5], 16) / 255
+    b = int(bg_hex[5:7], 16) / 255
+
+    def linearize(c: float) -> float:
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    luminance = 0.2126 * linearize(r) + 0.7152 * linearize(g) + 0.0722 * linearize(b)
+    return "#000000" if luminance > 0.179 else "#ffffff"
+
+
+def debug_branch_info(_request: HttpRequest) -> dict[str, str]:
+    if not settings.DEBUG:
+        return {}
+    branch = get_current_branch()
+    if branch is None:
+        return {}
+    bg_color = branch_name_to_color(branch)
+    return {
+        "debug_branch_name": branch,
+        "debug_branch_color": bg_color,
+        "debug_branch_text_color": get_text_color(bg_color),
+    }
 
 
 def posthog_config(_request: HttpRequest) -> dict[str, str | None]:

@@ -69,5 +69,26 @@
             {% block extra_body %}
             {% endblock extra_body %}
         </main>
+        {% if debug_branch_name %}
+        <div x-data="{ expanded: localStorage.getItem('debug-branch-expanded') !== 'false' }"
+             x-effect="localStorage.setItem('debug-branch-expanded', expanded)"
+             @click="expanded = !expanded"
+             :style="expanded
+                 ? { padding: '4px 10px', borderRadius: '9999px' }
+                 : { width: '16px', height: '16px', borderRadius: '50%' }"
+             style="position: fixed; bottom: 10px; left: 10px; z-index: 50;
+                    font-family: ui-monospace, monospace; font-size: 13px;
+                    cursor: pointer; user-select: none; transition: all 0.2s ease;
+                    background-color: {{ debug_branch_color }};
+                    color: {{ debug_branch_text_color }};"
+             id="debug-branch-badge">
+            <span x-show="expanded" x-transition.opacity>{{ debug_branch_name }}</span>
+        </div>
+        <style>
+        @media (max-width: 479px) {
+            #debug-branch-badge { font-size: 10px !important; bottom: 4px !important; left: 4px !important; }
+        }
+        </style>
+        {% endif %}
     </body>
 </html>
