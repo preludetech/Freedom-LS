@@ -1,0 +1,9 @@
+Make use of DjangoMantle for typechecking around the ORM instead of using type stubs.
+
+https://noumenal.es/mantle/
+
+Update all queries across the whole project so that they use Mantle
+
+Look over the files in .claude/ and update the type-checking things so they are up to date with this decision.
+
+Make sure our ci-cd and pre-commit is up to date
