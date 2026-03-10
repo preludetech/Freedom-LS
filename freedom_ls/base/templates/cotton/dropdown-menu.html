@@ -33,7 +33,7 @@
            if (!value) return;
            $nextTick(() => {
              const rect = $refs.menuButton.getBoundingClientRect();
-             const menuWidth = 160;
+             const menuWidth = $el.offsetWidth || 160;
              const menuHeight = $el.offsetHeight;
 
              let x = rect.right - menuWidth;

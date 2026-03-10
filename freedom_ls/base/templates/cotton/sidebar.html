@@ -1,16 +1,19 @@
 <c-vars storage_key="sidebar" class="" />
 
 <div x-data="{
-        sidebarOpen: JSON.parse(localStorage.getItem('{{ storage_key }}')) ?? window.matchMedia('(min-width: 1024px)').matches,
+        sidebarOpen: this.$persist(window.matchMedia('(min-width: 1024px)').matches).as('{{ storage_key }}'),
         isMobile: !window.matchMedia('(min-width: 1024px)').matches,
+        _mq: null,
+        _mqHandler: null,
         init() {
-            const mq = window.matchMedia('(min-width: 1024px)');
-            mq.addEventListener('change', (e) => {
-                this.isMobile = !e.matches;
-            });
-            this.$watch('sidebarOpen', (val) => {
-                localStorage.setItem('{{ storage_key }}', JSON.stringify(val));
-            });
+            this._mq = window.matchMedia('(min-width: 1024px)');
+            this._mqHandler = (e) => { this.isMobile = !e.matches; };
+            this._mq.addEventListener('change', this._mqHandler);
+        },
+        destroy() {
+            if (this._mq && this._mqHandler) {
+                this._mq.removeEventListener('change', this._mqHandler);
+            }
         },
         toggle() { this.sidebarOpen = !this.sidebarOpen; }
      }"

@@ -14,11 +14,39 @@ the entire component, triggering Alpine re-initialization.
        _scrollHandler: null,
        _resizeObserver: null,
        _resizeTimeout: null,
+       _mq: null,
+       _mqHandler: null,
+       _active: false,
        init() {
          const container = this.$refs.scrollTableContainer;
          const overlay = this.$refs.scrollTableOverlay;
          if (!container || !overlay) return;
-         if (window.matchMedia('(min-width: 768px)').matches) return;
+
+         this._mq = window.matchMedia('(min-width: 768px)');
+         this._mqHandler = (e) => {
+           if (e.matches) {
+             this._teardownLabels(container, overlay);
+           } else {
+             this._setupLabels(container, overlay);
+           }
+         };
+         this._mq.addEventListener('change', this._mqHandler);
+
+         if (!this._mq.matches) {
+           this._setupLabels(container, overlay);
+         }
+       },
+       destroy() {
+         const container = this.$refs.scrollTableContainer;
+         const overlay = this.$refs.scrollTableOverlay;
+         if (this._mq && this._mqHandler) {
+           this._mq.removeEventListener('change', this._mqHandler);
+         }
+         if (container && overlay) this._teardownLabels(container, overlay);
+       },
+       _setupLabels(container, overlay) {
+         if (this._active) return;
+         this._active = true;
 
          const firstTh = container.querySelector('{{ header_selector }}');
          if (firstTh) this.firstColWidth = firstTh.offsetWidth;
@@ -45,15 +73,22 @@ the entire component, triggering Alpine re-initialization.
          });
          this._resizeObserver.observe(container);
        },
-       destroy() {
-         const container = this.$refs.scrollTableContainer;
-         if (container && this._scrollHandler) {
+       _teardownLabels(container, overlay) {
+         if (!this._active) return;
+         this._active = false;
+         this.scrolledPastFirst = false;
+
+         if (this._scrollHandler) {
            container.removeEventListener('scroll', this._scrollHandler);
+           this._scrollHandler = null;
          }
          if (this._resizeObserver) {
            this._resizeObserver.disconnect();
+           this._resizeObserver = null;
          }
          clearTimeout(this._resizeTimeout);
+         overlay.innerHTML = '';
+         overlay.classList.add('hidden');
        },
        _buildLabels(container, overlay) {
          overlay.innerHTML = '';
