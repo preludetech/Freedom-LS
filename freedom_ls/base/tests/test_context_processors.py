@@ -5,7 +5,6 @@ import pytest
 
 from django.test import RequestFactory
 
-from freedom_ls.base import context_processors
 from freedom_ls.base.context_processors import (
     branch_name_to_color,
     debug_branch_info,
@@ -16,7 +15,7 @@ from freedom_ls.base.context_processors import (
 
 @pytest.fixture(autouse=True)
 def _reset_branch_cache() -> None:
-    context_processors._cached_branch = context_processors._Sentinel.UNSET
+    get_current_branch.cache_clear()
 
 
 # --- Task 1: get_current_branch ---
