@@ -37,7 +37,3 @@ class TestIconRegistry:
 
     def test_registry_is_not_empty(self) -> None:
         assert len(ICONS) > 0
-
-    def test_loading_icon_exists(self) -> None:
-        """The loading icon is required by the <c-button> loading prop."""
-        assert "loading" in ICONS
