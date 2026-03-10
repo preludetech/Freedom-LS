@@ -11,6 +11,8 @@
     class=""
     icon_left=""
     icon_right=""
+    loading=""
+    loading_text="Saving..."
 />
 
 {% if dropdown %}
@@ -40,7 +42,12 @@ class="{{ computed_class }}"
 class="{{ computed_class }}"
 {{ attrs }}
 >
+{% if loading %}
+<span class="htmx-hide-on-request">{% if icon_left %}<c-icon :name="icon_left" class="size-5 mr-2" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="size-5 ml-2" />{% endif %}</span>
+<span class="htmx-show-on-request"><c-icon name="loading" class="size-5 animate-spin" /> {{ loading_text }}</span>
+{% else %}
 {% if icon_left %}<c-icon :name="icon_left" class="size-5 mr-2" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="size-5 ml-2" />{% endif %}
+{% endif %}
 </{% if href %}a{% else %}button{% endif %}>
 {% endwith %}
 {% endif %}
@@ -73,4 +80,8 @@ Usage Examples:
   <c-button icon_left="user">Profile</c-button>
   <c-button icon_right="next">Next</c-button>
   <c-button icon_left="check" variant="primary">Save Changes</c-button>
+
+  <!-- With loading indicator (shows spinner during HTMX request) -->
+  <c-button type="submit" loading="true">Save</c-button>
+  <c-button type="submit" variant="danger" loading="true" loading_text="Deleting...">Delete</c-button>
 {% endcomment %}
