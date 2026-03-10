@@ -1,7 +1,7 @@
 <c-vars storage_key="sidebar" class="" />
 
 <div x-data="{
-        sidebarOpen: this.$persist(window.matchMedia('(min-width: 1024px)').matches).as('{{ storage_key }}'),
+        sidebarOpen: $persist(window.matchMedia('(min-width: 1024px)').matches).as('{{ storage_key }}'),
         isMobile: !window.matchMedia('(min-width: 1024px)').matches,
         _mq: null,
         _mqHandler: null,
