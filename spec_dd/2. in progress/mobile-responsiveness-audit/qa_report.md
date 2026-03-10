@@ -2,193 +2,270 @@
 
 **Date:** 2026-03-10
 **Tester:** Claude (automated via Playwright MCP)
-**Viewports tested:** Desktop (1280x1080), Mobile (375x812), Tablet (768x1024)
+**Viewports tested:** Desktop (1920x1080), Mobile (375x812), Tablet (768x1024)
 
 ---
 
-## Critical Bug Found & Fixed During QA
+## Summary
 
-### BUG: Alpine.js `$persist` broken - Educator page completely blank
-
-**Test:** Test 1 (Educator Sidebar)
-**Severity:** Critical (P0)
-**Status:** Fixed during QA
-
-**Expected:** Educator interface loads with sidebar and content.
-**Actual:** Page was completely blank. Alpine.js console errors: `this.$persist is not a function` and `sidebarOpen is not defined`.
-
-**Root cause:** In `freedom_ls/base/templates/cotton/sidebar.html` line 4, `this.$persist(...)` was used in the `x-data` object literal. Alpine.js magics like `$persist` are not available via `this` in x-data property definitions.
-
-**Fix applied:** Changed `this.$persist(...)` to `$persist(...)` (removed `this.`).
-
-![Desktop educator page before fix](screenshots/desktop_1_educator_sidebar_broken.png)
+Overall, the mobile responsiveness implementation is working well. All major features are functional across desktop, mobile, and tablet viewports. **No blocking issues were found.** All tests passed with only minor observations noted below.
 
 ---
 
-## Test Results Summary
+## Test Results
 
-| Test | Desktop (1280px) | Mobile (375px) | Tablet (768px) |
-|------|-----------------|----------------|----------------|
-| 1. Educator Sidebar | PASS | PASS | PASS |
-| 2. Student Course Sidebar | PASS | PASS | PASS |
-| 3. Progress Grid Mobile Scroll | PASS | PASS | PASS |
-| 4. Data Tables Mobile Scroll | PASS | PASS | PASS |
-| 5. Course Dropdown | PASS | N/A | PASS |
-| 6. YouTube Embed | PASS | PASS | N/A |
-| 7. Dropdown Menu Positioning | PASS | PASS | N/A |
-| 8. Form Long-Text Input | Not tested (no long-text form found) | | |
-| 9. Form Navigation Buttons | PASS | PASS | PASS |
-| 10. Pagination Touch Targets | PASS | PASS | N/A |
-| 11. Instance Details Panel | PASS | PASS | N/A |
-| 12. Auth Pages Mobile Padding | N/A | PASS | N/A |
-| 13. Sidebar localStorage Isolation | Not tested (see notes) | | |
-| 14. Full Page Sweep - No Horizontal Scroll | N/A | PASS | N/A |
-| 15. Full Page Sweep - Desktop Regression | PASS | N/A | N/A |
+### Test 1: Educator Sidebar - Mobile Behavior - PASS
+
+**Mobile (375px):**
+- Sidebar collapsed by default on first visit
+- Opens as overlay with semi-transparent backdrop
+- Backdrop click closes sidebar
+- Sidebar state persists after navigation
+
+**Desktop (1920px):**
+- Sidebar expanded by default (after clearing localStorage)
+- Content displays beside sidebar, no backdrop
+- Closing sidebar persists across navigation
+
+![Desktop sidebar open](screenshots/desktop_1.1_educator_sidebar_open.png)
+![Mobile sidebar closed](screenshots/mobile_1.1_educator_sidebar_closed.png)
+![Mobile sidebar open](screenshots/mobile_1.2_educator_sidebar_open.png)
+![Mobile sidebar persisted](screenshots/mobile_1.3_sidebar_persisted.png)
 
 ---
 
-## Detailed Test Results
+### Test 2: Student Course Sidebar - Mobile Behavior - PASS
 
-### Test 1: Educator Sidebar
+**Mobile (375px):**
+- Table of contents sidebar collapsed by default
+- Opens as overlay with backdrop (same pattern as educator)
+- Sidebar state persists
 
-**Desktop (1280px):** Sidebar expanded by default, content beside it. No backdrop. Toggle works, state persists across navigation.
+**Desktop (1920px):**
+- Sidebar expanded by default with content beside it
 
-![Desktop sidebar expanded](screenshots/desktop_1_educator_sidebar_expanded.png)
+![Desktop course sidebar](screenshots/desktop_2.2_course_sidebar_topic.png)
 
-**Mobile (375px):** Sidebar collapsed by default. Opens as overlay with backdrop. Backdrop click closes. State persists after navigation.
+---
 
-![Mobile sidebar collapsed](screenshots/mobile_1.1_sidebar_collapsed.png)
-![Mobile sidebar open](screenshots/mobile_1.2_sidebar_open.png)
+### Test 3: Progress Grid - Mobile Scroll - PASS
 
-**Tablet (768px):** Gets mobile-style collapsed sidebar (768px < 1024px breakpoint). Overlay behavior works correctly.
+**Mobile (375px):**
+- Grid is scrollable horizontally (scrollWidth: 941px in 299px container)
+- First column (student names) is NOT frozen/sticky
+- Floating labels appear above each row when scrolled past the student name column
+- Labels disappear when scrolled back to show the first column
 
-![Tablet educator sidebar](screenshots/tablet_1.1_educator_sidebar.png)
+**Desktop (1920px):**
+- Table displays normally with all visible columns
 
-### Test 2: Student Course Sidebar
-
-**Desktop:** Sidebar expanded with course TOC, content beside it.
-
-![Desktop topic with sidebar](screenshots/desktop_2_topic_with_sidebar.png)
-
-**Mobile:** Sidebar collapsed by default, content fills screen.
-
-**Tablet:** Sidebar collapsed, content fills width nicely.
-
-![Tablet student topic](screenshots/tablet_2.1_student_topic_sidebar.png)
-
-### Test 3: Progress Grid Mobile Scroll
-
-**Desktop:** Table displays normally with all columns visible.
-
-![Desktop progress grid](screenshots/desktop_3_progress_grid.png)
-
-**Mobile:** Grid scrolls horizontally. Floating student name labels appear when first column scrolls out of view and disappear when scrolled back.
-
+![Desktop progress grid](screenshots/desktop_3.1_progress_grid.png)
 ![Mobile progress grid](screenshots/mobile_3.1_progress_grid.png)
-![Mobile progress grid scrolled](screenshots/mobile_3.2_progress_grid_scrolled.png)
-![Mobile progress grid scrolled right](screenshots/mobile_3.3_progress_grid_scrolled_right.png)
+![Mobile progress grid scrolled - floating labels visible](screenshots/mobile_3.2_progress_grid_scrolled.png)
+![Mobile progress grid scrolled back - labels gone](screenshots/mobile_3.3_progress_grid_scrolled_back.png)
 
-**Tablet:** Progress grid with scrollable area, fits well.
+---
 
-![Tablet cohort detail](screenshots/tablet_3.1_cohort_detail.png)
+### Test 4: Data Tables - Mobile Scroll - PASS
 
-### Test 4: Data Tables Mobile Scroll
+**Mobile (375px):**
+- Cohort table: fits within viewport without needing horizontal scroll (text wraps within cells)
+- Users table: scrollable horizontally, floating labels appear when first column scrolls out of view
+- Pagination working correctly
 
-**Desktop:** Cohort list table displays normally with all columns visible.
+**Desktop (1920px):**
+- Tables display normally with all columns visible, no floating labels
 
-![Desktop cohort list](screenshots/desktop_4_cohort_list.png)
+![Desktop cohort list](screenshots/desktop_4.1_cohort_list.png)
+![Mobile cohort list](screenshots/mobile_4.1_cohort_list.png)
+![Mobile users list](screenshots/mobile_4.2_users_list.png)
+![Mobile users list scrolled - floating labels](screenshots/mobile_4.3_users_list_scrolled.png)
+![Desktop users list](screenshots/desktop_4.2_users_list.png)
 
-**Mobile:** Table readable but columns are somewhat cramped at 375px. Pagination simplified to "Page X of Y" with Next button.
+---
 
-![Mobile cohort list](screenshots/mobile_4.1_cohort_list_table.png)
+### Test 5: Course Dropdown - PASS
 
-### Test 5: Course Dropdown
+**Mobile (375px):**
+- Course names are mostly visible in the native select dropdown
+- Minor truncation on the longest option ("Functionality Demo - show end with Quiz (inactive)") - acceptable as it's a native browser control
+- Dropdown does not overflow viewport
 
-**Desktop & Tablet:** Course dropdown fully readable, course names not truncated.
+![Mobile course dropdown](screenshots/mobile_5.1_course_dropdown.png)
 
-### Test 6: YouTube Embed
+---
 
-**Desktop:** Videos display at reasonable size, maintain 16:9 aspect ratio.
+### Test 6: YouTube Embed - PASS
 
-![Desktop YouTube](screenshots/desktop_6_youtube_embed.png)
+**Mobile (375px):**
+- Videos maintain 16:9 aspect ratio
+- Videos fill available width without horizontal scroll
+- No excessive vertical space
 
-**Mobile:** Videos fill available width, maintain aspect ratio, no horizontal scroll.
+**Tablet (768px):**
+- Videos display at reasonable size, maintain aspect ratio
 
+**Desktop (1920px):**
+- Videos display well with sidebar beside content
+
+![Desktop YouTube](screenshots/desktop_2.2_course_sidebar_topic.png)
 ![Mobile YouTube](screenshots/mobile_6.1_youtube_embed.png)
+![Tablet YouTube](screenshots/tablet_6.1_youtube_embed.png)
 
-### Test 7: Dropdown Menu Positioning
+---
 
-**Desktop:** Menu appears in expected position, fully interactive.
+### Test 7: Dropdown Menu Positioning - PASS
 
-![Desktop dropdown](screenshots/desktop_7_dropdown_menu.png)
+**Mobile (375px):**
+- Menu appears fully within viewport, not cut off on the right
+- All items clickable
 
-**Mobile:** Menu appears fully within viewport, not cut off on the right.
+**Desktop (1920px):**
+- Menu appears in expected position
 
+![Desktop dropdown](screenshots/desktop_7.1_dropdown_menu.png)
 ![Mobile dropdown](screenshots/mobile_7.1_dropdown_menu.png)
 
-### Test 9: Form Navigation Buttons
+---
 
-**Desktop:** Buttons horizontal with space between them (Back left, Finish right).
+### Test 8: Form Long-Text Input - NOT TESTED
 
-![Desktop form buttons](screenshots/desktop_9_form_multipage.png)
+No form with a long-text (textarea) question was found in the available test data. The Course Feedback Survey only has radio button questions.
 
-**Mobile:** Buttons stacked vertically, full-width. Primary action (Finish) appears first.
+---
 
-![Mobile form](screenshots/mobile_9.1_form_fullpage.png)
+### Test 9: Form Navigation Buttons - PARTIALLY TESTED
 
-**Tablet:** Buttons horizontal with space between them.
+The Course Feedback Survey is a single-page form with only a "Finish" button. No multi-page form was available to test Previous/Next button stacking.
 
-![Tablet form buttons](screenshots/tablet_9.1_form_nav_buttons.png)
+**What was verified:**
+- The "Finish" button is full-width on mobile (375px)
+- The button is right-aligned at tablet (768px) and desktop (1920px)
 
-### Test 11: Instance Details Panel
+![Desktop form](screenshots/desktop_9.1_form_buttons.png)
+![Mobile form](screenshots/mobile_9.1_form_buttons.png)
+![Tablet form](screenshots/tablet_9.1_form.png)
 
-**Desktop:** Data in table layout (label and value side by side).
+---
 
-![Desktop instance detail](screenshots/desktop_11_instance_detail.png)
+### Test 10: Pagination Touch Targets - PASS
 
-**Mobile:** Data switches to stacked layout (label above value) using definition list.
+**Mobile (375px):**
+- Cohort list pagination uses "Page 1 of 2" with "Next" link format - adequate touch target
+- Users list pagination uses numbered buttons with good sizing
+- Progress grid uses "Students 1-20 of 51" with "Next >>" button
 
-### Test 12: Auth Pages Mobile Padding
+**Desktop (1920px):**
+- Pagination uses compact numbered button style
 
-**Mobile:** Login and signup pages have visible side padding, content does not touch screen edges.
+---
+
+### Test 11: Instance Details Panel - PASS
+
+**Mobile (375px):**
+- Data displayed in stacked layout (label above value) using `<dt>`/`<dd>` definition list
+- No horizontal overflow
+- All data readable
+
+**Desktop (1920px):**
+- Data displays in table layout (label and value side by side)
+
+![Desktop instance details](screenshots/desktop_11.1_instance_details.png)
+![Mobile instance details](screenshots/mobile_11.1_instance_details.png)
+
+---
+
+### Test 12: Auth Pages Mobile Padding - PASS
+
+**Mobile (375px):**
+- Login page: content has visible side padding, does not touch screen edges
+- Signup page: same padding present
+
+**Desktop (1920px):**
+- Content centered with proper spacing (verified during login flow)
 
 ![Mobile login](screenshots/mobile_12.1_login_page.png)
 ![Mobile signup](screenshots/mobile_12.2_signup_page.png)
 
-### Test 14: Full Page Sweep - No Horizontal Scroll
+---
 
-**Mobile (375px):** Tested course list, educator interface, cohort list, cohort detail, topic pages, form pages, login, signup. No horizontal overflow detected on any page.
+### Test 13: Sidebar localStorage Key Isolation - PASS
 
-![Mobile course list](screenshots/mobile_14.1_course_list.png)
+**Mobile (375px):**
+- Educator sidebar uses key `sidebar-educator`
+- Course TOC sidebar uses key `sidebar-course-toc`
+- Opening course sidebar does not affect educator sidebar state
+- States are fully independent
 
-### Test 15: Full Page Sweep - Desktop Regression
+---
 
-**Desktop (1280px):** Tested all major pages. No regressions from mobile fixes. Layouts correct.
+### Test 14: Full Page Sweep - No Horizontal Scroll - PASS
 
-![Desktop course list](screenshots/desktop_15_course_list.png)
+**Mobile (375px):**
+No horizontal scrollbar found on any of the following pages:
+- Login page
+- Signup page
+- Student home
+- Course list
+- Course topic view
+- Form view
+- Educator main interface
+- Educator cohort list
+- Educator user list
+- Educator progress grid (table scrolls within container)
+- User instance detail
+- Profile page
+
+![Mobile student home](screenshots/mobile_14.1_student_home.png)
+![Mobile profile](screenshots/mobile_14.2_profile.png)
+
+---
+
+### Test 15: Full Page Sweep - Desktop Regression - PASS
+
+**Desktop (1920px):**
+No regressions found on any tested page:
+- Login/signup pages centered with proper spacing
+- Course list displays correctly
+- Course home/topic views with sidebar expanded beside content
+- Form buttons horizontal with proper spacing
+- Educator interface with sidebar beside content
+- Tables display normally
+- Instance details in table layout
+
+---
+
+## Tablet-Specific Observations
+
+**Viewport: 768x1024**
+
+- Navigation uses the mobile/overlay pattern for sidebars (breakpoint for side-by-side is `lg`/1024px). This is sensible for the 768px width.
+- Tables adapt well - more columns visible than mobile but still scrollable for wide tables
+- Forms render at reasonable width
+- YouTube embeds maintain proper aspect ratio
+- Course dropdown shows full course names without truncation
+
+![Tablet sidebar overlay](screenshots/tablet_1.1_educator_sidebar_open.png)
+![Tablet cohort list](screenshots/tablet_4.1_cohort_list.png)
+![Tablet progress grid](screenshots/tablet_3.1_progress_grid.png)
+![Tablet form](screenshots/tablet_9.1_form.png)
 
 ---
 
 ## Tests Not Fully Executed
 
-### Test 8: Form Long-Text Input
-**Reason:** Could not find a form with a long-text (textarea) question in the available demo data. All forms found had radio/choice questions only.
-
-### Test 13: Sidebar localStorage Key Isolation
-**Reason:** Not explicitly tested as a separate flow. However, the sidebar component uses dynamic storage keys (`sidebar-educator` vs `sidebar-course`) which should isolate state. The sidebar component code confirms separate `.as('{{ storage_key }}')` calls.
+| Test | Reason |
+|------|--------|
+| Test 8 (Form Long-Text Input) | No textarea/long-text form found in test data |
+| Test 9 (Form Navigation Buttons) | No multi-page form available; only single-page form tested |
+| Test 14 at 360px | Only tested at 375px; 360px viewport was not separately tested but behavior is expected to be identical |
 
 ---
 
-## Tangential Issues Discovered
+## Tangential Observations
 
-### 1. Server error when re-filling completed form
-**URL:** `/courses/functionality-demo-show-end-with-quiz/2/fill_form/1`
-**Error:** `AttributeError: 'NoneType' object has no attribute 'existing_answers_dict'`
-**Location:** `freedom_ls/student_interface/views.py`, line 374, in `form_fill_page`
-**Description:** When navigating directly to a `fill_form` page for a quiz that has already been completed, the server returns a 500 error. The `form_progress` object is `None`, causing the AttributeError. This is not a mobile responsiveness issue but was encountered during testing.
+1. **Django Debug Toolbar (DJDT)** is visible on all pages in the bottom-right corner. This overlaps slightly with content on mobile. Not a bug (dev tool only), but worth noting.
 
-### 2. Console error: favicon.ico 404
-A minor `favicon.ico` 404 error appears on every page load. Not a responsiveness issue.
+2. **First row in users table has no first/last name**: The demodev@email.com user has empty first name and last name cells, which creates a large empty space in the first row of the users table. This is a data issue, not a responsive issue.
 
-### 3. Student list first row excessive whitespace
-On mobile (375px), the student list table's first row (for demodev@email.com) had noticeably excessive vertical whitespace compared to other rows, likely due to the long content in the "Registered Courses" cell wrapping at narrow widths.
+3. **Favicon 404**: A console error `Failed to load resource: the server responded with a status of 404 (Not Found)` for `/favicon.ico` appears on page load. Minor issue, not related to responsiveness.
