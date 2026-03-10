@@ -19,6 +19,7 @@ set in template code. They must not contain user-supplied values.
        _resizeTimeout: null,
        _mq: null,
        _mqHandler: null,
+       _rafId: null,
        _active: false,
        init() {
          const container = this.$refs.scrollTableContainer;
@@ -66,12 +67,12 @@ set in template code. They must not contain user-supplied values.
          };
          container.addEventListener('scroll', this._scrollHandler);
 
-         requestAnimationFrame(() => this._buildLabels(container, overlay));
+         this._rafId = requestAnimationFrame(() => this._buildLabels(container, overlay));
 
          this._resizeObserver = new ResizeObserver(() => {
            clearTimeout(this._resizeTimeout);
            this._resizeTimeout = setTimeout(() => {
-             requestAnimationFrame(() => this._buildLabels(container, overlay));
+             this._rafId = requestAnimationFrame(() => this._buildLabels(container, overlay));
            }, 150);
          });
          this._resizeObserver.observe(container);
@@ -90,6 +91,10 @@ set in template code. They must not contain user-supplied values.
            this._resizeObserver = null;
          }
          clearTimeout(this._resizeTimeout);
+         if (this._rafId) {
+           cancelAnimationFrame(this._rafId);
+           this._rafId = null;
+         }
          overlay.innerHTML = '';
          overlay.classList.add('hidden');
        },
@@ -117,6 +122,7 @@ set in template code. They must not contain user-supplied values.
         </div>
         {# md:!hidden uses !important because JS toggles the hidden class on mobile; without it the overlay could reappear on desktop #}
         <div x-ref="scrollTableOverlay"
+             aria-hidden="true"
              class="hidden md:!hidden absolute inset-0 pointer-events-none z-10 overflow-hidden"></div>
     </div>
 </div>

@@ -31,7 +31,7 @@
 
 @layer base {
     /* Prevent horizontal scrolling on mobile */
-    html, body {
+    body {
         @apply overflow-x-hidden
     }
 

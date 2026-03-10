@@ -9,7 +9,8 @@
             this._mq = window.matchMedia('(min-width: 1024px)');
             this._mqHandler = (e) => {
                 this.isMobile = !e.matches;
-                if (e.matches && !this.sidebarOpen) this.sidebarOpen = true;
+                // Only auto-open on desktop if no persisted preference exists
+                if (e.matches && localStorage.getItem('{{ storage_key }}') === null) this.sidebarOpen = true;
             };
             this._mq.addEventListener('change', this._mqHandler);
         },
@@ -29,7 +30,8 @@
             x-transition
             @click="toggle()"
             class="absolute left-0 top-0 z-10 mt-1 flex items-center gap-1.5 shrink-0 px-1 sm:px-2 py-1.5 rounded-md text-sm font-medium text-muted bg-surface-2 hover:bg-surface-2 hover:text-foreground transition-colors cursor-pointer"
-            aria-label="Open sidebar">
+            aria-label="Open sidebar"
+            :aria-expanded="sidebarOpen.toString()">
         <c-icon name="menu_open" class="size-4" />
     </button>
 
@@ -62,7 +64,8 @@
         <div class="flex justify-end mb-2">
             <button @click="toggle()"
                     class="p-3 lg:px-2 lg:py-1.5 rounded-md text-muted/50 hover:text-muted hover:bg-surface-2 transition-colors cursor-pointer"
-                    aria-label="Close sidebar">
+                    aria-label="Close sidebar"
+                    :aria-expanded="sidebarOpen.toString()">
                 <c-icon name="menu_close" class="size-5" />
             </button>
         </div>
