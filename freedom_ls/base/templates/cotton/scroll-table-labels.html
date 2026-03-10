@@ -6,6 +6,9 @@ When the user scrolls horizontally past the first column on mobile (<768px),
 labels showing the first column's text appear as an overlay at each row position.
 Labels are built at init time. This works because HTMX swaps replace
 the entire component, triggering Alpine re-initialization.
+
+Note: header_selector and cell_selector are trusted, hardcoded CSS selectors
+set in template code. They must not contain user-supplied values.
 {% endcomment %}
 
 <div x-data="{
@@ -92,6 +95,7 @@ the entire component, triggering Alpine re-initialization.
        },
        _buildLabels(container, overlay) {
          overlay.innerHTML = '';
+         const containerRect = container.getBoundingClientRect();
          container.querySelectorAll('tbody tr').forEach(tr => {
            const firstCell = tr.querySelector('{{ cell_selector }}');
            if (!firstCell) return;
@@ -101,7 +105,8 @@ the entire component, triggering Alpine re-initialization.
            const label = document.createElement('div');
            label.textContent = text;
            label.className = 'text-xs font-medium whitespace-nowrap bg-surface-2 text-foreground px-1.5 py-0.5 rounded shadow-sm';
-           label.style.cssText = 'position:absolute; left:4px; top:' + (tr.offsetTop) + 'px;';
+           const rowRect = tr.getBoundingClientRect();
+           label.style.cssText = 'position:absolute; left:4px; top:' + (rowRect.top - containerRect.top + container.scrollTop) + 'px;';
            overlay.appendChild(label);
          });
        }

@@ -105,6 +105,7 @@
 
     {% if page_obj and page_obj.paginator.num_pages > 1 %}
         {# Mobile pagination: Previous / Page X of Y / Next #}
+        {# Note: URL/HTMX logic is intentionally duplicated from desktop pagination for clarity #}
         <div class="flex sm:hidden items-center justify-between mt-6 px-4">
             <div>
                 {% if page_obj.has_previous %}
