@@ -174,6 +174,16 @@ else:
     }
 
 
+# TODO @claude: Configure a production-ready TASKS backend (e.g., database-backed)
+# when background tasks are used in production. The base setting uses ImmediateBackend
+# which runs tasks synchronously.
+TASKS = {
+    "default": {
+        "BACKEND": "django.tasks.backends.immediate.ImmediateBackend",
+    },
+}
+
+
 STORAGES = {
     "default": default_storage,
     "staticfiles": {

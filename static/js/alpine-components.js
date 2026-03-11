@@ -79,28 +79,36 @@ document.addEventListener("alpine:init", () => {
         sidebarOpen: false,
         isMobile: false,
         _storageKey: "sidebar",
+        _mqHandler: null,
+        _mq: null,
         init() {
             this._storageKey = this.$el.dataset.storageKey || "sidebar";
-            const mq = window.matchMedia("(min-width: 1024px)");
-            this.isMobile = !mq.matches;
+            this._mq = window.matchMedia("(min-width: 1024px)");
+            this.isMobile = !this._mq.matches;
 
             const stored = localStorage.getItem(this._storageKey);
             if (stored !== null) {
                 this.sidebarOpen = stored === "true";
             } else {
-                this.sidebarOpen = mq.matches;
+                this.sidebarOpen = this._mq.matches;
             }
 
-            mq.addEventListener("change", (e) => {
+            this._mqHandler = (e) => {
                 this.isMobile = !e.matches;
                 if (e.matches && localStorage.getItem(this._storageKey) === null) {
                     this.sidebarOpen = true;
                 }
-            });
+            };
+            this._mq.addEventListener("change", this._mqHandler);
 
             this.$watch("sidebarOpen", (val) => {
                 localStorage.setItem(this._storageKey, val);
             });
+        },
+        destroy() {
+            if (this._mq && this._mqHandler) {
+                this._mq.removeEventListener("change", this._mqHandler);
+            }
         },
         toggle() {
             this.sidebarOpen = !this.sidebarOpen;

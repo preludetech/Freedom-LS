@@ -17,6 +17,10 @@ import os
 import sys
 from pathlib import Path
 
+from django.utils.csp import (  # type: ignore[import-untyped]  # django-stubs lacks Django 6 support
+    CSP,
+)
+
 from freedom_ls.accounts.email_utils import parse_tailwind_colors
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -259,8 +263,6 @@ LOGIN_REDIRECT_URL = "/"
 
 
 # Content Security Policy (report-only mode)
-from django.utils.csp import CSP  # type: ignore[import-untyped]  # noqa: E402, I001 - django-stubs lacks Django 6 support
-
 SECURE_CSP_REPORT_ONLY = {
     "default-src": [CSP.SELF],
     "script-src": [CSP.SELF, CSP.UNSAFE_INLINE],
