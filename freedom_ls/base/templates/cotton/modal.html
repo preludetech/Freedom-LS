@@ -1,15 +1,16 @@
 <c-vars title footer class="" id="" open="false" />
 
 <!-- Modal backdrop and container -->
-<div x-data="{ open: {{ open }} }"
-     x-on:keydown.escape.window="open = false"
+<div x-data="modal"
+     data-open="{{ open }}"
+     x-on:keydown.escape.window="onEscape"
      x-cloak
      {% if id %} id="{{ id }}" {% endif %}
      {{ c.attrs }}>
 
     {% if trigger %}
         <!-- Trigger slot - the element that opens the modal -->
-        <div @click="open = true">
+        <div x-on:click="show">
             {{ trigger }}
         </div>
 
@@ -32,7 +33,7 @@
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
              class="fixed inset-0 backdrop-blur-sm transition-opacity"
-             @click="open = false">
+             x-on:click="close">
         </div>
 
         <!-- Modal panel -->
@@ -45,7 +46,7 @@
                  x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                  class=" relative transform overflow-hidden rounded-lg bg-surface shadow-xl transition-all "
-                 @click.away="open = false">
+                 x-on:click.away="close">
 
                 <!-- Header -->
                 <div class="bg-surface px-6 py-4 border-b border-border border">
@@ -53,7 +54,7 @@
                         <h3 class="text-lg font-semibold" id="modal-title">
                             {{ title }}
                         </h3>
-                        <button @click="open = false"
+                        <button x-on:click="close"
                                 type="button"
                                 class="text-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary rounded-md">
                             <span class="sr-only">Close</span>

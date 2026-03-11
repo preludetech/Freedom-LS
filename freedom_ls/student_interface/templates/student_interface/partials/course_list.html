@@ -22,7 +22,7 @@
         {% endwith %}
 
         <c-slot name="footer">
-            <c-button variant="outline" @click="open = false">
+            <c-button variant="outline" x-on:click="close">
                 Close
             </c-button>
             {% partial start_course_button %}

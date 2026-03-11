@@ -76,7 +76,7 @@
         {% endif %}
     </span>
     {% if is_expandable %}
-        <button @click="toggleExpanded()"
+        <button x-on:click="toggleExpanded"
                 class="flex items-center gap-2 text-left hover:text-primary transition-colors cursor-pointer flex-1 min-w-0">
             <span class="text-muted shrink-0 {{ text_size }}">
                 <span x-show="expanded" x-cloak><c-icon name="expand" class="size-4" /></span>
@@ -100,7 +100,8 @@
     {% for child in children %}
         {% if child.type == "COURSE_PART" %}
             {# Course Part with expandable children #}
-            <div x-data="{ expanded: localStorage.getItem('coursePart_{{ course.slug }}_{{ forloop.counter }}') === 'true', toggleExpanded() { this.expanded = !this.expanded; localStorage.setItem('coursePart_{{ course.slug }}_{{ forloop.counter }}', this.expanded); } }"
+            <div x-data="coursePart"
+                 data-storage-key="coursePart_{{ course.slug }}_{{ forloop.counter }}"
                  class="py-1.5">
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2 flex-1 min-w-0">

@@ -267,7 +267,11 @@ SECURE_CSP_REPORT_ONLY = {
     "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
     "img-src": [CSP.SELF, "data:"],
     "connect-src": [CSP.SELF],
-    "frame-src": [CSP.SELF],
+    "frame-src": [
+        CSP.SELF,
+        "https://www.youtube.com",
+        "https://www.youtube-nocookie.com",
+    ],
 }
 
 
