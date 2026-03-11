@@ -10,11 +10,12 @@ from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.core.paginator import Page, Paginator
 from django.db.models import Count, F, IntegerField, Model, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Coalesce
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone as tz
+from django.utils.html import escape
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
@@ -74,11 +75,11 @@ class DataTable:
     search_fields: list[str] = []
 
     @staticmethod
-    def get_queryset(request):
+    def get_queryset(request: HttpRequest):
         raise NotImplementedError
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         raise NotImplementedError
 
     @classmethod
@@ -93,7 +94,9 @@ class DataTable:
         return columns
 
     @classmethod
-    def get_rows(cls, request, columns: list[dict], filters: dict | None = None):
+    def get_rows(
+        cls, request: HttpRequest, columns: list[dict], filters: dict | None = None
+    ) -> Page:
         queryset = cls.get_queryset(request)
         if filters:
             queryset = queryset.filter(**filters)
@@ -205,7 +208,7 @@ class InstanceDetailsPanel(Panel):
 
 class CohortDataTable(DataTable):
     @staticmethod
-    def get_queryset(request):
+    def get_queryset(request: HttpRequest):
         return (
             get_objects_for_user(
                 request.user,
@@ -220,7 +223,7 @@ class CohortDataTable(DataTable):
         )
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         return [
             {
                 "header": "Cohort Name",
@@ -245,7 +248,7 @@ class UserDataTable(DataTable):
     search_fields = ["first_name", "last_name", "email"]
 
     @staticmethod
-    def get_queryset(request):
+    def get_queryset(request: HttpRequest):
         # Get cohorts user has access to
         accessible_cohorts = get_objects_for_user(
             request.user,
@@ -265,7 +268,7 @@ class UserDataTable(DataTable):
         )
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         return [
             {
                 "header": "First Name",
@@ -310,7 +313,8 @@ class ListViewConfig:
     url_name: str = ""
     menu_label: str = ""
 
-    def __class_getitem__(cls, pk: str) -> InstanceView:
+    @classmethod
+    def get_instance_view(cls, pk: str) -> InstanceView:
         if cls.model is None or cls.instance_view is None:
             raise ValueError(f"{cls.__name__} must define model and instance_view")
         instance = get_object_or_404(cls.model, pk=pk)
@@ -355,7 +359,7 @@ class InstanceView:
             rendered_panels.append(
                 getter[name].render(request, base_url=panel_url, panel_name=name)
             )
-        title = f"<h1>{self.instance}</h1>"
+        title = f"<h1>{escape(str(self.instance))}</h1>"
         panels_html = '<div class="space-y-6">' + "\n".join(rendered_panels) + "</div>"
         return title + "\n" + panels_html
 
@@ -389,13 +393,13 @@ class CohortDetailsPanel(InstanceDetailsPanel):
 
 class CohortCourseRegistrationDataTable(DataTable):
     @staticmethod
-    def get_queryset(request):
+    def get_queryset(request: HttpRequest):
         return CohortCourseRegistration.objects.select_related("collection").order_by(
             "collection__title"
         )
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         return [
             {
                 "header": "Course",
@@ -914,8 +918,8 @@ class UserConfig(ListViewConfig):
 
 class CourseDataTable(DataTable):
     @staticmethod
-    def get_queryset(request):
-        courses = (
+    def get_queryset(request: HttpRequest):
+        return (
             Course.objects.all()
             .annotate(
                 cohort_count=Count(
@@ -936,8 +940,10 @@ class CourseDataTable(DataTable):
             .order_by("title")
         )
 
-        # Calculate total unique active users (direct + through cohorts)
-        for course in courses:
+    @staticmethod
+    def _annotate_total_student_count(page_obj: Page) -> None:
+        """Calculate total unique active users (direct + through cohorts) for each course."""
+        for course in page_obj.object_list:
             cohort_user_ids: set[UUID] = set()
             for cohort_reg in course.cohort_registrations.filter(is_active=True):
                 cohort_user_ids.update(
@@ -954,10 +960,16 @@ class CourseDataTable(DataTable):
 
             course.total_student_count = len(cohort_user_ids | direct_user_ids)
 
-        return courses
+    @classmethod
+    def get_rows(
+        cls, request, columns: list[dict], filters: dict | None = None
+    ) -> Page:
+        page_obj = super().get_rows(request, columns, filters=filters)
+        cls._annotate_total_student_count(page_obj)
+        return page_obj
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         return [
             {
                 "header": "Title",
@@ -992,13 +1004,13 @@ class CourseDetailsPanel(InstanceDetailsPanel):
 
 class CourseCohortRegistrationDataTable(DataTable):
     @staticmethod
-    def get_queryset(request):
+    def get_queryset(request: HttpRequest):
         return CohortCourseRegistration.objects.select_related(
             "cohort", "collection"
         ).order_by("cohort__name")
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         return [
             {
                 "header": "Cohort",
@@ -1030,13 +1042,13 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
 
 class CourseStudentRegistrationDataTable(DataTable):
     @staticmethod
-    def get_queryset(request):
+    def get_queryset(request: HttpRequest):
         return UserCourseRegistration.objects.select_related(
             "user", "collection"
         ).order_by("user__first_name", "user__last_name")
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         return [
             {
                 "header": "First Name",
@@ -1107,9 +1119,12 @@ def _resolve_path(
     Special segments like __panels resolve to the corresponding attribute
     on the current object, allowing further traversal.
     """
-    current: type[ListViewConfig] | InstanceView | PanelGetter | Panel = (
-        interface_config[parts[0]]
-    )
+    try:
+        current: type[ListViewConfig] | InstanceView | PanelGetter | Panel = (
+            interface_config[parts[0]]
+        )
+    except KeyError as err:
+        raise Http404(f"Unknown path segment '{parts[0]}'") from err
     for part in parts[1:]:
         if part == "__panels":
             if not isinstance(current, InstanceView):
@@ -1118,14 +1133,14 @@ def _resolve_path(
         elif isinstance(current, (PanelGetter,)):
             current = current[part]
         elif isinstance(current, type) and issubclass(current, ListViewConfig):
-            current = current.__class_getitem__(part)
+            current = current.get_instance_view(part)
         else:
             raise Http404(f"Cannot resolve path segment '{part}'")
 
     return current
 
 
-def interface(request, path_string: str = ""):
+def interface(request: HttpRequest, path_string: str = "") -> HttpResponse:
     parts = [p for p in path_string.split("/") if p]
     is_htmx = request.headers.get("HX-Request") == "true"
     base_url = request.path

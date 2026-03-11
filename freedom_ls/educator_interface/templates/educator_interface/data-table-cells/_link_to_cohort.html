@@ -1,1 +1,2 @@
-<a href="{% url 'educator_interface:cohort_detail' object.pk %}">{{ object.name }}</a>
+{% load data_table_tags %}
+<a href="{% resolve_url_path_template object object 'educator_interface:interface' 'cohorts/{pk}' %}">{{ object.name }}</a>
