@@ -15,6 +15,9 @@ The spec should be a directory inside `spec_dd/`. For example: `spec_dd/2. in pr
 
 The worktree name is the spec directory's folder name (e.g., `role_based_permission_system_foundations`).
 
+
+There is no need to read the spec or any other files. We just care about the name of the feature.
+
 ## Step 2: Move the spec to "in progress" if needed
 
 If the spec directory is NOT already inside `spec_dd/2. in progress/`, move it there:
