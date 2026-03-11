@@ -8,7 +8,17 @@ from guardian.shortcuts import get_objects_for_user
 
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.core.paginator import Page, Paginator
-from django.db.models import Count, F, IntegerField, Model, OuterRef, Q, Subquery, Value
+from django.db.models import (
+    Count,
+    F,
+    IntegerField,
+    Model,
+    OuterRef,
+    Q,
+    QuerySet,
+    Subquery,
+    Value,
+)
 from django.db.models.functions import Coalesce
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -75,7 +85,7 @@ class DataTable:
     search_fields: list[str] = []
 
     @staticmethod
-    def get_queryset(request: HttpRequest):
+    def get_queryset(request: HttpRequest) -> QuerySet:
         raise NotImplementedError
 
     @staticmethod
@@ -208,7 +218,7 @@ class InstanceDetailsPanel(Panel):
 
 class CohortDataTable(DataTable):
     @staticmethod
-    def get_queryset(request: HttpRequest):
+    def get_queryset(request: HttpRequest) -> QuerySet:
         return (
             get_objects_for_user(
                 request.user,
@@ -248,7 +258,7 @@ class UserDataTable(DataTable):
     search_fields = ["first_name", "last_name", "email"]
 
     @staticmethod
-    def get_queryset(request: HttpRequest):
+    def get_queryset(request: HttpRequest) -> QuerySet:
         # Get cohorts user has access to
         accessible_cohorts = get_objects_for_user(
             request.user,
@@ -393,7 +403,7 @@ class CohortDetailsPanel(InstanceDetailsPanel):
 
 class CohortCourseRegistrationDataTable(DataTable):
     @staticmethod
-    def get_queryset(request: HttpRequest):
+    def get_queryset(request: HttpRequest) -> QuerySet:
         return CohortCourseRegistration.objects.select_related("collection").order_by(
             "collection__title"
         )
@@ -918,8 +928,8 @@ class UserConfig(ListViewConfig):
 
 class CourseDataTable(DataTable):
     @staticmethod
-    def get_queryset(request: HttpRequest):
-        return (
+    def get_queryset(request: HttpRequest) -> QuerySet:
+        qs: QuerySet = (
             Course.objects.all()
             .annotate(
                 cohort_count=Count(
@@ -939,24 +949,26 @@ class CourseDataTable(DataTable):
             )
             .order_by("title")
         )
+        return qs
 
     @staticmethod
     def _annotate_total_student_count(page_obj: Page) -> None:
-        """Calculate total unique active users (direct + through cohorts) for each course."""
+        """Calculate total unique active users (direct + through cohorts) for each course.
+
+        Uses .all() instead of .filter() to leverage the prefetch cache and avoid N+1 queries.
+        """
         for course in page_obj.object_list:
             cohort_user_ids: set[UUID] = set()
-            for cohort_reg in course.cohort_registrations.filter(is_active=True):
+            for cohort_reg in course.cohort_registrations.all():
+                if not cohort_reg.is_active:
+                    continue
                 cohort_user_ids.update(
-                    cohort_reg.cohort.cohortmembership_set.values_list(
-                        "user_id", flat=True
-                    )
+                    m.user_id for m in cohort_reg.cohort.cohortmembership_set.all()
                 )
 
-            direct_user_ids = set(
-                course.user_registrations.filter(is_active=True).values_list(
-                    "user_id", flat=True
-                )
-            )
+            direct_user_ids = {
+                reg.user_id for reg in course.user_registrations.all() if reg.is_active
+            }
 
             course.total_student_count = len(cohort_user_ids | direct_user_ids)
 
@@ -1004,7 +1016,7 @@ class CourseDetailsPanel(InstanceDetailsPanel):
 
 class CourseCohortRegistrationDataTable(DataTable):
     @staticmethod
-    def get_queryset(request: HttpRequest):
+    def get_queryset(request: HttpRequest) -> QuerySet:
         return CohortCourseRegistration.objects.select_related(
             "cohort", "collection"
         ).order_by("cohort__name")
@@ -1042,7 +1054,7 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
 
 class CourseStudentRegistrationDataTable(DataTable):
     @staticmethod
-    def get_queryset(request: HttpRequest):
+    def get_queryset(request: HttpRequest) -> QuerySet:
         return UserCourseRegistration.objects.select_related(
             "user", "collection"
         ).order_by("user__first_name", "user__last_name")
