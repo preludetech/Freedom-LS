@@ -81,7 +81,11 @@ Usage Examples:
   <c-button icon_right="next">Next</c-button>
   <c-button icon_left="check" variant="primary">Save Changes</c-button>
 
-  <!-- With loading indicator (shows spinner during HTMX request) -->
+  <!-- With loading indicator (shows spinner during HTMX request).
+       Note: loading only works when the HTMX attribute (e.g. hx-post) is on an
+       ancestor element (like a <form>), not on the button itself. HTMX adds the
+       htmx-request class to the triggering element, and the CSS uses a descendant
+       selector (.htmx-request .htmx-hide-on-request). -->
   <c-button type="submit" loading="true">Save</c-button>
   <c-button type="submit" variant="danger" loading="true" loading_text="Deleting...">Delete</c-button>
 {% endcomment %}
