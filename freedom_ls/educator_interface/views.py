@@ -962,7 +962,7 @@ class CourseDataTable(DataTable):
 
     @classmethod
     def get_rows(
-        cls, request, columns: list[dict], filters: dict | None = None
+        cls, request: HttpRequest, columns: list[dict], filters: dict | None = None
     ) -> Page:
         page_obj = super().get_rows(request, columns, filters=filters)
         cls._annotate_total_student_count(page_obj)
