@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import EmailMessage
+from django.http import HttpRequest
 
 from freedom_ls.site_aware_models.models import get_cached_site
 
@@ -53,6 +54,26 @@ class AccountAdapter(DefaultAccountAdapter):
         msg = self.render_mail(template_prefix, email, ctx)
         _set_8bit_encoding(msg)
         msg.send()
+
+    def save_user(
+        self,
+        request: HttpRequest,
+        user: User,
+        form: object,
+        commit: bool = True,
+    ) -> User:
+        user = super().save_user(request, user, form, commit=commit)
+        if commit:
+            from freedom_ls.webhooks.events import fire_webhook_event
+
+            fire_webhook_event(
+                "user.registered",
+                {
+                    "user_id": user.pk,
+                    "user_email": user.email,
+                },
+            )
+        return user
 
     def send_notification_mail(
         self,
