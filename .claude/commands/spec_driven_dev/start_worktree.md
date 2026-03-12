@@ -15,7 +15,6 @@ The spec should be a directory inside `spec_dd/`. For example: `spec_dd/2. in pr
 
 The worktree name is the spec directory's folder name (e.g., `role_based_permission_system_foundations`).
 
-
 There is no need to read the spec or any other files. We just care about the name of the feature.
 
 ## Step 2: Move the spec to "in progress" if needed
@@ -30,11 +29,10 @@ mv "spec_dd/1. next/my-feature" "spec_dd/2. in progress/my-feature"
 
 ## Step 3: Commit all changes
 
-Use the /commit skill to commit all current changes.
+Use the /commit skill to commit all current changes. Don't run the tests.
 
 Do not proceed to step 4 unless:
-- The working tree is clean (no uncommitted changes)
-- All tests pass (`uv run pytest`)
+The working tree is clean (no uncommitted changes)
 
 ## Step 4: Create the worktree
 
