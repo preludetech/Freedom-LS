@@ -1,4 +1,3 @@
-from django.db import transaction
 from django.tasks import default_task_backend, task  # type: ignore[import-untyped]
 
 from freedom_ls.site_aware_models.models import _thread_locals, get_cached_site
@@ -27,19 +26,16 @@ def fire_webhook_event(event_type: str, payload: dict[str, object]) -> None:
     site = get_cached_site(request)
     site_id: int = site.pk
 
-    def _on_commit() -> None:
-        event = WebhookEvent.objects.create(
-            event_type=event_type,
-            payload=payload,
-            site_id=site_id,
-        )
-        default_task_backend.enqueue(
-            _dispatch_event_task,
-            args=(str(event.pk), site_id),
-            kwargs={},
-        )
-
-    transaction.on_commit(_on_commit)
+    event = WebhookEvent.objects.create(
+        event_type=event_type,
+        payload=payload,
+        site_id=site_id,
+    )
+    default_task_backend.enqueue(
+        _dispatch_event_task,
+        args=(str(event.pk), site_id),
+        kwargs={},
+    )
 
 
 def send_test_ping(endpoint: WebhookEndpoint) -> None:
