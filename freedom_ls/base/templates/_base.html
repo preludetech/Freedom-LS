@@ -19,11 +19,10 @@
 
         <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
         <script defer
-                src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+                src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.15.8/dist/cdn.min.js"></script>
+        <script defer src="{% static 'js/alpine-components.js' %}"></script>
         <script defer
-                src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.x.x/dist/cdn.min.js"></script>
-        <script defer
-                src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+                src="https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.15.8/dist/cdn.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
         <!-- <meta name="htmx-config" content='{"historyCacheSize": 0}' /> -->
@@ -74,12 +73,9 @@
             {% endblock extra_body %}
         </main>
         {% if debug_branch_name %}
-        <div x-data="{ expanded: localStorage.getItem('debug-branch-expanded') !== 'false' }"
-             x-effect="localStorage.setItem('debug-branch-expanded', expanded)"
-             @click="expanded = !expanded"
-             :style="expanded
-                 ? { padding: '4px 10px', borderRadius: '9999px' }
-                 : { width: '16px', height: '16px', borderRadius: '50%' }"
+        <div x-data="debugBadge"
+             x-on:click="toggle"
+             x-bind:style="badgeStyle()"
              style="position: fixed; bottom: 10px; left: 10px; z-index: 50;
                     font-family: ui-monospace, monospace; font-size: 13px;
                     cursor: pointer; user-select: none; transition: all 0.2s ease;

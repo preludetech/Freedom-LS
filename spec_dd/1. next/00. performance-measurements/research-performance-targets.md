@@ -316,7 +316,7 @@ HTMX apps make more HTTP requests than traditional page-based apps but each requ
 | **Lazy loading** | Use `hx-trigger="revealed"` to defer content fetching until elements scroll into view |
 | **Out-of-band updates** | Use `hx-swap-oob="true"` to update multiple page sections in a single response |
 | **History caching** | HTMX caches previously loaded content for instant back-navigation |
-| **Fragment targeting** | Return minimal HTML fragments, not full pages -- use `django-template-partials` for this |
+| **Fragment targeting** | Return minimal HTML fragments, not full pages -- use Django 6 built-in `{% partialdef %}` for this |
 | **Partial caching** | Cache individual HTMX partial responses, which can be very effective |
 
 ### HTMX-Specific Response Time Targets

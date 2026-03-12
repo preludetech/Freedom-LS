@@ -3,29 +3,10 @@
         class=""
         trigger_class="p-2 hover:bg-surface-2 rounded-md transition-colors" />
 
-<div class="relative inline-block {{ class }}" x-data="{
-        open: false,
-        positionMenu() {
-            const rect = this.$refs.menuButton.getBoundingClientRect();
-            const menu = this.$refs.menuDropdown;
-            const menuWidth = menu.offsetWidth || 160;
-            const menuHeight = menu.offsetHeight;
-
-            let x = rect.right - menuWidth;
-            let y = rect.bottom + 8;
-
-            if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 8;
-            if (x < 8) x = 8;
-            if (y + menuHeight > window.innerHeight) y = rect.top - menuHeight;
-
-            menu.style.top = y + 'px';
-            menu.style.left = x + 'px';
-        }
-     }"
-     x-init="$watch('open', value => { if (value) $nextTick(() => positionMenu()); })">
+<div class="relative inline-block {{ class }}" x-data="dropdownMenu">
     <!-- 3-dots menu button -->
     <button type="button"
-            @click="open = !open"
+            x-on:click="toggle"
             class="{{ trigger_class }}"
             aria-label="Menu"
             x-ref="menuButton">
@@ -38,17 +19,17 @@
 
     <!-- Dropdown menu -->
     <div x-show="open"
-         @click.away="open = false"
-         @scroll.window="open = false"
+         x-on:click.away="close"
+         x-on:scroll.window="close"
          x-transition:enter="transition ease-out duration-100"
          x-transition:enter-start="transform opacity-0 scale-95"
          x-transition:enter-end="transform opacity-100 scale-100"
          x-transition:leave="transition ease-in duration-75"
          x-transition:leave-start="transform opacity-100 scale-100"
          x-transition:leave-end="transform opacity-0 scale-95"
-         class="fixed w-40 bg-surface border border-border rounded-md shadow-lg z-[9999]"
-         style="display: none"
-         x-ref="menuDropdown">
+         x-ref="menuPanel"
+         class="dropdown-panel fixed w-40 bg-surface border border-border rounded-md shadow-lg z-[9999]"
+         style="display: none">
         <div class="py-1 space-y-1">
             {{ slot }}
         </div>
