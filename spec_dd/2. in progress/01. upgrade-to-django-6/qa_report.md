@@ -1,223 +1,178 @@
-# QA Report: Django 6 Upgrade — Frontend Testing
+# QA Report: Django 6 Upgrade — Frontend QA
 
-**Date:** 2026-03-10
-**Tested by:** Claude (automated QA via Playwright MCP)
-**Branch:** upgrade-to-django-6
+**Date:** 2026-03-11
+**Tested by:** Automated QA via Playwright MCP
+**Viewports tested:** Desktop (1920x1080), Mobile (375x812), Tablet (768x1024)
 
 ---
 
 ## Summary
 
-All 8 tests from the QA plan were executed across desktop (1920x1080), mobile (375x812), and tablet (768x1024) viewports. The core functionality works correctly after the Django 6 upgrade. Three issues were identified — two are CSP configuration concerns and one is a missing Alpine.js plugin.
+Overall the frontend is in good shape after the Django 6 upgrade. All major pages load without 500 errors. Template rendering, HTMX interactions, Cotton components, and CSP headers all work correctly. A few issues were found:
+
+- **1 functional issue:** "TODO" text visible on form completion page
+- **1 console error:** Alpine.js CSP Parser Errors on educator pages
+- **1 data/content issue:** Missing PDF file causes 404 in embedded iframe
 
 ---
 
 ## Issues Found
 
-### Issue 1: CSP `frame-src` Missing YouTube Domain
+### Issue 1: "TODO" text visible on form completion page
 
-**Test:** Test 6 — CSP Headers (Report-Only)
-**Severity:** Low (report-only mode, does not block content)
+**Test:** Test 2 — Course Content (form completion)
+**Severity:** Low
+**URL:** `/courses/functionality-demo-show-end-with-topic/3/complete`
 
-The `Content-Security-Policy-Report-Only` header includes `frame-src 'self'` but does not include `https://www.youtube.com`. This causes console errors on pages with YouTube embeds:
+**Expected:** The "Your Results" section should show category scores without any placeholder text.
 
-> Framing 'https://www.youtube.com/' violates the Content Security Policy directive: "frame-src 'self'"
+**Actual:** The word "TODO" is displayed between the "Your Results" heading and the category score cards.
 
-Since this is in report-only mode, the YouTube iframes still load and function correctly. However, if the CSP is later enforced, YouTube embeds will be blocked.
-
-**Expected:** `frame-src` should include `https://www.youtube.com` (and potentially `https://www.youtube-nocookie.com`) if YouTube embeds are a supported content type.
-
-**Actual:** `frame-src 'self'` only — YouTube framing triggers CSP violation reports.
-
-**Screenshot:**
-![Desktop content with YouTube embed area](screenshots/desktop_2.3_content_with_callout.png)
+![Form complete page showing TODO text](screenshots/desktop_2.10_form_complete.png)
 
 ---
 
-### Issue 2: CSP `script-src` Blocking Alpine.js `eval()`
+### Issue 2: Alpine.js CSP Parser Errors on Educator Interface
 
-**Test:** Test 6 — CSP Headers (Report-Only)
-**Severity:** Low (report-only mode, does not block functionality)
+**Test:** Test 3 — Educator Interface
+**Severity:** Medium
+**Pages affected:** Educator cohort list, cohort detail, and any page using the educator dropdown/search components.
 
-The CSP header's `script-src` directive does not include `'unsafe-eval'`. Alpine.js uses `eval()` internally (via `Function()` constructor), which triggers repeated CSP violation reports:
+**Expected:** No JavaScript errors in the console.
 
-> Evaluating a string as JavaScript violates the Content Security Policy directive: "script-src 'self' 'unsafe-inline'"
+**Actual:** Multiple `CSP Parser Error: Expected PUNCTUATION` errors from `@alpinejs/csp@3.15.8/dist/cdn.min.js`. These appear on the educator cohort pages where Alpine.js expressions are used (e.g., course dropdown, search box). The errors do not appear to break functionality visually, but they indicate that some Alpine.js expressions are not compatible with the CSP build's parser.
 
-This results in ~14 console info messages per page load on course pages. Since CSP is in report-only mode, Alpine.js still functions. If enforced, Alpine.js functionality would break.
-
-**Expected:** Either add `'unsafe-eval'` to `script-src`, or migrate to Alpine.js CSP-compatible build (`@alpinejs/csp`).
-
-**Actual:** Repeated CSP violation reports for Alpine.js eval usage on every page.
+The errors were consistently reproducible on:
+- `/educator/cohorts` (1 error)
+- `/educator/cohorts/<uuid>` (3 errors)
 
 ---
 
-### Issue 3: Alpine.js x-collapse Plugin Not Loaded
+### Issue 3: Missing PDF file causes 404 in content iframe
 
 **Test:** Test 2 — Course Content
-**Severity:** Low (cosmetic — collapse animations don't work, but expand/collapse still functions)
+**Severity:** Low (demo data issue)
+**URL:** `/courses/functionality-demo-show-end-with-topic/1/`
 
-On course pages with a table of contents, the browser console shows 6 warnings:
+**Expected:** An embedded PDF viewer should display the sample PDF document.
 
-> Alpine Warning: You can't use [x-collapse] without first installing the "Collapse" plugin.
+**Actual:** The iframe shows a Django 404 error: the file `/media/content_engine/samplea5ee5374-01b6-4266-a212-3c595ea9d286.pdf` does not exist on disk.
 
-The TOC sections that use `x-collapse` for expand/collapse animations fall back to instant show/hide, which is functional but lacks the smooth animation.
+![Content page with PDF 404](screenshots/desktop_2.6_content_with_callout.png)
 
-**Expected:** The Alpine.js Collapse plugin should be loaded (e.g., `<script src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>` before the main Alpine.js script).
-
-**Actual:** `x-collapse` directives are present in templates but the plugin is not loaded — 6 warnings per course page.
+This is likely a demo data issue (the PDF file was not included or was deleted), not a code issue.
 
 ---
 
-## Test Results by Test
+## Tests Passed
 
-### Test 1: Student Interface — Course List and Home Page -- PASS
+### Test 1: Student Interface — Course List and Home Page
+- Home page loads correctly with course cards, progress bars, descriptions
+- "Your Courses", "Recommended Courses", "Learning History" sections all render
+- HTMX-loaded content appears (courses loaded via `/partials/courses/`)
+- "All Courses" page loads with 4 courses displayed
+- No template rendering errors
 
-- Home page loads correctly with course cards
-- "Your Courses", "Recommended Courses", and "Learning History" sections all render
-- Course cards show title, description, progress bars
-- HTMX-loaded content appears correctly
-- "All Courses" link works
+![Home page](screenshots/desktop_1.1_home_page.png)
+![All courses](screenshots/desktop_1.2_all_courses.png)
 
-![Desktop home page](screenshots/desktop_1.1_home_page.png)
+### Test 2: Course Content — Partials and Cotton Components
+- Course home page with TOC renders correctly (icons, status indicators, numbering)
+- Nested TOC with collapsible sections works (Remote Pilot Certificate)
+- Topic content renders markdown correctly (headings, bold, italic, blockquotes, code, images, links, lists, horizontal rules)
+- Callout components render with correct styling for all levels (info, warning, error, success)
+- Deadline badges display in sidebar TOC
+- Form page renders with radio button inputs and required field indicators
+- Form submission works and redirects to completion page with category scores
+- Navigation between pages works (Previous/Next buttons)
 
-### Test 2: Course Content — Partials and Cotton Components -- PASS
+![Course home](screenshots/desktop_2.1_course_home.png)
+![Topic content](screenshots/desktop_2.2_topic_content.png)
+![Nested TOC](screenshots/desktop_2.5_course_toc_nested.png)
+![Callouts](screenshots/desktop_2.7_callouts.png)
+![Form page](screenshots/desktop_2.9_form_page.png)
 
-- Course home page loads with table of contents
-- Status icons and navigation work correctly
-- Topic content renders with proper formatting
-- Callout components (`<c-callout>`) display correctly with icon and styling
-- Images render (graph example)
-- Form/quiz pages render with radio buttons and navigation
-- Quiz results page shows scores correctly (6/6, 100%)
+### Test 3: Educator Interface
+- Educator dashboard loads with sidebar navigation
+- Cohort list table renders correctly with links, student counts, courses
+- Cohort detail page shows progress table with status icons, deadline info, course selector
+- Students list with search, sorting, and pagination works
+- Course registrations table renders
 
-![Course TOC](screenshots/desktop_2.1_course_home.png)
-![Topic page](screenshots/desktop_2.2_topic_page.png)
-![Callout component](screenshots/desktop_2.3_content_with_callout.png)
-![Form page](screenshots/desktop_2.5_form_page.png)
-![Quiz results](screenshots/desktop_2.6_form_results.png)
-
-### Test 3: Educator Interface -- PASS
-
-- Educator dashboard loads
-- Cohort list displays with student counts and registered courses
-- Cohort detail page shows progress grid with status icons
-- Course selector dropdown works for switching progress views
-- Student links work correctly
-
-![Educator cohorts](screenshots/desktop_3.1_educator_cohorts.png)
+![Cohort list](screenshots/desktop_3.1_educator_cohorts.png)
 ![Cohort detail](screenshots/desktop_3.2_cohort_detail.png)
 
-### Test 4: Admin Interface (Unfold) -- PASS
-
+### Test 4: Admin Interface (Unfold)
 - Admin dashboard loads with Unfold theme
-- User list view renders correctly
-- Navigation and styling work as expected
+- All model admin sections visible (Accounts, Content Engine, Student Management, Student Progress)
+- Users list view renders with search, filters, pagination
+- Courses list view renders correctly
+- Recent actions sidebar displays
 
 ![Admin dashboard](screenshots/desktop_4.1_admin_dashboard.png)
 ![Admin users](screenshots/desktop_4.2_admin_users.png)
 
-### Test 5: Email Flows (django-premailer) -- PASS
+### Test 5: Email Flows
+- **5a:** Standard registration generates email in `gitignore/emails/` with inline CSS (django-premailer working)
+- **5b:** Registration with `+` character (`test+upgrade@example.com`) succeeds without errors, email generated
+- **5c:** Password reset email generated with inline CSS, correct links
 
-- **5a:** Standard registration email generated successfully with inline CSS (17+ `style=` attributes in HTML)
-- **5b:** Not tested separately (signup flow verified in 5a)
-- **5c:** Password reset email generated successfully with inline CSS
+All emails have:
+- Inline CSS styles on HTML elements (no `<style>` blocks)
+- Correct branding (DemoDev header)
+- Proper links and content
 
-Email files verified in `gitignore/emails/` directory. Both confirmation and password reset emails have properly inlined CSS — no `<style>` blocks, all styles are on elements.
-
-### Test 6: CSP Headers (Report-Only) -- PASS (with notes)
-
+### Test 6: CSP Headers
 - `Content-Security-Policy-Report-Only` header is present
-- Contains expected directives: `default-src 'self'`, `script-src 'self' 'unsafe-inline'`, `style-src 'self' 'unsafe-inline'`
-- Report-only mode does not block any functionality
-- See Issues 1 and 2 above for `frame-src` and `script-src` configuration notes
+- Contains expected directives: `default-src 'self'`, `script-src 'self' 'unsafe-inline'`, `style-src 'self' 'unsafe-inline'`, `img-src 'self' data:`, `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com`
+- No CSP violations blocking functionality (report-only mode)
+- No errors or warnings on the home page console
 
-### Test 7: Form Validation -- PASS
-
-- Signup form with mismatched passwords shows inline validation error: "You must type the same password each time."
-- Error messages styled correctly inline (not a raw error page)
+### Test 7: Form Validation
+- Empty form submission prevented by browser native validation
+- Mismatched passwords show inline error: "You must type the same password each time."
+- Error messages display correctly within the form
 
 ![Validation error](screenshots/desktop_7.1_validation_error.png)
 
-### Test 8: HTMX Interactions -- PASS
-
-- Course list loads via HTMX on home page (observed "Loading courses..." spinner followed by content)
-- Table of contents loads via HTMX on course pages
-- Form submissions work correctly via HTMX
-- No CSRF errors observed throughout testing
+### Test 8: HTMX Interactions
+- Course list loads via HTMX (`/partials/courses/` returns 200)
+- HTMX content renders in correct target elements
+- Form submission via HTMX works (Course Feedback Survey)
+- No CSRF errors observed
 - No CSP blocking of HTMX fetch requests
 
 ---
 
-## Mobile Testing (375x812)
+## Responsive Testing
 
-### Navigation -- PASS
-- Hamburger menu works correctly, showing Profile, Educator Interface, Admin Panel, and Sign Out options
-- Touch targets are appropriately sized
-
-![Mobile hamburger menu](screenshots/mobile_1.2_hamburger_menu.png)
-
-### Layout -- PASS
-- Home page course cards stack vertically
-- Topic pages hide sidebar with a toggle button
-- TOC opens as an overlay when toggled
+### Mobile (375x812)
+- Navigation uses hamburger icon with dropdown menu (Profile, Educator Interface, Admin Panel, Sign Out)
+- Course cards stack in single column, buttons are touch-friendly
+- Topic content fills width correctly, sidebar hidden with "Open sidebar" button
+- Educator cohort table wraps text, remains readable
+- Forms render at full width
 
 ![Mobile home](screenshots/mobile_1.1_home_page.png)
-![Mobile topic](screenshots/mobile_2.1_topic_page.png)
-![Mobile TOC open](screenshots/mobile_2.2_toc_open.png)
+![Mobile nav](screenshots/mobile_nav_menu.png)
+![Mobile topic](screenshots/mobile_2.1_topic_content.png)
+![Mobile educator](screenshots/mobile_3.1_educator_cohorts.png)
 
-### Tables -- NOTE
-- Educator cohort list table clips on the right — "Registered Courses" column is cut off without horizontal scroll
-- Progress grid table also clips — column headers are truncated
-- This is a pre-existing responsiveness limitation of the tables, not a regression from the Django 6 upgrade
-
-![Mobile cohort list](screenshots/mobile_3.1_educator_cohorts.png)
-![Mobile cohort detail](screenshots/mobile_3.2_cohort_detail.png)
-
-### Forms -- PASS
-- Signup form renders correctly at full width
-- Input fields and buttons are appropriately sized for touch
-
-![Mobile signup form](screenshots/mobile_7.1_signup_form.png)
-
-### Content -- PASS
-- Content pages with images, callouts, and navigation buttons render well
-- YouTube embed area appears (CSP report-only issue noted above)
-
-![Mobile content page](screenshots/mobile_2.3_content_page.png)
-
----
-
-## Tablet Testing (768x1024)
-
-### Navigation -- PASS
-- Gets desktop-style navigation with email dropdown (not hamburger menu)
-- Works correctly at tablet width
-
-### Layout -- PASS
-- Home page shows two-column card layout
-- Topic pages use full width with collapsible TOC
+### Tablet (768x1024)
+- Navigation shows desktop-style text menu (email + dropdown)
+- Course cards display in 2-column grid
+- Topic content fills width, sidebar collapsed with toggle
+- Educator progress table scrolls horizontally, remains functional
+- Callouts render at reasonable width
 
 ![Tablet home](screenshots/tablet_1.1_home_page.png)
-![Tablet topic](screenshots/tablet_2.1_topic_page.png)
-
-### Tables -- NOTE
-- Progress grid table still clips on the right at 768px, but shows more columns than mobile (Student, Content title 1, Callouts, Course Feedback S..., Pic...)
-- More usable than mobile but still not fully visible without horizontal scroll
-
+![Tablet callouts](screenshots/tablet_2.1_callouts.png)
 ![Tablet cohort detail](screenshots/tablet_3.1_cohort_detail.png)
 
 ---
 
-## Items Not Fully Tested
+## Notes
 
-1. **Test 5b (Registration with special characters):** The `+` character in email addresses was not tested separately as a distinct signup flow. The standard signup flow (5a) was verified successfully.
-
-2. **Test 8 (HTMX deep inspection):** HTMX interactions were verified through functional testing (content loads, forms submit, no errors) rather than inspecting individual XHR requests in the network tab. All HTMX-powered features worked correctly.
-
----
-
-## Tangential Observations
-
-1. **Django Debug Toolbar:** The debug toolbar (`DJDT`) is visible on all pages and overlaps content on mobile viewports. This is expected in development but should be disabled in production.
-
-2. **Table responsiveness on educator pages:** The educator cohort list and progress grid tables overflow on mobile and tablet viewports without horizontal scroll. This is not a regression from the Django 6 upgrade — it appears to be a pre-existing design limitation. Consider adding `overflow-x: auto` wrapper to these tables for better mobile/tablet experience.
+- The `upgrade-to-django-6` debug badge (pink label in bottom-left) appears on all pages. This is a development-only indicator and will not appear in production.
+- Console shows "Loading the script ... No further action has been taken" info messages on every page — these are CSP report-only notifications about CDN scripts (Alpine.js, HTMX, etc.) and are expected behavior in report-only mode.
+- The Unfold admin uses its own bundled Alpine.js which generates "Evaluating a string as JavaScript violates CSP" info messages — this is expected since Unfold does not use the CSP build of Alpine.

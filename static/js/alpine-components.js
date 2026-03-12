@@ -19,7 +19,7 @@ document.addEventListener("alpine:init", () => {
         positionMenu() {
             if (this.open) {
                 const rect = this.$refs.menuButton.getBoundingClientRect();
-                const panel = this.$el.querySelector(".dropdown-panel");
+                const panel = this.$refs.menuPanel;
                 if (panel) {
                     const menuWidth = panel.offsetWidth || 160;
                     const menuHeight = panel.offsetHeight;
