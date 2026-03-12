@@ -31,7 +31,9 @@ DO NOT PROCEED UNTIL THE SPEC FILE IS IN PROGRESS!
 
 ## Step 3: Commit all changes
 
-Use the /commit skill to commit all current changes. Don't run the tests.
+Make a git commit. DO NOT RUN PYTEST NOW.
+
+We don't need to run pytest because we did not change any code at all. We only moved some files that are not under test. So DO NOT run the tests. Running the tests now is a waste of time.
 
 Do not proceed to step 4 unless:
 The working tree is clean (no uncommitted changes)
