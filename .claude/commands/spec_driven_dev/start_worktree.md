@@ -3,9 +3,9 @@ description: Make a worktree for the current spec
 allowed-tools: Bash, Read, Glob, Skill
 ---
 
-# Create a git worktree for the current spec
-
 This command prepares a new git worktree so that work on a spec can happen in isolation.
+
+IMPORTANT! DO THE STEPS IN ORDER!
 
 ## Step 1: Identify the current spec
 
@@ -17,7 +17,7 @@ The worktree name is the spec directory's folder name (e.g., `role_based_permiss
 
 There is no need to read the spec or any other files. We just care about the name of the feature.
 
-## Step 2: Move the spec to "in progress" if needed
+## Step 2: Move the spec to "in progress"
 
 If the spec directory is NOT already inside `spec_dd/2. in progress/`, move it there:
 
@@ -27,6 +27,8 @@ mv "spec_dd/0. drafts/my-feature" "spec_dd/2. in progress/my-feature"
 mv "spec_dd/1. next/my-feature" "spec_dd/2. in progress/my-feature"
 ```
 
+DO NOT PROCEED UNTIL THE SPEC FILE IS IN PROGRESS!
+
 ## Step 3: Commit all changes
 
 Use the /commit skill to commit all current changes. Don't run the tests.
@@ -35,6 +37,8 @@ Do not proceed to step 4 unless:
 The working tree is clean (no uncommitted changes)
 
 ## Step 4: Create the worktree
+
+ALL PREVIOUS STEPS MUST BE COMPLETE BEFORE YOU DO THIS STEP.
 
 Create the worktree from the **bare repo parent directory** (not from inside an existing worktree).
 
