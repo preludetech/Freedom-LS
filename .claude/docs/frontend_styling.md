@@ -52,3 +52,11 @@ Available in `tailwind.components.css`:
 <h1>Title</h1>
 <button class="btn btn-primary">Click</button>
 ```
+
+## IMPORTANT
+
+Code must be as clean as possible.
+
+When styling any element:
+- Consider how it will behave if there are other elements on a page. For example if you are hard-coding a z-index or a position, will it mess with anything?
+- Look over all the classes applied to the element: They should all be there for a purpose. Don't add extra things that are not needed.

@@ -374,3 +374,9 @@ These are already registered in `alpine-components.js`:
 | `message` | `partials/messages.html` | Auto-dismiss toasts |
 | `coursePart` | `student_interface/partials/course_minimal_toc.html` | Expand/collapse with localStorage |
 | `debugBadge` | `_base.html` | Collapsible debug branch badge |
+
+# IMPORTANT
+
+Make sure code is clean and simple
+- Do not use features that are not needed
+- Make sure the code is clear and easy to read
