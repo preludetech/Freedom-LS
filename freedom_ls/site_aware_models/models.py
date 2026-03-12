@@ -26,8 +26,12 @@ def get_cached_site(request: HttpRequest) -> Site | RequestSite:
     if force_name:
         try:
             site = Site.objects.get(name=force_name)
-        except Site.DoesNotExist:
-            site = get_current_site(request)
+        except Site.DoesNotExist as err:
+            available = list(Site.objects.values_list("name", flat=True))
+            raise Site.DoesNotExist(
+                f"FORCE_SITE_NAME={force_name!r} does not match any Site. "
+                f"Available sites: {available}"
+            ) from err
     else:
         site = get_current_site(request)
 
