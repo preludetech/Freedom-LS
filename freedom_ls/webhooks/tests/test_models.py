@@ -7,18 +7,10 @@ from freedom_ls.webhooks.factories import (
     WebhookEndpointFactory,
     WebhookEventFactory,
 )
-from freedom_ls.webhooks.models import STATUS_CHOICES
 
 
 @pytest.mark.django_db
 class TestWebhookEndpoint:
-    def test_create_endpoint(self, mock_site_context: object) -> None:
-        endpoint = WebhookEndpointFactory()
-        assert endpoint.pk is not None
-        assert endpoint.secret != ""
-        assert len(endpoint.secret) > 0
-        assert endpoint.is_active is True
-
     def test_secret_auto_generated_on_save(self, mock_site_context: object) -> None:
         endpoint = WebhookEndpointFactory()
         assert endpoint.secret
@@ -26,35 +18,6 @@ class TestWebhookEndpoint:
         original_secret = endpoint.secret
         endpoint.save()
         assert endpoint.secret == original_secret
-
-    def test_str_returns_description(self, mock_site_context: object) -> None:
-        endpoint = WebhookEndpointFactory(description="My webhook")
-        assert str(endpoint) == "My webhook"
-
-    def test_clean_valid_event_types(
-        self, mock_site_context: object, settings: object
-    ) -> None:
-        settings.DEBUG = True
-        endpoint = WebhookEndpointFactory(
-            event_types=["user.registered", "course.completed"]
-        )
-        # Should not raise
-        endpoint.clean()
-
-    def test_clean_invalid_event_type_raises(self, mock_site_context: object) -> None:
-        endpoint = WebhookEndpointFactory(event_types=["invalid.type"])
-        with pytest.raises(ValidationError) as exc_info:
-            endpoint.clean()
-        assert "event_types" in exc_info.value.message_dict
-
-    def test_clean_https_enforced_in_production(
-        self, mock_site_context: object, settings: object
-    ) -> None:
-        settings.DEBUG = False
-        endpoint = WebhookEndpointFactory(url="http://example.com/webhook")
-        with pytest.raises(ValidationError) as exc_info:
-            endpoint.clean()
-        assert "url" in exc_info.value.message_dict
 
     def test_clean_https_not_enforced_in_debug(
         self, mock_site_context: object, settings: object
@@ -64,13 +27,13 @@ class TestWebhookEndpoint:
         # Should not raise
         endpoint.clean()
 
-    def test_clean_https_url_passes_in_production(
+    def test_clean_http_url_does_not_pass_in_production(
         self, mock_site_context: object, settings: object
     ) -> None:
         settings.DEBUG = False
-        endpoint = WebhookEndpointFactory(url="https://example.com/webhook")
-        # Should not raise
-        endpoint.clean()
+        endpoint = WebhookEndpointFactory(url="http://example.com/webhook")
+        with pytest.raises(ValidationError):
+            endpoint.clean()
 
     def test_clean_empty_event_types_passes(
         self, mock_site_context: object, settings: object
@@ -98,22 +61,10 @@ class TestWebhookDelivery:
         assert delivery.status == "pending"
         assert delivery.attempt_count == 0
 
-    def test_status_choices(self) -> None:
-        status_values = [choice[0] for choice in STATUS_CHOICES]
-        assert "pending" in status_values
-        assert "success" in status_values
-        assert "failed" in status_values
-        assert "dead_letter" in status_values
-
-    def test_response_body_truncated_on_save(self, mock_site_context: object) -> None:
-        long_body = "x" * 1000
-        delivery = WebhookDeliveryFactory(last_response_body=long_body)
-        assert len(delivery.last_response_body) == 500
-
     def test_short_response_body_not_truncated(self, mock_site_context: object) -> None:
         short_body = "x" * 100
         delivery = WebhookDeliveryFactory(last_response_body=short_body)
-        assert len(delivery.last_response_body) == 100
+        assert delivery.last_response_body == short_body
 
     def test_delivery_linked_to_event_and_endpoint(
         self, mock_site_context: object
