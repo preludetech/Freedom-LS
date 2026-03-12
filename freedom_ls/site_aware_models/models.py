@@ -3,18 +3,36 @@ from __future__ import annotations
 import uuid
 from threading import local
 
+from django.conf import settings
 from django.contrib.sites.models import Site
+from django.contrib.sites.requests import RequestSite
 from django.contrib.sites.shortcuts import get_current_site
 from django.db import models
+from django.http import HttpRequest
 
 _thread_locals = local()
 
+_CACHED_SITE_ATTR = "_cached_site"
 
-def get_cached_site(request):
+
+def get_cached_site(request: HttpRequest) -> Site | RequestSite:
     """Get the current site, cached on the request for performance."""
-    if not hasattr(request, "_cached_site"):
-        request._cached_site = get_current_site(request)
-    return request._cached_site
+    cached: Site | RequestSite | None = getattr(request, _CACHED_SITE_ATTR, None)
+    if cached is not None:
+        return cached
+
+    force_name = getattr(settings, "FORCE_SITE_NAME", None)
+    site: Site | RequestSite
+    if force_name:
+        try:
+            site = Site.objects.get(name=force_name)
+        except Site.DoesNotExist:
+            site = get_current_site(request)
+    else:
+        site = get_current_site(request)
+
+    setattr(request, _CACHED_SITE_ATTR, site)
+    return site
 
 
 class SiteAwareManager(models.Manager):
@@ -41,7 +59,9 @@ class SiteAwareModelBase(models.Model):
         if not self.site_id:
             request = getattr(_thread_locals, "request", None)
             if request:
-                self.site = get_cached_site(request)
+                # In practice, get_cached_site always returns Site when
+                # django.contrib.sites is installed (which it always is).
+                self.site = get_cached_site(request)  # type: ignore[assignment]
         super().save(*args, **kwargs)
 
 

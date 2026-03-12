@@ -1,6 +1,8 @@
 import os
 import sys
 
+from freedom_ls.base.git_utils import branch_to_db_name, get_current_branch
+
 from .settings_base import *  # noqa: F403
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -60,12 +62,15 @@ EMAIL_FILE_PATH = "gitignore/emails"
 #####
 # DATABASE
 
+_branch = get_current_branch(base_dir=BASE_DIR)  # noqa: F405
+_db_name = branch_to_db_name(_branch) if _branch else "db"
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "USER": "pguser",
-        "NAME": "db",
-        "PASSWORD": "password",
+        "NAME": _db_name,
+        "PASSWORD": "password",  # pragma: allowlist secret
         "HOST": "127.0.0.1",
         "PORT": "6543",
     },
@@ -81,3 +86,5 @@ MIDDLEWARE = [*MIDDLEWARE, "django_browser_reload.middleware.BrowserReloadMiddle
 FREEDOMLS_PERMISSIONS_MODULES = {
     "DemoDev": "config.role_based_permissions.demodev",
 }
+
+FORCE_SITE_NAME = "DemoDev"
