@@ -33,17 +33,17 @@ class TestGetCachedSiteWithForceSiteName:
 
         assert result == forced_site
 
-    def test_falls_back_to_current_site_when_no_matching_site(
+    def test_raises_when_no_matching_site(
         self, request_factory: RequestFactory
     ) -> None:
-        fallback_site = Site.objects.create(domain="testserver", name="TestServer")
+        Site.objects.create(domain="testserver", name="TestServer")
         request = request_factory.get("/")
 
-        with override_settings(FORCE_SITE_NAME="NonExistentSite"):
-            result = get_cached_site(request)
-
-        # Falls back to get_current_site behavior which matches on domain
-        assert result == fallback_site
+        with (
+            override_settings(FORCE_SITE_NAME="NonExistentSite"),
+            pytest.raises(Site.DoesNotExist, match="FORCE_SITE_NAME='NonExistentSite'"),
+        ):
+            get_cached_site(request)
 
     def test_uses_get_current_site_when_force_site_name_not_set(
         self, request_factory: RequestFactory

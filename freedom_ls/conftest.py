@@ -15,6 +15,12 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 
 
+@pytest.fixture(autouse=True)
+def _disable_force_site_name(settings):
+    """Ensure FORCE_SITE_NAME is always None during tests."""
+    settings.FORCE_SITE_NAME = None
+
+
 def reverse_url(
     live_server, viewname, urlconf=None, args=None, kwargs=None, current_app=None
 ):
