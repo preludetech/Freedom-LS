@@ -135,7 +135,7 @@ def _handle_retryable_failure(
         delivery.status = "dead_letter"
         delivery.next_retry_at = None
     else:
-        delivery.status = "pending"
+        delivery.status = "failed"
         if retry_after is not None:
             delivery.next_retry_at = timezone.now() + timedelta(seconds=retry_after)
         else:

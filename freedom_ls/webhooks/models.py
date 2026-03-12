@@ -73,6 +73,9 @@ class WebhookDelivery(SiteAwareModel):
     last_latency_ms = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name_plural = "Webhook deliveries"
+
     def __str__(self) -> str:
         return f"Delivery {self.pk} ({self.status})"
 

@@ -52,6 +52,9 @@ If anything unrelated to the current feature under test seems out of place or br
 
 ## Step 5: Mobile testing
 
+Don't do mobile tests if we are checking the django admin interface. Only do mobile tests for custom frontend code.
+
+
 Resize the browser to 375x812 (iPhone-sized viewport).
 
 You do NOT need to re-run every test from Step 4. Focus on:
@@ -63,6 +66,10 @@ You do NOT need to re-run every test from Step 4. Focus on:
 Name mobile screenshots with the pattern: `mobile_<test-id>_<short-description>.png`.
 
 ## Step 6: Tablet testing
+
+
+Don't do mobile tests if we are checking the django admin interface. Only do mobile tests for custom frontend code.
+
 
 Resize the browser to 768x1024 (iPad-sized viewport).
 

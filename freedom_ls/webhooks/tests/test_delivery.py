@@ -260,7 +260,7 @@ class TestAttemptDelivery:
             attempt_delivery(delivery)
 
         delivery.refresh_from_db()
-        assert delivery.status == "pending"
+        assert delivery.status == "failed"
         assert delivery.attempt_count == 1
         assert delivery.next_retry_at is not None
         assert delivery.last_status_code == 429
@@ -302,7 +302,7 @@ class TestAttemptDelivery:
             attempt_delivery(delivery)
 
         delivery.refresh_from_db()
-        assert delivery.status == "pending"
+        assert delivery.status == "failed"
         assert delivery.attempt_count == 1
         assert delivery.next_retry_at is not None
 
@@ -319,7 +319,7 @@ class TestAttemptDelivery:
             attempt_delivery(delivery)
 
         delivery.refresh_from_db()
-        assert delivery.status == "pending"
+        assert delivery.status == "failed"
         assert delivery.attempt_count == 1
         assert delivery.next_retry_at is not None
         assert delivery.last_status_code is None
@@ -337,7 +337,7 @@ class TestAttemptDelivery:
             attempt_delivery(delivery)
 
         delivery.refresh_from_db()
-        assert delivery.status == "pending"
+        assert delivery.status == "failed"
         assert delivery.attempt_count == 1
         assert delivery.next_retry_at is not None
 

@@ -21,7 +21,7 @@ class EventTypeField(forms.MultipleChoiceField):
         registry = get_event_type_registry()
         choices = [(key, label) for key, label in registry.items()]
         kwargs.setdefault("choices", choices)
-        kwargs.setdefault("required", False)
+        kwargs.setdefault("required", True)
         super().__init__(**kwargs)
 
 

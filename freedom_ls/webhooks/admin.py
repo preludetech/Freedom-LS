@@ -30,6 +30,14 @@ class WebhookEndpointAdmin(SiteAwareModelAdmin):
     ]
     actions = ["enable_endpoints", "disable_endpoints", "send_test_ping"]
 
+    def get_readonly_fields(
+        self, request: HttpRequest, obj: WebhookEndpoint | None = None
+    ) -> list[str]:
+        if obj is None:
+            # On create form, exclude secret (it's auto-generated on save)
+            return [f for f in self.readonly_fields if f != "secret"]
+        return list(self.readonly_fields)
+
     @admin.display(description="URL")
     def url_truncated(self, obj: WebhookEndpoint) -> str:
         url = obj.url
@@ -75,6 +83,11 @@ class WebhookEventAdmin(SiteAwareModelAdmin):
     ) -> bool:
         return False
 
+    def has_delete_permission(
+        self, request: HttpRequest, obj: WebhookEvent | None = None
+    ) -> bool:
+        return False
+
     @admin.display(description="ID")
     def short_id(self, obj: WebhookEvent) -> str:
         return str(obj.pk)[:8]
@@ -104,6 +117,19 @@ class WebhookDeliveryAdmin(SiteAwareModelAdmin):
         "created_at",
     ]
     actions = ["retry_deliveries"]
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(
+        self, request: HttpRequest, obj: WebhookDelivery | None = None
+    ) -> bool:
+        return False
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: WebhookDelivery | None = None
+    ) -> bool:
+        return False
 
     @admin.display(description="Event type")
     def event_type_display(self, obj: WebhookDelivery) -> str:
