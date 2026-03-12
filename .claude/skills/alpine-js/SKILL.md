@@ -242,15 +242,8 @@ Use `x-ref` and `$this.refs` when Alpine needs to measure or manipulate specific
 12. **Icons with Alpine** -- since `<c-icon>` is server-rendered, toggle icons with `x-show` on wrapper `<span>` elements (see icon-usage skill)
 13. **$persist needs .as()** -- always call `.as('descriptive_key')` when using `$persist` to set an explicit localStorage key; never rely on the auto-generated positional key
 
-## Existing Components Using Alpine
+# IMPORTANT
 
-These cotton components already use Alpine.js -- reuse them rather than reimplementing:
-
-| Component | File | Alpine behaviour |
-|-----------|------|-----------------|
-| `<c-sidebar>` | `cotton/sidebar.html` | Toggle open/close, localStorage persistence, responsive mobile/desktop |
-| `<c-dropdown-menu>` | `cotton/dropdown-menu.html` | Toggle open/close, click-away, smart positioning |
-| `<c-modal>` | `cotton/modal.html` | Toggle open/close, escape key, backdrop click |
-| `<c-picture>` | `cotton/picture.html` | Lightbox open/close |
-| Messages partial | `partials/messages.html` | Auto-dismiss toasts |
-| `<c-scroll-table-labels>` | `cotton/scroll-table-labels.html` | Scroll tracking, resize observer, label overlay |
+Make sure code is clean and simple
+- Do not use features that are not needed
+- Make sure the code is clear and easy to read
