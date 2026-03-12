@@ -1,39 +1,11 @@
 import colorsys
-import functools
 import hashlib
 import os
-from pathlib import Path
 
 from django.conf import settings
 from django.http import HttpRequest
 
-
-@functools.lru_cache(maxsize=1)
-def get_current_branch() -> str | None:
-    git_path = settings.BASE_DIR / ".git"
-    if not git_path.exists():
-        return None
-
-    if git_path.is_file():
-        content = git_path.read_text().strip()
-        if content.startswith("gitdir:"):
-            git_dir = Path(content.split("gitdir:", 1)[1].strip())
-            if not git_dir.is_absolute():
-                git_dir = (git_path.parent / git_dir).resolve()
-            head_path = git_dir / "HEAD"
-        else:
-            return None
-    else:
-        head_path = git_path / "HEAD"
-
-    try:
-        head_content = head_path.read_text().strip()
-    except (FileNotFoundError, OSError):
-        return None
-
-    if head_content.startswith("ref: refs/heads/"):
-        return head_content[len("ref: refs/heads/") :]
-    return head_content[:7]
+from freedom_ls.base.git_utils import get_current_branch
 
 
 def branch_name_to_color(name: str) -> str:

@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from pathlib import Path
 from unittest.mock import patch
 
@@ -8,115 +9,16 @@ from django.test import RequestFactory
 from freedom_ls.base.context_processors import (
     branch_name_to_color,
     debug_branch_info,
-    get_current_branch,
     get_text_color,
 )
+from freedom_ls.base.git_utils import _clear_branch_cache
 
 
 @pytest.fixture(autouse=True)
-def _reset_branch_cache() -> None:
-    get_current_branch.cache_clear()
-
-
-# --- Task 1: get_current_branch ---
-
-
-class TestGetCurrentBranch:
-    def test_normal_git_head_returns_branch_name(self, tmp_path: Path) -> None:
-        git_dir = tmp_path / ".git"
-        git_dir.mkdir()
-        (git_dir / "HEAD").write_text("ref: refs/heads/main\n")
-
-        with patch("freedom_ls.base.context_processors.settings") as mock_settings:
-            mock_settings.BASE_DIR = tmp_path
-            result = get_current_branch()
-
-        assert result == "main"
-
-    def test_worktree_git_file_returns_branch_name(self, tmp_path: Path) -> None:
-        actual_git_dir = tmp_path / "actual_git" / "worktrees" / "my-worktree"
-        actual_git_dir.mkdir(parents=True)
-        (actual_git_dir / "HEAD").write_text("ref: refs/heads/feature-branch\n")
-
-        git_file = tmp_path / ".git"
-        git_file.write_text(f"gitdir: {actual_git_dir}\n")
-
-        with patch("freedom_ls.base.context_processors.settings") as mock_settings:
-            mock_settings.BASE_DIR = tmp_path
-            result = get_current_branch()
-
-        assert result == "feature-branch"
-
-    def test_worktree_relative_gitdir_path(self, tmp_path: Path) -> None:
-        worktree_dir = tmp_path / ".bare" / "worktrees" / "wt"
-        worktree_dir.mkdir(parents=True)
-        (worktree_dir / "HEAD").write_text("ref: refs/heads/relative-branch\n")
-
-        git_file = tmp_path / ".git"
-        relative = Path(".bare") / "worktrees" / "wt"
-        git_file.write_text(f"gitdir: {relative}\n")
-
-        with patch("freedom_ls.base.context_processors.settings") as mock_settings:
-            mock_settings.BASE_DIR = tmp_path
-            result = get_current_branch()
-
-        assert result == "relative-branch"
-
-    def test_detached_head_returns_short_sha(self, tmp_path: Path) -> None:
-        git_dir = tmp_path / ".git"
-        git_dir.mkdir()
-        sha = "abc1234def5678901234567890abcdef12345678"  # pragma: allowlist secret
-        (git_dir / "HEAD").write_text(f"{sha}\n")
-
-        with patch("freedom_ls.base.context_processors.settings") as mock_settings:
-            mock_settings.BASE_DIR = tmp_path
-            result = get_current_branch()
-
-        assert result == "abc1234"
-
-    def test_no_git_path_returns_none(self, tmp_path: Path) -> None:
-        with patch("freedom_ls.base.context_processors.settings") as mock_settings:
-            mock_settings.BASE_DIR = tmp_path
-            result = get_current_branch()
-
-        assert result is None
-
-    def test_malformed_git_file_returns_none(self, tmp_path: Path) -> None:
-        git_file = tmp_path / ".git"
-        git_file.write_text("not a valid gitdir line\n")
-
-        with patch("freedom_ls.base.context_processors.settings") as mock_settings:
-            mock_settings.BASE_DIR = tmp_path
-            result = get_current_branch()
-
-        assert result is None
-
-    def test_caching_returns_cached_value(self, tmp_path: Path) -> None:
-        git_dir = tmp_path / ".git"
-        git_dir.mkdir()
-        (git_dir / "HEAD").write_text("ref: refs/heads/cached-branch\n")
-
-        with patch("freedom_ls.base.context_processors.settings") as mock_settings:
-            mock_settings.BASE_DIR = tmp_path
-            first = get_current_branch()
-
-        (git_dir / "HEAD").write_text("ref: refs/heads/different-branch\n")
-
-        second = get_current_branch()
-
-        assert first == "cached-branch"
-        assert second == "cached-branch"
-
-    def test_head_file_missing_returns_none(self, tmp_path: Path) -> None:
-        git_dir = tmp_path / ".git"
-        git_dir.mkdir()
-        # No HEAD file created
-
-        with patch("freedom_ls.base.context_processors.settings") as mock_settings:
-            mock_settings.BASE_DIR = tmp_path
-            result = get_current_branch()
-
-        assert result is None
+def _reset_branch_cache() -> Iterator[None]:
+    _clear_branch_cache()
+    yield
+    _clear_branch_cache()
 
 
 # --- Task 2: Color generation ---
@@ -176,16 +78,17 @@ class TestDebugBranchNotInProdSettings:
 
 
 class TestDebugBranchInfo:
-    def test_returns_all_keys_when_branch_detected(self, tmp_path: Path) -> None:
-        git_dir = tmp_path / ".git"
-        git_dir.mkdir()
-        (git_dir / "HEAD").write_text("ref: refs/heads/my-feature\n")
-
+    def test_returns_all_keys_when_branch_detected(self) -> None:
         factory = RequestFactory()
         request = factory.get("/")
 
-        with patch("freedom_ls.base.context_processors.settings") as mock_settings:
-            mock_settings.BASE_DIR = tmp_path
+        with (
+            patch("freedom_ls.base.context_processors.settings") as mock_settings,
+            patch(
+                "freedom_ls.base.context_processors.get_current_branch",
+                return_value="my-feature",
+            ),
+        ):
             mock_settings.DEBUG = True
             result = debug_branch_info(request)
 
@@ -193,27 +96,27 @@ class TestDebugBranchInfo:
         assert result["debug_branch_color"].startswith("#")
         assert result["debug_branch_text_color"] in ("#000000", "#ffffff")
 
-    def test_returns_empty_dict_when_no_branch(self, tmp_path: Path) -> None:
+    def test_returns_empty_dict_when_no_branch(self) -> None:
         factory = RequestFactory()
         request = factory.get("/")
 
-        with patch("freedom_ls.base.context_processors.settings") as mock_settings:
-            mock_settings.BASE_DIR = tmp_path
+        with (
+            patch("freedom_ls.base.context_processors.settings") as mock_settings,
+            patch(
+                "freedom_ls.base.context_processors.get_current_branch",
+                return_value=None,
+            ),
+        ):
             mock_settings.DEBUG = True
             result = debug_branch_info(request)
 
         assert result == {}
 
-    def test_returns_empty_dict_when_debug_false(self, tmp_path: Path) -> None:
-        git_dir = tmp_path / ".git"
-        git_dir.mkdir()
-        (git_dir / "HEAD").write_text("ref: refs/heads/my-feature\n")
-
+    def test_returns_empty_dict_when_debug_false(self) -> None:
         factory = RequestFactory()
         request = factory.get("/")
 
         with patch("freedom_ls.base.context_processors.settings") as mock_settings:
-            mock_settings.BASE_DIR = tmp_path
             mock_settings.DEBUG = False
             result = debug_branch_info(request)
 
