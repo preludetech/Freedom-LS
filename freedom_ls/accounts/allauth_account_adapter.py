@@ -3,11 +3,32 @@ from allauth.account.adapter import DefaultAccountAdapter
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.contrib.sites.shortcuts import get_current_site
+from django.http import HttpRequest
 
 from .models import SiteSignupPolicy, User
 
 
 class AccountAdapter(DefaultAccountAdapter):
+    def save_user(
+        self,
+        request: HttpRequest,
+        user: User,
+        form: object,
+        commit: bool = True,
+    ) -> User:
+        user = super().save_user(request, user, form, commit=commit)
+        if commit:
+            from freedom_ls.webhooks.events import fire_webhook_event
+
+            fire_webhook_event(
+                "user.registered",
+                {
+                    "user_id": user.pk,
+                    "user_email": user.email,
+                },
+            )
+        return user
+
     def send_notification_mail(
         self,
         template_prefix: str,
