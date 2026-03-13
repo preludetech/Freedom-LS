@@ -1,0 +1,59 @@
+<div x-data="{
+        activeTab: '{{ active_tab }}',
+        loadedTabs: { '{{ active_tab }}': true },
+        baseUrl: '{{ base_url }}',
+        defaultTab: '{{ tabs.0.name }}',
+        switchTab(name) {
+            this.activeTab = name;
+            if (!this.loadedTabs[name]) {
+                this.loadedTabs[name] = true;
+                this.$nextTick(() => htmx.trigger(
+                    document.getElementById('tab-content-' + name),
+                    'load-tab'
+                ));
+            }
+        }
+     }"
+     @popstate.window="
+        const match = window.location.pathname.match(/__tabs\/([^/]+)/);
+        switchTab(match ? match[1] : defaultTab);
+     ">
+    {# Tab bar #}
+    <div role="tablist" class="flex border-b border-border mb-6">
+        {% for tab in tabs %}
+            <button @click="switchTab('{{ tab.name }}');
+                           history.pushState({}, '',
+                               '{{ tab.name }}' === defaultTab
+                                   ? baseUrl
+                                   : baseUrl + '/__tabs/{{ tab.name }}'
+                           );"
+                    :class="activeTab === '{{ tab.name }}'
+                        ? 'border-b-2 border-primary text-primary font-semibold'
+                        : 'text-muted hover:text-foreground'"
+                    class="px-4 py-2 -mb-px transition-colors"
+                    role="tab"
+                    :aria-selected="activeTab === '{{ tab.name }}'">
+                {{ tab.label }}
+            </button>
+        {% endfor %}
+    </div>
+
+    {# Tab panels #}
+    {% for tab in tabs %}
+        <div x-show="activeTab === '{{ tab.name }}'"
+             x-transition
+             x-cloak
+             id="tab-content-{{ tab.name }}"
+             role="tabpanel">
+            {% if tab.name == active_tab %}
+                {{ tab.rendered_panels|safe }}
+            {% else %}
+                <div hx-get="{{ tab.load_url }}"
+                     hx-trigger="load-tab once"
+                     hx-swap="innerHTML">
+                    <c-loading-indicator />
+                </div>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>

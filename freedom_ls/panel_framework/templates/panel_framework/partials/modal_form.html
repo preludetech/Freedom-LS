@@ -1,0 +1,37 @@
+{# Renders a modal containing a form, with a trigger button #}
+{# Context: form, form_title, form_url, variant, label, submit_buttons #}
+
+<c-modal title="{{ form_title }}">
+    <c-slot name="trigger">
+        <c-button variant="{{ variant }}">{{ label }}</c-button>
+    </c-slot>
+
+    <form hx-post="{{ form_url }}"
+          hx-target="closest div[x-data]"
+          hx-swap="outerHTML"
+          hx-disabled-elt="find button[type='submit']">
+        {% include "partials/form.html" %}
+
+        <c-button-group variant="right" class="mt-4">
+            {% for btn in submit_buttons %}
+                {% if btn.name %}
+                    <c-button type="submit"
+                              variant="{{ btn.variant }}"
+                              loading="true"
+                              loading_text="{{ btn.loading_text|default:'Saving...' }}"
+                              name="{{ btn.name }}"
+                              value="{{ btn.value }}">
+                        {{ btn.label }}
+                    </c-button>
+                {% else %}
+                    <c-button type="submit"
+                              variant="{{ btn.variant }}"
+                              loading="true"
+                              loading_text="{{ btn.loading_text|default:'Saving...' }}">
+                        {{ btn.label }}
+                    </c-button>
+                {% endif %}
+            {% endfor %}
+        </c-button-group>
+    </form>
+</c-modal>

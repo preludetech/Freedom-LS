@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     "freedom_ls.student_management",
     "freedom_ls.student_progress",
     "freedom_ls.site_aware_models",
+    "freedom_ls.panel_framework",
     "freedom_ls.educator_interface",
     "freedom_ls.role_based_permissions",
     #########
