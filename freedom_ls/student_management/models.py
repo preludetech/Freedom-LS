@@ -63,6 +63,23 @@ class UserCourseRegistration(SiteAwareModel):
             )
         ]
 
+    def save(self, *args: object, **kwargs: object) -> None:
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+        if is_new:
+            from freedom_ls.webhooks.events import fire_webhook_event
+
+            fire_webhook_event(
+                "course.registered",
+                {
+                    "user_id": self.user_id,
+                    "user_email": self.user.email,
+                    "course_id": str(self.collection_id),
+                    "course_title": self.collection.title,
+                    "registered_at": self.registered_at.isoformat(),
+                },
+            )
+
     def __str__(self):
         return f"{self.user} - {self.collection}"
 
