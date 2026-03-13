@@ -112,6 +112,7 @@ class WebhookDeliveryAdmin(SiteAwareModelAdmin):
         "next_retry_at",
         "last_status_code",
         "last_response_body",
+        "last_response_error_message",
         "last_attempt_at",
         "last_latency_ms",
         "created_at",
