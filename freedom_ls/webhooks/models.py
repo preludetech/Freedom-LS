@@ -71,6 +71,7 @@ class WebhookDelivery(SiteAwareModel):
     last_response_body = models.TextField(blank=True, default="")
     last_attempt_at = models.DateTimeField(null=True, blank=True)
     last_latency_ms = models.PositiveIntegerField(null=True, blank=True)
+    last_response_error_message = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

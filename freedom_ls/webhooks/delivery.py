@@ -1,4 +1,3 @@
-import contextlib
 import json
 import random
 import time
@@ -63,13 +62,18 @@ def attempt_delivery(delivery: WebhookDelivery) -> None:
     response: httpx.Response | None = None
     start_time = time.monotonic()
 
-    with contextlib.suppress(httpx.TimeoutException, httpx.ConnectError):
+    error_message = ""
+    try:
         response = httpx.post(
             endpoint.url,
             content=body,
             headers=headers,
             timeout=REQUEST_TIMEOUT,
         )
+    except httpx.TimeoutException as exc:
+        error_message = f"Timeout after {REQUEST_TIMEOUT}s: {exc}"
+    except httpx.ConnectError as exc:
+        error_message = f"Connection error: {exc}"
 
     elapsed_ms = int((time.monotonic() - start_time) * 1000)
     status_code = response.status_code if response is not None else None
@@ -79,6 +83,7 @@ def attempt_delivery(delivery: WebhookDelivery) -> None:
     delivery.last_response_body = response.text if response is not None else ""
     delivery.last_attempt_at = timezone.now()
     delivery.last_latency_ms = elapsed_ms
+    delivery.last_response_error_message = error_message
 
     if response is not None and 200 <= response.status_code < 300:
         _handle_success(delivery, endpoint)
