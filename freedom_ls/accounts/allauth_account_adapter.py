@@ -35,8 +35,8 @@ class AccountAdapter(DefaultAccountAdapter):
         if not isinstance(current_site, Site):
             return default_allow
 
-        qs = SiteSignupPolicy.objects.filter(site=current_site)
-        if qs.exists():
-            return qs.get().allow_signups
-
-        return default_allow
+        try:
+            policy = SiteSignupPolicy.objects.get(site=current_site)
+            return policy.allow_signups
+        except SiteSignupPolicy.DoesNotExist:
+            return default_allow
