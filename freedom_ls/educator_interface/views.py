@@ -8,16 +8,40 @@ from guardian.shortcuts import get_objects_for_user
 
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.core.paginator import Page, Paginator
-from django.db.models import Count, F, IntegerField, Model, OuterRef, Q, Subquery, Value
+from django.db.models import (
+    Count,
+    F,
+    IntegerField,
+    Model,
+    OuterRef,
+    Q,
+    QuerySet,
+    Subquery,
+    Value,
+)
 from django.db.models.functions import Coalesce
-from django.http import Http404, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.http import Http404, HttpRequest, HttpResponse
+from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone as tz
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
+from freedom_ls.educator_interface.forms import CohortForm
+from freedom_ls.panel_framework.actions import (
+    CreateInstanceAction,
+    DeleteAction,
+    PanelAction,
+)
+from freedom_ls.panel_framework.panels import (
+    DataTablePanel,
+    InstanceDetailsPanel,
+    Panel,
+)
+from freedom_ls.panel_framework.tables import DataTable
+from freedom_ls.panel_framework.tabs import Tab
+from freedom_ls.panel_framework.views import InstanceView, ListViewConfig, PanelGetter
 from freedom_ls.student_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -49,163 +73,9 @@ class FormProgressData(TypedDict):
 # instance, other actions (eg: send_email)
 
 
-class Panel:
-    title: str = ""
-
-    def __init__(self, instance: Model):
-        self.instance = instance
-
-    def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
-        raise NotImplementedError
-
-    def render(self, request, base_url: str = "", panel_name: str = "") -> str:
-        content = self.get_content(request, base_url=base_url, panel_name=panel_name)
-        return render_to_string(
-            "educator_interface/partials/panel_container.html",
-            {"title": self.title, "content": content},
-            request=request,
-        )
-
-
-class DataTable:
-    """Abstract class used for rendering data tables"""
-
-    page_size = 5
-    search_fields: list[str] = []
-
-    @staticmethod
-    def get_queryset(request):
-        raise NotImplementedError
-
-    @staticmethod
-    def get_columns():
-        raise NotImplementedError
-
-    @classmethod
-    def _prepare_columns(cls) -> list[dict[str, object]]:
-        """Enrich columns: derive sort_field from text_attr/attr for sortable columns."""
-        columns: list[dict[str, object]] = cls.get_columns()
-        for col in columns:
-            if col.get("sortable") and "sort_field" not in col:
-                attr = col.get("text_attr") or col.get("attr", "")
-                if isinstance(attr, str):
-                    col["sort_field"] = attr.replace(".", "__")
-        return columns
-
-    @classmethod
-    def get_rows(cls, request, columns: list[dict], filters: dict | None = None):
-        queryset = cls.get_queryset(request)
-        if filters:
-            queryset = queryset.filter(**filters)
-
-        search_query = request.GET.get("search", "").strip()
-        if search_query and cls.search_fields:
-            search_filter = Q()
-            for field in cls.search_fields:
-                search_filter |= Q(**{f"{field}__icontains": search_query})
-            queryset = queryset.filter(search_filter)
-
-        sort_by = request.GET.get("sort", "")
-        sort_order = request.GET.get("order", "asc")
-        sortable_fields = {col["sort_field"] for col in columns if col.get("sortable")}
-        if sort_by in sortable_fields:
-            order_expr = f"-{sort_by}" if sort_order == "desc" else sort_by
-            queryset = queryset.order_by(order_expr)
-
-        page_number = request.GET.get("page", 1)
-        paginator = Paginator(queryset, cls.page_size)
-        page_obj = paginator.get_page(page_number)
-
-        return page_obj
-
-    @classmethod
-    def render(
-        cls,
-        request,
-        filters: dict | None = None,
-        base_url: str = "",
-        table_id: str = "data-table-container",
-    ) -> str:
-        columns = cls._prepare_columns()
-        sort_by = request.GET.get("sort", "")
-        sort_order = request.GET.get("order", "asc")
-        search_query = request.GET.get("search", "").strip()
-        page_obj = cls.get_rows(request, columns, filters=filters)
-        context = {
-            "columns": columns,
-            "rows": page_obj,
-            "page_obj": page_obj,
-            "sort_by": sort_by,
-            "sort_order": sort_order,
-            "base_url": base_url,
-            "show_search": bool(cls.search_fields),
-            "search_query": search_query,
-            "table_id": table_id,
-        }
-        return render_to_string(
-            "educator_interface/partials/list_view.html", context, request=request
-        )
-
-
-class DataTablePanel(Panel):
-    data_table: type[DataTable]
-
-    def get_filters(self) -> dict:
-        return {}
-
-    def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
-        table_id = f"table-{panel_name}" if panel_name else "data-table-container"
-        return self.data_table.render(
-            request,
-            filters=self.get_filters(),
-            base_url=base_url,
-            table_id=table_id,
-        )
-
-    def render(self, request, base_url: str = "", panel_name: str = "") -> str:
-        is_htmx = request.headers.get("HX-Request") == "true"
-        if is_htmx:
-            return self.get_content(request, base_url=base_url, panel_name=panel_name)
-        return super().render(request, base_url=base_url, panel_name=panel_name)
-
-
-class InstanceDetailsPanel(Panel):
-    title = "Details"
-    fields: list[str] = []
-
-    def _resolve_field(self, field_path: str) -> tuple[str, object]:
-        """Resolve a dot-notation field path to (label, value).
-
-        Supports paths like "user.email" by traversing related objects.
-        """
-        parts = field_path.split(".")
-        obj: Model = self.instance
-        for part in parts[:-1]:
-            related = getattr(obj, part)
-            if not isinstance(related, Model):
-                raise ValueError(f"Expected Model at '{part}', got {type(related)}")
-            obj = related
-        field_name = parts[-1]
-        field = obj._meta.get_field(field_name)
-        label = str(getattr(field, "verbose_name", field_name)).title()
-        value = getattr(obj, field_name)
-        return label, value
-
-    def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
-        field_data = []
-        for field_path in self.fields:
-            label, value = self._resolve_field(field_path)
-            field_data.append({"label": label, "value": value})
-        return render_to_string(
-            "educator_interface/partials/instance_details_panel.html",
-            {"fields": field_data},
-            request=request,
-        )
-
-
 class CohortDataTable(DataTable):
     @staticmethod
-    def get_queryset(request):
+    def get_queryset(request: HttpRequest) -> QuerySet:
         return (
             get_objects_for_user(
                 request.user,
@@ -220,7 +90,7 @@ class CohortDataTable(DataTable):
         )
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         return [
             {
                 "header": "Cohort Name",
@@ -245,7 +115,7 @@ class UserDataTable(DataTable):
     search_fields = ["first_name", "last_name", "email"]
 
     @staticmethod
-    def get_queryset(request):
+    def get_queryset(request: HttpRequest) -> QuerySet:
         # Get cohorts user has access to
         accessible_cohorts = get_objects_for_user(
             request.user,
@@ -265,7 +135,7 @@ class UserDataTable(DataTable):
         )
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         return [
             {
                 "header": "First Name",
@@ -303,63 +173,6 @@ class UserDataTable(DataTable):
         ]
 
 
-class ListViewConfig:
-    model: type[Model] | None = None
-    instance_view: type[InstanceView] | None = None
-    list_view: type[DataTable] | None = None
-    url_name: str = ""
-    menu_label: str = ""
-
-    def __class_getitem__(cls, pk: str) -> InstanceView:
-        if cls.model is None or cls.instance_view is None:
-            raise ValueError(f"{cls.__name__} must define model and instance_view")
-        instance = get_object_or_404(cls.model, pk=pk)
-        return cls.instance_view(instance)
-
-    @classmethod
-    def render(cls, request, base_url: str = "") -> str:
-        if cls.list_view is None:
-            raise ValueError(f"{cls.__name__} must define list_view")
-        return cls.list_view.render(request, base_url=base_url)
-
-
-class PanelGetter:
-    """Subscriptable object that instantiates panels bound to an instance."""
-
-    def __init__(self, panel_classes: dict[str, type[Panel]], instance: Model):
-        self._panel_classes = panel_classes
-        self._instance = instance
-
-    def __getitem__(self, name: str) -> Panel:
-        if name not in self._panel_classes:
-            raise Http404(f"Panel '{name}' not found")
-        return self._panel_classes[name](self._instance)
-
-
-class InstanceView:
-    """Used for displaying specific instances. For example one User, Cohort, etc."""
-
-    panels: dict[str, type[Panel]] = {}
-
-    def __init__(self, instance: Model):
-        self.instance = instance
-
-    def panel_getter(self) -> PanelGetter:
-        return PanelGetter(self.panels, self.instance)
-
-    def render(self, request, base_url: str = "") -> str:
-        getter = self.panel_getter()
-        rendered_panels = []
-        for name in self.panels:
-            panel_url = f"{base_url.rstrip('/')}/__panels/{name}"
-            rendered_panels.append(
-                getter[name].render(request, base_url=panel_url, panel_name=name)
-            )
-        title = f"<h1>{self.instance}</h1>"
-        panels_html = '<div class="space-y-6">' + "\n".join(rendered_panels) + "</div>"
-        return title + "\n" + panels_html
-
-
 class UserDetailsPanel(InstanceDetailsPanel):
     fields = [
         "first_name",
@@ -385,17 +198,19 @@ class UserInstanceView(InstanceView):
 
 class CohortDetailsPanel(InstanceDetailsPanel):
     fields = ["name"]
+    editable = True
+    form_class = CohortForm
 
 
 class CohortCourseRegistrationDataTable(DataTable):
     @staticmethod
-    def get_queryset(request):
+    def get_queryset(request: HttpRequest) -> QuerySet:
         return CohortCourseRegistration.objects.select_related("collection").order_by(
             "collection__title"
         )
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         return [
             {
                 "header": "Course",
@@ -888,12 +703,47 @@ class CohortCourseProgressPanel(Panel):
 
 
 class CohortInstanceView(InstanceView):
-    panels = {
-        "details": CohortDetailsPanel,
-        "course_progress": CohortCourseProgressPanel,
-        "courses": CourseRegistrationsPanel,
-        "students": CohortStudentsPanel,
+    tabs = {
+        "course_progress": Tab(
+            label="Course Progress",
+            panels={
+                "course_progress": CohortCourseProgressPanel,
+            },
+        ),
+        "details": Tab(
+            label="Details",
+            panels={
+                "details": CohortDetailsPanel,
+                "courses": CourseRegistrationsPanel,
+                "students": CohortStudentsPanel,
+            },
+        ),
     }
+
+    def get_actions(self) -> list[PanelAction]:
+        return [
+            DeleteAction(
+                success_url=reverse(
+                    "educator_interface:interface", kwargs={"path_string": "cohorts"}
+                )
+            ),
+        ]
+
+
+class CreateCohortAction(CreateInstanceAction):
+    label = "Create Cohort"
+    form_class = CohortForm
+    form_title = "Create Cohort"
+    action_name = "create_cohort"
+
+    def get_success_url(self, instance: Model) -> str:
+        return reverse(
+            "educator_interface:interface",
+            kwargs={"path_string": f"cohorts/{instance.pk}"},
+        )
+
+    def get_created_event_name(self) -> str:
+        return "cohortCreated"
 
 
 class CohortConfig(ListViewConfig):
@@ -902,6 +752,10 @@ class CohortConfig(ListViewConfig):
     model = Cohort
     list_view = CohortDataTable
     instance_view = CohortInstanceView
+
+    @classmethod
+    def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
+        return [CreateCohortAction()]
 
 
 class UserConfig(ListViewConfig):
@@ -914,8 +768,8 @@ class UserConfig(ListViewConfig):
 
 class CourseDataTable(DataTable):
     @staticmethod
-    def get_queryset(request):
-        courses = (
+    def get_queryset(request: HttpRequest) -> QuerySet:
+        qs: QuerySet = (
             Course.objects.all()
             .annotate(
                 cohort_count=Count(
@@ -935,29 +789,39 @@ class CourseDataTable(DataTable):
             )
             .order_by("title")
         )
+        return qs
 
-        # Calculate total unique active users (direct + through cohorts)
-        for course in courses:
+    @staticmethod
+    def _annotate_total_student_count(page_obj: Page) -> None:
+        """Calculate total unique active users (direct + through cohorts) for each course.
+
+        Uses .all() instead of .filter() to leverage the prefetch cache and avoid N+1 queries.
+        """
+        for course in page_obj.object_list:
             cohort_user_ids: set[UUID] = set()
-            for cohort_reg in course.cohort_registrations.filter(is_active=True):
+            for cohort_reg in course.cohort_registrations.all():
+                if not cohort_reg.is_active:
+                    continue
                 cohort_user_ids.update(
-                    cohort_reg.cohort.cohortmembership_set.values_list(
-                        "user_id", flat=True
-                    )
+                    m.user_id for m in cohort_reg.cohort.cohortmembership_set.all()
                 )
 
-            direct_user_ids = set(
-                course.user_registrations.filter(is_active=True).values_list(
-                    "user_id", flat=True
-                )
-            )
+            direct_user_ids = {
+                reg.user_id for reg in course.user_registrations.all() if reg.is_active
+            }
 
             course.total_student_count = len(cohort_user_ids | direct_user_ids)
 
-        return courses
+    @classmethod
+    def get_rows(
+        cls, request: HttpRequest, columns: list[dict], filters: dict | None = None
+    ) -> Page:
+        page_obj = super().get_rows(request, columns, filters=filters)
+        cls._annotate_total_student_count(page_obj)
+        return page_obj
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         return [
             {
                 "header": "Title",
@@ -992,13 +856,13 @@ class CourseDetailsPanel(InstanceDetailsPanel):
 
 class CourseCohortRegistrationDataTable(DataTable):
     @staticmethod
-    def get_queryset(request):
+    def get_queryset(request: HttpRequest) -> QuerySet:
         return CohortCourseRegistration.objects.select_related(
             "cohort", "collection"
         ).order_by("cohort__name")
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         return [
             {
                 "header": "Cohort",
@@ -1030,13 +894,13 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
 
 class CourseStudentRegistrationDataTable(DataTable):
     @staticmethod
-    def get_queryset(request):
+    def get_queryset(request: HttpRequest) -> QuerySet:
         return UserCourseRegistration.objects.select_related(
             "user", "collection"
         ).order_by("user__first_name", "user__last_name")
 
     @staticmethod
-    def get_columns():
+    def get_columns() -> list[dict[str, object]]:
         return [
             {
                 "header": "First Name",
@@ -1099,33 +963,131 @@ interface_config: dict[str, type[ListViewConfig]] = {
 }
 
 
+class _ResolvedTab:
+    """Wrapper returned by _resolve_path when a tab is resolved."""
+
+    def __init__(self, instance_view: InstanceView, tab_name: str):
+        self.instance_view = instance_view
+        self.tab_name = tab_name
+
+
+class _ResolvedAction:
+    """Wrapper returned by _resolve_path when an action is resolved."""
+
+    def __init__(self, action: PanelAction, instance: Model | None = None):
+        self.action = action
+        self.instance = instance
+
+
 def _resolve_path(
     parts: list[str],
-) -> type[ListViewConfig] | InstanceView | PanelGetter | Panel:
+    request: HttpRequest | None = None,
+) -> (
+    type[ListViewConfig]
+    | InstanceView
+    | PanelGetter
+    | Panel
+    | _ResolvedAction
+    | _ResolvedTab
+):
     """Walk the interface config tree according to URL path parts.
 
-    Special segments like __panels resolve to the corresponding attribute
-    on the current object, allowing further traversal.
+    Special segments like __panels, __tabs, and __actions resolve to the
+    corresponding attribute on the current object, allowing further traversal.
     """
-    current: type[ListViewConfig] | InstanceView | PanelGetter | Panel = (
-        interface_config[parts[0]]
-    )
-    for part in parts[1:]:
+    try:
+        current: (
+            type[ListViewConfig]
+            | InstanceView
+            | PanelGetter
+            | Panel
+            | _ResolvedAction
+            | _ResolvedTab
+        ) = interface_config[parts[0]]
+    except KeyError as err:
+        raise Http404(f"Unknown path segment '{parts[0]}'") from err
+
+    i = 1
+    while i < len(parts):
+        part = parts[i]
         if part == "__panels":
-            if not isinstance(current, InstanceView):
+            if isinstance(current, InstanceView):
+                current = current.panel_getter()
+            elif isinstance(current, _ResolvedTab):
+                # __tabs/{tab}/__panels/{panel} — resolve panel within tab
+                tab = current.instance_view.get_tab(current.tab_name)
+                current = PanelGetter(tab.panels, current.instance_view.instance)
+            else:
                 raise Http404(f"Cannot resolve __panels on {type(current)}")
-            current = current.panel_getter()
-        elif isinstance(current, (PanelGetter,)):
+        elif part == "__tabs":
+            if i + 1 >= len(parts):
+                raise Http404("Missing tab name after __tabs")
+            tab_name = parts[i + 1]
+            i += 1
+            if not isinstance(current, InstanceView):
+                raise Http404(f"Cannot resolve __tabs on {type(current)}")
+            current.get_tab(tab_name)  # validates tab exists
+            current = _ResolvedTab(current, tab_name)
+        elif part == "__actions":
+            if i + 1 >= len(parts):
+                raise Http404("Missing action name after __actions")
+            action_name = parts[i + 1]
+            i += 1
+            if isinstance(current, type) and issubclass(current, ListViewConfig):
+                action = current.get_action(request or HttpRequest(), action_name)
+                if action is None:
+                    raise Http404(f"Action '{action_name}' not found")
+                current = _ResolvedAction(action, instance=None)
+            elif isinstance(current, InstanceView):
+                action = current.get_action(action_name)
+                if action is None:
+                    raise Http404(f"Action '{action_name}' not found")
+                current = _ResolvedAction(action, instance=current.instance)
+            elif isinstance(current, Panel):
+                action = None
+                for a in current.get_actions(request or HttpRequest(), ""):
+                    if a.action_name == action_name:
+                        action = a
+                        break
+                if action is None:
+                    raise Http404(f"Action '{action_name}' not found on panel")
+                current = _ResolvedAction(action, instance=current.instance)
+            else:
+                raise Http404(f"Cannot resolve __actions on {type(current)}")
+        elif isinstance(current, PanelGetter):
             current = current[part]
         elif isinstance(current, type) and issubclass(current, ListViewConfig):
-            current = current.__class_getitem__(part)
+            current = current.get_instance_view(part)
         else:
             raise Http404(f"Cannot resolve path segment '{part}'")
+        i += 1
 
     return current
 
 
-def interface(request, path_string: str = ""):
+def _handle_action(
+    request: HttpRequest, resolved: _ResolvedAction, base_url: str = ""
+) -> HttpResponse:
+    """Handle a resolved action: check permission, then dispatch."""
+    action = resolved.action
+    instance = resolved.instance
+
+    if not action.has_permission(request, instance):
+        return HttpResponse(status=403)
+
+    if request.method == "POST":
+        return action.handle_submit(request, instance, base_url=base_url)
+    if request.method == "DELETE":
+        return action.handle_submit(request, instance, base_url=base_url)
+
+    # GET: render the action form
+    if hasattr(action, "render"):
+        html = action.render(request, instance, base_url)
+        return HttpResponse(html)
+    return HttpResponse(status=405)
+
+
+def interface(request: HttpRequest, path_string: str = "") -> HttpResponse:
     parts = [p for p in path_string.split("/") if p]
     is_htmx = request.headers.get("HX-Request") == "true"
     base_url = request.path
@@ -1134,19 +1096,61 @@ def interface(request, path_string: str = ""):
         rendered_content = ""
         heading = ""
     else:
-        current = _resolve_path(parts)
+        current = _resolve_path(parts, request=request)
 
-        if isinstance(current, Panel):
+        if isinstance(current, _ResolvedAction):
+            # Strip __actions/{name} from the URL to get the parent base_url
+            action_base_url = base_url
+            if "/__actions/" in action_base_url:
+                action_base_url = action_base_url[
+                    : action_base_url.index("/__actions/")
+                ]
+            return _handle_action(request, current, base_url=action_base_url)
+
+        if isinstance(current, _ResolvedTab):
+            iv = current.instance_view
+            tab_name = current.tab_name
+            if is_htmx:
+                # HTMX lazy-load: return just the tab's panels as a fragment
+                html = iv.render_tab(
+                    request, tab_name, base_url.rsplit("/__tabs/", 1)[0]
+                )
+                return HttpResponse(html)
+            # Non-HTMX: render full page with the tab active
+            instance_base_url = base_url.rsplit("/__tabs/", 1)[0]
+            rendered_content = iv.render(
+                request, base_url=instance_base_url, active_tab=tab_name
+            )
+            # Fall through to full page rendering below
+
+        elif isinstance(current, Panel):
             return HttpResponse(current.render(request, base_url=base_url))
 
-        if isinstance(current, InstanceView) or (
-            isinstance(current, type) and issubclass(current, ListViewConfig)
-        ):
+        elif isinstance(current, InstanceView):
             rendered_content = current.render(request, base_url=base_url)
+        elif isinstance(current, type) and issubclass(current, ListViewConfig):
+            # Render list view with actions
+            list_actions = [
+                action
+                for action in current.get_actions(request)
+                if action.has_permission(request)
+            ]
+            actions_html = ""
+            if list_actions:
+                rendered_actions = [
+                    action.render(request, None, base_url) for action in list_actions
+                ]
+                actions_html = render_to_string(
+                    "panel_framework/partials/instance_actions.html",
+                    {"actions": rendered_actions},
+                    request=request,
+                )
+            table_html = current.render(request, base_url=base_url)
+            rendered_content = actions_html + table_html
         else:
             raise Http404("Unexpected path resolution")
 
-        if is_htmx:
+        if is_htmx and not isinstance(current, _ResolvedTab):
             return HttpResponse(rendered_content)
 
         heading = current.menu_label if hasattr(current, "menu_label") else ""

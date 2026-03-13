@@ -219,4 +219,19 @@
     .chip-xs {
         @apply text-xs px-2 py-0.5
     }
+
+    /* HTMX request state utilities for loading indicators */
+    .htmx-request .htmx-hide-on-request {
+        display: none;
+    }
+
+    .htmx-show-on-request {
+        display: none;
+    }
+
+    .htmx-request .htmx-show-on-request {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
 }

@@ -1,0 +1,28 @@
+<c-modal title="Confirm Deletion">
+    <c-slot name="trigger">
+        <c-button variant="danger">Delete</c-button>
+    </c-slot>
+
+    <p>Are you sure you want to delete <strong>{{ instance }}</strong>?</p>
+
+    {% if cascade_summary %}
+        <div class="mt-4 bg-danger/10 border border-danger/20 rounded-md p-3">
+            <p class="text-sm font-semibold text-danger-bold mb-2">This will also delete:</p>
+            <ul class="list-disc list-inside text-sm">
+                {% for item in cascade_summary %}
+                    <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <c-slot name="footer">
+        <c-button variant="outline" @click="close">Cancel</c-button>
+        <form hx-delete="{{ delete_url }}"
+              hx-disabled-elt="find button[type='submit']">
+            <c-button type="submit" variant="danger" loading="true" loading_text="Deleting...">
+                Delete
+            </c-button>
+        </form>
+    </c-slot>
+</c-modal>
