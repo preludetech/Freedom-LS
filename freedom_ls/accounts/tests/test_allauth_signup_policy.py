@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from django.contrib.sites.models import Site
@@ -5,7 +7,7 @@ from django.test import RequestFactory, override_settings
 
 from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 from freedom_ls.accounts.models import SiteSignupPolicy
-from freedom_ls.site_aware_models.models import _thread_locals
+from freedom_ls.site_aware_models.models import _CACHED_SITE_ATTR
 
 
 @pytest.mark.django_db
@@ -55,17 +57,10 @@ def test_is_open_for_signup_respects_force_site_name(settings):
     settings.ALLOW_SIGN_UPS = True  # global default allows signups
 
     request = RequestFactory().get("/")  # domain = testserver
-    _thread_locals.request = request
 
-    try:
-        with override_settings(FORCE_SITE_NAME="ForcedSite"):
-            if hasattr(request, "_cached_site"):
-                delattr(request, "_cached_site")
-            result = AccountAdapter().is_open_for_signup(request)
+    with override_settings(FORCE_SITE_NAME="ForcedSite"):
+        if hasattr(request, _CACHED_SITE_ATTR):
+            delattr(request, _CACHED_SITE_ATTR)
+        result = AccountAdapter().is_open_for_signup(request)
 
-        assert (
-            result is False
-        )  # Should use ForcedSite's policy (disallow), not DomainSite
-    finally:
-        if hasattr(_thread_locals, "request"):
-            delattr(_thread_locals, "request")
+    assert result is False  # Should use ForcedSite's policy (disallow), not DomainSite

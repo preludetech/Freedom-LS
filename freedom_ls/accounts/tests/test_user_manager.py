@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.test import RequestFactory, override_settings
 
-from freedom_ls.site_aware_models.models import _thread_locals
+from freedom_ls.site_aware_models.models import _CACHED_SITE_ATTR, _thread_locals
 
 User = get_user_model()
 
@@ -32,8 +32,8 @@ def test_user_manager_respects_force_site_name() -> None:
     try:
         with override_settings(FORCE_SITE_NAME="ForcedSite"):
             # Clear any cached site on the request
-            if hasattr(request, "_cached_site"):
-                delattr(request, "_cached_site")
+            if hasattr(request, _CACHED_SITE_ATTR):
+                delattr(request, _CACHED_SITE_ATTR)
             users = list(User.objects.all())
 
         assert len(users) == 1
