@@ -1,8 +1,12 @@
-"""Tests for AccountAdapter.send_notification_mail."""
+"""Tests for AccountAdapter."""
 
 from unittest.mock import patch
 
 import pytest
+from allauth.core.context import _request_var
+
+from django.core import mail
+from django.test import RequestFactory
 
 from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 from freedom_ls.accounts.factories import UserFactory
@@ -40,3 +44,42 @@ def test_send_notification_mail_creates_context_if_none(
     call_args = mock_super.call_args
     passed_context = call_args[0][2]
     assert passed_context["user"] is user
+
+
+@pytest.mark.django_db
+def test_send_mail_does_not_corrupt_long_urls(mock_site_context: object) -> None:
+    """Long URLs in emails must not be broken by quoted-printable line wrapping."""
+    user = UserFactory()
+    adapter = AccountAdapter()
+
+    long_url = "http://testsite/account/password/reset/key/" + "a" * 80 + "/"
+    context = {"password_reset_url": long_url, "user": user}
+
+    request = RequestFactory().get("/")
+    token = _request_var.set(request)
+    try:
+        adapter.send_mail("account/email/password_reset_key", user.email, context)
+    finally:
+        _request_var.reset(token)
+
+    assert len(mail.outbox) == 1
+    sent = mail.outbox[0]
+
+    # Check the raw MIME-serialized message for quoted-printable soft line breaks.
+    # Quoted-printable encoding wraps lines >76 chars with "=\r\n" (or "=\n"),
+    # which corrupts URLs when email clients reassemble the message.
+    mime_msg = sent.message()
+    for part in mime_msg.walk():
+        content_type = part.get_content_type()
+        if content_type not in ("text/plain", "text/html"):
+            continue
+        raw_payload = part.get_payload()
+        assert "=\n" not in raw_payload, (
+            f"{content_type} has quoted-printable line wrapping"
+        )
+        assert "=\r\n" not in raw_payload, (
+            f"{content_type} has quoted-printable line wrapping"
+        )
+        assert long_url in raw_payload, f"Long URL is broken in {content_type}"
+        cte = part["Content-Transfer-Encoding"]
+        assert cte == "8bit", f"{content_type} uses {cte}, expected 8bit"
