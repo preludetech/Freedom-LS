@@ -8,6 +8,15 @@ It is designed to be installed into other Django projects. FLS will work out of 
 
 Python 3.13+, Django 6.x, PostgreSQL 17, HTMX 2.x, TailwindCSS
 
+## Committing to Git
+
+If you need to commit to Git, use uv:
+
+```
+uv run git commit ...
+```
+This is because we are using pre-commit hooks
+
 ## IMPORTANT: Use skills whenever possible!
 
 Whenever you are asked to do anything, check what skills are available. Rely on skills and documentation rather than pre-training.
