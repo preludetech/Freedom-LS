@@ -2,7 +2,8 @@ from allauth.account.adapter import DefaultAccountAdapter
 
 from django.conf import settings
 from django.contrib.sites.models import Site
-from django.contrib.sites.shortcuts import get_current_site
+
+from freedom_ls.site_aware_models.models import get_cached_site
 
 from .models import SiteSignupPolicy, User
 
@@ -30,7 +31,7 @@ class AccountAdapter(DefaultAccountAdapter):
         if request is None:
             return default_allow
 
-        current_site = get_current_site(request)
+        current_site = get_cached_site(request)
         if not isinstance(current_site, Site):
             return default_allow
 

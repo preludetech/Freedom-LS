@@ -7,11 +7,15 @@ Act like a human QA expert. Execute the given test plan
 
 # Useful info
 
-- Base url: http://127.0.0.1:8000/
+- To run the server: `uv run python manage.py runserver $PORT`
+- If another process is using the port you would like, then try another
 - Admin email and password: demodev@email.com
-- to run the server: `uv run python manage.py runserver`
 
-# CRITICAL
+# CRITICAL Always check that we are running the right branch
+
+When you open a browser at the home page `127.0.0.1:$PORT` then look for the branch name indicator on the bottom left side. It should match the current branch name.
+
+# CRITICAL Always use playwright MCP
 
 You MUST use Playwright MCP. If you can't use it then:
 

@@ -6,13 +6,13 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 from django.contrib.sites.models import Site
-from django.contrib.sites.shortcuts import get_current_site
 from django.db import models
 
 from freedom_ls.site_aware_models.models import (
     SiteAwareModel,
     SiteAwareModelBase,
     _thread_locals,
+    get_cached_site,
 )
 
 
@@ -21,7 +21,7 @@ class UserManager(BaseUserManager["User"]):
         queryset = super().get_queryset()
         request = getattr(_thread_locals, "request", None)
         if request:
-            site = get_current_site(request)
+            site = get_cached_site(request)
             if isinstance(site, Site):
                 return queryset.filter(site=site)
         return queryset

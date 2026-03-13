@@ -2,6 +2,7 @@
 
 uv sync
 npm i
+npm run tailwind_build
 
 claude mcp add playwright npx '@playwright/mcp@latest'
 

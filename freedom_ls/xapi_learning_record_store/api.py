@@ -4,7 +4,8 @@ from ninja import Router, Schema
 from pydantic import ConfigDict
 
 from django.contrib.sites.models import Site
-from django.contrib.sites.shortcuts import get_current_site
+
+from freedom_ls.site_aware_models.models import get_cached_site
 
 # router = Router(tags=["xapi"]) # TODO, what are tags for?
 router = Router()
@@ -27,7 +28,7 @@ class TODOSchema(Schema):
 @router.get("/hello")
 def hello(request):
     """Check if the service is working and all is well"""
-    site = get_current_site(request)
+    site = get_cached_site(request)
     if not isinstance(site, Site):
         return {"status": "ERROR", "message": "Could not determine site"}
     return {
