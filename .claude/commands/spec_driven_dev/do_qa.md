@@ -9,6 +9,7 @@ Act like a human QA expert. Execute the given test plan
 
 - To run the server: `uv run python manage.py runserver $PORT`
 - If another process is using the port you would like, then try another
+- Base url: http://127.0.0.1:$PORT/
 - Admin email and password: demodev@email.com
 
 # CRITICAL Always check that we are running the right branch
@@ -27,46 +28,71 @@ Before doing anything else, use playwright to open the base url and make sure it
 
 # Instructions
 
+
 ## Step 1
-
-Make sure the playwright MCP is available. If it is not available then say:
-"Please install the playwright mcp server, then try again"
-
-## Step 2
 
 Clean up last QA run
 - if there is a qa_report in the current directory, delete it
 - if there is a screenshots directory in the current directory, delete it
 
-## Step 3: Login
+
+
+## Step 2
+
+Find an unused PORT that we can use for running the development server.
+
+`PORT=$(./find_available_port.sh)`
+
+Then run the development server:
+
+`uv run python manage.py runserver $PORT`
+
+**CRITICAL** There might be other servers running, and those might be associated with different branches or applications. It is CRITICAL that you do not use existing processes. Launch your own `runserver` at your own port!
+
+Proceed to step 3.
+
+## Step 3: Check that the runserver is pointing at the right branch
+
+Go to the base url at http://127.0.0.1:$PORT/ using the playwright MCP
+
+**IMPORTANT** if the playwright MCP is not available, STOP IMMEDIATELY and tell the user. DO NOT PROCEED!
+
+Look for the debug-branch-badge on the bottom left of the page. It has the id `debug-branch-badge`. It should name the current branch.
+
+If the debug-branch-badge names a branch other than the one we are on then that means that there is a PORT collision and some other process is using the PORT we chose. If this happens, return to STEP 2.
+
+## Step 4: (Optional) Login
+
+If you don't need to log in, go to Step 5
 
 Navigate to the base url and log in using the admin credentials above. Confirm you are logged in before proceeding with the test plan.
 
-## Step 4: Desktop testing
+## Step 5: Desktop testing
 
-Use the Playwright MCP server tools (browser_navigate, browser_snapshot, browser_click, browser_type, browser_take_screenshot, etc.) to manually walk through the test plan. Do NOT write test scripts — interact with the site directly using the MCP tools, just as a human tester would.
+Use the Playwright MCP server tools (browser_navigate, browser_snapshot, browser_click, browser_type, browser_take_screenshot, etc.) to manually walk through the test plan.
+DO NOT write test scripts — interact with the site directly using the MCP tools, just as a human tester would.
 
 Set the browser to a desktop resolution of 1920x1080.
 
-Take screenshots of relevant functionality and put them in a "screenshots" directory in this current directory (alongside the frontend_qa file). Name screenshots with this pattern: `desktop_<test-id>_<short-description>.png` (e.g. `desktop_1.1_cohort_list.png`).
+Take screenshots of relevant functionality and put them in a "screenshots" directory in this current directory (alongside the test plan file). Name screenshots with this pattern: `desktop_<test-id>_<short-description>.png` (e.g. `desktop_1.1_cohort_list.png`).
 
-If anything unrelated to the current feature under test seems out of place or broken then use a sub agent to explore it.
+If anything unrelated to the current feature under test seems out of place or broken then use a subagent to explore it.
 
 **IMPORTANT** If you are unable to run a test due to missing or incorrect data then make use of the qa-data-helper agent. Tell the agent what data you need and what changes you need made.
 
-## Step 5: Mobile testing
+## Step 6: Mobile testing
 
 Resize the browser to 375x812 (iPhone-sized viewport).
 
-You do NOT need to re-run every test from Step 4. Focus on:
+You do NOT need to re-run every test from Step 5. Focus on:
 - Navigation and menu behaviour (hamburger menus, drawers, etc.)
 - Layout and readability — do elements overflow, overlap, or become unusable?
 - Touch-target sizing — are buttons and links large enough?
-- Any test from Step 4 that involves tables, forms, or multi-column layouts
+- Any test from Step 5 that involves tables, forms, or multi-column layouts
 
 Name mobile screenshots with the pattern: `mobile_<test-id>_<short-description>.png`.
 
-## Step 6: Tablet testing
+## Step 7: Tablet testing
 
 Resize the browser to 768x1024 (iPad-sized viewport).
 
@@ -78,9 +104,9 @@ As with mobile testing, you do NOT need to re-run every test. Focus on:
 
 Name tablet screenshots with the pattern: `tablet_<test-id>_<short-description>.png`.
 
-## Step 7: Generate a report
+## Step 8: Generate a report
 
-Create a new file called qa_report.md (in the same directory as the frontend_qa file we are working with).
+Create a new file called qa_report.md (in the same directory as the test plan file).
 
 For each error:
 - give it a title
