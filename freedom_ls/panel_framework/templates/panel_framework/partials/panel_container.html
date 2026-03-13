@@ -1,0 +1,19 @@
+<section class="surface">
+    {% if title %}
+        <header class="mb-4">
+            <h2>{{ title }}</h2>
+        </header>
+    {% endif %}
+    <div>
+        {{ content|safe }}
+    </div>
+    {% if actions %}
+        <div class="mt-4 pt-4 border-t border-border">
+            <c-button-group variant="right">
+                {% for action_html in actions %}
+                    {{ action_html|safe }}
+                {% endfor %}
+            </c-button-group>
+        </div>
+    {% endif %}
+</section>
