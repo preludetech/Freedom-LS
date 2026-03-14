@@ -9,6 +9,7 @@
       "Bash(git log*)",
       "Bash(find:*)",
       "Bash(uv run pytest:*)",
+      "Bash(uv run git commit:*)",
       "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_close",
       "mcp__playwright__browser_snapshot",

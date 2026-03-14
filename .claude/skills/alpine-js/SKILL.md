@@ -3,7 +3,7 @@ name: alpine-js
 description: How to use Alpine.js for client-side interactivity. Use when adding interactive behaviour to templates such as toggles, dropdowns, modals, expand/collapse, dismissible elements, or any client-side state.
 ---
 
-# Alpine.js Usage
+# Alpine.js Usage (CSP Build)
 
 ## When to use
 
@@ -14,22 +14,85 @@ Use this skill when:
 
 ## Setup
 
-Alpine.js v3 is loaded globally via CDN in `_base.html` with `defer`:
+This project uses the **CSP-compatible build** of Alpine.js (`@alpinejs/csp`), which does NOT support inline JavaScript expressions in directives. All Alpine components must be registered via `Alpine.data()` in a separate JS file.
+
+Scripts loaded in `_base.html`:
 
 ```html
-<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.x.x/dist/cdn.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.15.8/dist/cdn.min.js"></script>
+<script defer src="{% static 'base/js/alpine-components.js' %}"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.15.8/dist/cdn.min.js"></script>
 ```
+
+**Order matters:** `alpine-components.js` loads BEFORE the Alpine CSP script so that `Alpine.data()` registrations are available when Alpine initialises.
 
 ### Installed plugins
 
 - **Collapse** (`@alpinejs/collapse`) -- smooth height-based expand/collapse transitions via `x-collapse`
-- **Persist** (`@alpinejs/persist`) -- persist state to localStorage via `$persist`
+
+### NOT installed
+
+- **Persist** (`@alpinejs/persist`) is NOT loaded. Use manual `localStorage` for state persistence (see patterns below).
 
 Do not add other plugins without explicit approval.
 
 ## Core Principles
+
+### CSP build: no inline expressions
+
+The `@alpinejs/csp` build forbids inline JavaScript in Alpine directives. This means:
+
+**NOT allowed** (will silently fail):
+```html
+<!-- WRONG: inline expression in x-data -->
+<div x-data="{ open: false }">
+
+<!-- WRONG: inline expression in @click -->
+<button @click="open = !open">
+
+<!-- WRONG: inline ternary in :class -->
+<div :class="open ? 'w-64' : ''">
+```
+
+**Correct approach:** reference a registered component name in `x-data`, and call methods defined in that component:
+```html
+<!-- RIGHT: reference registered component -->
+<div x-data="myComponent">
+    <button x-on:click="toggle">Toggle</button>
+    <div x-bind:class="widthClass">...</div>
+</div>
+```
+
+### All components registered via Alpine.data()
+
+Every Alpine component must be registered in `freedom_ls/base/static/base/js/alpine-components.js` inside the `alpine:init` event listener:
+
+```javascript
+document.addEventListener("alpine:init", () => {
+    Alpine.data("myComponent", () => ({
+        // reactive properties
+        open: false,
+
+        // computed-like methods (called from x-bind:class, x-bind:style, etc.)
+        widthClass() {
+            return this.open ? "w-64" : "";
+        },
+
+        // methods (called from x-on:click, etc.)
+        toggle() {
+            this.open = !this.open;
+        },
+
+        // lifecycle
+        init() {
+            // runs when component initialises
+        },
+        destroy() {
+            // runs when component is removed from DOM
+        },
+    }));
+});
+```
 
 ### Alpine.js is for client-side UI state only
 
@@ -41,53 +104,106 @@ Use Alpine.js for toggling visibility, animations, and local component state. Us
 
 ### Keep state minimal and local
 
-Each `x-data` scope should be self-contained. Avoid sharing state between components. If components need to communicate, prefer HTMX server round-trips or Alpine's `$dispatch` events over global stores.
-
-### No Alpine.js stores or global state
-
-Do not use `Alpine.store()` or `Alpine.data()` for global registration. All state lives in inline `x-data` on the element.
-
-### No separate JS files for Alpine components
-
-All Alpine.js logic is written inline in templates. Do not create `.js` files for Alpine component definitions. This keeps behaviour co-located with markup and avoids a JS build step.
+Each component should be self-contained. Avoid sharing state between components. If components need to communicate, prefer HTMX server round-trips or Alpine's `$dispatch` events.
 
 ## Patterns
 
-### Simple toggle (dropdown, modal, expand/collapse)
+### Registering a new component
+
+1. Add the `Alpine.data()` registration in `freedom_ls/base/static/base/js/alpine-components.js`
+2. Reference it by name in the template's `x-data` attribute
+
+### Passing data from Django templates to Alpine
+
+Use `data-*` attributes on the element with `x-data`, then read them in `init()`:
 
 ```html
-<div x-data="{ open: false }">
-    <button @click="open = !open">Toggle</button>
+<!-- Template -->
+<div x-data="coursePart" data-storage-key="coursePart_{{ course.slug }}_{{ forloop.counter }}">
+```
+
+```javascript
+// alpine-components.js
+Alpine.data("coursePart", () => ({
+    expanded: false,
+    init() {
+        const key = this.$el.dataset.storageKey;
+        if (key) {
+            this.expanded = localStorage.getItem(key) === "true";
+        }
+    },
+}));
+```
+
+### Persisting state with localStorage
+
+Since `$persist` is not available, use manual `localStorage` in `init()` and `$watch`:
+
+```javascript
+Alpine.data("myComponent", () => ({
+    open: false,
+    _storageKey: "my-default-key",
+    init() {
+        // Allow template to override key via data attribute
+        this._storageKey = this.$el.dataset.storageKey || "my-default-key";
+
+        const stored = localStorage.getItem(this._storageKey);
+        if (stored !== null) {
+            this.open = stored === "true";
+        }
+
+        this.$watch("open", (val) => {
+            localStorage.setItem(this._storageKey, val);
+        });
+    },
+}));
+```
+
+### Simple toggle
+
+```javascript
+// alpine-components.js
+Alpine.data("toggle", () => ({
+    open: false,
+    toggle() {
+        this.open = !this.open;
+    },
+    close() {
+        this.open = false;
+    },
+}));
+```
+
+```html
+<!-- template -->
+<div x-data="toggle">
+    <button x-on:click="toggle">Toggle</button>
     <div x-show="open" x-transition>
         Content here
     </div>
 </div>
 ```
 
-### Persisting state with $persist
+### Computed classes via methods
 
-Use `$persist` for user preferences that should survive page reloads (e.g. sidebar open/closed, expanded sections). It wraps a default value and automatically syncs to localStorage:
+Since inline ternaries are not allowed, use methods that return class strings:
 
-```html
-<div x-data="{ expanded: this.$persist(false).as('section_key') }">
-    <button @click="expanded = !expanded">Toggle</button>
-    <div x-show="expanded">...</div>
-</div>
+```javascript
+Alpine.data("sidebar", () => ({
+    sidebarOpen: false,
+    sidebarColClass() {
+        return this.sidebarOpen && !this.isMobile ? "w-64" : "";
+    },
+}));
 ```
 
-The `.as('key')` call sets the localStorage key name. Always use `.as()` to give a descriptive, unique key -- without it Alpine auto-generates a key based on DOM position which breaks if the page structure changes.
-
-For values that need a dynamic key (e.g. per-course, per-user), use Django template variables in the key name:
-
 ```html
-<div x-data="{ expanded: this.$persist(false).as('coursePart_{{ course.slug }}_{{ forloop.counter }}') }">
+<div x-bind:class="sidebarColClass">...</div>
 ```
-
-`$persist` handles serialisation automatically -- booleans, strings, numbers, and JSON-serialisable objects all work.
 
 ### Transitions
 
-Always use `x-transition` directives for showing/hiding elements. Follow these conventions:
+Always use `x-transition` directives for showing/hiding elements. These work the same as standard Alpine since they don't involve JS expressions:
 
 **Simple fade:**
 ```html
@@ -121,7 +237,6 @@ Always use `x-transition` directives for showing/hiding elements. Follow these c
 Use `x-cloak` on elements that should be hidden on initial page load to prevent FOUC:
 
 ```html
-<!-- Hidden by default, shown by Alpine -->
 <div x-cloak x-show="sidebarOpen">...</div>
 ```
 
@@ -132,26 +247,26 @@ The base CSS already includes `[x-cloak] { display: none !important; }`.
 The Collapse plugin provides smooth height-based animations. Prefer `x-collapse` over `x-show` when expanding/collapsing content with variable height:
 
 ```html
-<div x-data="{ expanded: false }">
-    <button @click="expanded = !expanded">Toggle</button>
+<div x-data="coursePart">
+    <button x-on:click="toggleExpanded">Toggle</button>
     <div x-show="expanded" x-collapse>
         Variable-height content that animates smoothly
     </div>
 </div>
 ```
 
-`x-collapse` automatically animates the element's height from 0 to its natural height. It pairs with `x-show` -- Alpine handles the visibility, Collapse handles the height animation.
-
 Use `x-collapse.duration.300ms` to customise animation speed if needed.
 
 ### Closing on outside click and escape
 
+Use Alpine's built-in modifiers (these don't require inline expressions):
+
 ```html
-<div x-data="{ open: false }">
-    <button @click="open = !open">Menu</button>
+<div x-data="dropdownMenu">
+    <button x-on:click="toggle">Menu</button>
     <div x-show="open"
-         @click.away="open = false"
-         @keydown.escape.window="open = false">
+         x-on:click.away="close"
+         x-on:keydown.escape.window="close">
         Dropdown content
     </div>
 </div>
@@ -159,98 +274,103 @@ Use `x-collapse.duration.300ms` to customise animation speed if needed.
 
 ### Auto-dismiss (toast messages)
 
-```html
-<div x-data="{ show: true }"
-     x-show="show"
-     x-init="setTimeout(() => show = false, 8000)">
-    Message content
-    <button @click="show = false">Dismiss</button>
-</div>
-```
+Handle timing in `init()`:
 
-### init() and destroy() lifecycle
-
-Use `init()` for setup logic (event listeners, observers). Use `destroy()` for cleanup:
-
-```html
-<div x-data="{
-        _handler: null,
-        init() {
-            this._handler = () => { /* ... */ };
-            this.$refs.container.addEventListener('scroll', this._handler);
-        },
-        destroy() {
-            this.$refs.container.removeEventListener('scroll', this._handler);
-        }
-     }">
-    <div x-ref="container">...</div>
-</div>
-```
-
-### Using $refs for DOM access
-
-Use `x-ref` and `$this.refs` when Alpine needs to measure or manipulate specific DOM elements:
-
-```html
-<div x-data="{ ... }" x-ref="menuButton">
-    <div x-init="$watch('open', value => {
-           if (!value) return;
-           $nextTick(() => {
-             const rect = $refs.menuButton.getBoundingClientRect();
-             // position logic
-           });
-         })">
-    </div>
-</div>
+```javascript
+Alpine.data("message", () => ({
+    show: true,
+    init() {
+        setTimeout(() => {
+            this.show = false;
+        }, 8000);
+    },
+    dismiss() {
+        this.show = false;
+    },
+}));
 ```
 
 ### Responsive behaviour with matchMedia
 
-```html
-<div x-data="{
-        isMobile: !window.matchMedia('(min-width: 1024px)').matches,
-        init() {
-            const mq = window.matchMedia('(min-width: 1024px)');
-            mq.addEventListener('change', (e) => {
-                this.isMobile = !e.matches;
-            });
+Handle in `init()` with proper cleanup in `destroy()`:
+
+```javascript
+Alpine.data("responsiveComponent", () => ({
+    isMobile: false,
+    _mq: null,
+    _mqHandler: null,
+    init() {
+        this._mq = window.matchMedia("(min-width: 1024px)");
+        this.isMobile = !this._mq.matches;
+        this._mqHandler = (e) => {
+            this.isMobile = !e.matches;
+        };
+        this._mq.addEventListener("change", this._mqHandler);
+    },
+    destroy() {
+        if (this._mq && this._mqHandler) {
+            this._mq.removeEventListener("change", this._mqHandler);
         }
-     }">
-    <div :class="isMobile ? 'fixed ...' : 'relative ...'">
+    },
+}));
 ```
 
-### Dynamic classes with :class
+### Icons with Alpine
+
+Since `<c-icon>` is server-rendered, toggle icons with `x-show` on wrapper `<span>` elements:
 
 ```html
-<div :class="expanded ? 'rotate-180' : ''">...</div>
-<div :class="isMobile ? 'fixed inset-y-0 left-0 z-40' : 'relative w-64'">...</div>
+<span x-show="sidebarOpen" x-cloak><c-icon name="menu_close" class="size-5" /></span>
+<span x-show="!sidebarOpen"><c-icon name="menu_open" class="size-5" /></span>
 ```
+
+**Important:** `x-show` with a simple property reference (no expression) works in the CSP build. The CSP restriction applies to expressions like ternaries, assignments, and function calls in directive values — simple property references and method names are allowed.
+
+## What works in CSP build directives
+
+| Directive | Allowed value | Example |
+|-----------|--------------|---------|
+| `x-data` | Registered component name (string) | `x-data="sidebarComponent"` |
+| `x-show` | Property name | `x-show="open"` |
+| `x-show` | Negated property | `x-show="!open"` |
+| `x-on:click` | Method name | `x-on:click="toggle"` |
+| `x-bind:class` | Method name (returns string) | `x-bind:class="widthClass"` |
+| `x-bind:style` | Method name (returns object) | `x-bind:style="badgeStyle"` |
+| `x-bind:aria-expanded` | Property name | `x-bind:aria-expanded="open"` |
+| `x-model` | Property name | `x-model="searchQuery"` |
+| `x-transition` | CSS classes (not JS) | `x-transition:enter="ease-out duration-300"` |
+
+| Directive | NOT allowed | Why |
+|-----------|------------|-----|
+| `x-data` | `x-data="{ open: false }"` | Inline object expression |
+| `x-on:click` | `@click="open = !open"` | Inline assignment |
+| `x-bind:class` | `:class="open ? 'w-64' : ''"` | Inline ternary |
+| `x-init` | `x-init="setTimeout(..."` | Inline function call |
 
 ## Rules
 
-1. **Inline only** -- all Alpine logic goes in `x-data` attributes on HTML elements, never in separate JS files
-2. **Limited plugins** -- only Collapse and Persist are installed; do not add other plugins without approval
-3. **No Alpine.store()** -- no global stores, all state is component-local
-4. **No Alpine.data()** -- no globally registered components
-5. **Always add transitions** -- use `x-transition` when showing/hiding elements
-6. **Use x-cloak** -- on any element hidden by default to prevent FOUC
-7. **Clean up listeners** -- if `init()` adds event listeners or observers, add a `destroy()` to remove them
-8. **Prefer @click.away** -- for closing dropdowns/menus on outside click
-9. **Prefer @keydown.escape.window** -- for closing overlays on Escape key
-10. **Use style="display: none"** -- on dropdown/popover panels that use fixed positioning with `x-show`, as a fallback for the brief moment before Alpine initialises
-11. **Django template values in Alpine** -- use `{{ variable }}` inside `x-data` to pass server values to Alpine state. Use `'{{ string_var }}'` with quotes for strings.
+1. **No inline expressions** -- all logic goes in `Alpine.data()` registrations in `alpine-components.js`, never inline in templates
+2. **Register all components** -- every `x-data` value must correspond to an `Alpine.data()` registration
+3. **One JS file** -- all registrations go in `freedom_ls/base/static/base/js/alpine-components.js`
+4. **No $persist** -- use manual `localStorage` in `init()` + `$watch()` instead
+5. **Pass data via data attributes** -- use `data-*` attributes + `this.$el.dataset` in `init()` to pass Django template values to Alpine
+6. **Limited plugins** -- only Collapse is installed; do not add other plugins without approval
+7. **Always add transitions** -- use `x-transition` when showing/hiding elements
+8. **Use x-cloak** -- on any element hidden by default to prevent FOUC
+9. **Clean up listeners** -- if `init()` adds event listeners or observers, add a `destroy()` to remove them
+10. **Prefer x-on:click.away** -- for closing dropdowns/menus on outside click
+11. **Prefer x-on:keydown.escape.window** -- for closing overlays on Escape key
 12. **Icons with Alpine** -- since `<c-icon>` is server-rendered, toggle icons with `x-show` on wrapper `<span>` elements (see icon-usage skill)
-13. **$persist needs .as()** -- always call `.as('descriptive_key')` when using `$persist` to set an explicit localStorage key; never rely on the auto-generated positional key
 
-## Existing Components Using Alpine
+## Existing Components
 
-These cotton components already use Alpine.js -- reuse them rather than reimplementing:
+These are already registered in `alpine-components.js`:
 
-| Component | File | Alpine behaviour |
-|-----------|------|-----------------|
-| `<c-sidebar>` | `cotton/sidebar.html` | Toggle open/close, localStorage persistence, responsive mobile/desktop |
-| `<c-dropdown-menu>` | `cotton/dropdown-menu.html` | Toggle open/close, click-away, smart positioning |
-| `<c-modal>` | `cotton/modal.html` | Toggle open/close, escape key, backdrop click |
-| `<c-picture>` | `cotton/picture.html` | Lightbox open/close |
-| Messages partial | `partials/messages.html` | Auto-dismiss toasts |
-| `<c-scroll-table-labels>` | `cotton/scroll-table-labels.html` | Scroll tracking, resize observer, label overlay |
+| Component name | Used in | Behaviour |
+|---------------|---------|-----------|
+| `sidebarComponent` | `_base_interface.html` | Toggle open/close, localStorage persistence, responsive mobile/desktop |
+| `dropdownMenu` | `cotton/dropdown-menu.html` | Toggle open/close, click-away, smart positioning |
+| `modal` | `cotton/modal.html` | Toggle open/close, escape key, backdrop click |
+| `message` | `partials/messages.html` | Auto-dismiss toasts |
+| `coursePart` | `student_interface/partials/course_minimal_toc.html` | Expand/collapse with localStorage |
+| `debugBadge` | `_base.html` | Collapsible debug branch badge |
