@@ -1,38 +1,15 @@
-<div x-data="{
-        activeTab: '{{ active_tab }}',
-        loadedTabs: { '{{ active_tab }}': true },
-        baseUrl: '{{ base_url }}',
-        defaultTab: '{{ tabs.0.name }}',
-        switchTab(name) {
-            this.activeTab = name;
-            if (!this.loadedTabs[name]) {
-                this.loadedTabs[name] = true;
-                this.$nextTick(() => htmx.trigger(
-                    document.getElementById('tab-content-' + name),
-                    'load-tab'
-                ));
-            }
-        }
-     }"
-     @popstate.window="
-        const match = window.location.pathname.match(/__tabs\/([^/]+)/);
-        switchTab(match ? match[1] : defaultTab);
-     ">
+<div x-data="tabContainer"
+     data-active-tab="{{ active_tab }}"
+     data-base-url="{{ base_url }}"
+     data-default-tab="{{ tabs.0.name }}">
     {# Tab bar #}
     <div role="tablist" class="flex border-b border-border mb-6">
         {% for tab in tabs %}
-            <button @click="switchTab('{{ tab.name }}');
-                           history.pushState({}, '',
-                               '{{ tab.name }}' === defaultTab
-                                   ? baseUrl
-                                   : baseUrl + '/__tabs/{{ tab.name }}'
-                           );"
-                    :class="activeTab === '{{ tab.name }}'
-                        ? 'border-b-2 border-primary text-primary font-semibold'
-                        : 'text-muted hover:text-foreground'"
+            <button x-on:click="handleTabClick"
+                    data-tab-name="{{ tab.name }}"
                     class="px-4 py-2 -mb-px transition-colors"
                     role="tab"
-                    :aria-selected="activeTab === '{{ tab.name }}'">
+                    aria-selected="{% if tab.name == active_tab %}true{% else %}false{% endif %}">
                 {{ tab.label }}
             </button>
         {% endfor %}
@@ -40,11 +17,10 @@
 
     {# Tab panels #}
     {% for tab in tabs %}
-        <div x-show="activeTab === '{{ tab.name }}'"
-             x-transition
-             x-cloak
+        <div data-tab-panel="{{ tab.name }}"
              id="tab-content-{{ tab.name }}"
-             role="tabpanel">
+             role="tabpanel"
+             {% if tab.name != active_tab %}hidden{% endif %}>
             {% if tab.name == active_tab %}
                 {{ tab.rendered_panels|safe }}
             {% else %}

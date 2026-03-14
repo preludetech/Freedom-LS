@@ -78,6 +78,7 @@ class FormPanelAction(PanelAction):
                 "variant": self.variant,
                 "label": self.label,
                 "submit_buttons": self.submit_buttons,
+                "modal_open": "True",
             },
             request=request,
         )
@@ -140,6 +141,7 @@ class CreateInstanceAction(FormPanelAction):
                 "variant": self.variant,
                 "label": self.label,
                 "submit_buttons": self.submit_buttons,
+                "modal_open": "True",
             },
             request=request,
         )

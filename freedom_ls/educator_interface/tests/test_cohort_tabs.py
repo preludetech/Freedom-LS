@@ -56,11 +56,8 @@ def test_first_tab_content_rendered_inline(client, mock_site_context):
     content = response.content.decode()
     # The course progress panel should be rendered inline
     assert "tab-content-course_progress" in content
-    # The active tab should be course_progress
-    assert (
-        "activeTab: &#x27;course_progress&#x27;" in content
-        or "activeTab: 'course_progress'" in content
-    )
+    # The active tab should be course_progress (set via data attribute for CSP-compatible Alpine)
+    assert 'data-active-tab="course_progress"' in content
 
 
 @pytest.mark.django_db
@@ -121,10 +118,8 @@ def test_direct_url_access_renders_full_page_with_tab_active(client, mock_site_c
     content = response.content.decode()
     # Should be a full page with navigation
     assert "<nav" in content
-    # Active tab should be 'details'
-    assert (
-        "activeTab: &#x27;details&#x27;" in content or "activeTab: 'details'" in content
-    )
+    # Active tab should be 'details' (set via data attribute for CSP-compatible Alpine)
+    assert 'data-active-tab="details"' in content
 
 
 @pytest.mark.django_db
@@ -136,5 +131,5 @@ def test_tab_buttons_include_history_push_state(client, mock_site_context):
     client.force_login(user)
     response = client.get(_cohort_url(cohort.pk))
     content = response.content.decode()
-    assert "history.pushState" in content
-    assert "__tabs/details" in content
+    # Tab buttons have data-tab-name attributes; Alpine component handles pushState
+    assert 'data-tab-name="details"' in content

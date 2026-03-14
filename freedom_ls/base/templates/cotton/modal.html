@@ -1,4 +1,7 @@
+{% load base_tags %}
 <c-vars title footer class="" id="" open="false" />
+
+{% unique_id "modal-title" as modal_title_id %}
 
 <!-- Modal backdrop and container -->
 <div x-data="modal"
@@ -20,7 +23,7 @@
     <div x-show="open"
          x-cloak
          class="fixed inset-0 z-50 overflow-y-auto"
-         aria-labelledby="modal-title"
+         aria-labelledby="{{ modal_title_id }}"
          role="dialog"
          aria-modal="true">
 
@@ -51,7 +54,7 @@
                 <!-- Header -->
                 <div class="bg-surface px-6 py-4 border-b border-border border">
                     <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold" id="modal-title">
+                        <h3 class="text-lg font-semibold" id="{{ modal_title_id }}">
                             {{ title }}
                         </h3>
                         <button x-on:click="close"

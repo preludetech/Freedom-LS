@@ -1,7 +1,7 @@
 {# Renders a modal containing a form, with a trigger button #}
 {# Context: form, form_title, form_url, variant, label, submit_buttons #}
 
-<c-modal title="{{ form_title }}">
+<c-modal title="{{ form_title }}" open="{{ modal_open|default:'false' }}">
     <c-slot name="trigger">
         <c-button variant="{{ variant }}">{{ label }}</c-button>
     </c-slot>

@@ -6,6 +6,14 @@
  * Load this script BEFORE the Alpine CSP script.
  */
 
+// Allow HTMX to swap content on 422 responses (validation errors)
+document.addEventListener("htmx:beforeSwap", (event) => {
+    if (event.detail.xhr.status === 422) {
+        event.detail.shouldSwap = true;
+        event.detail.isError = false;
+    }
+});
+
 document.addEventListener("alpine:init", () => {
     // Dropdown menu component (cotton/dropdown-menu.html)
     Alpine.data("dropdownMenu", () => ({
@@ -49,8 +57,17 @@ document.addEventListener("alpine:init", () => {
             if (initial === "True" || initial === "true") {
                 this.open = true;
             }
+            // Close modal when a form inside receives a 204 response (successful save)
+            this.$el.addEventListener("htmx:afterRequest", (event) => {
+                if (event.detail.xhr && event.detail.xhr.status === 204) {
+                    this.open = false;
+                }
+            });
         },
         show() {
+            // Reset any form inside the modal when opening
+            const form = this.$el.querySelector("form");
+            if (form) form.reset();
             this.open = true;
         },
         close() {
@@ -101,12 +118,9 @@ document.addEventListener("alpine:init", () => {
             };
             this._mq.addEventListener("change", this._mqHandler);
 
-            this.$watch("sidebarOpen", (val) => {
-                localStorage.setItem(this._storageKey, val);
-            });
-
-            const top = this.$el.getBoundingClientRect().top;
-            this.$el.style.setProperty("--sidebar-top", top + "px");
+            this.$watch("sidebarOpen", () => this._updateSidebarUI());
+            this.$watch("isMobile", () => this._updateSidebarUI());
+            this.$nextTick(() => this._updateSidebarUI());
         },
         destroy() {
             if (this._mq && this._mqHandler) {
@@ -115,9 +129,31 @@ document.addEventListener("alpine:init", () => {
         },
         toggle() {
             this.sidebarOpen = !this.sidebarOpen;
+            localStorage.setItem(this._storageKey, this.sidebarOpen);
         },
         closeSidebar() {
             this.sidebarOpen = false;
+            localStorage.setItem(this._storageKey, false);
+        },
+        _updateSidebarUI() {
+            // Update toggle button visibility
+            const toggleBtn = this.$el.querySelector("[data-sidebar-toggle]");
+            if (toggleBtn) toggleBtn.hidden = this.sidebarOpen;
+
+            // Update backdrop visibility
+            const backdrop = this.$el.querySelector("[data-sidebar-backdrop]");
+            if (backdrop) backdrop.hidden = !(this.sidebarOpen && this.isMobile);
+
+            // Update sidebar panel classes
+            const panel = this.$el.querySelector("[data-sidebar-panel]");
+            if (panel) {
+                panel.hidden = !this.sidebarOpen;
+                if (this.isMobile) {
+                    panel.className = "fixed inset-y-0 left-0 z-40 w-64 bg-surface shadow-lg overflow-y-auto p-4";
+                } else {
+                    panel.className = "relative w-64 shrink-0";
+                }
+            }
         },
         handleSidebarClick(event) {
             if (this.isMobile && event.target.closest("a")) {
@@ -161,6 +197,75 @@ document.addEventListener("alpine:init", () => {
             if (key) {
                 localStorage.setItem(key, this.expanded);
             }
+        },
+    }));
+
+    // Tab container component (panel_framework/partials/tab_container.html)
+    Alpine.data("tabContainer", () => ({
+        activeTab: "",
+        loadedTabs: {},
+        baseUrl: "",
+        defaultTab: "",
+        _popstateHandler: null,
+        init() {
+            this.activeTab = this.$el.dataset.activeTab || "";
+            this.baseUrl = this.$el.dataset.baseUrl || "";
+            this.defaultTab = this.$el.dataset.defaultTab || "";
+            this.loadedTabs = { [this.activeTab]: true };
+
+            this._popstateHandler = () => {
+                const match = window.location.pathname.match(/__tabs\/([^/]+)/);
+                this.switchTab(match ? match[1] : this.defaultTab);
+            };
+            window.addEventListener("popstate", this._popstateHandler);
+
+            this.$watch("activeTab", () => this._updateTabUI());
+            this.$nextTick(() => this._updateTabUI());
+        },
+        destroy() {
+            if (this._popstateHandler) {
+                window.removeEventListener("popstate", this._popstateHandler);
+            }
+        },
+        handleTabClick(event) {
+            const button = event.currentTarget;
+            const name = button.dataset.tabName;
+            if (name) {
+                this.switchTab(name);
+                const url =
+                    name === this.defaultTab
+                        ? this.baseUrl
+                        : this.baseUrl + "/__tabs/" + name;
+                history.pushState({}, "", url);
+            }
+        },
+        switchTab(name) {
+            this.activeTab = name;
+            if (!this.loadedTabs[name]) {
+                this.loadedTabs[name] = true;
+                this.$nextTick(() => {
+                    const el = document.getElementById("tab-content-" + name);
+                    if (el) htmx.trigger(el, "load-tab");
+                });
+            }
+        },
+        _updateTabUI() {
+            const name = this.activeTab;
+            // Show/hide tab panels
+            this.$el.querySelectorAll("[data-tab-panel]").forEach((panel) => {
+                panel.hidden = panel.dataset.tabPanel !== name;
+            });
+            // Update tab button styles
+            this.$el.querySelectorAll("[data-tab-name]").forEach((btn) => {
+                const isActive = btn.dataset.tabName === name;
+                btn.classList.toggle("border-b-2", isActive);
+                btn.classList.toggle("border-primary", isActive);
+                btn.classList.toggle("text-primary", isActive);
+                btn.classList.toggle("font-semibold", isActive);
+                btn.classList.toggle("text-muted", !isActive);
+                btn.classList.toggle("hover:text-foreground", !isActive);
+                btn.setAttribute("aria-selected", isActive.toString());
+            });
         },
     }));
 
