@@ -6,17 +6,6 @@
          data-storage-key="{% block sidebar_storage_key %}sidebar{% endblock sidebar_storage_key %}"
          class="flex relative {% block sidebar_class %}{% endblock sidebar_class %}">
 
-        <!-- Toggle button: visible when sidebar is collapsed -->
-        <button x-cloak
-                x-show="!sidebarOpen"
-                x-transition
-                x-on:click="toggle"
-                class="absolute left-0 top-0 z-10 mt-1 flex items-center gap-1.5 shrink-0 px-1 sm:px-2 py-1.5 rounded-md text-sm font-medium text-muted bg-surface-2 hover:bg-surface-2 hover:text-foreground transition-colors cursor-pointer"
-                aria-label="Open sidebar"
-                x-bind:aria-expanded="sidebarOpen">
-            <c-icon name="menu_open" class="size-4" />
-        </button>
-
         <!-- Mobile backdrop -->
         <div x-cloak
              x-show="sidebarOpen && isMobile"
@@ -31,30 +20,35 @@
              aria-hidden="true">
         </div>
 
-        <!-- Sidebar panel -->
-        <div x-cloak
-             x-show="sidebarOpen"
-             x-transition:enter="transition-all duration-300 ease-out"
-             x-transition:enter-start="opacity-0 -translate-x-2"
-             x-transition:enter-end="opacity-100 translate-x-0"
-             x-transition:leave="transition-all duration-200 ease-in"
-             x-transition:leave-start="opacity-100 translate-x-0"
-             x-transition:leave-end="opacity-0 -translate-x-2"
-             x-bind:class="isMobile ? 'fixed inset-y-0 left-0 z-40 w-64 bg-surface shadow-lg overflow-y-auto p-4' : 'relative w-64 shrink-0'">
+        <!-- Sidebar column: always rendered -->
+        <div class="shrink-0"
+             x-bind:class="sidebarOpen && !isMobile ? 'w-64' : ''">
 
-            <!-- Close button inside sidebar -->
-            <div class="flex justify-end mb-2">
+            <!-- Single toggle button: always visible, same position -->
+            <div class="flex" x-bind:class="sidebarOpen ? 'justify-end' : 'justify-start'">
                 <button x-on:click="toggle"
-                        class="p-3 lg:px-2 lg:py-1.5 rounded-md text-muted/50 hover:text-muted hover:bg-surface-2 transition-colors cursor-pointer"
-                        aria-label="Close sidebar"
+                        class="p-2 rounded-md text-muted hover:text-foreground hover:bg-surface-2 transition-colors cursor-pointer"
+                        aria-label="Toggle sidebar"
                         x-bind:aria-expanded="sidebarOpen">
-                    <c-icon name="menu_close" class="size-5" />
+                    <span x-show="sidebarOpen" x-cloak><c-icon name="menu_close" class="size-5" /></span>
+                    <span x-show="!sidebarOpen"><c-icon name="menu_open" class="size-5" /></span>
                 </button>
             </div>
 
-            <!-- Sidebar content -->
-            {% block sidebar_content %}
-            {% endblock sidebar_content %}
+            <!-- Sidebar panel -->
+            <div x-cloak
+                 x-show="sidebarOpen"
+                 x-on:click="handleSidebarClick"
+                 x-transition:enter="transition-all duration-300 ease-out"
+                 x-transition:enter-start="opacity-0 -translate-x-2"
+                 x-transition:enter-end="opacity-100 translate-x-0"
+                 x-transition:leave="transition-all duration-200 ease-in"
+                 x-transition:leave-start="opacity-100 translate-x-0"
+                 x-transition:leave-end="opacity-0 -translate-x-2"
+                 x-bind:class="isMobile ? 'fixed inset-y-0 left-0 z-40 w-64 bg-surface shadow-lg overflow-y-auto p-4 pt-14' : ''">
+                {% block sidebar_content %}
+                {% endblock sidebar_content %}
+            </div>
         </div>
 
         <!-- Main content area -->

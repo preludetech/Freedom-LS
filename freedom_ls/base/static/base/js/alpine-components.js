@@ -116,6 +116,11 @@ document.addEventListener("alpine:init", () => {
         closeSidebar() {
             this.sidebarOpen = false;
         },
+        handleSidebarClick(event) {
+            if (this.isMobile && event.target.closest("a")) {
+                this.closeSidebar();
+            }
+        },
     }));
 
     // Course part expand/collapse (student_interface/partials/course_minimal_toc.html)
