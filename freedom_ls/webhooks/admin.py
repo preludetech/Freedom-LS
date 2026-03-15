@@ -95,6 +95,7 @@ class WebhookEventAdmin(SiteAwareModelAdmin):
 
 @admin.register(WebhookDelivery)
 class WebhookDeliveryAdmin(SiteAwareModelAdmin):
+    list_select_related = ["event", "endpoint"]
     list_display = [
         "event_type_display",
         "endpoint_truncated",

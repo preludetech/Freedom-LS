@@ -1,3 +1,4 @@
+from django.contrib.sites.models import Site
 from django.tasks import default_task_backend, task  # type: ignore[import-untyped]
 
 from freedom_ls.site_aware_models.models import _thread_locals, get_cached_site
@@ -8,23 +9,23 @@ from freedom_ls.webhooks.registry import validate_event_type
 
 def fire_webhook_event(event_type: str, payload: dict[str, object]) -> None:
     """
-    Fire a webhook event. Must be called within a request context.
+    Fire a webhook event. Silently returns if called outside a request context
+    (e.g. management commands, shell, data migrations).
 
     1. Validate event_type against registry
-    2. Capture site_id from current request context
-    3. Inside transaction.on_commit():
-       a. Create WebhookEvent record (with explicit site_id)
-       b. enqueue dispatch_event task with event_id and site_id
+    2. Capture site_id from current request context (or return early)
+    3. Create WebhookEvent record (with explicit site_id)
+    4. Enqueue dispatch_event task with event_id and site_id
     """
     validate_event_type(event_type)
 
     request = getattr(_thread_locals, "request", None)
     if request is None:
-        raise RuntimeError(
-            "fire_webhook_event must be called within a request context."
-        )
-    site = get_cached_site(request)
-    site_id: int = site.pk
+        return
+    site_result = get_cached_site(request)
+    if not isinstance(site_result, Site):
+        return
+    site_id: int = site_result.pk
 
     event = WebhookEvent.objects.create(
         event_type=event_type,

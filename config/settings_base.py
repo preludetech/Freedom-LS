@@ -22,6 +22,7 @@ from django.utils.csp import (  # type: ignore[import-untyped]  # django-stubs l
 )
 
 from freedom_ls.accounts.email_utils import parse_tailwind_colors
+from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -263,8 +264,6 @@ EMAIL_COLOR_BORDER = _tw_colors.get("border", "#D1D5DB")
 LOGIN_REDIRECT_URL = "/"
 
 # Webhook event types
-from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES  # noqa: E402
-
 WEBHOOK_EVENT_TYPES = FLS_WEBHOOK_EVENT_TYPES
 
 

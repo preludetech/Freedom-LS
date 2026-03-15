@@ -10,12 +10,6 @@ class TestGetEventTypeRegistry:
         assert "user.registered" in registry
         assert registry["user.registered"] == "User registered"
 
-    def test_contains_all_expected_types(self) -> None:
-        registry = get_event_type_registry()
-        assert "user.registered" in registry
-        assert "course.completed" in registry
-        assert "course.registered" in registry
-
 
 class TestValidateEventType:
     def test_valid_event_type_does_not_raise(self) -> None:

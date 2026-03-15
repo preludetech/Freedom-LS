@@ -72,8 +72,8 @@ def attempt_delivery(delivery: WebhookDelivery) -> None:
         )
     except httpx.TimeoutException as exc:
         error_message = f"Timeout after {REQUEST_TIMEOUT}s: {exc}"
-    except httpx.ConnectError as exc:
-        error_message = f"Connection error: {exc}"
+    except httpx.TransportError as exc:
+        error_message = f"Transport error: {exc}"
 
     elapsed_ms = int((time.monotonic() - start_time) * 1000)
     status_code = response.status_code if response is not None else None
@@ -133,8 +133,9 @@ def _handle_retryable_failure(
 ) -> None:
     """Handle a retryable failure: schedule retry or mark dead letter."""
     endpoint.failure_count += 1
-    endpoint.save()
     handle_circuit_breaker_trip(endpoint)
+    if endpoint.failure_count < CIRCUIT_BREAKER_THRESHOLD:
+        endpoint.save()
 
     if delivery.attempt_count >= MAX_ATTEMPTS:
         delivery.status = "dead_letter"
