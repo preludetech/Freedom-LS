@@ -68,7 +68,7 @@ Name mobile screenshots with the pattern: `mobile_<test-id>_<short-description>.
 ## Step 6: Tablet testing
 
 
-Don't do mobile tests if we are checking the django admin interface. Only do mobile tests for custom frontend code.
+Don't do tablet tests if we are checking the django admin interface. Only do tablet tests for custom frontend code.
 
 
 Resize the browser to 768x1024 (iPad-sized viewport).

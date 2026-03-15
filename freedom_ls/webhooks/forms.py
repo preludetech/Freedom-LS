@@ -17,6 +17,8 @@ class EventTypeField(forms.MultipleChoiceField):
 
     widget = EventTypeWidget
 
+    # Any is needed here because Django form __init__ signatures use complex
+    # union types that cannot be expressed without Any when passing through kwargs.
     def __init__(self, **kwargs: Any) -> None:
         registry = get_event_type_registry()
         choices = [(key, label) for key, label in registry.items()]

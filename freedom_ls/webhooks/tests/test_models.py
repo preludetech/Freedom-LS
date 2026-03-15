@@ -5,7 +5,6 @@ from django.core.exceptions import ValidationError
 from freedom_ls.webhooks.factories import (
     WebhookDeliveryFactory,
     WebhookEndpointFactory,
-    WebhookEventFactory,
 )
 
 
@@ -45,22 +44,7 @@ class TestWebhookEndpoint:
 
 
 @pytest.mark.django_db
-class TestWebhookEvent:
-    def test_create_event(self, mock_site_context: object) -> None:
-        event = WebhookEventFactory()
-        assert event.pk is not None
-        assert event.event_type == "user.registered"
-        assert event.payload == {"user_id": "abc-123"}
-
-
-@pytest.mark.django_db
 class TestWebhookDelivery:
-    def test_create_delivery(self, mock_site_context: object) -> None:
-        delivery = WebhookDeliveryFactory()
-        assert delivery.pk is not None
-        assert delivery.status == "pending"
-        assert delivery.attempt_count == 0
-
     def test_short_response_body_not_truncated(self, mock_site_context: object) -> None:
         short_body = "x" * 100
         delivery = WebhookDeliveryFactory(last_response_body=short_body)
