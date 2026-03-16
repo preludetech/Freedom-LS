@@ -53,7 +53,7 @@ class WebhookEndpointAdmin(SiteAwareModelAdmin):
     def enable_endpoints(
         self, request: HttpRequest, queryset: QuerySet[WebhookEndpoint]
     ) -> None:
-        queryset.update(is_active=True)
+        queryset.update(is_active=True, disabled_at=None, failure_count=0)
 
     @admin.action(description="Disable selected endpoints")
     def disable_endpoints(
@@ -148,6 +148,11 @@ class WebhookDeliveryAdmin(SiteAwareModelAdmin):
     def retry_deliveries(
         self, request: HttpRequest, queryset: QuerySet[WebhookDelivery]
     ) -> None:
-        retryable = queryset.filter(status__in=["failed", "dead_letter"])
+        retryable = queryset.filter(
+            status__in=["failed", "dead_letter"]
+        ).select_related("endpoint", "event")
         for delivery in retryable:
+            delivery.attempt_count = 0
+            delivery.status = "pending"
+            delivery.save()
             attempt_delivery(delivery)

@@ -43,7 +43,3 @@ class WebhookEndpointForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.initial["event_types"] = self.instance.event_types
-
-    def clean_event_types(self) -> list[str]:
-        result: list[str] = self.cleaned_data.get("event_types", [])
-        return result

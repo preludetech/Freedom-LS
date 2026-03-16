@@ -59,7 +59,9 @@ class TestBuildWebhookPayload:
         assert parsed["type"] == "course.completed"
         assert parsed["data"] == {"course_id": "xyz-789"}
         assert parsed["id"] == str(event.pk)
-        assert isinstance(parsed["timestamp"], int)
+        assert isinstance(parsed["timestamp"], str)
+        # Should be ISO 8601 format ending with Z
+        assert parsed["timestamp"].endswith("Z")
 
 
 class TestBuildWebhookHeaders:
@@ -405,6 +407,27 @@ class TestAttemptDelivery:
 
         endpoint.refresh_from_db()
         assert endpoint.failure_count == 1
+
+    def test_4xx_increments_failure_count(self, mock_site_context: object) -> None:
+        """Issue #7: 4xx responses should increment failure_count on endpoint."""
+        endpoint = WebhookEndpointFactory(failure_count=4)
+        delivery = WebhookDeliveryFactory(endpoint=endpoint)
+
+        mock_response = httpx.Response(
+            status_code=400,
+            content=b"Bad Request",
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+        ):
+            attempt_delivery(delivery)
+
+        endpoint.refresh_from_db()
+        assert endpoint.failure_count == 5
+        assert endpoint.is_active is False
+        assert endpoint.disabled_at is not None
 
     def test_retryable_failure_trips_circuit_breaker(
         self, mock_site_context: object

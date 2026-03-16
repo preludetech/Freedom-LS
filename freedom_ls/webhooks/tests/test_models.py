@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from django.core.exceptions import ValidationError
@@ -33,6 +35,18 @@ class TestWebhookEndpoint:
         endpoint = WebhookEndpointFactory(url="http://example.com/webhook")
         with pytest.raises(ValidationError):
             endpoint.clean()
+
+    def test_secret_longer_than_64_chars_stored_without_truncation(
+        self, mock_site_context: object
+    ) -> None:
+        """Issue #9: secrets up to 65 chars should be stored without truncation."""
+        long_secret = "a" * 65
+        with patch(
+            "freedom_ls.webhooks.models.secrets.token_urlsafe", return_value=long_secret
+        ):
+            endpoint = WebhookEndpointFactory()
+        endpoint.refresh_from_db()
+        assert endpoint.secret == long_secret
 
     def test_clean_empty_event_types_passes(
         self, mock_site_context: object, settings: object

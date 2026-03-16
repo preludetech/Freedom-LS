@@ -22,7 +22,7 @@ def build_webhook_payload(event: WebhookEvent) -> str:
     envelope = {
         "id": str(event.pk),
         "type": event.event_type,
-        "timestamp": int(event.created_at.timestamp()),
+        "timestamp": event.created_at.isoformat().replace("+00:00", "Z"),
         "data": event.payload,
     }
     return json.dumps(envelope, separators=(",", ":"))
@@ -91,7 +91,7 @@ def attempt_delivery(delivery: WebhookDelivery) -> None:
         retry_after = _parse_retry_after(response)
         _handle_retryable_failure(delivery, endpoint, retry_after=retry_after)
     elif response is not None and 400 <= response.status_code < 500:
-        _handle_permanent_failure(delivery)
+        _handle_permanent_failure(delivery, endpoint)
     else:
         # 5xx, timeout, or connection error
         _handle_retryable_failure(delivery, endpoint)
@@ -120,10 +120,16 @@ def _handle_success(delivery: WebhookDelivery, endpoint: WebhookEndpoint) -> Non
     endpoint.save()
 
 
-def _handle_permanent_failure(delivery: WebhookDelivery) -> None:
+def _handle_permanent_failure(
+    delivery: WebhookDelivery, endpoint: WebhookEndpoint
+) -> None:
     """Mark delivery as permanently failed (4xx except 429)."""
     delivery.status = "failed"
     delivery.next_retry_at = None
+    endpoint.failure_count += 1
+    handle_circuit_breaker_trip(endpoint)
+    if endpoint.failure_count < CIRCUIT_BREAKER_THRESHOLD:
+        endpoint.save()
 
 
 def _handle_retryable_failure(

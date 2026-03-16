@@ -18,7 +18,7 @@ STATUS_CHOICES = [
 class WebhookEndpoint(SiteAwareModel):
     url = models.URLField(max_length=2048)
     description = models.CharField(max_length=200)
-    secret = models.CharField(max_length=64, editable=False)
+    secret = models.CharField(max_length=128, editable=False)
     event_types = models.JSONField(default=list)
     is_active = models.BooleanField(default=True)
     failure_count = models.PositiveIntegerField(default=0)
