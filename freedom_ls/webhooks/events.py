@@ -76,7 +76,10 @@ def dispatch_event(event_id: str, site_id: int) -> None:
     - Create WebhookDelivery(status='pending')
     - Call attempt_delivery(delivery)
     """
-    event = WebhookEvent.objects.get(pk=event_id)
+    try:
+        event = WebhookEvent.objects.get(pk=event_id)
+    except WebhookEvent.DoesNotExist:
+        return
 
     # Filter explicitly by site_id since we have no request context.
     # Only include user-enabled endpoints. Circuit-broken endpoints still have

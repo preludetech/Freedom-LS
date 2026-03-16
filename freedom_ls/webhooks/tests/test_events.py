@@ -156,6 +156,19 @@ class TestDispatchEvent:
         assert WebhookDelivery.objects.count() == 2
         assert mock_attempt.call_count == 2
 
+    def test_returns_silently_when_event_does_not_exist(
+        self, mock_site_context: object
+    ) -> None:
+        from uuid import uuid4
+
+        from freedom_ls.webhooks.events import dispatch_event
+
+        with patch("freedom_ls.webhooks.events.attempt_delivery") as mock_attempt:
+            dispatch_event(str(uuid4()), mock_site_context.pk)
+
+        assert WebhookDelivery.objects.count() == 0
+        mock_attempt.assert_not_called()
+
     def test_filters_by_site_id(self, mock_site_context: object) -> None:
         from django.contrib.sites.models import Site
 
