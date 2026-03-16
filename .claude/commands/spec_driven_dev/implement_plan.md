@@ -31,6 +31,11 @@ For each batch, delegate to a **sub-agent** that does the following:
 
 **All tests must pass before moving to the next batch.**
 
+### NO NOT run the final QA verification while implementing the plan
+If there is a frontend_qa_plan.md file: DO NOT RUN IT
+If the plan mentions running the frontend_qa_plan.md. IGNORE THAT STEP. DO NOT RUN IT
+
+
 ## Step 3: Final Verification
 
 After all batches are complete:
@@ -40,6 +45,7 @@ After all batches are complete:
 3. Check each success criterion from the plan — is it met?
 4. If any criterion is unmet: fix it with a sub-agent, then repeat from step 1
 5. Once everything passes and review feedback is addressed: commit the changes
+
 
 ## When to Stop and Ask
 

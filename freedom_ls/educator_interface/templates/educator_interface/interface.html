@@ -1,13 +1,13 @@
 {% extends "_base_interface.html" %}
 
 {% block sidebar_storage_key %}sidebar-educator{% endblock sidebar_storage_key %}
-{% block sidebar_class %}pt-8{% endblock sidebar_class %}
+
+{% block header_bar_text %}Educator Interface{% endblock header_bar_text %}
+{% block sidebar_heading %}Navigation{% endblock sidebar_heading %}
+{% block sidebar_heading_mobile %}Navigation{% endblock sidebar_heading_mobile %}
 
 {% block sidebar_content %}
     <nav class="sticky top-4 w-64">
-        <h2 class="text-lg font-semibold mb-4">
-            Navigation
-        </h2>
         <ul class="list-none ml-0">
             {% for item in menu_items %}
                 <li>

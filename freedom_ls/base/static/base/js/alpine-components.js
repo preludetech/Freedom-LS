@@ -104,6 +104,9 @@ document.addEventListener("alpine:init", () => {
             this.$watch("sidebarOpen", (val) => {
                 localStorage.setItem(this._storageKey, val);
             });
+
+            const top = this.$el.getBoundingClientRect().top;
+            this.$el.style.setProperty("--sidebar-top", top + "px");
         },
         destroy() {
             if (this._mq && this._mqHandler) {
@@ -120,6 +123,26 @@ document.addEventListener("alpine:init", () => {
             if (this.isMobile && event.target.closest("a")) {
                 this.closeSidebar();
             }
+        },
+        headerBarLeftClass() {
+            if (!this.sidebarOpen) return "hidden";
+            if (this.isMobile) return "hidden";
+            return "w-64 shrink-0 flex items-center justify-between px-4";
+        },
+        headerBarToggleClass() {
+            if (this.sidebarOpen) return "hidden";
+            return "";
+        },
+        sidebarColumnClass() {
+            if (this.sidebarOpen && !this.isMobile) return "w-64 shrink-0";
+            return "";
+        },
+        sidebarPanelClass() {
+            if (this.isMobile) return "fixed left-0 z-40 w-64 bg-surface shadow-lg overflow-y-auto";
+            return "";
+        },
+        backdropVisible() {
+            return this.sidebarOpen && this.isMobile;
         },
     }));
 

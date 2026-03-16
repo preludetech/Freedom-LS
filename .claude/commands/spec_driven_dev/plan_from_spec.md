@@ -57,7 +57,9 @@ If this plan is created then reference it in the plan file as a final step.
 Create subagents to review the plan and frontend_qa plan against the spec file. Make sure that:
 
 - All the success criteria will be met by the plan in place
-- No manual frontend verification is included in the plan.md file
 - No step in the plan contradicts any skill
 - No step will result in junk files that need to be manually cleaned up
 - All suggested code changes are clean and simple
+
+### IMPORTANT
+The plan.md file MUST NOT say that the frontend_qa should be run. We will run that separately.
