@@ -67,15 +67,28 @@ class UserCourseRegistration(SiteAwareModel):
         is_new = self._state.adding
         super().save(*args, **kwargs)
         if is_new:
+            from freedom_ls.accounts.models import User
+            from freedom_ls.content_engine.models import Course
             from freedom_ls.webhooks.events import fire_webhook_event
+
+            user_email = (
+                User.objects.filter(pk=self.user_id)
+                .values_list("email", flat=True)
+                .get()
+            )
+            course_title = (
+                Course.objects.filter(pk=self.collection_id)
+                .values_list("title", flat=True)
+                .get()
+            )
 
             fire_webhook_event(
                 "course.registered",
                 {
                     "user_id": self.user_id,
-                    "user_email": self.user.email,
+                    "user_email": user_email,
                     "course_id": str(self.collection_id),
-                    "course_title": self.collection.title,
+                    "course_title": course_title,
                     "registered_at": self.registered_at.isoformat(),
                 },
             )
