@@ -12,11 +12,7 @@ Act like a human QA expert. Execute the given test plan
 - Base url: http://127.0.0.1:$PORT/
 - Admin email and password: demodev@email.com
 
-# CRITICAL Always check that we are running the right branch
-
-When you open a browser at the home page `127.0.0.1:$PORT` then look for the branch name indicator on the bottom left side. It should match the current branch name.
-
-# CRITICAL Always use playwright MCP
+# CRITICAL
 
 You MUST use Playwright MCP. If you can't use it then:
 
@@ -96,7 +92,6 @@ You do NOT need to re-run every test from Step 5. Focus on:
 Name mobile screenshots with the pattern: `mobile_<test-id>_<short-description>.png`.
 
 ## Step 7: Tablet testing
-
 
 Don't do tablet tests if we are checking the django admin interface. Only do tablet tests for custom frontend code.
 

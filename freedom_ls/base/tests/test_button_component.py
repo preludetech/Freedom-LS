@@ -57,3 +57,4 @@ class TestButtonLoadingProp:
             '<c-button dropdown="true" loading="true">Item</c-button>'
         )
         assert "htmx-hide-on-request" not in result
+        assert "Item" in result
