@@ -95,7 +95,7 @@ class InstanceView:
             )
 
         instance_actions_html = self._render_instance_actions(request, base_url)
-        title = f"<h1>{escape(str(self.instance))}</h1>"
+        title = f'<h1 id="instance-title">{escape(str(self.instance))}</h1>'
         panels_html = '<div class="space-y-6">' + "\n".join(rendered_panels) + "</div>"
         return title + "\n" + instance_actions_html + panels_html
 
@@ -126,7 +126,7 @@ class InstanceView:
             )
 
         instance_actions_html = self._render_instance_actions(request, base_url)
-        title = f"<h1>{escape(str(self.instance))}</h1>"
+        title = f'<h1 id="instance-title">{escape(str(self.instance))}</h1>'
         tabs_html = render_to_string(
             "panel_framework/partials/tab_container.html",
             {

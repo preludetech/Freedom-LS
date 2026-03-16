@@ -80,7 +80,7 @@
                 class="flex items-center gap-2 text-left hover:text-primary transition-colors cursor-pointer flex-1 min-w-0">
             <span class="text-muted shrink-0 {{ text_size }}">
                 <span x-show="expanded" x-cloak><c-icon name="expand" class="size-4" /></span>
-                <span x-show="!expanded"><c-icon name="collapse" class="size-4" /></span>
+                <span data-collapse-icon><c-icon name="collapse" class="size-4" /></span>
             </span>
             <span class="flex-1 min-w-0 truncate {{ text_size }}">
                 {% partial content-title %}

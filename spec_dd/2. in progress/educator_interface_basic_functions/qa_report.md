@@ -6,152 +6,126 @@
 
 ---
 
-## Critical Issue: Alpine.js CSP Errors Break Tab Switching and HTMX Event Chains
+## Summary
 
-Every page in the educator interface throws Alpine.js CSP parser errors:
-
-```
-Alpine Expression Error: CSP Parser Error: Expected PUNCTUATION...
-```
-
-**Impact:** This breaks all Alpine.js-powered interactivity, including:
-- Tab lazy-loading (the `load-tab` custom event is never dispatched)
-- Panel HTMX refresh after edit (the event chain that triggers panel reload doesn't fire)
-- Modal form reset on close (form retains previous input)
-
-This single issue is the root cause of most failures below.
-
----
-
-## Test Results Summary
-
-| Test | Description | Result |
-|------|-------------|--------|
-| 1 | Existing functionality after refactor | PASS |
-| 2 | Create Cohort — Save | PASS |
-| 3 | Create Cohort — Save and add another | PASS |
-| 4 | Create Cohort — Duplicate name (Save) | PASS |
-| 5 | Create Cohort — Duplicate name (Save and add another) | PASS |
-| 6 | Create Cohort — Empty name validation | PASS |
-| 7 | Create Cohort — Modal dismissal | FAIL |
-| 8 | Create Cohort — Permission check | PASS |
-| 9 | Cohort Tabs — Initial load | PASS |
-| 10 | Cohort Tabs — Lazy load second tab | FAIL |
-| 11 | Tabs — Panel HTMX reload within tabs | BLOCKED |
-| 12 | Tabs — HTMX reload after tab switch | BLOCKED |
-| 13 | Tabs — URL updates on tab switch | PARTIAL PASS |
-| 14 | Tabs — Direct URL access | PASS |
-| 15 | Tabs — Browser back/forward navigation | BLOCKED |
-| 16 | Edit Cohort | FAIL |
-| 17 | Edit Cohort — Validation errors | PASS |
-| 18 | Edit Cohort — Permission check | PASS |
-| 19 | Delete Cohort — With related records | FAIL |
-| 20 | Delete Cohort — With no related records | PASS |
-| 21 | Delete Cohort — Permission check | PASS |
-| 22 | Loading indicators on form submissions | NOT FULLY TESTED |
-| 23 | Double-click prevention | NOT FULLY TESTED |
-| 24 | Mobile responsiveness | PASS |
+| Test | Result | Notes |
+|------|--------|-------|
+| Test 1: Existing functionality | PASS | Cohorts, Users, Courses all load correctly |
+| Test 2: Create Cohort (Save) | PASS | Creates cohort, redirects to detail page |
+| Test 3: Create Cohort (Save and add another) | FAIL | Table does not refresh behind modal |
+| Test 4: Duplicate name validation (Save) | PASS | Error shown, correction works |
+| Test 5: Duplicate name validation (Save and add another) | PASS | Error shown, button resets, correction works |
+| Test 6: Empty name validation | PASS | Browser required-field validation works |
+| Test 7: Modal dismissal without saving | FAIL | Form retains previous input on reopen |
+| Test 8: Permission check (Create) | NOT TESTED | Requires non-admin user |
+| Test 9: Tabs — Initial load | PASS | Two tabs, Course Progress active |
+| Test 10: Tabs — Lazy load second tab | PASS | Details loads, switching is instant |
+| Test 11: Tabs — Panel HTMX reload within tabs | NOT TESTED | No data for pagination/sorting |
+| Test 12: Tabs — HTMX reload after tab switch | NOT TESTED | No data for pagination/sorting |
+| Test 13: Tabs — URL updates on tab switch | PASS | URLs update correctly |
+| Test 14: Tabs — Direct URL access | PASS | Direct URL loads correct tab |
+| Test 15: Tabs — Browser back/forward | PASS | History navigation works |
+| Test 16: Edit Cohort | PASS (minor issue) | Panel updates, but page heading doesn't |
+| Test 17: Edit Cohort — Validation errors | PASS | Duplicate and empty validation work |
+| Test 18: Edit Permission check | NOT TESTED | Requires non-admin user |
+| Test 19: Delete Cohort — With related records | FAIL | No cascade summary shown |
+| Test 20: Delete Cohort — No related records | PASS | Deletes and redirects correctly |
+| Test 21: Delete Permission check | NOT TESTED | Requires non-admin user |
+| Test 22: Loading indicators | PASS | "Deleting..." text observed on delete button |
+| Test 23: Double-click prevention | NOT TESTED | Difficult to verify via automation |
+| Test 24: Mobile responsiveness | PASS | Good layout at all breakpoints |
 
 ---
 
 ## Errors
 
-### Error 1: Tab Lazy-Loading Completely Broken (Tests 10, 11, 12, 15)
+### 1. "Save and add another" does not refresh data table behind modal
 
-**Test:** 10 (Cohort Tabs — Lazy load second tab)
+**Test:** Test 3 — Create Cohort (Save and add another)
 
-**Expected:** Clicking the "Details" tab loads its content via HTMX lazy-load.
+**Expected:** After clicking "Save and add another", the data table behind the modal should refresh to show the newly created cohort.
 
-**Actual:** Clicking the "Details" tab visually switches the tab indicator (the tab appears selected and URL updates) but the tab panel remains empty. The content never loads because the `hx-trigger="load-tab once"` event is never dispatched — Alpine.js, which handles the tab switching logic and event dispatch, is broken due to CSP errors.
+**Actual:** The form clears and the modal stays open (correct), but the data table behind the modal does NOT refresh. The new cohorts only appear after a full page reload.
 
-**Workaround:** Loading the tab URL directly (e.g., `/educator/cohorts/<id>/__tabs/details`) works correctly and renders all content.
-
-![Tab lazy-load broken](screenshots/desktop_10.1_tab_lazy_load_broken.png)
+![Table not refreshed after Save and add another](screenshots/desktop_3.1_table_not_refreshed.png)
 
 ---
 
-### Error 2: Modal Form Not Reset on Dismiss (Test 7)
+### 2. Create Cohort modal does not clear form on dismiss
 
-**Test:** 7 (Create Cohort — Modal dismissal without saving)
+**Test:** Test 7 — Modal dismissal without saving
 
-**Expected:** After closing the modal with X or Escape, reopening it should show an empty form.
+**Expected:** When the modal is closed (via X button or Escape) and reopened, the form should have an empty name field.
 
-**Actual:** The form retains the previously entered text ("Should Not Be Created" was still in the name field after closing and reopening). This is because Alpine.js (which handles form reset on modal close) is non-functional due to CSP errors.
+**Actual:** The previously typed name persists in the form when the modal is reopened. This is because the modal DOM is not reset on close.
 
-**Note:** Closing via X and Escape both work correctly. No cohort is created.
-
-![Form persists input](screenshots/desktop_7.1_modal_persists_input.png)
+![Form retains previous input](screenshots/desktop_7.1_form_not_cleared.png)
 
 ---
 
-### Error 3: Details Panel Does Not Refresh After Edit (Test 16)
+### 3. Delete confirmation modal missing cascade summary
 
-**Test:** 16 (Edit Cohort)
+**Test:** Test 19 — Delete Cohort with related records
 
-**Expected:** After saving an edit, the modal closes and the details panel refreshes to show the updated name without a full page reload.
+**Expected:** The delete confirmation modal should show a summary of related records that will be deleted (e.g., "3 cohort memberships").
 
-**Actual:** The modal closes but the details panel still shows the old name. A full page reload confirms the edit was saved successfully. The HTMX event chain that triggers panel refresh after a successful edit does not fire, again due to Alpine.js CSP errors.
+**Actual:** The modal only shows "Are you sure you want to delete **QA Delete Test Cohort**?" with no mention of the 3 cohort memberships that will be cascade-deleted.
 
-![Edit modal](screenshots/desktop_16.1_edit_modal.png)
-
----
-
-### Error 4: Delete Confirmation Missing Cascade Summary (Test 19)
-
-**Test:** 19 (Delete Cohort — With related records)
-
-**Expected:** The delete confirmation modal should show a summary of related records that will be deleted (e.g., "50 cohort memberships").
-
-**Actual:** The confirmation modal only shows "Are you sure you want to delete **Cohort Name**?" with no cascade summary of related records.
-
-**Note:** The delete operation itself works correctly — the cohort is deleted and the user is redirected to the cohorts list. The "Deleting..." loading text also appears correctly.
-
-![Delete confirmation missing cascade](screenshots/desktop_19.1_delete_confirm_no_cascade.png)
+![Delete modal missing cascade summary](screenshots/desktop_19.1_delete_with_related.png)
 
 ---
 
-## Tests Not Run / Blocked
+### 4. Page heading not updated after editing cohort name
 
-### Tests 11, 12 (Panel HTMX reload within tabs, HTMX reload after tab switch)
-**Reason:** These tests require functional tab switching, which is broken due to the Alpine.js CSP issue. Tab content only loads via direct URL navigation, not via clicking.
+**Test:** Test 16 — Edit Cohort (minor issue)
 
-### Test 15 (Browser back/forward navigation)
-**Reason:** While URL updates work when clicking tabs, the content doesn't load, making back/forward navigation meaningless to test in the current state.
+**Expected:** After editing the cohort name, the page heading (h1) should update to reflect the new name.
 
-### Tests 22, 23 (Loading indicators, Double-click prevention)
-**Partially tested:** The delete button showed "Deleting..." loading text correctly. Create and Edit modals submit and close correctly but the full loading indicator behavior (button disabled during request, spinner) could not be thoroughly verified due to the speed of local requests. The "Save and add another" button returned to normal state after validation errors, which is correct.
+**Actual:** The details panel correctly shows the updated name ("Batch QA 1 Renamed"), but the page heading still displays the old name ("Batch QA 1"). This is because only the panel refreshes via HTMX, not the page heading.
+
+![Page heading not updated](screenshots/desktop_16.1_edit_cohort_result.png)
 
 ---
 
-## Responsive Testing
+## Tangential Issues
 
-### Mobile (375x812) — PASS
-- Sidebar hidden by default, opens as drawer overlay
-- Tables readable with appropriate column wrapping
-- Modals centered, don't overflow screen
-- Buttons accessible and appropriately sized
-- Pagination simplified to "Page X of Y" with Next link
+### Alpine.js CSP Error on every page
 
-![Mobile cohorts list](screenshots/mobile_24.1_cohorts_list.png)
+Every page in the educator interface logs a console error:
+```
+Alpine Expression Error: CSP Parser Error
+```
+This suggests Alpine.js CSP compatibility is not fully working. The error appears on all pages but does not seem to affect functionality.
+
+---
+
+## Tests Not Run
+
+- **Tests 8, 18, 21 (Permission checks):** These require logging in as a user without specific permissions. No such user was available in the test environment.
+- **Tests 11, 12 (Panel HTMX reload within/after tabs):** These require a cohort with enough students/data to trigger pagination and sorting controls. The test data was insufficient.
+- **Test 23 (Double-click prevention):** Difficult to reliably test via automated tools — would need manual verification.
+
+---
+
+## Responsive Testing Summary
+
+### Mobile (375x812)
+- Sidebar collapses to hamburger menu — works correctly
+- Tables fit within viewport
+- Modals centered and usable
+- Pagination simplified to "Page X of Y" format
+- All buttons accessible
+
+![Mobile cohort list](screenshots/mobile_24.1_cohort_list.png)
 ![Mobile sidebar](screenshots/mobile_24.2_sidebar_open.png)
 ![Mobile create modal](screenshots/mobile_24.3_create_modal.png)
-![Mobile detail page](screenshots/mobile_24.4_detail_tabs.png)
+![Mobile detail page](screenshots/mobile_24.4_cohort_detail.png)
 
-### Tablet (768x1024) — PASS
-- Sidebar hidden with toggle (uses mobile nav pattern)
-- Tables and panels have good spacing
-- Tabs render cleanly
-- Forms and modals render at reasonable width
+### Tablet (768x1024)
+- Sidebar collapsed (mobile nav) — works correctly
+- Tables render with full column headers
+- Full pagination controls shown
+- Layout is clean and spacious
 
-![Tablet cohorts list](screenshots/tablet_24.1_cohorts_list.png)
-![Tablet detail page](screenshots/tablet_24.2_detail_tabs.png)
-
----
-
-## Tangential Observations
-
-1. **Alpine.js CSP errors on every page:** `Alpine Expression Error: CSP Parser Error` appears in the console on every page load. This is the root cause of most failures and suggests the Alpine.js CSP build is incompatible with the current CSP configuration or has a syntax issue in one of the Alpine component definitions.
-
-2. **Multiple "Create Cohort" buttons accumulate in DOM:** After using "Save and add another" multiple times, multiple `Create Cohort` button+dialog blocks accumulate in the DOM (seen as duplicate element refs). This doesn't cause visible issues but may lead to unexpected behavior.
-
-3. **Page heading not updated after edit without reload:** The `<h1>` heading (e.g., "Cohort 2025.03.04") does not update after an edit save — only the details panel should refresh, but even the panel didn't refresh due to the Alpine.js issue. After full page reload, both heading and panel show the correct updated name.
+![Tablet cohort list](screenshots/tablet_24.1_cohort_list.png)
+![Tablet detail with tabs](screenshots/tablet_24.2_detail_tabs.png)

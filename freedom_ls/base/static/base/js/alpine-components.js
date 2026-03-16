@@ -190,6 +190,8 @@ document.addEventListener("alpine:init", () => {
             if (key) {
                 this.expanded = localStorage.getItem(key) === "true";
             }
+            this.$watch("expanded", () => this._updateUI());
+            this.$nextTick(() => this._updateUI());
         },
         toggleExpanded() {
             this.expanded = !this.expanded;
@@ -197,6 +199,10 @@ document.addEventListener("alpine:init", () => {
             if (key) {
                 localStorage.setItem(key, this.expanded);
             }
+        },
+        _updateUI() {
+            const icon = this.$el.querySelector("[data-collapse-icon]");
+            if (icon) icon.hidden = this.expanded;
         },
     }));
 
@@ -207,6 +213,7 @@ document.addEventListener("alpine:init", () => {
         baseUrl: "",
         defaultTab: "",
         _popstateHandler: null,
+        _panelChangedHandler: null,
         init() {
             this.activeTab = this.$el.dataset.activeTab || "";
             this.baseUrl = this.$el.dataset.baseUrl || "";
@@ -219,12 +226,42 @@ document.addEventListener("alpine:init", () => {
             };
             window.addEventListener("popstate", this._popstateHandler);
 
+            this._panelChangedHandler = (event) => {
+                const detail = event.detail || {};
+                if (detail.instanceTitle) {
+                    const heading = document.getElementById("instance-title");
+                    if (heading) heading.textContent = detail.instanceTitle;
+                }
+                const panel = document.getElementById(
+                    "tab-content-" + this.activeTab,
+                );
+                if (panel) {
+                    const url = panel.dataset.tabUrl;
+                    if (url) {
+                        htmx.ajax("GET", url, {
+                            target: panel,
+                            swap: "innerHTML",
+                        });
+                    }
+                }
+            };
+            document.body.addEventListener(
+                "panelChanged",
+                this._panelChangedHandler,
+            );
+
             this.$watch("activeTab", () => this._updateTabUI());
             this.$nextTick(() => this._updateTabUI());
         },
         destroy() {
             if (this._popstateHandler) {
                 window.removeEventListener("popstate", this._popstateHandler);
+            }
+            if (this._panelChangedHandler) {
+                document.body.removeEventListener(
+                    "panelChanged",
+                    this._panelChangedHandler,
+                );
             }
         },
         handleTabClick(event) {
@@ -244,8 +281,12 @@ document.addEventListener("alpine:init", () => {
             if (!this.loadedTabs[name]) {
                 this.loadedTabs[name] = true;
                 this.$nextTick(() => {
-                    const el = document.getElementById("tab-content-" + name);
-                    if (el) htmx.trigger(el, "load-tab");
+                    const panel = document.getElementById("tab-content-" + name);
+                    if (panel) {
+                        // The hx-trigger="load-tab" is on a child div inside the panel
+                        const htmxEl = panel.querySelector("[hx-trigger]") || panel;
+                        htmx.trigger(htmxEl, "load-tab");
+                    }
                 });
             }
         },
@@ -269,22 +310,46 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
+    // Picture modal component (cotton/picture.html)
+    Alpine.data("pictureModal", () => ({
+        open: false,
+        show() {
+            this.open = true;
+        },
+        close() {
+            this.open = false;
+        },
+        onEscape() {
+            this.open = false;
+        },
+    }));
+
     // Debug branch badge (_base.html)
     Alpine.data("debugBadge", () => ({
         expanded: true,
         init() {
             this.expanded =
                 localStorage.getItem("debug-branch-expanded") !== "false";
+            this.$watch("expanded", () => this._applyStyle());
+            this.$nextTick(() => this._applyStyle());
         },
         toggle() {
             this.expanded = !this.expanded;
             localStorage.setItem("debug-branch-expanded", this.expanded);
         },
-        badgeStyle() {
+        _applyStyle() {
+            const el = this.$el;
             if (this.expanded) {
-                return { padding: "4px 10px", borderRadius: "9999px" };
+                el.style.padding = "4px 10px";
+                el.style.borderRadius = "9999px";
+                el.style.width = "";
+                el.style.height = "";
+            } else {
+                el.style.padding = "";
+                el.style.width = "16px";
+                el.style.height = "16px";
+                el.style.borderRadius = "50%";
             }
-            return { width: "16px", height: "16px", borderRadius: "50%" };
         },
     }));
 });

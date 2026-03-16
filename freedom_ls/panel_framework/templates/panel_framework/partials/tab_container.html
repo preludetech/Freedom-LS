@@ -20,7 +20,8 @@
         <div data-tab-panel="{{ tab.name }}"
              id="tab-content-{{ tab.name }}"
              role="tabpanel"
-             {% if tab.name != active_tab %}hidden{% endif %}>
+             {% if tab.name != active_tab %}hidden{% endif %}
+             data-tab-url="{{ tab.load_url }}">
             {% if tab.name == active_tab %}
                 {{ tab.rendered_panels|safe }}
             {% else %}

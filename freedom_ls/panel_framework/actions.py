@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 
 from django import forms
@@ -197,7 +198,9 @@ class EditAction(FormPanelAction):
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         form.save()
         response = HttpResponse(status=204)
-        response["HX-Trigger"] = "panelChanged"
+        response["HX-Trigger"] = json.dumps(
+            {"panelChanged": {"instanceTitle": str(form.instance)}}
+        )
         return response
 
     def has_permission(

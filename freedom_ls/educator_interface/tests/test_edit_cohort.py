@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 from guardian.shortcuts import assign_perm
 
@@ -49,7 +51,9 @@ def test_successful_edit_updates_cohort(client, mock_site_context):
     assert response.status_code == 204
     cohort.refresh_from_db()
     assert cohort.name == "New Name"
-    assert response["HX-Trigger"] == "panelChanged"
+    trigger = json.loads(response["HX-Trigger"])
+    assert "panelChanged" in trigger
+    assert trigger["panelChanged"]["instanceTitle"] == "New Name"
 
 
 @pytest.mark.django_db
@@ -62,6 +66,18 @@ def test_duplicate_name_edit_returns_422(client, mock_site_context):
     client.force_login(user)
     response = client.post(_edit_action_url(cohort.pk), {"name": "Existing"})
     assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_tab_panels_have_data_tab_url(client, mock_site_context):
+    """Tab panel divs include data-tab-url so Alpine can refresh them after edit."""
+    cohort = CohortFactory(name="Test Cohort")
+    user = UserFactory(staff=True)
+    assign_perm("freedom_ls_student_management.view_cohort", user, cohort)
+    client.force_login(user)
+    response = client.get(_details_tab_url(cohort.pk))
+    content = response.content.decode()
+    assert "data-tab-url" in content
 
 
 @pytest.mark.django_db

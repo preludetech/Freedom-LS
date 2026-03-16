@@ -8,13 +8,13 @@ Look up the File object by file_path to get the actual file URL
 {% with file_obj=src|get_file_by_path:content_instance %}
 
     {% if file_obj %}
-        <div x-data="{ open: false }" class="my-6">
+        <div x-data="pictureModal" class="my-6">
             <!-- Thumbnail Image -->
             <figure class="max-w-xl mx-auto m-4">
                 {# djlint:off H006 #}
                 <img src="{{ file_obj.file.url }}"
                      alt="{{ alt }}"
-                     @click="open = true"
+                     @click="show"
                      class="w-full h-auto rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow p-4"
                      loading="lazy" />
                 {# djlint:on H006 #}
@@ -27,12 +27,12 @@ Look up the File object by file_path to get the actual file URL
 
             <div x-show="open"
                  x-cloak
-                 @keydown.escape.window="open = false"
-                 @click="open = false"
+                 @keydown.escape.window="onEscape"
+                 @click="close"
                  class="fixed inset-0  flex justify-center items-center  z-50 backdrop-blur-lg">
 
                 <button class="absolute top-0 right-0 bg-surface opacity-50 hover:opacity-70 "
-                        @click="open = false">
+                        @click="close">
                     <c-icon name="close" class="size-12 text-foreground" />
 
                 </button>
