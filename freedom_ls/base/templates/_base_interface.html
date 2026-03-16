@@ -3,14 +3,15 @@
 {% block body %}
 
     <div x-data="sidebarComponent"
-         data-storage-key="{% block sidebar_storage_key %}sidebar{% endblock sidebar_storage_key %}">
+         data-storage-key="{% block sidebar_storage_key %}sidebar{% endblock sidebar_storage_key %}"
+         data-sidebar-heading="{% block sidebar_heading %}{% endblock sidebar_heading %}">
 
         <!-- Header bar: toggle button + contextual text -->
         <div class="flex items-center border-b border-border bg-surface">
             <!-- Left section: sidebar heading + close button (desktop, sidebar open) -->
             <div x-bind:class="headerBarLeftClass">
-                <span class="text-sm font-semibold text-muted truncate">
-                    {% block sidebar_heading %}{% endblock sidebar_heading %}
+                <span class="text-sm font-semibold text-muted truncate"
+                      x-text="$root.dataset.sidebarHeading">
                 </span>
                 <button x-on:click="closeSidebar"
                         class="p-1 rounded-md text-muted hover:text-foreground hover:bg-surface-2 transition-colors cursor-pointer"
@@ -75,8 +76,8 @@
                      >
                     <!-- Mobile sidebar header -->
                     <div class="flex items-center justify-between p-4 lg:hidden">
-                        <span class="text-sm font-semibold text-muted truncate">
-                            {% block sidebar_heading_mobile %}{% endblock sidebar_heading_mobile %}
+                        <span class="text-sm font-semibold text-muted truncate"
+                              x-text="$root.dataset.sidebarHeading">
                         </span>
                         <button x-on:click="closeSidebar"
                                 class="p-1 rounded-md text-muted hover:text-foreground hover:bg-surface-2 transition-colors cursor-pointer"
