@@ -1,33 +1,31 @@
-{% extends "_base.html" %}
+{% extends "_base_interface.html" %}
 
-{% block body %}
+{% block sidebar_storage_key %}sidebar-educator{% endblock sidebar_storage_key %}
 
-    <c-sidebar storage_key="sidebar-educator" class="pt-8">
-        <nav class="sticky top-4 w-64">
-            <div class="bg-surface shadow-md rounded-lg p-4">
-                <h2 class="text-lg font-semibold mb-4">Navigation</h2>
-                <ul class="list-none ml-0">
-                    {% for item in menu_items %}
-                        <li>
-                            <a href="{{ item.url }}">
-                                {{ item.label }}
-                            </a>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </nav>
+{% block header_bar_text %}Educator Interface{% endblock header_bar_text %}
+{% block sidebar_heading %}Navigation{% endblock sidebar_heading %}
 
-        <c-slot name="content">
-            <div class="space-y-4 pl-2 sm:pl-6">
-                {% if heading %}
-                    <h1>
-                        {{ heading }}
-                    </h1>
-                {% endif %}
-                {{ content|safe }}
-            </div>
-        </c-slot>
-    </c-sidebar>
+{% block sidebar_content %}
+    <nav class="sticky top-4 w-64">
+        <ul class="list-none ml-0">
+            {% for item in menu_items %}
+                <li>
+                    <a href="{{ item.url }}">
+                        {{ item.label }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </nav>
+{% endblock sidebar_content %}
 
-{% endblock body %}
+{% block content %}
+    <div class="space-y-4 pl-2 sm:pl-6">
+        {% if heading %}
+            <h1>
+                {{ heading }}
+            </h1>
+        {% endif %}
+        {{ content|safe }}
+    </div>
+{% endblock content %}

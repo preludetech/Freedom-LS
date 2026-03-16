@@ -1,18 +1,14 @@
-{% extends "_base.html" %}
+{% extends "_base_interface.html" %}
 
-{% block body %}
+{% block sidebar_storage_key %}sidebar-course-toc{% endblock sidebar_storage_key %}
 
-    <c-sidebar storage_key="sidebar-course-toc" class="gap-2 sm:gap-6 py-12">
-        <div hx-get="{% url 'student_interface:partial_course_toc' course.slug %}"
-             hx-trigger="load"
-             hx-indicator="#course-loading">
-            <c-loading-indicator id="course-loading" message="Loading courses..." />
-        </div>
+{% block header_bar_text %}{{ course.title }}{% endblock header_bar_text %}
+{% block sidebar_heading %}Table of Contents{% endblock sidebar_heading %}
 
-        <c-slot name="content">
-            {% block content %}
-            {% endblock content %}
-        </c-slot>
-    </c-sidebar>
-
-{% endblock body %}
+{% block sidebar_content %}
+    <div hx-get="{% url 'student_interface:partial_course_toc' course.slug %}"
+         hx-trigger="load"
+         hx-indicator="#course-loading">
+        <c-loading-indicator id="course-loading" message="Loading courses..." />
+    </div>
+{% endblock sidebar_content %}
