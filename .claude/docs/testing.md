@@ -183,3 +183,13 @@ Cover these for each feature:
 5. Don't hardcode URLs - use `reverse()`
 6. Be explicit in assertions
 7. Keep tests focused and DRY
+
+# Some guidelines
+
+When testing validation logic: Test the happy and unhappy path. Don't just test things that will pass, assert that validation FAILS when it is supposed to
+
+Never test that a hardcoded configuration value is what it is meant to be. Eg never say `assert config.hardcoded_value == [whatever]` or `assert "something" in config.hardcoded_value`
+
+Never test trivial model instance creation. Eg never test that default values are as they should be, or that passed in values are saved unless the model is meant to do something unusual. Assume Django's model implementation works, don't waste time testing it.
+
+Never test trivial Admin panel functionality. Assume Django's Admin interface just works, don't write tests that assert that the admin shows up exactly as it was configured because it will always do that. If you have done something unusual in the admin then test that.

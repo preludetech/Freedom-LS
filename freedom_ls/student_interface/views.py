@@ -491,6 +491,19 @@ def course_finish(request, course_slug):
         course_progress.completed_time = timezone.now()
         course_progress.save()
 
+        from freedom_ls.webhooks.events import fire_webhook_event
+
+        fire_webhook_event(
+            "course.completed",
+            {
+                "user_id": request.user.pk,
+                "user_email": request.user.email,
+                "course_id": str(course.id),
+                "course_title": course.title,
+                "completed_time": course_progress.completed_time.isoformat(),
+            },
+        )
+
     context = {
         "course": course,
         "course_progress": course_progress,
