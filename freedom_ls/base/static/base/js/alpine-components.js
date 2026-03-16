@@ -138,7 +138,7 @@ document.addEventListener("alpine:init", () => {
             return "";
         },
         sidebarPanelClass() {
-            if (this.isMobile) return "fixed left-0 z-40 w-64 bg-surface shadow-lg overflow-y-auto";
+            if (this.isMobile) return "fixed left-0 z-40 w-4/5 max-w-96 bg-surface shadow-lg overflow-y-auto";
             return "";
         },
         backdropVisible() {
