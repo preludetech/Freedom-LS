@@ -78,8 +78,10 @@ def dispatch_event(event_id: str, site_id: int) -> None:
     """
     event = WebhookEvent.objects.get(pk=event_id)
 
-    # Filter explicitly by site_id since we have no request context
-    endpoints = WebhookEndpoint.objects.filter(site_id=site_id)
+    # Filter explicitly by site_id since we have no request context.
+    # Only include user-enabled endpoints. Circuit-broken endpoints still have
+    # is_active=True; check_circuit_breaker() handles probe gating.
+    endpoints = WebhookEndpoint.objects.filter(site_id=site_id, is_active=True)
 
     for endpoint in endpoints:
         if event.event_type not in endpoint.event_types:

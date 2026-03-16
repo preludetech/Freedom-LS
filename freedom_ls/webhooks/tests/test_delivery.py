@@ -156,21 +156,33 @@ class TestCheckCircuitBreaker:
         endpoint = WebhookEndpointFactory(is_active=False, disabled_at=None)
         assert check_circuit_breaker(endpoint) is False
 
-    def test_recently_disabled_endpoint_skips(self, mock_site_context: object) -> None:
+    def test_circuit_broken_endpoint_skips_during_cooldown(
+        self, mock_site_context: object
+    ) -> None:
         endpoint = WebhookEndpointFactory(
-            is_active=False,
+            is_active=True,
             disabled_at=timezone.now() - timedelta(minutes=30),
         )
         assert check_circuit_breaker(endpoint) is False
 
-    def test_disabled_endpoint_probes_after_one_hour(
+    def test_circuit_broken_endpoint_probes_after_cooldown(
         self, mock_site_context: object
     ) -> None:
         endpoint = WebhookEndpointFactory(
-            is_active=False,
+            is_active=True,
             disabled_at=timezone.now() - timedelta(hours=1, minutes=1),
         )
         assert check_circuit_breaker(endpoint) is True
+
+    def test_user_disabled_with_expired_cooldown_still_returns_false(
+        self, mock_site_context: object
+    ) -> None:
+        """User-disabled endpoints stay disabled even if cooldown has expired."""
+        endpoint = WebhookEndpointFactory(
+            is_active=False,
+            disabled_at=timezone.now() - timedelta(hours=2),
+        )
+        assert check_circuit_breaker(endpoint) is False
 
 
 @pytest.mark.django_db
@@ -186,14 +198,14 @@ class TestHandleCircuitBreakerTrip:
         endpoint = WebhookEndpointFactory(failure_count=5, is_active=True)
         handle_circuit_breaker_trip(endpoint)
         endpoint.refresh_from_db()
-        assert endpoint.is_active is False
+        assert endpoint.is_active is True
         assert endpoint.disabled_at is not None
 
     def test_trips_above_threshold(self, mock_site_context: object) -> None:
         endpoint = WebhookEndpointFactory(failure_count=10, is_active=True)
         handle_circuit_breaker_trip(endpoint)
         endpoint.refresh_from_db()
-        assert endpoint.is_active is False
+        assert endpoint.is_active is True
         assert endpoint.disabled_at is not None
 
 
@@ -227,7 +239,7 @@ class TestAttemptDelivery:
         assert endpoint.failure_count == 0
         assert endpoint.disabled_at is None
 
-    def test_4xx_marks_failed(self, mock_site_context: object) -> None:
+    def test_4xx_marks_permanent_failure(self, mock_site_context: object) -> None:
         delivery = WebhookDeliveryFactory()
 
         mock_response = httpx.Response(
@@ -242,7 +254,7 @@ class TestAttemptDelivery:
             attempt_delivery(delivery)
 
         delivery.refresh_from_db()
-        assert delivery.status == "failed"
+        assert delivery.status == "permanent_failure"
         assert delivery.attempt_count == 1
         assert delivery.last_status_code == 400
 
@@ -362,13 +374,13 @@ class TestAttemptDelivery:
         assert delivery.attempt_count == MAX_ATTEMPTS
         assert delivery.next_retry_at is None
 
-    def test_success_resets_endpoint_failure_state(
+    def test_success_resets_endpoint_circuit_breaker_state(
         self, mock_site_context: object
     ) -> None:
         endpoint = WebhookEndpointFactory(
             failure_count=4,
             disabled_at=timezone.now() - timedelta(hours=2),
-            is_active=False,
+            is_active=True,
         )
         delivery = WebhookDeliveryFactory(endpoint=endpoint)
 
@@ -387,6 +399,33 @@ class TestAttemptDelivery:
         assert endpoint.failure_count == 0
         assert endpoint.disabled_at is None
         assert endpoint.is_active is True
+
+    def test_success_does_not_reenable_user_disabled_endpoint(
+        self, mock_site_context: object
+    ) -> None:
+        """Success on a user-disabled endpoint should not re-enable it."""
+        endpoint = WebhookEndpointFactory(
+            failure_count=3,
+            disabled_at=None,
+            is_active=False,
+        )
+        delivery = WebhookDeliveryFactory(endpoint=endpoint)
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b"OK",
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+        ):
+            attempt_delivery(delivery)
+
+        endpoint.refresh_from_db()
+        assert endpoint.failure_count == 0
+        assert endpoint.disabled_at is None
+        assert endpoint.is_active is False
 
     def test_retryable_failure_increments_failure_count(
         self, mock_site_context: object
@@ -424,9 +463,12 @@ class TestAttemptDelivery:
         ):
             attempt_delivery(delivery)
 
+        delivery.refresh_from_db()
+        assert delivery.status == "permanent_failure"
+
         endpoint.refresh_from_db()
         assert endpoint.failure_count == 5
-        assert endpoint.is_active is False
+        assert endpoint.is_active is True
         assert endpoint.disabled_at is not None
 
     def test_retryable_failure_trips_circuit_breaker(
@@ -448,5 +490,5 @@ class TestAttemptDelivery:
 
         endpoint.refresh_from_db()
         assert endpoint.failure_count == 5
-        assert endpoint.is_active is False
+        assert endpoint.is_active is True
         assert endpoint.disabled_at is not None

@@ -111,12 +111,11 @@ def _parse_retry_after(response: httpx.Response) -> int | None:
 
 
 def _handle_success(delivery: WebhookDelivery, endpoint: WebhookEndpoint) -> None:
-    """Mark delivery as successful and reset endpoint failure state."""
+    """Mark delivery as successful and reset endpoint circuit breaker state."""
     delivery.status = "success"
     delivery.next_retry_at = None
     endpoint.failure_count = 0
     endpoint.disabled_at = None
-    endpoint.is_active = True
     endpoint.save()
 
 
@@ -124,7 +123,7 @@ def _handle_permanent_failure(
     delivery: WebhookDelivery, endpoint: WebhookEndpoint
 ) -> None:
     """Mark delivery as permanently failed (4xx except 429)."""
-    delivery.status = "failed"
+    delivery.status = "permanent_failure"
     delivery.next_retry_at = None
     endpoint.failure_count += 1
     handle_circuit_breaker_trip(endpoint)
@@ -165,21 +164,20 @@ def calculate_next_retry(attempt_count: int) -> datetime:
 def check_circuit_breaker(endpoint: WebhookEndpoint) -> bool:
     """
     Returns True if delivery should proceed.
-    - If endpoint.is_active: proceed
-    - If not active and disabled_at is None: skip (manually disabled)
-    - If not active and disabled_at + 1 hour < now: proceed (probe)
-    - Otherwise: skip
+    - is_active=False: user disabled — never deliver
+    - disabled_at is None: active and healthy — proceed
+    - disabled_at + cooldown < now: circuit-broken but cooldown expired — probe
+    - Otherwise: circuit-broken within cooldown — skip
     """
-    if endpoint.is_active:
-        return True
-    if endpoint.disabled_at is None:
+    if not endpoint.is_active:
         return False
+    if endpoint.disabled_at is None:
+        return True
     return endpoint.disabled_at + CIRCUIT_BREAKER_COOLDOWN < timezone.now()
 
 
 def handle_circuit_breaker_trip(endpoint: WebhookEndpoint) -> None:
-    """If failure_count >= 5: set is_active=False, disabled_at=now."""
+    """If failure_count >= threshold: set disabled_at=now (circuit breaker only)."""
     if endpoint.failure_count >= CIRCUIT_BREAKER_THRESHOLD:
-        endpoint.is_active = False
         endpoint.disabled_at = timezone.now()
         endpoint.save()

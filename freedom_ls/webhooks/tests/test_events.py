@@ -101,12 +101,10 @@ class TestDispatchEvent:
         assert WebhookDelivery.objects.count() == 0
         mock_attempt.assert_not_called()
 
-    def test_skips_inactive_endpoints_via_circuit_breaker(
-        self, mock_site_context: object
-    ) -> None:
+    def test_skips_manually_disabled_endpoints(self, mock_site_context: object) -> None:
         from freedom_ls.webhooks.events import dispatch_event
 
-        # Manually disabled endpoint (disabled_at is None)
+        # Manually disabled endpoint (is_active=False, disabled_at=None)
         WebhookEndpointFactory(
             event_types=["user.registered"],
             is_active=False,
@@ -129,10 +127,10 @@ class TestDispatchEvent:
 
         from freedom_ls.webhooks.events import dispatch_event
 
-        # Endpoint disabled over an hour ago — circuit breaker allows probe
+        # Endpoint circuit-broken over an hour ago — circuit breaker allows probe
         WebhookEndpointFactory(
             event_types=["user.registered"],
-            is_active=False,
+            is_active=True,
             disabled_at=timezone.now() - timedelta(hours=1, minutes=1),
         )
         event = WebhookEventFactory(event_type="user.registered")

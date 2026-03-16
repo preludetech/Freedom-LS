@@ -11,6 +11,7 @@ STATUS_CHOICES = [
     ("pending", "Pending"),
     ("success", "Success"),
     ("failed", "Failed"),
+    ("permanent_failure", "Permanent Failure"),
     ("dead_letter", "Dead letter"),
 ]
 
@@ -20,9 +21,16 @@ class WebhookEndpoint(SiteAwareModel):
     description = models.CharField(max_length=200)
     secret = models.CharField(max_length=128, editable=False)
     event_types = models.JSONField(default=list)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(
+        default=True,
+        help_text="User intent: toggled by admin enable/disable actions only.",
+    )
     failure_count = models.PositiveIntegerField(default=0)
-    disabled_at = models.DateTimeField(null=True, blank=True)
+    disabled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Circuit breaker state: set when failure threshold is reached, cleared on successful delivery.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

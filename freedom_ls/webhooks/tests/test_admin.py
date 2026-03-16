@@ -65,6 +65,59 @@ class TestRetryDeliveries:
 
 
 @pytest.mark.django_db
+class TestRetryPermanentFailures:
+    def test_retry_includes_permanent_failure_deliveries(
+        self, mock_site_context: object
+    ) -> None:
+        delivery = WebhookDeliveryFactory(
+            attempt_count=1,
+            status="permanent_failure",
+        )
+        endpoint = delivery.endpoint
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b'{"ok": true}',
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        admin_instance = WebhookDeliveryAdmin(WebhookDelivery, None)
+        queryset = WebhookDelivery.objects.filter(pk=delivery.pk)
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+        ):
+            admin_instance.retry_deliveries(request=None, queryset=queryset)
+
+        delivery.refresh_from_db()
+        assert delivery.status == "success"
+        assert delivery.attempt_count == 1  # reset to 0, then incremented by attempt
+
+
+@pytest.mark.django_db
+class TestDisableEndpoints:
+    def test_disable_clears_circuit_breaker_state(
+        self, mock_site_context: object
+    ) -> None:
+        """Disabling should clear circuit breaker state (disabled_at, failure_count)."""
+        endpoint = WebhookEndpointFactory(
+            is_active=True,
+            disabled_at=timezone.now(),
+            failure_count=5,
+        )
+
+        admin_instance = WebhookEndpointAdmin(WebhookEndpoint, None)
+        queryset = WebhookEndpoint.objects.filter(pk=endpoint.pk)
+
+        admin_instance.disable_endpoints(request=None, queryset=queryset)
+
+        endpoint.refresh_from_db()
+        assert endpoint.is_active is False
+        assert endpoint.disabled_at is None
+        assert endpoint.failure_count == 0
+
+
+@pytest.mark.django_db
 class TestEnableEndpoints:
     def test_enable_clears_circuit_breaker_state(
         self, mock_site_context: object

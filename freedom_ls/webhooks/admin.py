@@ -59,7 +59,7 @@ class WebhookEndpointAdmin(SiteAwareModelAdmin):
     def disable_endpoints(
         self, request: HttpRequest, queryset: QuerySet[WebhookEndpoint]
     ) -> None:
-        queryset.update(is_active=False)
+        queryset.update(is_active=False, disabled_at=None, failure_count=0)
 
     @admin.action(description="Send test ping")
     def send_test_ping(
@@ -149,7 +149,7 @@ class WebhookDeliveryAdmin(SiteAwareModelAdmin):
         self, request: HttpRequest, queryset: QuerySet[WebhookDelivery]
     ) -> None:
         retryable = queryset.filter(
-            status__in=["failed", "dead_letter"]
+            status__in=["failed", "permanent_failure", "dead_letter"]
         ).select_related("endpoint", "event")
         for delivery in retryable:
             delivery.attempt_count = 0
