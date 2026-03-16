@@ -97,7 +97,7 @@ def partial_course_toc(request, course_slug):
 
     return render(
         request,
-        "student_interface/partials/course_minimal_toc.html",
+        "student_interface/partials/course_minimal_toc.html#course-children",
         {"course": course, "children": children, "is_registered": is_registered},
     )
 
