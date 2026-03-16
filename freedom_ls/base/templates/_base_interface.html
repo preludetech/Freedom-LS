@@ -33,12 +33,14 @@
             <!-- Center: contextual text -->
             <div class="flex-1 min-w-0 text-center px-2">
                 <span class="text-sm font-medium text-muted truncate">
-                    {% block header_bar_text %}{% endblock header_bar_text %}
+                    {% block header_bar_text %}
+                    {% endblock header_bar_text %}
                 </span>
             </div>
 
             <!-- Right spacer to balance layout -->
-            <div class="w-10"></div>
+            <div class="w-10">
+            </div>
         </div>
 
         <!-- Mobile backdrop -->
@@ -52,7 +54,10 @@
              x-transition:leave-end="opacity-0"
              x-on:click="closeSidebar"
              class="fixed z-30 bg-black/50"
-             style="top: var(--sidebar-top); bottom: 0; left: 0; right: 0;"
+             style="top: var(--sidebar-top);
+                    bottom: 0;
+                    left: 0;
+                    right: 0"
              aria-hidden="true">
         </div>
 
@@ -72,8 +77,8 @@
                      x-transition:leave-start="opacity-100 translate-x-0"
                      x-transition:leave-end="opacity-0 -translate-x-2"
                      x-bind:class="sidebarPanelClass"
-                     style="top: var(--sidebar-top); bottom: 0;"
-                     >
+                     style="top: var(--sidebar-top);
+                            bottom: 0">
                     <!-- Mobile sidebar header -->
                     <div class="flex items-center justify-between p-4 lg:hidden">
                         <span class="text-sm font-semibold text-muted truncate"
@@ -85,8 +90,10 @@
                             <c-icon name="menu_close" class="size-5" />
                         </button>
                     </div>
-                    {% block sidebar_content %}
-                    {% endblock sidebar_content %}
+                    <div class="pl-4 pr-4">
+                        {% block sidebar_content %}
+                        {% endblock sidebar_content %}
+                    </div>
                 </div>
             </div>
 
