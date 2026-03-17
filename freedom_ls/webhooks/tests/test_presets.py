@@ -1,0 +1,77 @@
+import json
+
+import pytest
+
+from freedom_ls.webhooks.presets import (
+    WEBHOOK_PRESETS,
+    WebhookPreset,
+    get_preset_choices,
+)
+from freedom_ls.webhooks.rendering import render_template
+
+
+class TestGetPresetChoices:
+    def test_returns_non_empty_list(self) -> None:
+        choices = get_preset_choices()
+        assert len(choices) > 0
+
+    def test_returns_list_of_slug_name_tuples(self) -> None:
+        choices = get_preset_choices()
+        for slug, name in choices:
+            assert isinstance(slug, str)
+            assert isinstance(name, str)
+            assert slug in WEBHOOK_PRESETS
+            assert WEBHOOK_PRESETS[slug].name == name
+
+
+class TestBrevoPreset:
+    def test_brevo_preset_exists(self) -> None:
+        assert "brevo-track-event" in WEBHOOK_PRESETS
+
+    def test_brevo_preset_is_frozen_dataclass(self) -> None:
+        preset = WEBHOOK_PRESETS["brevo-track-event"]
+        assert isinstance(preset, WebhookPreset)
+        with pytest.raises(AttributeError):
+            preset.name = "changed"
+
+    def test_brevo_body_template_renders_with_sample_data(self) -> None:
+        preset = WEBHOOK_PRESETS["brevo-track-event"]
+        context = {
+            "event": {
+                "id": "sample-uuid-0000",
+                "type": "user.registered",
+                "timestamp": "2026-01-01T00:00:00Z",
+                "data": {
+                    "user_id": "sample-uuid-1234",
+                    "user_email": "test@example.com",
+                },
+            },
+            "secrets": {
+                "brevo_api_key": "xkeysib-test-key",  # pragma: allowlist secret
+            },
+        }
+        rendered = render_template(preset.body_template, context)
+        parsed = json.loads(rendered)
+        assert "event_name" in parsed
+        assert parsed["identifiers"]["email_id"] == "test@example.com"
+        # Dots should be replaced with underscores in event_name
+        assert "." not in parsed["event_name"]
+
+    def test_brevo_headers_template_renders_with_sample_data(self) -> None:
+        preset = WEBHOOK_PRESETS["brevo-track-event"]
+        context = {
+            "secrets": {
+                "brevo_api_key": "xkeysib-test-key",  # pragma: allowlist secret
+            },
+        }
+        rendered = render_template(preset.headers_template, context)
+        parsed = json.loads(rendered)
+        assert isinstance(parsed, dict)
+        assert parsed["api-key"] == "xkeysib-test-key"
+        assert parsed["accept"] == "application/json"
+
+    def test_brevo_preset_has_correct_defaults(self) -> None:
+        preset = WEBHOOK_PRESETS["brevo-track-event"]
+        assert preset.http_method == "POST"
+        assert preset.content_type == "application/json"
+        assert preset.default_url == "https://api.brevo.com/v3/events"

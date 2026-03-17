@@ -1,0 +1,48 @@
+{% extends "admin/base_site.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+<h2>Event</h2>
+<table>
+    <tr><td><strong>Event Type:</strong></td><td>{{ event.event_type }}</td></tr>
+    <tr><td><strong>Event ID:</strong></td><td>{{ event.pk }}</td></tr>
+</table>
+
+{% if preview %}
+<h2>Preview (Transformed Request)</h2>
+<table>
+    <tr><td><strong>Method:</strong></td><td>{{ preview.method }}</td></tr>
+    <tr><td><strong>URL:</strong></td><td>{{ preview.url }}</td></tr>
+    <tr>
+        <td><strong>Headers:</strong></td>
+        <td><pre>{{ preview.headers }}</pre></td>
+    </tr>
+    <tr>
+        <td><strong>Body:</strong></td>
+        <td><pre>{{ preview.body }}</pre></td>
+    </tr>
+</table>
+{% endif %}
+
+<h2>Response</h2>
+<table>
+    <tr><td><strong>Status:</strong></td><td>{{ delivery.status }}</td></tr>
+    <tr><td><strong>Status Code:</strong></td><td>{{ delivery.last_status_code|default:"N/A" }}</td></tr>
+    <tr><td><strong>Latency:</strong></td><td>{{ delivery.last_latency_ms|default:"N/A" }} ms</td></tr>
+    <tr>
+        <td><strong>Response Body:</strong></td>
+        <td><pre>{{ delivery.last_response_body|default:"(empty)" }}</pre></td>
+    </tr>
+    {% if delivery.last_response_error_message %}
+    <tr>
+        <td><strong>Error:</strong></td>
+        <td>{{ delivery.last_response_error_message }}</td>
+    </tr>
+    {% endif %}
+</table>
+
+<p style="margin-top: 1em;">
+    <a href="{{ back_url }}">Back to Endpoint</a>
+</p>
+{% endblock %}

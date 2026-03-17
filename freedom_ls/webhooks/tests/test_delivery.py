@@ -10,6 +10,8 @@ from django.utils import timezone
 from freedom_ls.webhooks.delivery import (
     MAX_ATTEMPTS,
     RETRY_DELAYS,
+    _build_standard_request,
+    _build_transformed_request,
     attempt_delivery,
     build_webhook_headers,
     build_webhook_payload,
@@ -21,6 +23,7 @@ from freedom_ls.webhooks.factories import (
     WebhookDeliveryFactory,
     WebhookEndpointFactory,
     WebhookEventFactory,
+    WebhookSecretFactory,
 )
 
 
@@ -224,7 +227,7 @@ class TestAttemptDelivery:
         )
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
         ):
             attempt_delivery(delivery)
 
@@ -249,7 +252,7 @@ class TestAttemptDelivery:
         )
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
         ):
             attempt_delivery(delivery)
 
@@ -269,7 +272,7 @@ class TestAttemptDelivery:
         )
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
         ):
             attempt_delivery(delivery)
 
@@ -290,7 +293,7 @@ class TestAttemptDelivery:
         )
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
         ):
             attempt_delivery(delivery)
 
@@ -311,7 +314,7 @@ class TestAttemptDelivery:
         )
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
         ):
             attempt_delivery(delivery)
 
@@ -327,7 +330,7 @@ class TestAttemptDelivery:
         delivery = WebhookDeliveryFactory()
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post",
+            "freedom_ls.webhooks.delivery.httpx.request",
             side_effect=httpx.TimeoutException("timed out"),
         ):
             attempt_delivery(delivery)
@@ -345,7 +348,7 @@ class TestAttemptDelivery:
         delivery = WebhookDeliveryFactory()
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post",
+            "freedom_ls.webhooks.delivery.httpx.request",
             side_effect=httpx.ConnectError("connection refused"),
         ):
             attempt_delivery(delivery)
@@ -365,7 +368,7 @@ class TestAttemptDelivery:
         )
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
         ):
             attempt_delivery(delivery)
 
@@ -391,7 +394,7 @@ class TestAttemptDelivery:
         )
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
         ):
             attempt_delivery(delivery)
 
@@ -418,7 +421,7 @@ class TestAttemptDelivery:
         )
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
         ):
             attempt_delivery(delivery)
 
@@ -440,7 +443,7 @@ class TestAttemptDelivery:
         )
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
         ):
             attempt_delivery(delivery)
 
@@ -459,7 +462,7 @@ class TestAttemptDelivery:
         )
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
         ):
             attempt_delivery(delivery)
 
@@ -484,7 +487,7 @@ class TestAttemptDelivery:
         )
 
         with patch(
-            "freedom_ls.webhooks.delivery.httpx.post", return_value=mock_response
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
         ):
             attempt_delivery(delivery)
 
@@ -492,3 +495,430 @@ class TestAttemptDelivery:
         assert endpoint.failure_count == 5
         assert endpoint.is_active is True
         assert endpoint.disabled_at is not None
+
+
+@pytest.mark.django_db
+class TestAttemptDeliveryWithTransformation:
+    """Tests for attempt_delivery with transformed endpoints."""
+
+    def test_without_transformation_works_as_before(
+        self, mock_site_context: object
+    ) -> None:
+        """Regression: endpoint without transformation uses standard delivery."""
+        delivery = WebhookDeliveryFactory()
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b'{"ok": true}',
+            request=httpx.Request("POST", delivery.endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
+        ) as mock_request:
+            attempt_delivery(delivery)
+
+        delivery.refresh_from_db()
+        assert delivery.status == "success"
+        # Standard delivery uses POST and application/json
+        mock_request.assert_called_once()
+        call_kwargs = mock_request.call_args
+        assert call_kwargs.kwargs["method"] == "POST"
+        assert call_kwargs.kwargs["headers"]["Content-Type"] == "application/json"
+
+    def test_with_transformation_uses_rendered_body(
+        self, mock_site_context: object
+    ) -> None:
+        """Endpoint with transformation renders body_template."""
+        endpoint = WebhookEndpointFactory(
+            body_template='{"custom": "{{ event.type }}"}',
+            content_type="application/json",
+            http_method="POST",
+            auth_type="none",
+        )
+        event = WebhookEventFactory(event_type="user.registered")
+        delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b"OK",
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
+        ) as mock_request:
+            attempt_delivery(delivery)
+
+        delivery.refresh_from_db()
+        assert delivery.status == "success"
+        sent_body = mock_request.call_args.kwargs["content"]
+        parsed = json.loads(sent_body)
+        assert parsed["custom"] == "user.registered"
+
+    def test_with_transformation_uses_rendered_headers(
+        self, mock_site_context: object
+    ) -> None:
+        """Endpoint with headers_template merges rendered headers."""
+        endpoint = WebhookEndpointFactory(
+            body_template="body content",
+            headers_template='{"X-Custom": "my-value"}',
+            content_type="text/plain",
+            http_method="POST",
+            auth_type="none",
+        )
+        event = WebhookEventFactory()
+        delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b"OK",
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
+        ) as mock_request:
+            attempt_delivery(delivery)
+
+        headers = mock_request.call_args.kwargs["headers"]
+        assert headers["X-Custom"] == "my-value"
+
+    def test_body_template_render_failure_marks_delivery_failed(
+        self, mock_site_context: object
+    ) -> None:
+        """Template rendering failure marks delivery as failed with error message."""
+        endpoint = WebhookEndpointFactory(
+            body_template="{{ undefined_variable }}",
+            content_type="application/json",
+            http_method="POST",
+            auth_type="none",
+        )
+        event = WebhookEventFactory()
+        delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
+
+        with patch("freedom_ls.webhooks.delivery.httpx.request") as mock_request:
+            attempt_delivery(delivery)
+            # No HTTP request should have been made
+            mock_request.assert_not_called()
+
+        delivery.refresh_from_db()
+        assert delivery.status == "permanent_failure"
+        assert delivery.last_response_error_message != ""
+        assert "undefined_variable" in delivery.last_response_error_message.lower()
+
+    def test_headers_template_render_failure_marks_delivery_failed(
+        self, mock_site_context: object
+    ) -> None:
+        """Headers template rendering failure marks delivery as failed."""
+        endpoint = WebhookEndpointFactory(
+            body_template="valid body",
+            headers_template="{{ undefined_header_var }}",
+            content_type="text/plain",
+            http_method="POST",
+            auth_type="none",
+        )
+        event = WebhookEventFactory()
+        delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
+
+        with patch("freedom_ls.webhooks.delivery.httpx.request") as mock_request:
+            attempt_delivery(delivery)
+            mock_request.assert_not_called()
+
+        delivery.refresh_from_db()
+        assert delivery.status == "permanent_failure"
+        assert delivery.last_response_error_message != ""
+
+    def test_headers_template_invalid_json_marks_delivery_failed(
+        self, mock_site_context: object
+    ) -> None:
+        """Headers template that renders to invalid JSON marks delivery as failed."""
+        endpoint = WebhookEndpointFactory(
+            body_template="valid body",
+            headers_template="not json at all",
+            content_type="text/plain",
+            http_method="POST",
+            auth_type="none",
+        )
+        event = WebhookEventFactory()
+        delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
+
+        with patch("freedom_ls.webhooks.delivery.httpx.request") as mock_request:
+            attempt_delivery(delivery)
+            mock_request.assert_not_called()
+
+        delivery.refresh_from_db()
+        assert delivery.status == "permanent_failure"
+        assert delivery.last_response_error_message != ""
+
+    def test_custom_http_method_used(self, mock_site_context: object) -> None:
+        """Custom HTTP method from endpoint is used in the request."""
+        endpoint = WebhookEndpointFactory(
+            body_template="body",
+            http_method="PUT",
+            content_type="text/plain",
+            auth_type="none",
+        )
+        event = WebhookEventFactory()
+        delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b"OK",
+            request=httpx.Request("PUT", endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
+        ) as mock_request:
+            attempt_delivery(delivery)
+
+        assert mock_request.call_args.kwargs["method"] == "PUT"
+
+    def test_custom_content_type_set_in_headers(
+        self, mock_site_context: object
+    ) -> None:
+        """Custom content_type from endpoint is set in headers."""
+        endpoint = WebhookEndpointFactory(
+            body_template="<xml>data</xml>",
+            http_method="POST",
+            content_type="application/xml",
+            auth_type="none",
+        )
+        event = WebhookEventFactory()
+        delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b"OK",
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
+        ) as mock_request:
+            attempt_delivery(delivery)
+
+        headers = mock_request.call_args.kwargs["headers"]
+        assert headers["Content-Type"] == "application/xml"
+
+    def test_auth_type_signing_includes_hmac_headers(
+        self, mock_site_context: object
+    ) -> None:
+        """auth_type=signing adds HMAC signature headers even with transformation."""
+        endpoint = WebhookEndpointFactory(
+            body_template='{"data": "test"}',
+            http_method="POST",
+            content_type="application/json",
+            auth_type="signing",
+        )
+        event = WebhookEventFactory()
+        delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b"OK",
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
+        ) as mock_request:
+            attempt_delivery(delivery)
+
+        headers = mock_request.call_args.kwargs["headers"]
+        assert "webhook-id" in headers
+        assert "webhook-timestamp" in headers
+        assert "webhook-signature" in headers
+
+    def test_auth_type_none_excludes_hmac_headers(
+        self, mock_site_context: object
+    ) -> None:
+        """auth_type=none does not add HMAC signature headers."""
+        endpoint = WebhookEndpointFactory(
+            body_template='{"data": "test"}',
+            http_method="POST",
+            content_type="application/json",
+            auth_type="none",
+        )
+        event = WebhookEventFactory()
+        delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b"OK",
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
+        ) as mock_request:
+            attempt_delivery(delivery)
+
+        headers = mock_request.call_args.kwargs["headers"]
+        assert "webhook-id" not in headers
+        assert "webhook-timestamp" not in headers
+        assert "webhook-signature" not in headers
+
+    def test_rendered_headers_override_defaults(
+        self, mock_site_context: object
+    ) -> None:
+        """Rendered headers from headers_template override default headers."""
+        endpoint = WebhookEndpointFactory(
+            body_template="body",
+            headers_template='{"Content-Type": "text/html"}',
+            content_type="text/plain",
+            http_method="POST",
+            auth_type="none",
+        )
+        event = WebhookEventFactory()
+        delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b"OK",
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
+        ) as mock_request:
+            attempt_delivery(delivery)
+
+        headers = mock_request.call_args.kwargs["headers"]
+        # Rendered header overrides the default Content-Type
+        assert headers["Content-Type"] == "text/html"
+
+    def test_json_content_type_with_invalid_json_body_still_proceeds(
+        self, mock_site_context: object
+    ) -> None:
+        """Delivery proceeds even if body is not valid JSON despite json content type."""
+        endpoint = WebhookEndpointFactory(
+            body_template="not valid json {{ event.type }}",
+            http_method="POST",
+            content_type="application/json",
+            auth_type="none",
+        )
+        event = WebhookEventFactory(event_type="user.registered")
+        delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b"OK",
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
+        ) as mock_request:
+            attempt_delivery(delivery)
+
+        # Request was made despite invalid JSON body
+        mock_request.assert_called_once()
+        delivery.refresh_from_db()
+        assert delivery.status == "success"
+
+    def test_transformation_with_secrets_in_headers(
+        self, mock_site_context: object
+    ) -> None:
+        """Transformed endpoint can use secrets in headers_template."""
+        site = mock_site_context
+        WebhookSecretFactory(name="api_key", encrypted_value="secret-123", site=site)
+
+        endpoint = WebhookEndpointFactory(
+            body_template='{"msg": "hello"}',
+            headers_template='{"Authorization": "Bearer {{ secrets.api_key }}"}',
+            content_type="application/json",
+            http_method="POST",
+            auth_type="none",
+        )
+        event = WebhookEventFactory()
+        delivery = WebhookDeliveryFactory(endpoint=endpoint, event=event)
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b"OK",
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
+        ) as mock_request:
+            attempt_delivery(delivery)
+
+        headers = mock_request.call_args.kwargs["headers"]
+        assert headers["Authorization"] == "Bearer secret-123"
+
+
+@pytest.mark.django_db
+class TestBuildStandardRequest:
+    """Tests for _build_standard_request helper."""
+
+    def test_returns_post_method(self, mock_site_context: object) -> None:
+        endpoint = WebhookEndpointFactory()
+        event = WebhookEventFactory()
+        method, _body, _headers = _build_standard_request(endpoint, event)
+        assert method == "POST"
+
+    def test_returns_json_content_type(self, mock_site_context: object) -> None:
+        endpoint = WebhookEndpointFactory()
+        event = WebhookEventFactory()
+        _method, _body, headers = _build_standard_request(endpoint, event)
+        assert headers["Content-Type"] == "application/json"
+
+    def test_body_is_valid_json_envelope(self, mock_site_context: object) -> None:
+        endpoint = WebhookEndpointFactory()
+        event = WebhookEventFactory(event_type="test.event")
+        _method, body, _headers = _build_standard_request(endpoint, event)
+        parsed = json.loads(body)
+        assert parsed["type"] == "test.event"
+
+
+@pytest.mark.django_db
+class TestBuildTransformedRequest:
+    """Tests for _build_transformed_request helper."""
+
+    def test_renders_body_template(self, mock_site_context: object) -> None:
+        endpoint = WebhookEndpointFactory(
+            body_template='{"event": "{{ event.type }}"}',
+            http_method="POST",
+            content_type="application/json",
+            auth_type="none",
+        )
+        event = WebhookEventFactory(event_type="course.completed")
+        _method, body, _headers = _build_transformed_request(endpoint, event)
+        parsed = json.loads(body)
+        assert parsed["event"] == "course.completed"
+
+    def test_uses_custom_http_method(self, mock_site_context: object) -> None:
+        endpoint = WebhookEndpointFactory(
+            body_template="body",
+            http_method="PATCH",
+            content_type="text/plain",
+            auth_type="none",
+        )
+        event = WebhookEventFactory()
+        method, _body, _headers = _build_transformed_request(endpoint, event)
+        assert method == "PATCH"
+
+    def test_defaults_method_to_post(self, mock_site_context: object) -> None:
+        endpoint = WebhookEndpointFactory(
+            body_template="body",
+            http_method="",
+            content_type="text/plain",
+            auth_type="none",
+        )
+        event = WebhookEventFactory()
+        method, _body, _headers = _build_transformed_request(endpoint, event)
+        assert method == "POST"
+
+    def test_defaults_content_type_to_json(self, mock_site_context: object) -> None:
+        endpoint = WebhookEndpointFactory(
+            body_template="body",
+            http_method="POST",
+            content_type="",
+            auth_type="none",
+        )
+        event = WebhookEventFactory()
+        _method, _body, headers = _build_transformed_request(endpoint, event)
+        assert headers["Content-Type"] == "application/json"

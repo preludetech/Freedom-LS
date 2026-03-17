@@ -13,6 +13,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import base64
+import hashlib
 import os
 import sys
 from pathlib import Path
@@ -78,6 +80,7 @@ INSTALLED_APPS = [
     #########
     "django_premailer",
     # AllAuth is at the end because we need to override many of its templates
+    "encrypted_fields",
     "freedom_ls.webhooks",
     "allauth",
     "allauth.account",
@@ -290,3 +293,21 @@ TASKS = {
         "BACKEND": "django.tasks.backends.immediate.ImmediateBackend",
     },
 }
+
+# Webhook encryption for django-fernet-encrypted-fields.
+# The library derives Fernet keys from SECRET_KEY + SALT_KEY using PBKDF2.
+# In production: set WEBHOOK_ENCRYPTION_SALT environment variable.
+# In development: a deterministic salt is derived from SECRET_KEY.
+#
+# django-fernet-encrypted-fields supports MultiFernet key rotation via
+# SECRET_KEY_FALLBACKS — provide old SECRET_KEYs there so existing encrypted
+# data can still be decrypted. The current SECRET_KEY is always used for
+# new encryption.
+_webhook_salt = os.environ.get("WEBHOOK_ENCRYPTION_SALT", "")
+if not _webhook_salt:
+    # Development fallback: derive a deterministic salt from a hardcoded string.
+    # This is NOT secure for production — always set the env var in production.
+    _webhook_salt = base64.urlsafe_b64encode(
+        hashlib.sha256(b"webhook-encryption-salt-dev").digest()
+    ).decode()
+SALT_KEY = _webhook_salt

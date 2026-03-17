@@ -39,26 +39,6 @@ def fire_webhook_event(event_type: str, payload: dict[str, object]) -> None:
     )
 
 
-def send_test_ping(endpoint: WebhookEndpoint) -> None:
-    """
-    Send a webhook.test event to a specific endpoint.
-    Bypasses registry validation. Creates a WebhookEvent with type='webhook.test'
-    and a static payload {'ping': True}, then creates and attempts a single delivery.
-    """
-    event = WebhookEvent.objects.create(
-        event_type="webhook.test",
-        payload={"ping": True},
-        site_id=endpoint.site_id,
-    )
-    delivery = WebhookDelivery.objects.create(
-        event=event,
-        endpoint=endpoint,
-        status="pending",
-        site_id=endpoint.site_id,
-    )
-    attempt_delivery(delivery)
-
-
 @task()
 def _dispatch_event_task(event_id: str, site_id: int) -> None:
     """Wrapper task for dispatch_event."""

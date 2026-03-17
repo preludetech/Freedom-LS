@@ -1,12 +1,20 @@
+from unfold.decorators import action as unfold_action
+
 from django.contrib import admin
 from django.db.models import QuerySet
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import redirect
+from django.urls import URLPattern, reverse
 
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 from freedom_ls.webhooks.delivery import attempt_delivery
-from freedom_ls.webhooks.events import send_test_ping
-from freedom_ls.webhooks.forms import WebhookEndpointForm
-from freedom_ls.webhooks.models import WebhookDelivery, WebhookEndpoint, WebhookEvent
+from freedom_ls.webhooks.forms import WebhookEndpointForm, WebhookSecretForm
+from freedom_ls.webhooks.models import (
+    WebhookDelivery,
+    WebhookEndpoint,
+    WebhookEvent,
+    WebhookSecret,
+)
 
 
 @admin.register(WebhookEndpoint)
@@ -28,7 +36,41 @@ class WebhookEndpointAdmin(SiteAwareModelAdmin):
         "created_at",
         "updated_at",
     ]
-    actions = ["enable_endpoints", "disable_endpoints", "send_test_ping"]
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("description", "url", "event_types", "is_active"),
+            },
+        ),
+        (
+            "Transformation",
+            {
+                "fields": (
+                    "preset_slug",
+                    "http_method",
+                    "content_type",
+                    "auth_type",
+                    "headers_template",
+                    "body_template",
+                ),
+            },
+        ),
+        (
+            "Status",
+            {
+                "fields": (
+                    "secret",
+                    "failure_count",
+                    "disabled_at",
+                    "created_at",
+                    "updated_at",
+                ),
+            },
+        ),
+    )
+    actions = ["enable_endpoints", "disable_endpoints"]
+    actions_detail = ["send_test_action"]
 
     def get_readonly_fields(
         self, request: HttpRequest, obj: WebhookEndpoint | None = None
@@ -61,12 +103,32 @@ class WebhookEndpointAdmin(SiteAwareModelAdmin):
     ) -> None:
         queryset.update(is_active=False, disabled_at=None, failure_count=0)
 
-    @admin.action(description="Send test ping")
-    def send_test_ping(
-        self, request: HttpRequest, queryset: QuerySet[WebhookEndpoint]
-    ) -> None:
-        for endpoint in queryset:
-            send_test_ping(endpoint)
+    @unfold_action(description="Send Test", url_path="send-test-action")
+    def send_test_action(self, request: HttpRequest, object_id: str) -> HttpResponse:
+        url = reverse(
+            "admin:webhooks_webhookendpoint_send_test_form",
+            args=[object_id],
+        )
+        return redirect(url)
+
+    def get_urls(self) -> list[URLPattern]:
+        from django.urls import path
+
+        from freedom_ls.webhooks.views import send_test_form_view, send_test_result_view
+
+        custom_urls = [
+            path(
+                "<path:object_id>/send-test/",
+                self.admin_site.admin_view(send_test_form_view),
+                name="webhooks_webhookendpoint_send_test_form",
+            ),
+            path(
+                "<path:object_id>/send-test/result/",
+                self.admin_site.admin_view(send_test_result_view),
+                name="webhooks_webhookendpoint_send_test_result",
+            ),
+        ]
+        return custom_urls + list(super().get_urls())
 
 
 @admin.register(WebhookEvent)
@@ -156,3 +218,18 @@ class WebhookDeliveryAdmin(SiteAwareModelAdmin):
             delivery.status = "pending"
             delivery.save()
             attempt_delivery(delivery)
+
+
+@admin.register(WebhookSecret)
+class WebhookSecretAdmin(SiteAwareModelAdmin):
+    form = WebhookSecretForm
+    list_display = ["name", "description", "masked_value", "created_at", "updated_at"]
+    search_fields = ["name", "description"]
+    readonly_fields = ["masked_value", "created_at", "updated_at"]
+
+    @admin.display(description="Value")
+    def masked_value(self, obj: WebhookSecret) -> str:
+        value = obj.encrypted_value
+        if value and len(value) >= 4:
+            return "••••••••" + str(value[-4:])
+        return "••••••••"

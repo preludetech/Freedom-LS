@@ -4,10 +4,12 @@ import time
 from datetime import datetime, timedelta
 
 import httpx
+import jinja2
 
 from django.utils import timezone
 
 from freedom_ls.webhooks.models import WebhookDelivery, WebhookEndpoint, WebhookEvent
+from freedom_ls.webhooks.rendering import build_template_context, render_template
 from freedom_ls.webhooks.signing import sign_webhook
 
 RETRY_DELAYS = [60, 300, 1800, 7200, 43200]  # seconds
@@ -48,24 +50,82 @@ def build_webhook_headers(
     }
 
 
+def _build_standard_request(
+    endpoint: WebhookEndpoint, event: WebhookEvent
+) -> tuple[str, str, dict[str, str]]:
+    """Returns (method, body, headers) for standard webhook format."""
+    body = build_webhook_payload(event)
+    headers = build_webhook_headers(body, endpoint, event)
+    return "POST", body, headers
+
+
+def _build_transformed_request(
+    endpoint: WebhookEndpoint, event: WebhookEvent
+) -> tuple[str, str, dict[str, str]]:
+    """Returns (method, body, headers) for a transformed endpoint.
+
+    Raises jinja2.TemplateError on rendering failure.
+    Raises json.JSONDecodeError if headers_template renders to invalid JSON.
+    """
+    context = build_template_context(event, endpoint.site_id)
+
+    body = render_template(endpoint.body_template, context)
+
+    method = endpoint.http_method or "POST"
+    content_type = endpoint.content_type or "application/json"
+
+    headers: dict[str, str] = {"Content-Type": content_type}
+
+    if endpoint.auth_type == "signing":
+        timestamp = int(time.time())
+        webhook_id = str(event.pk)
+        signature = sign_webhook(
+            body=body,
+            secret=endpoint.secret,
+            webhook_id=webhook_id,
+            timestamp=timestamp,
+        )
+        headers["webhook-id"] = webhook_id
+        headers["webhook-timestamp"] = str(timestamp)
+        headers["webhook-signature"] = signature
+
+    if endpoint.headers_template:
+        rendered_headers_str = render_template(endpoint.headers_template, context)
+        rendered_headers = json.loads(rendered_headers_str)
+        headers.update(rendered_headers)
+
+    return method, body, headers
+
+
 def attempt_delivery(delivery: WebhookDelivery) -> None:
     """
-    Send HTTP POST to the endpoint URL.
+    Send HTTP request to the endpoint URL.
     Classifies response and updates delivery/endpoint records accordingly.
     """
     endpoint = delivery.endpoint
     event = delivery.event
 
-    body = build_webhook_payload(event)
-    headers = build_webhook_headers(body, endpoint, event)
+    try:
+        if endpoint.has_transformation:
+            method, body, headers = _build_transformed_request(endpoint, event)
+        else:
+            method, body, headers = _build_standard_request(endpoint, event)
+    except (jinja2.TemplateError, json.JSONDecodeError) as exc:
+        delivery.attempt_count += 1
+        delivery.last_attempt_at = timezone.now()
+        delivery.last_response_error_message = f"Template rendering failed: {exc}"
+        delivery.status = "permanent_failure"
+        delivery.save()
+        return
 
     response: httpx.Response | None = None
     start_time = time.monotonic()
 
     error_message = ""
     try:
-        response = httpx.post(
-            endpoint.url,
+        response = httpx.request(
+            method=method,
+            url=endpoint.url,
             content=body,
             headers=headers,
             timeout=REQUEST_TIMEOUT,
@@ -157,7 +217,7 @@ def calculate_next_retry(attempt_count: int) -> datetime:
     """Base delay from RETRY_DELAYS + random jitter up to 20%."""
     index = min(attempt_count - 1, len(RETRY_DELAYS) - 1)
     base_delay = RETRY_DELAYS[index]
-    jitter = random.uniform(0, base_delay * 0.2)  # noqa: S311
+    jitter = random.uniform(0, base_delay * 0.2)  # noqa: S311 — jitter for retry timing, not crypto
     return timezone.now() + timedelta(seconds=base_delay + jitter)
 
 
