@@ -77,6 +77,9 @@ DATABASES = {
     },
 }
 
+# Give each worktree a unique session cookie so branches don't invalidate each other's sessions
+SESSION_COOKIE_NAME = f"sessionid_{_db_name}"
+
 
 MIDDLEWARE = [*MIDDLEWARE, "django_browser_reload.middleware.BrowserReloadMiddleware"]
 

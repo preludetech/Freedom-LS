@@ -5,6 +5,7 @@ import socket
 from urllib.parse import urlparse
 
 import jinja2
+import jinja2.meta
 from encrypted_fields.fields import EncryptedTextField  # type: ignore[import-untyped]
 from jinja2.sandbox import SandboxedEnvironment
 
@@ -100,6 +101,26 @@ class WebhookEndpoint(SiteAwareModel):
         # Transformation field validation
         self._validate_transformation_fields()
 
+    def get_unknown_template_variables(self) -> set[str]:
+        """Return template variables not in the known set {'event', 'secrets'}.
+
+        Silently skips templates with syntax errors (already caught by clean()).
+        """
+        known_vars = {"event", "secrets"}
+        unknown: set[str] = set()
+        env = SandboxedEnvironment(undefined=jinja2.StrictUndefined)
+
+        for template_str in (self.body_template, self.headers_template):
+            if not template_str:
+                continue
+            try:
+                ast = env.parse(template_str)
+            except jinja2.TemplateSyntaxError:
+                continue
+            unknown |= jinja2.meta.find_undeclared_variables(ast) - known_vars
+
+        return unknown
+
     def _validate_url_ssrf(self) -> None:
         """Validate URL against SSRF attacks: reject private IPs, non-HTTP(S) schemes."""
         parsed = urlparse(self.url)
@@ -163,6 +184,9 @@ class WebhookEndpoint(SiteAwareModel):
         # Validate body_template syntax
         self._validate_jinja2_template(env, self.body_template, "body_template")
 
+        # Validate all referenced secrets exist before attempting render
+        self._validate_referenced_secrets_exist()
+
         # If content_type is application/json, validate rendered output is valid JSON
         if self.content_type == "application/json":
             self._validate_json_template_output(
@@ -176,27 +200,69 @@ class WebhookEndpoint(SiteAwareModel):
             )
             self._validate_headers_template_output(env, self.headers_template)
 
+    def get_referenced_secret_names(self) -> set[str]:
+        """Extract secret names referenced in templates (e.g. secrets.api_key -> 'api_key').
+
+        Walks the Jinja2 AST to find Getattr nodes accessing attributes on 'secrets'.
+        Silently skips templates with syntax errors.
+        """
+        secret_names: set[str] = set()
+        env = SandboxedEnvironment(undefined=jinja2.StrictUndefined)
+
+        for template_str in (self.body_template, self.headers_template):
+            if not template_str:
+                continue
+            try:
+                ast = env.parse(template_str)
+            except jinja2.TemplateSyntaxError:
+                continue
+            for node in ast.find_all(jinja2.nodes.Getattr):
+                if (
+                    isinstance(node.node, jinja2.nodes.Name)
+                    and node.node.name == "secrets"
+                ):
+                    secret_names.add(node.attr)
+
+        return secret_names
+
+    def _validate_referenced_secrets_exist(self) -> None:
+        """Validate that all secrets referenced in templates exist for this site."""
+        referenced = self.get_referenced_secret_names()
+        if not referenced:
+            return
+
+        existing = set(
+            WebhookSecret.objects.filter(name__in=referenced).values_list(
+                "name", flat=True
+            )
+        )
+        missing = referenced - existing
+        if missing:
+            missing_list = ", ".join(sorted(missing))
+            raise ValidationError(
+                {
+                    "body_template": (
+                        f"Template references secrets that do not exist: {missing_list}. "
+                        f"Create them in the Webhook Secrets admin first."
+                    )
+                }
+            )
+
     def _validate_jinja2_template(
         self, env: SandboxedEnvironment, template_str: str, field_name: str
     ) -> None:
         """Parse a Jinja2 template and raise ValidationError on syntax errors."""
         try:
-            ast = env.parse(template_str)
+            env.parse(template_str)
         except jinja2.TemplateSyntaxError as e:
             raise ValidationError({field_name: f"Jinja2 syntax error: {e}"}) from e
-
-        # TODO: Spec requires warning (not error) for undeclared variables.
-        # Use jinja2.meta.find_undeclared_variables(ast) to detect variables
-        # not in {"event", "secrets"}. Django model clean() doesn't support
-        # non-blocking warnings, so this needs a form-level or admin-level
-        # implementation using django.contrib.messages.
-        _ = ast  # parsed AST available for future undeclared-variable check
 
     def _get_sample_template_context(self) -> dict[str, object]:
         """Return sample context for template validation rendering.
 
         Uses WEBHOOK_EVENT_TYPE_SAMPLES to provide realistic sample data
-        based on the endpoint's configured event types.
+        based on the endpoint's configured event types. Includes actual
+        secret values so rendered output is realistic.
         """
         # Use the first subscribed event type, or fall back to first available sample
         event_type = "user.registered"
@@ -207,6 +273,12 @@ class WebhookEndpoint(SiteAwareModel):
             event_type, WEBHOOK_EVENT_TYPE_SAMPLES.get("user.registered", {})
         )
 
+        # Load actual secrets for this site so rendered output is valid
+        secrets_dict: dict[str, str] = {}
+        if self.site_id:
+            secrets_qs = WebhookSecret.objects.filter(site_id=self.site_id)
+            secrets_dict = {s.name: s.encrypted_value for s in secrets_qs}
+
         return {
             "event": {
                 "id": "sample-uuid-0000",
@@ -214,7 +286,7 @@ class WebhookEndpoint(SiteAwareModel):
                 "timestamp": "2026-01-01T00:00:00Z",
                 "data": sample_data,
             },
-            "secrets": {},
+            "secrets": secrets_dict,
         }
 
     def _try_render_template(
@@ -227,9 +299,9 @@ class WebhookEndpoint(SiteAwareModel):
         instead of raising UndefinedError during validation.
         """
         sample_context = self._get_sample_template_context()
-        # Use a permissive environment for validation so missing secrets
-        # produce placeholder strings rather than raising UndefinedError.
-        validation_env = SandboxedEnvironment(undefined=jinja2.DebugUndefined)
+        # Secrets are validated to exist before this point, so we can use
+        # StrictUndefined for accurate rendering validation.
+        validation_env = SandboxedEnvironment(undefined=jinja2.StrictUndefined)
         try:
             template = validation_env.from_string(template_str)
             return template.render(**sample_context)

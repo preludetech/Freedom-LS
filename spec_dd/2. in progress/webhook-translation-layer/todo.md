@@ -1,0 +1,9 @@
+- [ ] Send test page http://127.0.0.1:8000/admin/webhooks/{uuid}/send-test/
+    - Preview and send button needs hover effect
+    -
+- [ ] http://127.0.0.1:8000/admin/webhooks/webhookendpoint/{uuid}/send-test/result/
+    - must display request body and headers
+- [ ] Get test send to https://discord.com/api/webhooks/1483713327430500364/buTOoPh2BXyWd8OKD297iXuTY3QCVbOhaZCWHSuXgbrmYzbJXyikuqkU_rQaGcjpLYXC to work . This is a real webhook url and should succeed
+- [ ] Address QA test issues:
+    - [ ]  Duplicate secret name causes IntegrityError (500 crash)
+    - [ ] Test 3.3: Reset to Preset Defaults. This needs to be implemented

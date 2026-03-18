@@ -227,7 +227,7 @@ class TestSendTestResultView:
             )
 
         content = response.content.decode()
-        assert "Preview" in content
+        assert "Sent Request" in content
         assert endpoint.url in content
 
     def test_transformed_endpoint_masks_secrets_in_preview(
@@ -269,10 +269,10 @@ class TestSendTestResultView:
         # The masked version should appear
         assert "1234" in content
 
-    def test_non_transformed_endpoint_skips_preview(
+    def test_non_transformed_endpoint_shows_standard_request(
         self, admin_user: object, mock_site_context: object, client: object
     ) -> None:
-        """Non-transformed endpoints should not show a rendered request preview."""
+        """Non-transformed endpoints should show the standard request details."""
         endpoint = WebhookEndpointFactory(
             event_types=["user.registered"],
             body_template="",
@@ -295,7 +295,10 @@ class TestSendTestResultView:
             )
 
         content = response.content.decode()
-        assert "Preview" not in content
+        assert "Sent Request" in content
+        assert endpoint.url in content
+        assert "webhook-id" in content
+        assert "webhook-signature" in content
 
     def test_non_admin_cannot_access(
         self, regular_user: object, mock_site_context: object, client: object

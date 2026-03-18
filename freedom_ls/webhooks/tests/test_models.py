@@ -276,6 +276,102 @@ class TestWebhookEndpoint:
         with pytest.raises(ValidationError, match="url"):
             endpoint.clean()
 
+    # --- Secret validation ---
+
+    def test_clean_rejects_template_with_missing_secrets(
+        self, mock_site_context: object, settings: object
+    ) -> None:
+        """Templates referencing secrets that don't exist should fail validation."""
+        settings.DEBUG = True
+        endpoint = WebhookEndpointFactory(
+            body_template='{"key": "{{ secrets.nonexistent_key }}"}',
+            content_type="application/json",
+        )
+        with pytest.raises(ValidationError, match="nonexistent_key"):
+            endpoint.clean()
+
+    def test_clean_passes_when_referenced_secrets_exist(
+        self, mock_site_context: object, settings: object
+    ) -> None:
+        """Templates referencing existing secrets should pass validation."""
+        settings.DEBUG = True
+        WebhookSecretFactory(name="my_api_key")
+        endpoint = WebhookEndpointFactory(
+            body_template='{"key": "{{ secrets.my_api_key }}"}',
+            content_type="application/json",
+        )
+        # Should not raise
+        endpoint.clean()
+
+    def test_clean_checks_secrets_in_both_body_and_headers(
+        self, mock_site_context: object, settings: object
+    ) -> None:
+        """Missing secrets in headers_template should also fail."""
+        settings.DEBUG = True
+        WebhookSecretFactory(name="body_key")
+        endpoint = WebhookEndpointFactory(
+            body_template='{"key": "{{ secrets.body_key }}"}',
+            headers_template='{"Authorization": "Bearer {{ secrets.header_key }}"}',
+        )
+        with pytest.raises(ValidationError, match="header_key"):
+            endpoint.clean()
+
+    def test_clean_json_validation_works_with_secrets(
+        self, mock_site_context: object, settings: object
+    ) -> None:
+        """JSON validation should use actual secret values, not debug placeholders."""
+        settings.DEBUG = True
+        WebhookSecretFactory(name="api_key", encrypted_value="real-key-value")
+        endpoint = WebhookEndpointFactory(
+            body_template='{"key": "{{ secrets.api_key }}"}',
+            content_type="application/json",
+        )
+        # Should not raise - actual secret value produces valid JSON
+        endpoint.clean()
+
+
+@pytest.mark.django_db
+class TestGetUnknownTemplateVariables:
+    def test_returns_unknown_variables(self, mock_site_context: object) -> None:
+        endpoint = WebhookEndpointFactory(
+            body_template='{"x": "{{ foobar }}", "y": "{{ baz }}"}',
+        )
+        assert endpoint.get_unknown_template_variables() == {"foobar", "baz"}
+
+    def test_returns_empty_for_known_variables_only(
+        self, mock_site_context: object
+    ) -> None:
+        endpoint = WebhookEndpointFactory(
+            body_template='{"type": "{{ event.type }}", "key": "{{ secrets.api_key }}"}',
+        )
+        assert endpoint.get_unknown_template_variables() == set()
+
+    def test_checks_both_body_and_headers_templates(
+        self, mock_site_context: object
+    ) -> None:
+        endpoint = WebhookEndpointFactory(
+            body_template='{"x": "{{ foobar }}"}',
+            headers_template='{"h": "{{ bazvar }}"}',
+        )
+        assert endpoint.get_unknown_template_variables() == {"foobar", "bazvar"}
+
+    def test_skips_templates_with_syntax_errors(
+        self, mock_site_context: object
+    ) -> None:
+        endpoint = WebhookEndpointFactory(
+            body_template="{{ unclosed",
+        )
+        assert endpoint.get_unknown_template_variables() == set()
+
+    def test_returns_empty_when_no_templates_set(
+        self, mock_site_context: object
+    ) -> None:
+        endpoint = WebhookEndpointFactory(
+            body_template="",
+            headers_template="",
+        )
+        assert endpoint.get_unknown_template_variables() == set()
+
 
 @pytest.mark.django_db
 class TestWebhookSecret:

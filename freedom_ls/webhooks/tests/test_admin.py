@@ -3,6 +3,8 @@ from unittest.mock import patch
 import httpx
 import pytest
 
+from django.contrib import messages
+from django.test import RequestFactory
 from django.utils import timezone
 
 from freedom_ls.webhooks.admin import (
@@ -173,6 +175,21 @@ class TestWebhookSecretAdmin:
         saved = form.save()
         saved.refresh_from_db()
         assert saved.encrypted_value == "original-secret-value"
+
+    def test_duplicate_name_shows_form_error(self, mock_site_context: object) -> None:
+        """Creating a secret with a duplicate name should show a form validation error, not crash."""
+        from freedom_ls.webhooks.forms import WebhookSecretForm
+
+        WebhookSecretFactory(name="duplicate_key")
+        form = WebhookSecretForm(
+            data={
+                "name": "duplicate_key",
+                "description": "Another secret",
+                "encrypted_value": "some-value",
+            },
+        )
+        assert not form.is_valid()
+        assert "name" in form.errors
 
     def test_creating_secret_stores_value(self, mock_site_context: object) -> None:
         """Creating a new secret via the form stores the encrypted value."""
@@ -350,9 +367,101 @@ class TestWebhookEndpointAdminFieldsets:
         assert "headers_template" in fields
         assert "body_template" in fields
 
+    def test_get_fieldsets_excludes_secret_on_create(
+        self, mock_site_context: object
+    ) -> None:
+        """On create (obj=None), secret should not appear in fieldsets."""
+        admin_instance = WebhookEndpointAdmin(WebhookEndpoint, None)
+        from django.test import RequestFactory
+
+        request = RequestFactory().get("/admin/webhooks/webhookendpoint/add/")
+        fieldsets = admin_instance.get_fieldsets(request, obj=None)
+        all_fields: list[str] = []
+        for _name, options in fieldsets:
+            all_fields.extend(options["fields"])
+        assert "secret" not in all_fields
+
+    def test_get_fieldsets_includes_secret_on_edit(
+        self, mock_site_context: object
+    ) -> None:
+        """On edit (obj exists), secret should still appear in fieldsets."""
+        endpoint = WebhookEndpointFactory()
+        admin_instance = WebhookEndpointAdmin(WebhookEndpoint, None)
+        from django.test import RequestFactory
+
+        request = RequestFactory().get(
+            f"/admin/webhooks/webhookendpoint/{endpoint.pk}/change/"
+        )
+        fieldsets = admin_instance.get_fieldsets(request, obj=endpoint)
+        status_fields: list[str] = []
+        for name, options in fieldsets:
+            if name == "Status":
+                status_fields = list(options["fields"])
+        assert "secret" in status_fields
+
     def test_admin_has_status_fieldset(self, mock_site_context: object) -> None:
         """Admin should have a 'Status' fieldset."""
         admin_instance = WebhookEndpointAdmin(WebhookEndpoint, None)
         fieldsets = admin_instance.fieldsets
         fieldset_names = [name for name, _ in fieldsets]
         assert "Status" in fieldset_names
+
+
+@pytest.mark.django_db
+class TestSaveModelUnknownVariableWarning:
+    """Tests for save_model warning on unknown template variables."""
+
+    def _make_request(self) -> object:
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.backends.db import SessionStore
+
+        request = RequestFactory().post("/admin/webhooks/webhookendpoint/add/")
+        request.session = SessionStore()
+        request._messages = FallbackStorage(request)
+        return request
+
+    def test_warns_when_unknown_variables_present(
+        self, mock_site_context: object
+    ) -> None:
+        endpoint = WebhookEndpointFactory(
+            body_template='{"x": "{{ foobar }}"}',
+        )
+        request = self._make_request()
+        admin_instance = WebhookEndpointAdmin(WebhookEndpoint, None)
+
+        with patch.object(admin_instance.__class__.__mro__[1], "save_model"):
+            admin_instance.save_model(request, endpoint, form=None, change=False)
+
+        stored_messages = list(messages.get_messages(request))
+        assert len(stored_messages) == 1
+        assert "foobar" in stored_messages[0].message
+        assert stored_messages[0].level == messages.WARNING
+
+    def test_no_warning_for_known_variables_only(
+        self, mock_site_context: object
+    ) -> None:
+        endpoint = WebhookEndpointFactory(
+            body_template='{"type": "{{ event.type }}"}',
+        )
+        request = self._make_request()
+        admin_instance = WebhookEndpointAdmin(WebhookEndpoint, None)
+
+        with patch.object(admin_instance.__class__.__mro__[1], "save_model"):
+            admin_instance.save_model(request, endpoint, form=None, change=False)
+
+        stored_messages = list(messages.get_messages(request))
+        assert len(stored_messages) == 0
+
+    def test_no_warning_when_no_templates_set(self, mock_site_context: object) -> None:
+        endpoint = WebhookEndpointFactory(
+            body_template="",
+            headers_template="",
+        )
+        request = self._make_request()
+        admin_instance = WebhookEndpointAdmin(WebhookEndpoint, None)
+
+        with patch.object(admin_instance.__class__.__mro__[1], "save_model"):
+            admin_instance.save_model(request, endpoint, form=None, change=False)
+
+        stored_messages = list(messages.get_messages(request))
+        assert len(stored_messages) == 0

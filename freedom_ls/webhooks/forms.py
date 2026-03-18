@@ -143,6 +143,7 @@ class WebhookSecretForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.fields["encrypted_value"].label = "Secret Value"
         if self.instance and self.instance.pk:
             # On edit: use PasswordInput with placeholder
             self.fields["encrypted_value"].widget = forms.PasswordInput(
@@ -153,6 +154,15 @@ class WebhookSecretForm(forms.ModelForm):
         else:
             # On create: use standard TextInput
             self.fields["encrypted_value"].widget = forms.TextInput()
+
+    def clean_name(self) -> str:
+        name: str = self.cleaned_data.get("name", "")
+        qs = WebhookSecret.objects.filter(name=name)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError("A secret with this name already exists.")
+        return name
 
     def clean_encrypted_value(self) -> str:
         value: str = self.cleaned_data.get("encrypted_value", "")

@@ -9,7 +9,11 @@ from freedom_ls.base.webhook_event_types import (
     FLS_WEBHOOK_EVENT_TYPES,
     WEBHOOK_EVENT_TYPE_SAMPLES,
 )
-from freedom_ls.webhooks.delivery import attempt_delivery
+from freedom_ls.webhooks.delivery import (
+    attempt_delivery,
+    build_webhook_headers,
+    build_webhook_payload,
+)
 from freedom_ls.webhooks.models import (
     WebhookDelivery,
     WebhookEndpoint,
@@ -68,10 +72,11 @@ def send_test_result_view(request: HttpRequest, object_id: str) -> HttpResponse:
         site_id=endpoint.site_id,
     )
 
-    # Build preview for transformed endpoints
-    preview = None
+    # Build request preview for display
     if endpoint.has_transformation:
-        preview = _build_transformation_preview(event, endpoint)
+        request_preview = _build_transformation_preview(event, endpoint)
+    else:
+        request_preview = _build_standard_preview(event, endpoint)
 
     # Attempt delivery
     attempt_delivery(delivery)
@@ -86,7 +91,7 @@ def send_test_result_view(request: HttpRequest, object_id: str) -> HttpResponse:
         "endpoint": endpoint,
         "event": event,
         "delivery": delivery,
-        "preview": preview,
+        "request_preview": request_preview,
         "title": f"Test Result: {endpoint.description}",
         "back_url": back_url,
         **_admin_context(),
@@ -133,6 +138,20 @@ def _build_transformation_preview(
         "method": method,
         "url": endpoint.url,
         "headers": json.dumps(masked_headers, indent=2),
+        "body": body,
+    }
+
+
+def _build_standard_preview(
+    event: WebhookEvent, endpoint: WebhookEndpoint
+) -> dict[str, str]:
+    """Build a preview of the standard webhook request."""
+    body = build_webhook_payload(event)
+    headers = build_webhook_headers(body, endpoint, event)
+    return {
+        "method": "POST",
+        "url": endpoint.url,
+        "headers": json.dumps(dict(headers), indent=2),
         "body": body,
     }
 

@@ -100,8 +100,23 @@
 
     var presets = getPresetData();
 
+    // Create reset button
+    var resetBtn = document.createElement("button");
+    resetBtn.type = "button";
+    resetBtn.textContent = "Reset to Preset Defaults";
+    resetBtn.style.cssText =
+      "margin-left: 0.5em; padding: 0.3em 0.8em; cursor: pointer;";
+    resetBtn.style.display = presetSelect.value ? "inline" : "none";
+
+    // Insert after the select
+    presetSelect.parentNode.insertBefore(resetBtn, presetSelect.nextSibling);
+
     presetSelect.addEventListener("change", function () {
       var slug = presetSelect.value;
+
+      // Show/hide reset button based on selection
+      resetBtn.style.display = slug ? "inline" : "none";
+
       if (!slug) return;
 
       var preset = presets[slug];
@@ -118,6 +133,16 @@
       }
 
       applyPreset(preset);
+    });
+
+    resetBtn.addEventListener("click", function () {
+      var slug = presetSelect.value;
+      if (!slug) return;
+      var preset = presets[slug];
+      if (!preset) return;
+      if (confirm("Reset all transformation fields to preset defaults?")) {
+        applyPreset(preset);
+      }
     });
   }
 

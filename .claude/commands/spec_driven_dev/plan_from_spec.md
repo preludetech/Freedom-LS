@@ -41,6 +41,11 @@ This can include multiple tests and workflows.
 
 If this plan is created then reference it in the plan file as a final step.
 
+IMPORTANT: We will be generating a webserver port at random. we wont be using port 8000 (the default django runserver port). Don't talk about port 8000 in the test.
+- `PORT=$(./find_available_port.sh)`
+- We run the runserver command like this: `uv run python manage.py runserver $PORT`
+- Base ul is `http://127.0.0.1:$PORT`
+
 ## Notes
 
 - Note we will be following TDD. Do not write out all the tests at this point.

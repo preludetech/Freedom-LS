@@ -1,6 +1,6 @@
 from unfold.decorators import action as unfold_action
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
@@ -80,6 +80,26 @@ class WebhookEndpointAdmin(SiteAwareModelAdmin):
             return [f for f in self.readonly_fields if f != "secret"]
         return list(self.readonly_fields)
 
+    def get_fieldsets(
+        self, request: HttpRequest, obj: WebhookEndpoint | None = None
+    ) -> list[tuple[str | None, dict[str, list[str]]]]:
+        fieldsets: list[tuple[str | None, dict[str, list[str]]]] = (
+            super().get_fieldsets(request, obj)
+        )
+        if obj is None:
+            # On create, exclude secret (editable=False, auto-generated on save)
+            return [
+                (
+                    name,
+                    {
+                        **options,
+                        "fields": [f for f in options["fields"] if f != "secret"],
+                    },
+                )
+                for name, options in fieldsets
+            ]
+        return fieldsets
+
     @admin.display(description="URL")
     def url_truncated(self, obj: WebhookEndpoint) -> str:
         url = obj.url
@@ -110,6 +130,23 @@ class WebhookEndpointAdmin(SiteAwareModelAdmin):
             args=[object_id],
         )
         return redirect(url)
+
+    def save_model(
+        self,
+        request: HttpRequest,
+        obj: WebhookEndpoint,
+        form: object,
+        change: bool,
+    ) -> None:
+        super().save_model(request, obj, form, change)
+        unknown_vars = obj.get_unknown_template_variables()
+        if unknown_vars:
+            sorted_vars = ", ".join(sorted(unknown_vars))
+            messages.warning(
+                request,
+                f"Template uses unknown variables: {sorted_vars}. "
+                f"Only 'event' and 'secrets' are available at render time.",
+            )
 
     def get_urls(self) -> list[URLPattern]:
         from django.urls import path

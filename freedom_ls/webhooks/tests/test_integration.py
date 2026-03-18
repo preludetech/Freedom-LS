@@ -27,10 +27,10 @@ class TestBrevoPresetIntegration:
         site = mock_site_context
         preset = WEBHOOK_PRESETS["brevo-track-event"]
 
-        # Create the API key secret that Brevo templates reference
+        # Create the MA key secret that Brevo track event template references
         WebhookSecretFactory(
-            name="brevo_api_key",
-            encrypted_value="xkeysib-test-api-key-123",
+            name="brevo_ma_key",
+            encrypted_value="xkeysib-test-ma-key-123",
             site=site,
         )
 
@@ -83,17 +83,17 @@ class TestBrevoPresetIntegration:
         # URL should be the Brevo API endpoint
         assert call_kwargs["url"] == preset.default_url
 
-        # Headers should include the Brevo API key from secrets
+        # Headers should include the Brevo MA key from secrets
         headers = call_kwargs["headers"]
-        assert headers["api-key"] == "xkeysib-test-api-key-123"
+        assert headers["ma-key"] == "xkeysib-test-ma-key-123"
         assert headers["accept"] == "application/json"
         assert headers["Content-Type"] == "application/json"
 
         # Body should be the Brevo-transformed payload
         body = json.loads(call_kwargs["content"])
-        assert body["event_name"] == "user_registered"
-        assert body["identifiers"]["email_id"] == "student@example.com"
-        assert body["event_properties"]["user_id"] == "abc-123"
+        assert body["event"] == "user_registered"
+        assert body["email"] == "student@example.com"
+        assert body["properties"]["user_id"] == "abc-123"
 
         # auth_type=none means no HMAC headers
         assert "webhook-signature" not in headers
@@ -130,7 +130,7 @@ class TestBrevoPresetIntegration:
         delivery = WebhookDelivery.objects.first()
         assert delivery is not None
         assert delivery.status == "permanent_failure"
-        assert "brevo_api_key" in delivery.last_response_error_message.lower()
+        assert "brevo_ma_key" in delivery.last_response_error_message.lower()
 
 
 @pytest.mark.django_db

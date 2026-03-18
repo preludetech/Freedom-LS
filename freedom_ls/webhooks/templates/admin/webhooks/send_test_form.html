@@ -1,21 +1,50 @@
-{% extends "admin/base_site.html" %}
-{% block title %}{{ title }}{% endblock %}
-{% block content %}
-<h1>{{ title }}</h1>
-<p>Select an event type and click "Preview &amp; Send" to send a test webhook to <strong>{{ endpoint.url }}</strong>.</p>
+{% extends "admin/base.html" %}
 
-<form method="post" action="{{ result_url }}">
-    {% csrf_token %}
-    <div style="margin: 1em 0;">
-        <label for="event_type"><strong>Event Type:</strong></label><br>
-        <select name="event_type" id="event_type" style="padding: 0.5em; margin-top: 0.5em;">
-            {% for code, label in event_type_choices %}
-            <option value="{{ code }}" {% if code in endpoint.event_types %}selected{% endif %}>{{ label }} ({{ code }})</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div style="margin: 1em 0;">
-        <button type="submit" style="padding: 0.5em 1em;">Preview &amp; Send</button>
-    </div>
-</form>
+{% block title %}
+    {{ title }}
+{% endblock %}
+{% block content %}
+    <style>
+        .send-test-btn {
+            padding: 0.5em 1em;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .send-test-btn:hover {
+            background-color: #417690;
+            color: #fff;
+        }
+    </style>
+    <h1>
+        {{ title }}
+    </h1>
+    <p>
+        Select an event type and click "Preview &amp; Send" to send a test webhook to <strong>{{ endpoint.url }}</strong>.
+    </p>
+
+    <form method="post" action="{{ result_url }}">
+        {% csrf_token %}
+        <div style="margin: 1em 0;">
+            <label for="event_type">
+                <strong>Event Type:</strong>
+            </label>
+            <br />
+            <select name="event_type"
+                    id="event_type"
+                    style="padding: 0.5em;
+                           margin-top: 0.5em">
+                {% for code, label in event_type_choices %}
+                    <option value="{{ code }}"
+                            {% if code in endpoint.event_types %}selected{% endif %}>
+                        {{ label }} ({{ code }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="margin: 1em 0;">
+            <button type="submit" class="send-test-btn">
+                Preview &amp; Send
+            </button>
+        </div>
+    </form>
 {% endblock %}

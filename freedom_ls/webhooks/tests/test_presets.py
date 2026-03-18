@@ -47,18 +47,77 @@ class TestBrevoPreset:
                 },
             },
             "secrets": {
-                "brevo_api_key": "xkeysib-test-key",  # pragma: allowlist secret
+                "brevo_ma_key": "xkeysib-test-ma-key",  # pragma: allowlist secret
             },
         }
         rendered = render_template(preset.body_template, context)
         parsed = json.loads(rendered)
-        assert "event_name" in parsed
-        assert parsed["identifiers"]["email_id"] == "test@example.com"
-        # Dots should be replaced with underscores in event_name
-        assert "." not in parsed["event_name"]
+        assert parsed["event"] == "user_registered"
+        assert parsed["email"] == "test@example.com"
+        # Dots should be replaced with underscores in event name
+        assert "." not in parsed["event"]
 
     def test_brevo_headers_template_renders_with_sample_data(self) -> None:
         preset = WEBHOOK_PRESETS["brevo-track-event"]
+        context = {
+            "secrets": {
+                "brevo_ma_key": "xkeysib-test-ma-key",  # pragma: allowlist secret
+            },
+        }
+        rendered = render_template(preset.headers_template, context)
+        parsed = json.loads(rendered)
+        assert isinstance(parsed, dict)
+        assert parsed["ma-key"] == "xkeysib-test-ma-key"
+        assert parsed["accept"] == "application/json"
+
+    def test_brevo_preset_has_correct_defaults(self) -> None:
+        preset = WEBHOOK_PRESETS["brevo-track-event"]
+        assert preset.http_method == "POST"
+        assert preset.content_type == "application/json"
+        assert preset.default_url == "https://in-automate.brevo.com/api/v2/trackEvent"
+
+
+class TestBrevoCreateContactPreset:
+    def test_preset_exists(self) -> None:
+        assert "brevo-create-contact" in WEBHOOK_PRESETS
+
+    def test_preset_has_correct_defaults(self) -> None:
+        preset = WEBHOOK_PRESETS["brevo-create-contact"]
+        assert preset.http_method == "POST"
+        assert preset.content_type == "application/json"
+        assert preset.default_url == "https://api.brevo.com/v3/contacts"
+
+    def test_body_template_renders_valid_json(self) -> None:
+        preset = WEBHOOK_PRESETS["brevo-create-contact"]
+        context = {
+            "event": {
+                "id": "sample-uuid-0000",
+                "type": "user.registered",
+                "timestamp": "2026-01-01T00:00:00Z",
+                "data": {
+                    "user_id": "sample-uuid-1234",
+                    "user_email": "test@example.com",
+                    "first_name": "Jane",
+                    "last_name": "Doe",
+                },
+            },
+            "secrets": {
+                "brevo_api_key": "xkeysib-test-key",  # pragma: allowlist secret
+                "brevo_list_id": "6",
+            },
+        }
+        rendered = render_template(preset.body_template, context)
+        parsed = json.loads(rendered)
+        assert parsed["email"] == "test@example.com"
+        assert parsed["attributes"]["FNAME"] == "Jane"
+        assert parsed["attributes"]["LNAME"] == "Doe"
+        assert parsed["listIds"] == [6]
+        assert parsed["updateEnabled"] is True
+        assert parsed["emailBlacklisted"] is False
+        assert parsed["smsBlacklisted"] is False
+
+    def test_headers_template_renders_with_secret(self) -> None:
+        preset = WEBHOOK_PRESETS["brevo-create-contact"]
         context = {
             "secrets": {
                 "brevo_api_key": "xkeysib-test-key",  # pragma: allowlist secret
@@ -66,12 +125,5 @@ class TestBrevoPreset:
         }
         rendered = render_template(preset.headers_template, context)
         parsed = json.loads(rendered)
-        assert isinstance(parsed, dict)
         assert parsed["api-key"] == "xkeysib-test-key"
         assert parsed["accept"] == "application/json"
-
-    def test_brevo_preset_has_correct_defaults(self) -> None:
-        preset = WEBHOOK_PRESETS["brevo-track-event"]
-        assert preset.http_method == "POST"
-        assert preset.content_type == "application/json"
-        assert preset.default_url == "https://api.brevo.com/v3/events"

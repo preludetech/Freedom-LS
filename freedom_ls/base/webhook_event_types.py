@@ -8,6 +8,8 @@ WEBHOOK_EVENT_TYPE_SAMPLES: dict[str, dict[str, str]] = {
     "user.registered": {
         "user_id": "sample-uuid-1234",
         "user_email": "test@example.com",
+        "first_name": "Jane",
+        "last_name": "Doe",
     },
     "course.completed": {
         "user_id": "sample-uuid-1234",

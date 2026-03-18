@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     "django_premailer",
     # AllAuth is at the end because we need to override many of its templates
     "encrypted_fields",
+    "django_ace",
     "freedom_ls.webhooks",
     "allauth",
     "allauth.account",
