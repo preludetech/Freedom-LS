@@ -178,6 +178,118 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
+    // Scroll table with floating row labels on mobile (cotton/scroll-table-labels.html)
+    Alpine.data("scrollTableLabels", () => ({
+        scrolledPastFirst: false,
+        firstColWidth: 0,
+        _scrollHandler: null,
+        _resizeObserver: null,
+        _resizeTimeout: null,
+        _mq: null,
+        _mqHandler: null,
+        _rafId: null,
+        _active: false,
+        _headerSelector: "thead th",
+        _cellSelector: "td",
+        init() {
+            const container = this.$refs.scrollTableContainer;
+            const overlay = this.$refs.scrollTableOverlay;
+            if (!container || !overlay) return;
+
+            this._headerSelector = this.$el.dataset.headerSelector || "thead th";
+            this._cellSelector = this.$el.dataset.cellSelector || "td";
+
+            this._mq = window.matchMedia("(min-width: 768px)");
+            this._mqHandler = (e) => {
+                if (e.matches) {
+                    this._teardownLabels(container, overlay);
+                } else {
+                    this._setupLabels(container, overlay);
+                }
+            };
+            this._mq.addEventListener("change", this._mqHandler);
+
+            if (!this._mq.matches) {
+                this._setupLabels(container, overlay);
+            }
+        },
+        destroy() {
+            const container = this.$refs.scrollTableContainer;
+            const overlay = this.$refs.scrollTableOverlay;
+            if (this._mq && this._mqHandler) {
+                this._mq.removeEventListener("change", this._mqHandler);
+            }
+            if (container && overlay) this._teardownLabels(container, overlay);
+        },
+        _setupLabels(container, overlay) {
+            if (this._active) return;
+            this._active = true;
+
+            const firstTh = container.querySelector(this._headerSelector);
+            if (firstTh) this.firstColWidth = firstTh.offsetWidth;
+
+            this._scrollHandler = () => {
+                const scrolled = container.scrollLeft > this.firstColWidth;
+                if (scrolled !== this.scrolledPastFirst) {
+                    this.scrolledPastFirst = scrolled;
+                    overlay.classList.toggle("hidden", !scrolled);
+                }
+                if (scrolled) {
+                    overlay.style.top = -container.scrollTop + "px";
+                }
+            };
+            container.addEventListener("scroll", this._scrollHandler);
+
+            this._rafId = requestAnimationFrame(() => this._buildLabels(container, overlay));
+
+            this._resizeObserver = new ResizeObserver(() => {
+                clearTimeout(this._resizeTimeout);
+                this._resizeTimeout = setTimeout(() => {
+                    this._rafId = requestAnimationFrame(() => this._buildLabels(container, overlay));
+                }, 150);
+            });
+            this._resizeObserver.observe(container);
+        },
+        _teardownLabels(container, overlay) {
+            if (!this._active) return;
+            this._active = false;
+            this.scrolledPastFirst = false;
+
+            if (this._scrollHandler) {
+                container.removeEventListener("scroll", this._scrollHandler);
+                this._scrollHandler = null;
+            }
+            if (this._resizeObserver) {
+                this._resizeObserver.disconnect();
+                this._resizeObserver = null;
+            }
+            clearTimeout(this._resizeTimeout);
+            if (this._rafId) {
+                cancelAnimationFrame(this._rafId);
+                this._rafId = null;
+            }
+            overlay.innerHTML = "";
+            overlay.classList.add("hidden");
+        },
+        _buildLabels(container, overlay) {
+            overlay.innerHTML = "";
+            const containerRect = container.getBoundingClientRect();
+            container.querySelectorAll("tbody tr").forEach((tr) => {
+                const firstCell = tr.querySelector(this._cellSelector);
+                if (!firstCell) return;
+                const text = firstCell.textContent.trim();
+                if (!text) return;
+
+                const label = document.createElement("div");
+                label.textContent = text;
+                label.className = "text-xs font-medium whitespace-nowrap bg-surface-2 text-foreground px-1.5 py-0.5 rounded shadow-sm";
+                const rowRect = tr.getBoundingClientRect();
+                label.style.cssText = "position:absolute; left:4px; top:" + (rowRect.top - containerRect.top + container.scrollTop) + "px;";
+                overlay.appendChild(label);
+            });
+        },
+    }));
+
     // Debug branch badge (_base.html)
     Alpine.data("debugBadge", () => ({
         expanded: true,
