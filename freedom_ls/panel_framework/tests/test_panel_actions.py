@@ -5,12 +5,10 @@ import json
 import pytest
 from guardian.shortcuts import assign_perm
 
-# -- Shared test form ---------------------------------------------------
 from django import forms
 from django.db.models import Model
 from django.test import RequestFactory
 
-from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     DeleteAction,
@@ -19,17 +17,15 @@ from freedom_ls.panel_framework.actions import (
 )
 from freedom_ls.panel_framework.panels import Panel
 from freedom_ls.panel_framework.views import _handle_action, _ResolvedAction
-from freedom_ls.student_management.factories import (
-    CohortCourseRegistrationFactory,
-    CohortFactory,
-    CohortMembershipFactory,
-)
-from freedom_ls.student_management.models import Cohort
+
+from .conftest import StubChild, StubModel, make_staff_user
+
+# -- Shared test form ---------------------------------------------------
 
 
-class _CohortForm(forms.ModelForm):
+class _StubModelForm(forms.ModelForm):
     class Meta:
-        model = Cohort
+        model = StubModel
         fields = ["name"]
 
 
@@ -50,16 +46,16 @@ class StubAction(PanelAction):
 
 
 class StubCreateAction(CreateInstanceAction):
-    form_class = _CohortForm
-    form_title = "Create Cohort"
-    label = "Create Cohort"
-    action_name = "create_cohort"
+    form_class = _StubModelForm
+    form_title = "Create Item"
+    label = "Create Item"
+    action_name = "create_item"
 
     def get_success_url(self, instance: Model) -> str:
-        return f"/cohorts/{instance.pk}"
+        return f"/items/{instance.pk}"
 
     def get_created_event_name(self) -> str:
-        return "cohortCreated"
+        return "itemCreated"
 
 
 # -- PanelAction base class tests ----------------------------------------
@@ -68,8 +64,8 @@ class StubCreateAction(CreateInstanceAction):
 @pytest.mark.django_db
 def test_panel_get_actions_returns_empty_list_by_default(mock_site_context):
     """Panel.get_actions() returns empty list by default."""
-    cohort = CohortFactory()
-    panel = StubPanel(cohort)
+    item = StubModel.objects.create(name="test-item")
+    panel = StubPanel(item)
     request = RequestFactory().get("/")
     assert panel.get_actions(request) == []
 
@@ -77,11 +73,11 @@ def test_panel_get_actions_returns_empty_list_by_default(mock_site_context):
 @pytest.mark.django_db
 def test_panel_action_render_returns_button_html(mock_site_context):
     """PanelAction.render() returns button HTML."""
-    cohort = CohortFactory()
-    panel = StubPanel(cohort)
+    item = StubModel.objects.create(name="action-render")
+    panel = StubPanel(item)
     action = StubAction()
     request = RequestFactory().get("/")
-    request.user = UserFactory(staff=True)
+    request.user = make_staff_user()
     html = action.render(request, panel, "/test/base")
     assert "Do Thing" in html
 
@@ -89,15 +85,15 @@ def test_panel_action_render_returns_button_html(mock_site_context):
 @pytest.mark.django_db
 def test_panel_container_renders_actions_when_present(mock_site_context):
     """Panel container renders action buttons when actions exist."""
-    cohort = CohortFactory()
+    item = StubModel.objects.create(name="actions-present")
 
     class PanelWithAction(StubPanel):
         def get_actions(self, request, base_url=""):
             return [StubAction()]
 
-    panel = PanelWithAction(cohort)
+    panel = PanelWithAction(item)
     request = RequestFactory().get("/")
-    request.user = UserFactory(staff=True)
+    request.user = make_staff_user()
     html = panel.render(request, base_url="/test")
     assert "Do Thing" in html
 
@@ -105,10 +101,10 @@ def test_panel_container_renders_actions_when_present(mock_site_context):
 @pytest.mark.django_db
 def test_panel_container_no_actions_area_when_no_actions(mock_site_context):
     """Panel container renders no actions area when no actions."""
-    cohort = CohortFactory()
-    panel = StubPanel(cohort)
+    item = StubModel.objects.create(name="no-actions")
+    panel = StubPanel(item)
     request = RequestFactory().get("/")
-    request.user = UserFactory(staff=True)
+    request.user = make_staff_user()
     html = panel.render(request, base_url="/test")
     assert "Do Thing" not in html
 
@@ -128,14 +124,14 @@ def test_panel_action_has_permission_returns_true_by_default(mock_site_context):
 def test_create_action_form_valid_creates_instance_and_redirects(mock_site_context):
     """Successful form submission creates instance and returns 204 + HX-Redirect."""
     action = StubCreateAction()
-    request = RequestFactory().post("/", {"name": "New Cohort"})
-    request.user = UserFactory(staff=True)
-    assign_perm("freedom_ls_student_management.add_cohort", request.user)
+    request = RequestFactory().post("/", {"name": "New Item"})
+    request.user = make_staff_user()
+    assign_perm("freedom_ls_panel_framework.add_stubmodel", request.user)
 
-    response = action.handle_submit(request, instance=None, base_url="/cohorts")
+    response = action.handle_submit(request, instance=None, base_url="/items")
     assert response.status_code == 204
-    cohort = Cohort.objects.get(name="New Cohort")
-    assert f"/cohorts/{cohort.pk}" in response["HX-Redirect"]
+    item = StubModel.objects.get(name="New Item")
+    assert f"/items/{item.pk}" in response["HX-Redirect"]
 
 
 @pytest.mark.django_db
@@ -144,26 +140,26 @@ def test_create_action_save_and_add_another_returns_empty_form_and_trigger(
 ):
     """'Save and add another' returns re-rendered empty form + HX-Trigger event."""
     action = StubCreateAction()
-    request = RequestFactory().post("/", {"name": "Cohort A", "action": "save_and_add"})
-    request.user = UserFactory(staff=True)
+    request = RequestFactory().post("/", {"name": "Item A", "action": "save_and_add"})
+    request.user = make_staff_user()
 
-    response = action.handle_submit(request, instance=None, base_url="/cohorts")
+    response = action.handle_submit(request, instance=None, base_url="/items")
     assert response.status_code == 200
-    assert Cohort.objects.filter(name="Cohort A").exists()
-    assert response["HX-Trigger"] == "cohortCreated"
+    assert StubModel.objects.filter(name="Item A").exists()
+    assert response["HX-Trigger"] == "itemCreated"
     content = response.content.decode()
-    assert "Create Cohort" in content
+    assert "Create Item" in content
 
 
 @pytest.mark.django_db
 def test_create_action_duplicate_name_returns_422(mock_site_context):
     """Duplicate name within site returns 422 with validation error."""
-    CohortFactory(name="Existing")
+    StubModel.objects.create(name="Existing")
     action = StubCreateAction()
     request = RequestFactory().post("/", {"name": "Existing"})
-    request.user = UserFactory(staff=True)
+    request.user = make_staff_user()
 
-    response = action.handle_submit(request, instance=None, base_url="/cohorts")
+    response = action.handle_submit(request, instance=None, base_url="/items")
     assert response.status_code == 422
 
 
@@ -172,13 +168,13 @@ def test_create_action_has_permission_checks_add_perm(mock_site_context):
     """has_permission returns True only when user has add permission."""
     action = StubCreateAction()
 
-    user_with_perm = UserFactory(staff=True)
-    assign_perm("freedom_ls_student_management.add_cohort", user_with_perm)
+    user_with_perm = make_staff_user()
+    assign_perm("freedom_ls_panel_framework.add_stubmodel", user_with_perm)
     request = RequestFactory().get("/")
     request.user = user_with_perm
     assert action.has_permission(request) is True
 
-    user_without_perm = UserFactory(staff=True)
+    user_without_perm = make_staff_user()
     request.user = user_without_perm
     assert action.has_permission(request) is False
 
@@ -187,15 +183,15 @@ def test_create_action_has_permission_checks_add_perm(mock_site_context):
 def test_create_action_permission_denied_returns_403(mock_site_context):
     """_handle_action returns 403 when user lacks add permission."""
     action = StubCreateAction()
-    user = UserFactory(staff=True)
-    # No add_cohort permission
+    user = make_staff_user()
+    # No add permission
     request = RequestFactory().post("/", {"name": "Forbidden"})
     request.user = user
 
     resolved = _ResolvedAction(action, instance=None)
-    response = _handle_action(request, resolved, base_url="/cohorts")
+    response = _handle_action(request, resolved, base_url="/items")
     assert response.status_code == 403
-    assert not Cohort.objects.filter(name="Forbidden").exists()
+    assert not StubModel.objects.filter(name="Forbidden").exists()
 
 
 # -- EditAction tests ----------------------------------------------------
@@ -204,19 +200,19 @@ def test_create_action_permission_denied_returns_403(mock_site_context):
 @pytest.mark.django_db
 def test_edit_action_form_valid_saves_and_returns_trigger(mock_site_context):
     """Successful edit returns 204 + HX-Trigger with panelChanged."""
-    cohort = CohortFactory(name="Old Name")
+    item = StubModel.objects.create(name="Old Name")
     action = EditAction(
-        form_class=_CohortForm,
-        form_title="Edit Cohort",
-        instance=cohort,
+        form_class=_StubModelForm,
+        form_title="Edit Item",
+        instance=item,
     )
     request = RequestFactory().post("/", {"name": "New Name"})
-    request.user = UserFactory(staff=True)
+    request.user = make_staff_user()
 
-    response = action.handle_submit(request, instance=cohort, base_url="/test")
+    response = action.handle_submit(request, instance=item, base_url="/test")
     assert response.status_code == 204
-    cohort.refresh_from_db()
-    assert cohort.name == "New Name"
+    item.refresh_from_db()
+    assert item.name == "New Name"
     trigger = json.loads(response["HX-Trigger"])
     assert "panelChanged" in trigger
     assert trigger["panelChanged"]["instanceTitle"] == "New Name"
@@ -225,37 +221,37 @@ def test_edit_action_form_valid_saves_and_returns_trigger(mock_site_context):
 @pytest.mark.django_db
 def test_edit_action_duplicate_name_returns_422(mock_site_context):
     """Duplicate name returns 422 with validation error."""
-    CohortFactory(name="Existing")
-    cohort = CohortFactory(name="Original")
+    StubModel.objects.create(name="Existing-edit")
+    item = StubModel.objects.create(name="Original")
     action = EditAction(
-        form_class=_CohortForm,
-        form_title="Edit Cohort",
-        instance=cohort,
+        form_class=_StubModelForm,
+        form_title="Edit Item",
+        instance=item,
     )
-    request = RequestFactory().post("/", {"name": "Existing"})
-    request.user = UserFactory(staff=True)
+    request = RequestFactory().post("/", {"name": "Existing-edit"})
+    request.user = make_staff_user()
 
-    response = action.handle_submit(request, instance=cohort, base_url="/test")
+    response = action.handle_submit(request, instance=item, base_url="/test")
     assert response.status_code == 422
 
 
 @pytest.mark.django_db
 def test_edit_action_has_permission_checks_object_level_change_perm(mock_site_context):
     """has_permission checks object-level change permission."""
-    cohort = CohortFactory()
+    item = StubModel.objects.create(name="edit-perm-check")
     action = EditAction(
-        form_class=_CohortForm,
-        form_title="Edit Cohort",
-        instance=cohort,
+        form_class=_StubModelForm,
+        form_title="Edit Item",
+        instance=item,
     )
 
-    user_with_perm = UserFactory(staff=True)
-    assign_perm("freedom_ls_student_management.change_cohort", user_with_perm, cohort)
+    user_with_perm = make_staff_user()
+    assign_perm("freedom_ls_panel_framework.change_stubmodel", user_with_perm, item)
     request = RequestFactory().get("/")
     request.user = user_with_perm
     assert action.has_permission(request) is True
 
-    user_without_perm = UserFactory(staff=True)
+    user_without_perm = make_staff_user()
     request.user = user_without_perm
     assert action.has_permission(request) is False
 
@@ -263,21 +259,21 @@ def test_edit_action_has_permission_checks_object_level_change_perm(mock_site_co
 @pytest.mark.django_db
 def test_edit_action_permission_denied_returns_403(mock_site_context):
     """_handle_action returns 403 when user lacks change permission."""
-    cohort = CohortFactory(name="Test")
+    item = StubModel.objects.create(name="Test-edit-403")
     action = EditAction(
-        form_class=_CohortForm,
-        form_title="Edit Cohort",
-        instance=cohort,
+        form_class=_StubModelForm,
+        form_title="Edit Item",
+        instance=item,
     )
-    user = UserFactory(staff=True)
+    user = make_staff_user()
     request = RequestFactory().post("/", {"name": "Changed"})
     request.user = user
 
-    resolved = _ResolvedAction(action, instance=cohort)
+    resolved = _ResolvedAction(action, instance=item)
     response = _handle_action(request, resolved, base_url="/test")
     assert response.status_code == 403
-    cohort.refresh_from_db()
-    assert cohort.name == "Test"
+    item.refresh_from_db()
+    assert item.name == "Test-edit-403"
 
 
 # -- DeleteAction tests --------------------------------------------------
@@ -286,46 +282,42 @@ def test_edit_action_permission_denied_returns_403(mock_site_context):
 @pytest.mark.django_db
 def test_delete_action_handle_submit_deletes_and_redirects(mock_site_context):
     """Successful deletion deletes instance and returns 204 + HX-Redirect."""
-    cohort = CohortFactory()
-    cohort_pk = cohort.pk
-    action = DeleteAction(success_url="/cohorts")
+    item = StubModel.objects.create(name="to-delete")
+    item_pk = item.pk
+    action = DeleteAction(success_url="/items")
 
     request = RequestFactory().delete("/")
-    request.user = UserFactory(staff=True)
+    request.user = make_staff_user()
 
-    response = action.handle_submit(request, instance=cohort, base_url="/test")
+    response = action.handle_submit(request, instance=item, base_url="/test")
     assert response.status_code == 204
-    assert response["HX-Redirect"] == "/cohorts"
-    assert not Cohort.objects.filter(pk=cohort_pk).exists()
+    assert response["HX-Redirect"] == "/items"
+    assert not StubModel.objects.filter(pk=item_pk).exists()
 
 
 @pytest.mark.django_db
 def test_delete_action_cascade_summary_includes_related_objects(mock_site_context):
     """get_cascade_summary returns summary of related objects that will be deleted."""
-    cohort = CohortFactory()
-    CohortMembershipFactory(cohort=cohort)
-    CohortCourseRegistrationFactory(cohort=cohort)
+    item = StubModel.objects.create(name="cascade-parent")
+    StubChild.objects.create(parent=item)
+    StubChild.objects.create(parent=item)
 
-    action = DeleteAction(success_url="/cohorts")
-    summary = action.get_cascade_summary(cohort)
+    action = DeleteAction(success_url="/items")
+    summary = action.get_cascade_summary(item)
     assert len(summary) > 0
-    # Should mention related objects
     summary_text = " ".join(summary).lower()
-    assert (
-        "cohort membership" in summary_text
-        or "cohort course registration" in summary_text
-    )
+    assert "stub child" in summary_text
 
 
 @pytest.mark.django_db
 def test_delete_action_render_returns_confirmation_html(mock_site_context):
     """Rendered delete confirmation includes delete button and action URL."""
-    cohort = CohortFactory()
-    action = DeleteAction(success_url="/cohorts")
+    item = StubModel.objects.create(name="delete-render")
+    action = DeleteAction(success_url="/items")
 
     request = RequestFactory().get("/")
-    request.user = UserFactory(staff=True)
-    html = action.render(request, cohort, "/test")
+    request.user = make_staff_user()
+    html = action.render(request, item, "/test")
     assert "Delete" in html
     assert "/test/__actions/delete" in html
 
@@ -335,31 +327,31 @@ def test_delete_action_has_permission_checks_object_level_delete_perm(
     mock_site_context,
 ):
     """has_permission checks object-level delete permission."""
-    cohort = CohortFactory()
-    action = DeleteAction(success_url="/cohorts")
+    item = StubModel.objects.create(name="delete-perm-check")
+    action = DeleteAction(success_url="/items")
 
-    user_with_perm = UserFactory(staff=True)
-    assign_perm("freedom_ls_student_management.delete_cohort", user_with_perm, cohort)
+    user_with_perm = make_staff_user()
+    assign_perm("freedom_ls_panel_framework.delete_stubmodel", user_with_perm, item)
     request = RequestFactory().get("/")
     request.user = user_with_perm
-    assert action.has_permission(request, cohort) is True
+    assert action.has_permission(request, item) is True
 
-    user_without_perm = UserFactory(staff=True)
+    user_without_perm = make_staff_user()
     request.user = user_without_perm
-    assert action.has_permission(request, cohort) is False
+    assert action.has_permission(request, item) is False
 
 
 @pytest.mark.django_db
 def test_delete_action_permission_denied_returns_403(mock_site_context):
     """_handle_action returns 403 when user lacks delete permission."""
-    cohort = CohortFactory()
-    action = DeleteAction(success_url="/cohorts")
+    item = StubModel.objects.create(name="delete-403")
+    action = DeleteAction(success_url="/items")
 
-    user = UserFactory(staff=True)
+    user = make_staff_user()
     request = RequestFactory().delete("/")
     request.user = user
 
-    resolved = _ResolvedAction(action, instance=cohort)
+    resolved = _ResolvedAction(action, instance=item)
     response = _handle_action(request, resolved, base_url="/test")
     assert response.status_code == 403
-    assert Cohort.objects.filter(pk=cohort.pk).exists()
+    assert StubModel.objects.filter(pk=item.pk).exists()
