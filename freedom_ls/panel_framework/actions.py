@@ -8,6 +8,25 @@ from django.db.models import Model
 from django.http import HttpRequest, HttpResponse
 from django.template.loader import render_to_string
 
+from freedom_ls.site_aware_models.models import (
+    SiteAwareModelBase,
+    _thread_locals,
+    get_cached_site,
+)
+
+
+def _ensure_site_on_instance(form: forms.ModelForm) -> None:
+    """Set site on SiteAwareModel instances before form validation.
+
+    This ensures unique constraints involving site are checked at the form level
+    rather than failing at the database level.
+    """
+    instance = form.instance
+    if isinstance(instance, SiteAwareModelBase) and not instance.site_id:
+        request = getattr(_thread_locals, "request", None)
+        if request:
+            instance.site = get_cached_site(request)  # type: ignore[assignment]
+
 
 class PanelAction:
     label: str = ""
@@ -49,7 +68,9 @@ class FormPanelAction(PanelAction):
         self, request: HttpRequest, instance: Model | None = None
     ) -> forms.ModelForm:
         data = request.POST if request.method == "POST" else None
-        return self.form_class(data, instance=instance, request=request)
+        form = self.form_class(data, instance=instance)
+        _ensure_site_on_instance(form)
+        return form
 
     def get_form_url(self, base_url: str) -> str:
         """URL for form submission via HTMX."""
@@ -132,7 +153,7 @@ class CreateInstanceAction(FormPanelAction):
 
     def _render_empty_form(self, request: HttpRequest, form_url: str) -> str:
         """Re-render the modal form with an empty/unbound form."""
-        form = self.form_class(request=request)
+        form = self.form_class()
         return render_to_string(
             "panel_framework/partials/modal_form.html",
             {
@@ -193,7 +214,9 @@ class EditAction(FormPanelAction):
     ) -> forms.ModelForm:
         instance = instance or self._instance
         data = request.POST if request.method == "POST" else None
-        return self.form_class(data, instance=instance, request=request)
+        form = self.form_class(data, instance=instance)
+        _ensure_site_on_instance(form)
+        return form
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         form.save()
