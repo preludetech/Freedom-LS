@@ -346,6 +346,106 @@ def _handle_action(
     return HttpResponse(status=405)
 
 
+def _strip_actions_from_url(url: str) -> str:
+    """Strip __actions/{name} from a URL to get the parent base_url."""
+    if "/__actions/" in url:
+        return url[: url.index("/__actions/")]
+    return url
+
+
+def _dispatch_tab(
+    request: HttpRequest, resolved_tab: _ResolvedTab, base_url: str, is_htmx: bool
+) -> HttpResponse | str:
+    """Dispatch a resolved tab. Returns an HttpResponse for HTMX, or rendered HTML string for full page."""
+    iv = resolved_tab.instance_view
+    tab_name = resolved_tab.tab_name
+    instance_base_url = base_url.rsplit("/__tabs/", 1)[0]
+
+    if is_htmx:
+        html = iv.render_tab(request, tab_name, instance_base_url)
+        return HttpResponse(html)
+
+    return iv.render(request, base_url=instance_base_url, active_tab=tab_name)
+
+
+def _render_list_view_content(
+    request: HttpRequest, list_config: type[ListViewConfig], base_url: str
+) -> str:
+    """Render a list view with its actions."""
+    list_actions = [
+        action
+        for action in list_config.get_actions(request)
+        if action.has_permission(request)
+    ]
+    actions_html = ""
+    if list_actions:
+        rendered_actions = [
+            action.render(request, None, base_url) for action in list_actions
+        ]
+        actions_html = render_to_string(
+            "panel_framework/partials/instance_actions.html",
+            {"actions": rendered_actions},
+            request=request,
+        )
+    table_html = list_config.render(request, base_url=base_url)
+    return actions_html + table_html
+
+
+def _dispatch_resolved(
+    request: HttpRequest,
+    current: _Resolved,
+    base_url: str,
+    is_htmx: bool,
+) -> HttpResponse | tuple[str, str]:
+    """Dispatch based on the resolved path object.
+
+    Returns either:
+    - An HttpResponse (for actions, HTMX fragments, panels)
+    - A (rendered_content, heading) tuple for full-page rendering
+    """
+    if isinstance(current, _ResolvedAction):
+        return _handle_action(
+            request, current, base_url=_strip_actions_from_url(base_url)
+        )
+
+    if isinstance(current, _ResolvedTab):
+        result = _dispatch_tab(request, current, base_url, is_htmx)
+        if isinstance(result, HttpResponse):
+            return result
+        rendered_content = result
+
+    elif isinstance(current, Panel):
+        return HttpResponse(current.render(request, base_url=base_url))
+
+    elif isinstance(current, InstanceView):
+        rendered_content = current.render(request, base_url=base_url)
+
+    elif isinstance(current, type) and issubclass(current, ListViewConfig):
+        rendered_content = _render_list_view_content(request, current, base_url)
+
+    else:
+        raise Http404("Unexpected path resolution")
+
+    if is_htmx and not isinstance(current, _ResolvedTab):
+        return HttpResponse(rendered_content)
+
+    heading = current.menu_label if hasattr(current, "menu_label") else ""
+    return rendered_content, heading
+
+
+def _build_menu_items(
+    config: dict[str, type[ListViewConfig]], url_name: str
+) -> list[dict[str, str]]:
+    """Build the sidebar menu items from the config."""
+    return [
+        {
+            "label": conf.menu_label,
+            "url": reverse(url_name, kwargs={"path_string": conf.url_name}),
+        }
+        for conf in config.values()
+    ]
+
+
 def panel_framework_view(
     config: dict[str, type[ListViewConfig]],
     request: HttpRequest,
@@ -371,74 +471,13 @@ def panel_framework_view(
         heading = ""
     else:
         current = _resolve_path(parts, config, request=request)
-
-        if isinstance(current, _ResolvedAction):
-            # Strip __actions/{name} from the URL to get the parent base_url
-            action_base_url = base_url
-            if "/__actions/" in action_base_url:
-                action_base_url = action_base_url[
-                    : action_base_url.index("/__actions/")
-                ]
-            return _handle_action(request, current, base_url=action_base_url)
-
-        if isinstance(current, _ResolvedTab):
-            iv = current.instance_view
-            tab_name = current.tab_name
-            if is_htmx:
-                # HTMX lazy-load: return just the tab's panels as a fragment
-                html = iv.render_tab(
-                    request, tab_name, base_url.rsplit("/__tabs/", 1)[0]
-                )
-                return HttpResponse(html)
-            # Non-HTMX: render full page with the tab active
-            instance_base_url = base_url.rsplit("/__tabs/", 1)[0]
-            rendered_content = iv.render(
-                request, base_url=instance_base_url, active_tab=tab_name
-            )
-            # Fall through to full page rendering below
-
-        elif isinstance(current, Panel):
-            return HttpResponse(current.render(request, base_url=base_url))
-
-        elif isinstance(current, InstanceView):
-            rendered_content = current.render(request, base_url=base_url)
-        elif isinstance(current, type) and issubclass(current, ListViewConfig):
-            # Render list view with actions
-            list_actions = [
-                action
-                for action in current.get_actions(request)
-                if action.has_permission(request)
-            ]
-            actions_html = ""
-            if list_actions:
-                rendered_actions = [
-                    action.render(request, None, base_url) for action in list_actions
-                ]
-                actions_html = render_to_string(
-                    "panel_framework/partials/instance_actions.html",
-                    {"actions": rendered_actions},
-                    request=request,
-                )
-            table_html = current.render(request, base_url=base_url)
-            rendered_content = actions_html + table_html
-        else:
-            raise Http404("Unexpected path resolution")
-
-        if is_htmx and not isinstance(current, _ResolvedTab):
-            return HttpResponse(rendered_content)
-
-        heading = current.menu_label if hasattr(current, "menu_label") else ""
-
-    menu_items = [
-        {
-            "label": conf.menu_label,
-            "url": reverse(url_name, kwargs={"path_string": conf.url_name}),
-        }
-        for conf in config.values()
-    ]
+        result = _dispatch_resolved(request, current, base_url, is_htmx)
+        if isinstance(result, HttpResponse):
+            return result
+        rendered_content, heading = result
 
     context = {
-        "menu_items": menu_items,
+        "menu_items": _build_menu_items(config, url_name),
         "content": rendered_content,
         "heading": heading,
     }
