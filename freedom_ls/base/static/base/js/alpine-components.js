@@ -106,6 +106,9 @@ document.addEventListener("alpine:init", () => {
             this._mq = window.matchMedia("(min-width: 1024px)");
             this.isMobile = !this._mq.matches;
 
+            const top = this.$el.getBoundingClientRect().top;
+            this.$el.style.setProperty("--sidebar-top", top + "px");
+
             const stored = localStorage.getItem(this._storageKey);
             if (stored !== null) {
                 this.sidebarOpen = stored === "true";
@@ -121,9 +124,7 @@ document.addEventListener("alpine:init", () => {
             };
             this._mq.addEventListener("change", this._mqHandler);
 
-            this.$watch("sidebarOpen", () => this._updateSidebarUI());
-            this.$watch("isMobile", () => this._updateSidebarUI());
-            this.$nextTick(() => this._updateSidebarUI());
+            this.$watch("sidebarOpen", (val) => localStorage.setItem(this._storageKey, val));
         },
         destroy() {
             if (this._mq && this._mqHandler) {
@@ -132,31 +133,9 @@ document.addEventListener("alpine:init", () => {
         },
         toggle() {
             this.sidebarOpen = !this.sidebarOpen;
-            localStorage.setItem(this._storageKey, this.sidebarOpen);
         },
         closeSidebar() {
             this.sidebarOpen = false;
-            localStorage.setItem(this._storageKey, false);
-        },
-        _updateSidebarUI() {
-            // Update toggle button visibility
-            const toggleBtn = this.$el.querySelector("[data-sidebar-toggle]");
-            if (toggleBtn) toggleBtn.hidden = this.sidebarOpen;
-
-            // Update backdrop visibility
-            const backdrop = this.$el.querySelector("[data-sidebar-backdrop]");
-            if (backdrop) backdrop.hidden = !(this.sidebarOpen && this.isMobile);
-
-            // Update sidebar panel classes
-            const panel = this.$el.querySelector("[data-sidebar-panel]");
-            if (panel) {
-                panel.hidden = !this.sidebarOpen;
-                if (this.isMobile) {
-                    panel.className = "fixed inset-y-0 left-0 z-40 w-64 bg-surface shadow-lg overflow-y-auto p-4";
-                } else {
-                    panel.className = "relative w-64 shrink-0";
-                }
-            }
         },
         handleSidebarClick(event) {
             if (this.isMobile && event.target.closest("a")) {
