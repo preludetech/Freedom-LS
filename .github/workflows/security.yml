@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --dev
       - name: Run Bandit
-        run: uv run bandit -r . -x ./tests -f sarif -o bandit.sarif --severity-level medium
+        run: uv run bandit -r . -x ./tests,./.venv -f sarif -o bandit.sarif --severity-level medium
       - name: Upload SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@v3
@@ -61,11 +61,13 @@ jobs:
     name: Django Deployment Check
     runs-on: ubuntu-latest
     env:
-      SECRET_KEY: ci-dummy  # pragma: allowlist secret
+      SECRET_KEY: ci-dummy-key-that-is-long-enough-for-django-deploy-check-validation  # pragma: allowlist secret
       HOST_DOMAIN: example.com
       DB_NAME: ci
       DB_USER: ci
       DB_PASSWORD: ci  # pragma: allowlist secret
+      HSTS_INCLUDE_SUBDOMAINS: "True"
+      HSTS_PRELOAD: "True"
     steps:
       - uses: actions/checkout@v4
       - name: Install uv

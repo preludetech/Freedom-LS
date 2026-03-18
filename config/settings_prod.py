@@ -34,6 +34,7 @@ CSRF_COOKIE_SAMESITE = "Lax"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
 
 # --- Session Timeout ---
 SESSION_COOKIE_AGE = 1209600  # 2 weeks
