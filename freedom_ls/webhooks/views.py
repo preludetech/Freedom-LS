@@ -10,9 +10,9 @@ from freedom_ls.base.webhook_event_types import (
     WEBHOOK_EVENT_TYPE_SAMPLES,
 )
 from freedom_ls.webhooks.delivery import (
-    _build_standard_request,
-    _build_transformed_request,
     attempt_delivery,
+    build_standard_request,
+    build_transformed_request,
 )
 from freedom_ls.webhooks.models import (
     WebhookDelivery,
@@ -100,9 +100,9 @@ def _build_request_preview(
 ) -> dict[str, str]:
     """Build a preview of the request (standard or transformed) with masked secrets."""
     if endpoint.has_transformation:
-        method, body, headers = _build_transformed_request(endpoint, event)
+        method, body, headers = build_transformed_request(endpoint, event)
     else:
-        method, body, headers = _build_standard_request(endpoint, event)
+        method, body, headers = build_standard_request(endpoint, event)
 
     # Mask secret values in headers for display
     secret_values = set(

@@ -10,10 +10,10 @@ from django.utils import timezone
 from freedom_ls.webhooks.delivery import (
     MAX_ATTEMPTS,
     RETRY_DELAYS,
-    _build_standard_request,
-    _build_transformed_request,
     _increment_failure_count_and_check_breaker,
     attempt_delivery,
+    build_standard_request,
+    build_transformed_request,
     build_webhook_headers,
     build_webhook_payload,
     calculate_next_retry,
@@ -864,31 +864,31 @@ class TestAttemptDeliveryWithTransformation:
 
 @pytest.mark.django_db
 class TestBuildStandardRequest:
-    """Tests for _build_standard_request helper."""
+    """Tests for build_standard_request helper."""
 
     def test_returns_post_method(self, mock_site_context: object) -> None:
         endpoint = WebhookEndpointFactory()
         event = WebhookEventFactory()
-        method, _body, _headers = _build_standard_request(endpoint, event)
+        method, _body, _headers = build_standard_request(endpoint, event)
         assert method == "POST"
 
     def test_returns_json_content_type(self, mock_site_context: object) -> None:
         endpoint = WebhookEndpointFactory()
         event = WebhookEventFactory()
-        _method, _body, headers = _build_standard_request(endpoint, event)
+        _method, _body, headers = build_standard_request(endpoint, event)
         assert headers["Content-Type"] == "application/json"
 
     def test_body_is_valid_json_envelope(self, mock_site_context: object) -> None:
         endpoint = WebhookEndpointFactory()
         event = WebhookEventFactory(event_type="test.event")
-        _method, body, _headers = _build_standard_request(endpoint, event)
+        _method, body, _headers = build_standard_request(endpoint, event)
         parsed = json.loads(body)
         assert parsed["type"] == "test.event"
 
 
 @pytest.mark.django_db
 class TestBuildTransformedRequest:
-    """Tests for _build_transformed_request helper."""
+    """Tests for build_transformed_request helper."""
 
     def test_renders_body_template(self, mock_site_context: object) -> None:
         endpoint = WebhookEndpointFactory(
@@ -898,7 +898,7 @@ class TestBuildTransformedRequest:
             auth_type="none",
         )
         event = WebhookEventFactory(event_type="course.completed")
-        _method, body, _headers = _build_transformed_request(endpoint, event)
+        _method, body, _headers = build_transformed_request(endpoint, event)
         parsed = json.loads(body)
         assert parsed["event"] == "course.completed"
 
@@ -910,7 +910,7 @@ class TestBuildTransformedRequest:
             auth_type="none",
         )
         event = WebhookEventFactory()
-        method, _body, _headers = _build_transformed_request(endpoint, event)
+        method, _body, _headers = build_transformed_request(endpoint, event)
         assert method == "PATCH"
 
     def test_defaults_method_to_post(self, mock_site_context: object) -> None:
@@ -921,7 +921,7 @@ class TestBuildTransformedRequest:
             auth_type="none",
         )
         event = WebhookEventFactory()
-        method, _body, _headers = _build_transformed_request(endpoint, event)
+        method, _body, _headers = build_transformed_request(endpoint, event)
         assert method == "POST"
 
     def test_defaults_content_type_to_json(self, mock_site_context: object) -> None:
@@ -932,5 +932,5 @@ class TestBuildTransformedRequest:
             auth_type="none",
         )
         event = WebhookEventFactory()
-        _method, _body, headers = _build_transformed_request(endpoint, event)
+        _method, _body, headers = build_transformed_request(endpoint, event)
         assert headers["Content-Type"] == "application/json"

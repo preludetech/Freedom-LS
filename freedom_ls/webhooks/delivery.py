@@ -50,7 +50,7 @@ def build_webhook_headers(
     }
 
 
-def _build_standard_request(
+def build_standard_request(
     endpoint: WebhookEndpoint, event: WebhookEvent
 ) -> tuple[str, str, dict[str, str]]:
     """Returns (method, body, headers) for standard webhook format."""
@@ -59,7 +59,7 @@ def _build_standard_request(
     return "POST", body, headers
 
 
-def _build_transformed_request(
+def build_transformed_request(
     endpoint: WebhookEndpoint, event: WebhookEvent
 ) -> tuple[str, str, dict[str, str]]:
     """Returns (method, body, headers) for a transformed endpoint.
@@ -107,9 +107,9 @@ def attempt_delivery(delivery: WebhookDelivery) -> None:
 
     try:
         if endpoint.has_transformation:
-            method, body, headers = _build_transformed_request(endpoint, event)
+            method, body, headers = build_transformed_request(endpoint, event)
         else:
-            method, body, headers = _build_standard_request(endpoint, event)
+            method, body, headers = build_standard_request(endpoint, event)
     except (jinja2.TemplateError, json.JSONDecodeError) as exc:
         delivery.attempt_count += 1
         delivery.last_attempt_at = timezone.now()
