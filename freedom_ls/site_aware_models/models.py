@@ -58,15 +58,21 @@ class SiteAwareModelBase(models.Model):
         abstract = True
 
     def save(self, *args, **kwargs):
-        # Automatically set site_id if not already set
+        self._set_site_from_request()
+        super().save(*args, **kwargs)
 
+    def full_clean(self, *args, **kwargs):
+        self._set_site_from_request()
+        super().full_clean(*args, **kwargs)
+
+    def _set_site_from_request(self) -> None:
+        """Automatically set site from the current request if not already set."""
         if not self.site_id:
             request = getattr(_thread_locals, "request", None)
             if request:
                 # In practice, get_cached_site always returns Site when
                 # django.contrib.sites is installed (which it always is).
                 self.site = get_cached_site(request)  # type: ignore[assignment]
-        super().save(*args, **kwargs)
 
 
 class SiteAwareModel(SiteAwareModelBase):
