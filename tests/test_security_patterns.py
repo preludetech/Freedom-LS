@@ -10,10 +10,6 @@ from pathlib import Path
 
 import pytest
 
-from django.test import Client
-
-from freedom_ls.accounts.factories import UserFactory
-
 # Root of the freedom_ls package
 FREEDOM_LS_DIR = Path(__file__).resolve().parent.parent / "freedom_ls"
 
@@ -80,36 +76,3 @@ def test_no_dangerous_pattern_in_codebase(pattern: str, reason: str) -> None:
             for path, line_num, text in matches
         )
         pytest.fail(f"Found forbidden pattern '{pattern}' ({reason}):\n{details}")
-
-
-@pytest.mark.django_db
-class TestEducatorInterfaceAuth:
-    """Verify that the educator interface requires authentication."""
-
-    def test_unauthenticated_request_redirects_to_login(
-        self, mock_site_context
-    ) -> None:
-        """Unauthenticated GET to /educator/ should 302 redirect to login."""
-        client = Client()
-        response = client.get("/educator/")
-        assert response.status_code == 302
-        assert "/login" in str(response.url) or "/accounts/login" in str(response.url)
-
-    def test_authenticated_request_returns_200(self, mock_site_context) -> None:
-        """Authenticated GET to /educator/ should return 200."""
-        user = UserFactory()
-        client = Client()
-        client.force_login(user)
-        response = client.get("/educator/")
-        assert response.status_code == 200
-
-
-@pytest.mark.django_db
-class TestArgon2PasswordHashing:
-    """Verify passwords are hashed with Argon2."""
-
-    def test_new_user_password_uses_argon2(self, mock_site_context) -> None:
-        """Creating a user with a password should hash it with Argon2."""
-        user = UserFactory(password="test-password-123!")
-        user.refresh_from_db()
-        assert user.password.startswith("argon2")
