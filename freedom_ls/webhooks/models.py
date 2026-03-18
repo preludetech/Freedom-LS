@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 import jinja2
 import jinja2.meta
-from encrypted_fields.fields import EncryptedTextField  # type: ignore[import-untyped]
+from encrypted_fields.fields import EncryptedTextField
 from jinja2.sandbox import SandboxedEnvironment
 
 from django.conf import settings
@@ -122,7 +122,14 @@ class WebhookEndpoint(SiteAwareModel):
         return unknown
 
     def _validate_url_ssrf(self) -> None:
-        """Validate URL against SSRF attacks: reject private IPs, non-HTTP(S) schemes."""
+        """Validate URL against SSRF attacks: reject private IPs, non-HTTP(S) schemes.
+
+        TODO: DNS rebinding / TOCTOU vulnerability — this resolves the hostname at
+        validation time, but httpx re-resolves at delivery time. An attacker controlling
+        DNS could return a public IP during validation and a private IP during delivery.
+        To fix: pin the resolved IP for use at delivery time, or add IP validation in the
+        httpx transport layer.
+        """
         parsed = urlparse(self.url)
 
         # Reject non-HTTP(S) schemes
@@ -276,7 +283,9 @@ class WebhookEndpoint(SiteAwareModel):
         # Load actual secrets for this site so rendered output is valid
         secrets_dict: dict[str, str] = {}
         if self.site_id:
-            secrets_qs = WebhookSecret.objects.filter(site_id=self.site_id)
+            secrets_qs = WebhookSecret.objects.filter(site_id=self.site_id).only(
+                "name", "encrypted_value"
+            )
             secrets_dict = {s.name: s.encrypted_value for s in secrets_qs}
 
         return {
@@ -370,7 +379,9 @@ class WebhookDelivery(SiteAwareModel):
     endpoint = models.ForeignKey(
         WebhookEndpoint, on_delete=models.CASCADE, related_name="deliveries"
     )
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True
+    )
     attempt_count = models.PositiveIntegerField(default=0)
     next_retry_at = models.DateTimeField(null=True, blank=True)
     last_status_code = models.PositiveIntegerField(null=True, blank=True)

@@ -1,5 +1,5 @@
 from django.contrib.sites.models import Site
-from django.tasks import default_task_backend, task  # type: ignore[import-untyped]
+from django.tasks import default_task_backend, task
 
 from freedom_ls.site_aware_models.models import _thread_locals, get_cached_site
 from freedom_ls.webhooks.delivery import attempt_delivery, check_circuit_breaker
@@ -62,14 +62,16 @@ def dispatch_event(event_id: str, site_id: int) -> None:
         return
 
     # Filter explicitly by site_id since we have no request context.
-    # Only include user-enabled endpoints. Circuit-broken endpoints still have
-    # is_active=True; check_circuit_breaker() handles probe gating.
-    endpoints = WebhookEndpoint.objects.filter(site_id=site_id, is_active=True)
+    # Only include user-enabled endpoints subscribed to this event type.
+    # Circuit-broken endpoints still have is_active=True; check_circuit_breaker()
+    # handles probe gating.
+    endpoints = WebhookEndpoint.objects.filter(
+        site_id=site_id,
+        is_active=True,
+        event_types__contains=[event.event_type],
+    )
 
     for endpoint in endpoints:
-        if event.event_type not in endpoint.event_types:
-            continue
-
         if not check_circuit_breaker(endpoint):
             continue
 

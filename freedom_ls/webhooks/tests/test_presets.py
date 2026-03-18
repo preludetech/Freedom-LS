@@ -24,57 +24,12 @@ class TestGetPresetChoices:
             assert WEBHOOK_PRESETS[slug].name == name
 
 
-class TestBrevoPreset:
-    def test_brevo_preset_exists(self) -> None:
-        assert "brevo-track-event" in WEBHOOK_PRESETS
-
-    def test_brevo_preset_is_frozen_dataclass(self) -> None:
-        preset = WEBHOOK_PRESETS["brevo-track-event"]
+class TestPresetIsFrozen:
+    def test_preset_is_frozen_dataclass(self) -> None:
+        preset = WEBHOOK_PRESETS["brevo-create-contact"]
         assert isinstance(preset, WebhookPreset)
         with pytest.raises(AttributeError):
             preset.name = "changed"
-
-    def test_brevo_body_template_renders_with_sample_data(self) -> None:
-        preset = WEBHOOK_PRESETS["brevo-track-event"]
-        context = {
-            "event": {
-                "id": "sample-uuid-0000",
-                "type": "user.registered",
-                "timestamp": "2026-01-01T00:00:00Z",
-                "data": {
-                    "user_id": "sample-uuid-1234",
-                    "user_email": "test@example.com",
-                },
-            },
-            "secrets": {
-                "brevo_ma_key": "xkeysib-test-ma-key",  # pragma: allowlist secret
-            },
-        }
-        rendered = render_template(preset.body_template, context)
-        parsed = json.loads(rendered)
-        assert parsed["event"] == "user_registered"
-        assert parsed["email"] == "test@example.com"
-        # Dots should be replaced with underscores in event name
-        assert "." not in parsed["event"]
-
-    def test_brevo_headers_template_renders_with_sample_data(self) -> None:
-        preset = WEBHOOK_PRESETS["brevo-track-event"]
-        context = {
-            "secrets": {
-                "brevo_ma_key": "xkeysib-test-ma-key",  # pragma: allowlist secret
-            },
-        }
-        rendered = render_template(preset.headers_template, context)
-        parsed = json.loads(rendered)
-        assert isinstance(parsed, dict)
-        assert parsed["ma-key"] == "xkeysib-test-ma-key"
-        assert parsed["accept"] == "application/json"
-
-    def test_brevo_preset_has_correct_defaults(self) -> None:
-        preset = WEBHOOK_PRESETS["brevo-track-event"]
-        assert preset.http_method == "POST"
-        assert preset.content_type == "application/json"
-        assert preset.default_url == "https://in-automate.brevo.com/api/v2/trackEvent"
 
 
 class TestBrevoCreateContactPreset:

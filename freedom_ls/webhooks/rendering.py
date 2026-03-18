@@ -9,17 +9,24 @@ def get_jinja2_env() -> SandboxedEnvironment:
     return SandboxedEnvironment(undefined=jinja2.StrictUndefined)
 
 
+def build_event_envelope(event: WebhookEvent) -> dict[str, object]:
+    """Build the standard event envelope dict used in template contexts and payloads."""
+    return {
+        "id": str(event.pk),
+        "type": event.event_type,
+        "timestamp": event.created_at.isoformat().replace("+00:00", "Z"),
+        "data": event.payload,
+    }
+
+
 def build_template_context(event: WebhookEvent, site_id: int) -> dict[str, object]:
     """Build the template context with event data and resolved secrets."""
-    secrets_qs = WebhookSecret.objects.filter(site_id=site_id)
+    secrets_qs = WebhookSecret.objects.filter(site_id=site_id).only(
+        "name", "encrypted_value"
+    )
     secrets_dict = {s.name: s.encrypted_value for s in secrets_qs}
     return {
-        "event": {
-            "id": str(event.pk),
-            "type": event.event_type,
-            "timestamp": event.created_at.isoformat().replace("+00:00", "Z"),
-            "data": event.payload,
-        },
+        "event": build_event_envelope(event),
         "secrets": secrets_dict,
     }
 

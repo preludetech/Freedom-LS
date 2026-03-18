@@ -328,14 +328,14 @@ class TestWebhookEndpointFormTransformation:
                 "auth_type": "none",
                 "headers_template": '{"api-key": "test"}',
                 "body_template": '{"event": "{{ event.type }}"}',
-                "preset_slug": "brevo-track-event",
+                "preset_slug": "brevo-create-contact",
             },
         )
         assert form.is_valid(), form.errors
         saved = form.save()
         saved.refresh_from_db()
         # preset_slug is a model field, so it can be saved
-        assert saved.preset_slug == "brevo-track-event"
+        assert saved.preset_slug == "brevo-create-contact"
 
 
 @pytest.mark.django_db

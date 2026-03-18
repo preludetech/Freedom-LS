@@ -6,10 +6,15 @@ from datetime import datetime, timedelta
 import httpx
 import jinja2
 
+from django.db.models import F
 from django.utils import timezone
 
 from freedom_ls.webhooks.models import WebhookDelivery, WebhookEndpoint, WebhookEvent
-from freedom_ls.webhooks.rendering import build_template_context, render_template
+from freedom_ls.webhooks.rendering import (
+    build_event_envelope,
+    build_template_context,
+    render_template,
+)
 from freedom_ls.webhooks.signing import sign_webhook
 
 RETRY_DELAYS = [60, 300, 1800, 7200, 43200]  # seconds
@@ -21,12 +26,7 @@ REQUEST_TIMEOUT = 30  # seconds
 
 def build_webhook_payload(event: WebhookEvent) -> str:
     """Build the JSON envelope: {id, type, timestamp, data}."""
-    envelope = {
-        "id": str(event.pk),
-        "type": event.event_type,
-        "timestamp": event.created_at.isoformat().replace("+00:00", "Z"),
-        "data": event.payload,
-    }
+    envelope = build_event_envelope(event)
     return json.dumps(envelope, separators=(",", ":"))
 
 
@@ -174,9 +174,9 @@ def _handle_success(delivery: WebhookDelivery, endpoint: WebhookEndpoint) -> Non
     """Mark delivery as successful and reset endpoint circuit breaker state."""
     delivery.status = "success"
     delivery.next_retry_at = None
-    endpoint.failure_count = 0
-    endpoint.disabled_at = None
-    endpoint.save()
+    WebhookEndpoint.objects.filter(pk=endpoint.pk).update(
+        failure_count=0, disabled_at=None
+    )
 
 
 def _handle_permanent_failure(
@@ -185,10 +185,7 @@ def _handle_permanent_failure(
     """Mark delivery as permanently failed (4xx except 429)."""
     delivery.status = "permanent_failure"
     delivery.next_retry_at = None
-    endpoint.failure_count += 1
-    handle_circuit_breaker_trip(endpoint)
-    if endpoint.failure_count < CIRCUIT_BREAKER_THRESHOLD:
-        endpoint.save()
+    _increment_failure_count_and_check_breaker(endpoint)
 
 
 def _handle_retryable_failure(
@@ -197,10 +194,7 @@ def _handle_retryable_failure(
     retry_after: int | None = None,
 ) -> None:
     """Handle a retryable failure: schedule retry or mark dead letter."""
-    endpoint.failure_count += 1
-    handle_circuit_breaker_trip(endpoint)
-    if endpoint.failure_count < CIRCUIT_BREAKER_THRESHOLD:
-        endpoint.save()
+    _increment_failure_count_and_check_breaker(endpoint)
 
     if delivery.attempt_count >= MAX_ATTEMPTS:
         delivery.status = "dead_letter"
@@ -211,6 +205,19 @@ def _handle_retryable_failure(
             delivery.next_retry_at = timezone.now() + timedelta(seconds=retry_after)
         else:
             delivery.next_retry_at = calculate_next_retry(delivery.attempt_count)
+
+
+def _increment_failure_count_and_check_breaker(
+    endpoint: WebhookEndpoint,
+) -> None:
+    """Atomically increment failure_count and trip circuit breaker if threshold reached."""
+    WebhookEndpoint.objects.filter(pk=endpoint.pk).update(
+        failure_count=F("failure_count") + 1
+    )
+    endpoint.refresh_from_db()
+    if endpoint.failure_count >= CIRCUIT_BREAKER_THRESHOLD:
+        endpoint.disabled_at = timezone.now()
+        endpoint.save()
 
 
 def calculate_next_retry(attempt_count: int) -> datetime:
@@ -234,10 +241,3 @@ def check_circuit_breaker(endpoint: WebhookEndpoint) -> bool:
     if endpoint.disabled_at is None:
         return True
     return endpoint.disabled_at + CIRCUIT_BREAKER_COOLDOWN < timezone.now()
-
-
-def handle_circuit_breaker_trip(endpoint: WebhookEndpoint) -> None:
-    """If failure_count >= threshold: set disabled_at=now (circuit breaker only)."""
-    if endpoint.failure_count >= CIRCUIT_BREAKER_THRESHOLD:
-        endpoint.disabled_at = timezone.now()
-        endpoint.save()

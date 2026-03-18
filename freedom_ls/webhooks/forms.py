@@ -1,4 +1,4 @@
-from django_ace import AceWidget  # type: ignore[import-untyped]
+from django_ace import AceWidget
 
 from django import forms
 from django.utils.html import json_script

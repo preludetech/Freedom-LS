@@ -12,12 +12,12 @@ from freedom_ls.webhooks.delivery import (
     RETRY_DELAYS,
     _build_standard_request,
     _build_transformed_request,
+    _increment_failure_count_and_check_breaker,
     attempt_delivery,
     build_webhook_headers,
     build_webhook_payload,
     calculate_next_retry,
     check_circuit_breaker,
-    handle_circuit_breaker_trip,
 )
 from freedom_ls.webhooks.factories import (
     WebhookDeliveryFactory,
@@ -189,27 +189,39 @@ class TestCheckCircuitBreaker:
 
 
 @pytest.mark.django_db
-class TestHandleCircuitBreakerTrip:
+class TestIncrementFailureCountAndCheckBreaker:
     def test_does_not_trip_below_threshold(self, mock_site_context: object) -> None:
-        endpoint = WebhookEndpointFactory(failure_count=4, is_active=True)
-        handle_circuit_breaker_trip(endpoint)
+        endpoint = WebhookEndpointFactory(failure_count=3, is_active=True)
+        _increment_failure_count_and_check_breaker(endpoint)
         endpoint.refresh_from_db()
+        assert endpoint.failure_count == 4
         assert endpoint.is_active is True
         assert endpoint.disabled_at is None
 
     def test_trips_at_threshold(self, mock_site_context: object) -> None:
-        endpoint = WebhookEndpointFactory(failure_count=5, is_active=True)
-        handle_circuit_breaker_trip(endpoint)
+        endpoint = WebhookEndpointFactory(failure_count=4, is_active=True)
+        _increment_failure_count_and_check_breaker(endpoint)
         endpoint.refresh_from_db()
+        assert endpoint.failure_count == 5
         assert endpoint.is_active is True
         assert endpoint.disabled_at is not None
 
     def test_trips_above_threshold(self, mock_site_context: object) -> None:
-        endpoint = WebhookEndpointFactory(failure_count=10, is_active=True)
-        handle_circuit_breaker_trip(endpoint)
+        endpoint = WebhookEndpointFactory(failure_count=9, is_active=True)
+        _increment_failure_count_and_check_breaker(endpoint)
         endpoint.refresh_from_db()
+        assert endpoint.failure_count == 10
         assert endpoint.is_active is True
         assert endpoint.disabled_at is not None
+
+    def test_atomically_increments_failure_count(
+        self, mock_site_context: object
+    ) -> None:
+        """Verify F() expression is used for atomic increment."""
+        endpoint = WebhookEndpointFactory(failure_count=2, is_active=True)
+        _increment_failure_count_and_check_breaker(endpoint)
+        endpoint.refresh_from_db()
+        assert endpoint.failure_count == 3
 
 
 @pytest.mark.django_db

@@ -197,6 +197,7 @@ module = [
     "boto3.*", "botocore.*", "redis.*", "PIL.*",
     "allauth.*", "djclick.*", "frontmatter.*",
     "markdown.*", "unfold.*", "factory.*", "django_cotton.*",
+    "django_ace.*", "encrypted_fields.*", "django.tasks.*",
 ]
 ignore_missing_imports = true
 

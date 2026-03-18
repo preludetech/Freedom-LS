@@ -24,27 +24,6 @@ def get_preset_choices() -> list[tuple[str, str]]:
     return [(slug, p.name) for slug, p in WEBHOOK_PRESETS.items()]
 
 
-# --- Brevo Track Event (v3) ---
-_register(
-    WebhookPreset(
-        name="Brevo \u2014 Track Event",
-        slug="brevo-track-event",
-        description="Calls Brevo's Events API to trigger automations. Required secrets: brevo_ma_key",
-        default_url="https://in-automate.brevo.com/api/v2/trackEvent",
-        http_method="POST",
-        content_type="application/json",
-        headers_template="""{
-  "ma-key": "{{ secrets.brevo_ma_key }}",
-  "accept": "application/json"
-}""",
-        body_template="""{
-  "email": "{{ event.data.user_email }}",
-  "event": "{{ event.type | replace('.', '_') }}",
-  "properties": {{ event.data | tojson }}
-}""",
-    )
-)
-
 # --- Discord Webhook ---
 _register(
     WebhookPreset(

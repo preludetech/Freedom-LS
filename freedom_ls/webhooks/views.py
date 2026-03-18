@@ -10,9 +10,9 @@ from freedom_ls.base.webhook_event_types import (
     WEBHOOK_EVENT_TYPE_SAMPLES,
 )
 from freedom_ls.webhooks.delivery import (
+    _build_standard_request,
+    _build_transformed_request,
     attempt_delivery,
-    build_webhook_headers,
-    build_webhook_payload,
 )
 from freedom_ls.webhooks.models import (
     WebhookDelivery,
@@ -21,7 +21,6 @@ from freedom_ls.webhooks.models import (
     WebhookSecret,
 )
 from freedom_ls.webhooks.registry import validate_event_type
-from freedom_ls.webhooks.rendering import render_template
 
 
 def send_test_form_view(request: HttpRequest, object_id: str) -> HttpResponse:
@@ -73,10 +72,7 @@ def send_test_result_view(request: HttpRequest, object_id: str) -> HttpResponse:
     )
 
     # Build request preview for display
-    if endpoint.has_transformation:
-        request_preview = _build_transformation_preview(event, endpoint)
-    else:
-        request_preview = _build_standard_preview(event, endpoint)
+    request_preview = _build_request_preview(event, endpoint)
 
     # Attempt delivery
     attempt_delivery(delivery)
@@ -99,37 +95,21 @@ def send_test_result_view(request: HttpRequest, object_id: str) -> HttpResponse:
     return render(request, "admin/webhooks/send_test_result.html", context)
 
 
-def _build_transformation_preview(
+def _build_request_preview(
     event: WebhookEvent, endpoint: WebhookEndpoint
 ) -> dict[str, str]:
-    """Build a preview of the transformed request with masked secrets."""
-    # Query secrets once for both template context and masking
-    secrets_qs = list(WebhookSecret.objects.filter(site_id=endpoint.site_id))
-    secrets_dict = {s.name: s.encrypted_value for s in secrets_qs}
-    secret_values = {s.encrypted_value for s in secrets_qs}
+    """Build a preview of the request (standard or transformed) with masked secrets."""
+    if endpoint.has_transformation:
+        method, body, headers = _build_transformed_request(endpoint, event)
+    else:
+        method, body, headers = _build_standard_request(endpoint, event)
 
-    context: dict[str, object] = {
-        "event": {
-            "id": str(event.pk),
-            "type": event.event_type,
-            "timestamp": event.created_at.isoformat().replace("+00:00", "Z"),
-            "data": event.payload,
-        },
-        "secrets": secrets_dict,
-    }
-
-    body = render_template(endpoint.body_template, context)
-    method = endpoint.http_method or "POST"
-
-    headers: dict[str, str] = {
-        "Content-Type": endpoint.content_type or "application/json"
-    }
-    if endpoint.headers_template:
-        rendered_headers_str = render_template(endpoint.headers_template, context)
-        rendered_headers = json.loads(rendered_headers_str)
-        headers.update(rendered_headers)
-
-    # Mask secret values in headers
+    # Mask secret values in headers for display
+    secret_values = set(
+        WebhookSecret.objects.filter(site_id=endpoint.site_id)
+        .only("encrypted_value")
+        .values_list("encrypted_value", flat=True)
+    )
     masked_headers: dict[str, str] = {}
     for key, value in headers.items():
         masked_headers[key] = _mask_secrets(str(value), secret_values)
@@ -138,20 +118,6 @@ def _build_transformation_preview(
         "method": method,
         "url": endpoint.url,
         "headers": json.dumps(masked_headers, indent=2),
-        "body": body,
-    }
-
-
-def _build_standard_preview(
-    event: WebhookEvent, endpoint: WebhookEndpoint
-) -> dict[str, str]:
-    """Build a preview of the standard webhook request."""
-    body = build_webhook_payload(event)
-    headers = build_webhook_headers(body, endpoint, event)
-    return {
-        "method": "POST",
-        "url": endpoint.url,
-        "headers": json.dumps(dict(headers), indent=2),
         "body": body,
     }
 

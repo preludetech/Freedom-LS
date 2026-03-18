@@ -25,12 +25,17 @@ class TestBrevoPresetIntegration:
         self, mock_site_context: Site
     ) -> None:
         site = mock_site_context
-        preset = WEBHOOK_PRESETS["brevo-track-event"]
+        preset = WEBHOOK_PRESETS["brevo-create-contact"]
 
-        # Create the MA key secret that Brevo track event template references
+        # Create the secrets that Brevo create-contact template references
         WebhookSecretFactory(
-            name="brevo_ma_key",
-            encrypted_value="xkeysib-test-ma-key-123",
+            name="brevo_api_key",
+            encrypted_value="xkeysib-test-api-key-123",
+            site=site,
+        )
+        WebhookSecretFactory(
+            name="brevo_list_id",
+            encrypted_value="6",
             site=site,
         )
 
@@ -52,12 +57,14 @@ class TestBrevoPresetIntegration:
             payload={
                 "user_id": "abc-123",
                 "user_email": "student@example.com",
+                "first_name": "Jane",
+                "last_name": "Doe",
             },
         )
 
         mock_response = httpx.Response(
             status_code=200,
-            content=b'{"success": true}',
+            content=b'{"id": 1}',
             request=httpx.Request("POST", endpoint.url),
         )
 
@@ -83,17 +90,19 @@ class TestBrevoPresetIntegration:
         # URL should be the Brevo API endpoint
         assert call_kwargs["url"] == preset.default_url
 
-        # Headers should include the Brevo MA key from secrets
+        # Headers should include the Brevo API key from secrets
         headers = call_kwargs["headers"]
-        assert headers["ma-key"] == "xkeysib-test-ma-key-123"
+        assert headers["api-key"] == "xkeysib-test-api-key-123"
         assert headers["accept"] == "application/json"
         assert headers["Content-Type"] == "application/json"
 
         # Body should be the Brevo-transformed payload
         body = json.loads(call_kwargs["content"])
-        assert body["event"] == "user_registered"
         assert body["email"] == "student@example.com"
-        assert body["properties"]["user_id"] == "abc-123"
+        assert body["attributes"]["FNAME"] == "Jane"
+        assert body["attributes"]["LNAME"] == "Doe"
+        assert body["listIds"] == [6]
+        assert body["updateEnabled"] is True
 
         # auth_type=none means no HMAC headers
         assert "webhook-signature" not in headers
@@ -101,11 +110,11 @@ class TestBrevoPresetIntegration:
     def test_brevo_preset_delivery_missing_secret_fails(
         self, mock_site_context: Site
     ) -> None:
-        """When the required brevo_api_key secret is missing, template rendering fails."""
+        """When the required secrets are missing, template rendering fails."""
         site = mock_site_context
-        preset = WEBHOOK_PRESETS["brevo-track-event"]
+        preset = WEBHOOK_PRESETS["brevo-create-contact"]
 
-        # No secret created -- template will fail on {{ secrets.brevo_api_key }}
+        # No secrets created -- template will fail on rendering
         WebhookEndpointFactory(
             url=preset.default_url,
             event_types=["user.registered"],
@@ -119,7 +128,12 @@ class TestBrevoPresetIntegration:
 
         event = WebhookEventFactory(
             event_type="user.registered",
-            payload={"user_id": "abc-123", "user_email": "test@example.com"},
+            payload={
+                "user_id": "abc-123",
+                "user_email": "test@example.com",
+                "first_name": "Jane",
+                "last_name": "Doe",
+            },
         )
 
         with patch("freedom_ls.webhooks.delivery.httpx.request") as mock_request:
@@ -130,7 +144,9 @@ class TestBrevoPresetIntegration:
         delivery = WebhookDelivery.objects.first()
         assert delivery is not None
         assert delivery.status == "permanent_failure"
-        assert "brevo_ma_key" in delivery.last_response_error_message.lower()
+        assert (
+            "template rendering failed" in delivery.last_response_error_message.lower()
+        )
 
 
 @pytest.mark.django_db
