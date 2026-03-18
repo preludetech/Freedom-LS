@@ -967,6 +967,7 @@ interface_config: dict[str, type[ListViewConfig]] = {
 }
 
 
+@login_required
 def interface(request: HttpRequest, path_string: str = "") -> HttpResponse:
     return panel_framework_view(
         config=interface_config,
