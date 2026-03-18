@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     "freedom_ls.webhooks",
     "allauth",
     "allauth.account",
+    "axes",
 ]
 
 # These are the URLs to be implemented by your single-page application.
@@ -109,6 +110,7 @@ MIDDLEWARE = [
     "freedom_ls.site_aware_models.middleware.CurrentSiteMiddleware",
     # "config.site_urlconf_middleware.SiteURLConfMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "axes.middleware.AxesMiddleware",
 ]
 
 X_FRAME_OPTIONS = "SAMEORIGIN"  # needed for pdf display
@@ -121,7 +123,7 @@ TEMPLATES = [
         # "DIRS": [],
         "DIRS": [
             # BASE_DIR / "templates",
-            "/tmp/lms_templates"  # noqa: S108
+            "/tmp/lms_templates"  # noqa: S108  # nosec B108
         ],
         # "APP_DIRS": True,
         "OPTIONS": {
@@ -157,19 +159,24 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+]
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "OPTIONS": {"max_similarity": 0.7},
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 10},
     },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 
@@ -212,10 +219,16 @@ AUTH_USER_MODEL = "freedom_ls_accounts.User"
 
 
 AUTHENTICATION_BACKENDS = (
+    "axes.backends.AxesStandaloneBackend",
     "django.contrib.auth.backends.ModelBackend",
     "guardian.backends.ObjectPermissionBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 )
+
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1  # 1 hour
+AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
+AXES_RESET_ON_SUCCESS = True
 
 
 MARKDOWN_ALLOWED_TAGS = {

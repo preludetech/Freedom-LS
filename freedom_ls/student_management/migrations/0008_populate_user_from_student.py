@@ -13,7 +13,7 @@ def forward(apps, schema_editor):
             UPDATE {table} SET user_id = s.user_id
             FROM freedom_ls_student_management_student AS s
             WHERE {table}.student_id = s.id
-        """)
+        """)  # nosec B608 - table names are hardcoded, not user input
 
 
 def reverse(apps, schema_editor):
@@ -24,7 +24,7 @@ def reverse(apps, schema_editor):
     ]:
         schema_editor.execute(f"""
             UPDATE {table} SET user_id = NULL
-        """)
+        """)  # nosec B608 - table names are hardcoded, not user input
 
 
 class Migration(migrations.Migration):

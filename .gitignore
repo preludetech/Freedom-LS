@@ -40,3 +40,7 @@ htmlcov/
 .coverage
 
 .mypy_cache/
+
+# Security scan artifacts
+*.sarif
+bandit.sarif

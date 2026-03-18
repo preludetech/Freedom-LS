@@ -40,7 +40,7 @@ def render_markdown(markdown_text, request, context=None):
     # do the cotton rendering
 
     if settings.MARKDOWN_TEMPLATE_RENDER_ON:
-        template_dir = "/tmp/lms_templates"  # noqa: S108
+        template_dir = "/tmp/lms_templates"  # noqa: S108  # nosec B108
         os.makedirs(template_dir, exist_ok=True)
         with tempfile.NamedTemporaryFile(prefix="template_", dir=template_dir) as temp:
             temp.write(str.encode(rendered_content))
@@ -49,6 +49,7 @@ def render_markdown(markdown_text, request, context=None):
                 Path(temp.name).stem, context=context, request=request, using=None
             )
     else:
-        content = mark_safe(rendered_content)  # noqa: S308
+        # Safe: content is sanitized by nh3.clean() above with strict allowlist
+        content = mark_safe(rendered_content)  # noqa: S308  # nosec B308 B703
 
     return content

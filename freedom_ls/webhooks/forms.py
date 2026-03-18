@@ -58,7 +58,7 @@ class PresetSelectWidget(forms.Select):
             for slug, p in WEBHOOK_PRESETS.items()
         }
         script_tag = json_script(preset_data, "webhook-preset-data")
-        return SafeString(str(select_html) + str(script_tag))
+        return SafeString(str(select_html) + str(script_tag))  # nosec B703 - both from Django's safe rendering
 
 
 class PresetChoiceField(forms.ChoiceField):

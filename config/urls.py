@@ -15,6 +15,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+import os
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -22,6 +24,8 @@ from django.http import JsonResponse
 from django.urls import include, path
 
 # from ninja import NinjaAPI
+
+ADMIN_URL = os.environ.get("DJANGO_ADMIN_URL", "admin/")
 
 
 def health_check(request):
@@ -37,7 +41,7 @@ def health_check(request):
 
 urlpatterns = [
     path("health/", health_check, name="health_check"),
-    path("admin/", admin.site.urls),
+    path(ADMIN_URL, admin.site.urls),
     # path("api/", api.urls),
     # path("api/xapi/", include("xapi_learning_record_store.api_urls")),
     # path("api/", api.urls),

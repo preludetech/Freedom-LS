@@ -6,6 +6,7 @@ from uuid import UUID
 
 from guardian.shortcuts import get_objects_for_user
 
+from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.core.paginator import Page, Paginator
 from django.db.models import (
@@ -966,6 +967,7 @@ interface_config: dict[str, type[ListViewConfig]] = {
 }
 
 
+@login_required
 def interface(request: HttpRequest, path_string: str = "") -> HttpResponse:
     return panel_framework_view(
         config=interface_config,

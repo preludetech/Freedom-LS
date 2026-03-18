@@ -168,7 +168,8 @@ class ActivityAdmin(SiteAwareModelAdmin):
 
         if not obj.content:
             return ""
-        return str(mark_safe(obj.rendered_content()))  # noqa: S308
+        # Safe: rendered_content() sanitizes via nh3.clean() with strict allowlist
+        return str(mark_safe(obj.rendered_content()))  # noqa: S308  # nosec B308 B703
 
 
 class ContentCollectionItemInline(GenericTabularInline):

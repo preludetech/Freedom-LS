@@ -9,7 +9,7 @@ from freedom_ls.base.git_utils import get_current_branch
 
 
 def branch_name_to_color(name: str) -> str:
-    hash_hex = hashlib.md5(name.encode()).hexdigest()  # noqa: S324
+    hash_hex = hashlib.md5(name.encode()).hexdigest()  # noqa: S324  # nosec B324
     hue = int(hash_hex[:8], 16) % 360
     sat = 0.45 + (int(hash_hex[8:16], 16) % 100) / 100 * 0.30
     light = 0.40 + (int(hash_hex[16:24], 16) % 100) / 100 * 0.20
