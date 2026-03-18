@@ -22,7 +22,7 @@ For example, we might ask a user for feedback after a course, or after they do a
 - Each form is linked to a named trigger point (e.g., "course_completed", "activity_completed")
 - Initial form format is simple: a rating question + an optional free-text field. This pattern gets ~83% completion rates
 - Admins can configure the rating question label, the text field prompt, and a thank-you message
-- Support anonymous feedback: users can optionally submit without being identified
+- **Occurrence threshold**: Each form can optionally specify a minimum number of trigger occurrences before showing (e.g., `min_occurrences=3` means the form only appears after the user has completed their 3rd topic, not their 1st). This lets us wait until users have enough experience to give meaningful feedback
 
 ## Trigger System
 
