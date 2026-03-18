@@ -12,6 +12,36 @@ ALLOWED_HOSTS = ["localhost", "127.0.0.1", HOST_DOMAIN]
 # CSRF Configuration for HTTPS/Cloudflare tunnel
 CSRF_TRUSTED_ORIGINS = [f"https://{HOST_DOMAIN}"]
 
+# --- HTTPS Enforcement ---
+SECURE_SSL_REDIRECT = True
+
+# --- HSTS (configurable rollout via env vars) ---
+SECURE_HSTS_SECONDS = int(os.environ.get("HSTS_SECONDS", "3600"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = (
+    os.environ.get("HSTS_INCLUDE_SUBDOMAINS", "False") == "True"
+)
+SECURE_HSTS_PRELOAD = os.environ.get("HSTS_PRELOAD", "False") == "True"
+
+# --- Secure Cookies ---
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = "Lax"
+
+# --- Security Headers ---
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+
+# --- Session Timeout ---
+SESSION_COOKIE_AGE = 1209600  # 2 weeks
+
+# --- Upload Limits ---
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5_242_880  # 5 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5_242_880  # 5 MB
+
 SECRET_KEY = os.getenv("SECRET_KEY", "")
 
 DATABASES = {

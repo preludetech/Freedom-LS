@@ -8,5 +8,5 @@ for f in $CLAUDE_FILE_PATHS; do
 done
 
 if [ -n "$py_files" ]; then
-  uv run ruff check --fix $py_files && uv run ruff format $py_files
+  uv run ruff check --fix "$py_files" && uv run ruff format "$py_files"
 fi

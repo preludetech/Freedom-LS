@@ -6,6 +6,7 @@ from uuid import UUID
 
 from guardian.shortcuts import get_objects_for_user
 
+from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.core.paginator import Page, Paginator
 from django.db.models import (
