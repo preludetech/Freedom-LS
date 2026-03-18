@@ -207,82 +207,112 @@ class _ResolvedAction:
         self.instance = instance
 
 
-def _resolve_path(
-    parts: list[str],
-    config: dict[str, type[ListViewConfig]],
-    request: HttpRequest | None = None,
-) -> (
+_Resolved = (
     type[ListViewConfig]
     | InstanceView
     | PanelGetter
     | Panel
     | _ResolvedAction
     | _ResolvedTab
-):
+)
+
+
+def _resolve_panels(current: _Resolved) -> PanelGetter:
+    """Resolve a __panels segment to a PanelGetter."""
+    if isinstance(current, InstanceView):
+        return current.panel_getter()
+    if isinstance(current, _ResolvedTab):
+        tab = current.instance_view.get_tab(current.tab_name)
+        return PanelGetter(tab.panels, current.instance_view.instance)
+    raise Http404(f"Cannot resolve __panels on {type(current)}")
+
+
+def _resolve_tabs(
+    current: _Resolved, parts: list[str], i: int
+) -> tuple[_ResolvedTab, int]:
+    """Resolve a __tabs/{tab_name} segment pair. Returns the resolved tab and updated index."""
+    if i + 1 >= len(parts):
+        raise Http404("Missing tab name after __tabs")
+    tab_name = parts[i + 1]
+    if not isinstance(current, InstanceView):
+        raise Http404(f"Cannot resolve __tabs on {type(current)}")
+    current.get_tab(tab_name)  # validates tab exists
+    return _ResolvedTab(current, tab_name), i + 1
+
+
+def _resolve_action_on_list(
+    current: type[ListViewConfig], action_name: str, request: HttpRequest
+) -> _ResolvedAction:
+    """Resolve an action on a ListViewConfig."""
+    action = current.get_action(request, action_name)
+    if action is None:
+        raise Http404(f"Action '{action_name}' not found")
+    return _ResolvedAction(action, instance=None)
+
+
+def _resolve_action_on_instance(
+    current: InstanceView, action_name: str
+) -> _ResolvedAction:
+    """Resolve an action on an InstanceView."""
+    action = current.get_action(action_name)
+    if action is None:
+        raise Http404(f"Action '{action_name}' not found")
+    return _ResolvedAction(action, instance=current.instance)
+
+
+def _resolve_action_on_panel(
+    current: Panel, action_name: str, request: HttpRequest
+) -> _ResolvedAction:
+    """Resolve an action on a Panel."""
+    for a in current.get_actions(request, ""):
+        if a.action_name == action_name:
+            return _ResolvedAction(a, instance=current.instance)
+    raise Http404(f"Action '{action_name}' not found on panel")
+
+
+def _resolve_actions(
+    current: _Resolved, parts: list[str], i: int, request: HttpRequest
+) -> tuple[_ResolvedAction, int]:
+    """Resolve an __actions/{action_name} segment pair. Returns the resolved action and updated index."""
+    if i + 1 >= len(parts):
+        raise Http404("Missing action name after __actions")
+    action_name = parts[i + 1]
+    if isinstance(current, type) and issubclass(current, ListViewConfig):
+        resolved = _resolve_action_on_list(current, action_name, request)
+    elif isinstance(current, InstanceView):
+        resolved = _resolve_action_on_instance(current, action_name)
+    elif isinstance(current, Panel):
+        resolved = _resolve_action_on_panel(current, action_name, request)
+    else:
+        raise Http404(f"Cannot resolve __actions on {type(current)}")
+    return resolved, i + 1
+
+
+def _resolve_path(
+    parts: list[str],
+    config: dict[str, type[ListViewConfig]],
+    request: HttpRequest | None = None,
+) -> _Resolved:
     """Walk the interface config tree according to URL path parts.
 
     Special segments like __panels, __tabs, and __actions resolve to the
     corresponding attribute on the current object, allowing further traversal.
     """
     try:
-        current: (
-            type[ListViewConfig]
-            | InstanceView
-            | PanelGetter
-            | Panel
-            | _ResolvedAction
-            | _ResolvedTab
-        ) = config[parts[0]]
+        current: _Resolved = config[parts[0]]
     except KeyError as err:
         raise Http404(f"Unknown path segment '{parts[0]}'") from err
 
+    effective_request = request or HttpRequest()
     i = 1
     while i < len(parts):
         part = parts[i]
         if part == "__panels":
-            if isinstance(current, InstanceView):
-                current = current.panel_getter()
-            elif isinstance(current, _ResolvedTab):
-                # __tabs/{tab}/__panels/{panel} — resolve panel within tab
-                tab = current.instance_view.get_tab(current.tab_name)
-                current = PanelGetter(tab.panels, current.instance_view.instance)
-            else:
-                raise Http404(f"Cannot resolve __panels on {type(current)}")
+            current = _resolve_panels(current)
         elif part == "__tabs":
-            if i + 1 >= len(parts):
-                raise Http404("Missing tab name after __tabs")
-            tab_name = parts[i + 1]
-            i += 1
-            if not isinstance(current, InstanceView):
-                raise Http404(f"Cannot resolve __tabs on {type(current)}")
-            current.get_tab(tab_name)  # validates tab exists
-            current = _ResolvedTab(current, tab_name)
+            current, i = _resolve_tabs(current, parts, i)
         elif part == "__actions":
-            if i + 1 >= len(parts):
-                raise Http404("Missing action name after __actions")
-            action_name = parts[i + 1]
-            i += 1
-            if isinstance(current, type) and issubclass(current, ListViewConfig):
-                action = current.get_action(request or HttpRequest(), action_name)
-                if action is None:
-                    raise Http404(f"Action '{action_name}' not found")
-                current = _ResolvedAction(action, instance=None)
-            elif isinstance(current, InstanceView):
-                action = current.get_action(action_name)
-                if action is None:
-                    raise Http404(f"Action '{action_name}' not found")
-                current = _ResolvedAction(action, instance=current.instance)
-            elif isinstance(current, Panel):
-                action = None
-                for a in current.get_actions(request or HttpRequest(), ""):
-                    if a.action_name == action_name:
-                        action = a
-                        break
-                if action is None:
-                    raise Http404(f"Action '{action_name}' not found on panel")
-                current = _ResolvedAction(action, instance=current.instance)
-            else:
-                raise Http404(f"Cannot resolve __actions on {type(current)}")
+            current, i = _resolve_actions(current, parts, i, effective_request)
         elif isinstance(current, PanelGetter):
             current = current[part]
         elif isinstance(current, type) and issubclass(current, ListViewConfig):
