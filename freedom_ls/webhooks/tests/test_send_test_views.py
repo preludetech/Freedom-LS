@@ -269,6 +269,44 @@ class TestSendTestResultView:
         # The masked version should appear
         assert "1234" in content
 
+    def test_transformed_endpoint_masks_secrets_in_body(
+        self, admin_user: object, mock_site_context: object, client: object
+    ) -> None:
+        """Secrets embedded in the rendered body should be masked in the preview."""
+        WebhookSecretFactory(
+            name="api_key",
+            encrypted_value="super-secret-key-1234",
+        )
+        endpoint = WebhookEndpointFactory(
+            event_types=["user.registered"],
+            http_method="POST",
+            content_type="application/json",
+            body_template='{"token": "{{ secrets.api_key }}"}',
+            auth_type="none",
+        )
+        client.force_login(admin_user)
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b'{"ok": true}',
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.request",
+            return_value=mock_response,
+        ):
+            response = client.post(
+                _send_test_result_url(endpoint.pk),
+                data={"event_type": "user.registered"},
+            )
+
+        content = response.content.decode()
+        # The actual secret value should NOT appear in the body
+        assert "super-secret-key-1234" not in content
+        # The masked version should appear
+        assert "1234" in content
+
     def test_non_transformed_endpoint_shows_standard_request(
         self, admin_user: object, mock_site_context: object, client: object
     ) -> None:

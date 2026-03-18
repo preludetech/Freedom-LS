@@ -122,7 +122,7 @@ class WebhookEndpoint(SiteAwareModel):
         return unknown
 
     def _validate_url_ssrf(self) -> None:
-        """Validate URL against SSRF attacks: reject private IPs, non-HTTP(S) schemes.
+        """Validate URL against SSRF attacks: reject private IPs, enforce HTTPS.
 
         TODO: DNS rebinding / TOCTOU vulnerability — this resolves the hostname at
         validation time, but httpx re-resolves at delivery time. An attacker controlling
@@ -132,9 +132,9 @@ class WebhookEndpoint(SiteAwareModel):
         """
         parsed = urlparse(self.url)
 
-        # Reject non-HTTP(S) schemes
-        if parsed.scheme not in ("http", "https"):
-            raise ValidationError({"url": "Webhook URLs must use HTTP or HTTPS."})
+        # Enforce HTTPS in production
+        if parsed.scheme != "https":
+            raise ValidationError({"url": "Webhook URLs must use HTTPS in production."})
 
         hostname = parsed.hostname
         if not hostname:

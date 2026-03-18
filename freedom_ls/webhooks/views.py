@@ -118,7 +118,7 @@ def _build_request_preview(
         "method": method,
         "url": endpoint.url,
         "headers": json.dumps(masked_headers, indent=2),
-        "body": body,
+        "body": _mask_secrets(body, secret_values),
     }
 
 

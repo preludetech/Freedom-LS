@@ -30,22 +30,14 @@ class TestWebhookEndpoint:
         # Should not raise
         endpoint.clean()
 
-    def test_clean_http_url_allowed_in_production_for_public_ips(
-        self, mock_site_context: object, settings: object, mocker: object
+    def test_clean_http_url_rejected_in_production(
+        self, mock_site_context: object, settings: object
     ) -> None:
-        """HTTP URLs are allowed for public IPs — SSRF check replaces the old HTTPS-only rule."""
-        import socket
-
+        """HTTP URLs are rejected in production — HTTPS is required."""
         settings.DEBUG = False
-        mocker.patch(
-            "freedom_ls.webhooks.models.socket.getaddrinfo",
-            return_value=[
-                (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", 80))
-            ],
-        )
         endpoint = WebhookEndpointFactory(url="http://example.com/webhook")
-        # Should not raise — public IP with HTTP is allowed
-        endpoint.clean()
+        with pytest.raises(ValidationError, match="HTTPS"):
+            endpoint.clean()
 
     def test_secret_longer_than_64_chars_stored_without_truncation(
         self, mock_site_context: object
@@ -203,13 +195,13 @@ class TestWebhookEndpoint:
     @pytest.mark.parametrize(
         "url",
         [
-            "http://localhost/webhook",
-            "http://127.0.0.1/webhook",
-            "http://[::1]/webhook",
-            "http://10.0.0.1/webhook",
-            "http://172.16.0.1/webhook",
-            "http://192.168.1.1/webhook",
-            "http://169.254.169.254/webhook",
+            "https://localhost/webhook",
+            "https://127.0.0.1/webhook",
+            "https://[::1]/webhook",
+            "https://10.0.0.1/webhook",
+            "https://172.16.0.1/webhook",
+            "https://192.168.1.1/webhook",
+            "https://169.254.169.254/webhook",
         ],
     )
     def test_clean_ssrf_private_ips_rejected_in_production(
@@ -268,12 +260,13 @@ class TestWebhookEndpoint:
         # Should not raise — SSRF checks skipped in debug
         endpoint.clean()
 
-    def test_clean_rejects_non_http_scheme(
-        self, mock_site_context: object, settings: object
+    @pytest.mark.parametrize("url", ["ftp://example.com/webhook", "file:///etc/passwd"])
+    def test_clean_rejects_non_https_scheme(
+        self, mock_site_context: object, settings: object, url: str
     ) -> None:
         settings.DEBUG = False
-        endpoint = WebhookEndpointFactory(url="ftp://example.com/webhook")
-        with pytest.raises(ValidationError, match="url"):
+        endpoint = WebhookEndpointFactory(url=url)
+        with pytest.raises(ValidationError, match="HTTPS"):
             endpoint.clean()
 
     # --- Secret validation ---
