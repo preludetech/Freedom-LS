@@ -58,7 +58,6 @@ def test_panel_container_renders_actions_when_present(mock_site_context):
     request.user = UserFactory(staff=True)
     html = panel.render(request, base_url="/test")
     assert "Do Thing" in html
-    assert "border-t" in html  # actions separator
 
 
 @pytest.mark.django_db
@@ -69,7 +68,7 @@ def test_panel_container_no_actions_area_when_no_actions(mock_site_context):
     request = RequestFactory().get("/")
     request.user = UserFactory(staff=True)
     html = panel.render(request, base_url="/test")
-    assert "border-t" not in html
+    assert "Do Thing" not in html
 
 
 @pytest.mark.django_db

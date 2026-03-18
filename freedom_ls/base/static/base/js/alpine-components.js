@@ -95,8 +95,11 @@ document.addEventListener("alpine:init", () => {
     Alpine.data("sidebarComponent", () => ({
         sidebarOpen: false,
         isMobile: false,
+        // localStorage key used to persist sidebar open/closed state across page loads
         _storageKey: "sidebar",
+        // Bound reference to the media-query change callback, kept so we can removeEventListener in destroy()
         _mqHandler: null,
+        // matchMedia instance for the lg (1024px) breakpoint, used to detect mobile vs desktop
         _mq: null,
         init() {
             this._storageKey = this.$el.dataset.storageKey || "sidebar";

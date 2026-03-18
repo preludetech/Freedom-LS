@@ -21,7 +21,8 @@
         <script defer
                 src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.15.8/dist/cdn.min.js"></script>
         <script defer src="{% static 'base/js/alpine-components.js' %}"></script>
-        {% block extra_alpine_components %}{% endblock %}
+        {% block extra_alpine_components %}
+        {% endblock extra_alpine_components %}
         <script defer
                 src="https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.15.8/dist/cdn.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -74,21 +75,27 @@
             {% endblock extra_body %}
         </main>
         {% if debug_branch_name %}
-        <div x-data="debugBadge"
-             x-on:click="toggle"
-             style="position: fixed; bottom: 10px; left: 10px; z-index: 50;
-                    font-family: ui-monospace, monospace; font-size: 13px;
-                    cursor: pointer; user-select: none; transition: all 0.2s ease;
-                    background-color: {{ debug_branch_color }};
-                    color: {{ debug_branch_text_color }};"
-             id="debug-branch-badge">
-            <span x-show="expanded" x-transition.opacity>{{ debug_branch_name }}</span>
-        </div>
-        <style>
+            <div x-data="debugBadge"
+                 x-on:click="toggle"
+                 style="position: fixed;
+                        bottom: 10px;
+                        left: 10px;
+                        z-index: 50;
+                        font-family: ui-monospace, monospace;
+                        font-size: 13px;
+                        cursor: pointer;
+                        user-select: none;
+                        transition: all 0.2s ease;
+                        background-color: {{ debug_branch_color }};
+                        color: {{ debug_branch_text_color }}"
+                 id="debug-branch-badge">
+                <span x-show="expanded" x-transition.opacity>{{ debug_branch_name }}</span>
+            </div>
+            <style>
         @media (max-width: 479px) {
             #debug-branch-badge { font-size: 10px !important; bottom: 4px !important; left: 4px !important; }
         }
-        </style>
+            </style>
         {% endif %}
     </body>
 </html>
