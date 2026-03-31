@@ -836,7 +836,6 @@ dependencies = [
     { name = "django-premailer" },
     { name = "django-storages", extra = ["s3"] },
     { name = "django-unfold" },
-    { name = "heroicons", extra = ["django"] },
     { name = "httpx" },
     { name = "jinja2" },
     { name = "markdown-headdown" },
@@ -887,7 +886,6 @@ requires-dist = [
     { name = "django-premailer", specifier = ">=0.2.0" },
     { name = "django-storages", extras = ["s3"], specifier = ">=1.14.6" },
     { name = "django-unfold", specifier = ">=0.83.0" },
-    { name = "heroicons", extras = ["django"], specifier = ">=2.13.0,<3" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "markdown-headdown", specifier = ">=0.1.3" },
@@ -957,20 +955,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/01/ee/02a2c011bdab74c6fb3c75474d40b3052059d95df7e73351460c8588d963/h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1", size = 101250, upload-time = "2025-04-24T03:35:25.427Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86", size = 37515, upload-time = "2025-04-24T03:35:24.344Z" },
-]
-
-[[package]]
-name = "heroicons"
-version = "2.13.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c6/b4/ebcb01d7bbca3ef6d7076138383eb01ea83c540204ae6c2e296ce246d986/heroicons-2.13.0.tar.gz", hash = "sha256:c49d919ee3fa19c79bbfc7c111b4849fe8fc3640e4904dfdc538ff592e18b452", size = 420755, upload-time = "2025-09-18T11:25:58.012Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f1/09/80edcba5288b66d54611e978a2afaa406219a9e6637fc8adc43872088838/heroicons-2.13.0-py3-none-any.whl", hash = "sha256:682e3a61ede41cd9b78644977f2988d444ffb02626fe66cccd296d9fc3f4e465", size = 414973, upload-time = "2025-09-18T11:25:55.996Z" },
-]
-
-[package.optional-dependencies]
-django = [
-    { name = "django" },
 ]
 
 [[package]]

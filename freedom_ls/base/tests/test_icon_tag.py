@@ -1,57 +1,8 @@
-"""Tests for the icon_from_name filter and <c-icon /> cotton component."""
+"""Tests for the <c-icon /> cotton component."""
 
-import re
-
-import pytest
 from django_cotton.compiler_regex import CottonCompiler
 
 from django.template import Context, Template
-
-from freedom_ls.base.icons import ICONS
-from freedom_ls.base.templatetags.icon_tags import icon_from_name
-
-
-class TestIconNameFilter:
-    """Tests for the icon_from_name template filter."""
-
-    def test_resolves_semantic_name(self) -> None:
-        assert icon_from_name("next")
-
-    def test_unknown_name_raises_key_error(self) -> None:
-        with pytest.raises(KeyError):
-            icon_from_name("nonexistent_icon_xyz")
-
-    def test_force_bypasses_registry(self) -> None:
-        result = icon_from_name("arrow-right", force="true")
-        assert result == "arrow-right"
-
-    def test_force_with_yes(self) -> None:
-        result = icon_from_name("some-icon", force="yes")
-        assert result == "some-icon"
-
-    def test_force_with_1(self) -> None:
-        result = icon_from_name("some-icon", force="1")
-        assert result == "some-icon"
-
-    def test_force_false_uses_registry(self) -> None:
-        result = icon_from_name("next", force="false")
-        assert result == "arrow-right"
-
-
-class TestIconRegistryValidation:
-    """Test that every value in ICONS maps to a valid heroicon."""
-
-    def test_all_registry_values_are_valid_heroicons(self) -> None:
-        from heroicons import _load_icon
-
-        for semantic_name, heroicon_from_name in ICONS.items():
-            try:
-                _load_icon("outline", heroicon_from_name)
-            except Exception as e:
-                pytest.fail(
-                    f"ICONS[{semantic_name!r}] = {heroicon_from_name!r} is not a valid heroicon: {e}"
-                )
-
 
 _cotton_compiler = CottonCompiler()
 
@@ -99,16 +50,3 @@ class TestIconCottonComponent:
     def test_custom_class(self) -> None:
         result = self._render('<c-icon name="next" class="size-6 text-red-500" />')
         assert 'class="inline size-6 text-red-500"' in result
-
-    def test_force_bypass(self) -> None:
-        result = self._render('<c-icon name="arrow-right" force="true" />')
-        assert "<svg" in result
-
-    def test_force_equivalence(self) -> None:
-        """Registry lookup and force bypass should render the same SVG paths."""
-        registry_result = self._render('<c-icon name="next" />')
-        force_result = self._render('<c-icon name="arrow-right" force="true" />')
-        registry_paths = sorted(re.findall(r'd="([^"]+)"', registry_result))
-        force_paths = sorted(re.findall(r'd="([^"]+)"', force_result))
-        assert registry_paths == force_paths
-        assert len(registry_paths) > 0

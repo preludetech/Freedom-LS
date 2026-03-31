@@ -1,6 +1,10 @@
 {
   "name": "freedom_ls",
   "dependencies": {
+    "@iconify-json/heroicons": "^1.2.3",
+    "@iconify-json/lucide": "^1.2.101",
+    "@iconify-json/ph": "^1.2.2",
+    "@iconify-json/tabler": "^1.2.33",
     "@tailwindcss/cli": "^4.1.16",
     "jq": "^1.7.2",
     "tailwindcss": "^4.1.16"
