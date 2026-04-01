@@ -1,3 +1,15 @@
+"""Django system checks for the icons app.
+
+Check IDs follow Django's convention: ``app_label.severity + number``.
+E = Error, W = Warning. Checks run automatically on runserver, migrate,
+test, and ``manage.py check``.
+
+E001 — Iconify JSON file must exist for the active icon set.
+E002 — Every mapping value must exist in the Iconify JSON data.
+E003 — Override icon names must be valid semantic names that exist in the JSON data.
+W001 — Warn if commonly used variants (outline, solid) are unsupported.
+"""
+
 from pathlib import Path
 
 from django.conf import settings
