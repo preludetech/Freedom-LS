@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-from freedom_ls.icons.semantic_names import SEMANTIC_ICON_NAMES
-
 
 @dataclass(frozen=True)
 class IconSetConfig:
@@ -223,15 +221,3 @@ ICON_SETS: dict[str, IconSetConfig] = {
         variants=PHOSPHOR_VARIANTS,
     ),
 }
-
-# Validate at import time that all mappings cover the same keys as SEMANTIC_ICON_NAMES
-for _set_name, _config in ICON_SETS.items():
-    _mapping_keys = set(_config.mapping.keys())
-    if _mapping_keys != SEMANTIC_ICON_NAMES:
-        _missing = SEMANTIC_ICON_NAMES - _mapping_keys
-        _extra = _mapping_keys - SEMANTIC_ICON_NAMES
-        raise RuntimeError(
-            f"Icon set {_set_name!r} mapping keys mismatch: "
-            f"missing={_missing}, extra={_extra}"
-        )
-del _set_name, _config, _mapping_keys

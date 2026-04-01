@@ -9,22 +9,64 @@ allowed-tools: Read, Grep, Glob
 ## When to use
 Use this skill when adding, modifying, or working with icons in templates.
 
-## Icon system overview
-All icons use the `<c-icon />` Cotton component, backed by a pluggable icon backend. The component is defined in `freedom_ls/base/templates/cotton/icon.html` and internally uses the `{% icon %}` template tag from `freedom_ls/icons/templatetags/icon_tags.py`.
+## How it works
+All icons use the `<c-icon />` Cotton component. Icons are referenced by **semantic name** (e.g. `"success"`, `"next"`, `"home"`), not by icon-set-specific names. The system resolves semantic names to concrete icons from the active icon set (Heroicons by default).
 
-The icon system uses Iconify JSON data from npm packages. The default icon set is Heroicons, but it can be switched to Lucide, Tabler, or Phosphor via settings.
+## Available semantic names
 
-### Architecture
-1. **Semantic names** (`freedom_ls/icons/semantic_names.py`): A set of abstract icon names like `"success"`, `"next"`, `"home"`
-2. **Mappings** (`freedom_ls/icons/mappings.py`): Each icon set has a dict mapping semantic names to concrete icon names in that set
-3. **Loader** (`freedom_ls/icons/loader.py`): Reads and caches Iconify JSON data from `node_modules/@iconify-json/{pkg}/icons.json`
-4. **Renderer** (`freedom_ls/icons/renderer.py`): Resolves semantic name + variant and renders inline SVG HTML
-5. **Backend** (`freedom_ls/icons/backend.py`): Entry point (`render_icon_html()`) that supports custom backends
+### Navigation
+
+"next",
+"previous",
+"home",
+"expand",
+"collapse",
+"menu_open",
+"menu_close",
+"dropdown",
+### Status
+"success",
+"error",
+"warning",
+"info",
+"in_progress",
+"complete",
+"locked",
+"not_started",
+### Actions
+"check",
+"close",
+"retry",
+"download",
+"more_options",
+"settings",
+### Content types
+"topic",
+"form",
+"course_part",
+### User/system
+"user",
+"notifications",
+"achievement",
+"loading",
+### Data display
+"sort_asc",
+"sort_desc",
+"sort_neutral",
+"boolean_true",
+"boolean_false",
+### Deadlines
+"deadline",
+### Misc
+"sentiment_good",
+"sentiment_bad",
+"unknown",
+"star",
+"notes"
 
 ## Usage
 
 ```html
-{# Use semantic names from the registry #}
 <c-icon name="next" class="size-5 text-blue-500" />
 <c-icon name="success" variant="solid" class="size-6" />
 
@@ -37,50 +79,25 @@ The icon system uses Iconify JSON data from npm packages. The default icon set i
 
 ## Rules
 - Always use `<c-icon name="semantic_name" />` in templates
-- Never use `{% icon %}` or `{% load icon_tags %}` directly in templates. These are internal to the Cotton component.
-- Add new semantic names to `SEMANTIC_ICON_NAMES` in `freedom_ls/icons/semantic_names.py` and add corresponding entries in all four mapping dicts in `freedom_ls/icons/mappings.py`
-- Never use raw Font Awesome classes (`fa-`, `fas`, `far`)
-- Never use hand-coded inline SVGs for standard icons
-- Never use Unicode icon characters
-
-## Settings
-
-### `FREEDOM_LS_ICON_SET` (default: `"heroicons"`)
-Which icon set to use. Supported values: `"heroicons"`, `"lucide"`, `"tabler"`, `"phosphor"`.
-
-### `FREEDOM_LS_ICON_OVERRIDES` (default: `{}`)
-A dict mapping semantic names to alternative icon names within the active set. Overrides individual icon mappings without changing the entire set.
-
-```python
-FREEDOM_LS_ICON_OVERRIDES = {
-    "success": "star",  # Use star icon instead of check-circle for success
-}
-```
-
-### `FREEDOM_LS_ICON_BACKEND` (default: `None`)
-Dotted path to a custom `IconBackend` subclass. When set, bypasses the built-in Iconify rendering entirely.
-
-```python
-FREEDOM_LS_ICON_BACKEND = "myapp.icons.MyCustomBackend"
-```
-
-## Supported variants per icon set
-- **Heroicons**: `outline` (default), `solid`, `mini`, `micro`
-- **Lucide**: `outline` only
-- **Tabler**: `outline` (default), `solid`
-- **Phosphor**: `outline` (default), `solid`, `bold`, `light`, `thin`
+- Never use `{% icon %}` or `{% load icon_tags %}` directly -- these are internal to the Cotton component
+- Never use raw Font Awesome classes (`fa-`, `fas`, `far`), hand-coded inline SVGs, or Unicode icon characters
 
 ## Sizing conventions
 - `size-3` -- extra compact (inside badges, deadlines)
 - `size-4` -- compact (inside lists, small UI elements)
-- `size-5` -- standard (buttons, most UI) -- this is the default
+- `size-5` -- standard (buttons, most UI) -- **default**
 - `size-6` -- emphasis (modal close buttons)
 - `size-8` -- large (loading spinners)
 - `size-12` -- extra large (lightbox close)
 - `size-16` -- hero (success/error result pages)
 
+## Accessibility
+- By default, icons render with `role="img"` and `aria-label` set to the semantic name
+- For custom labels: `<c-icon name="success" aria_label="Completed" />`
+- Icon-only buttons: use `aria-label` on the button element
+
 ## Dynamic toggling with Alpine.js
-Since `<c-icon />` is server-side, for Alpine.js dynamic toggling use `x-show` on wrapper spans:
+Since `<c-icon />` is server-side, use `x-show` on wrapper spans for Alpine.js toggling:
 
 ```html
 <span x-show="expanded" x-cloak><c-icon name="expand" class="size-4" /></span>
@@ -94,10 +111,9 @@ For directional flips, use `rotate-180` on a wrapper:
 </span>
 ```
 
-## Accessibility
-- By default, icons render with `role="img"` and `aria-label` set to the semantic name (e.g., `aria-label="success"`)
-- For custom labels: use `aria_label` parameter: `<c-icon name="success" aria_label="Completed" />`
-- Icon-only buttons: use `aria-label` on the button element
+## Further reading
 
-## Registry
-The semantic icon names are defined in `freedom_ls/icons/semantic_names.py`. See the `SEMANTIC_ICON_NAMES` set for all available names. Mappings to concrete icon names per set are in `freedom_ls/icons/mappings.py`.
+Refer to these if you need to change rendering behavior:
+
+- **Configuring icons** (switching icon sets, overriding individual icons, adding new semantic names): see [resources/configuring-icons.md](resources/configuring-icons.md)
+- **Building a custom icon backend**: see [resources/custom-icon-backend.md](resources/custom-icon-backend.md)

@@ -10,6 +10,7 @@ E003 — Mapping value (base icon name) not found in Iconify JSON.
 E004 — Variant-suffixed icon name not found in Iconify JSON.
 E005 — Override key is not a valid semantic icon name.
 E006 — Override icon name not found in Iconify JSON.
+E007 — Mapping keys don't match SEMANTIC_ICON_NAMES.
 W001 — Warn if commonly used variants (outline, solid) are unsupported.
 """
 
@@ -121,6 +122,25 @@ def check_overrides_exist(**kwargs: object) -> list[CheckMessage]:
                     f"Override {semantic_name!r} -> {icon_name!r} not found in "
                     f"{icon_set_name!r} Iconify JSON",
                     id="freedom_ls.E006",
+                )
+            )
+    return errors
+
+
+@register()
+def check_mapping_keys(**kwargs: object) -> list[CheckMessage]:
+    """E007: Check that every icon set mapping covers exactly SEMANTIC_ICON_NAMES."""
+    errors: list[CheckMessage] = []
+    for set_name, config in ICON_SETS.items():
+        mapping_keys = set(config.mapping.keys())
+        if mapping_keys != SEMANTIC_ICON_NAMES:
+            missing = SEMANTIC_ICON_NAMES - mapping_keys
+            extra = mapping_keys - SEMANTIC_ICON_NAMES
+            errors.append(
+                Error(
+                    f"Icon set {set_name!r} mapping keys mismatch: "
+                    f"missing={missing}, extra={extra}",
+                    id="freedom_ls.E007",
                 )
             )
     return errors
