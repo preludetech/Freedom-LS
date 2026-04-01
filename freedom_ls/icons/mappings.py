@@ -234,3 +234,4 @@ for _set_name, _config in ICON_SETS.items():
             f"Icon set {_set_name!r} mapping keys mismatch: "
             f"missing={_missing}, extra={_extra}"
         )
+del _set_name, _config, _mapping_keys

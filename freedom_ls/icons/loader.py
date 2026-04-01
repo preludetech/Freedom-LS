@@ -28,6 +28,13 @@ PACKAGE_MAP: dict[str, str] = {
 }
 
 
+def iconify_json_path(pkg: str) -> Path:
+    """Return the path to an Iconify JSON file within node_modules."""
+    return (
+        Path(settings.BASE_DIR) / "node_modules" / f"@iconify-json/{pkg}" / "icons.json"
+    )
+
+
 def load_iconify_data(set_name: str) -> IconifyData:
     """Read and cache icons.json for the given icon set from node_modules."""
     if set_name in _cache:
@@ -37,9 +44,7 @@ def load_iconify_data(set_name: str) -> IconifyData:
         raise ValueError(
             f"Unknown icon set: {set_name!r}. Available: {sorted(PACKAGE_MAP)}"
         )
-    json_path = (
-        Path(settings.BASE_DIR) / "node_modules" / f"@iconify-json/{pkg}" / "icons.json"
-    )
+    json_path = iconify_json_path(pkg)
     data: IconifyData = json.loads(json_path.read_text())
     _cache[set_name] = data
     return data

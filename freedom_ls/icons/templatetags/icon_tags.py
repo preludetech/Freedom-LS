@@ -12,7 +12,7 @@ def icon(
     variant: str = "outline",
     css_class: str = "size-5",
     aria_label: str = "",
-) -> str:
+) -> SafeString:
     html = get_icon_backend().render(
         name, variant=variant, css_class=css_class, aria_label=aria_label
     )

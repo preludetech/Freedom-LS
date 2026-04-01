@@ -4,25 +4,26 @@ Check IDs follow Django's convention: ``app_label.severity + number``.
 E = Error, W = Warning. Checks run automatically on runserver, migrate,
 test, and ``manage.py check``.
 
-E001 — Iconify JSON file must exist for the active icon set.
-E002 — Every mapping value must exist in the Iconify JSON data.
-E003 — Override icon names must be valid semantic names that exist in the JSON data.
+E001 — Unknown icon set name.
+E002 — Iconify JSON file not found on disk.
+E003 — Mapping value (base icon name) not found in Iconify JSON.
+E004 — Variant-suffixed icon name not found in Iconify JSON.
+E005 — Override key is not a valid semantic icon name.
+E006 — Override icon name not found in Iconify JSON.
 W001 — Warn if commonly used variants (outline, solid) are unsupported.
 """
-
-from pathlib import Path
 
 from django.conf import settings
 from django.core.checks import CheckMessage, Error, Warning, register
 
-from freedom_ls.icons.loader import PACKAGE_MAP
+from freedom_ls.icons.loader import PACKAGE_MAP, iconify_json_path
 from freedom_ls.icons.mappings import ICON_SETS
 from freedom_ls.icons.semantic_names import SEMANTIC_ICON_NAMES
 
 
 @register()
 def check_iconify_json_exists(**kwargs: object) -> list[CheckMessage]:
-    """E001: Check that the Iconify JSON file exists for the active icon set."""
+    """E001/E002: Check that the icon set is known and its JSON file exists."""
     errors: list[CheckMessage] = []
     icon_set_name: str = getattr(settings, "FREEDOM_LS_ICON_SET", "heroicons")
     pkg = PACKAGE_MAP.get(icon_set_name)
@@ -36,15 +37,13 @@ def check_iconify_json_exists(**kwargs: object) -> list[CheckMessage]:
         )
         return errors
 
-    json_path = (
-        Path(settings.BASE_DIR) / "node_modules" / f"@iconify-json/{pkg}" / "icons.json"
-    )
+    json_path = iconify_json_path(pkg)
     if not json_path.exists():
         errors.append(
             Error(
                 f"Iconify JSON file not found for icon set {icon_set_name!r}",
                 hint=f"Run: npm install @iconify-json/{pkg}",
-                id="freedom_ls.E001",
+                id="freedom_ls.E002",
             )
         )
     return errors
@@ -52,7 +51,7 @@ def check_iconify_json_exists(**kwargs: object) -> list[CheckMessage]:
 
 @register()
 def check_mapping_values_exist(**kwargs: object) -> list[CheckMessage]:
-    """E002: Check that every mapping value exists in the Iconify JSON data."""
+    """E003/E004: Check that every mapping value and variant-suffixed name exists."""
     errors: list[CheckMessage] = []
     icon_set_name: str = getattr(settings, "FREEDOM_LS_ICON_SET", "heroicons")
     if icon_set_name not in ICON_SETS:
@@ -63,7 +62,7 @@ def check_mapping_values_exist(**kwargs: object) -> list[CheckMessage]:
 
         data = load_iconify_data(icon_set_name)
     except (ValueError, FileNotFoundError):
-        return errors  # E001 will catch this
+        return errors  # E002 will catch this
 
     icons = data.get("icons", {})
     config = ICON_SETS[icon_set_name]
@@ -73,15 +72,27 @@ def check_mapping_values_exist(**kwargs: object) -> list[CheckMessage]:
                 Error(
                     f"Mapping {semantic_name!r} -> {icon_name!r} not found in "
                     f"{icon_set_name!r} Iconify JSON",
-                    id="freedom_ls.E002",
+                    id="freedom_ls.E003",
                 )
             )
+        else:
+            for variant_name, suffix in config.variants.items():
+                if suffix is not None:
+                    lookup = icon_name + suffix
+                    if lookup not in icons:
+                        errors.append(
+                            Error(
+                                f"Variant {variant_name!r} of {semantic_name!r} -> "
+                                f"{lookup!r} not found in {icon_set_name!r} Iconify JSON",
+                                id="freedom_ls.E004",
+                            )
+                        )
     return errors
 
 
 @register()
 def check_overrides_exist(**kwargs: object) -> list[CheckMessage]:
-    """E003: Check that override icon names exist in the Iconify JSON data."""
+    """E005/E006: Check that override icon names exist in the Iconify JSON data."""
     errors: list[CheckMessage] = []
     overrides: dict[str, str] = getattr(settings, "FREEDOM_LS_ICON_OVERRIDES", {})
     if not overrides:
@@ -101,7 +112,7 @@ def check_overrides_exist(**kwargs: object) -> list[CheckMessage]:
             errors.append(
                 Error(
                     f"Override key {semantic_name!r} is not a valid semantic icon name",
-                    id="freedom_ls.E003",
+                    id="freedom_ls.E005",
                 )
             )
         if icon_name not in icons:
@@ -109,7 +120,7 @@ def check_overrides_exist(**kwargs: object) -> list[CheckMessage]:
                 Error(
                     f"Override {semantic_name!r} -> {icon_name!r} not found in "
                     f"{icon_set_name!r} Iconify JSON",
-                    id="freedom_ls.E003",
+                    id="freedom_ls.E006",
                 )
             )
     return errors
