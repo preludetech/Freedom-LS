@@ -33,11 +33,14 @@
         {% for dl in child.deadlines %}
             {% if dl.is_hard_deadline %}
                 <span class="text-xs text-danger whitespace-nowrap" title="{{ dl.source }}">
-                    <c-icon name="deadline" class="size-3" /> {{ dl.deadline|date:"d M" }}
+                    <c-icon name="deadline" class="size-3" />
+                    {{ dl.deadline|date:"d M" }}
                 </span>
             {% else %}
-                <span class="text-xs text-warning whitespace-nowrap" title="{{ dl.source }}">
-                    <c-icon name="deadline" class="size-3" /> {{ dl.deadline|date:"d M" }}
+                <span class="text-xs text-warning whitespace-nowrap"
+                      title="{{ dl.source }}">
+                    <c-icon name="deadline" class="size-3" />
+                    {{ dl.deadline|date:"d M" }}
                 </span>
             {% endif %}
         {% endfor %}
@@ -46,13 +49,11 @@
 
 {% partialdef content-icon %}
     {% if child.type == "TOPIC" %}
-        <c-icon name="reading" class="size-4" />
+        <c-icon name="topic" class="size-4" />
     {% elif child.type == "FORM" %}
-        <c-icon name="quiz" class="size-4" />
-    {% elif child.type == "COURSE" %}
-        <c-icon name="assessment" class="size-4" />
+        <c-icon name="form" class="size-4" />
     {% elif child.type == "COURSE_PART" %}
-        <c-icon name="section" class="size-4" />
+        <c-icon name="course_part" class="size-4" />
     {% endif %}
 {% endpartialdef %}
 
@@ -79,8 +80,12 @@
         <button x-on:click="toggleExpanded"
                 class="flex items-center gap-2 text-left hover:text-primary transition-colors cursor-pointer flex-1 min-w-0">
             <span class="text-muted shrink-0 {{ text_size }}">
-                <span x-show="expanded" x-cloak><c-icon name="expand" class="size-4" /></span>
-                <span data-collapse-icon><c-icon name="collapse" class="size-4" /></span>
+                <span x-show="expanded" x-cloak>
+                    <c-icon name="expand" class="size-4" />
+                </span>
+                <span data-collapse-icon>
+                    <c-icon name="collapse" class="size-4" />
+                </span>
             </span>
             <span class="flex-1 min-w-0 truncate {{ text_size }}">
                 {% partial content-title %}

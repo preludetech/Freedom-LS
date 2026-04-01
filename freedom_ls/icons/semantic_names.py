@@ -17,7 +17,6 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "complete",
     "locked",
     "not_started",
-    "repeatable",
     # Actions
     "check",
     "close",
@@ -26,10 +25,9 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "more_options",
     "settings",
     # Content types
-    "reading",
-    "quiz",
-    "assessment",
-    "section",
+    "topic",
+    "form",
+    "course_part",
     # User/system
     "user",
     "notifications",
@@ -43,7 +41,6 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "boolean_false",
     # Deadlines
     "deadline",
-    "deadline_override",
     # Misc
     "sentiment_good",
     "sentiment_bad",
