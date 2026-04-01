@@ -1,0 +1,9 @@
+{
+  "python": {
+    "command": "uv",
+    "args": ["run", "pyright", "--stdio"],
+    "extensionToLanguage": {
+      ".py": "python"
+    }
+  }
+}

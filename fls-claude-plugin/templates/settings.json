@@ -12,15 +12,15 @@
       "Bash(uv run git commit:*)",
       "mcp__playwright__*",
       "mcp__ide__getDiagnostics",
-      "Skill(frontend-styling)",
       "Bash(tail:*)",
-      "Bash(sleep 3:*)",
       "Bash(git add:*)",
       "Bash(ls:*)",
-      "Skill(template)",
-      "Skill(icon-usage)",
       "Bash(npm run tailwind_build)",
-      "Bash(sleep 3 && curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:*)"
+      "Bash(sleep 3:*)",
+      "Bash(sleep 3 && curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:*)",
+      "Skill(frontend-styling)",
+      "Skill(template)",
+      "Skill(icon-usage)"
     ],
     "deny": [
       "Read(.env)",
@@ -31,8 +31,5 @@
       "Read(**/*.pem)",
       "Read(**/*.key)"
     ]
-  },
-  "enabledPlugins": {
-    "fls": true
   }
 }
