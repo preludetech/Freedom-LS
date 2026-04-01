@@ -1,5 +1,6 @@
 """Tests for the <c-icon /> cotton component."""
 
+import pytest
 from django_cotton.compiler_regex import CottonCompiler
 
 from django.template import Context, Template
@@ -50,3 +51,12 @@ class TestIconCottonComponent:
     def test_custom_class(self) -> None:
         result = self._render('<c-icon name="next" class="size-6 text-red-500" />')
         assert 'class="inline size-6 text-red-500"' in result
+
+    def test_unknown_name_raises(self) -> None:
+        with pytest.raises(KeyError):
+            self._render('<c-icon name="nonexistent_xyz" />')
+
+    def test_output_is_not_auto_escaped(self) -> None:
+        result = self._render('<c-icon name="success" />')
+        assert "<svg" in result
+        assert "&lt;svg" not in result
