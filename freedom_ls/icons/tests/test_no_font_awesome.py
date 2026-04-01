@@ -47,7 +47,7 @@ def test_no_inline_svg_icons_in_templates() -> None:
     )
 
 
-COTTON_ICON_PATH = Path("base/templates/cotton/icon.html")
+COTTON_ICON_PATH = Path("icons/templates/cotton/icon.html")
 
 
 def test_no_direct_icon_tags_load_outside_cotton() -> None:
