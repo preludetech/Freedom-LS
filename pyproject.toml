@@ -192,7 +192,7 @@ show_error_codes = true
 show_column_numbers = true
 pretty = true
 
-exclude = ["migrations/", "manage\\.py"]
+exclude = ["migrations/", "manage\\.py", "fls-claude-plugin/"]
 
 [[tool.mypy.overrides]]
 module = "*.migrations.*"
