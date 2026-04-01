@@ -31,7 +31,13 @@ Clean up last QA run
 - if there is a qa_report in the current directory, delete it
 - if there is a screenshots directory in the current directory, delete it
 
+## Step 1.5: Kill any previous server you started
 
+If you previously started a runserver on a port, kill it now using:
+
+`./kill_runserver.sh $PORT`
+
+This avoids port conflicts and leftover processes.
 
 ## Step 2
 
@@ -119,3 +125,9 @@ For each error:
 If anything was not tested for any reason, or if there were any difficulties, then explain.
 
 If anything unrelated to the current tests, or tangential to the functionality under test seemed out of place then include that in the report.
+
+## Step 9: Clean up
+
+Kill the development server you started:
+
+`./kill_runserver.sh $PORT`
