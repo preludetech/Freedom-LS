@@ -2,7 +2,20 @@ import pytest
 
 from django.test import override_settings
 
-from freedom_ls.icons.renderer import _validate_svg_body, render_icon
+from freedom_ls.icons.backend import DefaultIconBackend, _validate_svg_body
+
+_backend = DefaultIconBackend()
+
+
+def render_icon(
+    semantic_name: str,
+    variant: str = "outline",
+    css_class: str = "size-5",
+    aria_label: str = "",
+) -> str:
+    return _backend.render(
+        semantic_name, variant=variant, css_class=css_class, aria_label=aria_label
+    )
 
 
 class TestRenderIcon:
