@@ -56,7 +56,16 @@ For each wrapper script template in `${CLAUDE_PLUGIN_ROOT}/templates/wrapper_scr
 2. If it exists, **skip it** (never overwrite existing scripts)
 3. If it doesn't exist, copy the template to the project root, replace `__FLS_PATH__` with the path from Step 5, and make it executable
 
-## Step 7: Validate the setup
+## Step 7: Ensure CLAUDE.md has plugin check
+
+1. Read `CLAUDE.md` at the project root
+2. If the file does not already contain `FLS_PLUGIN`, prepend this exact line before everything else:
+   ```
+   If $FLS_PLUGIN is unset, stop and tell the user to run `./claude.sh` instead of `claude`.
+   ```
+3. If it already contains `FLS_PLUGIN`, skip this step
+
+## Step 8: Validate the setup
 
 Run these checks and report results:
 
@@ -66,6 +75,7 @@ Run these checks and report results:
 4. Confirm hook scripts in the plugin (`scripts/hooks/*.sh`) are executable
 5. Confirm no `hooks` section in `.claude/settings.json`
 6. Confirm wrapper scripts have the correct `FLS_PATH` (not `__FLS_PATH__`)
-7. Report any issues found
+7. Confirm `CLAUDE.md` contains the `FLS_PLUGIN` check
+8. Report any issues found
 
 Print a summary of everything that was done.
