@@ -36,9 +36,7 @@ class TestBuildBreadcrumbs:
 
     def test_section_list_page(self) -> None:
         crumbs = _build_breadcrumbs(["cohorts"], CONFIG, URL_NAME)
-        assert len(crumbs) == 1
-        assert crumbs[0]["label"] == "Cohorts"
-        assert "url" not in crumbs[0]
+        assert crumbs == [{"label": "Cohorts"}]
 
     @pytest.mark.django_db
     def test_instance_page(self, mock_site_context: None) -> None:
@@ -49,14 +47,11 @@ class TestBuildBreadcrumbs:
             URL_NAME,
             current_instance=instance,
         )
-        assert len(crumbs) == 2
-        assert crumbs[0]["label"] == "Cohorts"
-        assert "url" in crumbs[0]
-        assert crumbs[1]["label"] == "Test Cohort"
-        assert "url" not in crumbs[1]
+        assert crumbs == [
+            {"label": "Cohorts", "url": "/test-panel/cohorts"},
+            {"label": "Test Cohort"},
+        ]
 
     def test_section_list_page_different_section(self) -> None:
         crumbs = _build_breadcrumbs(["users"], CONFIG, URL_NAME)
-        assert len(crumbs) == 1
-        assert crumbs[0]["label"] == "Users"
-        assert "url" not in crumbs[0]
+        assert crumbs == [{"label": "Users"}]
