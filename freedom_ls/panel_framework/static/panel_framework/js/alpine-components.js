@@ -6,6 +6,20 @@
  */
 
 document.addEventListener("alpine:init", () => {
+    // Sidebar menu item component (panel_framework/partials/sidebar_nav.html)
+    Alpine.data("sidebarMenuItem", () => ({
+        expanded: false,
+        init() {
+            this.expanded = this.$el.dataset.expanded === "true";
+        },
+        toggle() {
+            this.expanded = !this.expanded;
+        },
+        close() {
+            this.expanded = false;
+        },
+    }));
+
     // Tab container component (panel_framework/partials/tab_container.html)
     Alpine.data("tabContainer", () => ({
         activeTab: "",

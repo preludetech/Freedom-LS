@@ -102,6 +102,7 @@ class CohortDataTable(DataTable):
                 "text_attr": "name",
                 "url_name": "educator_interface:interface",
                 "url_path_template": "cohorts/{pk}",
+                "htmx_nav": True,
             },
             {
                 "header": "Active Students",
@@ -148,6 +149,7 @@ class UserDataTable(DataTable):
                 "url_name": "educator_interface:interface",
                 "url_path_template": "users/{pk}",
                 "sortable": True,
+                "htmx_nav": True,
             },
             {
                 "header": "Last Name",
@@ -156,6 +158,7 @@ class UserDataTable(DataTable):
                 "url_name": "educator_interface:interface",
                 "url_path_template": "users/{pk}",
                 "sortable": True,
+                "htmx_nav": True,
             },
             {
                 "header": "Email",
@@ -222,6 +225,7 @@ class CohortCourseRegistrationDataTable(DataTable):
                 "text_attr": "collection.title",
                 "url_name": "educator_interface:interface",
                 "url_path_template": "courses/{collection.pk}",
+                "htmx_nav": True,
             },
             {
                 "header": "Active",
@@ -833,6 +837,7 @@ class CourseDataTable(DataTable):
                 "text_attr": "title",
                 "url_name": "educator_interface:interface",
                 "url_path_template": "courses/{pk}",
+                "htmx_nav": True,
             },
             {
                 "header": "Active Students",
@@ -874,6 +879,7 @@ class CourseCohortRegistrationDataTable(DataTable):
                 "text_attr": "cohort.name",
                 "url_name": "educator_interface:interface",
                 "url_path_template": "cohorts/{cohort.pk}",
+                "htmx_nav": True,
             },
             {
                 "header": "Active",
@@ -912,6 +918,7 @@ class CourseStudentRegistrationDataTable(DataTable):
                 "text_attr": "user.first_name",
                 "url_name": "educator_interface:interface",
                 "url_path_template": "users/{user.pk}",
+                "htmx_nav": True,
             },
             {
                 "header": "Last Name",
@@ -919,6 +926,7 @@ class CourseStudentRegistrationDataTable(DataTable):
                 "text_attr": "user.last_name",
                 "url_name": "educator_interface:interface",
                 "url_path_template": "users/{user.pk}",
+                "htmx_nav": True,
             },
             {
                 "header": "Email",
@@ -975,4 +983,5 @@ def interface(request: HttpRequest, path_string: str = "") -> HttpResponse:
         path_string=path_string,
         template_name="educator_interface/interface.html",
         url_name="educator_interface:interface",
+        root_label="Educator",
     )
