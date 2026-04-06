@@ -1,6 +1,6 @@
 <nav id="breadcrumbs" aria-label="Breadcrumb"
      {% if oob %}hx-swap-oob="true"{% endif %}>
-    <ol class="flex items-center text-sm text-muted">
+    <ol class="flex items-center text-sm text-muted list-none">
         {% for crumb in breadcrumbs %}
             <li{% if not forloop.first %} class="before:content-['/'] before:mx-1 before:opacity-50"{% endif %}>
                 {% if crumb.url %}
