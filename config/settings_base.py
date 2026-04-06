@@ -1,6 +1,3 @@
-# Django 6 type stubs gap: remove these type: ignore comments when django-stubs
-# releases Django 6 support. See spec_dd/2. in progress/01. upgrade-to-django-6/1. spec.md
-
 """
 Django settings for config project.
 

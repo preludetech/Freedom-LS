@@ -202,7 +202,7 @@ disallow_untyped_decorators = false   # Django decorators often untyped
 warn_return_any = true
 warn_unused_configs = true
 warn_unused_ignores = true
-warn_redundant_casts = true
+warn_redundant_casts = false  # disabled: cast necessity varies across mypy/django-stubs versions
 warn_unreachable = true
 warn_no_return = true
 
@@ -235,6 +235,10 @@ ignore_missing_imports = true
 module = ["*.tests.*", "tests.*"]
 disallow_untyped_defs = false
 disable_error_code = ["attr-defined", "assignment", "arg-type", "misc", "comparison-overlap", "import-untyped", "unreachable"]  # factory-boy is untyped; its metaclass makes mypy think Factory() returns the factory, not the model
+
+[[tool.mypy.overrides]]
+module = "config.settings_base"
+disable_error_code = ["import-untyped"]
 
 [[tool.mypy.overrides]]
 module = "freedom_ls.xapi_learning_record_store.*"

@@ -2,14 +2,14 @@
 Schema for yaml structures like this:
 """
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-class ContentType(str, Enum):
+class ContentType(StrEnum):
     """Content type enumeration."""
 
     TOPIC = "TOPIC"
@@ -22,7 +22,7 @@ class ContentType(str, Enum):
     FORM_CONTENT = "FORM_CONTENT"
 
 
-class QuestionType(str, Enum):
+class QuestionType(StrEnum):
     """Question type enumeration."""
 
     MULTIPLE_CHOICE = "multiple_choice"
@@ -31,7 +31,7 @@ class QuestionType(str, Enum):
     LONG_TEXT = "long_text"
 
 
-class FormStrategy(str, Enum):
+class FormStrategy(StrEnum):
     """Form strategy enumeration."""
 
     CATEGORY_VALUE_SUM = "CATEGORY_VALUE_SUM"
