@@ -49,6 +49,7 @@ urlpatterns = [
     path("educator/", include("freedom_ls.educator_interface.urls")),
     path("accounts/", include("allauth.urls")),
     path("accounts/", include("freedom_ls.accounts.urls")),
+    path("feedback/", include("freedom_ls.feedback.urls")),
     path("", include("freedom_ls.student_interface.urls")),
     # path("_allauth/", include("allauth.headless.urls")),
 ]

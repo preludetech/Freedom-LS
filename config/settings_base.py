@@ -79,6 +79,9 @@ INSTALLED_APPS = [
     # STUDENT INTERFACE
     "freedom_ls.student_interface",
     #########
+    # FEEDBACK
+    "freedom_ls.feedback",
+    #########
     # AllAuth is at the end because we need to override many of its templates
     "encrypted_fields",
     "django_ace",
@@ -107,6 +110,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "freedom_ls.site_aware_models.middleware.CurrentSiteMiddleware",
+    "freedom_ls.feedback.middleware.FeedbackMiddleware",
     # "config.site_urlconf_middleware.SiteURLConfMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "axes.middleware.AxesMiddleware",
