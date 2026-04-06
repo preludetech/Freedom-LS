@@ -26,7 +26,7 @@ CONFIG: dict[str, type[ListViewConfig]] = {
     "users": UsersConfig,
 }
 
-URL_NAME = "educator_interface:interface"
+URL_NAME = "panel_framework_test:interface"
 
 
 class TestBuildBreadcrumbs:

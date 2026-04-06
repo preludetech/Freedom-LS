@@ -35,7 +35,7 @@ CONFIG: dict[str, type[ListViewConfig]] = {
     "students": StudentsConfig,
 }
 
-URL_NAME = "educator_interface:interface"
+URL_NAME = "panel_framework_test:interface"
 
 
 class TestBuildMenuItemsInstanceDropdown:
@@ -117,7 +117,7 @@ FULL_CONFIG: dict[str, type[ListViewConfig]] = {
     "stubs": StubListConfigWithModel,
 }
 
-TEMPLATE = "educator_interface/interface.html"
+TEMPLATE = "panel_framework/test_interface.html"
 
 
 @pytest.mark.django_db
@@ -127,7 +127,7 @@ class TestOobSidebarWithInstance:
         stub = StubModel.objects.create(name="My Stub Instance")
         factory = RequestFactory()
         request = factory.get(
-            f"/educator/stubs/{stub.pk}",
+            f"/test-panel/stubs/{stub.pk}",
             HTTP_HX_REQUEST="true",
             HTTP_HX_TARGET="main-content",
         )
@@ -138,7 +138,6 @@ class TestOobSidebarWithInstance:
             path_string=f"stubs/{stub.pk}",
             template_name=TEMPLATE,
             url_name=URL_NAME,
-            root_label="Test",
         )
         content = response.content.decode()
         assert 'id="sidebar-nav"' in content

@@ -26,7 +26,7 @@ CONFIG: dict[str, type[ListViewConfig]] = {
     "courses": CoursesConfig,
 }
 
-URL_NAME = "educator_interface:interface"
+URL_NAME = "panel_framework_test:interface"
 
 
 class TestBuildMenuItemsActive:

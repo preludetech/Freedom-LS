@@ -983,5 +983,4 @@ def interface(request: HttpRequest, path_string: str = "") -> HttpResponse:
         path_string=path_string,
         template_name="educator_interface/interface.html",
         url_name="educator_interface:interface",
-        root_label="Educator",
     )
