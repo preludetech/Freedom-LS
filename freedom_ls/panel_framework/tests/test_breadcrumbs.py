@@ -55,3 +55,23 @@ class TestBuildBreadcrumbs:
     def test_section_list_page_different_section(self) -> None:
         crumbs = _build_breadcrumbs(["users"], CONFIG, URL_NAME)
         assert crumbs == [{"label": "Users"}]
+
+    def test_unknown_section_returns_empty(self) -> None:
+        """When the section is not in config, no breadcrumbs are generated."""
+        crumbs = _build_breadcrumbs(["nonexistent"], CONFIG, URL_NAME)
+        assert crumbs == []
+
+    @pytest.mark.django_db
+    def test_tab_page_shows_instance_as_current(self, mock_site_context: None) -> None:
+        """Tab paths (3 parts) produce the same crumbs as instance pages."""
+        instance = StubModel.objects.create(name="Tab Test")
+        crumbs = _build_breadcrumbs(
+            ["cohorts", str(instance.pk), "details"],
+            CONFIG,
+            URL_NAME,
+            current_instance=instance,
+        )
+        assert crumbs == [
+            {"label": "Cohorts", "url": "/test-panel/cohorts"},
+            {"label": "Tab Test"},
+        ]

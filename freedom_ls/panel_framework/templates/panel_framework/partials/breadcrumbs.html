@@ -1,3 +1,4 @@
+{% if breadcrumbs %}
 <nav id="breadcrumbs" aria-label="Breadcrumb"
      {% if oob %}hx-swap-oob="true"{% endif %}>
     <ol class="flex items-center text-sm text-muted list-none">
@@ -21,3 +22,6 @@
         {% endfor %}
     </ol>
 </nav>
+{% else %}
+<div id="breadcrumbs" {% if oob %}hx-swap-oob="true"{% endif %}></div>
+{% endif %}
