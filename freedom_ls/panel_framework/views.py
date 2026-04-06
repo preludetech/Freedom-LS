@@ -552,10 +552,10 @@ def panel_framework_view(
     breadcrumbs = _build_breadcrumbs(parts, config, url_name, current_instance)
 
     if is_navigation:
-        heading_html = f"<h1>{escape(heading)}</h1>" if heading else ""
-        main_html = (
-            f'<div id="main-content" class="space-y-4 pl-2 sm:pl-6">'
-            f"{heading_html}{rendered_content}</div>"
+        main_html = render_to_string(
+            "panel_framework/partials/main_content.html",
+            {"heading": heading, "content": rendered_content},
+            request=request,
         )
 
         breadcrumb_html = render_to_string(
