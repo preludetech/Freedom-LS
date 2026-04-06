@@ -1,0 +1,43 @@
+<nav id="sidebar-nav" class="sticky top-4 w-64" aria-label="Sections"
+     {% if oob %}hx-swap-oob="true"{% endif %}>
+    <ul class="list-none ml-0">
+        {% for item in menu_items %}
+            <li x-data="sidebarMenuItem" data-expanded="{{ item.expanded|yesno:'true,false' }}">
+                <div class="flex items-center justify-between">
+                    <a href="{{ item.url }}"
+                       hx-get="{{ item.url }}"
+                       hx-target="#main-content"
+                       hx-push-url="true"
+                       hx-swap="outerHTML"
+                       {% if item.active and not item.expanded %}aria-current="page"{% endif %}
+                       class="flex-1 block px-3 py-2 rounded-md text-sm text-muted transition-colors hover:bg-surface-1 aria-[current=page]:bg-surface-2 aria-[current=page]:border-l-2 aria-[current=page]:border-primary aria-[current=page]:font-semibold aria-[current=page]:text-foreground {% if item.expanded %}border-l-2 border-primary text-foreground{% endif %}">
+                        {{ item.label }}
+                    </a>
+                    <button x-on:click="toggle"
+                            x-on:keydown.escape="close"
+                            x-bind:aria-expanded="expanded"
+                            class="p-1 rounded-md text-muted hover:text-foreground hover:bg-surface-2 transition-colors cursor-pointer {% if not item.instance_label %}invisible{% endif %}"
+                            aria-label="Toggle {{ item.label }} submenu">
+                        <span x-show="!expanded"><c-icon name="expand" class="size-4" /></span>
+                        <span x-show="expanded" x-cloak><c-icon name="collapse" class="size-4" /></span>
+                    </button>
+                </div>
+                <ul x-show="expanded" x-collapse class="ml-4 mt-1" x-cloak>
+                    {% if item.instance_label %}
+                    <li>
+                        <a href="{{ item.instance_url }}"
+                           hx-get="{{ item.instance_url }}"
+                           hx-target="#main-content"
+                           hx-push-url="true"
+                           hx-swap="outerHTML"
+                           aria-current="page"
+                           class="block px-3 py-1.5 rounded-md text-sm bg-surface-2 border-l-2 border-primary font-semibold text-foreground">
+                            {{ item.instance_label }}
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </li>
+        {% endfor %}
+    </ul>
+</nav>

@@ -11,25 +11,17 @@
 {% block sidebar_heading %}Navigation{% endblock sidebar_heading %}
 
 {% block sidebar_content %}
-    <nav class="sticky top-4 w-64">
-        <ul class="list-none ml-0">
-            {% for item in menu_items %}
-                <li>
-                    <a href="{{ item.url }}">
-                        {{ item.label }}
-                    </a>
-                </li>
-            {% endfor %}
-        </ul>
-    </nav>
+    {% include "panel_framework/partials/sidebar_nav.html" %}
 {% endblock sidebar_content %}
 
+{% block breadcrumbs %}
+    {% include "panel_framework/partials/breadcrumbs.html" %}
+{% endblock breadcrumbs %}
+
 {% block content %}
-    <div class="space-y-4 pl-2 sm:pl-6">
+    <div id="main-content" class="space-y-4 pl-2 sm:pl-6">
         {% if heading %}
-            <h1>
-                {{ heading }}
-            </h1>
+            <h1>{{ heading }}</h1>
         {% endif %}
         {{ content|safe }}
     </div>
