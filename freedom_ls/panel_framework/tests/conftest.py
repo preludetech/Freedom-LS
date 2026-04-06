@@ -5,6 +5,7 @@ from __future__ import annotations
 import itertools
 
 import pytest
+import pytest_django.fixtures
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
@@ -92,6 +93,17 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
         app_models.pop("stubgrandchild", None)
         app_models.pop("stubmodel", None)
         app_models.pop("stubchild", None)
+
+
+# ---------------------------------------------------------------------------
+# Fixture: use panel_framework's own test URLs
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _use_panel_test_urls(settings: pytest_django.fixtures.SettingsWrapper) -> None:
+    """Point Django URL resolution at panel_framework's own test URLs."""
+    settings.ROOT_URLCONF = "freedom_ls.panel_framework.tests.root_urls"
 
 
 # ---------------------------------------------------------------------------

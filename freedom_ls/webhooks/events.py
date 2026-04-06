@@ -34,7 +34,7 @@ def fire_webhook_event(event_type: str, payload: dict[str, object]) -> None:
     )
     default_task_backend.enqueue(
         _dispatch_event_task,
-        args=(str(event.pk), site_id),
+        args=[str(event.pk), site_id],
         kwargs={},
     )
 

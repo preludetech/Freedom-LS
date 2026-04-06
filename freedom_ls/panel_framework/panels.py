@@ -64,9 +64,6 @@ class DataTablePanel(Panel):
     def render(
         self, request: HttpRequest, base_url: str = "", panel_name: str = ""
     ) -> str:
-        is_htmx = request.headers.get("HX-Request") == "true"
-        if is_htmx:
-            return self.get_content(request, base_url=base_url, panel_name=panel_name)
         return super().render(request, base_url=base_url, panel_name=panel_name)
 
 

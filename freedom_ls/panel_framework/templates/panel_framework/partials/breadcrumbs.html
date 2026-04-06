@@ -1,0 +1,27 @@
+{% if breadcrumbs %}
+<nav id="breadcrumbs" aria-label="Breadcrumb"
+     {% if oob %}hx-swap-oob="true"{% endif %}>
+    <ol class="flex items-center text-sm text-muted list-none">
+        {% for crumb in breadcrumbs %}
+            <li{% if not forloop.first %} class="before:content-['/'] before:mx-1 before:opacity-50"{% endif %}>
+                {% if crumb.url %}
+                    <a href="{{ crumb.url }}"
+                       hx-get="{{ crumb.url }}"
+                       hx-target="#main-content"
+                       hx-push-url="true"
+                       hx-swap="outerHTML"
+                       class="hover:text-foreground hover:underline focus:outline-2 focus:outline-offset-2 focus:outline-primary">
+                        {{ crumb.label }}
+                    </a>
+                {% else %}
+                    <span aria-current="page" class="text-foreground font-medium">
+                        {{ crumb.label }}
+                    </span>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ol>
+</nav>
+{% else %}
+<div id="breadcrumbs" {% if oob %}hx-swap-oob="true"{% endif %}></div>
+{% endif %}

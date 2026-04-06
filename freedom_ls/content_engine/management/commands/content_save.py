@@ -312,7 +312,9 @@ def markdown_translate(markdown_content):
     pattern_with_caption = r"!\[\[([^|\]]+)\s*\|\s*([^\]]+)\]\]"
     markdown_content = re.sub(
         pattern_with_caption,
-        lambda m: f'<c-picture src="{m.group(1).strip()}" caption="{m.group(2).strip()}"></c-picture>',
+        lambda m: (
+            f'<c-picture src="{m.group(1).strip()}" caption="{m.group(2).strip()}"></c-picture>'
+        ),
         markdown_content,
     )
 

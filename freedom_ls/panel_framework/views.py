@@ -396,6 +396,7 @@ def _dispatch_resolved(
     current: _Resolved,
     base_url: str,
     is_htmx: bool,
+    hx_target: str = "",
 ) -> HttpResponse | tuple[str, str]:
     """Dispatch based on the resolved path object.
 
@@ -426,7 +427,11 @@ def _dispatch_resolved(
     else:
         raise Http404("Unexpected path resolution")
 
-    if is_htmx and not isinstance(current, _ResolvedTab):
+    if (
+        is_htmx
+        and not isinstance(current, _ResolvedTab)
+        and hx_target != "main-content"
+    ):
         return HttpResponse(rendered_content)
 
     heading = current.menu_label if hasattr(current, "menu_label") else ""
@@ -434,16 +439,73 @@ def _dispatch_resolved(
 
 
 def _build_menu_items(
-    config: dict[str, type[ListViewConfig]], url_name: str
-) -> list[dict[str, str]]:
+    config: dict[str, type[ListViewConfig]],
+    url_name: str,
+    active_section: str = "",
+    current_instance: Model | None = None,
+) -> list[dict[str, str | bool]]:
     """Build the sidebar menu items from the config."""
-    return [
-        {
+    items: list[dict[str, str | bool]] = []
+    for conf in config.values():
+        is_active = conf.url_name == active_section
+        if is_active and current_instance is not None:
+            instance_label = str(current_instance)
+            instance_url = reverse(
+                url_name,
+                kwargs={"path_string": f"{conf.url_name}/{current_instance.pk}"},
+            )
+            expanded = True
+        else:
+            instance_label = ""
+            instance_url = ""
+            expanded = False
+        item: dict[str, str | bool] = {
             "label": conf.menu_label,
             "url": reverse(url_name, kwargs={"path_string": conf.url_name}),
+            "active": is_active,
+            "expanded": expanded,
+            "instance_label": instance_label,
+            "instance_url": instance_url,
         }
-        for conf in config.values()
-    ]
+        items.append(item)
+    return items
+
+
+def _build_breadcrumbs(
+    parts: list[str],
+    config: dict[str, type[ListViewConfig]],
+    url_name: str,
+    current_instance: Model | None = None,
+) -> list[dict[str, str]]:
+    """Build hierarchy-based breadcrumbs.
+
+    Returns list of dicts: [{"label": "...", "url": "..."}, ...]
+    Last item has no "url" key (current page).
+
+    Tab pages (3-part paths like "cohorts/1/details") are treated the same
+    as instance pages — the tab name is not added as a breadcrumb because
+    the active tab is already indicated by the tab bar UI.
+    """
+    crumbs: list[dict[str, str]] = []
+
+    if not parts:
+        # Root landing page — no breadcrumbs needed
+        return crumbs
+
+    if parts[0] in config:
+        section_config = config[parts[0]]
+        section_crumb: dict[str, str] = {"label": section_config.menu_label}
+
+        if len(parts) >= 2 and current_instance is not None:
+            # Instance page: section gets a url, instance is current page
+            section_crumb["url"] = reverse(url_name, kwargs={"path_string": parts[0]})
+            crumbs.append(section_crumb)
+            crumbs.append({"label": str(current_instance)})
+        else:
+            # List page: section is the current page (no url)
+            crumbs.append(section_crumb)
+
+    return crumbs
 
 
 def panel_framework_view(
@@ -464,22 +526,63 @@ def panel_framework_view(
     """
     parts = [p for p in path_string.split("/") if p]
     is_htmx = request.headers.get("HX-Request") == "true"
+    hx_target = request.headers.get("HX-Target", "")
+    is_navigation = is_htmx and hx_target == "main-content"
     base_url = request.path
+
+    current_instance: Model | None = None
 
     if not parts:
         rendered_content = ""
         heading = ""
     else:
         current = _resolve_path(parts, config, request=request)
-        result = _dispatch_resolved(request, current, base_url, is_htmx)
+        result = _dispatch_resolved(
+            request, current, base_url, is_htmx, hx_target=hx_target
+        )
         if isinstance(result, HttpResponse):
             return result
         rendered_content, heading = result
 
+        if isinstance(current, InstanceView):
+            current_instance = current.instance
+        elif isinstance(current, _ResolvedTab):
+            current_instance = current.instance_view.instance
+
+    menu_items = _build_menu_items(
+        config,
+        url_name,
+        active_section=parts[0] if parts else "",
+        current_instance=current_instance,
+    )
+    breadcrumbs = _build_breadcrumbs(parts, config, url_name, current_instance)
+
+    if is_navigation:
+        main_html = render_to_string(
+            "panel_framework/partials/main_content.html",
+            {"heading": heading, "content": rendered_content},
+            request=request,
+        )
+
+        breadcrumb_html = render_to_string(
+            "panel_framework/partials/breadcrumbs.html",
+            {"breadcrumbs": breadcrumbs, "oob": True},
+            request=request,
+        )
+
+        sidebar_html = render_to_string(
+            "panel_framework/partials/sidebar_nav.html",
+            {"menu_items": menu_items, "oob": True},
+            request=request,
+        )
+
+        return HttpResponse(main_html + breadcrumb_html + sidebar_html)
+
     context = {
-        "menu_items": _build_menu_items(config, url_name),
+        "menu_items": menu_items,
         "content": rendered_content,
         "heading": heading,
+        "breadcrumbs": breadcrumbs,
     }
 
     return render(request, template_name, context)

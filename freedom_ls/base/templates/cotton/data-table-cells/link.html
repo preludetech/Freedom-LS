@@ -1,1 +1,15 @@
-{% load data_table_tags panel_tags %}<a href="{% if column.url_path_template %}{% resolve_url_path_template object column.url_name column.url_path_template %}{% else %}{% url column.url_name object|getattr_str:column.url_param %}{% endif %}">{{ object|getattr_str:column.text_attr }}</a>
+{% load data_table_tags panel_tags %}
+{% if column.url_path_template %}
+    {% resolve_url_path_template object column.url_name column.url_path_template as resolved_url %}
+{% else %}
+    {% url column.url_name object|getattr_str:column.url_param as resolved_url %}
+{% endif %}
+<a href="{{ resolved_url }}"
+   {% if column.htmx_nav %}
+       hx-get="{{ resolved_url }}"
+       hx-target="#main-content"
+       hx-push-url="true"
+       hx-swap="outerHTML"
+   {% endif %}>
+    {{ object|getattr_str:column.text_attr }}
+</a>

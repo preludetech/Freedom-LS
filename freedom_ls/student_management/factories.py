@@ -82,9 +82,11 @@ class CohortDeadlineFactory(SiteAwareFactory):
     is_hard_deadline = False
 
     content_type = factory.LazyAttribute(
-        lambda obj: ContentType.objects.get_for_model(obj.content_item)
-        if obj.content_item
-        else None
+        lambda obj: (
+            ContentType.objects.get_for_model(obj.content_item)
+            if obj.content_item
+            else None
+        )
     )
     object_id = factory.LazyAttribute(
         lambda obj: obj.content_item.pk if obj.content_item else None
@@ -110,9 +112,11 @@ class StudentDeadlineFactory(SiteAwareFactory):
     is_hard_deadline = False
 
     content_type = factory.LazyAttribute(
-        lambda obj: ContentType.objects.get_for_model(obj.content_item)
-        if obj.content_item
-        else None
+        lambda obj: (
+            ContentType.objects.get_for_model(obj.content_item)
+            if obj.content_item
+            else None
+        )
     )
     object_id = factory.LazyAttribute(
         lambda obj: obj.content_item.pk if obj.content_item else None
@@ -139,9 +143,11 @@ class UserCohortDeadlineOverrideFactory(SiteAwareFactory):
     is_hard_deadline = False
 
     content_type = factory.LazyAttribute(
-        lambda obj: ContentType.objects.get_for_model(obj.content_item)
-        if obj.content_item
-        else None
+        lambda obj: (
+            ContentType.objects.get_for_model(obj.content_item)
+            if obj.content_item
+            else None
+        )
     )
     object_id = factory.LazyAttribute(
         lambda obj: obj.content_item.pk if obj.content_item else None

@@ -1,13 +1,18 @@
 {% extends "_base_interface.html" %}
 {% load static %}
 
+{% comment %}
+This is only used in the tests.
+{% endcomment %}
+
+
 {% block extra_alpine_components %}
 <script defer src="{% static 'panel_framework/js/alpine-components.js' %}"></script>
 {% endblock %}
 
-{% block sidebar_storage_key %}sidebar-educator{% endblock sidebar_storage_key %}
+{% block sidebar_storage_key %}sidebar-test{% endblock sidebar_storage_key %}
 
-{% block header_bar_text %}Educator Interface{% endblock header_bar_text %}
+{% block header_bar_text %}Test Interface{% endblock header_bar_text %}
 {% block sidebar_heading %}Navigation{% endblock sidebar_heading %}
 
 {% block sidebar_content %}

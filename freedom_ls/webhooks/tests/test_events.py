@@ -43,10 +43,10 @@ class TestFireWebhookEvent:
         mock_backend.enqueue.assert_called_once()
         enqueue_args = mock_backend.enqueue.call_args
         # The first positional arg is the task, then args=(event_id, site_id)
-        assert enqueue_args.kwargs["args"] == (
+        assert enqueue_args.kwargs["args"] == [
             str(event.pk),
             mock_site_context.pk,
-        )
+        ]
 
     def test_does_not_create_event_for_invalid_type(
         self, mock_site_context: object
