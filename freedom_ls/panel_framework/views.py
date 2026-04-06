@@ -481,6 +481,10 @@ def _build_breadcrumbs(
 
     Returns list of dicts: [{"label": "...", "url": "..."}, ...]
     Last item has no "url" key (current page).
+
+    Tab pages (3-part paths like "cohorts/1/details") are treated the same
+    as instance pages — the tab name is not added as a breadcrumb because
+    the active tab is already indicated by the tab bar UI.
     """
     crumbs: list[dict[str, str]] = []
 
