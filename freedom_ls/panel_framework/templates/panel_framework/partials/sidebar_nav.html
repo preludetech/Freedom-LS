@@ -2,7 +2,8 @@
      {% if oob %}hx-swap-oob="true"{% endif %}>
     <ul class="list-none ml-0">
         {% for item in menu_items %}
-            <li x-data="sidebarMenuItem" data-expanded="{{ item.expanded|yesno:'true,false' }}">
+            <li x-data="sidebarMenuItem" data-expanded="{{ item.expanded|yesno:'true,false' }}"
+                x-on:keydown.escape="close">
                 <div class="flex items-center justify-between">
                     <a href="{{ item.url }}"
                        hx-get="{{ item.url }}"
@@ -13,14 +14,17 @@
                        class="flex-1 block px-3 py-2 rounded-md text-sm text-muted transition-colors hover:bg-surface-1 aria-[current=page]:bg-surface-2 aria-[current=page]:border-l-2 aria-[current=page]:border-primary aria-[current=page]:font-semibold aria-[current=page]:text-foreground {% if item.expanded %}border-l-2 border-primary text-foreground{% endif %}">
                         {{ item.label }}
                     </a>
+                    {% if item.instance_label %}
                     <button x-on:click="toggle"
-                            x-on:keydown.escape="close"
                             x-bind:aria-expanded="expanded"
-                            class="p-1 rounded-md text-muted hover:text-foreground hover:bg-surface-2 transition-colors cursor-pointer {% if not item.instance_label %}invisible{% endif %}"
+                            class="p-1 rounded-md text-muted hover:text-foreground hover:bg-surface-2 transition-colors cursor-pointer"
                             aria-label="Toggle {{ item.label }} submenu">
                         <span x-show="!expanded"><c-icon name="expand" class="size-4" /></span>
                         <span x-show="expanded" x-cloak><c-icon name="collapse" class="size-4" /></span>
                     </button>
+                    {% else %}
+                    <span class="p-1 size-4" aria-hidden="true"></span>
+                    {% endif %}
                 </div>
                 <ul x-show="expanded" x-collapse class="ml-4 mt-1" x-cloak>
                     {% if item.instance_label %}
