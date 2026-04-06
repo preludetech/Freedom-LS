@@ -53,7 +53,12 @@ git worktree add <spec-folder-name>
 
 IMPORTANT: Never create a worktree inside an existing worktree. Always `cd` to the bare repo parent first.
 
-## Step 5: Update the todo list
+## Step 5: Call install_dev.sh to make sure the new worktree is ready for development
+
+```bash
+cd <spec-folder-path> && ./install_dev.sh
+```
+## Step 6: Update the todo list
 
 Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
 
@@ -61,3 +66,4 @@ Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` w
 - `tick:"Run `/start_worktree` to create an isolated worktree for this spec"`
 
 No new items to add.
+

@@ -34,7 +34,11 @@ Before doing anything else, use playwright to open the base url and make sure it
 
 If you previously started a runserver on a port, kill it now using:
 
+<<<<<<< HEAD
 `.claude/fls/scripts/kill_runserver.sh $PORT`
+=======
+`$PWD/kill_runserver.sh $PORT`
+>>>>>>> 0c8bbc2 (Add QA report and fix script paths in do_qa command)
 
 This avoids port conflicts and leftover processes.
 
@@ -42,7 +46,11 @@ This avoids port conflicts and leftover processes.
 
 Find an unused PORT that we can use for running the development server.
 
+<<<<<<< HEAD
 `PORT=$(.claude/fls/scripts/find_available_port.sh)`
+=======
+`PORT=$($PWD/find_available_port.sh)`
+>>>>>>> 0c8bbc2 (Add QA report and fix script paths in do_qa command)
 
 Then run the development server:
 
@@ -135,6 +143,7 @@ If anything unrelated to the current tests, or tangential to the functionality u
 
 Kill the development server you started:
 
+<<<<<<< HEAD
 `.claude/fls/scripts/kill_runserver.sh $PORT`
 
 ## Step 12: Update the todo list
@@ -146,3 +155,6 @@ Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` w
 - For each failing test recorded in `qa_report.md`, pass one `add:"QA|user + cmd|Fix QA bug: <short title from the report> (TDD — failing test first, then fix)"`.
 - For each test that was skipped because of missing data, pass one `add:"QA|cmd|Use the qa-data-helper agent to create missing data for <short description>, then re-run `/do_qa`"`.
 - If no bugs were found and no tests were skipped, omit `add:`.
+=======
+`$PWD/kill_runserver.sh $PORT`
+>>>>>>> 0c8bbc2 (Add QA report and fix script paths in do_qa command)
