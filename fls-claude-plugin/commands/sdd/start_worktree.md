@@ -52,3 +52,11 @@ git worktree add <spec-folder-name>
 ```
 
 IMPORTANT: Never create a worktree inside an existing worktree. Always `cd` to the bare repo parent first.
+
+
+## Step 5: Call install_dev.sh to make sure the new worktree is ready for development
+
+```bash
+cd <spec-folder-path>
+./install_dev.sh
+```
