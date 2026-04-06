@@ -95,6 +95,17 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
 
 
 # ---------------------------------------------------------------------------
+# Fixture: use panel_framework's own test URLs
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _use_panel_test_urls(settings: object) -> None:
+    """Point Django URL resolution at panel_framework's own test URLs."""
+    settings.ROOT_URLCONF = "freedom_ls.panel_framework.tests.root_urls"
+
+
+# ---------------------------------------------------------------------------
 # Helper: staff user without importing UserFactory
 # ---------------------------------------------------------------------------
 

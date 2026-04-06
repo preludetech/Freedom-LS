@@ -507,7 +507,6 @@ def panel_framework_view(
     path_string: str,
     template_name: str,
     url_name: str,
-    root_label: str = "",
 ) -> HttpResponse:
     """Generic dispatch view for panel-framework-based interfaces.
 

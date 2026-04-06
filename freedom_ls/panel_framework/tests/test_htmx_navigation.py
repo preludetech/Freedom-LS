@@ -42,12 +42,12 @@ CONFIG: dict[str, type[ListViewConfig]] = {
     "stubs": StubListConfig,
 }
 
-URL_NAME = "educator_interface:interface"
-TEMPLATE = "educator_interface/interface.html"
+URL_NAME = "panel_framework_test:interface"
+TEMPLATE = "panel_framework/test_interface.html"
 
 
 def _make_request(
-    path: str = "/educator/stubs",
+    path: str = "/test-panel/stubs",
     is_htmx: bool = False,
     hx_target: str = "",
 ) -> HttpRequest:
@@ -74,7 +74,6 @@ class TestHtmxNavigation:
             path_string="stubs",
             template_name=TEMPLATE,
             url_name=URL_NAME,
-            root_label="Test",
         )
         assert response.status_code == 200
         # Full page render uses the template, so it will have the base HTML structure
@@ -93,7 +92,6 @@ class TestHtmxNavigation:
             path_string="stubs",
             template_name=TEMPLATE,
             url_name=URL_NAME,
-            root_label="Test",
         )
         assert response.status_code == 200
         content = response.content.decode()
@@ -116,7 +114,6 @@ class TestHtmxNavigation:
             path_string="stubs",
             template_name=TEMPLATE,
             url_name=URL_NAME,
-            root_label="Test",
         )
         assert response.status_code == 200
         content = response.content.decode()
@@ -136,7 +133,6 @@ class TestHtmxNavigation:
             path_string="stubs",
             template_name=TEMPLATE,
             url_name=URL_NAME,
-            root_label="Test",
         )
         content = response.content.decode()
         assert '<div id="main-content" class="space-y-4 pl-2 sm:pl-6">' in content
@@ -150,7 +146,6 @@ class TestHtmxNavigation:
             path_string="stubs",
             template_name=TEMPLATE,
             url_name=URL_NAME,
-            root_label="Test",
         )
         content = response.content.decode()
         assert "<h1>Stubs</h1>" in content
