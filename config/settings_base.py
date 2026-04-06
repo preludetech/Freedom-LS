@@ -79,7 +79,6 @@ INSTALLED_APPS = [
     # STUDENT INTERFACE
     "freedom_ls.student_interface",
     #########
-    "django_premailer",
     # AllAuth is at the end because we need to override many of its templates
     "encrypted_fields",
     "django_ace",
