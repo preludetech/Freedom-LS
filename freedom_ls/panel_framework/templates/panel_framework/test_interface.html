@@ -1,6 +1,11 @@
 {% extends "_base_interface.html" %}
 {% load static %}
 
+{% comment %}
+This is only used in the tests.
+{% endcomment %}
+
+
 {% block extra_alpine_components %}
 <script defer src="{% static 'panel_framework/js/alpine-components.js' %}"></script>
 {% endblock %}

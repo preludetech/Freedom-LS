@@ -1,16 +1,8 @@
 <nav id="breadcrumbs" aria-label="Breadcrumb"
      {% if oob %}hx-swap-oob="true"{% endif %}>
-    <style>
-    .breadcrumb-list li + li::before {
-        content: "/";
-        margin: 0 0.25rem;
-        color: var(--color-muted);
-        opacity: 0.5;
-    }
-    </style>
-    <ol class="flex items-center text-sm text-muted breadcrumb-list">
+    <ol class="flex items-center text-sm text-muted">
         {% for crumb in breadcrumbs %}
-            <li>
+            <li{% if not forloop.first %} class="before:content-['/'] before:mx-1 before:opacity-50"{% endif %}>
                 {% if crumb.url %}
                     <a href="{{ crumb.url }}"
                        hx-get="{{ crumb.url }}"

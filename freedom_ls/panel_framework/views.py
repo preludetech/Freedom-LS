@@ -449,20 +449,21 @@ def _build_menu_items(
     for conf in config.values():
         is_active = conf.url_name == active_section
         has_instance = is_active and current_instance is not None
+        instance_label = ""
+        instance_url = ""
+        if has_instance and current_instance is not None:
+            instance_label = str(current_instance)
+            instance_url = reverse(
+                url_name,
+                kwargs={"path_string": f"{conf.url_name}/{current_instance.pk}"},
+            )
         item: dict[str, str | bool] = {
             "label": conf.menu_label,
             "url": reverse(url_name, kwargs={"path_string": conf.url_name}),
             "active": is_active,
             "expanded": has_instance,
-            "instance_label": str(current_instance) if has_instance else "",
-            "instance_url": (
-                reverse(
-                    url_name,
-                    kwargs={"path_string": f"{conf.url_name}/{current_instance.pk}"},
-                )
-                if has_instance and current_instance is not None
-                else ""
-            ),
+            "instance_label": instance_label,
+            "instance_url": instance_url,
         }
         items.append(item)
     return items
