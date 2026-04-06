@@ -174,6 +174,15 @@ filecache = [
 ]
 
 [[package]]
+name = "cachetools"
+version = "7.0.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/af/dd/57fe3fdb6e65b25a5987fd2cdc7e22db0aef508b91634d2e57d22928d41b/cachetools-7.0.5.tar.gz", hash = "sha256:0cd042c24377200c1dcd225f8b7b12b0ca53cc2c961b43757e774ebe190fd990", size = 37367, upload-time = "2026-03-09T20:51:29.451Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/06/f3/39cf3367b8107baa44f861dc802cbf16263c945b62d8265d36034fc07bea/cachetools-7.0.5-py3-none-any.whl", hash = "sha256:46bc8ebefbe485407621d0a4264b23c080cedd913921bad7ac3ed2f26c183114", size = 13918, upload-time = "2026-03-09T20:51:27.33Z" },
+]
+
+[[package]]
 name = "certifi"
 version = "2025.11.12"
 source = { registry = "https://pypi.org/simple" }
@@ -656,18 +665,6 @@ wheels = [
 ]
 
 [[package]]
-name = "django-premailer"
-version = "0.2.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "premailer" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/4b/66/8235bcabee77e991d464153b81381d9511d32dff4832ee387486bfaf4378/django-premailer-0.2.0.tar.gz", hash = "sha256:561b8a10bd1673794d55830c1a6479cfdfdb61d314f24f5ebc5685cd32023df6", size = 880087, upload-time = "2016-06-20T21:38:02.332Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/1e/4424f664eff19fc1d448804af7a3158a4e0e3b2dd23d2bebcf6341a8220c/django_premailer-0.2.0-py2.py3-none-any.whl", hash = "sha256:307e386e3c4b3e0d030f172c2af84eb6c64724b36f568046b4515be3f3fed357", size = 10289, upload-time = "2016-06-20T21:38:08.868Z" },
-]
-
-[[package]]
 name = "django-storages"
 version = "1.14.6"
 source = { registry = "https://pypi.org/simple" }
@@ -833,13 +830,13 @@ dependencies = [
     { name = "django-fernet-encrypted-fields" },
     { name = "django-guardian" },
     { name = "django-ninja" },
-    { name = "django-premailer" },
     { name = "django-storages", extra = ["s3"] },
     { name = "django-unfold" },
     { name = "httpx" },
     { name = "jinja2" },
     { name = "markdown-headdown" },
     { name = "nh3" },
+    { name = "premailer" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pyjwt" },
     { name = "pytest-env" },
@@ -909,7 +906,6 @@ requires-dist = [
     { name = "django-fernet-encrypted-fields", specifier = ">=0.3.1" },
     { name = "django-guardian", specifier = ">=3.3.0" },
     { name = "django-ninja", specifier = ">=1.5.0" },
-    { name = "django-premailer", specifier = ">=0.2.0" },
     { name = "django-storages", extras = ["s3"], specifier = ">=1.14.6" },
     { name = "django-stubs", extras = ["compatible-mypy"], marker = "extra == 'dev'", specifier = ">=5.2.9" },
     { name = "django-unfold", specifier = ">=0.83.0" },
@@ -923,6 +919,7 @@ requires-dist = [
     { name = "nh3", specifier = ">=0.3.2" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.10.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.5.1" },
+    { name = "premailer", specifier = ">=3.10.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.0" },
     { name = "pyjwt", specifier = ">=2.12.0" },
     { name = "pyright", marker = "extra == 'dev'", specifier = ">=1.1.408" },
@@ -1683,17 +1680,18 @@ wheels = [
 
 [[package]]
 name = "premailer"
-version = "3.0.0"
+version = "3.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "cachetools" },
     { name = "cssselect" },
     { name = "cssutils" },
     { name = "lxml" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/da/e5b85b66a43b8c7774f94cef3588578d1290a2cb759d20905b70cdf1f32f/premailer-3.0.0.tar.gz", hash = "sha256:474306d473f6686ebe31255b3a86b5d88190a28ee16fa31fdf4d4ef6d3c42347", size = 17251, upload-time = "2016-06-07T14:03:58.975Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/6f/e49bd31941eff2987076383fa6d811eb785a28f498f5bb131e981bd71e13/premailer-3.10.0.tar.gz", hash = "sha256:d1875a8411f5dc92b53ef9f193db6c0f879dc378d618e0ad292723e388bfe4c2", size = 24342, upload-time = "2021-08-02T20:32:54.328Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/67/b9929ff8b20a606f2c266df22fba38c70eeec6fef2bc7027c4ffa3745793/premailer-3.0.0-py2.py3-none-any.whl", hash = "sha256:bdbcb9258914944a3f5cf817bfe549305f077a7f043b2ce66139bc0e8cb3d2a5", size = 20023, upload-time = "2016-06-07T14:03:34.151Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/07/4e8d94f94c7d41ca5ddf8a9695ad87b888104e2fd41a35546c1dc9ca74ac/premailer-3.10.0-py2.py3-none-any.whl", hash = "sha256:021b8196364d7df96d04f9ade51b794d0b77bcc19e998321c515633a2273be1a", size = 19544, upload-time = "2021-08-02T20:32:52.771Z" },
 ]
 
 [[package]]

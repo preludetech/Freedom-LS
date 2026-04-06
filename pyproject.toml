@@ -20,7 +20,7 @@ dependencies = [
     "python-frontmatter>=1.1.0",
     "whitenoise>=6.11.0",
     "django-storages[s3]>=1.14.6",
-    "django-premailer>=0.2.0",
+    "premailer>=3.10.0",
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
     "django-fernet-encrypted-fields>=0.3.1",
@@ -227,6 +227,7 @@ module = [
     "allauth.*", "djclick.*", "frontmatter.*",
     "markdown.*", "unfold.*", "factory.*", "django_cotton.*",
     "django_ace.*", "encrypted_fields.*", "django.tasks.*",
+    "premailer.*",
 ]
 ignore_missing_imports = true
 
