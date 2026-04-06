@@ -473,7 +473,6 @@ def _build_breadcrumbs(
     config: dict[str, type[ListViewConfig]],
     url_name: str,
     current_instance: Model | None = None,
-    root_label: str = "",
 ) -> list[dict[str, str]]:
     """Build hierarchy-based breadcrumbs.
 
@@ -482,20 +481,9 @@ def _build_breadcrumbs(
     """
     crumbs: list[dict[str, str]] = []
 
-    if not root_label:
-        return crumbs
-
-    root_crumb: dict[str, str] = {
-        "label": root_label,
-        "url": reverse(url_name, kwargs={"path_string": ""}),
-    }
-
     if not parts:
-        # Root is the current page — no url
-        crumbs.append({"label": root_label})
+        # Root landing page — no breadcrumbs needed
         return crumbs
-
-    crumbs.append(root_crumb)
 
     if parts[0] in config:
         section_config = config[parts[0]]
@@ -561,9 +549,7 @@ def panel_framework_view(
         active_section=parts[0] if parts else "",
         current_instance=current_instance,
     )
-    breadcrumbs = _build_breadcrumbs(
-        parts, config, url_name, current_instance, root_label
-    )
+    breadcrumbs = _build_breadcrumbs(parts, config, url_name, current_instance)
 
     if is_navigation:
         heading_html = f"<h1>{escape(heading)}</h1>" if heading else ""
