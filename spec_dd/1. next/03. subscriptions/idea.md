@@ -1,10 +1,30 @@
-# Subscriptions
+# Subscriptions and Content Access
 
-Create the data structures and access control logic for managing subscriptions.
+Create a pluggable content access system, with subscriptions as the first backend.
 
 ## Core concept
 
-Users can subscribe to access the platform. Different sites have different rules about what content is free vs paywalled, what happens on expiry, trial policies, etc. The subscription system must be flexible enough to support per-site configuration that grows over time.
+Content access should be controlled by a pluggable backend system. Different sites need fundamentally different access models — some sell full-access subscriptions, some have admin-controlled access, and in future some may sell individual courses at different prices. Rather than building subscription logic that later needs to be ripped out or worked around, the access layer itself should be swappable.
+
+The content access backend defines:
+- Who can access what content
+- How access is granted (subscription purchase, admin assignment, individual purchase, etc.)
+- What happens when access expires or is revoked
+
+V1 ships two backends:
+1. **Subscription backend** — users purchase subscriptions for full access, with free trials, extensions, grace periods, etc.
+2. **Admin-controlled backend** — access is entirely managed by admin users (no self-service, no payments)
+
+Future backends could include per-course purchases, cohort-based access, etc.
+
+## Pluggable backend design
+
+Following Django's own backend patterns (auth backends, storage backends, etc.):
+
+- **Base class** with `NotImplementedError` for required methods (`check_access`, `grant_access`, `revoke_access`) and no-op defaults for optional hooks
+- **Configured in `settings.py`** — the active backend is set per-site via settings, using dotted path strings loaded with `import_string()`
+- **Service/facade layer** — application code never touches backends directly. A facade function (like `django.contrib.auth.authenticate()`) handles backend resolution so callers don't need to know which backend is active
+- **Single backend per site in V1**, designed so future composition (multiple backends per site) is possible without redesign
 
 ## V1 scope
 
@@ -42,7 +62,7 @@ Research suggests a hybrid approach:
 
 Configuration includes:
 - Trial length and policies
-- Expiry behaviour (hard cutoff vs grace period vs read-only access to completed content)
+- Expiry behaviour (hard cutoff vs grace period)
 - Default content access level (free vs subscription-required)
 - Grace period length
 
@@ -63,9 +83,30 @@ This supports:
 - Sites where everything is free (default=FREE)
 - Mixed sites (default=SUBSCRIPTION_REQUIRED with some content marked FREE)
 
+## Content visibility
+
+All content should be visible to non-subscribers (titles, descriptions, structure). The catalog is a conversion tool — hiding content removes the motivation to subscribe. Every major learning platform follows this pattern.
+
+- Non-subscribers see the full course catalog with lock indicators on gated content
+- Lock indicators should always include context (what the content is, how to unlock it) — a bare lock icon is frustrating
+- Gating rules should be predictable and consistent
+
+## Completed content and certificates after expiry
+
+Completed courses and earned certificates remain accessible (read-only) even after a subscription lapses. This follows the pattern used by LinkedIn Learning, Pluralsight, and others.
+
+- **Completed content**: Read-only access to completed courses
+- **Certificates**: Always accessible — revoking proof of learning damages trust severely
+- **In-progress content**: Show progress state but block access until reactivation. Reassure the user their progress is saved
+- **New content**: Fully gated behind active subscription
+
+This means the access check needs to distinguish between "new content" and "previously completed content" for expired users.
+
 ## Subscription states
 
-Based on research, the standard states are:
+Use **django-fsm-2** for state management. It's actively maintained (django-commons), supports Django 6.x and Python 3.13+, and provides protected state fields, declarative transition decorators, and condition guards — exactly what a subscription state machine needs.
+
+States:
 
 - **Trialing** — in free trial period
 - **Active** — subscription is current
@@ -76,8 +117,9 @@ Based on research, the standard states are:
 
 ## Access control
 
+- Custom access check module (not django-rules — the check is too simple to justify an additional dependency with uncertain maintenance)
 - `subscription_required` decorator/mixin for gating views
-- V1: simple "does this user have any active subscription on this site?" check
+- V1: simple "does this user have any active subscription on this site?" check, with the completed-content exception for expired users
 - Future: check for specific plan/tier or feature entitlements
 - Must work with the existing site-aware architecture
 
@@ -89,9 +131,8 @@ Research found no existing Django subscription package that supports multi-site/
 - **django-plans**: Quota/feature-based plan definitions
 - **django-flexible-subscriptions**: Mapping subscriptions to Django Groups for permissions
 
-Packages worth evaluating during spec/implementation:
-- **django-rules**: Composable predicate-based permissions — good fit for content access checks (e.g. `has_active_subscription | is_free_content`)
-- **django-fsm-2**: State machine for subscription state transitions (maintained fork under django-commons)
+Packages to use:
+- **django-fsm-2**: State machine for subscription state transitions (maintained fork under django-commons). Adopted — see research.
 - **dj-stripe**: For future payment integration (not V1)
 
 ## Out of scope for V1
@@ -99,14 +140,14 @@ Packages worth evaluating during spec/implementation:
 - Payment integration (Stripe etc.)
 - Self-service subscription signup
 - Dunning/failed payment recovery
-- Pause/resume functionality
+- Pause/resume functionality (separate spec)
 - Email notifications (trial expiry reminders etc.)
 - Drip content tied to subscription dates
 
 ## Open questions for spec stage
 
-- Whether to use django-rules for access predicates or build simpler custom checks
-- Whether to use django-fsm-2 for state management or keep it simple with CharField + transition methods
 - Exact strategy pattern design for per-site behaviour configuration
 - How content access_level interacts with the existing content_engine models
 - Whether certificates need their own access rules separate from content
+- How the subscription backend and admin-controlled backend share common infrastructure (e.g. the content access_level field) while differing in how access is granted
+- Whether per-course pricing (courses with different prices) should be a third backend or an extension of the subscription backend with multi-tier plans
