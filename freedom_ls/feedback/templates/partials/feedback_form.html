@@ -1,0 +1,66 @@
+<div x-data="starRating" class="space-y-4">
+    <p class="text-foreground font-medium">{{ feedback_form.rating_label }}</p>
+
+    <form hx-post="{% url 'feedback:feedback_submit' feedback_form.id %}"
+          hx-target="closest [data-feedback-content]"
+          hx-swap="innerHTML">
+
+        <input type="hidden" name="content_type_id" value="{{ content_type_id }}">
+        <input type="hidden" name="object_id" value="{{ object_id }}">
+        <input type="hidden" name="rating" x-bind:value="rating">
+
+        <!-- Star Rating -->
+        <div class="flex gap-1 mb-4">
+            <button type="button"
+                    x-on:click="setRating(1)"
+                    x-on:mouseenter="setHover(1)"
+                    x-on:mouseleave="clearHover"
+                    class="focus:outline-none">
+                <span x-bind:class="star1Class"><c-icon name="star" class="size-8 transition-colors" /></span>
+            </button>
+            <button type="button"
+                    x-on:click="setRating(2)"
+                    x-on:mouseenter="setHover(2)"
+                    x-on:mouseleave="clearHover"
+                    class="focus:outline-none">
+                <span x-bind:class="star2Class"><c-icon name="star" class="size-8 transition-colors" /></span>
+            </button>
+            <button type="button"
+                    x-on:click="setRating(3)"
+                    x-on:mouseenter="setHover(3)"
+                    x-on:mouseleave="clearHover"
+                    class="focus:outline-none">
+                <span x-bind:class="star3Class"><c-icon name="star" class="size-8 transition-colors" /></span>
+            </button>
+            <button type="button"
+                    x-on:click="setRating(4)"
+                    x-on:mouseenter="setHover(4)"
+                    x-on:mouseleave="clearHover"
+                    class="focus:outline-none">
+                <span x-bind:class="star4Class"><c-icon name="star" class="size-8 transition-colors" /></span>
+            </button>
+            <button type="button"
+                    x-on:click="setRating(5)"
+                    x-on:mouseenter="setHover(5)"
+                    x-on:mouseleave="clearHover"
+                    class="focus:outline-none">
+                <span x-bind:class="star5Class"><c-icon name="star" class="size-8 transition-colors" /></span>
+            </button>
+        </div>
+
+        {% if feedback_form.text_prompt %}
+            <div class="mb-4">
+                <label for="feedback-comment" class="block text-sm text-muted mb-1">{{ feedback_form.text_prompt }}</label>
+                <textarea id="feedback-comment"
+                          name="comment"
+                          rows="3"
+                          class="w-full border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary"></textarea>
+            </div>
+        {% endif %}
+
+        <button type="submit"
+                class="bg-primary text-on-primary font-medium px-4 py-2 rounded-md hover:bg-primary-bold transition-colors text-sm">
+            Submit Feedback
+        </button>
+    </form>
+</div>

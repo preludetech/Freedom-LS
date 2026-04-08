@@ -221,6 +221,15 @@ def view_topic(request, topic, course, next_url, previous_url, is_last_item=Fals
         topic_progress.complete_time = timezone.now()
         topic_progress.save()
 
+        from freedom_ls.feedback.signals import feedback_trigger
+
+        feedback_trigger.send(
+            sender="topic_completed",
+            user=request.user,
+            context_object=topic,
+            request=request,
+        )
+
         if next_url:
             return redirect(next_url)
         else:
@@ -502,6 +511,15 @@ def course_finish(request, course_slug):
                 "course_title": course.title,
                 "completed_time": course_progress.completed_time.isoformat(),
             },
+        )
+
+        from freedom_ls.feedback.signals import feedback_trigger
+
+        feedback_trigger.send(
+            sender="course_completed",
+            user=request.user,
+            context_object=course,
+            request=request,
         )
 
     context = {

@@ -21,6 +21,7 @@
         <script defer
                 src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.15.8/dist/cdn.min.js"></script>
         <script defer src="{% static 'base/js/alpine-components.js' %}"></script>
+        <script defer src="{% static 'feedback/js/alpine-components.js' %}"></script>
         {% block extra_alpine_components %}
         {% endblock extra_alpine_components %}
         <script defer
@@ -96,6 +97,69 @@
             #debug-branch-badge { font-size: 10px !important; bottom: 4px !important; left: 4px !important; }
         }
             </style>
+        {% endif %}
+        {% if user.is_authenticated %}
+            <div x-data="feedbackModal"
+                 x-cloak
+                 x-on:keydown.escape.window="onEscape"
+                 {% if request.session.pending_feedback %}
+                     data-auto-load="true"
+                     data-form-id="{{ request.session.pending_feedback.form_id }}"
+                     data-content-type-id="{{ request.session.pending_feedback.content_type_id }}"
+                     data-object-id="{{ request.session.pending_feedback.object_id }}"
+                 {% endif %}>
+
+                <!-- Modal overlay -->
+                <div x-show="open"
+                     x-cloak
+                     class="fixed inset-0 z-50 overflow-y-auto"
+                     role="dialog"
+                     aria-modal="true"
+                     aria-label="Feedback">
+
+                    <!-- Backdrop -->
+                    <div x-show="open"
+                         x-transition:enter="ease-out duration-300"
+                         x-transition:enter-start="opacity-0"
+                         x-transition:enter-end="opacity-100"
+                         x-transition:leave="ease-in duration-200"
+                         x-transition:leave-start="opacity-100"
+                         x-transition:leave-end="opacity-0"
+                         class="fixed inset-0 backdrop-blur-sm transition-opacity"
+                         x-on:click="close">
+                    </div>
+
+                    <!-- Modal panel -->
+                    <div class="flex min-h-full items-center justify-center p-4">
+                        <div x-show="open"
+                             x-transition:enter="ease-out duration-300"
+                             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                             x-transition:leave="ease-in duration-200"
+                             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                             class="relative transform overflow-hidden rounded-lg bg-surface shadow-xl transition-all w-full max-w-md">
+
+                            <!-- Header -->
+                            <div class="bg-surface px-6 py-4 border-b border-border">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-lg font-semibold text-foreground">Share Your Feedback</h3>
+                                    <button x-on:click="close"
+                                            type="button"
+                                            class="text-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary rounded-md">
+                                        <span class="sr-only">Close</span>
+                                        <c-icon name="close" class="size-6" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Content (loaded via HTMX) -->
+                            <div class="px-6 py-4" data-feedback-content>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         {% endif %}
     </body>
 </html>
