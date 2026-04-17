@@ -19,7 +19,7 @@ import os
 import sys
 from pathlib import Path
 
-from django.utils.csp import (  # type: ignore[import-untyped]  # django-stubs lacks Django 6 support
+from django.utils.csp import (
     CSP,
 )
 

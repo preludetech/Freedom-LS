@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import Literal
 
 RoleType = Literal["standalone", "composable"]
 ROLE_TYPE_STANDALONE: RoleType = "standalone"
@@ -132,7 +132,7 @@ def _build_role_from_spec(
                 f"Invalid role_type '{raw_role_type_str}' for role '{name}'. "
                 f"Must be one of {sorted(VALID_ROLE_TYPES)}."
             )
-        role_type: RoleType = cast(RoleType, raw_role_type_str)
+        role_type: RoleType = raw_role_type_str
     else:
         role_type = parent_role.role_type if parent_role else ROLE_TYPE_DEFAULT
     if raw_assignment_scope is not None:
@@ -142,7 +142,7 @@ def _build_role_from_spec(
                 f"Invalid assignment_scope '{raw_scope_str}' for role '{name}'. "
                 f"Must be one of {sorted(VALID_ASSIGNMENT_SCOPES)}."
             )
-        assignment_scope: AssignmentScope = cast(AssignmentScope, raw_scope_str)
+        assignment_scope: AssignmentScope = raw_scope_str
     elif parent_role:
         assignment_scope = parent_role.assignment_scope
     else:
