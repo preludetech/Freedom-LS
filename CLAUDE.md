@@ -1,5 +1,3 @@
-If $FLS_PLUGIN is unset, stop and tell the user to run `./claude.sh` instead of `claude`.
-
 # Project: Freedom Learning System (FLS)
 
 This is a fully functioning Learner Management System.

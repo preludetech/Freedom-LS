@@ -15,7 +15,7 @@ Set up the FLS Claude Code plugin for this project.
    - Add any missing `allow` rules (don't duplicate existing ones)
    - Add any missing `deny` rules (don't duplicate existing ones)
    - Add `"fls": true` to `enabledPlugins` (create the key if it doesn't exist)
-   - Remove the `hooks` section if present (plugin now owns hooks)
+   - Merge the `SessionStart` hook from the template into the existing `hooks` section (create `hooks` if missing, add `SessionStart` if missing, append the command if an equivalent one isn't already there). Remove any other hook events (plugin owns those).
    - Write the updated file
 3. If `.claude/settings.json` doesn't exist:
    - Create it from the template with `enabledPlugins: {"fls": true}` added
@@ -56,14 +56,13 @@ For each wrapper script template in `${CLAUDE_PLUGIN_ROOT}/templates/wrapper_scr
 2. If it exists, **skip it** (never overwrite existing scripts)
 3. If it doesn't exist, copy the template to the project root, replace `__FLS_PATH__` with the path from Step 5, and make it executable
 
-## Step 7: Ensure CLAUDE.md has plugin check
+## Step 7: Clean up legacy CLAUDE.md plugin check
 
-1. Read `CLAUDE.md` at the project root
-2. If the file does not already contain `FLS_PLUGIN`, prepend this exact line before everything else:
-   ```
-   If $FLS_PLUGIN is unset, stop and tell the user to run `./claude.sh` instead of `claude`.
-   ```
-3. If it already contains `FLS_PLUGIN`, skip this step
+Earlier versions of this init command prepended a line to `CLAUDE.md` that asked Claude to check `$FLS_PLUGIN` on every session. That check is now handled by the `SessionStart` hook merged in Step 1, so the instruction line is obsolete.
+
+1. Read `CLAUDE.md` at the project root (if it exists)
+2. If it starts with a line mentioning `FLS_PLUGIN` (e.g., `If $FLS_PLUGIN is unset, stop and tell the user to run ./claude.sh instead of claude.`), remove that line and the blank line immediately following it
+3. Otherwise skip this step
 
 ## Step 8: Validate the setup
 
@@ -73,9 +72,10 @@ Run these checks and report results:
 2. Confirm `.claude/fls.md` exists and contains required fields (email, password, base URL)
 3. Confirm wrapper scripts exist at project root and are executable
 4. Confirm hook scripts in the plugin (`scripts/hooks/*.sh`) are executable
-5. Confirm no `hooks` section in `.claude/settings.json`
+5. Confirm the only hook event under `.claude/settings.json` `hooks` is `SessionStart` (other hook events belong to the plugin)
 6. Confirm wrapper scripts have the correct `FLS_PATH` (not `__FLS_PATH__`)
-7. Confirm `CLAUDE.md` contains the `FLS_PLUGIN` check
-8. Report any issues found
+7. Confirm `.claude/settings.json` contains a `SessionStart` hook that checks `$FLS_PLUGIN`
+8. Confirm `CLAUDE.md` no longer contains the legacy `FLS_PLUGIN` line (it has been superseded by the hook)
+9. Report any issues found
 
 Print a summary of everything that was done.

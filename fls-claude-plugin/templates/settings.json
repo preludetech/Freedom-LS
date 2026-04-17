@@ -16,8 +16,7 @@
       "mcp__ide__getDiagnostics",
       "Bash(ls:*)",
       "Bash(npm run tailwind_build)",
-      "Bash(sleep 3 && curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:*)",
-      "Bash(echo $FLS_PLUGIN)"
+      "Bash(sleep 3 && curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:*)"
     ],
     "deny": [
       "Read(.env)",
@@ -27,6 +26,18 @@
       "Bash(git push --force:*)",
       "Read(**/*.pem)",
       "Read(**/*.key)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$FLS_PLUGIN\" ] || printf '%s' '{\"systemMessage\":\"\\n\\n============================================================\\n\\n   !!!  FLS PLUGIN NOT LOADED  !!!\\n\\n============================================================\\n\\n   YOUR SESSION WILL NOT WORK CORRECTLY.\\n\\n   FIX:\\n     1. Quit Claude (press Ctrl+C twice)\\n     2. Run:  ./claude.sh\\n        NOT:  claude\\n\\n============================================================\\n\\n\",\"continue\":false}'"
+          }
+        ]
+      }
     ]
   }
 }
