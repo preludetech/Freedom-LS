@@ -352,3 +352,10 @@ EXPERIENCE_API_ERASURE_BLOCKERS: list[str] = []
 # import *` in the per-env settings files.
 FLS_ERASURE_DB_USER = os.environ.get("FLS_ERASURE_DB_USER", "")
 FLS_ERASURE_DB_PASSWORD = os.environ.get("FLS_ERASURE_DB_PASSWORD", "")
+
+# Optional overrides for the default DB connection's credentials. Exposed so
+# CI can point the app at a non-superuser role (required to exercise
+# migration 0002's REVOKE grants). Dev/test default to the hardcoded
+# pguser/password fallback in settings_dev.py when these are empty.
+FLS_APP_DB_USER = os.environ.get("FLS_APP_DB_USER", "")
+FLS_APP_DB_PASSWORD = os.environ.get("FLS_APP_DB_PASSWORD", "")

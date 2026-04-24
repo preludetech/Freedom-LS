@@ -27,6 +27,7 @@ from freedom_ls.experience_api.models import (
     Event,
     _enforce_event_immutability,
 )
+from freedom_ls.experience_api.tests._db_role_check import require_nonsuperuser_or_skip
 
 
 def _event_kwargs(site) -> dict:
@@ -137,14 +138,7 @@ def test_db_role_cannot_update_or_delete_event(mock_site_context) -> None:
     evt._tracker_authorised = True
     evt.save()
 
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT rolsuper FROM pg_roles WHERE rolname = current_user")
-        row = cursor.fetchone()
-        if row is not None and row[0]:
-            pytest.skip(
-                "App connection is a Postgres superuser; grants are bypassed. "
-                "Run this test against a non-superuser role."
-            )
+    require_nonsuperuser_or_skip(connection, "App connection")
 
     with pytest.raises(ProgrammingError), connection.cursor() as cursor:
         cursor.execute(
@@ -204,11 +198,7 @@ def test_app_role_cannot_update_or_delete_actor_erasure(
 ) -> None:
     a = ActorErasure.objects.create(**_actor_erasure_kwargs(mock_site_context))
 
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT rolsuper FROM pg_roles WHERE rolname = current_user")
-        row = cursor.fetchone()
-        if row is not None and row[0]:
-            pytest.skip("App connection is a Postgres superuser; grants are bypassed.")
+    require_nonsuperuser_or_skip(connection, "App connection")
 
     with pytest.raises(ProgrammingError), connection.cursor() as cursor:
         cursor.execute(

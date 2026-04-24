@@ -68,9 +68,9 @@ _db_name = branch_to_db_name(_branch) if _branch else "db"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "USER": "pguser",
+        "USER": FLS_APP_DB_USER or "pguser",  # noqa: F405
         "NAME": _db_name,
-        "PASSWORD": "password",  # pragma: allowlist secret
+        "PASSWORD": FLS_APP_DB_PASSWORD or "password",  # noqa: F405  # pragma: allowlist secret
         "HOST": "127.0.0.1",
         "PORT": "6543",
         "TEST": {"name": f"test_{_db_name}"},

@@ -19,6 +19,7 @@ from django.core.management.base import CommandError
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.experience_api.models import ActorErasure, Event
+from freedom_ls.experience_api.tests._db_role_check import require_nonsuperuser_or_skip
 
 
 def _write_event(
@@ -60,14 +61,14 @@ def _write_event(
 
 
 @pytest.fixture
-def configured_erasure_settings(settings, db):
-    """Ensure DATABASES['erasure'] has credentials so the erasure flow runs."""
-    settings.DATABASES = {**settings.DATABASES}
-    settings.DATABASES["erasure"] = {
-        **settings.DATABASES.get("erasure", {}),
-        "USER": "pguser",
-        "PASSWORD": "password",  # pragma: allowlist secret
-    }
+def configured_erasure_settings(db):
+    """No-op fixture retained for the tests that depend on ``db``.
+
+    Credentials for ``DATABASES['erasure']`` are wired from environment
+    variables in ``settings_dev.py`` with a ``pguser`` / ``password``
+    fallback — overriding them here would defeat CI's non-superuser role
+    setup.
+    """
     return
 
 
@@ -274,13 +275,7 @@ def test_erasure_role_cannot_update_actor_erasure(
 
     audit = ActorErasure._base_manager.get(target_user_id=user.id)
     connection = connections["erasure"]
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT rolsuper FROM pg_roles WHERE rolname = current_user")
-        row = cursor.fetchone()
-        if row is not None and row[0]:
-            pytest.skip(
-                "Erasure connection user is a Postgres superuser; grants are bypassed."
-            )
+    require_nonsuperuser_or_skip(connection, "Erasure connection user")
     from django.db.utils import ProgrammingError
 
     with pytest.raises(ProgrammingError), connection.cursor() as cursor:

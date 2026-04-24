@@ -57,6 +57,17 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    env:
+      # Non-superuser roles are provisioned below so that migration 0002's
+      # REVOKE UPDATE/DELETE grants actually take effect under test. The
+      # FLS_REQUIRE_NONSUPERUSER_DB guard turns the three grant-verification
+      # tests' "superuser detected — skip" into a hard failure here.
+      FLS_APP_DB_USER: fls_app
+      FLS_APP_DB_PASSWORD: fls_app_pw  # pragma: allowlist secret
+      FLS_ERASURE_DB_USER: fls_erasure_user
+      FLS_ERASURE_DB_PASSWORD: fls_erasure_pw  # pragma: allowlist secret
+      FLS_REQUIRE_NONSUPERUSER_DB: "1"
+
     steps:
       - uses: actions/checkout@v6
 
@@ -77,6 +88,18 @@ jobs:
 
       - name: Install npm dependencies
         run: npm ci
+
+      - name: Provision non-superuser DB roles
+        env:
+          PGPASSWORD: password
+        run: |
+          psql -h 127.0.0.1 -p 6543 -U pguser -d postgres <<'SQL'
+            CREATE ROLE fls_app WITH LOGIN PASSWORD 'fls_app_pw' CREATEDB NOSUPERUSER;
+            CREATE ROLE fls_erasure_role NOLOGIN;
+            CREATE ROLE fls_erasure_user WITH LOGIN PASSWORD 'fls_erasure_pw' NOSUPERUSER;
+            GRANT fls_erasure_role TO fls_erasure_user;
+            ALTER DATABASE db OWNER TO fls_app;
+          SQL
 
       - name: Run unit tests
         run: uv run pytest -m "not playwright"
@@ -99,6 +122,13 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
+    env:
+      FLS_APP_DB_USER: fls_app
+      FLS_APP_DB_PASSWORD: fls_app_pw  # pragma: allowlist secret
+      FLS_ERASURE_DB_USER: fls_erasure_user
+      FLS_ERASURE_DB_PASSWORD: fls_erasure_pw  # pragma: allowlist secret
+      FLS_REQUIRE_NONSUPERUSER_DB: "1"
 
     steps:
       - uses: actions/checkout@v6
@@ -126,6 +156,18 @@ jobs:
 
       - name: Install Playwright browsers
         run: uv run playwright install --with-deps chromium
+
+      - name: Provision non-superuser DB roles
+        env:
+          PGPASSWORD: password
+        run: |
+          psql -h 127.0.0.1 -p 6543 -U pguser -d postgres <<'SQL'
+            CREATE ROLE fls_app WITH LOGIN PASSWORD 'fls_app_pw' CREATEDB NOSUPERUSER;
+            CREATE ROLE fls_erasure_role NOLOGIN;
+            CREATE ROLE fls_erasure_user WITH LOGIN PASSWORD 'fls_erasure_pw' NOSUPERUSER;
+            GRANT fls_erasure_role TO fls_erasure_user;
+            ALTER DATABASE test_db OWNER TO fls_app;
+          SQL
 
       - name: Run Playwright tests
         run: uv run pytest -m playwright
