@@ -1,0 +1,1 @@
+For some quizzes in a course, we will need to Display questions a little bit differently. Instead of displaying each of the questions in order, we need to consider the specified questions as a question bank. We will then make a random selection from the question bank and ask the learner to answer those only.
