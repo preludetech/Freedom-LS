@@ -370,7 +370,9 @@ def form_start(request, course_slug, index):
     )
 
 
-def _get_or_create_form_progress_with_flag(user, form):
+def _get_or_create_form_progress_with_flag(
+    user: User, form: Form
+) -> tuple[FormProgress, bool]:
     """Thin wrapper over FormProgress that also reports whether a new row
     was created — needed so we emit ATTEMPTED exactly once per attempt.
     """
@@ -440,7 +442,9 @@ def form_fill_page(request, course_slug, index, page_number):
                 attempt_number=attempt_number,
                 response=posted_answer if posted_answer is not None else "",
                 duration="PT0S",
-                changed_answer=bool(previous) and previous != posted_answer,
+                # Treat only a truly-missing prior answer as "no change"; a
+                # falsy stored value (e.g. "0" or "") is still a real answer.
+                changed_answer=previous is not None and previous != posted_answer,
                 request=request,
             )
 

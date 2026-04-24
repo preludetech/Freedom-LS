@@ -100,13 +100,16 @@ def test_experience_api_resource_exists() -> None:
 # -----------------------------------------------------------------------------
 # Phase 4 — maintain_event_partitions smoke.
 @pytest.mark.django_db
-def test_maintain_event_partitions_no_op_on_unpartitioned_table(caplog) -> None:
-    import io
+def test_maintain_event_partitions_no_op_on_unpartitioned_table(caplog, capsys) -> None:
+    import logging
 
     from django.core.management import call_command
 
-    out = io.StringIO()
-    call_command("maintain_event_partitions", stdout=out)
-    # Either the log or the stdout carries "not partitioned".
-    output = out.getvalue() + "\n".join(r.getMessage() for r in caplog.records)
+    # Capture the structured no-op message from either the logger or
+    # click.echo (djclick writes the echoed message to the Click runner's
+    # stdout stream, which capsys intercepts).
+    caplog.set_level(logging.INFO, logger="freedom_ls.experience_api")
+    call_command("maintain_event_partitions")
+    captured = capsys.readouterr()
+    output = captured.out + "\n".join(r.getMessage() for r in caplog.records)
     assert "not partitioned" in output.lower()

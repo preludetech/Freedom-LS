@@ -257,9 +257,19 @@ def compose_statement(
         if validated.result is not None
         else None
     )
+    # xAPI requires both ``homePage`` and ``name`` on ``account`` IFIs so
+    # external consumers can uniquely resolve the actor from the statement
+    # alone. The IFI column format is ``"<home_page>|<user_id>"`` — split
+    # on the last ``|`` so a home page that happens to contain a pipe is
+    # preserved intact.
+    if actor_ifi:
+        home_page, _, account_name = actor_ifi.rpartition("|")
+    else:
+        home_page = ""
+        account_name = ""
     statement: dict[str, Any] = {
         "actor": {
-            "account": {"name": actor_ifi.split("|", 1)[-1] if actor_ifi else ""}
+            "account": {"homePage": home_page, "name": account_name},
         },
         "verb": {"id": verb.iri, "display": {"en-US": verb.display}},
         "object": {"definition": obj},

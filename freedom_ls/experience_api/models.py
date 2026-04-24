@@ -48,15 +48,30 @@ class _AppendOnlyQuerySet(models.QuerySet):
 class _AppendOnlyManager(SiteAwareManager):
     """Manager that returns an :class:`_AppendOnlyQuerySet`.
 
-    Composes ``super().get_queryset()`` so that any future filtering logic
-    added to :class:`SiteAwareManager` automatically propagates. The
-    resulting queryset is retyped as ``_AppendOnlyQuerySet`` so the
-    ``update()`` / ``delete()`` guards apply.
+    Delegates to ``super().get_queryset()`` so any site-filtering logic
+    in :class:`SiteAwareManager` propagates, then wraps the result in
+    an :class:`_AppendOnlyQuerySet` by chaining through ``all()``. This
+    avoids the fragile ``qs.__class__ = ...`` rebinding pattern — if
+    a future ``SiteAwareManager`` introduces its own custom QuerySet
+    subclass, the chained clone preserves its filtering while the
+    append-only guards still apply.
     """
 
-    def get_queryset(self) -> models.QuerySet:
-        qs: models.QuerySet = super().get_queryset()
-        qs.__class__ = _AppendOnlyQuerySet
+    _queryset_class = _AppendOnlyQuerySet
+
+    def get_queryset(self) -> _AppendOnlyQuerySet:
+        # ``SiteAwareManager.get_queryset`` returns a plain ``QuerySet``
+        # (possibly site-filtered). We build an ``_AppendOnlyQuerySet``
+        # with the same model/db and copy the filtering via ``query.chain``
+        # so the append-only guards apply without mutating the base
+        # queryset's class.
+        base = super().get_queryset()
+        qs: _AppendOnlyQuerySet = _AppendOnlyQuerySet(
+            model=self.model,
+            query=base.query.chain(),
+            using=base._db,
+            hints=getattr(self, "_hints", None),
+        )
         return qs
 
 

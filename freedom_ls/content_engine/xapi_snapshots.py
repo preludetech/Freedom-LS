@@ -51,16 +51,19 @@ def snapshot_form(form: Form) -> dict:
 
 def snapshot_question(question: FormQuestion) -> dict:
     """Build the ``ObjectDefinition`` dict for a FormQuestion."""
-    # Collect options if any exist on the question.
-    options = None
-    if hasattr(question, "options"):
-        option_qs = question.options.all() if hasattr(question.options, "all") else []
+    # Collect options if any exist on the question. Not every question type
+    # has an ``options`` relation — ``getattr`` with a sentinel keeps the
+    # intent explicit (missing relation → no options) without relying on
+    # nested ``hasattr`` guards.
+    options: list[dict] | None = None
+    options_manager = getattr(question, "options", None)
+    if options_manager is not None:
         option_list = [
             {
                 "id": str(opt.id),
                 "label": getattr(opt, "text", "") or getattr(opt, "label", ""),
             }
-            for opt in option_qs
+            for opt in options_manager.all()
         ]
         options = option_list or None
     return {
