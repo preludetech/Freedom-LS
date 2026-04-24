@@ -63,7 +63,6 @@ def snapshot_question(question: FormQuestion) -> dict:
             for opt in option_qs
         ]
         options = option_list or None
-    # FormQuestion has no slug field, so the snapshot does not include one.
     return {
         "question_id": question.id,
         "question_text": question.question[:512] if question.question else "",
