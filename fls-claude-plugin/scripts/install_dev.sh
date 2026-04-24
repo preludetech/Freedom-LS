@@ -7,7 +7,7 @@ npm i
 npm run tailwind_build
 
 # Set up per-branch database
-./dev_db_init.sh
+"$(dirname "$0")/dev_db_init.sh"
 
 # Apply migrations
 uv run manage.py migrate

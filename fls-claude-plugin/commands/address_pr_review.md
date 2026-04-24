@@ -5,7 +5,7 @@ Look at the code review comments on the PR and address all issues.
 Run the script to fetch all PR comments:
 
 ```
-./fetch_pr_comments.sh
+.claude/fls/scripts/fetch_pr_comments.sh
 ```
 
 If the script reports no PR found, tell the user and stop.

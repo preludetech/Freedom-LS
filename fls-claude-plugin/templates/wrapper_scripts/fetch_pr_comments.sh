@@ -6,7 +6,8 @@
 # (e.g., "submodules/Freedom-LS" for concrete implementations, or "." for FLS itself)
 FLS_PATH="__FLS_PATH__"
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-PLUGIN_DIR="$SCRIPT_DIR/$FLS_PATH/fls-claude-plugin"
+PROJECT_ROOT="$SCRIPT_DIR/../../.."
+PLUGIN_DIR="$PROJECT_ROOT/$FLS_PATH/fls-claude-plugin"
 
 # === FLS base setup ===
 "$PLUGIN_DIR/scripts/fetch_pr_comments.sh" "$@"

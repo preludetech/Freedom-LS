@@ -10,7 +10,7 @@ Act like a human QA expert. Execute the given test plan
 - To run the server: `uv run python manage.py runserver $PORT`
 - If another process is using the port you would like, then try another
 - Base url: http://127.0.0.1:$PORT/
-- Read `.claude/fls.md` for admin credentials
+- Read `.claude/fls/config.md` for admin credentials
 
 # CRITICAL
 
@@ -34,7 +34,7 @@ Before doing anything else, use playwright to open the base url and make sure it
 
 If you previously started a runserver on a port, kill it now using:
 
-`./kill_runserver.sh $PORT`
+`.claude/fls/scripts/kill_runserver.sh $PORT`
 
 This avoids port conflicts and leftover processes.
 
@@ -42,7 +42,7 @@ This avoids port conflicts and leftover processes.
 
 Find an unused PORT that we can use for running the development server.
 
-`PORT=$(./find_available_port.sh)`
+`PORT=$(.claude/fls/scripts/find_available_port.sh)`
 
 Then run the development server:
 
@@ -135,4 +135,4 @@ If anything unrelated to the current tests, or tangential to the functionality u
 
 Kill the development server you started:
 
-`./kill_runserver.sh $PORT`
+`.claude/fls/scripts/kill_runserver.sh $PORT`

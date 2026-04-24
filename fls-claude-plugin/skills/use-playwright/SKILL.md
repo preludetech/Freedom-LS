@@ -19,7 +19,7 @@ Use this skill when:
 
 ## Connection Details
 
-Read `.claude/fls.md` for the base URL and login credentials before using this skill.
+Read `.claude/fls/config.md` for the base URL and login credentials before using this skill.
 
 ## Key Rules
 
@@ -33,8 +33,8 @@ Read `.claude/fls.md` for the base URL and login credentials before using this s
 
 ## Login Flow
 
-1. Navigate to the login page (use the base URL from `.claude/fls.md`)
-2. Fill the form with the credentials from `.claude/fls.md`
+1. Navigate to the login page (use the base URL from `.claude/fls/config.md`)
+2. Fill the form with the credentials from `.claude/fls/config.md`
 3. Submit the form
 4. Verify login succeeded by checking the redirected page
 

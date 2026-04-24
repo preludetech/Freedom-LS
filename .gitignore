@@ -26,7 +26,7 @@ static/vendor/
 
 # Claude
 .claude/settings.local.json
-.claude/fls.local.md
+.claude/fls/config.local.md
 
 
 *.log

@@ -17,8 +17,8 @@ FreedomLS development conventions, skills, commands, agents, hooks, and scripts 
 Run `/fls:init` in Claude Code to bootstrap the plugin for your project. This will:
 
 1. Merge recommended permissions into `.claude/settings.json`
-2. Create `.claude/fls.md` with dev credentials
-3. Generate wrapper scripts at your project root
+2. Create `.claude/fls/config.md` with dev credentials
+3. Generate `claude.sh` at your project root and other wrapper scripts under `.claude/fls/scripts/`
 4. Validate the setup
 
 ## Structure

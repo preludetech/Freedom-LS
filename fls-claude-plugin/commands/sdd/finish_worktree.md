@@ -26,7 +26,7 @@ If there is a frontend_qa.md file for the specification this branch is for (insi
 
 # Step 3
 
-Call `./dev_db_delete.sh`
+Call `.claude/fls/scripts/dev_db_delete.sh`
 
 # Step 4
 
