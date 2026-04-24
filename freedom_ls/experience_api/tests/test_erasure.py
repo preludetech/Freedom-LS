@@ -150,6 +150,30 @@ def test_erase_actor_leaves_other_fields_untouched(
 
 
 @pytest.mark.django_db(databases=["default", "erasure"], transaction=True)
+def test_erase_actor_preserves_actor_ifi_by_design(
+    mock_site_context, settings, configured_erasure_settings
+) -> None:
+    """``actor_ifi`` is intentionally preserved post-erasure.
+
+    The IFI is the audit-trail key that lets erasure work even when
+    ``actor_user_id`` has already been NULLed (re-running erasure, partial
+    prior runs, or events written before the FK existed). Anonymising it
+    too would defeat that fallback path. The IFI itself does not contain
+    PII — it is ``site_homepage|user_id`` — and the ``user_id`` it carries
+    points at a row whose PII has been scrubbed by the regular user-erasure
+    flow. Pin this preservation here so a future "anonymise IFI too" change
+    must consciously update this test.
+    """
+    user = UserFactory()
+    settings.EXPERIENCE_API_STRICT_VALIDATION = False
+    ifi = f"https://{mock_site_context.domain}|{user.id}"
+    event = _write_event(site=mock_site_context, actor_user=user, actor_ifi=ifi)
+    call_command("erase_actor", user_id=user.id, confirm=True)
+    refreshed = Event._base_manager.get(pk=event.pk)
+    assert refreshed.actor_ifi == ifi
+
+
+@pytest.mark.django_db(databases=["default", "erasure"], transaction=True)
 def test_erase_actor_finds_events_via_ifi_when_user_id_already_null(
     mock_site_context, settings, configured_erasure_settings
 ) -> None:
