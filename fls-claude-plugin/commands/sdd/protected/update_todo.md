@@ -40,6 +40,7 @@ For each `tick:` argument:
 
 For each `add:` argument:
 
+- **Check that `<text>` is self-contained and actionable.** The reader of the todo will not have the plan, review, or prior conversation in front of them. The item must state what needs doing in enough detail that a reader can act on it without going to hunt through other documents. Reject text that is only a topic pointer (e.g. `"Resolve plan security concern: erasure DB credential storage and TLS"` or `"Address concern about migration 0002"`). If the caller gave you text like that, stop and ask them to expand it into a concrete action — typically one sentence naming the problem and one naming the decision or change required. Do not append the item until the caller supplies clearer text.
 - Locate the section heading (e.g. `## QA`) in the file. Match on the heading text the caller gave you.
 - Append a new line at the end of that section (before the next `##` heading, or at end-of-file if it's the last section). Format:
   ```
