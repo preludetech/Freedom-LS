@@ -1,4 +1,9 @@
 {% extends "_base_interface.html" %}
+{% load static %}
+
+{% block extra_alpine_components %}
+    <script defer src="{% static 'student_interface/js/alpine-components.js' %}"></script>
+{% endblock extra_alpine_components %}
 
 {% block sidebar_storage_key %}sidebar-course-toc{% endblock sidebar_storage_key %}
 
