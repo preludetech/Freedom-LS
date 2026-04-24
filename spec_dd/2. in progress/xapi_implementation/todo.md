@@ -53,7 +53,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 9. Code security review
 
 - [x] (cmd) Run `/security-review` on the pending changes
-- [ ] (user) Address any issues raised
+- [x] (user) Address any issues raised
 
 ## 10. QA
 

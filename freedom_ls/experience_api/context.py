@@ -15,6 +15,7 @@ from django.contrib.sites.models import Site
 from django.contrib.sites.requests import RequestSite
 from django.http import HttpRequest
 
+from freedom_ls.accounts.models import User
 from freedom_ls.site_aware_models.models import get_cached_site
 
 
@@ -100,7 +101,7 @@ def _site_homepage(site: Site | RequestSite | None) -> str:
     return f"https://{domain}"
 
 
-def build_actor_ifi(user, site: Site | RequestSite | None) -> str:
+def build_actor_ifi(user: User | None, site: Site | RequestSite | None) -> str:
     """Build the xAPI Inverse-Functional Identifier for ``user`` / ``site``.
 
     Shape: ``"<site_homepage>|<user.id>"``. Never email. The empty string is

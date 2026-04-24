@@ -29,6 +29,7 @@ may pass anything in ``object_definition`` / ``result`` /
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -62,7 +63,7 @@ logger = logging.getLogger(__name__)
 # Internal helpers
 
 
-def _iter_strings(value: Any):
+def _iter_strings(value: Any) -> Iterator[str]:
     """Yield every ``str`` value nested inside dicts / lists."""
     if isinstance(value, str):
         yield value

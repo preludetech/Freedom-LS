@@ -138,6 +138,14 @@ class Event(SiteAwareModel):
                 fields=["site", "object_type", "object_id", "-timestamp"],
                 name="expapi_event_site_obj_ts",
             ),
+            # Supports the IFI fallback path in ``erase_actor`` — once
+            # ``actor_user_id`` has been NULLed by a prior erasure the
+            # command falls back to ``actor_ifi LIKE '%|<user_id>'``. On
+            # large event tables the unindexed LIKE would sequential-scan.
+            models.Index(
+                fields=["site", "actor_ifi"],
+                name="expapi_event_site_ifi",
+            ),
             BrinIndex(
                 fields=["timestamp"],
                 name="expapi_event_ts_brin",
