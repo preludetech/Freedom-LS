@@ -24,7 +24,7 @@ Use this skill when:
 - **Every schema field that snapshots something is required at write time.** The paired `_id` field is the nullable pointer; the `_slug` / `_title` / `_name` snapshot is required.
 - **Verbs come from `experience_api.verbs`.** Don't invent new IRIs — reuse ADL verbs.
 - **Schemas live in the owning domain app.** `student_interface/xapi_events.py` and `student_progress/xapi_events.py` own their event types; `experience_api` contains only generic infrastructure.
-- **Never import `experience_api` from inside `experience_api` into anything other than `accounts` and `site_aware_models`.** The import-boundary test enforces this.
+- **Inside `experience_api`, only import from `accounts` and `site_aware_models`** (plus `experience_api` itself). This keeps the app portable — the import-boundary test enforces it.
 
 ## Where Things Live
 

@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from django.http import HttpRequest
 
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, Topic
 from freedom_ls.content_engine.xapi_snapshots import (
     snapshot_course,
@@ -43,7 +44,6 @@ class _CompletedTopicObj(BaseModel):
     topic_id: UUID | None = None
     topic_slug: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
     topic_title: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
-    topic_type: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
 
 
 class _CompletedTopicResult(BaseModel):
@@ -80,7 +80,7 @@ register_event_type(COMPLETED, "Topic", CompletedTopicSchema)
 
 
 def track_topic_completed(
-    actor,
+    actor: User | None,
     topic: Topic,
     *,
     request: HttpRequest | None = None,
@@ -167,7 +167,7 @@ register_event_type(PROGRESSED, "Course", ProgressedCourseSchema)
 
 
 def track_course_progressed(
-    actor,
+    actor: User | None,
     course: Course,
     *,
     trigger_event: Event,
@@ -188,7 +188,6 @@ def track_course_progressed(
     trig_slug = (
         trig_obj.get("topic_slug")
         or trig_obj.get("form_slug")
-        or trig_obj.get("question_slug")
         or trig_obj.get("course_slug")
         or ""
     )

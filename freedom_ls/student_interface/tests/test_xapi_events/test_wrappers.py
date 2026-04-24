@@ -168,8 +168,7 @@ def test_attempted_form_required_missing_raises_strict(
                 "form_id": form.id,
                 "form_slug": form.slug,
                 "form_title": form.title,
-                "form_type": form.strategy,
-                "question_count": 0,
+                "form_strategy": form.strategy,
                 "max_score": None,
             },
             context_extensions={},  # missing required `attempt_number`

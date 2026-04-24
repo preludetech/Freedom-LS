@@ -17,8 +17,6 @@ Design constraints:
 
 from __future__ import annotations
 
-from typing import Any
-
 from django.contrib.contenttypes.models import ContentType
 
 from freedom_ls.content_engine.models import (
@@ -31,30 +29,22 @@ from freedom_ls.content_engine.models import (
 )
 
 
-def _content_type_label(instance: Any) -> str:
-    """Return a short lowercase type label suitable for the ``_type`` column."""
-    return type(instance).__name__.lower()
-
-
 def snapshot_topic(topic: Topic) -> dict:
     """Build the ``ObjectDefinition`` dict for a Topic."""
     return {
         "topic_id": topic.id,
         "topic_slug": topic.slug,
         "topic_title": topic.title,
-        "topic_type": "topic",
     }
 
 
 def snapshot_form(form: Form) -> dict:
     """Build the ``ObjectDefinition`` dict for a Form."""
-    question_count = FormQuestion.objects.filter(form_page__form=form).count()
     return {
         "form_id": form.id,
         "form_slug": form.slug,
         "form_title": form.title,
-        "form_type": form.strategy,
-        "question_count": question_count,
+        "form_strategy": form.strategy,
         "max_score": None,  # scoring strategies vary; None-safe for now.
     }
 
@@ -73,11 +63,9 @@ def snapshot_question(question: FormQuestion) -> dict:
             for opt in option_qs
         ]
         options = option_list or None
-    # FormQuestion has no slug field — use its id as a stable identifier.
-    slug = getattr(question, "slug", None) or str(question.id)
+    # FormQuestion has no slug field, so the snapshot does not include one.
     return {
         "question_id": question.id,
-        "question_slug": slug,
         "question_text": question.question[:512] if question.question else "",
         "question_type": question.type,
         "options": options,

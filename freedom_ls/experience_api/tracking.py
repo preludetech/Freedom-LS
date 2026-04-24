@@ -38,6 +38,7 @@ from django.conf import settings
 from django.http import HttpRequest
 from django.utils import timezone
 
+from freedom_ls.accounts.models import User
 from freedom_ls.site_aware_models.models import _thread_locals
 
 from .context import (
@@ -275,7 +276,7 @@ def compose_statement(
 
 def track(
     *,
-    actor,
+    actor: User | None,
     verb: Verb,
     object_type: str,
     object_id: UUID | None,

@@ -46,29 +46,18 @@ class _AppendOnlyQuerySet(models.QuerySet):
 
 
 class _AppendOnlyManager(SiteAwareManager):
-    """Manager that returns an :class:`_AppendOnlyQuerySet`."""
+    """Manager that returns an :class:`_AppendOnlyQuerySet`.
+
+    Composes ``super().get_queryset()`` so that any future filtering logic
+    added to :class:`SiteAwareManager` automatically propagates. The
+    resulting queryset is retyped as ``_AppendOnlyQuerySet`` so the
+    ``update()`` / ``delete()`` guards apply.
+    """
 
     def get_queryset(self) -> models.QuerySet:
-        request = getattr(_thread_locals_module_ref(), "request", None)
-        qs: models.QuerySet = _AppendOnlyQuerySet(self.model, using=self._db)
-        if request:
-            from freedom_ls.site_aware_models.models import get_cached_site
-
-            site = get_cached_site(request)
-            qs = qs.filter(site=site)
+        qs: models.QuerySet = super().get_queryset()
+        qs.__class__ = _AppendOnlyQuerySet
         return qs
-
-
-def _thread_locals_module_ref():
-    """Return the module-level ``_thread_locals`` object.
-
-    Indirection exists so the manager can lazily import from
-    ``site_aware_models`` without triggering Django's app-loading ordering
-    issues at module-import time.
-    """
-    from freedom_ls.site_aware_models.models import _thread_locals
-
-    return _thread_locals
 
 
 class Event(SiteAwareModel):
@@ -168,6 +157,9 @@ class Event(SiteAwareModel):
     def delete(self, *args, **kwargs):
         raise EventImmutableError("Events cannot be deleted via the ORM.")
 
+    def __str__(self) -> str:
+        return f"{self.verb_display} {self.object_type} at {self.timestamp}"
+
 
 class ActorErasure(SiteAwareModel):
     """Append-only audit trail of erasure operations.
@@ -206,6 +198,9 @@ class ActorErasure(SiteAwareModel):
 
     def delete(self, *args, **kwargs):
         raise EventImmutableError("ActorErasure rows cannot be deleted.")
+
+    def __str__(self) -> str:
+        return f"Erasure of user {self.target_user_id} at {self.timestamp}"
 
 
 # ---------------------------------------------------------------------------

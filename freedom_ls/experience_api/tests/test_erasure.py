@@ -12,10 +12,10 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
+import click
 import pytest
 
 from django.core.management import call_command
-from django.core.management.base import CommandError
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.experience_api.models import ActorErasure, Event
@@ -75,7 +75,7 @@ def configured_erasure_settings(db):
 @pytest.mark.django_db(databases=["default", "erasure"], transaction=True)
 def test_erase_actor_refuses_without_confirm(mock_site_context, settings) -> None:
     user = UserFactory()
-    with pytest.raises(CommandError, match="--confirm"):
+    with pytest.raises(click.ClickException, match="--confirm"):
         call_command("erase_actor", user_id=user.id)
 
 
@@ -85,7 +85,7 @@ def test_erase_actor_refuses_when_strict_and_no_admin_user_id(
 ) -> None:
     user = UserFactory()
     settings.EXPERIENCE_API_STRICT_VALIDATION = True
-    with pytest.raises(CommandError, match="admin-user-id"):
+    with pytest.raises(click.ClickException, match="admin-user-id"):
         call_command("erase_actor", user_id=user.id, confirm=True)
 
 
@@ -226,7 +226,7 @@ def test_erase_actor_respects_configured_blockers(
     settings.EXPERIENCE_API_ERASURE_BLOCKERS = [
         "freedom_ls.experience_api.tests.test_erasure.always_block"
     ]
-    with pytest.raises(CommandError, match="blocker"):
+    with pytest.raises(click.ClickException, match="blocker"):
         call_command("erase_actor", user_id=user.id, confirm=True)
 
 

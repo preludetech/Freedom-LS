@@ -55,7 +55,7 @@ class EventAdmin(SiteAwareModelAdmin):
         """Truncated display of the object_definition dict for list view."""
         d = obj.object_definition or {}
         # Prefer the snapshot's title / slug for readability.
-        for key in ("topic_title", "form_title", "question_slug", "course_title"):
+        for key in ("topic_title", "form_title", "question_text", "course_title"):
             if key in d:
                 return str(d[key])[:80]
         return str(d)[:80]

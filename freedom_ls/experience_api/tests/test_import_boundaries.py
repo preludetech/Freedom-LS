@@ -20,6 +20,9 @@ IMPORT_PATTERN = re.compile(r"(?:from|import)\s+freedom_ls\.(?P<app>[a-z_]+)")
 def test_experience_api_imports_only_allowed_apps() -> None:
     offenders: list[tuple[Path, int, str, str]] = []
     for path in APP_ROOT.rglob("*.py"):
+        # Skip test files: they may import any app for fixtures/factories.
+        # The portability boundary applies only to production code — the code
+        # that would be copied into another Django project.
         if "tests" in path.parts:
             continue
         for lineno, line in enumerate(

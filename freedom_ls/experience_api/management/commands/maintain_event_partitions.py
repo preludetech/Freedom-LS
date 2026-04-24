@@ -31,6 +31,10 @@ class Command(BaseCommand):
         parser.add_argument("--dry-run", action="store_true")
 
     def handle(self, *args, **options) -> None:
+        # TODO: implement activation when the events table becomes partitioned
+        # (see spec §"Partition maintenance"). Until then, this command is a
+        # structured no-op so operator automation (cron) can be wired now and
+        # does not need to change when partitioning lands.
         lookahead = options["lookahead_months"]
         retention = options["retention_months"]
         drop_old = options["drop_old"]
@@ -48,9 +52,6 @@ class Command(BaseCommand):
             self.stdout.write(message)
             return
 
-        # Future-activation implementation goes here. The scaffolding keeps
-        # the CLI shape stable so automation does not need to change when
-        # partition activation lands.
         logger.info(
             "maintain_event_partitions: partitioned-table branch not "
             "yet implemented (lookahead=%s, retention=%s, drop=%s, dry=%s)",

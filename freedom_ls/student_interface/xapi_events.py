@@ -17,12 +17,14 @@ Each event type has:
 
 from __future__ import annotations
 
-from uuid import UUID
+from datetime import datetime
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from django.http import HttpRequest
 
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, Form, FormQuestion, Topic
 from freedom_ls.content_engine.xapi_snapshots import (
     snapshot_course,
@@ -66,7 +68,6 @@ class _ViewedTopicObj(BaseModel):
     topic_id: UUID | None = None
     topic_slug: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
     topic_title: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
-    topic_type: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
 
 
 class _ViewedTopicCtx(BaseModel):
@@ -91,7 +92,7 @@ register_event_type(VIEWED, "Topic", ViewedTopicSchema)
 
 
 def track_topic_viewed(
-    actor,
+    actor: User | None,
     topic: Topic,
     *,
     request: HttpRequest | None = None,
@@ -135,8 +136,7 @@ class _AttemptedFormObj(BaseModel):
     form_id: UUID | None = None
     form_slug: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
     form_title: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
-    form_type: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
-    question_count: int
+    form_strategy: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
     max_score: int | None = None
 
 
@@ -165,7 +165,7 @@ register_event_type(ATTEMPTED, "Form", AttemptedFormSchema)
 
 
 def track_form_attempted(
-    actor,
+    actor: User | None,
     form: Form,
     *,
     request: HttpRequest | None = None,
@@ -208,7 +208,6 @@ def track_form_attempted(
 class _AnsweredQuestionObj(BaseModel):
     model_config = ConfigDict(extra="forbid")
     question_id: UUID | None = None
-    question_slug: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
     question_text: str = Field(max_length=STRING_EXTENSION_MAX_LENGTH)
     question_type: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
     options: list | None = Field(default=None)
@@ -250,12 +249,12 @@ register_event_type(ANSWERED, "Question", AnsweredQuestionSchema)
 
 
 def track_question_answered(
-    actor,
+    actor: User | None,
     question: FormQuestion,
     *,
     form_attempt_id: UUID,
     attempt_number: int,
-    response,
+    response: str | list,
     duration: str,
     request: HttpRequest | None = None,
     strict: bool | None = None,
@@ -263,7 +262,7 @@ def track_question_answered(
     score_raw: int | None = None,
     score_max: int | None = None,
     changed_answer: bool = False,
-    correct_answer=None,
+    correct_answer: str | list | None = None,
 ) -> Event | None:
     form = walk_question_to_form(question)
     course = walk_form_to_course(form) if form else None
@@ -349,7 +348,7 @@ register_event_type(COMPLETED, "Form", CompletedFormSchema)
 
 
 def track_form_completed(
-    actor,
+    actor: User | None,
     form: Form,
     *,
     request: HttpRequest | None = None,
@@ -449,20 +448,18 @@ register_event_type(REGISTERED, "Course", RegisteredCourseSchema)
 
 
 def track_course_registered(
-    actor,
+    actor: User | None,
     course: Course,
     *,
     request: HttpRequest | None = None,
     strict: bool | None = None,
     registered_by: str = "self",
-    registered_by_user=None,
+    registered_by_user: User | None = None,
     cohort: Cohort | None = None,
     registration: UserCourseRegistration | None = None,
-    start_date=None,
-    end_date=None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
 ) -> Event | None:
-    from uuid import uuid4
-
     registration = registration or resolve_user_course_registration(actor, course)
     cohort = cohort or resolve_cohort_for_user(actor)
     # registration_id_snapshot is tracker-assigned and survives deletion of
