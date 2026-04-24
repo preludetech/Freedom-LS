@@ -6,14 +6,17 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 - [x] (user) Write the idea file in this directory
 - [x] (cmd) Optionally run `/improve_idea` to research and refine the idea
-- [ ] (user) Review the refined idea and edit as needed
+- [x] (user) Review the refined idea and edit as needed
 
 ## 2. Spec
 
-- [ ] (cmd) Run `/spec_from_idea` to generate the spec
-- [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/spec_review` to sanity-check the spec
-- [ ] (user) Address any issues raised by the review
+- [x] (cmd) Run `/spec_from_idea` to generate the spec
+- [x] (user) Review the spec carefully and edit where needed
+- [x] (cmd) Run `/spec_review` to sanity-check the spec
+- [x] (user) Address any issues raised by the review
+- [x] (Spec|user) Decide how to handle form-attempt identity for (ANSWERED, Question): FormProgress.id, a new tracker-issued UUID, or caller-supplied UUID
+- [x] (Spec|user) Decide how to handle per-site IP-capture toggle (global setting only for now, or add a per-site override model in scope)
+- [x] (Spec|user) Decide how to handle the `Event` model redeclaring `SiteAwareModel`'s `site` FK to null/SET_NULL — confirm the override is acceptable or choose an alternative
 
 ## 3. Threat model
 
@@ -37,7 +40,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 7. Worktree
 
-- [ ] (cmd) Run `/start_worktree` to create an isolated worktree for this spec
+- [x] (cmd) Run `/start_worktree` to create an isolated worktree for this spec
 
 ## 8. Implementation
 
