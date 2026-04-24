@@ -66,7 +66,7 @@ def _make_request(
 @pytest.mark.django_db
 class TestHtmxNavigation:
     def test_non_htmx_returns_full_page(self, mock_site_context: None) -> None:
-        """Non-HTMX request renders the full page template."""
+        """Non-HTMX request renders the full page template with breadcrumb content."""
         request = _make_request(is_htmx=False)
         response = panel_framework_view(
             config=CONFIG,
@@ -76,10 +76,12 @@ class TestHtmxNavigation:
             url_name=URL_NAME,
         )
         assert response.status_code == 200
-        # Full page render uses the template, so it will have the base HTML structure
         content = response.content.decode()
-        assert "sidebar-nav" in content
-        assert "breadcrumbs" in content
+        assert 'id="sidebar-nav"' in content
+        # Breadcrumbs should contain the current-page label, not just an empty nav.
+        assert 'aria-label="Breadcrumb"' in content
+        assert 'aria-current="page"' in content
+        assert "Stubs" in content
 
     def test_htmx_navigation_returns_oob_fragments(
         self, mock_site_context: None

@@ -66,4 +66,3 @@ Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` w
 - `tick:"Run `/start_worktree` to create an isolated worktree for this spec"`
 
 No new items to add.
-

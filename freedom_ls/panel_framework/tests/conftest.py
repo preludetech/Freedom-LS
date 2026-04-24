@@ -102,7 +102,13 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
 
 @pytest.fixture(autouse=True)
 def _use_panel_test_urls(settings: pytest_django.fixtures.SettingsWrapper) -> None:
-    """Point Django URL resolution at panel_framework's own test URLs."""
+    """Point Django URL resolution at panel_framework's own test URLs.
+
+    Applied autouse so every test in panel_framework/tests/ uses the isolated
+    test URL config. The panel_framework app must not depend on any consumer
+    app's URLs, so tests in this directory must only reverse URLs that live in
+    `root_urls.py`.
+    """
     settings.ROOT_URLCONF = "freedom_ls.panel_framework.tests.root_urls"
 
 

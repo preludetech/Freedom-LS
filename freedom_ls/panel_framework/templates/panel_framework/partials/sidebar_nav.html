@@ -28,6 +28,9 @@
                 </div>
                 <ul x-show="expanded" x-collapse class="ml-4 mt-1 list-none" x-cloak>
                     {% if item.instance_label %}
+                    {# instance_label is only populated for the currently viewed instance, #}
+                    {# so aria-current="page" is always correct here. The sidebar is #}
+                    {# OOB-swapped on every navigation, keeping this in sync. #}
                     <li>
                         <a href="{{ item.instance_url }}"
                            hx-get="{{ item.instance_url }}"
