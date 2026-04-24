@@ -60,3 +60,12 @@ After all batches are complete:
 ## Branch Safety
 
 Never start implementation on main/master branch without explicit user consent.
+
+## Step 4: Update the todo list
+
+Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+
+- `<todo-path>`: the `todo.md` in the spec directory
+- `tick:"Run `/implement_plan` to execute the implementation plan"`
+
+No new items to add.

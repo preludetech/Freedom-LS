@@ -36,3 +36,12 @@ Look at the research output and start refining the idea.
 ## Note
 
 The idea file should remain fairly high level. It should not be a full specification.
+
+## Step 4: Update the todo list
+
+Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+
+- `<todo-path>`: the `todo.md` in the same directory as the idea file
+- `tick:"Optionally run `/improve_idea` to research and refine the idea"`
+
+No new items to add.

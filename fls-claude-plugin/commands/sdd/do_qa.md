@@ -136,3 +136,13 @@ If anything unrelated to the current tests, or tangential to the functionality u
 Kill the development server you started:
 
 `.claude/fls/scripts/kill_runserver.sh $PORT`
+
+## Step 12: Update the todo list
+
+Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+
+- `<todo-path>`: the `todo.md` in the spec directory (same directory as `qa_report.md`)
+- `tick:"Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)"`
+- For each failing test recorded in `qa_report.md`, pass one `add:"QA|user + cmd|Fix QA bug: <short title from the report> (TDD — failing test first, then fix)"`.
+- For each test that was skipped because of missing data, pass one `add:"QA|cmd|Use the qa-data-helper agent to create missing data for <short description>, then re-run `/do_qa`"`.
+- If no bugs were found and no tests were skipped, omit `add:`.

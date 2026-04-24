@@ -38,6 +38,14 @@ For each problem you find:
 
 Return to Step 1 and make sure no new problems were introduced. Repeat the whole process until the spec has no unaddressed problems
 
+# Step 4: Update the todo list
+
+Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+
+- `<todo-path>`: the `todo.md` in the same directory as the spec file
+- `tick:"Run `/spec_review` to sanity-check the spec"`
+- For each unresolved question you raised that the user still needs to decide, pass `add:"Spec|user|Decide how to handle <short description of the question>"`. If everything was resolved during the review, omit `add:`.
+
 # Out of scope
 
 - Do not add technical implementation details to the spec. Just check the ones already included.

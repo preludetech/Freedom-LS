@@ -42,3 +42,12 @@ Create a specification document based on the idea. Include:
 - Why different features/functionality matter
 - If decisions were made, why were they made
 - Success criteria
+
+# Step 4: Update the todo list
+
+Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+
+- `<todo-path>`: the `todo.md` in the same directory as the spec file
+- `tick:"Run `/spec_from_idea` to generate the spec"`
+
+No new items to add.

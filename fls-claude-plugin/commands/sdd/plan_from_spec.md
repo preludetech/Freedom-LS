@@ -68,3 +68,11 @@ Create subagents to review the plan and frontend_qa plan against the spec file. 
 
 ### IMPORTANT
 The plan.md file MUST NOT say that the frontend_qa should be run. We will run that separately.
+
+# Step 7: Update the todo list
+
+Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+
+- `<todo-path>`: the `todo.md` in the same directory as the spec file
+- `tick:"Run `/plan_from_spec` to generate the implementation plan and QA plan"`
+- If you did **not** create a `3. frontend_qa.md` (because the feature has no frontend changes), also pass `add:"QA|user|No QA needed — feature has no frontend changes"`. Otherwise omit `add:`.
