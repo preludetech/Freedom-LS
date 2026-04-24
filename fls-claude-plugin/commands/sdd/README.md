@@ -6,12 +6,15 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 
 1. **Idea** → write a rough idea file, optionally refine it.
 2. **Spec** → turn the idea into a specification, review it, threat-model it.
-3. **Plan** → turn the spec into an implementation plan and a QA plan, then security-review the plan.
+3. **Plan** → turn the spec into an implementation plan and a QA plan, then security-review the plan, then structure-review the plan.
 4. **Worktree** → set up an isolated worktree for the work.
 5. **Implement** → execute the plan.
 6. **Code security review** → review the code diff for security issues.
 7. **QA** → run the QA plan.
-8. **Ship** → PR, address feedback, finish worktree.
+8. **Refresh the app map** → if structure changed, re-run `/app_map`.
+9. **Ship** → PR, address feedback, finish worktree.
+
+> **One-time setup:** before the first SDD run on a project, run `/app_map` to generate `docs/app_structure.md`. The structure review step compares proposed plans against that diagram.
 
 ---
 
@@ -44,6 +47,14 @@ Run `/plan_security_review` to review the implementation plan for insecure desig
 
 This complements `/threat-model` (which reviews the spec) and `/security-review` (which reviews the code diff).
 
+## Step 3.6: Plan structure review
+
+Run `/plan_structure_review` to check whether the plan introduces any new cross-app dependencies. The command reads `docs/app_structure.md` (the authoritative dependency diagram) and compares it against the imports the plan implies. Any new edge becomes a `> **Structure concern:**` callout that the user must resolve — either by accepting the edge (with a rationale, and regenerating the diagram after implementation) or by restructuring to avoid it.
+
+This complements `/plan_security_review`: same callout-and-approval pattern, different concern. Catching structural drift at plan time is cheaper than unpicking it after the code is written.
+
+If `docs/app_structure.md` doesn't exist yet, run `/app_map` first. `/app_map` is a general command (not SDD-specific) that walks `apps.py`-containing directories, extracts cross-app `ImportFrom` edges via `ast`, and writes a mermaid diagram plus a dependency table. Re-run it whenever an approved structural change lands, then commit the updated file.
+
 ## Step 4: Set up a worktree
 
 Run `/start_worktree` to create an isolated worktree for this spec. All implementation and QA work happens here.
@@ -66,7 +77,13 @@ Run `/do_qa` to execute the QA plan.
 - If bugs were detected, fix them using TDD — write a failing test that reproduces the bug, then implement the fix. *(A dedicated bugfix command is still TODO.)*
 - If QA fixes change code significantly, re-run `/security-review`.
 
-## Step 8: Ship it
+## Step 8: Refresh the app map
+
+If `/plan_structure_review` surfaced any structure concerns that were accepted (i.e. the plan intentionally introduced new cross-app edges), or if implementation ended up adding, removing, or renaming apps, re-run `/app_map` to regenerate `docs/app_structure.md`. Commit the updated file alongside the feature so the diagram stays the authoritative reference for the next structure review.
+
+If no structural change happened, skip this step.
+
+## Step 9: Ship it
 
 1. Open a pull request.
 2. Run `/address_pr_review` to work through review feedback.
