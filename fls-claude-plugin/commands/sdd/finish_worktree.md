@@ -28,11 +28,7 @@ If there is a frontend_qa.md file for the specification this branch is for (insi
 
 Call `.claude/fls/scripts/dev_db_delete.sh`
 
-# Step 4
-
-Move the current spec directory from `in progress` to `done` and name them appropriately with the current data and time
-
-# Step 5: Update the todo list
+# Step 4: Update the todo list
 
 Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
 
@@ -40,3 +36,17 @@ Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` w
 - `tick:"Run `/finish_worktree` to clean up the worktree"`
 
 No new items to add.
+
+# Step 5
+
+Move the current spec directory from `in progress` to `done` and name them appropriately with the current data and time
+
+The spec directory should be named like this:
+
+```
+yyyy-mm-dd_HH:MM_{spec title}
+```
+
+# Step 6: Commit
+
+Make a commit with the latest changes.
