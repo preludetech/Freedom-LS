@@ -15,7 +15,7 @@ Use this checklist before every production deployment to ensure the system is pr
 
 ## 2. Database Security
 
-- [ ] Application uses a dedicated database user (not the superuser). **Required** — `experience_api` migration 0002 issues `REVOKE UPDATE, DELETE ON experience_api_event` against the application role to make the audit log immutable. Superusers bypass all grants, so running the app as a superuser silently defeats this protection and leaves the event log mutable in production.
+- [ ] Application uses a dedicated database user (not the superuser). **Required** — `experience_api` migration 0002 issues `REVOKE UPDATE, DELETE ON experience_api_event` against the application role to make the audit log immutable. Superusers bypass all grants, so running the app as a superuser silently defeats this protection and leaves the event log mutable in production. Local pytest and CI both exercise this by running against the non-superuser `fls_app` role (`pyproject.toml` → `[tool.pytest.ini_options].env`); run `fls-claude-plugin/scripts/dev_db_init.sh` once after cloning to provision the role.
 - [ ] Database user has only the minimum required privileges
 - [ ] A separate `fls_erasure_role` exists (created by `experience_api` migration 0002) and is held **only** by the dedicated erasure login user configured via `FLS_ERASURE_DB_USER` / `FLS_ERASURE_DB_PASSWORD`. The application user must not be a member of `fls_erasure_role`.
 - [ ] Database password is strong (32+ characters, randomly generated)

@@ -57,17 +57,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    env:
-      # Non-superuser roles are provisioned below so that migration 0002's
-      # REVOKE UPDATE/DELETE grants actually take effect under test. The
-      # FLS_REQUIRE_NONSUPERUSER_DB guard turns the three grant-verification
-      # tests' "superuser detected — skip" into a hard failure here.
-      FLS_APP_DB_USER: fls_app
-      FLS_APP_DB_PASSWORD: fls_app_pw  # pragma: allowlist secret
-      FLS_ERASURE_DB_USER: fls_erasure_user
-      FLS_ERASURE_DB_PASSWORD: fls_erasure_pw  # pragma: allowlist secret
-      FLS_REQUIRE_NONSUPERUSER_DB: "1"
-
     steps:
       - uses: actions/checkout@v6
 
@@ -89,6 +78,9 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      # Non-superuser roles must exist before pytest runs: pytest-env sets
+      # FLS_APP_DB_USER=fls_app etc (see pyproject.toml) so that migration
+      # 0002's REVOKE UPDATE/DELETE grants actually take effect under test.
       - name: Provision non-superuser DB roles
         env:
           PGPASSWORD: password
@@ -122,13 +114,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
-    env:
-      FLS_APP_DB_USER: fls_app
-      FLS_APP_DB_PASSWORD: fls_app_pw  # pragma: allowlist secret
-      FLS_ERASURE_DB_USER: fls_erasure_user
-      FLS_ERASURE_DB_PASSWORD: fls_erasure_pw  # pragma: allowlist secret
-      FLS_REQUIRE_NONSUPERUSER_DB: "1"
 
     steps:
       - uses: actions/checkout@v6

@@ -27,7 +27,7 @@ from freedom_ls.experience_api.models import (
     Event,
     _enforce_event_immutability,
 )
-from freedom_ls.experience_api.tests._db_role_check import require_nonsuperuser_or_skip
+from freedom_ls.experience_api.tests._db_role_check import require_nonsuperuser
 
 
 def _event_kwargs(site) -> dict:
@@ -141,7 +141,7 @@ def test_db_role_cannot_update_or_delete_event(mock_site_context) -> None:
     evt._tracker_authorised = True
     evt.save()
 
-    require_nonsuperuser_or_skip(connection, "App connection")
+    require_nonsuperuser(connection, "App connection")
 
     # Wrap each statement in its own savepoint — a failed permission check
     # aborts the Postgres transaction; without the savepoint the second
@@ -213,7 +213,7 @@ def test_app_role_cannot_update_or_delete_actor_erasure(
 ) -> None:
     a = ActorErasure.objects.create(**_actor_erasure_kwargs(mock_site_context))
 
-    require_nonsuperuser_or_skip(connection, "App connection")
+    require_nonsuperuser(connection, "App connection")
 
     with (
         pytest.raises(ProgrammingError),

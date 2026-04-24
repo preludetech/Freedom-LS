@@ -19,7 +19,7 @@ from django.core.management import call_command
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.experience_api.models import ActorErasure, Event
-from freedom_ls.experience_api.tests._db_role_check import require_nonsuperuser_or_skip
+from freedom_ls.experience_api.tests._db_role_check import require_nonsuperuser
 
 
 def _write_event(
@@ -275,7 +275,7 @@ def test_erasure_role_cannot_update_actor_erasure(
 
     audit = ActorErasure._base_manager.get(target_user_id=user.id)
     connection = connections["erasure"]
-    require_nonsuperuser_or_skip(connection, "Erasure connection user")
+    require_nonsuperuser(connection, "Erasure connection user")
     from django.db.utils import ProgrammingError
 
     with pytest.raises(ProgrammingError), connection.cursor() as cursor:

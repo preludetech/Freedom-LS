@@ -33,12 +33,12 @@ psql_cmd -tc "SELECT 1 FROM pg_database WHERE datname = '${TEST_DB_NAME}'" | gre
     psql_cmd -c "CREATE DATABASE ${TEST_DB_NAME};"
 psql_cmd -c "GRANT ALL PRIVILEGES ON DATABASE ${TEST_DB_NAME} TO pguser;"
 
-# Non-superuser roles — optional for local dev, required in CI so that
-# migration 0002's REVOKE UPDATE/DELETE grants actually take effect under
-# test. These roles are inert when the default (pguser) credentials are
-# used; they only get exercised when a developer opts in by setting
-# FLS_APP_DB_USER / FLS_ERASURE_DB_USER in their environment (mirroring
-# what .github/workflows/tests.yml does in CI).
+# Non-superuser roles — required for `uv run pytest`. pytest-env sets
+# FLS_APP_DB_USER=fls_app / FLS_ERASURE_DB_USER=fls_erasure_user (see
+# pyproject.toml) so that migration 0002's REVOKE UPDATE/DELETE grants
+# actually take effect under test. The application/runserver flow still
+# connects as the default pguser superuser unless the developer
+# explicitly exports the env vars for an interactive shell.
 psql_cmd <<'SQL'
 DO $$
 BEGIN
