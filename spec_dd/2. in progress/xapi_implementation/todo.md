@@ -47,7 +47,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 8. Implementation
 
-- [ ] (cmd) Run `/implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 
 ## 9. Code security review

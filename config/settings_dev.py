@@ -75,6 +75,20 @@ DATABASES = {
         "PORT": "6543",
         "TEST": {"name": f"test_{_db_name}"},
     },
+    # Erasure connection — same DB, distinct role in production.  In dev/test
+    # the env vars are typically unset so we fall back to the default pguser
+    # credentials; the erase_actor command's internal check treats empty
+    # credentials as an explicit refuse so production deployments cannot
+    # accidentally run without the dedicated role.
+    "erasure": {
+        "ENGINE": "django.db.backends.postgresql",
+        "USER": FLS_ERASURE_DB_USER or "pguser",  # noqa: F405
+        "NAME": _db_name,
+        "PASSWORD": FLS_ERASURE_DB_PASSWORD or "password",  # noqa: F405
+        "HOST": "127.0.0.1",
+        "PORT": "6543",
+        "TEST": {"name": f"test_{_db_name}", "MIRROR": "default"},
+    },
 }
 
 # Give each worktree a unique session cookie so branches don't invalidate each other's sessions
@@ -92,3 +106,11 @@ FREEDOMLS_PERMISSIONS_MODULES = {
 }
 
 FORCE_SITE_NAME = "DemoDev"
+
+
+# experience_api — dev/test defaults (strict validation, capture IP)
+EXPERIENCE_API_STRICT_VALIDATION = True
+EXPERIENCE_API_CAPTURE_IP = True
+EXPERIENCE_API_ERASURE_BLOCKERS = [
+    "freedom_ls.student_management.xapi_erasure.has_active_registrations",
+]
