@@ -66,6 +66,8 @@ jobs:
       DB_NAME: ci
       DB_USER: ci
       DB_PASSWORD: ci  # pragma: allowlist secret
+      FLS_ERASURE_DB_USER: fls_erasure_user
+      FLS_ERASURE_DB_PASSWORD: fls_erasure_pw  # pragma: allowlist secret
       HSTS_INCLUDE_SUBDOMAINS: "True"
       HSTS_PRELOAD: "True"
     steps:
