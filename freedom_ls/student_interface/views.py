@@ -459,9 +459,12 @@ def form_fill_page(request, course_slug, index, page_number):
 
         # Emit COMPLETED Form once the whole form is submitted.
         scores = getattr(form_progress, "scores", {}) or {}
+        # ``FormProgress.passed()`` raises ValueError when the form has no
+        # ``quiz_pass_percentage`` configured (not all forms are quizzes).
+        # In that case there is no pass/fail concept to record on the event.
         try:
             passed = form_progress.passed()
-        except (ValueError, AttributeError):
+        except ValueError:
             passed = None
         completed_event = track_form_completed(
             request.user,

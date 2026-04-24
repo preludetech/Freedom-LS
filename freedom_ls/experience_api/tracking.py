@@ -40,10 +40,10 @@ from django.http import HttpRequest
 from django.utils import timezone
 
 from freedom_ls.accounts.models import User
-from freedom_ls.site_aware_models.models import _thread_locals
 
 from .context import (
     build_actor_ifi,
+    get_current_request,
     get_current_site_and_domain,
     get_ip_address,
     get_user_agent,
@@ -305,7 +305,7 @@ def track(
     when permissive-mode validation drops the event.
     """
     # 1. Resolve request.
-    req = request or getattr(_thread_locals, "request", None)
+    req = request or get_current_request()
 
     # 2. Resolve site / domain / session / UA / IP.
     site, site_domain = get_current_site_and_domain(req)

@@ -16,7 +16,19 @@ from django.contrib.sites.requests import RequestSite
 from django.http import HttpRequest
 
 from freedom_ls.accounts.models import User
-from freedom_ls.site_aware_models.models import get_cached_site
+from freedom_ls.site_aware_models.models import _thread_locals, get_cached_site
+
+
+def get_current_request() -> HttpRequest | None:
+    """Return the request stashed on the site-aware thread-local, if any.
+
+    Encapsulates the dependency on the ``_thread_locals`` private symbol in
+    one place. Callers that have an explicit request should pass it
+    through directly rather than reading the thread-local — this helper
+    is the fall-back for code paths invoked outside an HTTP request
+    cycle.
+    """
+    return getattr(_thread_locals, "request", None)
 
 
 def get_current_site_and_domain(

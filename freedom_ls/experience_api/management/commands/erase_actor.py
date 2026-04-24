@@ -29,9 +29,10 @@ import socket
 import djclick as click
 
 from django.conf import settings
+from django.contrib.sites.models import Site
 from django.db import connections, transaction
 
-from freedom_ls.experience_api.models import ActorErasure
+from freedom_ls.experience_api.models import ActorErasure, Event
 
 
 def _check_blockers(user_id: int) -> None:
@@ -88,12 +89,46 @@ def _check_erasure_connection() -> None:
         )
 
 
+def _resolve_audit_site(user_id: int) -> Site:
+    """Pick a Site to attach to the ``ActorErasure`` audit row.
+
+    ``ActorErasure`` extends ``SiteAwareModel`` which auto-assigns ``site``
+    from a thread-local request — but management commands run with no
+    request, so we must resolve the site explicitly or ``save()`` fails on
+    the NOT NULL FK.
+
+    Erasure is intentionally cross-site (the SQL UPDATE has no site
+    filter), so the audit-row's site is somewhat arbitrary. We prefer a
+    site that actually has events for this user (so the row sits next to
+    the data it audits). If none exists — e.g. erasure run for a user
+    whose IFI never produced events — we fall back to ``Site.objects.first()``.
+    Raises ``ClickException`` if no Site exists at all.
+    """
+    matching_event = (
+        Event._base_manager.filter(actor_user_id=user_id).select_related("site").first()
+    )
+    if matching_event is not None and matching_event.site is not None:
+        return matching_event.site
+    fallback = Site.objects.order_by("id").first()
+    if fallback is None:
+        raise click.ClickException(
+            "Cannot write ActorErasure audit row: no Site exists in the "
+            "database. ActorErasure.site is non-nullable."
+        )
+    return fallback
+
+
 def _perform_erasure(user_id: int, admin_user_id: int | None) -> int:
     token = secrets.token_hex(8)
     erased_email = f"erased-{token}@example.invalid"
     erased_name = f"Erased actor {token}"
     os_user = getpass.getuser()
     hostname = socket.gethostname()
+
+    # Resolve the audit-row site BEFORE the UPDATE — afterwards the events
+    # have ``actor_user_id = NULL`` and the user-based lookup can no longer
+    # find the originating site.
+    audit_site = _resolve_audit_site(user_id)
 
     connection = connections["erasure"]
     ifi_suffix = f"|{user_id}"
@@ -108,6 +143,9 @@ def _perform_erasure(user_id: int, admin_user_id: int | None) -> int:
             # Single bulk UPDATE — anonymises every matching row in one
             # round-trip. cursor.rowcount gives the authoritative count
             # inside the same transaction, so the audit row can't drift.
+            # NOTE: this UPDATE intentionally has no ``site_id`` filter —
+            # GDPR erasure is cross-site by design (one user, all sites).
+            # Do not add a site predicate without explicit product sign-off.
             cursor.execute(
                 "UPDATE experience_api_event "
                 "SET actor_email = %s, "
@@ -129,8 +167,10 @@ def _perform_erasure(user_id: int, admin_user_id: int | None) -> int:
 
         # Write the audit row. The erasure role has no UPDATE/DELETE
         # grants on actor_erasure — only INSERT — so this row is
-        # likewise append-only.
+        # likewise append-only. ``site`` is passed explicitly because no
+        # thread-local request exists in a management-command context.
         ActorErasure.objects.using("erasure").create(
+            site=audit_site,
             target_user_id=user_id,
             erased_token=token,
             event_count=event_count,

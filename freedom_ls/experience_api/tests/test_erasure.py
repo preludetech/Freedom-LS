@@ -283,6 +283,44 @@ def test_erase_actor_writes_audit_row(
 
 
 @pytest.mark.django_db(databases=["default", "erasure"], transaction=True)
+def test_erase_actor_works_without_thread_local_site(
+    mock_site_context, settings, configured_erasure_settings
+) -> None:
+    """Management commands run with no HTTP request and therefore no
+    thread-local site. ``ActorErasure`` extends ``SiteAwareModel`` which
+    auto-assigns site from a thread-local request — this test pins that
+    the command resolves a site explicitly so the audit-row create() does
+    not fail with an IntegrityError on the NOT NULL site FK.
+
+    The ``mock_site_context`` fixture sets up the thread-local for the
+    *factory* calls (UserFactory needs a site to write the user). We then
+    tear the thread-local down before invoking ``call_command`` to
+    simulate the production management-command code path.
+    """
+    from freedom_ls.site_aware_models.models import _thread_locals
+
+    user = UserFactory()
+    settings.EXPERIENCE_API_STRICT_VALIDATION = False
+    ifi = f"https://{mock_site_context.domain}|{user.id}"
+    _write_event(site=mock_site_context, actor_user=user, actor_ifi=ifi)
+
+    # Now clear the thread-local request so the command runs with no
+    # site context — the production scenario the bug-fix targets.
+    had_request = hasattr(_thread_locals, "request")
+    old_request = getattr(_thread_locals, "request", None) if had_request else None
+    if had_request:
+        delattr(_thread_locals, "request")
+    try:
+        call_command("erase_actor", user_id=user.id, confirm=True)
+    finally:
+        if had_request:
+            _thread_locals.request = old_request
+
+    audit = ActorErasure._base_manager.get(target_user_id=user.id)
+    assert audit.site_id == mock_site_context.id
+
+
+@pytest.mark.django_db(databases=["default", "erasure"], transaction=True)
 def test_erasure_role_cannot_update_actor_erasure(
     mock_site_context, settings, configured_erasure_settings
 ) -> None:
