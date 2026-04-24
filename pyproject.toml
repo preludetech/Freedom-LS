@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "django>=6.0,<6.1",
+    "django>=6.0.4,<6.1",
     "django-allauth[headless]>=65.14.0",
     "django-click>=2.4.1",
     "django-cotton>=2.1.3",
@@ -27,7 +27,7 @@ dependencies = [
     "django-ace>=1.43.5",
     "argon2-cffi>=25.1.0",
     "django-axes>=8.3.1",
-    "cryptography>=46.0.6",
+    "cryptography>=46.0.7",
     "pyjwt>=2.12.0",
     "sqlparse>=0.5.4",
     "urllib3>=2.6.3",
