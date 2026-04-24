@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from django.db import connection
+from django.db import connection, transaction
 from django.db.utils import ProgrammingError
 
 from freedom_ls.experience_api.exceptions import EventImmutableError
@@ -140,12 +140,24 @@ def test_db_role_cannot_update_or_delete_event(mock_site_context) -> None:
 
     require_nonsuperuser_or_skip(connection, "App connection")
 
-    with pytest.raises(ProgrammingError), connection.cursor() as cursor:
+    # Wrap each statement in its own savepoint — a failed permission check
+    # aborts the Postgres transaction; without the savepoint the second
+    # assertion hits "current transaction is aborted" instead of the
+    # expected ProgrammingError.
+    with (
+        pytest.raises(ProgrammingError),
+        transaction.atomic(),
+        connection.cursor() as cursor,
+    ):
         cursor.execute(
             "UPDATE experience_api_event SET verb_display = 'x' WHERE id = %s",
             [str(evt.pk)],
         )
-    with pytest.raises(ProgrammingError), connection.cursor() as cursor:
+    with (
+        pytest.raises(ProgrammingError),
+        transaction.atomic(),
+        connection.cursor() as cursor,
+    ):
         cursor.execute("DELETE FROM experience_api_event WHERE id = %s", [str(evt.pk)])
 
 
@@ -200,12 +212,20 @@ def test_app_role_cannot_update_or_delete_actor_erasure(
 
     require_nonsuperuser_or_skip(connection, "App connection")
 
-    with pytest.raises(ProgrammingError), connection.cursor() as cursor:
+    with (
+        pytest.raises(ProgrammingError),
+        transaction.atomic(),
+        connection.cursor() as cursor,
+    ):
         cursor.execute(
             "UPDATE experience_api_actorerasure SET event_count = 0 WHERE id = %s",
             [str(a.pk)],
         )
-    with pytest.raises(ProgrammingError), connection.cursor() as cursor:
+    with (
+        pytest.raises(ProgrammingError),
+        transaction.atomic(),
+        connection.cursor() as cursor,
+    ):
         cursor.execute(
             "DELETE FROM experience_api_actorerasure WHERE id = %s",
             [str(a.pk)],
