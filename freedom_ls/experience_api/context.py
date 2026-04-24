@@ -56,6 +56,10 @@ def get_ip_address(request: HttpRequest | None) -> str | None:
     ``EXPERIENCE_API_CAPTURE_IP`` gates capture globally. The tracker does
     **not** parse ``X-Forwarded-For`` — that needs a per-deployment trusted-
     proxy configuration and is out of scope for the initial implementation.
+
+    TODO: add an opt-in ``EXPERIENCE_API_TRUSTED_PROXIES`` setting and
+    parse ``X-Forwarded-For`` accordingly so deployments behind a known
+    reverse proxy can record the originating client IP.
     """
     if not getattr(settings, "EXPERIENCE_API_CAPTURE_IP", False):
         return None

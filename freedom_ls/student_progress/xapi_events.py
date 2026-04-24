@@ -180,6 +180,15 @@ def track_course_progressed(
     request: HttpRequest | None = None,
     strict: bool | None = None,
 ) -> Event | None:
+    # Guard: the trigger event must belong to the same actor as the
+    # PROGRESSED event we're about to emit. A mismatch would create an
+    # incoherent chain (e.g. user A's COMPLETED triggering user B's
+    # PROGRESSED) and is always a caller bug.
+    actor_id = actor.id if actor is not None else None
+    if trigger_event.actor_user_id != actor_id:
+        raise ValueError(
+            "trigger_event actor does not match the PROGRESSED event actor."
+        )
     registration = resolve_user_course_registration(actor, course)
     cohort = resolve_cohort_for_user(actor)
     # Pull trigger metadata from the upstream event so the chain survives

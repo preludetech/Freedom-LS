@@ -441,6 +441,9 @@ def form_fill_page(request, course_slug, index, page_number):
                 form_attempt_id=form_progress.id,
                 attempt_number=attempt_number,
                 response=posted_answer if posted_answer is not None else "",
+                # TODO: capture real answer-duration once the form-fill UI
+                # tracks per-question timing. PT0S is the xAPI-valid
+                # placeholder until then.
                 duration="PT0S",
                 # Treat only a truly-missing prior answer as "no change"; a
                 # falsy stored value (e.g. "0" or "") is still a real answer.
@@ -468,6 +471,8 @@ def form_fill_page(request, course_slug, index, page_number):
             score_raw=scores.get("raw") if isinstance(scores, dict) else None,
             score_max=scores.get("max") if isinstance(scores, dict) else None,
             score_scaled=scores.get("scaled") if isinstance(scores, dict) else None,
+            # TODO: capture real form-fill duration once the form-fill UI
+            # tracks per-attempt timing. PT0S is the xAPI-valid placeholder.
             duration="PT0S",
             attempt_number=attempt_number,
             pass_threshold=(
@@ -475,6 +480,9 @@ def form_fill_page(request, course_slug, index, page_number):
                 if getattr(form, "quiz_pass_percentage", None) is not None
                 else None
             ),
+            # TODO: aggregate ``changed_answer`` across the attempt's
+            # ANSWERED events and surface the total here. Hardcoded to 0
+            # until per-attempt change accounting lands.
             answers_changed=0,
             timed_out=False,
         )

@@ -53,7 +53,17 @@ def _check_blockers(user_id: int) -> None:
                 f"EXPERIENCE_API_ERASURE_BLOCKERS entry {dotted!r} did "
                 f"not resolve to a callable."
             )
-        if func(user_id):
+        try:
+            blocked = func(user_id)
+        except Exception as exc:
+            # A misbehaving blocker must surface a clear operator error
+            # rather than a raw traceback that obscures which entry
+            # exploded.
+            raise click.ClickException(
+                f"EXPERIENCE_API_ERASURE_BLOCKERS entry {dotted!r} raised "
+                f"{type(exc).__name__}: {exc}"
+            ) from exc
+        if blocked:
             raise click.ClickException(
                 f"Erasure refused: blocker {dotted!r} returned True for user {user_id}."
             )
@@ -138,6 +148,9 @@ def _perform_erasure(user_id: int, admin_user_id: int | None) -> int:
 @click.option("--admin-user-id", type=int, default=None)
 def command(user_id: int | None, confirm: bool, admin_user_id: int | None) -> None:
     """Anonymise every event for a user and write an audit row."""
+    # TODO: add --dry-run that runs the SELECT half (and reports the row
+    # count) without firing the UPDATE. Useful for operator preview before
+    # an irreversible erasure runs.
     if user_id is None:
         raise click.ClickException("--user-id is required.")
     if not confirm:

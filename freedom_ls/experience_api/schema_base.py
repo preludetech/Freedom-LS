@@ -37,6 +37,15 @@ class BaseEventSchema(BaseModel):
     ``ContextExtensions`` models and reference them as fields here.
     ``extra="forbid"`` rejects unknown top-level keys (the tracker catches
     unknown ``context_extensions`` keys via strict-vs-permissive handling).
+
+    The three payload fields below are typed ``Any`` deliberately. CLAUDE.md
+    forbids ``Any`` in ordinary code but this is a Pydantic polymorphism
+    seam: every concrete subclass overrides each field with a typed nested
+    ``BaseModel`` (``_Obj`` / ``_Result`` / ``_Ctx``), and Pydantic uses the
+    subclass annotations at validation time. Constraining the base to a
+    typed ``BaseModel`` would force every subclass through a generic /
+    Protocol indirection that buys nothing — the override mechanism is
+    already the type guard.
     """
 
     model_config = ConfigDict(extra="forbid")
