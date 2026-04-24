@@ -20,7 +20,8 @@
       "Skill(template)",
       "Skill(icon-usage)",
       "Bash(npm run tailwind_build)",
-      "Bash(sleep 3 && curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:*)"
+      "Bash(sleep 3 && curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:*)",
+      "mcp__plugin_fls_playwright__*"
     ],
     "deny": [
       "Read(.env)",
