@@ -75,15 +75,24 @@ class Command(BaseCommand):
     # Blockers
 
     def _check_blockers(self, user_id: int) -> None:
+        # Blocker dotted paths come from Django settings (operator-controlled,
+        # never user-controlled). The callable check guards against a
+        # misconfigured entry pointing at a non-callable attribute.
         blockers = getattr(settings, "EXPERIENCE_API_ERASURE_BLOCKERS", []) or []
         for dotted in blockers:
             module_path, _, attr = dotted.rpartition(".")
-            if not module_path:
+            if not module_path or not attr:
                 raise CommandError(
                     f"Invalid EXPERIENCE_API_ERASURE_BLOCKERS entry: {dotted!r}"
                 )
+            # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import -- settings-controlled path (see docstring).
             module = importlib.import_module(module_path)
-            func = getattr(module, attr)
+            func = getattr(module, attr, None)
+            if not callable(func):
+                raise CommandError(
+                    f"EXPERIENCE_API_ERASURE_BLOCKERS entry {dotted!r} did "
+                    f"not resolve to a callable."
+                )
             if func(user_id):
                 raise CommandError(
                     f"Erasure refused: blocker {dotted!r} returned True for "

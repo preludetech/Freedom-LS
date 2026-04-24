@@ -194,6 +194,12 @@ class ActorErasure(SiteAwareModel):
         ]
 
     def save(self, *args, **kwargs):
+        # Unlike Event.save(), ActorErasure.save() does not require a
+        # _tracker_authorised flag. ActorErasure rows are only ever written
+        # by the erase_actor management command using the dedicated erasure
+        # DB connection; the append-only guarantee for this table rests on
+        # the DB-level REVOKE of UPDATE/DELETE from every role (see
+        # migration 0002), not on a Python sentinel.
         if not self._state.adding:
             raise EventImmutableError("ActorErasure rows are immutable once written.")
         super().save(*args, **kwargs)

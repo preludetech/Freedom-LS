@@ -50,6 +50,7 @@ class EventAdmin(SiteAwareModelAdmin):
         "platform",
     )
 
+    @admin.display(description="object")
     def object_definition_summary(self, obj: Event) -> str:
         """Truncated display of the object_definition dict for list view."""
         d = obj.object_definition or {}
@@ -58,8 +59,6 @@ class EventAdmin(SiteAwareModelAdmin):
             if key in d:
                 return str(d[key])[:80]
         return str(d)[:80]
-
-    object_definition_summary.short_description = "object"  # type: ignore[attr-defined]
 
     def has_add_permission(self, request, obj=None) -> bool:
         return False

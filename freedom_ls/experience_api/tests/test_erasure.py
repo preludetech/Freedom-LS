@@ -182,6 +182,41 @@ def test_erase_actor_ifi_match_does_not_false_positive_across_user_ids(
 
 
 @pytest.mark.django_db(databases=["default", "erasure"], transaction=True)
+def test_erase_actor_ifi_match_does_not_false_positive_when_user_id_is_suffix(
+    mock_site_context, settings, configured_erasure_settings
+) -> None:
+    """IFI match must treat ``|1`` and ``|11`` as distinct.
+
+    The LIKE pattern ``%|1`` only matches strings whose final two
+    characters are ``|`` and ``1`` — it must NOT match strings ending in
+    ``|11``, ``|21``, etc. This test pins that behaviour using synthetic
+    IFIs so the guarantee is exercised regardless of factory-generated IDs.
+    """
+    user = UserFactory()
+    settings.EXPERIENCE_API_STRICT_VALIDATION = False
+    target_ifi = f"https://{mock_site_context.domain}|1"
+    decoy_ifis = [
+        f"https://{mock_site_context.domain}|11",
+        f"https://{mock_site_context.domain}|21",
+        f"https://{mock_site_context.domain}|100",
+    ]
+    target_ev = _write_event(
+        site=mock_site_context, actor_user=None, actor_ifi=target_ifi
+    )
+    decoy_evs = [
+        _write_event(site=mock_site_context, actor_user=None, actor_ifi=ifi)
+        for ifi in decoy_ifis
+    ]
+    # The non-existent user id 1 avoids colliding with the factory-created user.
+    assert user.id != 1
+    call_command("erase_actor", user_id=1, confirm=True)
+
+    assert Event._base_manager.get(pk=target_ev.pk).actor_email.startswith("erased-")
+    for ev in decoy_evs:
+        assert not Event._base_manager.get(pk=ev.pk).actor_email.startswith("erased-")
+
+
+@pytest.mark.django_db(databases=["default", "erasure"], transaction=True)
 def test_erase_actor_respects_configured_blockers(
     mock_site_context, settings, configured_erasure_settings
 ) -> None:

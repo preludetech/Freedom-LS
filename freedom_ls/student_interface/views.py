@@ -26,6 +26,10 @@ from freedom_ls.student_progress.models import (
     FormProgress,
     TopicProgress,
 )
+from freedom_ls.student_progress.xapi_events import (
+    track_course_progressed,
+    track_topic_completed,
+)
 
 from .utils import (
     form_start_page_buttons,
@@ -239,11 +243,6 @@ def view_topic(request, topic, course, next_url, previous_url, is_last_item=Fals
         # Emit (COMPLETED, Topic) then (PROGRESSED, Course) chained off it.
         # The PROGRESSED event carries the COMPLETED event's id as its
         # trigger_event_id — domain-app wrappers handle the composition.
-        from freedom_ls.student_progress.xapi_events import (
-            track_course_progressed,
-            track_topic_completed,
-        )
-
         completed_event = track_topic_completed(
             request.user,
             topic,
@@ -372,14 +371,13 @@ def form_start(request, course_slug, index):
 
 
 def _get_or_create_form_progress_with_flag(user, form):
-    """Thin wrapper over FormProgress.get_or_create_incomplete that also
-    reports whether a new row was created — needed so we emit ATTEMPTED
-    exactly once per attempt.
+    """Thin wrapper over FormProgress that also reports whether a new row
+    was created — needed so we emit ATTEMPTED exactly once per attempt.
     """
     existing = FormProgress.get_latest_incomplete(user=user, form=form)
     if existing is not None:
         return existing, False
-    progress = FormProgress.get_or_create_incomplete(user, form)
+    progress = FormProgress.objects.create(user=user, form=form)
     return progress, True
 
 
@@ -423,6 +421,12 @@ def form_fill_page(request, course_slug, index, page_number):
         # Process each question's answer
         form_progress.save_answers(questions, request.POST)
 
+        # Count attempts once per request — the value is constant across
+        # the question loop and the subsequent COMPLETED emission.
+        attempt_number = FormProgress.objects.filter(
+            user=request.user, form=form
+        ).count()
+
         # Emit one ANSWERED event per question that was on this page.
         for question in questions:
             posted_answer = request.POST.get(str(question.id)) or request.POST.get(
@@ -433,9 +437,7 @@ def form_fill_page(request, course_slug, index, page_number):
                 request.user,
                 question,
                 form_attempt_id=form_progress.id,
-                attempt_number=FormProgress.objects.filter(
-                    user=request.user, form=form
-                ).count(),
+                attempt_number=attempt_number,
                 response=posted_answer if posted_answer is not None else "",
                 duration="PT0S",
                 changed_answer=bool(previous) and previous != posted_answer,
@@ -463,9 +465,7 @@ def form_fill_page(request, course_slug, index, page_number):
             score_max=scores.get("max") if isinstance(scores, dict) else None,
             score_scaled=scores.get("scaled") if isinstance(scores, dict) else None,
             duration="PT0S",
-            attempt_number=FormProgress.objects.filter(
-                user=request.user, form=form
-            ).count(),
+            attempt_number=attempt_number,
             pass_threshold=(
                 float(form.quiz_pass_percentage) / 100
                 if getattr(form, "quiz_pass_percentage", None) is not None
@@ -477,10 +477,6 @@ def form_fill_page(request, course_slug, index, page_number):
         # Chain PROGRESSED Course off the COMPLETED Form event, same
         # pattern as the topic-mark-complete branch.
         if completed_event is not None and course is not None:
-            from freedom_ls.student_progress.xapi_events import (
-                track_course_progressed,
-            )
-
             metrics = _course_progress_metrics(request.user, course)
             track_course_progressed(
                 request.user,

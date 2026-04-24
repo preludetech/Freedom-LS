@@ -189,9 +189,15 @@ def walk_question_to_form(question: FormQuestion) -> Form | None:
 
 
 def walk_question_position(question: FormQuestion) -> int:
-    """Return the 1-indexed position of the question within its form."""
+    """Return the 1-indexed position of the question within its form.
+
+    Returns ``0`` when the question is detached from a form (e.g. orphaned
+    or unsaved) — ``question_number()`` walks ``self.form_page.form`` and
+    may raise ``AttributeError`` in that case, or return ``None`` when the
+    pk isn't found in the walk.
+    """
     try:
-        number: int = question.question_number()
-        return number
-    except Exception:  # pragma: no cover — defensive, never expected.
+        number: int | None = question.question_number()
+    except AttributeError:
         return 0
+    return number if number is not None else 0
