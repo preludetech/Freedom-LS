@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/ruff_fix.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/ruff_fix.sh\""
           }
         ]
       },
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/post-edit-bandit.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/post-edit-bandit.sh\""
           }
         ]
       }
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/security-guard.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/security-guard.sh\""
           }
         ]
       }
