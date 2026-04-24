@@ -71,8 +71,11 @@ def test_save_with_tracker_flag_persists_row(mock_site_context) -> None:
     evt = Event(**_event_kwargs(mock_site_context))
     evt._tracker_authorised = True
     evt.save()
-    # The flag is consumed on successful save.
-    assert not hasattr(evt, "_tracker_authorised")
+    # The instance-level flag is consumed on successful save; the class-level
+    # default (False) takes over so any subsequent read is falsy. Checking
+    # __dict__ directly avoids the class-default masking the consumption.
+    assert "_tracker_authorised" not in evt.__dict__
+    assert getattr(evt, "_tracker_authorised", True) is False
     assert Event.objects.filter(pk=evt.pk).exists()
 
 
