@@ -210,7 +210,7 @@ class _AnsweredQuestionObj(BaseModel):
     question_id: UUID | None = None
     question_text: str = Field(max_length=STRING_EXTENSION_MAX_LENGTH)
     question_type: str = Field(max_length=SNAPSHOT_STRING_MAX_LENGTH)
-    options: list | None = Field(default=None)
+    options: list[dict] | None = Field(default=None)
 
 
 class _AnsweredQuestionResult(BaseModel):
