@@ -39,7 +39,7 @@ traceable to a SA-CATS 141.07.1 clause.
 | 1(o) | Organised courseware (menus, modules, instructions) | **Done** | Course/CoursePart/Topic structure in `content_engine` |
 | 1(p) | Logical information flow | **Done** | Authoring responsibility; content_engine sequencing supports it |
 | 1(q) | Usability as primary consideration | **Done/Ongoing, not a feature** | Existing mobile-responsiveness, accessibility, brand-guidelines work |
-| 1(r) | Audio AND visual instructions | **Included here** | §1(r) below |
+| 1(r) | Audio AND visual instructions | **Done** | Existing `youtube` cotton component delivers audio + visual together; satisfies the clause for Cat 1. Inline audio-only player tracked separately in `0. drafts/audio-player cotton component/` (not Cat-1 blocking) |
 | 1(x) | Identity mgmt + auth built in | **Done** | `accounts/` app |
 | 1(y) | Hosted in Republic + info protection | **Included here (narrow subset)** | §1(y) below. Broader info-protection ships via sibling `encryption-at-rest/`; hosting is a deployment-doc line |
 | 1(z) | 5-year data retention | **Included here (narrow subset)** | §1(z) below. Broader privacy work ships via sibling `01. privacy-compliance/` |
@@ -100,12 +100,19 @@ tradeoff stays visible to reviewers.
 - On expiry: a visible "You have been idle — your exam has been submitted"
   message, then auto-submit through the existing exam submission path.
 - **Interlocks with §1(m) — configurable:** whether an idle auto-submit
-  counts as a disturbance-fail per clause (m) is a per-deployment setting.
+  records a disturbance-fail per clause (m) is a per-deployment setting.
   Default ON for SACAA-serving sites (literal clause reading: idle =
   disturbance = fail). Operators running FLS outside SACAA contexts can
-  disable it so an idle timeout just submits the attempt for normal
-  scoring. The setting lives alongside the idle-timeout duration so both
-  knobs are configured together.
+  disable it so an idle timeout just submits the attempt silently. The
+  setting lives alongside the idle-timeout duration so both knobs are
+  configured together.
+- **Scoring is independent of the disturbance flag.** The auto-submitted
+  attempt is marked using the normal scoring path regardless of whether
+  the disturbance-fail interlock is on. The disturbance-fail (when
+  recorded) is a separate, overridable flag on the attempt — see §1(m).
+  This keeps the learner's actual performance visible to educators even
+  when a clause-(m) fail is in force, and gives an authorised reviewer
+  something concrete to evaluate when deciding whether to override.
 
 ### 1(m) Exam disturbance → auto-fail (absorbed from `00. sacaa auto fail on logout or disturbance/`)
 
@@ -115,8 +122,8 @@ as a fail."
 **Direction:**
 
 - During an in-progress exam attempt, any of the following terminate the
-  attempt and record a fail (score = 0 or explicit fail flag, to be
-  decided in the spec):
+  attempt, submit it through the normal scoring path, **and** record a
+  separate disturbance-fail flag against the attempt:
   - Explicit logout.
   - Auth loss caused by the learner or by something attributable to them
     (password change, forced logout from another device, account
@@ -128,9 +135,24 @@ as a fail."
     (default ON for SACAA sites).
   - Server-observed interruption when the learner's session state is
     lost between page loads.
-- "Fail" is a first-class attempt state distinct from "submitted with low
-  score" — the exam result page and any educator view must show *why* the
-  attempt failed (disturbance vs. score) for audit clarity.
+- **Score and disturbance-fail are independent.** The attempt is always
+  marked using the normal scoring path so the learner's actual
+  performance is visible. The disturbance-fail is a separate flag on the
+  attempt with the cause recorded (logout / auth loss / idle /
+  interruption). For audit and reporting, an attempt that has the flag
+  set is treated as a fail regardless of score; if the flag is cleared,
+  the score stands on its own.
+- **Override path.** A user with sufficient rights (e.g. exam
+  administrator / authorised educator role — exact permission to be
+  pinned in the spec) can clear or reinstate the disturbance-fail flag
+  on a specific attempt, with a required reason. Every change to the
+  flag is logged (who, when, previous value, reason) so the audit trail
+  shows both that a clause-(m) fail was triggered and any subsequent
+  override. The score itself is never edited via this path.
+- The exam result page and any educator view must show both the score
+  *and* the disturbance-fail state with cause, so it is obvious *why* an
+  attempt is failing (disturbance vs. score vs. both) and whether an
+  override has been applied.
 - The student is warned at exam start that any disturbance is an automatic
   fail, so the rule is never a surprise.
 - What constitutes a "disturbance" is bounded to things the server can
@@ -143,42 +165,24 @@ as a fail."
 **Clause:** "an instructor or a subject matter expert shall be available to
 assist the learner who is using the programme."
 
-**Why new work:** There is no visible, auditable contact path for learners
-today. The `messages/` draft exists but its full sender-recipient +
-read-receipts model is overkill for 1(n) alone; this clause is cleared by
-a visible contact block + a logged channel (email is fine).
+**Status for MVP:** Out of scope — do not build. Instructors and students
+already communicate directly via email, text, and phone calls, and those
+exchanges are logged outside the platform. The humans already know how to
+talk to each other; no in-platform contact surface is required for Cat 1
+sign-off. Revisit once the broader `messages/` work is on the table.
 
-**Direction:**
-
-- Per-course `InstructorContact` (one or more): name, role, email,
-  optional phone, free-text "office hours / response expectations".
-- Rendered on the course landing page and in every topic sidebar —
-  "available" must be obviously discoverable, not buried under a menu.
-- If/when the broader `messages/` draft ships separately, the contact
-  block can deep-link into a pre-addressed message thread; read-receipt
-  timestamps then become response-time audit evidence. Not a dependency
-  for Cat 1.
-
-### 1(r) Inline audio support
+### 1(r) Audio AND visual instructions
 
 **Clause:** "the programme should include audio and visual instructions."
 
-**Why new work:** `content_engine.File` has an AUDIO file type but no cotton
-component to render it inline — audio surfaces as a plain download link.
-Adjacent SA-CATS Section 2(h) reinforces "training will be audio and
-visual", so a download-only pattern is likely to be challenged and also
-violates WCAG 2.1.1 in spirit.
+**Already covered.** The existing `youtube` cotton component embeds video
+that carries audio and visual together, which is what the clause asks for.
+No new work is required for Cat-1 sign-off.
 
-**Direction:**
-
-- `audio_player` cotton component: `<audio controls preload="metadata">`
-  with visible filename and duration.
-- Optional `transcript` markdown field on `File` (satisfies WCAG 1.2.1
-  without a separate content type).
-- Register as the default handler for `File.file_type == AUDIO`; keep
-  "Download audio" as a secondary action for low-bandwidth learners.
-- Native HTML5 `<audio>` controls are already keyboard-accessible and
-  screen-reader-labelled; Able Player or equivalent is out of scope.
+A separate, non-Cat-1-blocking inline audio-only player (for `File.file_type
+== AUDIO` uploads, currently rendered as a download link) is tracked in
+`0. drafts/audio-player cotton component/` and will ship on its own
+roadmap.
 
 ### 1(y) Info-protection minimum + RSA hosting
 

@@ -1,9 +1,9 @@
 ---
-description: Make a worktree for the current spec
+description: Helper — make a worktree for the current spec
 allowed-tools: Bash, Read, Glob, Skill
 ---
 
-This command prepares a new git worktree so that work on a spec can happen in isolation.
+This is a helper command, invoked by `/sdd:start`. It prepares a new git worktree so that work on a spec can happen in isolation.
 
 IMPORTANT! DO THE STEPS IN ORDER!
 
@@ -58,11 +58,7 @@ IMPORTANT: Never create a worktree inside an existing worktree. Always `cd` to t
 ```bash
 cd <spec-folder-path> && ./install_dev.sh
 ```
-## Step 6: Update the todo list
 
-Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+## Step 6: Report back
 
-- `<todo-path>`: the `todo.md` in the spec directory (now under `spec_dd/2. in progress/<spec-folder-name>/`)
-- `tick:"Run `/start_worktree` to create an isolated worktree for this spec"`
-
-No new items to add.
+Print the worktree path and a one-line note that the caller (`/sdd:start`) should pick up from there.

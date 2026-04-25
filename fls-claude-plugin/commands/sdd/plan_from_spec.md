@@ -11,7 +11,8 @@ You are helping to take a comprehensive development plan, based on this a spec f
 - Optionally: Create a document called `3. frontend_qa.md`
 - Print a short summary of what you did
 
-DO NOT mention the frontend qa in the plan file. We will run the qa process after the plan is complete.
+- DO NOT mention the frontend qa in the plan file. We will run the qa process after the plan is complete.
+- DO NOT mention the security review in the plan file. We will run this later on
 
 # Step 1
 
