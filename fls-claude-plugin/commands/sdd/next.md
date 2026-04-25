@@ -13,7 +13,7 @@ Figure out which spec we're working with, in this order:
 2. Otherwise, look at the current branch name and try to match it to a directory inside `spec_dd/` (usually under `spec_dd/2. in progress/`).
 3. If still ambiguous, list candidate directories under `spec_dd/` and ask the user which one.
 
-The target file is `todo.md` inside that directory. If it does not exist, the next step is `/sdd:init` — spawn a fresh agent to run it (same pattern as the `(cmd)` branch in Step 3: resolve `fls-claude-plugin/commands/sdd/init.md`, pass the spec directory through in the prompt, and wait for the agent to return). Once the agent finishes, re-read `todo.md` and continue with Step 2.
+The target file is `todo.md` inside that directory. If it does not exist, the next step is `/sdd:start` — spawn a fresh agent to run it (same pattern as the `(cmd)` branch in Step 3: resolve `fls-claude-plugin/commands/sdd/start.md`, pass the spec directory through in the prompt, and wait for the agent to return). Once the agent finishes, re-read `todo.md` and continue with Step 2.
 
 ## Step 2: Read the todo.md and find the next unchecked item
 

@@ -1,1 +1,0 @@
-For some forms included in a course, we will need to set a maximum time limit for that form. We'll need to show the user the time limit before they start. We'll need to show them how much time is remaining as they work through the form.  When time is up, then automatically submit the form through the usual methods.

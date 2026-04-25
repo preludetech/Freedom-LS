@@ -93,7 +93,7 @@ If no structural change happened, skip this step.
 
 ## The `todo.md` checklist
 
-`/sdd:init` creates a `todo.md` checklist in the spec directory that tracks every step above. Each SDD command ticks off its own box (and adds follow-up tasks where relevant) by invoking the protected helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` as its final step. You don't run this helper yourself — the other commands call it for you.
+`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above. Each SDD command ticks off its own box (and adds follow-up tasks where relevant) by invoking the protected helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` as its final step. You don't run this helper yourself — the other commands call it for you.
 
 ---
 
