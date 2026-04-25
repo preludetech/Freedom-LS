@@ -26,6 +26,10 @@ from freedom_ls.student_progress.models import (
     FormProgress,
     TopicProgress,
 )
+from freedom_ls.student_progress.xapi_events import (
+    track_course_progressed,
+    track_topic_completed,
+)
 
 from .utils import (
     form_start_page_buttons,
@@ -35,6 +39,13 @@ from .utils import (
     get_current_courses,
     get_is_registered,
     get_recommended_courses,
+)
+from .xapi_events import (
+    track_course_registered,
+    track_form_attempted,
+    track_form_completed,
+    track_question_answered,
+    track_topic_viewed,
 )
 
 
@@ -124,7 +135,7 @@ def register_for_course(request, course_slug):
     course = get_object_or_404(Course, slug=course_slug)
 
     # Create the course registration directly with user
-    UserCourseRegistration.objects.get_or_create(
+    registration, _created = UserCourseRegistration.objects.get_or_create(
         user=request.user,
         collection=course,
         defaults={"is_active": True},
@@ -132,6 +143,14 @@ def register_for_course(request, course_slug):
 
     # Delete any existing RecommendedCourse for this user and course
     RecommendedCourse.objects.filter(user=request.user, collection=course).delete()
+
+    track_course_registered(
+        request.user,
+        course,
+        request=request,
+        registered_by="self",
+        registration=registration,
+    )
 
     # Redirect back to the course home page
     return redirect("student_interface:course_home", course_slug=course_slug)
@@ -221,6 +240,25 @@ def view_topic(request, topic, course, next_url, previous_url, is_last_item=Fals
         topic_progress.complete_time = timezone.now()
         topic_progress.save()
 
+        # Emit (COMPLETED, Topic) then (PROGRESSED, Course) chained off it.
+        # The PROGRESSED event carries the COMPLETED event's id as its
+        # trigger_event_id — domain-app wrappers handle the composition.
+        completed_event = track_topic_completed(
+            request.user,
+            topic,
+            request=request,
+            completion_source="manual",
+        )
+        if completed_event is not None and course is not None:
+            metrics = _course_progress_metrics(request.user, course)
+            track_course_progressed(
+                request.user,
+                course,
+                trigger_event=completed_event,
+                request=request,
+                **metrics,
+            )
+
         if next_url:
             return redirect(next_url)
         else:
@@ -244,6 +282,15 @@ def view_topic(request, topic, course, next_url, previous_url, is_last_item=Fals
         "is_last_item": is_last_item,
         "is_course_complete": is_course_complete,
     }
+    # Track one VIEWED event per render — per spec §"(VIEWED, Topic)".
+    if request.user.is_authenticated:
+        track_topic_viewed(
+            request.user,
+            topic,
+            course=course,
+            request=request,
+            referrer=request.META.get("HTTP_REFERER"),
+        )
     return render(request, "student_interface/course_topic.html", context)
 
 
@@ -295,10 +342,24 @@ def form_start(request, course_slug, index):
     form = children[index - 1]
 
     # Create a FormProgress instance if it doesn't yet exist
-    form_progress = FormProgress.get_or_create_incomplete(request.user, form)
+    form_progress, was_created = _get_or_create_form_progress_with_flag(
+        request.user, form
+    )
 
     # Figure out what page of the form the user is on
     page_number = form_progress.get_current_page_number()
+
+    # Track one ATTEMPTED event when this is a new attempt.
+    if was_created:
+        attempt_number = FormProgress.objects.filter(
+            user=request.user, form=form
+        ).count()
+        track_form_attempted(
+            request.user,
+            form,
+            request=request,
+            attempt_number=attempt_number,
+        )
 
     # Redirect the user to form_fill_page
     return redirect(
@@ -307,6 +368,19 @@ def form_start(request, course_slug, index):
         index=index,
         page_number=page_number,
     )
+
+
+def _get_or_create_form_progress_with_flag(
+    user: User, form: Form
+) -> tuple[FormProgress, bool]:
+    """Thin wrapper over FormProgress that also reports whether a new row
+    was created — needed so we emit ATTEMPTED exactly once per attempt.
+    """
+    existing = FormProgress.get_latest_incomplete(user=user, form=form)
+    if existing is not None:
+        return existing, False
+    progress = FormProgress.objects.create(user=user, form=form)
+    return progress, True
 
 
 @login_required
@@ -342,14 +416,90 @@ def form_fill_page(request, course_slug, index, page_number):
     )
 
     if request.method == "POST":
+        # Snapshot previous answers before overwrite so we can compute
+        # `changed_answer` for each ANSWERED event.
+        previous_answers = form_progress.existing_answers_dict(questions)
+
         # Process each question's answer
         form_progress.save_answers(questions, request.POST)
+
+        # Count attempts once per request — the value is constant across
+        # the question loop and the subsequent COMPLETED emission.
+        attempt_number = FormProgress.objects.filter(
+            user=request.user, form=form
+        ).count()
+
+        # Emit one ANSWERED event per question that was on this page.
+        for question in questions:
+            posted_answer = request.POST.get(str(question.id)) or request.POST.get(
+                f"question_{question.id}"
+            )
+            previous = previous_answers.get(question.id) if previous_answers else None
+            track_question_answered(
+                request.user,
+                question,
+                form_attempt_id=form_progress.id,
+                attempt_number=attempt_number,
+                response=posted_answer if posted_answer is not None else "",
+                # TODO: capture real answer-duration once the form-fill UI
+                # tracks per-question timing. PT0S is the xAPI-valid
+                # placeholder until then.
+                duration="PT0S",
+                # Treat only a truly-missing prior answer as "no change"; a
+                # falsy stored value (e.g. "0" or "") is still a real answer.
+                changed_answer=previous is not None and previous != posted_answer,
+                request=request,
+            )
 
         if next_page_url:
             return redirect(next_page_url)
 
         # Mark form as completed and calculate scores
         form_progress.complete()
+
+        # Emit COMPLETED Form once the whole form is submitted.
+        scores = getattr(form_progress, "scores", {}) or {}
+        # ``FormProgress.passed()`` raises ValueError when the form has no
+        # ``quiz_pass_percentage`` configured (not all forms are quizzes).
+        # In that case there is no pass/fail concept to record on the event.
+        try:
+            passed = form_progress.passed()
+        except ValueError:
+            passed = None
+        completed_event = track_form_completed(
+            request.user,
+            form,
+            request=request,
+            success=passed,
+            score_raw=scores.get("raw") if isinstance(scores, dict) else None,
+            score_max=scores.get("max") if isinstance(scores, dict) else None,
+            score_scaled=scores.get("scaled") if isinstance(scores, dict) else None,
+            # TODO: capture real form-fill duration once the form-fill UI
+            # tracks per-attempt timing. PT0S is the xAPI-valid placeholder.
+            duration="PT0S",
+            attempt_number=attempt_number,
+            pass_threshold=(
+                float(form.quiz_pass_percentage) / 100
+                if getattr(form, "quiz_pass_percentage", None) is not None
+                else None
+            ),
+            # TODO: aggregate ``changed_answer`` across the attempt's
+            # ANSWERED events and surface the total here. Hardcoded to 0
+            # until per-attempt change accounting lands.
+            answers_changed=0,
+            timed_out=False,
+        )
+        # Chain PROGRESSED Course off the COMPLETED Form event, same
+        # pattern as the topic-mark-complete branch.
+        if completed_event is not None and course is not None:
+            metrics = _course_progress_metrics(request.user, course)
+            track_course_progressed(
+                request.user,
+                course,
+                trigger_event=completed_event,
+                request=request,
+                **metrics,
+            )
 
         return redirect(
             "student_interface:course_form_complete",
@@ -526,3 +676,47 @@ def _is_content_item_completed(content_item: Topic | Form, user: User) -> bool:
         return FormProgress.objects.filter(
             user=user, form=content_item, completed_time__isnull=False
         ).exists()
+
+
+def _course_progress_metrics(user, course) -> dict:
+    """Compute the per-course progress metrics used by the PROGRESSED event.
+
+    Counts topic / form completions against totals in the course's flat
+    children. Not exhaustive (doesn't cover nested structures beyond
+    children_flat) but matches how completion propagation is calculated
+    today.
+    """
+    children = course.children_flat()
+    topics = [c for c in children if isinstance(c, Topic)]
+    forms = [c for c in children if isinstance(c, Form)]
+    topics_total = len(topics)
+    forms_total = len(forms)
+
+    completed_topic_ids = set(
+        TopicProgress.objects.filter(
+            user=user,
+            topic__in=topics,
+            complete_time__isnull=False,
+        ).values_list("topic_id", flat=True)
+    )
+    completed_form_ids = set(
+        FormProgress.objects.filter(
+            user=user,
+            form__in=forms,
+            completed_time__isnull=False,
+        ).values_list("form_id", flat=True)
+    )
+
+    topics_completed = len(completed_topic_ids)
+    forms_completed = len(completed_form_ids)
+    total = topics_total + forms_total
+    completed = topics_completed + forms_completed
+    scaled = float(completed) / total if total else 0.0
+    return {
+        "completion": scaled >= 1.0,
+        "progress_scaled": scaled,
+        "progress_topics_completed": topics_completed,
+        "progress_topics_total": topics_total,
+        "progress_forms_completed": forms_completed,
+        "progress_forms_total": forms_total,
+    }

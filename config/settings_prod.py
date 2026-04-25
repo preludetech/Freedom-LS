@@ -1,5 +1,7 @@
 import os
 
+from django.core.exceptions import ImproperlyConfigured
+
 from .settings_base import *  # noqa: F403
 
 HOST_DOMAIN = os.environ["HOST_DOMAIN"]
@@ -54,7 +56,24 @@ DATABASES = {
         "HOST": os.getenv("DB_HOST", "localhost"),
         "PORT": os.getenv("DB_PORT", "5432"),
     },
+    "erasure": {
+        "ENGINE": "django.db.backends.postgresql",
+        # Credentials come from env vars only. See
+        # docs/deployment-security-checklist.md "Database Security".
+        "USER": FLS_ERASURE_DB_USER,  # noqa: F405
+        "NAME": os.getenv("DB_NAME", "DB_NAME"),
+        "PASSWORD": FLS_ERASURE_DB_PASSWORD,  # noqa: F405
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+    },
 }
+
+# Hard fail at settings-load time if the erasure credentials are unset in prod.
+if not FLS_ERASURE_DB_USER or not FLS_ERASURE_DB_PASSWORD:  # noqa: F405
+    raise ImproperlyConfigured(
+        "FLS_ERASURE_DB_USER and FLS_ERASURE_DB_PASSWORD env vars must be set "
+        "in production for the experience_api erasure DB connection."
+    )
 
 
 # Static files
@@ -213,6 +232,13 @@ TASKS = {
         "BACKEND": "django.tasks.backends.immediate.ImmediateBackend",
     },
 }
+
+# experience_api — prod defaults (permissive validation, IP capture off)
+EXPERIENCE_API_STRICT_VALIDATION = False
+EXPERIENCE_API_CAPTURE_IP = False
+EXPERIENCE_API_ERASURE_BLOCKERS = [
+    "freedom_ls.student_management.xapi_erasure.has_active_registrations",
+]
 
 
 STORAGES = {

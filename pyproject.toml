@@ -31,6 +31,7 @@ dependencies = [
     "pyjwt>=2.12.0",
     "sqlparse>=0.5.4",
     "urllib3>=2.6.3",
+    "pydantic>=2.0,<3.0",
 ]
 
 [project.optional-dependencies]
@@ -62,7 +63,18 @@ exclude = ["media*", "config*", "static*", "dev_db*", "gitignore*", "node_module
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings_dev"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
-env = ["DJANGO_ALLOW_ASYNC_UNSAFE = True"]
+env = [
+    "DJANGO_ALLOW_ASYNC_UNSAFE = True",
+    # Run tests against the same non-superuser roles CI uses, so that
+    # migration 0002's REVOKE UPDATE/DELETE grants actually take effect and
+    # the grant-verification tests in experience_api exercise the guard.
+    # Provision these roles locally by running
+    # fls-claude-plugin/scripts/dev_db_init.sh once after cloning.
+    "FLS_APP_DB_USER = fls_app",
+    "FLS_APP_DB_PASSWORD = fls_app_pw",  # pragma: allowlist secret
+    "FLS_ERASURE_DB_USER = fls_erasure_user",
+    "FLS_ERASURE_DB_PASSWORD = fls_erasure_pw",  # pragma: allowlist secret
+]
 testpaths = ["freedom_ls", "tests"]
 addopts = "--strict-markers"
 markers = [
@@ -239,10 +251,6 @@ disable_error_code = ["attr-defined", "assignment", "arg-type", "misc", "compari
 [[tool.mypy.overrides]]
 module = "config.settings_base"
 disable_error_code = ["import-untyped"]
-
-[[tool.mypy.overrides]]
-module = "freedom_ls.xapi_learning_record_store.*"
-ignore_errors = true  # WIP module with broken imports (api_urls imports non-existent 'api')
 
 [tool.django-stubs]
 django_settings_module = "config.settings_dev"
