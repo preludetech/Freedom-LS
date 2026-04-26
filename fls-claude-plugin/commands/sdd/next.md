@@ -20,7 +20,7 @@ The target file is `todo.md` inside that directory. If it does not exist, the ne
 Read the file in full. Walk the checklist top-to-bottom and find the first line starting with `- [ ]`. Note:
 
 - The full item text (for ticking later).
-- The marker in parentheses at the start of the text: `(user)`, `(cmd)`, or `(user + cmd)`.
+- The marker in parentheses at the start of the text: `(user)` or `(cmd)`. Every item should have exactly one of these — if a step involves both, the checklist should split it into two items.
 - The section heading it sits under (the preceding `## …` line).
 
 If every item is already ticked, skip to Step 5 (the "all done" branch).
@@ -49,15 +49,11 @@ This is a slash command task. You **must** run it — not by invoking the slash 
 
 Do not tick anything yourself — the spawned command ticks its own box.
 
-### If the marker is `(user + cmd)`
-
-Treat this as a `(user)` item first: ask whether the manual part is done. If the user confirms, tick it (Step 4). Then, if the same checklist line also implies a slash command should run next, fall through to the `(cmd)` branch and spawn a fresh agent to run it.
-
-If the marker is anything else, stop and tell the user the checklist line has an unrecognised marker — do not guess.
+If the marker is anything other than `(user)` or `(cmd)`, stop and tell the user the checklist line has an unrecognised marker — do not guess. In particular, a combined `(user + cmd)` marker is not supported: ask the user to split the item into two.
 
 ## Step 4: Tick a completed user task
 
-Only reach this step if the user confirmed they completed a `(user)` or `(user + cmd)` item.
+Only reach this step if the user confirmed they completed a `(user)` item.
 
 Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
 

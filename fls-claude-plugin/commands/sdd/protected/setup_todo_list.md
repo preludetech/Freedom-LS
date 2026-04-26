@@ -50,7 +50,8 @@ Each item is marked with who does it:
 
 - **(user)** — the user does this by hand
 - **(cmd)** — run a slash command
-- **(user + cmd)** — the user acts, then runs a command (or vice versa)
+
+Every item must have exactly one marker. If a step involves both a manual action and a command, split it into two separate items (or use sub-items under a parent step).
 
 ```markdown
 # SDD Todo
