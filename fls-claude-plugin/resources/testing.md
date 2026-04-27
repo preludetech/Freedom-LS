@@ -61,6 +61,185 @@ def test_requires_field(mock_site_context):
         MyModelFactory(required_field=None)
 ```
 
+## HTMX test patterns
+
+All patterns in this section are **(currently available)** — usable today against the existing test client and HTMX integration.
+
+For production-side HTMX conventions (header semantics, swap targets, validation status codes) see the `fls:htmx` skill.
+
+### Simulating HTMX requests
+
+Pass HTMX request headers via Django test client kwargs to exercise the `HX-Request` branch of a view. The most common kwarg is `HTTP_HX_REQUEST="true"`; related headers (`HTTP_HX_TARGET`, `HTTP_HX_TRIGGER`, `HTTP_HX_CURRENT_URL`) are added when the view inspects them.
+
+```python
+@pytest.mark.django_db
+def test_topic_list_returns_partial_for_htmx_request(client, mock_site_context):
+    user = UserFactory(email="student@example.test")
+    client.force_login(user)
+
+    response = client.get(
+        reverse("student_interface:topic_list"),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert "<html" not in response.content.decode()  # partial, not full page
+
+@pytest.mark.django_db
+def test_topic_list_returns_full_page_for_normal_request(client, mock_site_context):
+    user = UserFactory(email="student@example.test")
+    client.force_login(user)
+
+    response = client.get(reverse("student_interface:topic_list"))
+
+    assert response.status_code == 200
+    assert "<html" in response.content.decode()
+```
+
+### Asserting on `HX-Trigger` response headers
+
+Views can emit client-side events by setting `HX-Trigger`. Tests should assert both that the header is present and that the JSON-shaped event payload matches.
+
+```python
+import json
+
+@pytest.mark.django_db
+def test_enrolment_emits_enrolled_event(client, mock_site_context):
+    student = StudentFactory()
+    client.force_login(student.user)
+    course = CourseFactory()
+
+    response = client.post(
+        reverse("student_interface:enrol", args=[course.pk]),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert "HX-Trigger" in response.headers
+    triggers = json.loads(response.headers["HX-Trigger"])
+    assert "enrolled" in triggers
+    assert triggers["enrolled"]["course_id"] == course.pk
+```
+
+### 422-for-validation-errors convention
+
+FLS returns HTTP 422 for HTMX validation errors so `hx-swap` can replace the form fragment without triggering a redirect. See `${CLAUDE_PLUGIN_ROOT}/resources/templates_and_cotton.md` for the production-side rule.
+
+```python
+@pytest.mark.django_db
+def test_invalid_form_returns_422_with_error_fragment(client, mock_site_context):
+    user = UserFactory(email="educator@example.test")
+    client.force_login(user)
+
+    response = client.post(
+        reverse("educator_interface:cohort_create"),
+        data={"name": ""},  # name is required
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 422
+    assert b"This field is required" in response.content
+```
+
+### Out-of-band swap testing
+
+When a view returns multiple fragments swapped into different targets via `hx-swap-oob`, assert that the rendered response carries the OOB markup for each expected element id.
+
+```python
+@pytest.mark.django_db
+def test_complete_topic_swaps_progress_bar_oob(client, mock_site_context):
+    student = StudentFactory()
+    client.force_login(student.user)
+    topic = TopicFactory()
+
+    response = client.post(
+        reverse("student_interface:complete_topic", args=[topic.pk]),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert 'hx-swap-oob="true"' in body
+    assert 'id="progress-bar"' in body
+```
+
+### Auth-bypass anti-pattern
+
+Patching `request.user` to inject an authenticated user looks convenient but bypasses the real permission decorators (`@login_required`, custom site / role checks). Tests pass while production breaks. Use `client.force_login(user)` so the request travels the real auth path.
+
+```python
+# BAD — bypasses the real permission decorator; tests pass while production breaks
+with mock.patch("freedom_ls.educator_interface.views.request.user", staff_user):
+    response = client.get(reverse("educator_interface:cohort_detail", args=[cohort.pk]))
+    assert response.status_code == 200
+
+# GOOD — exercises the real auth path
+client.force_login(staff_user)
+response = client.get(
+    reverse("educator_interface:cohort_detail", args=[cohort.pk]),
+    HTTP_HX_REQUEST="true",
+)
+assert response.status_code == 200
+```
+
+For production-side HTMX conventions see the `fls:htmx` skill.
+
+## Time-shaped code
+
+**(planned for upcoming phase 2)** — The `time-machine` package is not yet installed; this pattern is documented now so phase-2 tests have a target.
+
+Reach for `time-machine` whenever production behaviour depends on the current time: deadline checks, scheduled-job windows, token-expiry logic, "is open / closed" status, anywhere `timezone.now()` or `datetime.now()` drives a branch.
+
+The pattern is to `travel` time around the **act** phase and assert on the resulting state. Do **not** patch out the comparison itself or freeze time around the production check in a way that hides the underlying logic — the test must exercise the real `now()` call inside the production code.
+
+```python
+import time_machine
+from datetime import datetime, UTC
+
+@pytest.mark.django_db
+def test_cohort_deadline_passes_after_due_date(mock_site_context):
+    cohort = CohortFactory(deadline_at=datetime(2026, 5, 1, tzinfo=UTC))
+
+    with time_machine.travel("2026-05-02T00:00:01Z"):
+        assert cohort.is_overdue() is True
+
+@pytest.mark.django_db
+def test_cohort_deadline_not_passed_before_due_date(mock_site_context):
+    cohort = CohortFactory(deadline_at=datetime(2026, 5, 1, tzinfo=UTC))
+
+    with time_machine.travel("2026-04-30T23:59:59Z"):
+        assert cohort.is_overdue() is False
+```
+
+## factory_boy patterns matrix
+
+**(currently available)** — decision guidance for which factory_boy primitive to reach for. Deep examples live in `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`.
+
+| Need | Reach for | Cross-link |
+|---|---|---|
+| A unique value per row (e.g. email, slug, sequence id) | `factory.Sequence` | `factory_boy.md` — Sequence |
+| A related object that should be created automatically | `factory.SubFactory` | `factory_boy.md` — SubFactory |
+| A related object that should be created **after** the parent (e.g. m2m / reverse FK) | `factory.RelatedFactory` | `factory_boy.md` — RelatedFactory |
+| A field derived from other fields on the same instance | `factory.LazyAttribute` | `factory_boy.md` — LazyAttribute |
+| A field that needs to call a function (no obj reference) | `factory.LazyFunction` | `factory_boy.md` — LazyFunction |
+| Reusable named field combinations (e.g. `staff=True`) | `factory.Trait` in `Params` | `factory_boy.md` — Traits |
+| Logic that must run after the model is saved (e.g. set password, attach m2m) | `@factory.post_generation` | `factory_boy.md` — post_generation |
+
+If you find yourself calling `.objects.create()` in a test, stop and add a factory instead. See `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md` for the full pattern reference.
+
+## Test order independence
+
+**(planned for upcoming phase 2)** — `pytest-randomly` will shuffle the suite by default, surfacing tests that depend on execution order.
+
+The rule: **tests must pass in any order.** Forbidden patterns:
+
+- Asserting on insertion order of querysets without an explicit `order_by(...)`.
+- Assuming auto-incrementing PKs are sequential or start at 1.
+- Sharing module-level mutable state between tests (e.g. a class attribute that one test mutates and another reads).
+- Relying on a previous test having created data — every test must build its own fixtures via factories.
+
+If a test fails only when run in isolation, or only when run as part of the full suite, that's order dependence; treat it as a bug, not a flaky test.
+
 ## Writing High-Value Tests
 
 Every test must justify its existence. A test has value when it catches real bugs, documents important behaviour, or protects against meaningful regressions. Tests that merely exercise code without asserting anything interesting are noise.
@@ -86,6 +265,24 @@ Every test must justify its existence. A test has value when it catches real bug
 3. **Resilient** — doesn't break when you refactor internals. Tests that are tightly coupled to implementation details create drag, not safety.
 4. **Fast** — avoids unnecessary setup. Only create the data the test actually needs.
 5. **Honest** — fails when the behaviour is broken, passes when it works. No tests that pass by coincidence.
+
+### Tautology guidance — worked example
+
+**Expected values must be hard-coded oracles, independent of the production code.** This rule does not say "do not test derivations" — it says the expected value must come from your understanding of the spec, written down by hand, not from re-running the production formula in the test.
+
+```python
+# BAD — re-runs the production formula; passes by coincidence
+def test_course_progress_calculation_bad():
+    completed, total = 3, 4
+    expected = (completed / total) * 100  # same arithmetic the code uses
+    assert calculate_progress_percent(completed, total) == expected
+
+# GOOD — independent oracle
+def test_three_of_four_topics_complete_is_seventy_five_percent():
+    assert calculate_progress_percent(completed=3, total=4) == 75
+```
+
+Rule of thumb: **if you delete the production code and your test still computes the expected value correctly, your test is a tautology.** A correct test cannot tell you the right answer on its own — it must compare the production output against a value you wrote down by hand.
 
 ### Red flags in tests
 
@@ -193,3 +390,19 @@ Never test that a hardcoded configuration value is what it is meant to be. Eg ne
 Never test trivial model instance creation. Eg never test that default values are as they should be, or that passed in values are saved unless the model is meant to do something unusual. Assume Django's model implementation works, don't waste time testing it.
 
 Never test trivial Admin panel functionality. Assume Django's Admin interface just works, don't write tests that assert that the admin shows up exactly as it was configured because it will always do that. If you have done something unusual in the admin then test that.
+
+### No unexpected network sockets
+
+**(planned for upcoming phase 2)** — once `pytest-socket` is installed, all sockets are blocked by default during the test run.
+
+The fix when a test needs to call out is **not** to whitelist sockets. Mock at the boundary instead — the `requests.post` call, the SDK client, the email backend — so the test exercises the real production code up to the boundary and replaces only the outbound side. See "Mock only at system boundaries" in the testing SKILL.md for the underlying rule.
+
+### Branch coverage
+
+**(planned for upcoming phase 2)** — branch coverage will be measured as part of phase 2; the threshold approach (ratchet vs. fixed target) is deferred to that spec.
+
+Implication for test authoring today: when a test exercises a branch (`if x:` vs. `else:`, `try:` vs. `except:`, presence vs. absence of an HTMX header), make sure both sides have a test. Don't write only the happy path.
+
+## Future phases
+
+Phase 1 (this update) lands the skill / resource changes. Subsequent phases (tooling install, cleanup of flaky / redundant tests, factory sweep, parametrize / tautology fixes, coverage gaps, E2E hardening) are tracked in their own spec directories under `spec_dd/`. The high-level dependency map and the skip-list rationale (why we are not adopting `freezegun`, `assertpy`, `cosmic-ray`, `pytest-rerunfailures`, `pytest-django-queries`, or visual-regression tools) live in the Phase-1 spec at `spec_dd/<phase>/testing-best-practice/1. spec.md`.
