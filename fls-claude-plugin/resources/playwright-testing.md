@@ -81,7 +81,7 @@ def test_user_enrollment_flow(page, live_server):
 # GOOD — semantic, survives refactors
 page.get_by_role("button", name="Submit").click()
 page.get_by_label("Email").fill("student@example.test")
-page.get_by_text("Welcome back").is_visible()
+expect(page.get_by_text("Welcome back")).to_be_visible()
 page.get_by_test_id("course-card-3").click()
 
 # BAD — couples the test to the current markup
