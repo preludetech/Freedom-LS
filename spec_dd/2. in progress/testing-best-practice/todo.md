@@ -5,43 +5,43 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 1. Idea
 
 - [x] (user) Write the idea file in this directory
-- [ ] (cmd) Optionally run `/improve_idea` to research and refine the idea
-- [ ] (user) Review the refined idea and edit as needed
+- [x] (cmd) Optionally run `/improve_idea` to research and refine the idea
+- [x] (user) Review the refined idea and edit as needed
 
 ## 2. Spec
 
-- [ ] (cmd) Run `/spec_from_idea` to generate the spec
-- [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/spec_review` to sanity-check the spec
-- [ ] (user) Address any issues raised by the review
+- [x] (cmd) Run `/spec_from_idea` to generate the spec
+- [x] (user) Review the spec carefully and edit where needed
+- [x] (cmd) Run `/spec_review` to sanity-check the spec
+- [x] (user) Address any issues raised by the review
 
 ## 3. Threat model
 
-- [ ] (cmd) Run `/threat-model` against the spec
-- [ ] (user) Update the spec to close any security gaps surfaced
+- [x] (cmd) Run `/threat-model` against the spec
+- [x] (user) Update the spec to close any security gaps surfaced
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
-- [ ] (user) Review both plans and edit where needed
+- [x] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
+- [x] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
 
-- [ ] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
-- [ ] (user) Address any concerns raised in the plan
+- [x] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
+- [x] (user) Address any concerns raised in the plan
 
 ## 6. Plan structure review
 
-- [ ] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
-- [ ] (user) Address any structure concerns raised in the plan
+- [x] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
+- [x] (user) Address any structure concerns raised in the plan
 
 ## 7. Worktree
 
-- [ ] (cmd) Run `/start_worktree` to create an isolated worktree for this spec
+- [x] (cmd) Run `/start_worktree` to create an isolated worktree for this spec
 
 ## 8. Implementation
 
-- [ ] (cmd) Run `/implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 
 ## 9. Code security review
@@ -51,14 +51,15 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 10. QA
 
-- [ ] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)
-- [ ] (user) Review the QA report
-- [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
-- [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
+- [x] (user) No QA needed — feature has no frontend changes
+- [x] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)
+- [x] (user) Review the QA report
+- [x] (user) If bugs were found, fix them using TDD (failing test first, then fix)
+- [x] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
 
 ## 11. Pull request
 
-- [ ] (user) Open a pull request
+- [x] (user) Open a pull request
 - [ ] (cmd) Run `/address_pr_review` as review feedback comes in
 - [ ] (user) Merge the PR once approved
 

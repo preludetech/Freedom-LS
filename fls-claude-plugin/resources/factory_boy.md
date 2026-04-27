@@ -46,6 +46,35 @@ student = factory.SubFactory(StudentFactory)
 course = factory.SubFactory(CourseFactory)
 ```
 
+### RelatedFactory
+
+Use `RelatedFactory` when a related object must be created **after** the parent has been saved — e.g. reverse-FK rows, m2m through-models, or any side object that needs the parent's PK. `SubFactory` runs before save and won't work for these cases.
+
+```python
+class CohortFactory(SiteAwareFactory):
+    class Meta:
+        model = Cohort
+
+    name = factory.Sequence(lambda n: f"Cohort {n}")
+    # Create one membership row after the cohort is saved, pointing back to it
+    initial_member = factory.RelatedFactory(
+        "freedom_ls.student_management.factories.CohortMembershipFactory",
+        factory_related_name="cohort",
+    )
+```
+
+If the related row is optional, expose it as a trait so most tests opt out:
+
+```python
+class Params:
+    with_initial_member = factory.Trait(
+        initial_member=factory.RelatedFactory(
+            CohortMembershipFactory,
+            factory_related_name="cohort",
+        )
+    )
+```
+
 ### LazyAttribute
 
 Derive a field from other fields:

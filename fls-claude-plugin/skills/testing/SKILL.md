@@ -24,11 +24,17 @@ This skill helps implement features and fix bugs using Test-Driven Development, 
 - Use `reverse()` for URLs, never hardcode
 - No conditionals or loops in test bodies — one behaviour per test
 - TDD cycle: RED (failing test) → GREEN (minimal code) → REFACTOR → REPEAT
+- Tests must pass in any order. Do not assume execution order, PK ordering, or that another test has run first. (planned for upcoming phase 2: pytest-randomly will enforce this.)
+- Do not open network sockets in tests; mock at the boundary. (planned for upcoming phase 2: pytest-socket will block this.)
+- Use time-machine for time-shaped code (deadlines, expiry windows, scheduled jobs). (planned for upcoming phase 2.)
 
 See:
 - `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` — full patterns, examples, TDD workflow, red flags
 - `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md` — factory patterns and available factories
-- The `playwright-tests` skill for browser / E2E tests
+- The `fls:playwright-tests` skill for browser / E2E tests
+- The `fls:htmx` skill for production-side HTMX rules
+
+Future phases (tooling install, flaky / redundant cleanup, factory sweep, parametrize / tautology fixes, coverage gaps, E2E hardening) are tracked under `spec_dd/`; see the "Future phases" section in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
 
 ## Best practices
 
@@ -161,9 +167,23 @@ For anything with a validation rule, test that invalid input is **rejected**, no
 - Don't assert on styling (CSS classes, colours, font sizes) — only on functionality.
 - Don't assert hardcoded config values (`assert settings.TIMEOUT == 30`) — you're testing the config file, not behaviour.
 
+### Testing HTMX views
+
+For HTMX-aware views at the unit-test level (currently available):
+
+- Pass `HTTP_HX_REQUEST="true"` to the Django test client to exercise the partial-response branch.
+- Assert on `HX-Trigger` response headers when the view emits client-side events (`assert "HX-Trigger" in response.headers`).
+- Expect HTTP `422` on validation errors so HTMX swaps the form fragment instead of redirecting.
+
+See `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` (HTMX test patterns section) for full examples.
+
+### Auth in tests
+
+Use `client.force_login(user)` to authenticate. Do **not** patch `request.user` — that bypasses the real permission decorators (`@login_required`, site / role checks) and produces tests that pass while production breaks. See the resource file for the full anti-pattern example.
+
 ### Playwright tests
 
-Playwright is slow; prefer pytest. Reach for Playwright only when testing interactivity that requires a real browser (HTMX swaps, Alpine-driven behaviour, JS-rendered UI). See the `playwright-tests` skill for details.
+Playwright is slow; prefer pytest. Reach for Playwright only when testing interactivity that requires a real browser (HTMX swaps, Alpine-driven behaviour, JS-rendered UI). See the `fls:playwright-tests` skill for details.
 
 ## Anti-pattern cheatsheet
 
@@ -177,5 +197,6 @@ Playwright is slow; prefer pytest. Reach for Playwright only when testing intera
 | Test catches and swallows the exception | Hides failures | Let it propagate, or use `pytest.raises()` |
 | Commented-out test | Dead test hiding a real failure | Delete it or fix it — never both |
 | Multiple assertions on unrelated behaviours | "and" test; unclear failure signal | Split into separate tests |
+| Patches `request.user` to skip auth | Bypasses real permission code | Use `client.force_login(user)` |
 
 For the longer list of red flags, see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
