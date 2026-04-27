@@ -163,6 +163,8 @@ def test_complete_topic_swaps_progress_bar_oob(client, mock_site_context):
     assert 'id="progress-bar"' in body
 ```
 
+At the unit-test level the response is raw bytes, so OOB assertions are necessarily string-based — they confirm the markup is *emitted*, not that the browser actually swapped it. Match the literal `hx-swap-oob` value the view sets (`"true"`, `"innerHTML"`, `"outerHTML"`, etc.). For an end-to-end check that the swap reaches the DOM, use a Playwright test (see `${CLAUDE_PLUGIN_ROOT}/resources/playwright-testing.md`).
+
 ### Auth-bypass anti-pattern
 
 Patching `request.user` to inject an authenticated user looks convenient but bypasses the real permission decorators (`@login_required`, custom site / role checks). Tests pass while production breaks. Use `client.force_login(user)` so the request travels the real auth path.
