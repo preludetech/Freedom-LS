@@ -50,30 +50,30 @@ course = factory.SubFactory(CourseFactory)
 
 Use `RelatedFactory` when a related object must be created **after** the parent has been saved — e.g. reverse-FK rows, m2m through-models, or any side object that needs the parent's PK. `SubFactory` runs before save and won't work for these cases.
 
+**Default to opt-in via traits.** A bare `RelatedFactory` runs on every call to the parent factory, so tests that just need an empty `Cohort` silently get an extra row. Tests that don't know about it can fail in confusing ways (off-by-one counts, unintended cascade behaviour). Wrap related rows in a trait so callers opt in explicitly:
+
 ```python
 class CohortFactory(SiteAwareFactory):
     class Meta:
         model = Cohort
 
     name = factory.Sequence(lambda n: f"Cohort {n}")
-    # Create one membership row after the cohort is saved, pointing back to it
-    initial_member = factory.RelatedFactory(
-        "freedom_ls.student_management.factories.CohortMembershipFactory",
-        factory_related_name="cohort",
-    )
-```
 
-If the related row is optional, expose it as a trait so most tests opt out:
-
-```python
-class Params:
-    with_initial_member = factory.Trait(
-        initial_member=factory.RelatedFactory(
-            CohortMembershipFactory,
-            factory_related_name="cohort",
+    class Params:
+        with_initial_member = factory.Trait(
+            initial_member=factory.RelatedFactory(
+                "freedom_ls.student_management.factories.CohortMembershipFactory",
+                factory_related_name="cohort",
+            )
         )
-    )
+
+# Bare cohort, no membership row:
+CohortFactory()
+# Cohort plus one membership:
+CohortFactory(with_initial_member=True)
 ```
+
+Only put `RelatedFactory` directly on the factory (no trait) when **every** test that creates the parent genuinely needs the related row — i.e. the model is unusable without it. That's rare; reach for the trait first.
 
 ### LazyAttribute
 
