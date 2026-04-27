@@ -133,27 +133,43 @@ from django.urls import reverse
 from playwright.sync_api import expect
 
 
+# `live_server` from pytest-django defaults to function scope. To use it inside
+# a session-scoped fixture, widen it in conftest.py:
+#
+#     @pytest.fixture(scope="session")
+#     def live_server(request, django_db_setup, django_db_blocker):
+#         from pytest_django.live_server_helper import LiveServer
+#         with django_db_blocker.unblock():
+#             server = LiveServer("localhost")
+#             yield server
+#             server.stop()
+#
+# Without this override, the fixture below raises ScopeMismatch at collection.
 @pytest.fixture(scope="session")
 def authed_storage_state(live_server, browser):
     """Log in once per session; reuse the resulting cookies + localStorage."""
     context = browser.new_context()
-    page = context.new_page()
-    page.goto(f"{live_server.url}{reverse('accounts:login')}")
-    page.get_by_label("Email").fill("student@example.test")
-    page.get_by_label("Password").fill("test-password-not-real")
-    page.get_by_role("button", name="Sign in").click()
-    expect(page).to_have_url(f"{live_server.url}{reverse('student_interface:home')}")
-    state = context.storage_state()
-    context.close()
+    try:
+        page = context.new_page()
+        page.goto(f"{live_server.url}{reverse('accounts:login')}")
+        page.get_by_label("Email").fill("student@example.test")
+        page.get_by_label("Password").fill("test-password-not-real")
+        page.get_by_role("button", name="Sign in").click()
+        expect(page).to_have_url(f"{live_server.url}{reverse('student_interface:home')}")
+        state = context.storage_state()
+    finally:
+        context.close()
     return state
 
 
 @pytest.fixture
 def authed_page(browser, authed_storage_state):
     context = browser.new_context(storage_state=authed_storage_state)
-    page = context.new_page()
-    yield page
-    context.close()
+    try:
+        page = context.new_page()
+        yield page
+    finally:
+        context.close()
 ```
 
 **Security caveat:** do not commit the resulting `storage_state` JSON to the repo; it contains session cookies. The fixture builds it at test time from synthetic credentials; never hard-code real credentials anywhere in the fixture. All examples here use the RFC 2606 reserved `.test` TLD and obviously-synthetic placeholder passwords.
