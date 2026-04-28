@@ -1,0 +1,101 @@
+{% extends "account/base_entrance.html" %}
+{% load allauth i18n %}
+
+{% block head_title %}
+    {% trans "Signup" %}
+{% endblock head_title %}
+
+{% block content %}
+    {% element h1 %}
+        {% trans "Sign Up" %}
+    {% endelement %}
+    {% setvar link %}
+        <a href="{{ login_url }}" class="text-primary underline">
+        {% endsetvar %}
+        {% setvar end_link %}
+        </a>
+    {% endsetvar %}
+    {% element p %}
+        {% blocktranslate %}Already have an account? Then please {{ link }}sign in{{ end_link }}.{% endblocktranslate %}
+    {% endelement %}
+
+    {% if not SOCIALACCOUNT_ONLY %}
+        {% url 'account_signup' as action_url %}
+        {% element form form=form method="post" action=action_url tags="entrance,signup" %}
+            {% slot body %}
+                {% csrf_token %}
+                {% for field in form.visible_fields %}
+                    {% if field.name != "accept_terms" and field.name != "accept_privacy" %}
+                        {% if field.errors %}
+                            <p class="text-error text-sm">{{ field.errors.0 }}</p>
+                        {% endif %}
+                        <p>{{ field.label_tag }} {{ field }}</p>
+                    {% endif %}
+                {% endfor %}
+
+                {% if form.accept_terms or form.accept_privacy %}
+                    <div class="space-y-2 mt-4">
+                        {% if form.accept_terms %}
+                            <label class="flex items-start gap-2">
+                                {{ form.accept_terms }}
+                                <span>
+                                    {% blocktranslate trimmed %}
+                                        I accept the
+                                    {% endblocktranslate %}
+                                    <a href="{% url 'accounts:legal_doc' doc_type='terms' %}"
+                                       target="_blank"
+                                       rel="noopener"
+                                       class="text-primary underline">
+                                        {% trans "Terms and Conditions" %}
+                                    </a>
+                                </span>
+                            </label>
+                            {% if form.accept_terms.errors %}
+                                <p class="text-error text-sm">{{ form.accept_terms.errors.0 }}</p>
+                            {% endif %}
+                        {% endif %}
+
+                        {% if form.accept_privacy %}
+                            <label class="flex items-start gap-2">
+                                {{ form.accept_privacy }}
+                                <span>
+                                    {% blocktranslate trimmed %}
+                                        I accept the
+                                    {% endblocktranslate %}
+                                    <a href="{% url 'accounts:legal_doc' doc_type='privacy' %}"
+                                       target="_blank"
+                                       rel="noopener"
+                                       class="text-primary underline">
+                                        {% trans "Privacy Policy" %}
+                                    </a>
+                                </span>
+                            </label>
+                            {% if form.accept_privacy.errors %}
+                                <p class="text-error text-sm">{{ form.accept_privacy.errors.0 }}</p>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {{ redirect_field }}
+            {% endslot %}
+            {% slot actions %}
+                {% element button tags="prominent,signup" type="submit" %}
+                    {% trans "Sign Up" %}
+                {% endelement %}
+            {% endslot %}
+        {% endelement %}
+    {% endif %}
+
+    {% if PASSKEY_SIGNUP_ENABLED %}
+        {% element hr %}
+        {% endelement %}
+        {% element button href=signup_by_passkey_url tags="prominent,signup,outline,primary" %}
+            {% trans "Sign up using a passkey" %}
+        {% endelement %}
+    {% endif %}
+
+    {% if SOCIALACCOUNT_ENABLED %}
+        {% include "socialaccount/snippets/login.html" with page_layout="entrance" %}
+    {% endif %}
+{% endblock content %}

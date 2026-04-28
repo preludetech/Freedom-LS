@@ -1,0 +1,18 @@
+{% extends "_base.html" %}
+
+{% block head_title %}{{ doc.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-12 space-y-6">
+    <header class="space-y-1">
+        <h1 class="text-3xl font-bold">{{ doc.title }}</h1>
+        <p class="text-sm text-muted">
+            Version {{ doc.version }} &middot; Effective {{ doc.effective_date }}
+        </p>
+    </header>
+
+    <article class="prose">
+        {{ rendered|safe }}
+    </article>
+</div>
+{% endblock content %}
