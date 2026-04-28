@@ -6,9 +6,9 @@ from django.db import models
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
+from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 from freedom_ls.site_aware_models.models import SiteAwareModel
 
-from .markdown_utils import render_markdown
 from .schema import ContentType as SchemaContentTypes
 
 

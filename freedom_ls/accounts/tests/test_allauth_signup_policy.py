@@ -48,6 +48,17 @@ def test_policy_can_disable_when_global_allows(mock_site_context, settings, site
 
 
 @pytest.mark.django_db
+def test_default_policy_still_allows_signups(mock_site_context, settings, site):
+    """Regression: a policy with all defaults (require_name=True, etc.) does
+    not break the existing allow-signups behaviour."""
+    settings.ALLOW_SIGN_UPS = False  # global default disallows
+    SiteSignupPolicy.objects.create(site=site)  # use field defaults
+
+    request = RequestFactory().get("/")
+    assert AccountAdapter().is_open_for_signup(request) is True
+
+
+@pytest.mark.django_db
 def test_is_open_for_signup_respects_force_site_name(settings):
     """is_open_for_signup should use the forced site's policy, not the request domain's."""
     forced_site = SiteFactory(name="ForcedSite", domain="forced.example.com")

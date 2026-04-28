@@ -35,9 +35,10 @@ class TestUserRegistrationCreatesWebhookEvent:
                     reverse("account_signup"),
                     {
                         "email": "integration-test@example.com",  # pragma: allowlist secret
-                        "email2": "integration-test@example.com",
                         "password1": "TestPass123!xyz",  # pragma: allowlist secret
                         "password2": "TestPass123!xyz",  # pragma: allowlist secret
+                        "first_name": "Integration",
+                        "last_name": "Test",
                     },
                 )
 

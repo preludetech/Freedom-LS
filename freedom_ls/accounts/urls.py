@@ -1,13 +1,23 @@
 from django.urls import path
 
-# from django.views.generic.base import TemplateView
 from . import views
+
+app_name = "accounts"
 
 urlpatterns = [
     path(
         "profile/",
-        # TemplateView.as_view(template_name="accounts/profile.html"),
         views.edit_profile,
         name="account_profile",
+    ),
+    path(
+        "legal/<str:doc_type>/",
+        views.legal_doc_view,
+        name="legal_doc",
+    ),
+    path(
+        "complete-registration/",
+        views.complete_registration_view,
+        name="complete_registration",
     ),
 ]

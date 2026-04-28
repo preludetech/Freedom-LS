@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import Any
+
+from django.conf import settings
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
@@ -88,11 +91,16 @@ class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
 
 class SiteSignupPolicy(SiteAwareModel):
     """
-    Per-site toggle for whether self-service account signups are allowed.
-    If no row exists for a site, the global default in settings.ALLOW_SIGN_UPS is used.
+    Per-site signup policy — controls whether signups are allowed and what
+    information is collected from the user at signup / post-verification.
+    If no row exists for a site, the global default in settings.ALLOW_SIGN_UPS
+    is used for `allow_signups`; the other fields use their model defaults.
     """
 
     allow_signups = models.BooleanField(default=True)
+    require_name = models.BooleanField(default=True)
+    require_terms_acceptance = models.BooleanField(default=False)
+    additional_registration_forms = models.JSONField(default=list, blank=True)
 
     class Meta:
         constraints = [
@@ -103,6 +111,52 @@ class SiteSignupPolicy(SiteAwareModel):
 
     def __str__(self):
         return f"{self.site.domain}: allow_signups={self.allow_signups}"
+
+
+class LegalConsent(SiteAwareModel):
+    """Append-only record of a user's consent to a legal document.
+
+    Each row is created exactly once (at signup, or via a future re-consent
+    flow). The model rejects updates to existing rows; the admin registers
+    this model as fully read-only.
+    """
+
+    DOCUMENT_TYPE_CHOICES = [("terms", "Terms"), ("privacy", "Privacy")]
+    CONSENT_METHOD_CHOICES = [
+        ("signup_checkbox", "Signup checkbox"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="legal_consents",
+    )
+    document_type = models.CharField(max_length=16, choices=DOCUMENT_TYPE_CHOICES)
+    document_version = models.CharField(max_length=64)
+    git_hash = models.CharField(max_length=64)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    consent_method = models.CharField(
+        max_length=32,
+        choices=CONSENT_METHOD_CHOICES,
+        default="signup_checkbox",
+    )
+
+    class Meta:
+        indexes = [models.Index(fields=["user", "document_type"])]
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if self.pk is not None and self._state.adding is False:
+            raise ValueError(
+                "LegalConsent records are append-only and cannot be updated"
+            )
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return (
+            f"{self.user_id} accepted {self.document_type} "
+            f"v{self.document_version} at {self.timestamp:%Y-%m-%d %H:%M}"
+        )
 
 
 # class SiteGroup(SiteAwareModelBase, AuthGroup):
