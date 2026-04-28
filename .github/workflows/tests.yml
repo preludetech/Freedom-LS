@@ -128,7 +128,7 @@ jobs:
         run: uv run playwright install --with-deps chromium
 
       - name: Run Playwright tests
-        run: uv run pytest -m playwright
+        run: uv run pytest -m playwright --no-cov
 
       - name: Upload Playwright traces
         uses: actions/upload-artifact@v7

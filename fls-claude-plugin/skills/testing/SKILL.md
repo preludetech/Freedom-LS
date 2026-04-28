@@ -24,9 +24,10 @@ This skill helps implement features and fix bugs using Test-Driven Development, 
 - Use `reverse()` for URLs, never hardcode
 - No conditionals or loops in test bodies — one behaviour per test
 - TDD cycle: RED (failing test) → GREEN (minimal code) → REFACTOR → REPEAT
-- Tests must pass in any order. Do not assume execution order, PK ordering, or that another test has run first. (planned for upcoming phase 2: pytest-randomly will enforce this.)
-- Do not open network sockets in tests; mock at the boundary. (planned for upcoming phase 2: pytest-socket will block this.)
-- Use time-machine for time-shaped code (deadlines, expiry windows, scheduled jobs). (planned for upcoming phase 2.)
+- Tests must pass in any order. `pytest-randomly` randomises order on every run — do **not** add `@pytest.mark.order` to paper over ordering bugs; fix the test instead.
+- Do not open network sockets in tests; `pytest-socket` blocks outbound sockets and only allows `127.0.0.1` / `::1`. Mock at the boundary, or add `@pytest.mark.allow_hosts(["host"])` for a genuine integration test (never `["*"]`).
+- Use `time-machine` for time-shaped code (deadlines, expiry windows, scheduled jobs) — prefer `time_machine.travel(...)` over manual `datetime.now()` patching.
+- Run the full suite in parallel locally with `uv run pytest -n auto` (xdist is opt-in, not baked into `addopts`).
 
 See:
 - `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` — full patterns, examples, TDD workflow, red flags

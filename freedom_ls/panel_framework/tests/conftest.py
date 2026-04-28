@@ -59,7 +59,7 @@ _counter = itertools.count(1)
 
 @pytest.fixture(autouse=True, scope="session")
 def _panel_test_tables(django_db_setup, django_db_blocker):
-    """Create stub tables and permissions once per test session."""
+    """Create stub tables once per test session."""
     with django_db_blocker.unblock():
         # Register models in the app registry so Django's Collector can find them
         app_models = apps.all_models.get("freedom_ls_panel_framework", {})
@@ -72,18 +72,6 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
             editor.create_model(StubChild)
             editor.create_model(StubGrandchild)
 
-        # Create ContentType and Permissions so guardian/assign_perm works
-        ct, _ = ContentType.objects.get_or_create(
-            app_label="freedom_ls_panel_framework",
-            model="stubmodel",
-        )
-        for codename in ("add_stubmodel", "change_stubmodel", "delete_stubmodel"):
-            Permission.objects.get_or_create(
-                content_type=ct,
-                codename=codename,
-                defaults={"name": f"Can {codename.split('_')[0]} stub model"},
-            )
-
         yield
 
         with connection.schema_editor() as editor:
@@ -93,6 +81,31 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
         app_models.pop("stubgrandchild", None)
         app_models.pop("stubmodel", None)
         app_models.pop("stubchild", None)
+
+
+@pytest.fixture(autouse=True)
+def _panel_test_permissions(db):
+    """Ensure stub-model ContentType and Permissions exist before every test.
+
+    Function-scoped because tests using ``@pytest.mark.django_db(transaction=True)``
+    elsewhere in the suite flush the DB between tests, wiping any session-scoped
+    setup. The ContentType in-memory cache must also be cleared so that
+    ``get_for_model(StubModel)`` does not return a stale PK from a prior
+    rolled-back transaction. Idempotent via ``get_or_create``.
+    """
+    # Clear the ContentType cache before the lookup so any stale PKs from
+    # earlier rolled-back transactions are dropped.
+    ContentType.objects.clear_cache()
+    ct, _ = ContentType.objects.get_or_create(
+        app_label="freedom_ls_panel_framework",
+        model="stubmodel",
+    )
+    for codename in ("add_stubmodel", "change_stubmodel", "delete_stubmodel"):
+        Permission.objects.get_or_create(
+            content_type=ct,
+            codename=codename,
+            defaults={"name": f"Can {codename.split('_')[0]} stub model"},
+        )
 
 
 # ---------------------------------------------------------------------------

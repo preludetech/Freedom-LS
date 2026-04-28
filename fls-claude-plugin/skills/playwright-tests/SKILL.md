@@ -32,7 +32,7 @@ Use this Skill when:
 
 - The `expect()` API is **(currently available)** — use it for all auto-waiting assertions instead of `wait_for_selector` / `is_visible`.
 - Reuse a session-scoped login fixture (`storage_state`) so most tests skip the login flow. See the resource file for the full pattern.
-- Trace-on-failure config is **(planned for upcoming phase 2)** — once enabled, traces capture DOM, network, and console output for failed tests. Treat trace artefacts as sensitive (they may contain fixture credentials or session cookies).
+- Trace and screenshot-on-failure are now captured automatically (`--tracing=retain-on-failure --screenshot=only-on-failure` in `pyproject.toml` `addopts`). Traces land in `test-results/<nodeid>/trace.zip` and CI uploads `test-results/` as the `playwright-traces` artifact on failure. Treat trace artefacts as sensitive — they may contain fixture credentials or session cookies.
 
 ## Cross-links
 
