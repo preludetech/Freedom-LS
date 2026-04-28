@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 import pytest
 from allauth.core import context as allauth_context
@@ -13,46 +12,6 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import LegalConsent, SiteSignupPolicy
-
-from ._git_helpers import run_git as _git
-
-_TERMS = """---
-version: "1.5"
-title: "Terms"
-type: "terms"
-effective_date: "2026-04-27"
----
-
-Body.
-"""
-
-_PRIVACY = """---
-version: "1.5"
-title: "Privacy"
-type: "privacy"
-effective_date: "2026-04-27"
----
-
-Body.
-"""
-
-
-@pytest.fixture
-def legal_repo(tmp_path: Path, settings):
-    _git(tmp_path, "init", "-q", "-b", "main")
-    _git(tmp_path, "config", "user.email", "t@example.com")
-    _git(tmp_path, "config", "user.name", "T")
-
-    default_dir = tmp_path / "legal_docs" / "_default"
-    default_dir.mkdir(parents=True)
-    (default_dir / "terms.md").write_text(_TERMS, encoding="utf-8")
-    (default_dir / "privacy.md").write_text(_PRIVACY, encoding="utf-8")
-    _git(tmp_path, "add", "-A")
-    _git(tmp_path, "commit", "-q", "-m", "init")
-
-    settings.BASE_DIR = tmp_path
-    settings.LEGAL_DOCS_MANIFEST_PATH = None
-    return tmp_path
 
 
 @pytest.fixture
@@ -90,7 +49,7 @@ def test_first_name_optional_when_policy_disables_require_name(
 
 @pytest.mark.django_db
 def test_form_adds_consent_checkboxes_when_required_and_docs_present(
-    allauth_request_ctx, mock_site_context, site, legal_repo
+    allauth_request_ctx, mock_site_context, site, legal_repo_mock
 ):
     SiteSignupPolicy.objects.create(site=site, require_terms_acceptance=True)
 
@@ -105,19 +64,11 @@ def test_form_adds_consent_checkboxes_when_required_and_docs_present(
 
 @pytest.mark.django_db
 def test_form_does_not_add_checkboxes_when_docs_missing(
-    allauth_request_ctx, mock_site_context, site, tmp_path, settings, caplog
+    allauth_request_ctx, mock_site_context, site, mock_legal_blobs, caplog
 ):
     """When `require_terms_acceptance=True` but no docs resolve, the form
     omits the checkbox rather than rendering a broken link."""
-    _git(tmp_path, "init", "-q", "-b", "main")
-    _git(tmp_path, "config", "user.email", "t@example.com")
-    _git(tmp_path, "config", "user.name", "T")
-    (tmp_path / "README.md").write_text("hi\n", encoding="utf-8")
-    _git(tmp_path, "add", "-A")
-    _git(tmp_path, "commit", "-q", "-m", "init")
-    settings.BASE_DIR = tmp_path
-    settings.LEGAL_DOCS_MANIFEST_PATH = None
-
+    # No blobs registered → all lookups raise FileNotFoundError.
     SiteSignupPolicy.objects.create(site=site, require_terms_acceptance=True)
 
     from freedom_ls.accounts.forms import SiteAwareSignupForm
@@ -132,7 +83,7 @@ def test_form_does_not_add_checkboxes_when_docs_missing(
 
 @pytest.mark.django_db
 def test_custom_signup_records_consents(
-    allauth_request_ctx, mock_site_context, site, legal_repo, settings
+    allauth_request_ctx, mock_site_context, site, legal_repo_mock, settings
 ):
     settings.TRUSTED_PROXY_IP_HEADER = None
     SiteSignupPolicy.objects.create(site=site, require_terms_acceptance=True)
@@ -163,7 +114,7 @@ def test_custom_signup_records_consents(
 
 @pytest.mark.django_db
 def test_custom_signup_records_nothing_when_no_consent_fields(
-    allauth_request_ctx, mock_site_context, site, legal_repo
+    allauth_request_ctx, mock_site_context, site, legal_repo_mock
 ):
     """If no consent fields are present (policy not requiring them), no rows."""
     SiteSignupPolicy.objects.create(site=site, require_terms_acceptance=False)
@@ -182,7 +133,7 @@ def test_custom_signup_records_nothing_when_no_consent_fields(
 
 @pytest.mark.django_db
 def test_signup_view_renders_each_consent_checkbox_once(
-    mock_site_context, site, legal_repo
+    mock_site_context, site, legal_repo_mock
 ):
     """Regression for Bug 1 in better-registration QA report.
 

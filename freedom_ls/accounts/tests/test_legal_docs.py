@@ -54,24 +54,19 @@ Body here.
 
 
 @pytest.fixture
-def legal_repo(tmp_path: Path, settings):
-    """Create a temp git repo with `legal_docs/_default/{terms,privacy}.md`
-    committed at HEAD, and point `settings.BASE_DIR` at it."""
-    _init_repo(tmp_path)
+def legal_docs_seeded(mock_legal_blobs):
+    """Mock-backed equivalent of the previous on-disk `legal_repo` fixture.
 
-    default_dir = tmp_path / "legal_docs" / "_default"
-    default_dir.mkdir(parents=True)
-    (default_dir / "terms.md").write_text(_TERMS_BODY, encoding="utf-8")
-    (default_dir / "privacy.md").write_text(_PRIVACY_BODY, encoding="utf-8")
-    _commit(tmp_path, "Add default legal docs")
-
-    settings.BASE_DIR = tmp_path
-    settings.LEGAL_DOCS_MANIFEST_PATH = None
-    return tmp_path
+    Seeds `_default/{terms,privacy}.md` and returns the ``add`` callable so
+    tests can layer in site-specific overrides.
+    """
+    mock_legal_blobs("legal_docs/_default/terms.md", _TERMS_BODY)
+    mock_legal_blobs("legal_docs/_default/privacy.md", _PRIVACY_BODY)
+    return mock_legal_blobs
 
 
 @pytest.mark.django_db
-def test_get_legal_doc_returns_default_when_no_site_specific(legal_repo):
+def test_get_legal_doc_returns_default_when_no_site_specific(legal_docs_seeded):
     site = Site(domain="example.com", name="example")
 
     doc = legal_docs.get_legal_doc(site, "terms")
@@ -81,15 +76,12 @@ def test_get_legal_doc_returns_default_when_no_site_specific(legal_repo):
     assert doc.version == "1.0"
     assert doc.title == "Default Terms"
     assert "Body here" in doc.body_markdown
-    assert len(doc.git_hash) == 40  # SHA-1 hex
+    assert len(doc.git_hash) == 40
 
 
 @pytest.mark.django_db
-def test_get_legal_doc_returns_site_specific_when_present(legal_repo):
-    site_dir = legal_repo / "legal_docs" / "example.com"
-    site_dir.mkdir(parents=True)
-    (site_dir / "terms.md").write_text(_SITE_TERMS_BODY, encoding="utf-8")
-    _commit(legal_repo, "Add site-specific terms")
+def test_get_legal_doc_returns_site_specific_when_present(legal_docs_seeded):
+    legal_docs_seeded("legal_docs/example.com/terms.md", _SITE_TERMS_BODY)
 
     site = Site(domain="example.com", name="example")
     doc = legal_docs.get_legal_doc(site, "terms")
@@ -101,21 +93,13 @@ def test_get_legal_doc_returns_site_specific_when_present(legal_repo):
 
 
 @pytest.mark.django_db
-def test_get_legal_doc_returns_none_when_neither_exists(tmp_path, settings):
-    _init_repo(tmp_path)
-    # Create a placeholder file so we can commit something
-    (tmp_path / "README.md").write_text("hi\n", encoding="utf-8")
-    _commit(tmp_path, "Initial commit")
-
-    settings.BASE_DIR = tmp_path
-    settings.LEGAL_DOCS_MANIFEST_PATH = None
-
+def test_get_legal_doc_returns_none_when_neither_exists(mock_legal_blobs):
     site = Site(domain="example.com", name="example")
     assert legal_docs.get_legal_doc(site, "terms") is None
 
 
 @pytest.mark.django_db
-def test_get_legal_doc_rejects_path_traversal_in_site_domain(legal_repo):
+def test_get_legal_doc_rejects_path_traversal_in_site_domain(legal_docs_seeded):
     """A malicious `Site.domain` like `../../etc` must not escape `legal_docs/`."""
     site = Site(domain="../../etc", name="bad")
 
@@ -128,13 +112,25 @@ def test_get_legal_doc_rejects_path_traversal_in_site_domain(legal_repo):
 
 
 @pytest.mark.django_db
-def test_get_legal_doc_reads_from_head_not_working_tree(legal_repo):
-    """Mutating the working-tree file must not affect what is returned."""
-    target = legal_repo / "legal_docs" / "_default" / "terms.md"
-    original = target.read_text(encoding="utf-8")
+def test_get_legal_doc_reads_from_head_not_working_tree(tmp_path: Path, settings):
+    """Mutating the working-tree file must not affect what is returned.
 
+    This test exercises the real ``git show HEAD:<path>`` path, so it can't
+    use the in-memory mock — that's the whole point of this regression test.
+    """
+    _init_repo(tmp_path)
+    default_dir = tmp_path / "legal_docs" / "_default"
+    default_dir.mkdir(parents=True)
+    (default_dir / "terms.md").write_text(_TERMS_BODY, encoding="utf-8")
+    _commit(tmp_path, "Add default legal docs")
+
+    settings.BASE_DIR = tmp_path
+    settings.LEGAL_DOCS_MANIFEST_PATH = None
+
+    target = tmp_path / "legal_docs" / "_default" / "terms.md"
     target.write_text(
-        original.replace("Body here", "TAMPERED CONTENT"), encoding="utf-8"
+        target.read_text(encoding="utf-8").replace("Body here", "TAMPERED CONTENT"),
+        encoding="utf-8",
     )
 
     site = Site(domain="example.com", name="example")
@@ -146,10 +142,12 @@ def test_get_legal_doc_reads_from_head_not_working_tree(legal_repo):
 
 
 @pytest.mark.django_db
-def test_read_blob_at_head_uses_manifest_when_configured(
-    tmp_path, settings, legal_repo
-):
-    """When `LEGAL_DOCS_MANIFEST_PATH` is set, the manifest is the source."""
+def test_read_blob_at_head_uses_manifest_when_configured(tmp_path: Path, settings):
+    """When `LEGAL_DOCS_MANIFEST_PATH` is set, the manifest is the source.
+
+    Exercises the real manifest-loading path with no git involvement.
+    """
+    settings.BASE_DIR = tmp_path
     rel_path = "legal_docs/_default/terms.md"
     manifest_content = '---\nversion: "99.9"\ntitle: "Manifest Terms"\ntype: "terms"\neffective_date: "2026-04-27"\n---\n\nManifest body.\n'
     manifest = {
@@ -178,42 +176,30 @@ def test_read_blob_at_head_uses_manifest_when_configured(
 
 
 @pytest.mark.django_db
-def test_get_legal_doc_returns_none_for_unknown_doc_type(legal_repo):
+def test_get_legal_doc_returns_none_for_unknown_doc_type(legal_docs_seeded):
     site = Site(domain="example.com", name="example")
     assert legal_docs.get_legal_doc(site, "marketing") is None
 
 
 @pytest.mark.django_db
-def test_has_legal_doc_returns_true_when_doc_resolves(legal_repo):
+def test_has_legal_doc_returns_true_when_doc_resolves(legal_docs_seeded):
     site = Site(domain="example.com", name="example")
     assert legal_docs.has_legal_doc(site, "terms") is True
 
 
 @pytest.mark.django_db
-def test_has_legal_doc_returns_false_when_doc_missing(tmp_path, settings):
-    _init_repo(tmp_path)
-    (tmp_path / "README.md").write_text("hi\n", encoding="utf-8")
-    _commit(tmp_path, "Initial commit")
-    settings.BASE_DIR = tmp_path
-    settings.LEGAL_DOCS_MANIFEST_PATH = None
-
+def test_has_legal_doc_returns_false_when_doc_missing(mock_legal_blobs):
     site = Site(domain="example.com", name="example")
     assert legal_docs.has_legal_doc(site, "terms") is False
 
 
 @pytest.mark.django_db
 def test_system_check_warns_when_required_doc_missing(
-    tmp_path, settings, mock_site_context
+    mock_legal_blobs, mock_site_context
 ):
     """Sites with require_terms_acceptance=True but missing docs trigger Warning."""
     from freedom_ls.accounts.checks import check_legal_docs_present_when_required
     from freedom_ls.accounts.models import SiteSignupPolicy
-
-    _init_repo(tmp_path)
-    (tmp_path / "README.md").write_text("hi\n", encoding="utf-8")
-    _commit(tmp_path, "Initial commit")
-    settings.BASE_DIR = tmp_path
-    settings.LEGAL_DOCS_MANIFEST_PATH = None
 
     SiteSignupPolicy.objects.update_or_create(
         site=mock_site_context, defaults={"require_terms_acceptance": True}
@@ -228,7 +214,7 @@ def test_system_check_warns_when_required_doc_missing(
 
 
 @pytest.mark.django_db
-def test_system_check_silent_when_docs_present(legal_repo, mock_site_context):
+def test_system_check_silent_when_docs_present(legal_docs_seeded, mock_site_context):
     """When docs resolve via _default/, no warning is emitted."""
     from freedom_ls.accounts.checks import check_legal_docs_present_when_required
     from freedom_ls.accounts.models import SiteSignupPolicy

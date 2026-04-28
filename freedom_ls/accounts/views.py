@@ -91,7 +91,11 @@ def complete_registration_view(request: HttpRequest) -> HttpResponse:
 
     if request.method == "POST":
         bound = [cls(request.POST, prefix=cls.__name__) for cls in form_classes]
-        if all(form.is_valid() for form in bound):
+        # Materialise the list so every form's `is_valid()` is called and
+        # populates `.errors` — `all()` on a generator short-circuits on the
+        # first falsy result and would leave later forms' errors unrendered.
+        validity = [form.is_valid() for form in bound]
+        if all(validity):
             for form in bound:
                 cast(RegistrationFormProtocol, form).save(user)
             _invalidate_completion_cache(request)
