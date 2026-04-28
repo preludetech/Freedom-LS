@@ -45,3 +45,4 @@ htmlcov/
 # Security scan artifacts
 *.sarif
 bandit.sarif
+.claude/scheduled_tasks.lock
