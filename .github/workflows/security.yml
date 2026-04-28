@@ -38,7 +38,8 @@ jobs:
       - name: Install dependencies
         run: uv sync
       - name: Run pip-audit
-        run: uv run pip-audit
+        # CVE-2026-3219: pip 26.0.1 — no fix released yet. pip is a venv tool, not an app runtime dep.
+        run: uv run pip-audit --ignore-vuln CVE-2026-3219
 
   semgrep:
     name: Semgrep SAST
