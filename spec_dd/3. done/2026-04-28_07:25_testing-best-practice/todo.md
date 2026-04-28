@@ -42,11 +42,11 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 8. Implementation
 
 - [x] (cmd) Run `/implement_plan` to execute the implementation plan
-- [ ] (user) Spot-check the changes
+- [x] (user) Spot-check the changes
 
 ## 9. Code security review
 
-- [ ] (cmd) Run `/security-review` on the pending changes
+- [x] (cmd) Run `/security-review` on the pending changes
 - [ ] (user) Address any issues raised
 
 ## 10. QA
@@ -61,9 +61,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 - [x] (user) Open a pull request
 - [x] (cmd) Run `/address_pr_review` as review feedback comes in
-- [ ] (user) Merge the PR once approved
+- [x] (user) Merge the PR once approved
 
 ## 12. Cleanup
 
-- [ ] (cmd) Run `/finish_worktree` to clean up the worktree
+- [x] (cmd) Run `/finish_worktree` to clean up the worktree
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved
