@@ -167,15 +167,20 @@ At the unit-test level the response is raw bytes, so OOB assertions are necessar
 
 ### Auth-bypass anti-pattern
 
-Patching `request.user` to inject an authenticated user looks convenient but bypasses the real permission decorators (`@login_required`, custom site / role checks). Tests pass while production breaks. Use `client.force_login(user)` so the request travels the real auth path.
+Manually constructing a request via `RequestFactory`, attaching `user` directly, and calling the view function looks convenient but skips middleware and the real permission decorators (`@login_required`, custom site / role checks). Tests pass while production breaks. Use `client.force_login(user)` so the request travels the real auth path.
 
 ```python
-# BAD — bypasses the real permission decorator; tests pass while production breaks
-with mock.patch("freedom_ls.educator_interface.views.request.user", staff_user):
-    response = client.get(reverse("educator_interface:cohort_detail", args=[cohort.pk]))
-    assert response.status_code == 200
+from django.test import RequestFactory
+from freedom_ls.educator_interface.views import cohort_detail
 
-# GOOD — exercises the real auth path
+# BAD — skips middleware and the @login_required / site-permission checks
+factory = RequestFactory()
+request = factory.get(reverse("educator_interface:cohort_detail", args=[cohort.pk]))
+request.user = staff_user  # ← attaches the user without going through auth middleware
+response = cohort_detail(request, cohort_pk=cohort.pk)
+assert response.status_code == 200
+
+# GOOD — exercises the real auth path through middleware and the URL dispatcher
 client.force_login(staff_user)
 response = client.get(
     reverse("educator_interface:cohort_detail", args=[cohort.pk]),
