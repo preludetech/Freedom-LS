@@ -134,7 +134,9 @@ from playwright.sync_api import expect
 
 
 # `live_server` from pytest-django defaults to function scope. To use it inside
-# a session-scoped fixture, widen it in conftest.py:
+# a session-scoped fixture, widen it in conftest.py. `django_db_setup` and
+# `django_db_blocker` below are built-in pytest-django fixtures — no import
+# needed; they're auto-discovered once pytest-django is installed.
 #
 #     @pytest.fixture(scope="session")
 #     def live_server(request, django_db_setup, django_db_blocker):
