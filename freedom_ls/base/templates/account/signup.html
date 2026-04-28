@@ -9,14 +9,9 @@
     {% element h1 %}
         {% trans "Sign Up" %}
     {% endelement %}
-    {% setvar link %}
-        <a href="{{ login_url }}" class="text-primary underline">
-        {% endsetvar %}
-        {% setvar end_link %}
-        </a>
-    {% endsetvar %}
     {% element p %}
-        {% blocktranslate %}Already have an account? Then please {{ link }}sign in{{ end_link }}.{% endblocktranslate %}
+        {% trans "Already have an account? Then please" %}
+        <a href="{{ login_url }}" class="text-primary underline">{% trans "sign in" %}</a>.
     {% endelement %}
 
     {% if not SOCIALACCOUNT_ONLY %}
@@ -39,9 +34,7 @@
                             <label class="flex items-start gap-2">
                                 {{ form.accept_terms }}
                                 <span>
-                                    {% blocktranslate trimmed %}
-                                        I accept the
-                                    {% endblocktranslate %}
+                                    {% trans "I accept the" %}
                                     <a href="{% url 'accounts:legal_doc' doc_type='terms' %}"
                                        target="_blank"
                                        rel="noopener"
@@ -59,9 +52,7 @@
                             <label class="flex items-start gap-2">
                                 {{ form.accept_privacy }}
                                 <span>
-                                    {% blocktranslate trimmed %}
-                                        I accept the
-                                    {% endblocktranslate %}
+                                    {% trans "I accept the" %}
                                     <a href="{% url 'accounts:legal_doc' doc_type='privacy' %}"
                                        target="_blank"
                                        rel="noopener"

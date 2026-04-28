@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import Protocol, runtime_checkable
+from typing import Protocol, cast, runtime_checkable
 
 from django import forms
 from django.contrib.auth.models import AbstractBaseUser
@@ -116,8 +116,14 @@ def get_incomplete_forms(
     incomplete: list[type[forms.Form]] = []
 
     for cls in classes:
+        # `_is_protocol_compliant` already verified `applies_to` and
+        # `is_complete` exist; cast to the Protocol to satisfy the type
+        # checker without `# type: ignore`.
+        proto_cls = cast(type[RegistrationFormProtocol], cls)
+        # `applies_to` / `is_complete` run third-party code, so any exception
+        # type is possible — log and skip rather than 500 the request.
         try:
-            applies = cls.applies_to(user)  # type: ignore[attr-defined]
+            applies = proto_cls.applies_to(user)
         except Exception as err:
             logger.warning(
                 "applies_to(%r) raised on form %s: %s",
@@ -130,7 +136,7 @@ def get_incomplete_forms(
             continue
 
         try:
-            complete = cls.is_complete(user)  # type: ignore[attr-defined]
+            complete = proto_cls.is_complete(user)
         except Exception as err:
             logger.warning(
                 "is_complete(%r) raised on form %s: %s",

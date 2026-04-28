@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 import json
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -14,27 +13,8 @@ from django.core.checks import Warning as ChecksWarning
 
 from freedom_ls.accounts import legal_docs
 
-
-def _git(repo: Path, *args: str) -> str:
-    cmd = ["git", "-C", str(repo), *args]
-    return subprocess.run(  # noqa: S603
-        cmd,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-
-
-def _init_repo(repo: Path) -> None:
-    _git(repo, "init", "-q", "-b", "main")
-    _git(repo, "config", "user.email", "test@example.com")
-    _git(repo, "config", "user.name", "Test")
-
-
-def _commit(repo: Path, msg: str) -> None:
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-q", "-m", msg)
-
+from ._git_helpers import commit_all as _commit
+from ._git_helpers import init_repo as _init_repo
 
 _TERMS_BODY = """---
 version: "1.0"

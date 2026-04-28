@@ -72,7 +72,21 @@ class Command(BaseCommand):
             except subprocess.CalledProcessError as err:
                 self.stderr.write(f"Skipping {rel}: not in HEAD ({err.stderr.strip()})")
                 continue
-            content = path.read_bytes()
+            # Read content from the git blob (not the working tree) so the
+            # recorded SHA and the content always match — even if the working
+            # tree has uncommitted changes.
+            try:
+                show_cmd = ["git", "-C", str(base_dir), "show", f"HEAD:{rel}"]
+                content = subprocess.run(  # noqa: S603
+                    show_cmd,
+                    check=True,
+                    capture_output=True,
+                ).stdout
+            except subprocess.CalledProcessError as err:
+                self.stderr.write(
+                    f"Skipping {rel}: could not read blob ({err.stderr!r})"
+                )
+                continue
             blobs[rel] = {
                 "sha": sha,
                 "content_b64": base64.b64encode(content).decode("ascii"),

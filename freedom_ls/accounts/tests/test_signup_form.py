@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -14,6 +13,8 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import LegalConsent, SiteSignupPolicy
+
+from ._git_helpers import run_git as _git
 
 _TERMS = """---
 version: "1.5"
@@ -34,16 +35,6 @@ effective_date: "2026-04-27"
 
 Body.
 """
-
-
-def _git(repo: Path, *args: str) -> str:
-    cmd = ["git", "-C", str(repo), *args]
-    return subprocess.run(  # noqa: S603
-        cmd,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
 
 
 @pytest.fixture
