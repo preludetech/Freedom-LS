@@ -59,7 +59,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 10. Pull request
 
-- [ ] (user) Open a pull request
+- [x] (user) Open a pull request
 - [ ] (cmd) Run `/address_pr_review` as review feedback comes in
 - [ ] (user) Merge the PR once approved
 
