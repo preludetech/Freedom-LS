@@ -17,8 +17,8 @@ from . import forms
 from .legal_docs import get_legal_doc, render_legal_doc
 from .middleware import CACHE_SESSION_KEY
 from .registration_forms import (
+    RegistrationFormProtocol,
     get_incomplete_forms,
-    load_registration_form_classes,
 )
 from .utils import get_signup_policy_for_request
 
@@ -93,7 +93,7 @@ def complete_registration_view(request: HttpRequest) -> HttpResponse:
         bound = [cls(request.POST, prefix=cls.__name__) for cls in form_classes]
         if all(form.is_valid() for form in bound):
             for form in bound:
-                form.save(user)  # type: ignore[attr-defined]
+                cast(RegistrationFormProtocol, form).save(user)
             _invalidate_completion_cache(request)
             return _safe_post_completion_redirect(request)
     else:
@@ -106,13 +106,3 @@ def complete_registration_view(request: HttpRequest) -> HttpResponse:
         "accounts/complete_registration.html",
         {"forms": bound, "next": next_value},
     )
-
-
-# Re-export to keep `load_registration_form_classes` importable from views
-# (used by tests / future callers).
-__all__ = [
-    "complete_registration_view",
-    "edit_profile",
-    "legal_doc_view",
-    "load_registration_form_classes",
-]

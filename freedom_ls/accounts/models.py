@@ -144,8 +144,16 @@ class LegalConsent(SiteAwareModel):
 
     class Meta:
         indexes = [models.Index(fields=["user", "document_type"])]
+        ordering = ["-timestamp"]
 
     def save(self, *args: Any, **kwargs: Any) -> None:
+        # `SiteAwareModel` uses a UUID PK with `default=uuid.uuid4`, so
+        # `self.pk` is set as soon as the instance is constructed — before
+        # the row exists in the DB. We therefore need `_state.adding` to
+        # distinguish "first-time insert" from "update an existing row".
+        # Note: this guard only covers ``.save()``. ``QuerySet.update()`` and
+        # ``bulk_update()`` bypass it silently — the admin is registered as
+        # fully read-only as the second layer of defence.
         if self.pk is not None and self._state.adding is False:
             raise ValueError(
                 "LegalConsent records are append-only and cannot be updated"

@@ -31,7 +31,7 @@ def _get_request_or_none():
     """Return the active request from allauth's context, or None."""
     try:
         return allauth_context.request
-    except Exception:
+    except LookupError:
         return None
 
 

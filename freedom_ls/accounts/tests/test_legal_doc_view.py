@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -10,16 +9,7 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
-
-def _git(repo: Path, *args: str) -> str:
-    cmd = ["git", "-C", str(repo), *args]
-    return subprocess.run(  # noqa: S603
-        cmd,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-
+from ._git_helpers import run_git as _git
 
 _TERMS = """---
 version: "1.0"
