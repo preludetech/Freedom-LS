@@ -38,6 +38,10 @@ jobs:
       - name: Install dependencies
         run: uv sync
       - name: Run pip-audit
+        # TODO: remove --ignore-vuln once pip 26.1 is released on PyPI.
+        # CVE-2026-3219: pip <=26.0.1 misinterprets tar+ZIP archives. Fixed in pip 26.1
+        # (pypa/pip#13870), but 26.1 is not yet published to PyPI. pip is only a
+        # transitive dev dependency here (pip-api -> pip-audit) and is not used at runtime.
         run: uv run pip-audit
 
   semgrep:
@@ -66,6 +70,8 @@ jobs:
       DB_NAME: ci
       DB_USER: ci
       DB_PASSWORD: ci  # pragma: allowlist secret
+      FLS_ERASURE_DB_USER: fls_erasure_user
+      FLS_ERASURE_DB_PASSWORD: fls_erasure_pw  # pragma: allowlist secret
       HSTS_INCLUDE_SUBDOMAINS: "True"
       HSTS_PRELOAD: "True"
     steps:

@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sites",
+    "django.contrib.postgres",
     "django.tasks",
     "unfold",  # before django.contrib.admin
     "unfold.contrib.filters",  # optional, if special filters are needed
@@ -61,7 +62,6 @@ INSTALLED_APPS = [
     "guardian",
     # CUSTOM APPS
     # "app_authentication",
-    # xapi_learning_record_store
     "freedom_ls.base",
     "freedom_ls.icons",
     "freedom_ls.content_engine",
@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     "freedom_ls.panel_framework",
     "freedom_ls.educator_interface",
     "freedom_ls.role_based_permissions",
+    "freedom_ls.experience_api",
     #########
     # STUDENT INTERFACE
     "freedom_ls.student_interface",
@@ -322,3 +323,39 @@ if not _webhook_salt:
         hashlib.sha256(b"webhook-encryption-salt-dev").digest()
     ).decode()
 SALT_KEY = _webhook_salt
+
+
+# ------------------------------------------------------------------
+# experience_api — xAPI event tracking
+#
+# Per-environment overrides live in settings_dev.py / settings_prod.py. The
+# defaults below are the portable, project-agnostic settings.
+EXPERIENCE_API_STRICT_VALIDATION = False
+EXPERIENCE_API_CAPTURE_IP = False
+# Operator acknowledgement for moving off ImmediateBackend — see spec
+# §"Preconditions for switching off ImmediateBackend". Setting this to True
+# suppresses the ready()-time ImproperlyConfigured and is an explicit admission
+# that retries, dead-letter sink, and monitoring have been configured.
+EXPERIENCE_API_QUEUED_BACKEND_OBSERVABILITY_OK = False
+# Dotted paths to callables `(user_id: int) -> bool` that veto erasure when
+# they return True. Ships empty — the FLS-specific blocker that inspects
+# UserCourseRegistration is appended in settings_dev / settings_prod.
+EXPERIENCE_API_ERASURE_BLOCKERS: list[str] = []
+
+# "erasure" DB connection stub — the erase_actor management command opens
+# this connection to perform the one narrowly-scoped mutation. In all
+# environments it points at the same database as `default`; credentials
+# come from env vars only. See docs/deployment-security-checklist.md
+# "Database Security" for the deployment requirements.
+#
+# Public (non-underscore-prefixed) names so they survive `from .settings_base
+# import *` in the per-env settings files.
+FLS_ERASURE_DB_USER = os.environ.get("FLS_ERASURE_DB_USER", "")
+FLS_ERASURE_DB_PASSWORD = os.environ.get("FLS_ERASURE_DB_PASSWORD", "")
+
+# Optional overrides for the default DB connection's credentials. Exposed so
+# CI can point the app at a non-superuser role (required to exercise
+# migration 0002's REVOKE grants). Dev/test default to the hardcoded
+# pguser/password fallback in settings_dev.py when these are empty.
+FLS_APP_DB_USER = os.environ.get("FLS_APP_DB_USER", "")
+FLS_APP_DB_PASSWORD = os.environ.get("FLS_APP_DB_PASSWORD", "")
