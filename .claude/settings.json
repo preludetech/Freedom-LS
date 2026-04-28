@@ -21,7 +21,8 @@
       "Skill(icon-usage)",
       "Bash(npm run tailwind_build)",
       "Bash(sleep 3 && curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:*)",
-      "mcp__plugin_fls_playwright__*"
+      "mcp__plugin_fls_playwright__*",
+      "Skill(fls:sdd:protected:update_todo)"
     ],
     "deny": [
       "Read(.env)",
