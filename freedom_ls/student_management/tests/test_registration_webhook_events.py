@@ -7,6 +7,7 @@ import pytest
 from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 
 
+# transaction=True so that on_commit hooks for webhook event delivery fire under test
 @pytest.mark.django_db(transaction=True)
 class TestCourseRegisteredWebhookEvent:
     def test_creating_registration_fires_webhook_event(

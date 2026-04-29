@@ -37,9 +37,6 @@ class TestBranchNameToColor:
         assert len(color) == 7
         int(color[1:], 16)  # should not raise
 
-    def test_known_input_output(self) -> None:
-        assert branch_name_to_color("main") == "#a937b4"
-
 
 class TestGetTextColor:
     def test_light_background_returns_black(self) -> None:

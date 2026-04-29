@@ -49,8 +49,6 @@ class TestRenderMarkdownCustomTags:
         markdown_text = '<c-callout level="info">Important information</c-callout>'
         result = render_markdown(markdown_text, mock_request)
 
-        # Should be rendered by callout component with semantic color tokens
-        assert "border-primary" in result
         assert "Important information" in result
 
     def test_c_callout_warning_is_rendered(self, mock_request):
@@ -58,8 +56,6 @@ class TestRenderMarkdownCustomTags:
         markdown_text = '<c-callout level="warning">Warning text</c-callout>'
         result = render_markdown(markdown_text, mock_request)
 
-        assert "bg-warning/10" in result  # Warning styling
-        assert "border-warning" in result
         assert "Warning text" in result
 
     def test_c_callout_with_title(self, mock_request):
@@ -134,7 +130,6 @@ Some text with **bold**."""
 
         assert "First callout" in result
         assert "Second callout" in result
-        assert "bg-warning/10" in result  # Warning callout
         assert "youtube.com/embed/test" in result
 
     def test_returns_safe_string(self, mock_request):

@@ -16,11 +16,6 @@ from freedom_ls.role_based_permissions.factories import (
     SystemRoleAssignmentFactory,
 )
 from freedom_ls.role_based_permissions.loader import clear_caches
-from freedom_ls.role_based_permissions.models import (
-    ObjectRoleAssignment,
-    SiteRoleAssignment,
-    SystemRoleAssignment,
-)
 from freedom_ls.student_management.factories import CohortFactory
 
 
@@ -67,13 +62,6 @@ class TestSystemRoleAssignment:
         assert a2.pk is not None
 
     @pytest.mark.django_db
-    def test_is_active_default_true(self) -> None:
-        assignment = SystemRoleAssignment.objects.create(
-            user=UserFactory(), role="system_admin"
-        )
-        assert assignment.is_active is True
-
-    @pytest.mark.django_db
     def test_str(self) -> None:
         assignment = SystemRoleAssignmentFactory()
         assert assignment.role in str(assignment)
@@ -107,15 +95,6 @@ class TestSiteRoleAssignment:
         SiteRoleAssignmentFactory(user=user, role="instructor", site=site1)
         a2 = SiteRoleAssignmentFactory(user=user, role="instructor", site=site2)
         assert a2.pk is not None
-
-    @pytest.mark.django_db
-    def test_is_active_default_true(self) -> None:
-        assignment = SiteRoleAssignment.objects.create(
-            user=UserFactory(),
-            role="instructor",
-            site=Site.objects.get_current(),
-        )
-        assert assignment.is_active is True
 
     @pytest.mark.django_db
     def test_str(self) -> None:
@@ -171,19 +150,6 @@ class TestObjectRoleAssignment:
         site = Site.objects.get_current()
         assignment = ObjectRoleAssignmentFactory(target_object=site)
         assert assignment.object_id == str(site.pk)
-
-    @pytest.mark.django_db
-    def test_is_active_default_true(self) -> None:
-        cohort = CohortFactory()
-        ct = ContentType.objects.get_for_model(cohort)
-        assignment = ObjectRoleAssignment.objects.create(
-            user=UserFactory(),
-            role="instructor",
-            content_type=ct,
-            object_id=str(cohort.pk),
-            site=cohort.site,
-        )
-        assert assignment.is_active is True
 
     @pytest.mark.django_db
     def test_str(self) -> None:

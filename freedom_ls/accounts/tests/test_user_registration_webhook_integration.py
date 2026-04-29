@@ -11,6 +11,7 @@ from django.urls import reverse
 from freedom_ls.webhooks.models import WebhookEvent
 
 
+# transaction=True so that on_commit hooks for webhook event delivery fire under test
 @pytest.mark.django_db(transaction=True)
 class TestUserRegistrationCreatesWebhookEvent:
     """End-to-end test: signing up via the view should create a user.registered WebhookEvent."""

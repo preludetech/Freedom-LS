@@ -11,6 +11,7 @@ from freedom_ls.content_engine.factories import (
 
 
 @pytest.mark.playwright
+# transaction=True so the Playwright browser (separate connection) sees committed data
 @pytest.mark.django_db(transaction=True)
 def test_toc_course_part_expands_and_collapses_on_course_detail_page(
     live_server,
@@ -73,6 +74,7 @@ def test_toc_course_part_expands_and_collapses_on_course_detail_page(
 
 
 @pytest.mark.playwright
+# transaction=True so the Playwright browser (separate connection) sees committed data
 @pytest.mark.django_db(transaction=True)
 def test_toc_course_part_expand_state_persists_across_navigation(
     live_server,

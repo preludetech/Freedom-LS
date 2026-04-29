@@ -9,6 +9,7 @@ from freedom_ls.webhooks.factories import (
 from freedom_ls.webhooks.models import WebhookDelivery, WebhookEvent
 
 
+# transaction=True so that on_commit hooks for webhook delivery fire under test
 @pytest.mark.django_db(transaction=True)
 class TestFireWebhookEvent:
     def test_raises_value_error_for_unknown_event_type(

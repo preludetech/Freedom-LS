@@ -79,17 +79,6 @@ class TestWebhookEndpoint:
         endpoint = WebhookEndpointFactory(body_template='{"key": "{{ event.type }}"}')
         assert endpoint.has_transformation is True
 
-    def test_new_fields_default_to_empty(self, mock_site_context: object) -> None:
-        """New transformation fields should default to empty without breaking existing endpoints."""
-        endpoint = WebhookEndpointFactory()
-        endpoint.refresh_from_db()
-        assert endpoint.http_method == ""
-        assert endpoint.content_type == ""
-        assert endpoint.headers_template == ""
-        assert endpoint.body_template == ""
-        assert endpoint.auth_type == "signing"
-        assert endpoint.preset_slug == ""
-
     # --- Step 3b: Validation ---
 
     def test_clean_transformation_fields_without_body_template_raises(

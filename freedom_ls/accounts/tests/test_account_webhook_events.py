@@ -8,6 +8,7 @@ from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 from freedom_ls.accounts.factories import UserFactory
 
 
+# transaction=True so that on_commit hooks for webhook event delivery fire under test
 @pytest.mark.django_db(transaction=True)
 class TestUserRegisteredWebhookEvent:
     def test_save_user_fires_webhook_event_on_commit(

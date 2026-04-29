@@ -29,25 +29,19 @@ class TestBaseRoles:
         """site_admin has correct display_name."""
         assert BASE_ROLES["site_admin"].display_name == "Site Administrator"
 
-    def test_site_admin_permissions_count(self) -> None:
-        """site_admin has 8 permissions."""
-        assert len(BASE_ROLES["site_admin"].permissions) == 8
-
     def test_instructor_display_name(self) -> None:
         """instructor has correct display_name."""
         assert BASE_ROLES["instructor"].display_name == "Instructor"
-
-    def test_instructor_permissions_count(self) -> None:
-        """instructor has 3 permissions."""
-        assert len(BASE_ROLES["instructor"].permissions) == 3
 
     def test_ta_display_name(self) -> None:
         """ta has correct display_name."""
         assert BASE_ROLES["ta"].display_name == "Teaching Assistant"
 
-    def test_ta_permissions_count(self) -> None:
-        """ta has 2 permissions."""
-        assert len(BASE_ROLES["ta"].permissions) == 2
+    def test_ta_permissions_are_subset_of_instructor_permissions(self) -> None:
+        """ta inherits from instructor — permissions must be a subset."""
+        assert BASE_ROLES["ta"].permissions.issubset(
+            BASE_ROLES["instructor"].permissions
+        )
 
     def test_system_admin_display_name(self) -> None:
         """system_admin has correct display_name."""

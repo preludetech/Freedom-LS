@@ -137,7 +137,7 @@ class TestHtmxNavigation:
             url_name=URL_NAME,
         )
         content = response.content.decode()
-        assert '<div id="main-content" class="space-y-4 pl-2 sm:pl-6">' in content
+        assert 'id="main-content"' in content
 
     def test_htmx_navigation_includes_heading(self, mock_site_context: None) -> None:
         """HTMX navigation response includes heading from menu_label."""

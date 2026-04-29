@@ -247,6 +247,24 @@ The rule: **tests must pass in any order.** Forbidden patterns:
 
 If a test fails only when run in isolation, or only when run as part of the full suite, that's order dependence; treat it as a bug, not a flaky test.
 
+### `transaction=True` is expensive — justify it
+
+The default `@pytest.mark.django_db` runs each test inside a transaction that is rolled back at teardown. `@pytest.mark.django_db(transaction=True)` instead runs each test in its own transaction and **truncates tables** between tests, which is dramatically slower *and* exposes signal handlers and `transaction.on_commit(...)` callbacks that the rollback path was hiding.
+
+Use `transaction=True` **only** when the test genuinely needs:
+- `transaction.on_commit(...)` callbacks to fire (e.g. webhook event delivery).
+- `select_for_update` semantics inside the test.
+- Cross-connection visibility (e.g. Playwright e2e tests where the browser runs in a separate process and must see committed data).
+
+When `transaction=True` is used, **add a one-line comment** on the marker explaining the reason. Example:
+
+```python
+# transaction=True so that on_commit hooks for webhook delivery fire under test
+@pytest.mark.django_db(transaction=True)
+```
+
+If you are tempted to add `transaction=True` for any other reason (it makes a flaky test pass, you don't know why the rollback path is failing), do not — it is masking a real bug in the test or the production code.
+
 ## Writing High-Value Tests
 
 Every test must justify its existence. A test has value when it catches real bugs, documents important behaviour, or protects against meaningful regressions. Tests that merely exercise code without asserting anything interesting are noise.

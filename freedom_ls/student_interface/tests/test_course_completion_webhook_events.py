@@ -12,6 +12,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.student_progress.factories import CourseProgressFactory
 
 
+# transaction=True so that on_commit hooks for webhook event delivery fire under test
 @pytest.mark.django_db(transaction=True)
 class TestCourseCompletedWebhookEvent:
     def test_completing_course_fires_webhook_event(
