@@ -57,11 +57,11 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 10. Pull request
 
-- [ ] (user) Open a pull request
-- [ ] (cmd) Run `/address_pr_review` as review feedback comes in
-- [ ] (user) Merge the PR once approved
+- [x] (user) Open a pull request
+- [x] (cmd) Run `/address_pr_review` as review feedback comes in
+- [x] (user) Merge the PR once approved
 
 ## 11. Cleanup
 
-- [ ] (cmd) Run `/finish_worktree` to clean up the worktree
+- [x] (cmd) Run `/finish_worktree` to clean up the worktree
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved
