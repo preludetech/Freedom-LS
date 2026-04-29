@@ -26,6 +26,8 @@ from typing import Any
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
+from freedom_ls.base.git_utils import get_head_commit
+
 
 def _run_git(base_dir: Path, *args: str) -> str:
     """Run ``git -C base_dir <args>`` and return text stdout."""
@@ -36,13 +38,6 @@ def _run_git(base_dir: Path, *args: str) -> str:
         capture_output=True,
         text=True,
     ).stdout
-
-
-def _read_head_commit(base_dir: Path) -> str:
-    try:
-        return _run_git(base_dir, "rev-parse", "HEAD").strip()
-    except (subprocess.CalledProcessError, FileNotFoundError) as err:
-        raise CommandError(f"Could not read HEAD commit: {err}") from err
 
 
 def _read_blob_sha(base_dir: Path, rel_path: str) -> str:
@@ -114,7 +109,9 @@ class Command(BaseCommand):
         if not legal_root.is_dir():
             raise CommandError(f"{legal_root} does not exist")
 
-        head_commit = _read_head_commit(base_dir)
+        head_commit = get_head_commit(base_dir)
+        if head_commit is None:
+            raise CommandError(f"Could not read HEAD commit from {base_dir}/.git")
         blobs = self._collect_blobs(base_dir, legal_root)
 
         manifest = {"head_commit": head_commit, "blobs": blobs}
