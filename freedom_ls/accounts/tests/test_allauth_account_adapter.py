@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 import pytest
-from allauth.core.context import _request_var
+from allauth.core.context import request_context
 
 from django.core import mail
 from django.test import RequestFactory
@@ -56,11 +56,8 @@ def test_send_mail_does_not_corrupt_long_urls(mock_site_context: object) -> None
     context = {"password_reset_url": long_url, "user": user}
 
     request = RequestFactory().get("/")
-    token = _request_var.set(request)
-    try:
+    with request_context(request):
         adapter.send_mail("account/email/password_reset_key", user.email, context)
-    finally:
-        _request_var.reset(token)
 
     assert len(mail.outbox) == 1
     sent = mail.outbox[0]

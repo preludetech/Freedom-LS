@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 from collections.abc import Callable
 from typing import cast
 
@@ -25,8 +24,6 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve, reverse
-
-logger = logging.getLogger(__name__)
 
 EXEMPT_URL_NAMES: frozenset[str] = frozenset(
     {
