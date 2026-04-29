@@ -1,49 +1,47 @@
-{% extends "_base.html" %}
+{% extends "allauth/layouts/entrance.html" %}
 {% load i18n %}
 
 {% block head_title %}{% trans "Complete your registration" %}{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto px-4 py-12 space-y-6">
-    <header class="space-y-2">
-        <h1 class="text-3xl font-bold">{% trans "Complete your registration" %}</h1>
-        <p class="text-muted">
-            {% trans "Please provide the following information to finish setting up your account." %}
-        </p>
-    </header>
+<header class="space-y-2">
+    <h1 class="text-3xl font-bold">{% trans "Complete your registration" %}</h1>
+    <p class="text-muted">
+        {% trans "Please provide the following information to finish setting up your account." %}
+    </p>
+</header>
 
-    <form method="post" class="space-y-6">
-        {% csrf_token %}
-        {% if next %}
-            <input type="hidden" name="next" value="{{ next }}">
-        {% endif %}
+<form method="post" class="space-y-6">
+    {% csrf_token %}
+    {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+    {% endif %}
 
-        {% for form in forms %}
-            <fieldset class="space-y-3 border border-border rounded p-4">
-                {% for field in form %}
-                    <div class="space-y-1">
-                        <label class="block font-medium" for="{{ field.id_for_label }}">
-                            {{ field.label }}
-                            {% if field.field.required %}<span class="text-error">*</span>{% endif %}
-                        </label>
-                        {{ field }}
-                        {% if field.help_text %}
-                            <p class="text-sm text-muted">{{ field.help_text }}</p>
-                        {% endif %}
-                        {% if field.errors %}
-                            <p class="text-error text-sm">{{ field.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-                {% if form.non_field_errors %}
-                    <p class="text-error text-sm">{{ form.non_field_errors.0 }}</p>
-                {% endif %}
-            </fieldset>
-        {% endfor %}
+    {% for form in forms %}
+        <fieldset class="space-y-3 border border-border rounded p-4">
+            {% for field in form %}
+                <div class="space-y-1">
+                    <label class="block font-medium" for="{{ field.id_for_label }}">
+                        {{ field.label }}
+                        {% if field.field.required %}<span class="text-error">*</span>{% endif %}
+                    </label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <p class="text-sm text-muted">{{ field.help_text }}</p>
+                    {% endif %}
+                    {% if field.errors %}
+                        <p class="text-error text-sm">{{ field.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            {% if form.non_field_errors %}
+                <p class="text-error text-sm">{{ form.non_field_errors.0 }}</p>
+            {% endif %}
+        </fieldset>
+    {% endfor %}
 
-        <c-button type="submit" variant="primary">
-            {% trans "Save and continue" %}
-        </c-button>
-    </form>
-</div>
+    <c-button type="submit" variant="primary">
+        {% trans "Save and continue" %}
+    </c-button>
+</form>
 {% endblock content %}
