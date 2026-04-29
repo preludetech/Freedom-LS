@@ -38,7 +38,7 @@ This is a manual task. Ask the user, in a single short message, whether they hav
 
 This is a slash command task. You **must** run it — not by invoking the slash command yourself (you can't clear your own context), but by spawning a **fresh agent** via the `Agent` tool. A fresh agent starts with an empty context, which is equivalent to the user running `/clear` and then the command.
 
-1. Extract the slash command name from the item text (e.g. `/spec_from_idea`, `/plan_from_spec`, `/do_qa`).
+1. Extract the slash command name from the item text (e.g. `/spec_from_idea`, `/plan_qa`, `/plan_dev`, `/do_qa`).
 2. Resolve the command file. SDD commands live at `fls-claude-plugin/commands/sdd/<name>.md` (strip any leading `/sdd:` or `/` from the extracted name). Confirm the file exists before spawning — if it doesn't, stop and tell the user the checklist references an unknown command.
 3. Spawn a fresh agent with `subagent_type: "general-purpose"`. The prompt must be self-contained — the agent has no memory of this conversation. Include:
    - The absolute path to the command file and an instruction to read it in full and follow its steps exactly.

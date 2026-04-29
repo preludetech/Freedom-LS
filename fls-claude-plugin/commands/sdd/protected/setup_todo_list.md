@@ -34,8 +34,8 @@ Most of the time an idea (and possibly more) is already in the directory. List t
 | A file matching `*idea*.md` (e.g. `0. idea.md`, `0.idea.md`, `idea.md`) | "Write the idea file in this directory" |
 | Any file matching `research*.md` (e.g. `research_foo.md`, `research-bar.md`) | "Optionally run `/improve_idea`…" |
 | `1. spec.md` | "Run `/spec_from_idea`…" |
-| `2. plan.md` | "Run `/plan_from_spec`…" |
-| `3. frontend_qa.md` | (also covered by the plan step — `/plan_from_spec` produces both) |
+| `3. frontend_qa.md` | "Run `/plan_qa`…" under `## 4. QA plan`, **and** append a `(user) Review the QA plan — especially the behaviour rules — and edit where needed` line under `## 4. QA plan` (mirroring what `/plan_qa` would have done on success). |
+| `2. plan.md` | "Run `/plan_dev`…" under `## 5. Implementation plan` |
 | `qa_report.md` | "Run `/do_qa`…" |
 
 Only tick boxes for artifacts that actually exist. Do **not** tick user-review items, threat-model items, worktree/PR/cleanup items, or anything else where presence of a file can't confirm the step was done — those are for the user to tick manually.
@@ -76,49 +76,46 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (cmd) Run `/threat-model` against the spec
 - [ ] (user) Update the spec to close any security gaps surfaced
 
-## 4. Plan
+## 4. QA plan
 
-- [ ] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
-- [ ] (user) Review both plans and edit where needed
+- [ ] (cmd) Run `/plan_qa` to generate the QA plan
 
-## 5. Plan security review
+## 5. Implementation plan
 
-- [ ] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
-- [ ] (user) Address any concerns raised in the plan
+- [ ] (cmd) Run `/plan_dev` to generate the implementation plan (runs testing, structure, and security reviews internally)
+- [ ] (user) Address any decisions surfaced in the plan
+- [ ] (user) Review reviewer findings at the bottom of the plan
 
-## 6. Plan structure review
-
-- [ ] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
-- [ ] (user) Address any structure concerns raised in the plan
-
-## 7. Implementation
+## 6. Implementation
 
 - [ ] (cmd) Run `/implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 
-## 8. Code security review
+## 7. Code security review
 
 - [ ] (cmd) Run `/security-review` on the pending changes
 - [ ] (user) Address any issues raised
 
-## 9. QA
+## 8. QA
 
 - [ ] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
 
-## 10. Pull request
+## 9. Pull request
 
 - [ ] (user) Open a pull request
 - [ ] (cmd) Run `/address_pr_review` as review feedback comes in
 - [ ] (user) Merge the PR once approved
 
-## 11. Cleanup
+## 10. Cleanup
 
 - [ ] (cmd) Run `/finish_worktree` to clean up the worktree
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved
 ```
+
+Note: the `(user) Review the QA plan…` item is **not** in the template — `/plan_qa` appends it itself when it produces a QA plan. Don't pre-populate it here.
 
 ## Step 5: Report back
 

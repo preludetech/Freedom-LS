@@ -6,7 +6,7 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 
 1. **Idea** → write a rough idea file, optionally refine it.
 2. **Spec** → turn the idea into a specification, review it, threat-model it.
-3. **Plan** → turn the spec into an implementation plan and a QA plan, then security-review the plan, then structure-review the plan.
+3. **Plan** → generate the QA plan (`/plan_qa`), then generate the implementation plan via `/plan_dev` which reviews the plan via subagents (testing, structure, security) and commits per reviewer.
 4. **Implement** → execute the plan.
 5. **Code security review** → review the code diff for security issues.
 6. **QA** → run the QA plan.
@@ -37,24 +37,16 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 
 ## Step 3: Build the plan
 
-Run `/plan_from_spec`. This produces:
+The plan phase is **two slash-command invocations**, not three:
 
-- an implementation plan, and
-- a QA plan.
+1. **`/plan_qa`** generates `3. frontend_qa.md` from the spec — a sequence of declarative behaviour rules (`BR-NN`) paired with Playwright walkthroughs. Skippable for features with no frontend and no frontend-triggered side effects.
+2. **`/plan_dev`** generates `2. plan.md` from the spec (and the QA plan, if there is one). Internally, `/plan_dev` runs three reviewers — testing, structure, security — as subagents in sequence. They flag concerns in the plan, the orchestrator commits per reviewer, and you get a single end-of-flow summary instead of three separate gates.
 
-## Step 3.5: Plan security review
+Reviewer commands stay first-class as escape hatches: `/plan_security_review`, `/plan_structure_review`, and `/plan_testing_review` all remain runnable from the CLI on their own if you've manually edited the plan after `/plan_dev` ran.
 
-Run `/plan_security_review` to review the implementation plan for insecure design choices (raw SQL, missing auth, unvalidated input, etc.) before any code is written. This is cheaper than catching the same issues in `/security-review` after implementation, because design-level security problems often require structural rework.
+If `docs/app_structure.md` doesn't exist yet, run `/app_map` first — the structure reviewer compares plans against that diagram. `/app_map` is a general command (not SDD-specific) that walks `apps.py`-containing directories, extracts cross-app `ImportFrom` edges via `ast`, and writes a mermaid diagram plus a dependency table. Re-run it whenever an approved structural change lands, then commit the updated file.
 
-This complements `/threat-model` (which reviews the spec) and `/security-review` (which reviews the code diff).
-
-## Step 3.6: Plan structure review
-
-Run `/plan_structure_review` to check whether the plan introduces any new cross-app dependencies. The command reads `docs/app_structure.md` (the authoritative dependency diagram) and compares it against the imports the plan implies. Any new edge becomes a `> **Structure concern:**` callout that the user must resolve — either by accepting the edge (with a rationale, and regenerating the diagram after implementation) or by restructuring to avoid it.
-
-This complements `/plan_security_review`: same callout-and-approval pattern, different concern. Catching structural drift at plan time is cheaper than unpicking it after the code is written.
-
-If `docs/app_structure.md` doesn't exist yet, run `/app_map` first. `/app_map` is a general command (not SDD-specific) that walks `apps.py`-containing directories, extracts cross-app `ImportFrom` edges via `ast`, and writes a mermaid diagram plus a dependency table. Re-run it whenever an approved structural change lands, then commit the updated file.
+The `/plan_dev` orchestration mode complements `/threat-model` (which reviews the spec) and `/security-review` (which reviews the code diff): the in-plan reviewers catch design-level problems before code exists.
 
 ## Step 4: Implement
 
