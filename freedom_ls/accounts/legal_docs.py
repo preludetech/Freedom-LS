@@ -23,6 +23,7 @@ import yaml
 
 from django.conf import settings
 from django.contrib.sites.models import Site
+from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpRequest
 
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
@@ -143,8 +144,17 @@ def read_blob_at_head(rel_path: str) -> tuple[str, str]:
     )
     if manifest_path_setting:
         manifest_path = Path(manifest_path_setting)
-        if manifest_path.exists():
-            return _read_blob_at_head_via_manifest(manifest_path, rel_path)
+        if not manifest_path.exists():
+            # Misconfigured production deploy: operator set the path but the
+            # file is absent. Fail loudly — don't silently fall through to git
+            # (typically absent in production Docker images) and don't return
+            # FileNotFoundError (callers swallow it as "doc missing"), which
+            # would hide the misconfiguration behind a 404 at signup.
+            raise ImproperlyConfigured(
+                f"LEGAL_DOCS_MANIFEST_PATH={manifest_path_setting} is set but "
+                "the manifest file does not exist"
+            )
+        return _read_blob_at_head_via_manifest(manifest_path, rel_path)
 
     return _read_blob_at_head_via_git(rel_path)
 

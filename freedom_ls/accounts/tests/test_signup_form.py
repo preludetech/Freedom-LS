@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 import pytest
-from allauth.core import context as allauth_context
+from allauth.core.context import request_context
 
 from django.test import Client
 from django.urls import reverse
@@ -19,11 +19,8 @@ def allauth_request_ctx(mock_site_context, rf):
     """Bind a request to allauth's context for the duration of a test."""
     request = rf.get("/")
     request._cached_site = mock_site_context
-    token = allauth_context._request_var.set(request)
-    try:
+    with request_context(request):
         yield request
-    finally:
-        allauth_context._request_var.reset(token)
 
 
 @pytest.mark.django_db

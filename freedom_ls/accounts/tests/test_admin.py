@@ -71,4 +71,4 @@ def test_legal_consent_admin_delete_keeps_row(staff_client, mock_site_context):
     response = staff_client.post(url, {"post": "yes"})
 
     assert LegalConsent.objects.filter(pk=consent.pk).exists()
-    assert response.status_code != 302 or response.url.endswith("/")
+    assert response.status_code == 403
