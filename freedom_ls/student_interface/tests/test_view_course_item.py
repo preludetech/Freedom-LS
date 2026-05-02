@@ -123,6 +123,9 @@ def test_accessing_topic_inside_course_part_should_display_topic(
     assert actual_topic == first_topic, (
         f"Should display 'First Topic', but got '{actual_topic.title}'"
     )
+    # Template binding check: the topic title must show up in the rendered
+    # page, not only in the context dict.
+    assert first_topic.title in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -152,6 +155,35 @@ def test_starting_form_inside_course_part_should_work(
     assert actual_form == first_form, (
         f"Should work with 'First Form', but got '{actual_form.title}'"
     )
+    # Template binding check.
+    assert first_form.title in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_view_course_item_anonymous_redirects_to_login(
+    course_with_nested_structure, client
+):
+    """Anonymous user hitting view_course_item is redirected to login (login_required)."""
+    url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": "test-course", "index": 2},
+    )
+    response = client.get(url)
+    assert response.status_code == 302
+    assert "/login" in response.url
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("course_with_nested_structure", [Form], indirect=True)
+def test_form_start_anonymous_redirects_to_login(course_with_nested_structure, client):
+    """Anonymous user hitting form_start is redirected to login (login_required)."""
+    url = reverse(
+        "student_interface:form_start",
+        kwargs={"course_slug": "test-course", "index": 2},
+    )
+    response = client.get(url)
+    assert response.status_code == 302
+    assert "/login" in response.url
 
 
 @pytest.mark.django_db
@@ -181,3 +213,5 @@ def test_form_complete_inside_course_part_should_work(
     assert actual_form == first_form, (
         f"Should display completion for 'First Form', but got '{actual_form.title}'"
     )
+    # Template binding check.
+    assert first_form.title in response.content.decode()

@@ -48,6 +48,8 @@ class TestSendTestFormView:
         client.force_login(admin_user)
         response = client.get(_send_test_form_url(endpoint.pk))
         assert response.status_code == 200
+        # Bind to the rendered context dict, not just the HTML.
+        assert response.context["endpoint"] == endpoint
         content = response.content.decode()
         assert "user.registered" in content
         assert "course.completed" in content
@@ -62,6 +64,12 @@ class TestSendTestFormView:
         client.force_login(admin_user)
         response = client.get(_send_test_form_url(endpoint.pk))
         assert response.status_code == 200
+        # The context exposes all available event-type choices, not just the
+        # subscribed one. Assert against the parsed choice codes so a template
+        # rename doesn't make this test silently weaker.
+        choice_codes = [code for code, _ in response.context["event_type_choices"]]
+        assert "course.completed" in choice_codes
+        assert "course.registered" in choice_codes
         content = response.content.decode()
         assert "course.completed" in content
         assert "course.registered" in content
@@ -74,6 +82,10 @@ class TestSendTestFormView:
         client.force_login(regular_user)
         response = client.get(_send_test_form_url(endpoint.pk))
         assert response.status_code == 302  # Redirect to login
+        # Sharpen: the redirect should target an admin login URL, not some
+        # other view. Using "/login" keeps this implementation-agnostic
+        # across LOGIN_URL changes while still catching mis-targeted redirects.
+        assert "/login" in response.url
 
     def test_anonymous_user_cannot_access(
         self, mock_site_context: object, client: object
@@ -82,6 +94,7 @@ class TestSendTestFormView:
         endpoint = WebhookEndpointFactory()
         response = client.get(_send_test_form_url(endpoint.pk))
         assert response.status_code == 302
+        assert "/login" in response.url
 
 
 @pytest.mark.django_db
@@ -113,6 +126,12 @@ class TestSendTestResultView:
         assert response.status_code == 200
         assert WebhookEvent.objects.count() == 1
         assert WebhookDelivery.objects.count() == 1
+        # The user-visible behaviour is the rendered result page bound to the
+        # delivery we just created; assert on that, not just on the DB count.
+        delivery = WebhookDelivery.objects.first()
+        assert delivery is not None
+        assert response.context["delivery"].pk == delivery.pk
+        assert "Test Result" in response.content.decode()
 
     def test_event_has_test_flag_in_payload(
         self, admin_user: object, mock_site_context: object, client: object
@@ -349,6 +368,25 @@ class TestSendTestResultView:
             data={"event_type": "user.registered"},
         )
         assert response.status_code == 302
+        assert "/login" in response.url
+        # Rejection must happen before any event/delivery is recorded.
+        assert WebhookEvent.objects.count() == 0
+        assert WebhookDelivery.objects.count() == 0
+
+    def test_invalid_event_type_returns_400(
+        self, admin_user: object, mock_site_context: object, client: object
+    ) -> None:
+        """Unknown event_type should be rejected by validate_event_type."""
+        endpoint = WebhookEndpointFactory(event_types=["user.registered"])
+        client.force_login(admin_user)
+        response = client.post(
+            _send_test_result_url(endpoint.pk),
+            data={"event_type": "definitely.not.a.real.event"},
+        )
+        assert response.status_code == 400
+        # No event/delivery should be created on rejection.
+        assert WebhookEvent.objects.count() == 0
+        assert WebhookDelivery.objects.count() == 0
 
     def test_get_request_not_allowed(
         self, admin_user: object, mock_site_context: object, client: object

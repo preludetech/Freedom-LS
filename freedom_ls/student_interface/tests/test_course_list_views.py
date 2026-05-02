@@ -51,7 +51,10 @@ def test_all_courses_started_course_has_progress_percentage(mock_site_context, c
 
     all_courses_list = list(response.context["all_courses"])
     started_course = next(c for c in all_courses_list if c.id == courses[0].id)
-    assert hasattr(started_course, "progress_percentage")
+    # Real-value assertion: a freshly-registered course with no topic
+    # completion has a progress percentage of 0. `hasattr` only proved the
+    # attribute existed; this proves the annotation produced the right value.
+    assert started_course.progress_percentage == 0
 
 
 # --- partial_list_courses view ---
@@ -72,6 +75,7 @@ def test_partial_list_courses_anonymous_sees_empty(client, courses, mock_site_co
     assert response.status_code == 200
     assert response.context["registered_courses"] == []
     assert response.context["completed_courses"] == []
+    assert list(response.context["recommended_courses"]) == []
 
 
 @pytest.mark.django_db
@@ -86,6 +90,9 @@ def test_partial_list_courses_current_courses(mock_site_context, courses):
     registered = response.context["registered_courses"]
     assert len(registered) == 1
     assert registered[0] == courses[0]
+    # Template binding check: the registered course title must show up in
+    # the rendered HTML, not only in the context dict.
+    assert courses[0].title in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -115,6 +122,8 @@ def test_partial_list_courses_completed_courses(mock_site_context, courses):
     assert response.status_code == 200
     assert courses[0] in response.context["completed_courses"]
     assert courses[0] not in list(response.context["registered_courses"])
+    # Template binding check: the completed course title must render.
+    assert courses[0].title in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -129,3 +138,5 @@ def test_partial_list_courses_includes_recommended_courses(mock_site_context, co
     recommended = list(response.context["recommended_courses"])
     assert len(recommended) == 1
     assert recommended[0].collection == courses[0]
+    # Template binding check: the recommended course title must render.
+    assert courses[0].title in response.content.decode()

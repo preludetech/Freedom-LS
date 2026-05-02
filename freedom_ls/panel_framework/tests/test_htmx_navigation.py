@@ -104,6 +104,9 @@ class TestHtmxNavigation:
         assert 'hx-swap-oob="true"' in content
         # Should contain OOB breadcrumbs
         assert 'id="breadcrumbs"' in content
+        # User-visible label check: the menu/page label must render in the
+        # OOB response, not just structural ids.
+        assert "Stubs" in content
 
     def test_htmx_non_navigation_returns_fragment_only(
         self, mock_site_context: None
@@ -123,6 +126,12 @@ class TestHtmxNavigation:
         assert 'hx-swap-oob="true"' not in content
         assert 'id="sidebar-nav"' not in content
         assert 'id="main-content"' not in content
+        # Positive content check: even without OOB chrome, the bare fragment
+        # must still render the data-table content. "Name" is the visible
+        # column header configured on StubDataTable — asserting on it pins
+        # the test to "the actual data-table renders" rather than the
+        # absence-only checks above.
+        assert "Name" in content
 
     def test_htmx_navigation_main_content_div_present(
         self, mock_site_context: None

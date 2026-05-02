@@ -195,3 +195,8 @@ def test_view_course_item_skips_lock_check_when_deadlines_inactive(
     response = client.get(url)
 
     assert response.status_code == 200
+    # The whole point of this test is that the user is *not* redirected and
+    # the locked topic is still served. Strengthen by asserting the topic is
+    # actually rendered, not just that some 200 response came back.
+    assert response.context["topic"] == topic
+    assert topic.title in response.content.decode()
