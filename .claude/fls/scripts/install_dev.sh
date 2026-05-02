@@ -14,3 +14,9 @@ PLUGIN_DIR="$PROJECT_ROOT/$FLS_PATH/fls-claude-plugin"
 
 # === Project-specific setup ===
 # Add your implementation-specific steps below:
+# === Project-specific setup ===
+claude mcp add playwright npx '@playwright/mcp@latest'
+
+# Create demo data (all sites)
+uv run manage.py create_demo_data
+python manage.py content_save ./demo_content DemoDev
