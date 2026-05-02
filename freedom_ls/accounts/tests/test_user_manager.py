@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 
 from django.contrib.auth import get_user_model
-from django.contrib.sites.models import Site
 from django.test import RequestFactory, override_settings
 
+from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.site_aware_models.models import _CACHED_SITE_ATTR, _thread_locals
 
 User = get_user_model()
@@ -14,8 +14,8 @@ User = get_user_model()
 @pytest.mark.django_db
 def test_user_manager_respects_force_site_name() -> None:
     """UserManager.get_queryset() should filter by the forced site, not request domain."""
-    forced_site = Site.objects.create(domain="forced.example.com", name="ForcedSite")
-    domain_site = Site.objects.create(domain="testserver", name="DomainSite")
+    forced_site = SiteFactory(name="ForcedSite", domain="forced.example.com")
+    domain_site = SiteFactory(name="DomainSite", domain="testserver")
 
     # Create users directly with explicit site assignment to bypass manager filtering
     forced_user = User(email="forced@example.com", site=forced_site)

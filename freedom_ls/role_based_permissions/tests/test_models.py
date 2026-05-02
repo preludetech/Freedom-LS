@@ -9,7 +9,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.db import IntegrityError
 
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.role_based_permissions.factories import (
     ObjectRoleAssignmentFactory,
     SiteRoleAssignmentFactory,
@@ -91,7 +91,7 @@ class TestSiteRoleAssignment:
         """Same user can have the same role on different sites."""
         user = UserFactory()
         site1 = Site.objects.get_current()
-        site2 = Site.objects.create(domain="other.example.com", name="Other")
+        site2 = SiteFactory(name="Other", domain="other.example.com")
         SiteRoleAssignmentFactory(user=user, role="instructor", site=site1)
         a2 = SiteRoleAssignmentFactory(user=user, role="instructor", site=site2)
         assert a2.pk is not None

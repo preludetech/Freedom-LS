@@ -18,7 +18,7 @@ from freedom_ls.panel_framework.actions import (
 from freedom_ls.panel_framework.panels import Panel
 from freedom_ls.panel_framework.views import _handle_action, _ResolvedAction
 
-from .conftest import StubChild, StubModel, make_staff_user
+from .conftest import StubModel, _make_stub, _make_stub_child, make_staff_user
 
 # -- Shared test form ---------------------------------------------------
 
@@ -64,7 +64,7 @@ class StubCreateAction(CreateInstanceAction):
 @pytest.mark.django_db
 def test_panel_get_actions_returns_empty_list_by_default(mock_site_context):
     """Panel.get_actions() returns empty list by default."""
-    item = StubModel.objects.create(name="test-item")
+    item = _make_stub(name="test-item")
     panel = StubPanel(item)
     request = RequestFactory().get("/")
     assert panel.get_actions(request) == []
@@ -73,7 +73,7 @@ def test_panel_get_actions_returns_empty_list_by_default(mock_site_context):
 @pytest.mark.django_db
 def test_panel_action_render_returns_button_html(mock_site_context):
     """PanelAction.render() returns button HTML."""
-    item = StubModel.objects.create(name="action-render")
+    item = _make_stub(name="action-render")
     panel = StubPanel(item)
     action = StubAction()
     request = RequestFactory().get("/")
@@ -85,7 +85,7 @@ def test_panel_action_render_returns_button_html(mock_site_context):
 @pytest.mark.django_db
 def test_panel_container_renders_actions_when_present(mock_site_context):
     """Panel container renders action buttons when actions exist."""
-    item = StubModel.objects.create(name="actions-present")
+    item = _make_stub(name="actions-present")
 
     class PanelWithAction(StubPanel):
         def get_actions(self, request, base_url=""):
@@ -101,7 +101,7 @@ def test_panel_container_renders_actions_when_present(mock_site_context):
 @pytest.mark.django_db
 def test_panel_container_no_actions_area_when_no_actions(mock_site_context):
     """Panel container renders no actions area when no actions."""
-    item = StubModel.objects.create(name="no-actions")
+    item = _make_stub(name="no-actions")
     panel = StubPanel(item)
     request = RequestFactory().get("/")
     request.user = make_staff_user()
@@ -154,7 +154,7 @@ def test_create_action_save_and_add_another_returns_empty_form_and_trigger(
 @pytest.mark.django_db
 def test_create_action_duplicate_name_returns_422(mock_site_context):
     """Duplicate name within site returns 422 with validation error."""
-    StubModel.objects.create(name="Existing")
+    _make_stub(name="Existing")
     action = StubCreateAction()
     request = RequestFactory().post("/", {"name": "Existing"})
     request.user = make_staff_user()
@@ -200,7 +200,7 @@ def test_create_action_permission_denied_returns_403(mock_site_context):
 @pytest.mark.django_db
 def test_edit_action_form_valid_saves_and_returns_trigger(mock_site_context):
     """Successful edit returns 204 + HX-Trigger with panelChanged."""
-    item = StubModel.objects.create(name="Old Name")
+    item = _make_stub(name="Old Name")
     action = EditAction(
         form_class=_StubModelForm,
         form_title="Edit Item",
@@ -221,8 +221,8 @@ def test_edit_action_form_valid_saves_and_returns_trigger(mock_site_context):
 @pytest.mark.django_db
 def test_edit_action_duplicate_name_returns_422(mock_site_context):
     """Duplicate name returns 422 with validation error."""
-    StubModel.objects.create(name="Existing-edit")
-    item = StubModel.objects.create(name="Original")
+    _make_stub(name="Existing-edit")
+    item = _make_stub(name="Original")
     action = EditAction(
         form_class=_StubModelForm,
         form_title="Edit Item",
@@ -238,7 +238,7 @@ def test_edit_action_duplicate_name_returns_422(mock_site_context):
 @pytest.mark.django_db
 def test_edit_action_has_permission_checks_object_level_change_perm(mock_site_context):
     """has_permission checks object-level change permission."""
-    item = StubModel.objects.create(name="edit-perm-check")
+    item = _make_stub(name="edit-perm-check")
     action = EditAction(
         form_class=_StubModelForm,
         form_title="Edit Item",
@@ -259,7 +259,7 @@ def test_edit_action_has_permission_checks_object_level_change_perm(mock_site_co
 @pytest.mark.django_db
 def test_edit_action_permission_denied_returns_403(mock_site_context):
     """_handle_action returns 403 when user lacks change permission."""
-    item = StubModel.objects.create(name="Test-edit-403")
+    item = _make_stub(name="Test-edit-403")
     action = EditAction(
         form_class=_StubModelForm,
         form_title="Edit Item",
@@ -282,7 +282,7 @@ def test_edit_action_permission_denied_returns_403(mock_site_context):
 @pytest.mark.django_db
 def test_delete_action_handle_submit_deletes_and_redirects(mock_site_context):
     """Successful deletion deletes instance and returns 204 + HX-Redirect."""
-    item = StubModel.objects.create(name="to-delete")
+    item = _make_stub(name="to-delete")
     item_pk = item.pk
     action = DeleteAction(success_url="/items")
 
@@ -298,9 +298,9 @@ def test_delete_action_handle_submit_deletes_and_redirects(mock_site_context):
 @pytest.mark.django_db
 def test_delete_action_cascade_summary_includes_related_objects(mock_site_context):
     """get_cascade_summary returns summary of related objects that will be deleted."""
-    item = StubModel.objects.create(name="cascade-parent")
-    StubChild.objects.create(parent=item)
-    StubChild.objects.create(parent=item)
+    item = _make_stub(name="cascade-parent")
+    _make_stub_child(parent=item)
+    _make_stub_child(parent=item)
 
     action = DeleteAction(success_url="/items")
     summary = action.get_cascade_summary(item)
@@ -312,7 +312,7 @@ def test_delete_action_cascade_summary_includes_related_objects(mock_site_contex
 @pytest.mark.django_db
 def test_delete_action_render_returns_confirmation_html(mock_site_context):
     """Rendered delete confirmation includes delete button and action URL."""
-    item = StubModel.objects.create(name="delete-render")
+    item = _make_stub(name="delete-render")
     action = DeleteAction(success_url="/items")
 
     request = RequestFactory().get("/")
@@ -327,7 +327,7 @@ def test_delete_action_has_permission_checks_object_level_delete_perm(
     mock_site_context,
 ):
     """has_permission checks object-level delete permission."""
-    item = StubModel.objects.create(name="delete-perm-check")
+    item = _make_stub(name="delete-perm-check")
     action = DeleteAction(success_url="/items")
 
     user_with_perm = make_staff_user()
@@ -344,7 +344,7 @@ def test_delete_action_has_permission_checks_object_level_delete_perm(
 @pytest.mark.django_db
 def test_delete_action_permission_denied_returns_403(mock_site_context):
     """_handle_action returns 403 when user lacks delete permission."""
-    item = StubModel.objects.create(name="delete-403")
+    item = _make_stub(name="delete-403")
     action = DeleteAction(success_url="/items")
 
     user = make_staff_user()

@@ -6,7 +6,7 @@ import pytest
 
 from freedom_ls.panel_framework.views import ListViewConfig, _build_breadcrumbs
 
-from .conftest import StubModel
+from .conftest import StubModel, _make_stub
 
 
 class CohortsConfig(ListViewConfig):
@@ -40,7 +40,7 @@ class TestBuildBreadcrumbs:
 
     @pytest.mark.django_db
     def test_instance_page(self, mock_site_context: None) -> None:
-        instance = StubModel.objects.create(name="Test Cohort")
+        instance = _make_stub(name="Test Cohort")
         crumbs = _build_breadcrumbs(
             ["cohorts", str(instance.pk)],
             CONFIG,
@@ -64,7 +64,7 @@ class TestBuildBreadcrumbs:
     @pytest.mark.django_db
     def test_tab_page_shows_instance_as_current(self, mock_site_context: None) -> None:
         """Tab paths (3 parts) produce the same crumbs as instance pages."""
-        instance = StubModel.objects.create(name="Tab Test")
+        instance = _make_stub(name="Tab Test")
         crumbs = _build_breadcrumbs(
             ["cohorts", str(instance.pk), "details"],
             CONFIG,

@@ -12,6 +12,7 @@ from django.contrib.sites.models import Site
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.role_based_permissions.factories import (
     ObjectRoleAssignmentFactory,
+    SiteRoleAssignmentFactory,
 )
 from freedom_ls.role_based_permissions.loader import clear_caches, get_role_config
 from freedom_ls.role_based_permissions.models import (
@@ -93,14 +94,11 @@ class TestAssignObjectRole:
 
         # Instructor has cohort-scoped permissions (view_cohort, etc.)
         # When synced against a Site object, none of those match the Site content type.
-        # Create assignment manually to bypass scope enforcement (testing content type filtering).
-        ct = ContentType.objects.get_for_model(mock_site_context)
-        ObjectRoleAssignment.objects.create(
+        # Create assignment to bypass scope enforcement (testing content type filtering).
+        ObjectRoleAssignmentFactory(
             user=user,
-            content_type=ct,
-            object_id=str(mock_site_context.pk),
+            target_object=mock_site_context,
             role="instructor",
-            site=mock_site_context,
         )
         sync_user_object_permissions(user, mock_site_context)
         perms = get_perms(user, mock_site_context)
@@ -342,11 +340,9 @@ class TestSiteRoleFunctions:
         user = UserFactory()
         assign_site_role(user, "site_admin")
 
-        # Manually create a second site role assignment to test preservation
+        # Create a second site role assignment to test preservation
         # (only site_admin has assignment_scope="site" in the base config)
-        SiteRoleAssignment.objects.create(
-            user=user, role="other_role", site=mock_site_context, is_active=True
-        )
+        SiteRoleAssignmentFactory(user=user, role="other_role")
 
         remove_site_role(user, "site_admin")
 

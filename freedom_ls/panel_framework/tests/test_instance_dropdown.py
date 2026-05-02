@@ -17,7 +17,7 @@ from freedom_ls.panel_framework.views import (
     panel_framework_view,
 )
 
-from .conftest import StubModel, make_staff_user
+from .conftest import StubModel, _make_stub, make_staff_user
 
 
 class CohortsConfig(ListViewConfig):
@@ -124,7 +124,7 @@ TEMPLATE = "panel_framework/test_interface.html"
 class TestOobSidebarWithInstance:
     def test_oob_sidebar_contains_instance_data(self, mock_site_context: None) -> None:
         """OOB sidebar fragment includes instance label when navigating to instance."""
-        stub = StubModel.objects.create(name="My Stub Instance")
+        stub = _make_stub(name="My Stub Instance")
         factory = RequestFactory()
         request = factory.get(
             f"/test-panel/stubs/{stub.pk}",

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from django.contrib.sites.models import Site
 from django.test import RequestFactory, override_settings
 
 from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
+from freedom_ls.accounts.factories import SiteFactory, SiteSignupPolicyFactory
 from freedom_ls.accounts.models import SiteSignupPolicy
 from freedom_ls.site_aware_models.models import _CACHED_SITE_ATTR
 
@@ -50,10 +50,10 @@ def test_policy_can_disable_when_global_allows(mock_site_context, settings, site
 @pytest.mark.django_db
 def test_is_open_for_signup_respects_force_site_name(settings):
     """is_open_for_signup should use the forced site's policy, not the request domain's."""
-    forced_site = Site.objects.create(domain="forced.example.com", name="ForcedSite")
-    Site.objects.create(domain="testserver", name="DomainSite")
+    forced_site = SiteFactory(name="ForcedSite", domain="forced.example.com")
+    SiteFactory(name="DomainSite", domain="testserver")
 
-    SiteSignupPolicy.objects.create(site=forced_site, allow_signups=False)
+    SiteSignupPolicyFactory(site=forced_site, allow_signups=False)
     settings.ALLOW_SIGN_UPS = True  # global default allows signups
 
     request = RequestFactory().get("/")  # domain = testserver

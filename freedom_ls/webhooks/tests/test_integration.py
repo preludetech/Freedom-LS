@@ -6,6 +6,7 @@ import pytest
 
 from django.contrib.sites.models import Site
 
+from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.webhooks.events import dispatch_event
 from freedom_ls.webhooks.factories import (
     WebhookEndpointFactory,
@@ -233,7 +234,7 @@ class TestSiteIsolation:
         )
 
         # Create a different site and a secret for it
-        site_b = Site.objects.create(name="SiteB", domain="siteb.example.com")
+        site_b = SiteFactory(name="SiteB", domain="siteb.example.com")
         WebhookSecretFactory(
             name="site_b_key",
             encrypted_value="secret-b-value",
@@ -275,7 +276,7 @@ class TestSiteIsolation:
         )
 
         # Endpoint for site B
-        site_b = Site.objects.create(name="SiteB", domain="siteb.example.com")
+        site_b = SiteFactory(name="SiteB", domain="siteb.example.com")
         WebhookEndpointFactory(
             event_types=["user.registered"],
             is_active=True,

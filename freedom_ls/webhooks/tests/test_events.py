@@ -171,15 +171,14 @@ class TestDispatchEvent:
         mock_attempt.assert_not_called()
 
     def test_filters_by_site_id(self, mock_site_context: object) -> None:
-        from django.contrib.sites.models import Site
-
+        from freedom_ls.accounts.factories import SiteFactory
         from freedom_ls.webhooks.events import dispatch_event
 
         # Create an endpoint for the current site
         WebhookEndpointFactory(event_types=["user.registered"], is_active=True)
 
         # Create endpoint for a different site
-        other_site = Site.objects.create(name="OtherSite", domain="othersite")
+        other_site = SiteFactory(name="OtherSite", domain="othersite")
         WebhookEndpointFactory(
             event_types=["user.registered"],
             is_active=True,

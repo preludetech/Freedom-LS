@@ -9,7 +9,7 @@ from freedom_ls.panel_framework.panels import Panel
 from freedom_ls.panel_framework.tabs import Tab
 from freedom_ls.panel_framework.views import InstanceView
 
-from .conftest import StubModel, make_staff_user
+from .conftest import _make_stub, make_staff_user
 
 
 class StubPanelA(Panel):
@@ -42,7 +42,7 @@ def _make_request(path: str = "/", user=None) -> HttpRequest:
 @pytest.mark.django_db
 def test_tabbed_render_includes_tab_labels(mock_site_context):
     """InstanceView.render() includes tab labels and role='tablist'."""
-    item = StubModel.objects.create(name="tabs-labels")
+    item = _make_stub(name="tabs-labels")
     view = TabbedInstanceView(item)
     html = view.render(_make_request(), base_url="/test")
     assert "First Tab" in html
@@ -53,7 +53,7 @@ def test_tabbed_render_includes_tab_labels(mock_site_context):
 @pytest.mark.django_db
 def test_first_tab_content_rendered_inline(mock_site_context):
     """First tab content is rendered inline; active tab is set via data attribute."""
-    item = StubModel.objects.create(name="tabs-inline")
+    item = _make_stub(name="tabs-inline")
     view = TabbedInstanceView(item)
     html = view.render(_make_request(), base_url="/test")
     assert "tab-content-first_tab" in html
@@ -64,7 +64,7 @@ def test_first_tab_content_rendered_inline(mock_site_context):
 @pytest.mark.django_db
 def test_inactive_tab_has_htmx_lazy_load(mock_site_context):
     """Inactive tabs have HTMX lazy-load trigger."""
-    item = StubModel.objects.create(name="tabs-lazy")
+    item = _make_stub(name="tabs-lazy")
     view = TabbedInstanceView(item)
     html = view.render(_make_request(), base_url="/test")
     assert "/__tabs/second_tab" in html
@@ -74,7 +74,7 @@ def test_inactive_tab_has_htmx_lazy_load(mock_site_context):
 @pytest.mark.django_db
 def test_render_tab_returns_panels_fragment(mock_site_context):
     """render_tab() returns just the panel HTML without page chrome."""
-    item = StubModel.objects.create(name="tabs-fragment")
+    item = _make_stub(name="tabs-fragment")
     view = TabbedInstanceView(item)
     html = view.render_tab(_make_request(), "second_tab", base_url="/test")
     assert "panel-b-content" in html
@@ -84,7 +84,7 @@ def test_render_tab_returns_panels_fragment(mock_site_context):
 @pytest.mark.django_db
 def test_render_with_active_tab_override(mock_site_context):
     """Passing active_tab renders that tab's content inline instead of the first."""
-    item = StubModel.objects.create(name="tabs-override")
+    item = _make_stub(name="tabs-override")
     view = TabbedInstanceView(item)
     html = view.render(_make_request(), base_url="/test", active_tab="second_tab")
     assert 'data-active-tab="second_tab"' in html
@@ -94,7 +94,7 @@ def test_render_with_active_tab_override(mock_site_context):
 @pytest.mark.django_db
 def test_tab_buttons_have_data_tab_name(mock_site_context):
     """Tab buttons include data-tab-name attributes for Alpine.js."""
-    item = StubModel.objects.create(name="tabs-data-attr")
+    item = _make_stub(name="tabs-data-attr")
     view = TabbedInstanceView(item)
     html = view.render(_make_request(), base_url="/test")
     assert 'data-tab-name="first_tab"' in html

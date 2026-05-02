@@ -131,6 +131,9 @@ def test_default_is_hard_deadline(mock_site_context):
     """is_hard_deadline defaults to True."""
     cohort_course_reg = CohortCourseRegistrationFactory()
 
+    # NOTE: bare .objects.create() is intentional here. CohortDeadlineFactory sets
+    # is_hard_deadline=False explicitly, which would mask the model default this
+    # test is asserting. Do not replace with the factory.
     deadline = CohortDeadline.objects.create(
         cohort_course_registration=cohort_course_reg,
         deadline=timezone.now() + timedelta(days=7),

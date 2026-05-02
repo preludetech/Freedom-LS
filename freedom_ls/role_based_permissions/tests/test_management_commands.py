@@ -18,12 +18,10 @@ from django.core.management import call_command
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.role_based_permissions.factories import (
     ObjectRoleAssignmentFactory,
+    SystemRoleAssignmentFactory,
 )
 from freedom_ls.role_based_permissions.loader import clear_caches, get_role_config
-from freedom_ls.role_based_permissions.models import (
-    ObjectRoleAssignment,
-    SystemRoleAssignment,
-)
+from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.types import SCOPE_SITE, Role, SiteRolesConfig
 from freedom_ls.student_management.factories import CohortFactory
 
@@ -289,9 +287,7 @@ class TestValidateRolePermissionsOrphanedDbAssignment:
         """Role in assignment table not in any config is reported as error."""
         user = UserFactory()
         # Create assignment with a role not in the config
-        SystemRoleAssignment.objects.create(
-            user=user, role="nonexistent_role_xyz", is_active=True
-        )
+        SystemRoleAssignmentFactory(user=user, role="nonexistent_role_xyz")
 
         with pytest.raises(ClickException, match="nonexistent_role_xyz"):
             _call_validate()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+from typing import cast
 
 import pytest
 import pytest_django.fixtures
@@ -139,3 +140,25 @@ def make_staff_user() -> object:
         password="testpass",  # pragma: allowlist secret
         is_staff=True,
     )
+
+
+# ---------------------------------------------------------------------------
+# Helpers: stub-model construction
+#
+# StubModel/StubChild are test-only models defined inside this conftest via
+# editor.create_model(...). They are not real FLS models and therefore must
+# not get factory_boy factories in any app's factories.py — these colocated
+# helpers stand in for that role.
+# ---------------------------------------------------------------------------
+
+
+def _make_stub(name: str | None = None, **kwargs: object) -> StubModel:
+    """Create a StubModel for tests. ``name`` defaults to a unique value."""
+    if name is None:
+        name = f"stub-{next(_counter)}"
+    return cast(StubModel, StubModel.objects.create(name=name, **kwargs))
+
+
+def _make_stub_child(parent: StubModel, **kwargs: object) -> StubChild:
+    """Create a StubChild parented to ``parent``."""
+    return cast(StubChild, StubChild.objects.create(parent=parent, **kwargs))
