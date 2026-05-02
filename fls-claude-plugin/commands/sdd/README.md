@@ -42,7 +42,7 @@ The plan phase is **two slash-command invocations**, not three:
 1. **`/plan_qa`** generates `3. frontend_qa.md` from the spec — a sequence of declarative behaviour rules (`BR-NN`) paired with Playwright walkthroughs. Skippable for features with no frontend and no frontend-triggered side effects.
 2. **`/plan_dev`** generates `2. plan.md` from the spec (and the QA plan, if there is one). Internally, `/plan_dev` runs three reviewers — testing, structure, security — as subagents in sequence. They flag concerns in the plan, the orchestrator commits per reviewer, and you get a single end-of-flow summary instead of three separate gates.
 
-Reviewer commands stay first-class as escape hatches: `/plan_security_review`, `/plan_structure_review`, and `/plan_testing_review` all remain runnable from the CLI on their own if you've manually edited the plan after `/plan_dev` ran.
+Reviewer commands stay first-class as escape hatches: `/plan_security_review`, `/plan_structure_review`, and `/plan_testing_review` all remain runnable from the CLI on their own. Standalone reviewers don't edit the plan — they write a structured findings report to `plan_<reviewer>_findings.md` in the spec directory. The next `/plan_dev` run picks up any pre-existing findings file instead of re-invoking the matching reviewer agent (and deletes the file once it's applied), so a manual review you ran earlier still flows into the orchestrator's commit-per-reviewer pipeline.
 
 If `docs/app_structure.md` doesn't exist yet, run `/app_map` first — the structure reviewer compares plans against that diagram. `/app_map` is a general command (not SDD-specific) that walks `apps.py`-containing directories, extracts cross-app `ImportFrom` edges via `ast`, and writes a mermaid diagram plus a dependency table. Re-run it whenever an approved structural change lands, then commit the updated file.
 
@@ -82,7 +82,7 @@ If no structural change happened, skip this step.
 
 ## The `todo.md` checklist
 
-`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above. Each SDD command ticks off its own box (and adds follow-up tasks where relevant) by invoking the protected helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` as its final step. You don't run this helper yourself — the other commands call it for you.
+`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above. Each SDD command ticks off its own box (and adds follow-up tasks where relevant) by invoking the protected helper at `${CLAUDE_PLUGIN_ROOT}/commands/sdd/protected/update_todo.md` as its final step. You don't run this helper yourself — the other commands call it for you.
 
 ---
 

@@ -139,7 +139,7 @@ Kill the development server you started:
 
 ## Step 12: Update the todo list
 
-Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+Invoke the helper at `${CLAUDE_PLUGIN_ROOT}/commands/sdd/protected/update_todo.md` with:
 
 - `<todo-path>`: the `todo.md` in the spec directory (same directory as `qa_report.md`)
 - `tick:"Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)"`

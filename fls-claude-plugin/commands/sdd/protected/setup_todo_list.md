@@ -56,7 +56,7 @@ Every item must have exactly one marker. If a step involves both a manual action
 ```markdown
 # SDD Todo
 
-Checklist for taking this spec from idea to merged PR. Tick items as they are completed. See `fls-claude-plugin/commands/sdd/README.md` for the full workflow description.
+Checklist for taking this spec from idea to merged PR. Tick items as they are completed. See `${CLAUDE_PLUGIN_ROOT}/commands/sdd/README.md` for the full workflow description.
 
 ## 1. Idea
 

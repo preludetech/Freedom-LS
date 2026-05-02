@@ -30,7 +30,7 @@ Call `.claude/fls/scripts/dev_db_delete.sh`
 
 # Step 4: Update the todo list
 
-Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+Invoke the helper at `${CLAUDE_PLUGIN_ROOT}/commands/sdd/protected/update_todo.md` with:
 
 - `<todo-path>`: the `todo.md` in the spec directory (now under `spec_dd/3. done/…/`)
 - `tick:"Run `/finish_worktree` to clean up the worktree"`

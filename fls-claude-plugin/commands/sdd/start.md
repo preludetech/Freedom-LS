@@ -9,7 +9,7 @@ This command kicks off Spec-Driven Development for a new spec. It is a thin orch
 
 In a subagent:
 
-Invoke the helper at `fls-claude-plugin/commands/sdd/protected/setup_todo_list.md`. Pass through whatever the caller said about which spec or idea this is for, so the helper doesn't have to re-discover it.
+Invoke the helper at `${CLAUDE_PLUGIN_ROOT}/commands/sdd/protected/setup_todo_list.md`. Pass through whatever the caller said about which spec or idea this is for, so the helper doesn't have to re-discover it.
 
 Wait for the helper to finish. Note the path to the spec directory it landed on — Step 2 needs it.
 
@@ -17,7 +17,7 @@ Wait for the helper to finish. Note the path to the spec directory it landed on 
 
 In a subagent:
 
-Invoke the helper at `fls-claude-plugin/commands/sdd/protected/start_worktree.md`, passing through the spec directory from Step 1.
+Invoke the helper at `${CLAUDE_PLUGIN_ROOT}/commands/sdd/protected/start_worktree.md`, passing through the spec directory from Step 1.
 
 Wait for it to finish.
 

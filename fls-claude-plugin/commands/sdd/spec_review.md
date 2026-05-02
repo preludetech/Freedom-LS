@@ -40,7 +40,7 @@ Return to Step 1 and make sure no new problems were introduced. Repeat the whole
 
 # Step 4: Update the todo list
 
-Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+Invoke the helper at `${CLAUDE_PLUGIN_ROOT}/commands/sdd/protected/update_todo.md` with:
 
 - `<todo-path>`: the `todo.md` in the same directory as the spec file
 - `tick:"Run `/spec_review` to sanity-check the spec"`

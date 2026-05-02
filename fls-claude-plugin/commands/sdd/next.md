@@ -13,7 +13,7 @@ Figure out which spec we're working with, in this order:
 2. Otherwise, look at the current branch name and try to match it to a directory inside `spec_dd/` (usually under `spec_dd/2. in progress/`).
 3. If still ambiguous, list candidate directories under `spec_dd/` and ask the user which one.
 
-The target file is `todo.md` inside that directory. If it does not exist, the next step is `/sdd:start` — spawn a fresh agent to run it (same pattern as the `(cmd)` branch in Step 3: resolve `fls-claude-plugin/commands/sdd/start.md`, pass the spec directory through in the prompt, and wait for the agent to return). Once the agent finishes, re-read `todo.md` and continue with Step 2.
+The target file is `todo.md` inside that directory. If it does not exist, the next step is `/sdd:start` — spawn a fresh agent to run it (same pattern as the `(cmd)` branch in Step 3: resolve `${CLAUDE_PLUGIN_ROOT}/commands/sdd/start.md`, pass the spec directory through in the prompt, and wait for the agent to return). Once the agent finishes, re-read `todo.md` and continue with Step 2.
 
 ## Step 2: Read the todo.md and find the next unchecked item
 
@@ -39,7 +39,7 @@ This is a manual task. Ask the user, in a single short message, whether they hav
 This is a slash command task. You **must** run it — not by invoking the slash command yourself (you can't clear your own context), but by spawning a **fresh agent** via the `Agent` tool. A fresh agent starts with an empty context, which is equivalent to the user running `/clear` and then the command.
 
 1. Extract the slash command name from the item text (e.g. `/spec_from_idea`, `/plan_qa`, `/plan_dev`, `/do_qa`).
-2. Resolve the command file. SDD commands live at `fls-claude-plugin/commands/sdd/<name>.md` (strip any leading `/sdd:` or `/` from the extracted name). Confirm the file exists before spawning — if it doesn't, stop and tell the user the checklist references an unknown command.
+2. Resolve the command file. SDD commands live at `${CLAUDE_PLUGIN_ROOT}/commands/sdd/<name>.md` (strip any leading `/sdd:` or `/` from the extracted name). Confirm the file exists before spawning — if it doesn't, stop and tell the user the checklist references an unknown command.
 3. Spawn a fresh agent with `subagent_type: "general-purpose"`. The prompt must be self-contained — the agent has no memory of this conversation. Include:
    - The absolute path to the command file and an instruction to read it in full and follow its steps exactly.
    - The absolute path to the `todo.md` and to the spec directory, so the agent doesn't have to re-discover them.
@@ -55,7 +55,7 @@ If the marker is anything other than `(user)` or `(cmd)`, stop and tell the user
 
 Only reach this step if the user confirmed they completed a `(user)` item.
 
-Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+Invoke the helper at `${CLAUDE_PLUGIN_ROOT}/commands/sdd/protected/update_todo.md` with:
 
 - `<todo-path>`: the absolute path to the `todo.md` you read in Step 2.
 - `tick:"<exact item text minus the `- [ ]` prefix>"`
