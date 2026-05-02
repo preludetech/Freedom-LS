@@ -9,7 +9,6 @@ from django.utils import timezone
 
 from freedom_ls.webhooks.delivery import (
     MAX_ATTEMPTS,
-    RETRY_DELAYS,
     _increment_failure_count_and_check_breaker,
     attempt_delivery,
     build_standard_request,
@@ -114,29 +113,43 @@ class TestBuildWebhookHeaders:
 
 
 class TestCalculateNextRetry:
-    def test_first_retry_within_expected_range(self) -> None:
-        # attempt_count=1 means first retry, base delay = RETRY_DELAYS[0] = 60s
-        result = calculate_next_retry(1)
+    @pytest.mark.parametrize(
+        ("attempt_count", "base_delay_seconds", "max_delay_seconds"),
+        [
+            (1, 60, 72),
+            (2, 300, 360),
+            (3, 1800, 2160),
+            (4, 7200, 8640),
+            (5, 43200, 51840),
+        ],
+        ids=[
+            "attempt_1_uses_60s_base",
+            "attempt_2_uses_300s_base",
+            "attempt_3_uses_1800s_base",
+            "attempt_4_uses_7200s_base",
+            "attempt_5_uses_43200s_base",
+        ],
+    )
+    def test_retry_delay_window(
+        self,
+        attempt_count: int,
+        base_delay_seconds: int,
+        max_delay_seconds: int,
+    ) -> None:
+        # Hard-coded oracle: 20% jitter on each documented retry delay.
+        # Do NOT import RETRY_DELAYS here — re-deriving the bound from the
+        # production constant re-introduces the tautology this test removed.
+        result = calculate_next_retry(attempt_count)
         now = timezone.now()
-        min_expected = now + timedelta(seconds=60)
-        max_expected = now + timedelta(seconds=60 * 1.2)
+        min_expected = now + timedelta(seconds=base_delay_seconds)
+        max_expected = now + timedelta(seconds=max_delay_seconds)
+        # 2-second slop for clock drift between calculate_next_retry() and
+        # the timezone.now() above.
         assert (
             min_expected - timedelta(seconds=2)
             <= result
             <= max_expected + timedelta(seconds=2)
         )
-
-    def test_later_retries_use_correct_base_delays(self) -> None:
-        for i, base_delay in enumerate(RETRY_DELAYS):
-            result = calculate_next_retry(i + 1)
-            now = timezone.now()
-            min_expected = now + timedelta(seconds=base_delay)
-            max_expected = now + timedelta(seconds=base_delay * 1.2)
-            assert (
-                min_expected - timedelta(seconds=2)
-                <= result
-                <= max_expected + timedelta(seconds=2)
-            ), f"Failed for attempt {i + 1} with base delay {base_delay}"
 
     def test_jitter_adds_variability(self) -> None:
         # Run multiple times and check we don't always get the exact same result

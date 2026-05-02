@@ -29,6 +29,13 @@ def courses(mock_site_context) -> list[Course]:
     return result
 
 
+def _logged_in_client(user) -> Client:
+    """Build a Client logged in as `user`. Local helper — do not lift across files."""
+    client = Client()
+    client.force_login(user)
+    return client
+
+
 # --- all_courses view ---
 
 
@@ -37,8 +44,7 @@ def test_all_courses_started_course_has_progress_percentage(mock_site_context, c
     """Started courses in the all_courses view should have progress_percentage for progress bars."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
-    client = Client()
-    client.force_login(user)
+    client = _logged_in_client(user)
 
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
@@ -49,6 +55,14 @@ def test_all_courses_started_course_has_progress_percentage(mock_site_context, c
 
 
 # --- partial_list_courses view ---
+#
+# Each test below asserts a distinct context-key behaviour (registered vs
+# completed vs recommended, anonymous-empty, progress_percentage attribute).
+# They share an outline but not a fixture/oracle pair — parametrizing them
+# would obscure intent (see spec: "If the variants need different fixtures
+# or different setup beyond a single value swap, don't parametrize"). The
+# audit cited this cluster as ~3 tests; a fresh read shows 5, and each one
+# is a separate behavioural axis.
 
 
 @pytest.mark.django_db
@@ -65,8 +79,7 @@ def test_partial_list_courses_current_courses(mock_site_context, courses):
     """Registered non-completed courses show up as registered_courses."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
-    client = Client()
-    client.force_login(user)
+    client = _logged_in_client(user)
 
     response = client.get(reverse("student_interface:partial_list_courses"))
     assert response.status_code == 200
@@ -82,8 +95,7 @@ def test_partial_list_courses_current_courses_have_progress_percentage(
     """Current courses should have progress_percentage attribute for progress bars."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
-    client = Client()
-    client.force_login(user)
+    client = _logged_in_client(user)
 
     response = client.get(reverse("student_interface:partial_list_courses"))
     registered = response.context["registered_courses"]
@@ -97,8 +109,7 @@ def test_partial_list_courses_completed_courses(mock_site_context, courses):
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     CourseProgressFactory(user=user, course=courses[0], completed_time=timezone.now())
-    client = Client()
-    client.force_login(user)
+    client = _logged_in_client(user)
 
     response = client.get(reverse("student_interface:partial_list_courses"))
     assert response.status_code == 200
@@ -111,8 +122,7 @@ def test_partial_list_courses_includes_recommended_courses(mock_site_context, co
     """Recommended courses are passed to the template context."""
     user = UserFactory()
     RecommendedCourseFactory(user=user, collection=courses[0])
-    client = Client()
-    client.force_login(user)
+    client = _logged_in_client(user)
 
     response = client.get(reverse("student_interface:partial_list_courses"))
     assert response.status_code == 200

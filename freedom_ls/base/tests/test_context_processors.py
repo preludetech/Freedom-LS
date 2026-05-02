@@ -39,17 +39,25 @@ class TestBranchNameToColor:
 
 
 class TestGetTextColor:
-    def test_light_background_returns_black(self) -> None:
-        assert get_text_color("#ffffff") == "#000000"
-
-    def test_dark_background_returns_white(self) -> None:
-        assert get_text_color("#000000") == "#ffffff"
-
-    def test_medium_light_returns_black(self) -> None:
-        assert get_text_color("#aabbcc") == "#000000"
-
-    def test_dark_blue_returns_white(self) -> None:
-        assert get_text_color("#001144") == "#ffffff"
+    @pytest.mark.parametrize(
+        ("background", "expected_text"),
+        [
+            ("#ffffff", "#000000"),
+            ("#000000", "#ffffff"),
+            ("#aabbcc", "#000000"),
+            ("#001144", "#ffffff"),
+        ],
+        ids=[
+            "white_background_uses_black_text",
+            "black_background_uses_white_text",
+            "medium_light_background_uses_black_text",
+            "dark_blue_background_uses_white_text",
+        ],
+    )
+    def test_text_color_for_background(
+        self, background: str, expected_text: str
+    ) -> None:
+        assert get_text_color(background) == expected_text
 
 
 # --- Task 4: Settings isolation ---

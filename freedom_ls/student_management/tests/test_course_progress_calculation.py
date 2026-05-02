@@ -18,32 +18,46 @@ def test_course_with_no_children_returns_zero_percent(mock_site_context):
     assert percentage == 0
 
 
+@pytest.mark.parametrize(
+    ("completed", "total", "expected"),
+    [
+        (0, 1, 0),
+        (1, 1, 100),
+        (1, 2, 50),
+        (1, 3, 33),
+        (2, 3, 67),
+        (3, 4, 75),
+        (1, 4, 25),
+    ],
+    ids=[
+        "0_of_1_is_0",
+        "1_of_1_is_100",
+        "1_of_2_is_50",
+        "1_of_3_is_33",
+        "2_of_3_is_67",
+        "3_of_4_is_75",
+        "1_of_4_is_25",
+    ],
+)
 @pytest.mark.django_db
-def test_course_with_one_topic_none_completed(mock_site_context):
-    """Course with one topic and none completed should return 0%."""
+def test_progress_percentage_for_n_of_m(mock_site_context, completed, total, expected):
+    """Hard-coded oracles for completed/total → percentage. Oracles written down, not derived."""
     course: Course = CourseFactory()
-    topic: Topic = TopicFactory()
-    course.items.create(child=topic, order=0)
+    topics = [TopicFactory(title=f"Topic {i}") for i in range(total)]
+    for i, topic in enumerate(topics):
+        course.items.create(child=topic, order=i)
+    completed_topic_ids = {t.id for t in topics[:completed]}
 
-    percentage = calculate_course_progress_percentage(course, set(), set())
-    assert percentage == 0
+    percentage = calculate_course_progress_percentage(
+        course, completed_topic_ids, set()
+    )
 
-
-@pytest.mark.django_db
-def test_course_with_one_topic_completed(mock_site_context):
-    """Course with one topic completed should return 100%."""
-    course: Course = CourseFactory()
-    topic: Topic = TopicFactory()
-    course.items.create(child=topic, order=0)
-
-    completed_topics = {topic.id}
-    percentage = calculate_course_progress_percentage(course, completed_topics, set())
-    assert percentage == 100
+    assert percentage == expected
 
 
 @pytest.mark.django_db
 def test_course_with_mixed_content(mock_site_context):
-    """Course with mixed content types should calculate correctly."""
+    """Course with mixed content types (Topic + Form) should calculate correctly."""
     course: Course = CourseFactory()
     topic: Topic = TopicFactory()
     test_form: Form = FormFactory()
@@ -54,24 +68,6 @@ def test_course_with_mixed_content(mock_site_context):
     completed_topics = {topic.id}
     percentage = calculate_course_progress_percentage(course, completed_topics, set())
     assert percentage == 50
-
-
-@pytest.mark.django_db
-def test_course_with_multiple_items_partial_completion(mock_site_context):
-    """Course with multiple items and partial completion."""
-    course: Course = CourseFactory()
-    topic1: Topic = TopicFactory(title="Topic 1")
-    topic2: Topic = TopicFactory(title="Topic 2")
-    topic3: Topic = TopicFactory(title="Topic 3")
-
-    course.items.create(child=topic1, order=0)
-    course.items.create(child=topic2, order=1)
-    course.items.create(child=topic3, order=2)
-
-    # 2 out of 3 completed
-    completed_topics = {topic1.id, topic2.id}
-    percentage = calculate_course_progress_percentage(course, completed_topics, set())
-    assert percentage == 67  # round(66.666...)
 
 
 @pytest.mark.django_db
@@ -120,7 +116,7 @@ def test_course_with_mixed_direct_and_part_children(mock_site_context):
     # Complete 2 out of 3
     completed_topics = {direct_topic.id, part_topic1.id}
     percentage = calculate_course_progress_percentage(course, completed_topics, set())
-    assert percentage == 67  # round(66.666...)
+    assert percentage == 67  # (2 of 3) → 67
 
 
 @pytest.mark.django_db

@@ -14,95 +14,48 @@ from freedom_ls.student_progress.factories import (
 from freedom_ls.student_progress.models import FormProgress, QuestionAnswer
 
 
+@pytest.mark.parametrize(
+    ("select_correct", "expected_score"),
+    [
+        (True, 1),
+        (False, 0),
+    ],
+    ids=["correct_answer_scores_one", "incorrect_answer_scores_zero"],
+)
 @pytest.mark.django_db
-def test_score_quiz_single_correct_answer(mock_site_context):
-    """Test quiz scoring with a single question answered correctly."""
+def test_score_quiz_single_question(mock_site_context, select_correct, expected_score):
+    """Quiz scoring with a single question — score depends on which option was selected."""
     user = UserFactory()
     form = FormFactory()
 
-    # Create a page
     page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
-
-    # Create a question
     question = FormQuestionFactory(
         form_page=page,
         question="What is 2 + 2?",
         type="multiple_choice",
         order=0,
     )
-
-    # Create options - one correct, others incorrect
     correct_option = QuestionOptionFactory(
         question=question, text="4", value="4", order=0, correct=True
     )
-    QuestionOptionFactory(
+    wrong_option = QuestionOptionFactory(
         question=question, text="3", value="3", order=1, correct=False
     )
     QuestionOptionFactory(
         question=question, text="5", value="5", order=2, correct=False
     )
 
-    # Create form progress
     form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-
-    # Create an answer selecting the correct option
     answer: QuestionAnswer = QuestionAnswerFactory(
         form_progress=form_progress, question=question
     )
-    answer.selected_options.add(correct_option)
+    answer.selected_options.add(correct_option if select_correct else wrong_option)
 
-    # Call the scoring method
     form_progress.score_quiz()
 
-    # Verify the score
     form_progress.refresh_from_db()
     assert form_progress.scores is not None
-    assert form_progress.scores["score"] == 1
-    assert form_progress.scores["max_score"] == 1
-
-
-@pytest.mark.django_db
-def test_score_quiz_single_incorrect_answer(mock_site_context):
-    """Test quiz scoring with a single question answered incorrectly."""
-    user = UserFactory()
-    form = FormFactory()
-
-    # Create a page
-    page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
-
-    # Create a question
-    question = FormQuestionFactory(
-        form_page=page,
-        question="What is 2 + 2?",
-        type="multiple_choice",
-        order=0,
-    )
-
-    # Create options - one correct, others incorrect
-    QuestionOptionFactory(question=question, text="4", value="4", order=0, correct=True)
-    incorrect_option = QuestionOptionFactory(
-        question=question, text="3", value="3", order=1, correct=False
-    )
-    QuestionOptionFactory(
-        question=question, text="5", value="5", order=2, correct=False
-    )
-
-    # Create form progress
-    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-
-    # Create an answer selecting an incorrect option
-    answer: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question
-    )
-    answer.selected_options.add(incorrect_option)
-
-    # Call the scoring method
-    form_progress.score_quiz()
-
-    # Verify the score
-    form_progress.refresh_from_db()
-    assert form_progress.scores is not None
-    assert form_progress.scores["score"] == 0  # Got it wrong
+    assert form_progress.scores["score"] == expected_score
     assert form_progress.scores["max_score"] == 1
 
 
