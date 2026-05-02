@@ -13,17 +13,17 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (cmd) Run `/spec_from_idea` to generate the spec
 - [x] (user) Review the spec carefully and edit where needed
 - [x] (cmd) Run `/spec_review` to sanity-check the spec
-- [ ] (user) Address any issues raised by the review
+- [x] (user) Address any issues raised by the review
 
 ## 3. Threat model
 
-- [ ] (cmd) Run `/threat-model` against the spec
-- [ ] (user) Update the spec to close any security gaps surfaced
+- [x] (cmd) Run `/threat-model` against the spec
+- [x] (user) Update the spec to close any security gaps surfaced
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
-- [ ] (user) Review both plans and edit where needed
+- [x] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
+- [x] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
 
@@ -51,6 +51,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
+- [ ] (user) No QA needed — feature has no frontend changes
 
 ## 10. Pull request
 
