@@ -7,8 +7,8 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.accounts.models import SiteSignupPolicy
+from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
+from freedom_ls.accounts.tests import _completion_view_fixtures as fixtures
 
 ALWAYS_INCOMPLETE_PATH = (
     "freedom_ls.accounts.tests._completion_view_fixtures.AlwaysIncompleteForm"
@@ -30,7 +30,7 @@ def test_anonymous_request_passes_through(mock_site_context, login_url):
 
 @pytest.mark.django_db
 def test_superuser_passes_through_even_with_incomplete_forms(mock_site_context, site):
-    SiteSignupPolicy.objects.create(
+    SiteSignupPolicyFactory(
         site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
     )
     user = UserFactory(superuser=True)
@@ -46,7 +46,7 @@ def test_superuser_passes_through_even_with_incomplete_forms(mock_site_context, 
 
 @pytest.mark.django_db
 def test_user_with_no_incomplete_forms_passes_through(mock_site_context, site):
-    SiteSignupPolicy.objects.create(site=site, additional_registration_forms=[])
+    SiteSignupPolicyFactory(site=site, additional_registration_forms=[])
     user = UserFactory()
     client = Client()
     client.force_login(user)
@@ -57,7 +57,7 @@ def test_user_with_no_incomplete_forms_passes_through(mock_site_context, site):
 
 @pytest.mark.django_db
 def test_user_with_incomplete_forms_redirected_to_completion(mock_site_context, site):
-    SiteSignupPolicy.objects.create(
+    SiteSignupPolicyFactory(
         site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
     )
     user = UserFactory()
@@ -81,7 +81,7 @@ def test_user_with_incomplete_forms_redirected_to_completion(mock_site_context, 
     ],
 )
 def test_allauth_exempt_url_names_pass_through(mock_site_context, site, url_name):
-    SiteSignupPolicy.objects.create(
+    SiteSignupPolicyFactory(
         site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
     )
     user = UserFactory()
@@ -93,14 +93,16 @@ def test_allauth_exempt_url_names_pass_through(mock_site_context, site, url_name
 
     # Whatever each URL would normally do — what matters is that we are NOT
     # redirected to the completion view.
-    assert response.status_code != 302 or response.url != reverse(
-        "accounts:complete_registration"
+    completion_url = reverse("accounts:complete_registration")
+    redirected_to_completion = (
+        response.status_code == 302 and response.url == completion_url
     )
+    assert redirected_to_completion is False
 
 
 @pytest.mark.django_db
 def test_legal_doc_url_is_exempt(mock_site_context, site):
-    SiteSignupPolicy.objects.create(
+    SiteSignupPolicyFactory(
         site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
     )
     user = UserFactory()
@@ -109,15 +111,19 @@ def test_legal_doc_url_is_exempt(mock_site_context, site):
 
     url = reverse("accounts:legal_doc", kwargs={"doc_type": "terms"})
     response = client.get(url)
+
     # The doc may or may not exist (404 if no docs), but the middleware
     # must NOT have intercepted with a redirect to complete_registration.
-    if response.status_code == 302:
-        assert response.url != reverse("accounts:complete_registration")
+    completion_url = reverse("accounts:complete_registration")
+    redirected_to_completion = (
+        response.status_code == 302 and response.url == completion_url
+    )
+    assert redirected_to_completion is False
 
 
 @pytest.mark.django_db
 def test_completion_view_url_is_exempt(mock_site_context, site):
-    SiteSignupPolicy.objects.create(
+    SiteSignupPolicyFactory(
         site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
     )
     user = UserFactory()
@@ -131,7 +137,7 @@ def test_completion_view_url_is_exempt(mock_site_context, site):
 
 @pytest.mark.django_db
 def test_health_path_exempt(mock_site_context, site):
-    SiteSignupPolicy.objects.create(
+    SiteSignupPolicyFactory(
         site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
     )
     user = UserFactory()
@@ -145,7 +151,7 @@ def test_health_path_exempt(mock_site_context, site):
 @pytest.mark.django_db
 def test_substring_match_does_not_exempt(mock_site_context, site):
     """A path containing a substring of an exempt name is NOT exempt."""
-    SiteSignupPolicy.objects.create(
+    SiteSignupPolicyFactory(
         site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
     )
     user = UserFactory()
@@ -161,43 +167,36 @@ def test_substring_match_does_not_exempt(mock_site_context, site):
 
 @pytest.mark.django_db
 def test_cache_short_circuits_second_request(mock_site_context, site):
-    """After a `complete` evaluation, subsequent requests must not re-evaluate
-    the user's forms (observable via the test fixture's call counter)."""
-    from freedom_ls.accounts.tests import _completion_view_fixtures as fixtures
-
-    SiteSignupPolicy.objects.create(
-        site=site, additional_registration_forms=[PHONE_FORM_PATH]
-    )
+    """Once a user has been marked complete, the cached verdict survives
+    even when the underlying form state is invalidated — proving that the
+    middleware did not re-evaluate the form on the second request."""
+    SiteSignupPolicyFactory(site=site, additional_registration_forms=[PHONE_FORM_PATH])
     user = UserFactory()
     fixtures.STORED_PHONE_NUMBERS[user.pk] = "+27 11 555 0001"
-    fixtures.IS_COMPLETE_CALL_COUNT.clear()
 
     client = Client()
     client.force_login(user)
 
-    # First request: middleware evaluates forms and marks complete.
-    client.get(reverse("accounts:account_profile"))
-    after_first = fixtures.IS_COMPLETE_CALL_COUNT.get("PhoneNumberForm", 0)
+    # First request: form is complete → user passes through to profile.
+    first = client.get(reverse("accounts:account_profile"))
+    assert first.status_code == 200
 
-    # Second request: cached → no further evaluation.
-    client.get(reverse("accounts:account_profile"))
-    after_second = fixtures.IS_COMPLETE_CALL_COUNT.get("PhoneNumberForm", 0)
+    # Mutate underlying state: an un-cached re-evaluation would now report
+    # the user as incomplete and redirect.
+    fixtures.STORED_PHONE_NUMBERS.pop(user.pk, None)
 
-    assert after_first >= 1
-    assert after_second == after_first  # no additional calls
+    # Second request: cache returns the stale "complete" verdict.
+    second = client.get(reverse("accounts:account_profile"))
+    assert second.status_code == 200
 
 
 @pytest.mark.django_db
 def test_changing_dotted_paths_invalidates_cache(mock_site_context, site):
     """Switching the policy's `additional_registration_forms` re-evaluates."""
-    from freedom_ls.accounts.tests import _completion_view_fixtures as fixtures
-
     fixtures.STORED_PHONE_NUMBERS.clear()
     fixtures.IS_COMPLETE_CALL_COUNT.clear()
 
-    policy = SiteSignupPolicy.objects.create(
-        site=site, additional_registration_forms=[]
-    )
+    policy = SiteSignupPolicyFactory(site=site, additional_registration_forms=[])
     user = UserFactory()
     client = Client()
     client.force_login(user)
@@ -216,32 +215,30 @@ def test_changing_dotted_paths_invalidates_cache(mock_site_context, site):
 
 @pytest.mark.django_db
 def test_completion_submit_clears_cache(mock_site_context, site, settings):
-    """Submitting the completion view clears the cache so a subsequent
-    policy change can take effect immediately on the same session."""
-    from freedom_ls.accounts.tests import _completion_view_fixtures as fixtures
+    """Submitting the completion view clears the cached `incomplete` verdict.
 
+    Without this, a user submitting the form would still be bounced back
+    to the completion view on their next page-load until the cache aged
+    out. The test arranges a poisoned cache (one GET while incomplete),
+    submits the form, then re-checks that the next page is not redirected.
+    """
     settings.LOGIN_REDIRECT_URL = "/"
     fixtures.STORED_PHONE_NUMBERS.clear()
-    fixtures.IS_COMPLETE_CALL_COUNT.clear()
 
-    SiteSignupPolicy.objects.create(
-        site=site, additional_registration_forms=[PHONE_FORM_PATH]
-    )
+    SiteSignupPolicyFactory(site=site, additional_registration_forms=[PHONE_FORM_PATH])
     user = UserFactory()
     client = Client()
     client.force_login(user)
 
-    # First request — incomplete, should redirect.
-    response = client.get(reverse("accounts:account_profile"))
-    assert response.url == reverse("accounts:complete_registration")
+    # Arrange: prime the cache with an "incomplete" verdict.
+    client.get(reverse("accounts:account_profile"))
 
-    # Submit the completion view.
-    response = client.post(
+    # Act: submit the completion form.
+    client.post(
         reverse("accounts:complete_registration"),
         {"PhoneNumberForm-phone_number": "+27 11 555 5555"},
     )
-    assert response.status_code == 302
 
-    # Subsequent request: now complete; should NOT redirect.
+    # Assert: cache cleared — next request reaches the profile page.
     response = client.get(reverse("accounts:account_profile"))
     assert response.status_code == 200

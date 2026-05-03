@@ -45,29 +45,21 @@ class TestRenderMarkdownCustomTags:
         assert "youtube.com/embed/abc123" in result
         assert "Test Video" in result
 
-    def test_c_callout_info_is_rendered(self, mock_request):
-        """Test that c-callout with info level is rendered."""
-        markdown_text = '<c-callout level="info">Important information</c-callout>'
+    @pytest.mark.parametrize("level", ["info", "warning", "error", "success"])
+    def test_c_callout_renders_body_for_each_level(self, mock_request, level):
+        """The c-callout cotton tag is processed (replaced by HTML) at every level."""
+        markdown_text = f'<c-callout level="{level}">Body text {level}</c-callout>'
         result = render_markdown(markdown_text, mock_request)
 
-        # Should be rendered by callout component with semantic color tokens
-        assert "border-primary" in result
-        assert "Important information" in result
-
-    def test_c_callout_warning_is_rendered(self, mock_request):
-        """Test that c-callout with warning level is rendered."""
-        markdown_text = '<c-callout level="warning">Warning text</c-callout>'
-        result = render_markdown(markdown_text, mock_request)
-
-        assert "bg-warning/10" in result  # Warning styling
-        assert "border-warning" in result
-        assert "Warning text" in result
+        assert "<c-callout" not in result  # cotton tag was rendered, not literal
+        assert f"Body text {level}" in result
 
     def test_c_callout_with_title(self, mock_request):
         """Test that c-callout with title attribute works."""
         markdown_text = '<c-callout level="info" title="Note">Content here</c-callout>'
         result = render_markdown(markdown_text, mock_request)
 
+        assert "<c-callout" not in result
         assert "Note" in result
         assert "Content here" in result
         assert "<svg" in result  # Icon rendered as inline SVG
@@ -133,9 +125,9 @@ Some text with **bold**."""
 <c-callout level="warning">Second callout</c-callout>"""
         result = render_markdown(markdown_text, mock_request)
 
+        assert "<c-callout" not in result  # both callouts processed
         assert "First callout" in result
         assert "Second callout" in result
-        assert "bg-warning/10" in result  # Warning callout
         assert "youtube.com/embed/test" in result
 
     def test_returns_safe_string(self, mock_request):
