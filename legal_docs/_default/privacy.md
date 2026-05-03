@@ -5,8 +5,6 @@ type: "privacy"
 effective_date: "2026-04-27"
 ---
 
-# Privacy Policy
-
 **This is a placeholder privacy policy shipped as the FreedomLS default. Replace it with your own legal copy before going live.**
 
 ## 1. Information we collect

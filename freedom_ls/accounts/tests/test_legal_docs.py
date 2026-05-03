@@ -197,9 +197,10 @@ def test_has_legal_doc_returns_false_when_doc_missing(mock_legal_blobs):
 
 @pytest.mark.django_db
 def test_system_check_warns_when_required_doc_missing(
-    mock_legal_blobs, mock_site_context
+    mock_legal_blobs, mock_site_context, settings
 ):
     """Sites with require_terms_acceptance=True but missing docs trigger Warning."""
+    settings.REQUIRE_TERMS_ACCEPTANCE = False
     SiteSignupPolicyFactory(site=mock_site_context, require_terms_acceptance=True)
 
     warnings = check_legal_docs_present_when_required(app_configs=None)
@@ -211,10 +212,43 @@ def test_system_check_warns_when_required_doc_missing(
 
 
 @pytest.mark.django_db
-def test_system_check_silent_when_docs_present(legal_docs_seeded, mock_site_context):
+def test_system_check_silent_when_docs_present(
+    legal_docs_seeded, mock_site_context, settings
+):
     """When docs resolve via _default/, no warning is emitted."""
+    settings.REQUIRE_TERMS_ACCEPTANCE = False
     SiteSignupPolicyFactory(site=mock_site_context, require_terms_acceptance=True)
 
     warnings = check_legal_docs_present_when_required(app_configs=None)
 
     assert warnings == []
+
+
+@pytest.mark.django_db
+def test_system_check_warns_for_settings_default_when_no_policy(
+    mock_legal_blobs, mock_site_context, settings
+):
+    """When settings.REQUIRE_TERMS_ACCEPTANCE=True and a site has no policy
+    row, a missing legal doc still triggers a W001 warning."""
+    settings.REQUIRE_TERMS_ACCEPTANCE = True
+
+    warnings = check_legal_docs_present_when_required(app_configs=None)
+
+    assert any(
+        w.id == "freedom_ls_accounts.W001" and mock_site_context.domain in w.msg
+        for w in warnings
+    )
+
+
+@pytest.mark.django_db
+def test_system_check_silent_when_policy_overrides_settings_default(
+    mock_legal_blobs, mock_site_context, settings
+):
+    """Per-site policy with require_terms_acceptance=False suppresses warnings
+    even when settings.REQUIRE_TERMS_ACCEPTANCE=True."""
+    settings.REQUIRE_TERMS_ACCEPTANCE = True
+    SiteSignupPolicyFactory(site=mock_site_context, require_terms_acceptance=False)
+
+    warnings = check_legal_docs_present_when_required(app_configs=None)
+
+    assert all(mock_site_context.domain not in w.msg for w in warnings)

@@ -5,8 +5,6 @@ type: "terms"
 effective_date: "2026-04-27"
 ---
 
-# Terms and Conditions
-
 **These are placeholder terms shipped as the FreedomLS default. Replace them with your own legal copy before going live.**
 
 ## 1. Acceptance

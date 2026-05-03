@@ -7,6 +7,7 @@ from allauth.account.forms import SignupForm
 from allauth.core import context as allauth_context
 
 from django import forms
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.db import transaction
@@ -80,13 +81,15 @@ class SiteAwareSignupForm(SignupForm):
             self.fields["first_name"].required = False
             self.fields["first_name"].label = _("First name (optional)")
 
-        # Terms / Privacy clickwrap
-        if (
-            policy is not None
-            and policy.require_terms_acceptance
-            and request is not None
-            and site is not None
-        ):
+        # Terms / Privacy clickwrap. When no per-site policy exists, fall back
+        # to settings.REQUIRE_TERMS_ACCEPTANCE so operators can flip consent on
+        # for every site without creating a SiteSignupPolicy row per site.
+        if policy is not None:
+            require_terms = policy.require_terms_acceptance
+        else:
+            require_terms = getattr(settings, "REQUIRE_TERMS_ACCEPTANCE", False)
+
+        if require_terms and request is not None and site is not None:
             if has_legal_doc(site, "terms"):
                 self.fields["accept_terms"] = forms.BooleanField(
                     required=True,
@@ -110,7 +113,7 @@ class SiteAwareSignupForm(SignupForm):
                     "doc; skipping accept_privacy checkbox",
                     site.domain,
                 )
-        elif policy is not None and policy.require_terms_acceptance and request is None:
+        elif require_terms and request is None:
             # Out-of-request construction (e.g. management command). Refuse to
             # silently skip the checkboxes — fail closed.
             raise RuntimeError(
