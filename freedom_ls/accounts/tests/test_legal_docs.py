@@ -12,6 +12,8 @@ from django.contrib.sites.models import Site
 from django.core.checks import Warning as ChecksWarning
 
 from freedom_ls.accounts import legal_docs
+from freedom_ls.accounts.checks import check_legal_docs_present_when_required
+from freedom_ls.accounts.factories import SiteSignupPolicyFactory
 
 from ._git_helpers import commit_all as _commit
 from ._git_helpers import init_repo as _init_repo
@@ -198,12 +200,7 @@ def test_system_check_warns_when_required_doc_missing(
     mock_legal_blobs, mock_site_context
 ):
     """Sites with require_terms_acceptance=True but missing docs trigger Warning."""
-    from freedom_ls.accounts.checks import check_legal_docs_present_when_required
-    from freedom_ls.accounts.models import SiteSignupPolicy
-
-    SiteSignupPolicy.objects.update_or_create(
-        site=mock_site_context, defaults={"require_terms_acceptance": True}
-    )
+    SiteSignupPolicyFactory(site=mock_site_context, require_terms_acceptance=True)
 
     warnings = check_legal_docs_present_when_required(app_configs=None)
 
@@ -216,12 +213,7 @@ def test_system_check_warns_when_required_doc_missing(
 @pytest.mark.django_db
 def test_system_check_silent_when_docs_present(legal_docs_seeded, mock_site_context):
     """When docs resolve via _default/, no warning is emitted."""
-    from freedom_ls.accounts.checks import check_legal_docs_present_when_required
-    from freedom_ls.accounts.models import SiteSignupPolicy
-
-    SiteSignupPolicy.objects.update_or_create(
-        site=mock_site_context, defaults={"require_terms_acceptance": True}
-    )
+    SiteSignupPolicyFactory(site=mock_site_context, require_terms_acceptance=True)
 
     warnings = check_legal_docs_present_when_required(app_configs=None)
 

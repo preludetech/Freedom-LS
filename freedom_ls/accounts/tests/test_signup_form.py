@@ -10,8 +10,9 @@ from allauth.core.context import request_context
 from django.test import Client
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.accounts.models import LegalConsent, SiteSignupPolicy
+from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
+from freedom_ls.accounts.forms import SiteAwareSignupForm
+from freedom_ls.accounts.models import LegalConsent
 
 
 @pytest.fixture
@@ -26,8 +27,6 @@ def allauth_request_ctx(mock_site_context, rf):
 @pytest.mark.django_db
 def test_first_name_required_by_default(allauth_request_ctx, mock_site_context):
     """Default policy (or no policy row) → first_name required."""
-    from freedom_ls.accounts.forms import SiteAwareSignupForm
-
     form = SiteAwareSignupForm()
     assert form.fields["first_name"].required is True
 
@@ -36,9 +35,7 @@ def test_first_name_required_by_default(allauth_request_ctx, mock_site_context):
 def test_first_name_optional_when_policy_disables_require_name(
     allauth_request_ctx, mock_site_context, site
 ):
-    SiteSignupPolicy.objects.create(site=site, require_name=False)
-
-    from freedom_ls.accounts.forms import SiteAwareSignupForm
+    SiteSignupPolicyFactory(site=site, require_name=False)
 
     form = SiteAwareSignupForm()
     assert form.fields["first_name"].required is False
@@ -48,9 +45,7 @@ def test_first_name_optional_when_policy_disables_require_name(
 def test_form_adds_consent_checkboxes_when_required_and_docs_present(
     allauth_request_ctx, mock_site_context, site, legal_repo_mock
 ):
-    SiteSignupPolicy.objects.create(site=site, require_terms_acceptance=True)
-
-    from freedom_ls.accounts.forms import SiteAwareSignupForm
+    SiteSignupPolicyFactory(site=site, require_terms_acceptance=True)
 
     form = SiteAwareSignupForm()
     assert "accept_terms" in form.fields
@@ -66,9 +61,7 @@ def test_form_does_not_add_checkboxes_when_docs_missing(
     """When `require_terms_acceptance=True` but no docs resolve, the form
     omits the checkbox rather than rendering a broken link."""
     # No blobs registered → all lookups raise FileNotFoundError.
-    SiteSignupPolicy.objects.create(site=site, require_terms_acceptance=True)
-
-    from freedom_ls.accounts.forms import SiteAwareSignupForm
+    SiteSignupPolicyFactory(site=site, require_terms_acceptance=True)
 
     with caplog.at_level(logging.WARNING):
         form = SiteAwareSignupForm()
@@ -83,9 +76,7 @@ def test_custom_signup_records_consents(
     allauth_request_ctx, mock_site_context, site, legal_repo_mock, settings
 ):
     settings.TRUSTED_PROXY_IP_HEADER = None
-    SiteSignupPolicy.objects.create(site=site, require_terms_acceptance=True)
-
-    from freedom_ls.accounts.forms import SiteAwareSignupForm
+    SiteSignupPolicyFactory(site=site, require_terms_acceptance=True)
 
     form = SiteAwareSignupForm()
     form.cleaned_data = {
@@ -114,9 +105,7 @@ def test_custom_signup_records_nothing_when_no_consent_fields(
     allauth_request_ctx, mock_site_context, site, legal_repo_mock
 ):
     """If no consent fields are present (policy not requiring them), no rows."""
-    SiteSignupPolicy.objects.create(site=site, require_terms_acceptance=False)
-
-    from freedom_ls.accounts.forms import SiteAwareSignupForm
+    SiteSignupPolicyFactory(site=site, require_terms_acceptance=False)
 
     form = SiteAwareSignupForm()
     form.cleaned_data = {}
@@ -139,7 +128,7 @@ def test_signup_view_renders_each_consent_checkbox_once(
     duplicates from both `{% element fields %}` and the linked-label
     block.
     """
-    SiteSignupPolicy.objects.create(site=site, require_terms_acceptance=True)
+    SiteSignupPolicyFactory(site=site, require_terms_acceptance=True)
 
     response = Client().get(reverse("account_signup"))
     assert response.status_code == 200
@@ -158,8 +147,6 @@ def test_signup_view_renders_each_consent_checkbox_once(
 def test_honeypot_rejects_submission_when_filled(
     allauth_request_ctx, mock_site_context
 ):
-    from freedom_ls.accounts.forms import SiteAwareSignupForm
-
     form = SiteAwareSignupForm(
         data={
             "email": "test@example.com",

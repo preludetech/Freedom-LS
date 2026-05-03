@@ -7,7 +7,7 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import LegalConsentFactory, UserFactory
 from freedom_ls.accounts.models import LegalConsent
 
 
@@ -30,12 +30,7 @@ def test_legal_consent_admin_change_does_not_persist_modification(
     staff_client, mock_site_context
 ):
     user = UserFactory()
-    consent = LegalConsent.objects.create(
-        user=user,
-        document_type="terms",
-        document_version="1.0",
-        git_hash="abc123",
-    )
+    consent = LegalConsentFactory(user=user, git_hash="abc123")
     url = reverse("admin:freedom_ls_accounts_legalconsent_change", args=[consent.pk])
 
     response = staff_client.post(
@@ -60,12 +55,7 @@ def test_legal_consent_admin_change_does_not_persist_modification(
 @pytest.mark.django_db
 def test_legal_consent_admin_delete_keeps_row(staff_client, mock_site_context):
     user = UserFactory()
-    consent = LegalConsent.objects.create(
-        user=user,
-        document_type="terms",
-        document_version="1.0",
-        git_hash="abc123",
-    )
+    consent = LegalConsentFactory(user=user, git_hash="abc123")
 
     url = reverse("admin:freedom_ls_accounts_legalconsent_delete", args=[consent.pk])
     response = staff_client.post(url, {"post": "yes"})
