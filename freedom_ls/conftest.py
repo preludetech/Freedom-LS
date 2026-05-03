@@ -5,14 +5,14 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import pytest
-from allauth.account.models import EmailAddress
-from playwright.sync_api import Page
 
 from django.contrib.sites.models import Site
 from django.test import RequestFactory
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import UserFactory
+# Re-export Playwright fixtures (logged_in_page, reset_local_storage) so
+# tests can consume them without importing the fixtures module directly.
+from freedom_ls.tests.playwright_fixtures import *  # noqa: F403
 
 
 @pytest.fixture(autouse=True)
@@ -112,29 +112,6 @@ def live_server_site(live_server, site):
     return site
 
 
-@pytest.fixture
-def logged_in_page(page: Page, live_server, db, live_server_site, mock_site_context):
-    """Create a logged in page with a verified email address."""
-    user = UserFactory(password="testpass")  # noqa: S106
-
-    # Set the user's email as verified (required for allauth)
-    # Use get_or_create to avoid duplicate email addresses
-    EmailAddress.objects.get_or_create(
-        user=user, email=user.email, defaults={"verified": True, "primary": True}
-    )
-
-    # Navigate to login page
-    login_url = reverse_url(live_server, "account_login")
-    page.goto(login_url)
-
-    # Fill in login form
-    page.fill('input[name="login"]', str(user.email))
-    page.fill('input[name="password"]', "testpass")
-
-    # Submit the form
-    page.click('button[type="submit"]')
-
-    # Wait for navigation to complete
-    page.wait_for_load_state("networkidle")
-
-    return page
+# ``logged_in_page`` is now defined in
+# ``freedom_ls.tests.playwright_fixtures`` and re-exported via the
+# wildcard import at the top of this module.
