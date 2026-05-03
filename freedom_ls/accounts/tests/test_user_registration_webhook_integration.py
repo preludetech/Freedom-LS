@@ -26,6 +26,8 @@ def test_signup_creates_user_registered_webhook_event(mock_site_context) -> None
                 "password2": "TestPass123!xyz",  # pragma: allowlist secret
                 "first_name": "Integration",
                 "last_name": "Test",
+                "accept_terms": "on",
+                "accept_privacy": "on",
             },
         )
 

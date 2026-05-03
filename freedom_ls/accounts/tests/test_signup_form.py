@@ -55,6 +55,45 @@ def test_form_adds_consent_checkboxes_when_required_and_docs_present(
 
 
 @pytest.mark.django_db
+def test_form_adds_consent_checkboxes_from_settings_default_when_no_policy(
+    allauth_request_ctx, mock_site_context, legal_repo_mock, settings
+):
+    """When no SiteSignupPolicy exists for the site, settings.REQUIRE_TERMS_ACCEPTANCE
+    drives whether consent checkboxes are added."""
+    settings.REQUIRE_TERMS_ACCEPTANCE = True
+
+    form = SiteAwareSignupForm()
+    assert "accept_terms" in form.fields
+    assert "accept_privacy" in form.fields
+
+
+@pytest.mark.django_db
+def test_form_omits_consent_checkboxes_when_settings_default_false(
+    allauth_request_ctx, mock_site_context, legal_repo_mock, settings
+):
+    """settings.REQUIRE_TERMS_ACCEPTANCE=False with no policy → no checkboxes."""
+    settings.REQUIRE_TERMS_ACCEPTANCE = False
+
+    form = SiteAwareSignupForm()
+    assert "accept_terms" not in form.fields
+    assert "accept_privacy" not in form.fields
+
+
+@pytest.mark.django_db
+def test_policy_overrides_settings_default(
+    allauth_request_ctx, mock_site_context, site, legal_repo_mock, settings
+):
+    """A per-site policy with require_terms_acceptance=False overrides
+    a True global setting."""
+    settings.REQUIRE_TERMS_ACCEPTANCE = True
+    SiteSignupPolicyFactory(site=site, require_terms_acceptance=False)
+
+    form = SiteAwareSignupForm()
+    assert "accept_terms" not in form.fields
+    assert "accept_privacy" not in form.fields
+
+
+@pytest.mark.django_db
 def test_form_does_not_add_checkboxes_when_docs_missing(
     allauth_request_ctx, mock_site_context, site, mock_legal_blobs, caplog
 ):
