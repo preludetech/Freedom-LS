@@ -8,6 +8,9 @@ from freedom_ls.content_engine.factories import (
     CoursePartFactory,
     TopicFactory,
 )
+from freedom_ls.student_interface.templatetags.course_storage_keys import (
+    course_part_storage_key,
+)
 
 
 @pytest.mark.playwright
@@ -50,11 +53,9 @@ def test_toc_course_part_expands_and_collapses_on_course_detail_page(
         kwargs={"course_slug": course.slug, "index": 1},
     )
 
-    # Clear any persisted expand/collapse state so we start from collapsed.
+    # ``reset_local_storage`` (autouse) ensures localStorage is empty before
+    # the first navigation, so the course-part starts collapsed.
     logged_in_page.goto(topic_url)
-    logged_in_page.evaluate("localStorage.clear()")
-    logged_in_page.goto(topic_url)
-    logged_in_page.wait_for_load_state("networkidle")
 
     toggle_button = logged_in_page.get_by_role("button", name="Chapter One")
     expect(toggle_button).to_be_visible()
@@ -113,13 +114,12 @@ def test_toc_course_part_expand_state_persists_across_navigation(
         "student_interface:course_home",
         kwargs={"course_slug": course.slug},
     )
-    storage_key = f"coursePart_{course.slug}_2"
+    # Single source of truth for the storage key — production helper, not an
+    # ad-hoc f-string in the test.
+    storage_key = course_part_storage_key(course.slug, 2)
 
-    # Start from a clean localStorage on the topic page.
+    # ``reset_local_storage`` (autouse) clears localStorage before navigation.
     logged_in_page.goto(topic_url)
-    logged_in_page.evaluate("localStorage.clear()")
-    logged_in_page.goto(topic_url)
-    logged_in_page.wait_for_load_state("networkidle")
 
     toggle_button = logged_in_page.get_by_role("button", name="Chapter One")
     expect(toggle_button).to_be_visible()
@@ -139,6 +139,5 @@ def test_toc_course_part_expand_state_persists_across_navigation(
 
     # Navigating to the course home should find the part already expanded.
     logged_in_page.goto(course_home_url)
-    logged_in_page.wait_for_load_state("networkidle")
     inner_topic_on_home = logged_in_page.get_by_text("Inner Topic", exact=True)
     expect(inner_topic_on_home).to_be_visible()

@@ -1,3 +1,5 @@
+{% load course_storage_keys %}
+
 {% partialdef status-icon %}
     {% if child.status == "BLOCKED" %}
         <span class="text-sm text-muted/50">
@@ -105,8 +107,10 @@
     {% for child in children %}
         {% if child.type == "COURSE_PART" %}
             {# Course Part with expandable children #}
+            {% course_part_storage_key_tag course.slug forloop.counter as part_storage_key %}
+
             <div x-data="coursePart"
-                 data-storage-key="coursePart_{{ course.slug }}_{{ forloop.counter }}"
+                 data-storage-key="{{ part_storage_key }}"
                  class="py-1.5">
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2 flex-1 min-w-0">
