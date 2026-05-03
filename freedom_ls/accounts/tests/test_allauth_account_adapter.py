@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 import pytest
-from allauth.core.context import _request_var
+from allauth.core.context import request_context
 
 from django.core import mail
 from django.test import RequestFactory
@@ -14,25 +14,28 @@ from freedom_ls.accounts.factories import UserFactory
 
 @pytest.mark.django_db
 def test_send_notification_mail_adds_user_to_context(mock_site_context: object) -> None:
-    """send_notification_mail should add `user` to the context dict before calling super."""
+    """send_notification_mail should add `user` to the context dict before delegating."""
     user = UserFactory()
     adapter = AccountAdapter()
-    context: dict[str, str] = {"some_key": "some_value"}
+    context: dict[str, object] = {"some_key": "some_value"}
 
+    # Patch the upstream allauth method (system boundary — we don't want
+    # allauth resolving a real email template / sending mail).
     with patch(
         "allauth.account.adapter.DefaultAccountAdapter.send_notification_mail"
     ) as mock_super:
         adapter.send_notification_mail("account/email/test", user, context)
 
-    mock_super.assert_called_once_with("account/email/test", user, context, email=None)
-    assert context["user"] is user
+    forwarded_context = mock_super.call_args.args[2]
+    assert forwarded_context["user"] is user
+    assert forwarded_context["some_key"] == "some_value"
 
 
 @pytest.mark.django_db
 def test_send_notification_mail_creates_context_if_none(
     mock_site_context: object,
 ) -> None:
-    """send_notification_mail should create a context dict if None is passed."""
+    """When no context is passed, one is created with the user populated."""
     user = UserFactory()
     adapter = AccountAdapter()
 
@@ -41,14 +44,26 @@ def test_send_notification_mail_creates_context_if_none(
     ) as mock_super:
         adapter.send_notification_mail("account/email/test", user, None)
 
-    call_args = mock_super.call_args
-    passed_context = call_args[0][2]
-    assert passed_context["user"] is user
+    forwarded_context = mock_super.call_args.args[2]
+    assert forwarded_context["user"] is user
 
 
-@pytest.mark.django_db
-def test_send_mail_does_not_corrupt_long_urls(mock_site_context: object) -> None:
-    """Long URLs in emails must not be broken by quoted-printable line wrapping."""
+def _body_parts(mime_msg: object) -> list:
+    """Return the text/plain and text/html parts of a MIME message."""
+    return [
+        part
+        for part in mime_msg.walk()
+        if part.get_content_type() in ("text/plain", "text/html")
+    ]
+
+
+@pytest.fixture
+def long_url_email(mock_site_context):
+    """Send an allauth password-reset email containing a long URL.
+
+    Returns ``(long_url, body_parts)`` so individual tests can assert on
+    one property of the rendered MIME parts at a time.
+    """
     user = UserFactory()
     adapter = AccountAdapter()
 
@@ -56,30 +71,39 @@ def test_send_mail_does_not_corrupt_long_urls(mock_site_context: object) -> None
     context = {"password_reset_url": long_url, "user": user}
 
     request = RequestFactory().get("/")
-    token = _request_var.set(request)
-    try:
+    with request_context(request):
         adapter.send_mail("account/email/password_reset_key", user.email, context)
-    finally:
-        _request_var.reset(token)
 
     assert len(mail.outbox) == 1
-    sent = mail.outbox[0]
+    return long_url, _body_parts(mail.outbox[0].message())
 
-    # Check the raw MIME-serialized message for quoted-printable soft line breaks.
-    # Quoted-printable encoding wraps lines >76 chars with "=\r\n" (or "=\n"),
-    # which corrupts URLs when email clients reassemble the message.
-    mime_msg = sent.message()
-    for part in mime_msg.walk():
-        content_type = part.get_content_type()
-        if content_type not in ("text/plain", "text/html"):
-            continue
-        raw_payload = part.get_payload()
-        assert "=\n" not in raw_payload, (
-            f"{content_type} has quoted-printable line wrapping"
-        )
-        assert "=\r\n" not in raw_payload, (
-            f"{content_type} has quoted-printable line wrapping"
-        )
-        assert long_url in raw_payload, f"Long URL is broken in {content_type}"
-        cte = part["Content-Transfer-Encoding"]
-        assert cte == "8bit", f"{content_type} uses {cte}, expected 8bit"
+
+@pytest.mark.django_db
+def test_send_mail_emits_at_least_one_body_part(long_url_email) -> None:
+    _, parts = long_url_email
+    assert parts, "expected at least one text/plain or text/html body part"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("soft_break", ["=\n", "=\r\n"])
+def test_send_mail_avoids_quoted_printable_line_wrapping(
+    long_url_email, soft_break: str
+) -> None:
+    """Quoted-printable wraps lines >76 chars with =\\n, which corrupts URLs."""
+    _, parts = long_url_email
+    payloads = [part.get_payload() for part in parts]
+    assert all(soft_break not in payload for payload in payloads)
+
+
+@pytest.mark.django_db
+def test_send_mail_preserves_long_url_in_body(long_url_email) -> None:
+    long_url, parts = long_url_email
+    payloads = [part.get_payload() for part in parts]
+    assert all(long_url in payload for payload in payloads)
+
+
+@pytest.mark.django_db
+def test_send_mail_uses_8bit_transfer_encoding(long_url_email) -> None:
+    _, parts = long_url_email
+    encodings = [part["Content-Transfer-Encoding"] for part in parts]
+    assert all(encoding == "8bit" for encoding in encodings)

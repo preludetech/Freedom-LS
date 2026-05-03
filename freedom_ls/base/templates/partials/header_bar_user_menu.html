@@ -7,7 +7,7 @@
         <c-icon name="dropdown" class="size-4 ml-1" />
     </c-slot>
 
-    <c-button dropdown="true" href="{% url 'account_profile' %}">
+    <c-button dropdown="true" href="{% url 'accounts:account_profile' %}">
         Profile
     </c-button>
     {% if user.is_staff %}

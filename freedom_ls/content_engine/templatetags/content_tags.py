@@ -1,7 +1,7 @@
 from django import template
 
-from freedom_ls.content_engine.markdown_utils import render_markdown
 from freedom_ls.content_engine.models import File, Form, Topic
+from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 
 register = template.Library()
 

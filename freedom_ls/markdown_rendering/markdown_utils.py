@@ -1,14 +1,14 @@
-import os
-import tempfile
 from copy import deepcopy
-from pathlib import Path
 
 import markdown
 import nh3
+from django_cotton.compiler_regex import CottonCompiler
 
 from django.conf import settings
-from django.template import loader
+from django.template import engines
 from django.utils.safestring import mark_safe
+
+_cotton_compiler = CottonCompiler()
 
 
 def render_markdown(markdown_text, request, context=None):
@@ -40,14 +40,13 @@ def render_markdown(markdown_text, request, context=None):
     # do the cotton rendering
 
     if settings.MARKDOWN_TEMPLATE_RENDER_ON:
-        template_dir = "/tmp/lms_templates"  # noqa: S108  # nosec B108
-        os.makedirs(template_dir, exist_ok=True)
-        with tempfile.NamedTemporaryFile(prefix="template_", dir=template_dir) as temp:
-            temp.write(str.encode(rendered_content))
-            temp.seek(0)
-            content = loader.render_to_string(
-                Path(temp.name).stem, context=context, request=request, using=None
-            )
+        # Cotton's loader normally compiles `<c-foo>` to `{% cotton foo %}` when
+        # reading templates from disk. Since we're rendering from a string we
+        # have to invoke the compiler directly before handing the source to the
+        # template engine.
+        compiled = _cotton_compiler.process(rendered_content)
+        template = engines["django"].from_string(compiled)
+        content = template.render(context, request)
     else:
         # Safe: content is sanitized by nh3.clean() above with strict allowlist
         content = mark_safe(rendered_content)  # noqa: S308  # nosec B308 B703

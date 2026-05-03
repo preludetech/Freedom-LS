@@ -2,9 +2,10 @@
 
 import pytest
 
+from django.test import override_settings
 from django.utils.safestring import SafeString
 
-from freedom_ls.content_engine.markdown_utils import render_markdown
+from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 
 
 @pytest.fixture
@@ -44,25 +45,21 @@ class TestRenderMarkdownCustomTags:
         assert "youtube.com/embed/abc123" in result
         assert "Test Video" in result
 
-    def test_c_callout_info_is_rendered(self, mock_request):
-        """Test that c-callout with info level is rendered."""
-        markdown_text = '<c-callout level="info">Important information</c-callout>'
+    @pytest.mark.parametrize("level", ["info", "warning", "error", "success"])
+    def test_c_callout_renders_body_for_each_level(self, mock_request, level):
+        """The c-callout cotton tag is processed (replaced by HTML) at every level."""
+        markdown_text = f'<c-callout level="{level}">Body text {level}</c-callout>'
         result = render_markdown(markdown_text, mock_request)
 
-        assert "Important information" in result
-
-    def test_c_callout_warning_is_rendered(self, mock_request):
-        """Test that c-callout with warning level is rendered."""
-        markdown_text = '<c-callout level="warning">Warning text</c-callout>'
-        result = render_markdown(markdown_text, mock_request)
-
-        assert "Warning text" in result
+        assert "<c-callout" not in result  # cotton tag was rendered, not literal
+        assert f"Body text {level}" in result
 
     def test_c_callout_with_title(self, mock_request):
         """Test that c-callout with title attribute works."""
         markdown_text = '<c-callout level="info" title="Note">Content here</c-callout>'
         result = render_markdown(markdown_text, mock_request)
 
+        assert "<c-callout" not in result
         assert "Note" in result
         assert "Content here" in result
         assert "<svg" in result  # Icon rendered as inline SVG
@@ -128,6 +125,7 @@ Some text with **bold**."""
 <c-callout level="warning">Second callout</c-callout>"""
         result = render_markdown(markdown_text, mock_request)
 
+        assert "<c-callout" not in result  # both callouts processed
         assert "First callout" in result
         assert "Second callout" in result
         assert "youtube.com/embed/test" in result
@@ -162,3 +160,46 @@ Some text with **bold**."""
         result = render_markdown(markdown_text, mock_request)
         assert "<table>" in result
         assert "<th>Header 1</th>" in result
+
+    def test_context_variable_is_rendered(self, mock_request):
+        """Context vars passed to render_markdown are substituted into the output.
+
+        Production callers (e.g. MarkdownContent.rendered_content) pass a
+        context dict, so the template engine must process Django variables.
+        """
+        markdown_text = "Hello {{ name }}!"
+        result = render_markdown(markdown_text, mock_request, context={"name": "Alice"})
+
+        assert "Hello Alice!" in result
+        assert "{{ name }}" not in result
+
+    def test_context_object_attribute_is_rendered(self, mock_request):
+        """Dotted attribute access on context objects works (mirrors MarkdownContent usage)."""
+
+        class FakeInstance:
+            title = "My Topic"
+
+        markdown_text = "Title: {{ content_instance.title }}"
+        result = render_markdown(
+            markdown_text, mock_request, context={"content_instance": FakeInstance()}
+        )
+
+        assert "Title: My Topic" in result
+
+    @override_settings(MARKDOWN_TEMPLATE_RENDER_ON=False)
+    def test_render_off_skips_template_processing(self, mock_request):
+        """When the flag is off, output is sanitised markdown without template processing.
+
+        Cotton tags and Django variables should pass through unprocessed but the
+        output must still be a SafeString and XSS must still be stripped.
+        """
+        markdown_text = (
+            'Hello {{ name }} <c-youtube video_id="abc"></c-youtube>'
+            '<script>alert("x")</script>'
+        )
+        result = render_markdown(markdown_text, mock_request, context={"name": "Bob"})
+
+        assert isinstance(result, SafeString)
+        assert "{{ name }}" in result
+        assert "<script>" not in result
+        assert "iframe" not in result
