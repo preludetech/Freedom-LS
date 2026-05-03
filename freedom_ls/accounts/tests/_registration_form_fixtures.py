@@ -57,6 +57,36 @@ class DoesNotApplyForm(forms.Form):
         pass
 
 
+class RaisesInAppliesToForm(forms.Form):
+    """A form whose ``applies_to`` raises."""
+
+    @classmethod
+    def applies_to(cls, user) -> bool:
+        raise RuntimeError("boom in applies_to")
+
+    @classmethod
+    def is_complete(cls, user) -> bool:  # pragma: no cover — must not be called
+        raise RuntimeError("is_complete should not be reached")
+
+    def save(self, user) -> None:  # pragma: no cover — must not be called
+        pass
+
+
+class RaisesInIsCompleteForm(forms.Form):
+    """A form whose ``is_complete`` raises."""
+
+    @classmethod
+    def applies_to(cls, user) -> bool:
+        return True
+
+    @classmethod
+    def is_complete(cls, user) -> bool:
+        raise RuntimeError("boom in is_complete")
+
+    def save(self, user) -> None:  # pragma: no cover — must not be called
+        pass
+
+
 class NotAFormClass:
     """Not a forms.Form subclass."""
 
