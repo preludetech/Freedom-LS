@@ -2,9 +2,14 @@
 
 Each entry in ``SiteSignupPolicy.additional_registration_forms`` is a dotted
 path to a ``django.forms.Form`` subclass that implements
-``RegistrationFormProtocol``. The loader resolves these paths, validates the
-target is well-formed, and degrades gracefully (logs + skips) on
-misconfiguration — it MUST NOT raise into a request.
+``RegistrationFormProtocol``. The loader resolves these paths and validates
+the target is well-formed; load-time misconfiguration (bad import, wrong
+type, forbidden field) is logged at WARNING and the entry is skipped.
+
+Per-user form callbacks (``applies_to``, ``is_complete``) are trusted to be
+exception-safe. Bugs in them propagate to the caller — silently skipping a
+form that raises would let a user bypass a registration step that should
+have applied to them, which is a worse failure mode than a 500.
 """
 
 from __future__ import annotations
@@ -116,37 +121,10 @@ def get_incomplete_forms(
     incomplete: list[type[forms.Form]] = []
 
     for cls in classes:
-        # `_is_protocol_compliant` already verified `applies_to` and
-        # `is_complete` exist; cast to the Protocol to satisfy the type
-        # checker without `# type: ignore`.
         proto_cls = cast(type[RegistrationFormProtocol], cls)
-        # `applies_to` / `is_complete` run third-party code, so any exception
-        # type is possible — log and skip rather than 500 the request.
-        try:
-            applies = proto_cls.applies_to(user)
-        except Exception as err:
-            logger.warning(
-                "applies_to(%r) raised on form %s: %s",
-                user,
-                cls.__name__,
-                err,
-            )
+        if not proto_cls.applies_to(user):
             continue
-        if not applies:
-            continue
-
-        try:
-            complete = proto_cls.is_complete(user)
-        except Exception as err:
-            logger.warning(
-                "is_complete(%r) raised on form %s: %s",
-                user,
-                cls.__name__,
-                err,
-            )
-            continue
-
-        if not complete:
+        if not proto_cls.is_complete(user):
             incomplete.append(cls)
 
     return incomplete

@@ -74,3 +74,17 @@ def test_get_incomplete_forms_filters_out_does_not_apply(mock_site_context):
         user, [f"{_PATH}.GoodForm", f"{_PATH}.DoesNotApplyForm"]
     )
     assert result == [GoodForm]
+
+
+@pytest.mark.django_db
+def test_get_incomplete_forms_propagates_applies_to_error(mock_site_context):
+    user = UserFactory()
+    with pytest.raises(RuntimeError, match="boom in applies_to"):
+        get_incomplete_forms(user, [f"{_PATH}.RaisesInAppliesToForm"])
+
+
+@pytest.mark.django_db
+def test_get_incomplete_forms_propagates_is_complete_error(mock_site_context):
+    user = UserFactory()
+    with pytest.raises(RuntimeError, match="boom in is_complete"):
+        get_incomplete_forms(user, [f"{_PATH}.RaisesInIsCompleteForm"])
