@@ -163,7 +163,7 @@ def test_partial_list_courses_omits_recommended_section_when_empty(
 
     assert response.status_code == 200
     assert list(response.context["recommended_courses"]) == []
-    assert "Recommended Courses" not in body
+    assert 'id="recommended-courses"' not in body
     assert "No recommended courses yet" not in body
 
 
@@ -180,7 +180,7 @@ def test_partial_list_courses_omits_history_section_when_empty(
 
     assert response.status_code == 200
     assert response.context["completed_courses"] == []
-    assert "Learning History" not in body
+    assert 'id="learning-history"' not in body
     assert "No completed courses yet" not in body
 
 
@@ -197,7 +197,7 @@ def test_partial_list_courses_renders_recommended_section_when_populated(
     body = response.content.decode()
 
     assert response.status_code == 200
-    assert "Recommended Courses" in body
+    assert 'id="recommended-courses"' in body
 
 
 @pytest.mark.django_db
@@ -214,4 +214,4 @@ def test_partial_list_courses_renders_history_section_when_populated(
     body = response.content.decode()
 
     assert response.status_code == 200
-    assert "Learning History" in body
+    assert 'id="learning-history"' in body
