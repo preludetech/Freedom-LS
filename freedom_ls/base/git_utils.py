@@ -72,25 +72,60 @@ def _resolve_git_dir(base_dir: Path) -> Path | None:
 
 
 def _resolve_ref(git_dir: Path, ref: str) -> str | None:
-    """Return the SHA for `ref`, checking the loose ref file then packed-refs."""
-    loose = git_dir / ref
-    try:
-        sha = loose.read_text().strip()
-    except (FileNotFoundError, OSError):
-        sha = ""
-    if _looks_like_sha(sha):
-        return sha
+    """Return the SHA for `ref`, checking the loose ref file then packed-refs.
 
-    packed = git_dir / "packed-refs"
+    In a git worktree the per-worktree git dir does not store refs; they live
+    in the common git dir, located via the `commondir` pointer file. We try
+    the per-worktree dir first (in case a worktree-local ref ever exists)
+    then fall back to the common dir.
+    """
+    for refs_dir in _refs_search_dirs(git_dir):
+        sha = _read_loose_ref(refs_dir, ref) or _read_packed_ref(refs_dir, ref)
+        if sha is not None:
+            return sha
+    return None
+
+
+def _refs_search_dirs(git_dir: Path) -> list[Path]:
+    dirs = [git_dir]
+    common = _read_commondir(git_dir)
+    if common is not None and common != git_dir:
+        dirs.append(common)
+    return dirs
+
+
+def _read_commondir(git_dir: Path) -> Path | None:
     try:
-        for line in packed.read_text().splitlines():
-            if not line or line.startswith(("#", "^")):
-                continue
-            sha_part, _, ref_part = line.partition(" ")
-            if ref_part == ref and _looks_like_sha(sha_part):
-                return sha_part
+        content = (git_dir / "commondir").read_text().strip()
     except (FileNotFoundError, OSError):
         return None
+    if not content:
+        return None
+    common = Path(content)
+    if not common.is_absolute():
+        common = (git_dir / common).resolve()
+    return common
+
+
+def _read_loose_ref(git_dir: Path, ref: str) -> str | None:
+    try:
+        sha = (git_dir / ref).read_text().strip()
+    except (FileNotFoundError, OSError):
+        return None
+    return sha if _looks_like_sha(sha) else None
+
+
+def _read_packed_ref(git_dir: Path, ref: str) -> str | None:
+    try:
+        lines = (git_dir / "packed-refs").read_text().splitlines()
+    except (FileNotFoundError, OSError):
+        return None
+    for line in lines:
+        if not line or line.startswith(("#", "^")):
+            continue
+        sha_part, _, ref_part = line.partition(" ")
+        if ref_part == ref and _looks_like_sha(sha_part):
+            return sha_part
     return None
 
 

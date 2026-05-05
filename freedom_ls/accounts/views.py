@@ -20,7 +20,10 @@ from .registration_forms import (
     RegistrationFormProtocol,
     get_incomplete_forms,
 )
-from .utils import get_signup_policy_for_request
+from .utils import (
+    get_effective_additional_registration_forms,
+    get_signup_policy_for_request,
+)
 
 
 @login_required
@@ -73,9 +76,7 @@ def _invalidate_completion_cache(request: HttpRequest) -> None:
 @login_required
 def complete_registration_view(request: HttpRequest) -> HttpResponse:
     policy = get_signup_policy_for_request(request)
-    dotted_paths = (
-        list(policy.additional_registration_forms) if policy is not None else []
-    )
+    dotted_paths = get_effective_additional_registration_forms(policy)
 
     # `@login_required` guarantees the user is authenticated, so this is a
     # concrete `User` not `AnonymousUser`.

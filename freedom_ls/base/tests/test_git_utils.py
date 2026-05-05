@@ -7,6 +7,7 @@ from freedom_ls.base.git_utils import (
     _clear_branch_cache,
     branch_to_db_name,
     get_current_branch,
+    get_head_commit,
 )
 
 
@@ -121,6 +122,85 @@ class TestGetCurrentBranchCaching:
 
         second = get_current_branch(base_dir=tmp_path)
         assert second == "second-branch"
+
+
+# --- get_head_commit ---
+
+
+SHA = "abc1234def5678901234567890abcdef12345678"  # pragma: allowlist secret
+SHA2 = "1111111111111111111111111111111111111111"  # pragma: allowlist secret
+
+
+class TestGetHeadCommit:
+    def test_detached_head_returns_sha(self, tmp_path: Path) -> None:
+        git_dir = tmp_path / ".git"
+        git_dir.mkdir()
+        (git_dir / "HEAD").write_text(f"{SHA}\n")
+
+        assert get_head_commit(base_dir=tmp_path) == SHA
+
+    def test_loose_ref_returns_sha(self, tmp_path: Path) -> None:
+        git_dir = tmp_path / ".git"
+        (git_dir / "refs" / "heads").mkdir(parents=True)
+        (git_dir / "HEAD").write_text("ref: refs/heads/main\n")
+        (git_dir / "refs" / "heads" / "main").write_text(f"{SHA}\n")
+
+        assert get_head_commit(base_dir=tmp_path) == SHA
+
+    def test_packed_ref_returns_sha(self, tmp_path: Path) -> None:
+        git_dir = tmp_path / ".git"
+        git_dir.mkdir()
+        (git_dir / "HEAD").write_text("ref: refs/heads/main\n")
+        (git_dir / "packed-refs").write_text(
+            f"# pack-refs with: peeled fully-peeled sorted\n{SHA} refs/heads/main\n"
+        )
+
+        assert get_head_commit(base_dir=tmp_path) == SHA
+
+    def test_worktree_resolves_ref_via_commondir(self, tmp_path: Path) -> None:
+        """In a git worktree, refs live in the common git dir, not the
+        per-worktree git dir. The per-worktree dir contains a `commondir`
+        file pointing at the common dir (typically `../..`)."""
+        common_dir = tmp_path / "common"
+        (common_dir / "refs" / "heads").mkdir(parents=True)
+        (common_dir / "refs" / "heads" / "feature").write_text(f"{SHA}\n")
+
+        worktree_git_dir = common_dir / "worktrees" / "feature"
+        worktree_git_dir.mkdir(parents=True)
+        (worktree_git_dir / "HEAD").write_text("ref: refs/heads/feature\n")
+        (worktree_git_dir / "commondir").write_text("../..\n")
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / ".git").write_text(f"gitdir: {worktree_git_dir}\n")
+
+        assert get_head_commit(base_dir=repo) == SHA
+
+    def test_worktree_resolves_packed_ref_via_commondir(self, tmp_path: Path) -> None:
+        common_dir = tmp_path / "common"
+        common_dir.mkdir()
+        (common_dir / "packed-refs").write_text(f"{SHA2} refs/heads/feature\n")
+
+        worktree_git_dir = common_dir / "worktrees" / "feature"
+        worktree_git_dir.mkdir(parents=True)
+        (worktree_git_dir / "HEAD").write_text("ref: refs/heads/feature\n")
+        (worktree_git_dir / "commondir").write_text("../..\n")
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / ".git").write_text(f"gitdir: {worktree_git_dir}\n")
+
+        assert get_head_commit(base_dir=repo) == SHA2
+
+    def test_no_git_dir_returns_none(self, tmp_path: Path) -> None:
+        assert get_head_commit(base_dir=tmp_path) is None
+
+    def test_unresolvable_ref_returns_none(self, tmp_path: Path) -> None:
+        git_dir = tmp_path / ".git"
+        git_dir.mkdir()
+        (git_dir / "HEAD").write_text("ref: refs/heads/missing\n")
+
+        assert get_head_commit(base_dir=tmp_path) is None
 
 
 # --- branch_to_db_name ---

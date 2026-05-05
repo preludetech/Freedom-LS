@@ -2,7 +2,8 @@
 forms to the completion view.
 
 Match strategy for the exempt list is **explicit** — either the request path
-starts with one of `EXEMPT_PATH_PREFIXES`, or the resolved view name (from
+starts with one of the prefixes returned by `_exempt_path_prefixes()` (derived
+from `STATIC_URL` / `MEDIA_URL`), or the resolved view name (from
 `resolve(request.path).view_name`, which includes any `app_name:` namespace)
 is in `EXEMPT_URL_NAMES`. No substring or `in` matching.
 
@@ -20,6 +21,7 @@ import json
 from collections.abc import Callable
 from typing import cast
 
+from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
@@ -27,6 +29,7 @@ from django.urls import Resolver404, resolve, reverse
 
 EXEMPT_URL_NAMES: frozenset[str] = frozenset(
     {
+        "health_check",
         "account_login",
         "account_logout",
         "account_signup",
@@ -42,11 +45,29 @@ EXEMPT_URL_NAMES: frozenset[str] = frozenset(
     }
 )
 
-EXEMPT_PATH_PREFIXES: tuple[str, ...] = (
-    "/static/",
-    "/media/",
-    "/health/",
-)
+
+def _exempt_path_prefixes() -> tuple[str, ...]:
+    """Path prefixes that bypass the registration check.
+
+    Derived from `STATIC_URL` / `MEDIA_URL` so the middleware tracks the
+    project's actual static/media routes. Settings values may be relative
+    (e.g. `static/`); normalise to a leading-slash path prefix that matches
+    `request.path`.
+    """
+
+    def _normalise(url: str) -> str:
+        if not url.startswith("/"):
+            url = "/" + url
+        if not url.endswith("/"):
+            url = url + "/"
+        return url
+
+    return (
+        _normalise(settings.STATIC_URL),
+        _normalise(settings.MEDIA_URL),
+        # _normalise(settings.HEALTH_CHECK_URL),
+    )
+
 
 CACHE_SESSION_KEY = "_registration_completion_state"
 
@@ -75,12 +96,13 @@ class RegistrationCompletionMiddleware:
 
         # Local imports to avoid app-loading order issues.
         from .registration_forms import get_incomplete_forms
-        from .utils import get_signup_policy_for_request
+        from .utils import (
+            get_effective_additional_registration_forms,
+            get_signup_policy_for_request,
+        )
 
         policy = get_signup_policy_for_request(request)
-        dotted_paths = (
-            list(policy.additional_registration_forms) if policy is not None else []
-        )
+        dotted_paths = get_effective_additional_registration_forms(policy)
         dotted_paths_hash = _hash_dotted_paths(dotted_paths)
 
         if self._is_complete_cached(request, dotted_paths_hash):
@@ -104,7 +126,7 @@ class RegistrationCompletionMiddleware:
 
     def _is_exempt(self, request: HttpRequest) -> bool:
         path = request.path or ""
-        for prefix in EXEMPT_PATH_PREFIXES:
+        for prefix in _exempt_path_prefixes():
             if path.startswith(prefix):
                 return True
         try:

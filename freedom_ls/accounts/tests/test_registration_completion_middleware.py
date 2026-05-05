@@ -70,6 +70,36 @@ def test_user_with_incomplete_forms_redirected_to_completion(mock_site_context, 
 
 
 @pytest.mark.django_db
+def test_settings_default_drives_forms_when_no_policy(mock_site_context, settings):
+    """settings.ADDITIONAL_REGISTRATION_FORMS is used when no policy exists."""
+    settings.ADDITIONAL_REGISTRATION_FORMS = [ALWAYS_INCOMPLETE_PATH]
+
+    user = UserFactory()
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(reverse("accounts:account_profile"))
+    assert response.status_code == 302
+    assert response.url == reverse("accounts:complete_registration")
+
+
+@pytest.mark.django_db
+def test_policy_overrides_settings_additional_registration_forms(
+    mock_site_context, site, settings
+):
+    """A per-site policy with an empty list overrides a non-empty settings default."""
+    settings.ADDITIONAL_REGISTRATION_FORMS = [ALWAYS_INCOMPLETE_PATH]
+    SiteSignupPolicyFactory(site=site, additional_registration_forms=[])
+
+    user = UserFactory()
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(reverse("accounts:account_profile"))
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "url_name",
     [

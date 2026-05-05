@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import logging
-
 import pytest
+
+from django.core.exceptions import ImproperlyConfigured
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.registration_forms import (
@@ -27,25 +27,19 @@ def test_load_returns_empty_for_no_paths():
     assert load_registration_form_classes([]) == []
 
 
-def test_load_skips_bad_dotted_path(caplog):
-    with caplog.at_level(logging.WARNING):
-        result = load_registration_form_classes(["this.module.does.not.exist.AtAll"])
-    assert result == []
-    assert any("Could not import" in r.message for r in caplog.records)
+def test_load_raises_for_bad_dotted_path():
+    with pytest.raises(ImproperlyConfigured, match="Could not import"):
+        load_registration_form_classes(["this.module.does.not.exist.AtAll"])
 
 
-def test_load_skips_non_form_class(caplog):
-    with caplog.at_level(logging.WARNING):
-        result = load_registration_form_classes([f"{_PATH}.NotAFormClass"])
-    assert result == []
-    assert any("not a forms.Form subclass" in r.message for r in caplog.records)
+def test_load_raises_for_non_form_class():
+    with pytest.raises(ImproperlyConfigured, match=r"not a forms\.Form subclass"):
+        load_registration_form_classes([f"{_PATH}.NotAFormClass"])
 
 
-def test_load_skips_form_with_forbidden_field(caplog):
-    with caplog.at_level(logging.WARNING):
-        result = load_registration_form_classes([f"{_PATH}.ForbiddenFieldForm"])
-    assert result == []
-    assert any("forbidden user-identifying field" in r.message for r in caplog.records)
+def test_load_raises_for_form_with_forbidden_field():
+    with pytest.raises(ImproperlyConfigured, match="user_id"):
+        load_registration_form_classes([f"{_PATH}.ForbiddenFieldForm"])
 
 
 def test_load_returns_compliant_class():
@@ -88,3 +82,17 @@ def test_get_incomplete_forms_propagates_is_complete_error(mock_site_context):
     user = UserFactory()
     with pytest.raises(RuntimeError, match="boom in is_complete"):
         get_incomplete_forms(user, [f"{_PATH}.RaisesInIsCompleteForm"])
+
+
+@pytest.mark.django_db
+def test_get_incomplete_forms_raises_when_applies_to_returns_none(mock_site_context):
+    user = UserFactory()
+    with pytest.raises(TypeError, match="applies_to must return True or False"):
+        get_incomplete_forms(user, [f"{_PATH}.AppliesToReturnsNoneForm"])
+
+
+@pytest.mark.django_db
+def test_get_incomplete_forms_raises_when_is_complete_returns_none(mock_site_context):
+    user = UserFactory()
+    with pytest.raises(TypeError, match="is_complete must return True or False"):
+        get_incomplete_forms(user, [f"{_PATH}.IsCompleteReturnsNoneForm"])

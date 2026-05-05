@@ -21,14 +21,12 @@ def check_legal_docs_present_when_required(
     warnings: list[Warning] = []
 
     # Imports are local to avoid touching the app registry / DB at import time.
-    from django.conf import settings
     from django.contrib.sites.models import Site
     from django.db.utils import DatabaseError, OperationalError, ProgrammingError
 
     from .legal_docs import has_legal_doc
     from .models import SiteSignupPolicy
-
-    default_require = getattr(settings, "REQUIRE_TERMS_ACCEPTANCE", False)
+    from .utils import get_effective_require_terms_acceptance
 
     try:
         sites = list(Site.objects.all())
@@ -41,10 +39,7 @@ def check_legal_docs_present_when_required(
 
     for site in sites:
         policy = policies_by_site_id.get(site.id)
-        requires = (
-            policy.require_terms_acceptance if policy is not None else default_require
-        )
-        if not requires:
+        if not get_effective_require_terms_acceptance(policy):
             continue
         for doc_type in ("terms", "privacy"):
             if not has_legal_doc(site, doc_type):

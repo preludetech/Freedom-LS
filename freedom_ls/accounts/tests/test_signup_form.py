@@ -42,6 +42,40 @@ def test_first_name_optional_when_policy_disables_require_name(
 
 
 @pytest.mark.django_db
+def test_first_name_optional_from_settings_default_when_no_policy(
+    allauth_request_ctx, mock_site_context, settings
+):
+    """settings.REQUIRE_NAME=False with no policy → first_name optional."""
+    settings.REQUIRE_NAME = False
+
+    form = SiteAwareSignupForm()
+    assert form.fields["first_name"].required is False
+
+
+@pytest.mark.django_db
+def test_first_name_required_from_settings_default_when_no_policy(
+    allauth_request_ctx, mock_site_context, settings
+):
+    """settings.REQUIRE_NAME=True with no policy → first_name required."""
+    settings.REQUIRE_NAME = True
+
+    form = SiteAwareSignupForm()
+    assert form.fields["first_name"].required is True
+
+
+@pytest.mark.django_db
+def test_policy_require_name_overrides_settings_default(
+    allauth_request_ctx, mock_site_context, site, settings
+):
+    """A per-site policy with require_name=True overrides REQUIRE_NAME=False."""
+    settings.REQUIRE_NAME = False
+    SiteSignupPolicyFactory(site=site, require_name=True)
+
+    form = SiteAwareSignupForm()
+    assert form.fields["first_name"].required is True
+
+
+@pytest.mark.django_db
 def test_form_adds_consent_checkboxes_when_required_and_docs_present(
     allauth_request_ctx, mock_site_context, site, legal_repo_mock
 ):
