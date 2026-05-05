@@ -65,7 +65,6 @@ def _exempt_path_prefixes() -> tuple[str, ...]:
     return (
         _normalise(settings.STATIC_URL),
         _normalise(settings.MEDIA_URL),
-        # _normalise(settings.HEALTH_CHECK_URL),
     )
 
 
