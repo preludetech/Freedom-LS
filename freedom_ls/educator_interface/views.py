@@ -704,8 +704,7 @@ class CohortCourseProgressPanel(Panel):
         )
 
     def render(self, request, base_url: str = "", panel_name: str = "") -> str:
-        is_htmx = request.headers.get("HX-Request") == "true"
-        if is_htmx:
+        if request.headers.get("HX-Target") == "course-progress-content":
             return self.get_content(request, base_url=base_url, panel_name=panel_name)
         return super().render(request, base_url=base_url, panel_name=panel_name)
 

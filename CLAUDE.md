@@ -4,6 +4,12 @@ This is a fully functioning Learner Management System.
 
 It is designed to be installed into other Django projects. FLS will work out of the box, but is designed to be extended and customized.
 
+## Memory
+
+Do not use memory
+Do not save anything to the user's home folder
+Do not look inthe user's home folder for any claude code plugins, agents ro configuration.
+
 ## Stack
 
 Python 3.13+, Django 6.x, PostgreSQL 17, HTMX 2.x, TailwindCSS

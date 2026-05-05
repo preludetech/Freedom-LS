@@ -1,6 +1,6 @@
 ---
 description: Execute a frontend QA test plan using Playwright MCP
-allowed-tools: Read, Write, Glob, mcp__playwright*
+allowed-tools: Read, Write, Glob, Bash, Agent, mcp__playwright*
 ---
 
 Act like a human QA expert. Execute the given test plan
@@ -21,6 +21,23 @@ You MUST use Playwright MCP. If you can't use it then:
 - DO NOT CONTINUE WITH THE TESTS IF YOU CAN'T USE PLAYWRIGHT
 
 Before doing anything else, use playwright to open the base url and make sure it works.
+
+# CRITICAL: Test data is created by the qa-data-helper agent — NOT by you
+
+If a test cannot be executed because the dev database lacks the required data (e.g. a paginator can't be exercised because there aren't enough rows, a panel can't be tested because no instance of the relevant model exists, a flow can't be walked because a user/cohort/course is missing), you MUST delegate to the **qa-data-helper** agent via the `Agent` tool.
+
+Do NOT:
+- Run `manage.py shell` yourself to create data
+- Run ad-hoc ORM scripts yourself to create data
+- Mark a test as `PARTIAL` / `N/A` / `NOT EXECUTED` because of missing data without first invoking qa-data-helper to fix the gap
+- Skip a test that the qa-data-helper agent could unblock
+
+Do:
+- Spawn the qa-data-helper agent and tell it exactly what data shape you need (entity counts, relationships, which Site, which fixtures it should attach to)
+- Wait for it to confirm the data exists, then re-attempt the test
+- Only mark a test PARTIAL / skipped if qa-data-helper itself reports the scenario is impossible to set up
+
+This applies at every step (Desktop, Mobile, Tablet) — not just the first time you hit missing data.
 
 # Instructions
 
@@ -79,7 +96,7 @@ Take screenshots of relevant functionality and put them in a "screenshots" direc
 
 If anything unrelated to the current feature under test seems out of place or broken then use a subagent to explore it.
 
-**IMPORTANT** If you are unable to run a test due to missing or incorrect data then make use of the qa-data-helper agent. Tell the agent what data you need and what changes you need made.
+**IMPORTANT** If you are unable to run a test due to missing or incorrect data, follow the rule in the top-level "Test data is created by the qa-data-helper agent" section: delegate to qa-data-helper rather than creating the data yourself or skipping the test.
 
 ## Step 7: Mobile testing
 

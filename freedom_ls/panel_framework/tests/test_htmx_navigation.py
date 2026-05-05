@@ -4,39 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.test import RequestFactory
 
-from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.panel_framework.views import ListViewConfig, panel_framework_view
 
-from .conftest import StubModel, make_staff_user
-
-
-class StubDataTable(DataTable):
-    @staticmethod
-    def get_queryset(request: HttpRequest) -> QuerySet[StubModel]:
-        qs: QuerySet[StubModel] = StubModel.objects.all()
-        return qs
-
-    @staticmethod
-    def get_columns() -> list[dict[str, object]]:
-        return [
-            {
-                "header": "Name",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "name",
-            },
-        ]
-
-
-class StubListConfig(ListViewConfig):
-    url_name = "stubs"
-    menu_label = "Stubs"
-    model = StubModel
-    list_view = StubDataTable
-
+from .conftest import make_staff_user
+from .stub_panels import StubListConfig
 
 CONFIG: dict[str, type[ListViewConfig]] = {
     "stubs": StubListConfig,

@@ -1,4 +1,4 @@
-<section class="surface">
+<section class="surface"{% if panel_name %} data-panel="{{ panel_name }}"{% endif %}>
     {% if title %}
         <header class="mb-4">
             <h2>{{ title }}</h2>

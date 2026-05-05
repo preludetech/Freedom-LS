@@ -39,7 +39,12 @@ class Panel:
         ]
         return render_to_string(
             "panel_framework/partials/panel_container.html",
-            {"title": self.title, "content": content, "actions": actions},
+            {
+                "title": self.title,
+                "content": content,
+                "actions": actions,
+                "panel_name": panel_name,
+            },
             request=request,
         )
 
@@ -64,6 +69,9 @@ class DataTablePanel(Panel):
     def render(
         self, request: HttpRequest, base_url: str = "", panel_name: str = ""
     ) -> str:
+        table_id = f"table-{panel_name}" if panel_name else "data-table-container"
+        if request.headers.get("HX-Target") == table_id:
+            return self.get_content(request, base_url=base_url, panel_name=panel_name)
         return super().render(request, base_url=base_url, panel_name=panel_name)
 
 

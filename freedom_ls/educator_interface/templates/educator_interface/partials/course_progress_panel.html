@@ -153,48 +153,28 @@
             </table>
         </c-scroll-table-labels>
 
-        {# Pagination controls #}
+        {% comment %}Pagination controls — both paginators live on the same URL,
+           so each one passes the OTHER's current page (and the selected
+           registration) through ``extra_params`` to keep them independent.{% endcomment %}
+        {% load pagination_tags %}
+        {% join_query registration=selected_reg.pk page=student_page.number as col_extra %}
+        {% join_query registration=selected_reg.pk col_page=col_page.number as student_extra %}
         <div class="flex flex-wrap justify-between items-center mt-4 gap-4 text-sm text-muted">
-            {# Column pagination #}
             <div class="flex items-center gap-2">
                 <span>Items {{ col_page.start_index }}–{{ col_page.end_index }} of {{ col_page.paginator.count }}</span>
-                {% if col_page.has_previous %}
-                    <button hx-get="{{ base_url }}?registration={{ selected_reg.pk }}&col_page={{ col_page.previous_page_number }}&page={{ student_page.number }}"
-                            hx-target="#course-progress-content"
-                            hx-swap="outerHTML"
-                            class="btn btn-outline px-4 py-3 sm:px-3 sm:py-1 text-xs">
-                        « Prev
-                    </button>
-                {% endif %}
-                {% if col_page.has_next %}
-                    <button hx-get="{{ base_url }}?registration={{ selected_reg.pk }}&col_page={{ col_page.next_page_number }}&page={{ student_page.number }}"
-                            hx-target="#course-progress-content"
-                            hx-swap="outerHTML"
-                            class="btn btn-outline px-4 py-3 sm:px-3 sm:py-1 text-xs">
-                        Next »
-                    </button>
-                {% endif %}
+                <c-pagination :page_obj="col_page"
+                              :base_url="base_url"
+                              table_id="course-progress-content"
+                              page_param_name="col_page"
+                              :extra_params="col_extra" />
             </div>
 
-            {# Student pagination #}
             <div class="flex items-center gap-2">
                 <span>Students {{ student_page.start_index }}–{{ student_page.end_index }} of {{ student_page.paginator.count }}</span>
-                {% if student_page.has_previous %}
-                    <button hx-get="{{ base_url }}?registration={{ selected_reg.pk }}&col_page={{ col_page.number }}&page={{ student_page.previous_page_number }}"
-                            hx-target="#course-progress-content"
-                            hx-swap="outerHTML"
-                            class="btn btn-outline px-4 py-3 sm:px-3 sm:py-1 text-xs">
-                        « Prev
-                    </button>
-                {% endif %}
-                {% if student_page.has_next %}
-                    <button hx-get="{{ base_url }}?registration={{ selected_reg.pk }}&col_page={{ col_page.number }}&page={{ student_page.next_page_number }}"
-                            hx-target="#course-progress-content"
-                            hx-swap="outerHTML"
-                            class="btn btn-outline px-4 py-3 sm:px-3 sm:py-1 text-xs">
-                        Next »
-                    </button>
-                {% endif %}
+                <c-pagination :page_obj="student_page"
+                              :base_url="base_url"
+                              table_id="course-progress-content"
+                              :extra_params="student_extra" />
             </div>
         </div>
 

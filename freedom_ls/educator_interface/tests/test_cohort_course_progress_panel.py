@@ -279,8 +279,13 @@ def test_displayed_percentage_matches_actual_completion(
 
 
 @pytest.mark.django_db
-def test_htmx_request_returns_panel_content_only(mock_site_context, site_aware_request):
-    """Test that HTMX request returns just the panel content (not wrapped in panel_container)."""
+def test_panel_internal_htmx_swap_returns_content_only(
+    mock_site_context, site_aware_request
+):
+    """Panel-internal HTMX swap (registration dropdown / paginators) targets
+    the panel's own ``#course-progress-content`` div and must return content
+    without the panel_container chrome — otherwise the swap recursively
+    nests the wrapper."""
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
@@ -290,17 +295,125 @@ def test_htmx_request_returns_panel_content_only(mock_site_context, site_aware_r
 
     panel = CohortCourseProgressPanel(cohort)
 
-    # Non-HTMX request
+    # Non-HTMX request: full chrome.
     request = site_aware_request.get("/")
     request.user = educator_user
     full_content = panel.render(request)
-    assert "<section" in full_content  # panel_container wraps in <section>
+    assert "<section" in full_content
 
-    # HTMX request
-    request = site_aware_request.get("/", HTTP_HX_REQUEST="true")
+    # Panel-internal HTMX swap: HX-Target is the panel's own container id.
+    request = site_aware_request.get(
+        "/", HTTP_HX_REQUEST="true", HTTP_HX_TARGET="course-progress-content"
+    )
     request.user = educator_user
     htmx_content = panel.render(request)
-    assert "<section" not in htmx_content  # Should NOT be wrapped
+    assert "<section" not in htmx_content
+
+
+@pytest.mark.django_db
+def test_tab_level_htmx_request_keeps_chrome(mock_site_context, site_aware_request):
+    """A tab-click HTMX request lands on the tab content lazy-loader, not on
+    the panel itself, so the panel must keep its chrome."""
+    cohort = CohortFactory()
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    _make_user("student@example.com", cohort)
+
+    panel = CohortCourseProgressPanel(cohort)
+    request = site_aware_request.get(
+        "/",
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_TARGET="tab-content-course_progress",
+    )
+    request.user = educator_user
+    html = panel.render(request)
+    assert "<section" in html
+
+
+@pytest.mark.django_db
+def test_pagination_comment_does_not_leak_into_rendered_html(
+    mock_site_context, site_aware_request
+):
+    """Bug B: a multi-line ``{# ... #}`` Django comment is not stripped by
+    Django's parser and leaks as raw text. Guard against that regression."""
+    cohort = CohortFactory()
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    topic = TopicFactory(title="Topic 1")
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
+    _make_user("student@example.com", cohort)
+
+    panel = CohortCourseProgressPanel(cohort)
+    request = site_aware_request.get("/")
+    request.user = educator_user
+    content = panel.get_content(request)
+
+    assert "{# Pagination" not in content
+    assert "extra_params" not in content
+
+
+@pytest.mark.django_db
+def test_column_pagination_links_preserve_student_page(
+    mock_site_context, site_aware_request
+):
+    """Clicking page 2 of course items must keep the student paginator on
+    its current page."""
+    cohort = CohortFactory()
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    # Enough columns for >1 page
+    for i in range(20):
+        topic = TopicFactory(title=f"Topic {i:02d}")
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=i
+        )
+
+    # Enough students for >1 page
+    for i in range(25):
+        _make_user(f"student_{i:02d}@example.com", cohort)
+
+    panel = CohortCourseProgressPanel(cohort)
+    request = site_aware_request.get("/?col_page=1&page=2")
+    request.user = educator_user
+    content = panel.get_content(request)
+
+    # Column-pagination links must include page=2 to keep the student page.
+    assert "page=2" in content
+
+
+@pytest.mark.django_db
+def test_student_pagination_links_preserve_column_page(
+    mock_site_context, site_aware_request
+):
+    """Clicking page 2 of students must keep the column paginator on its
+    current page."""
+    cohort = CohortFactory()
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    for i in range(20):
+        topic = TopicFactory(title=f"Topic {i:02d}")
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=i
+        )
+
+    for i in range(25):
+        _make_user(f"student_{i:02d}@example.com", cohort)
+
+    panel = CohortCourseProgressPanel(cohort)
+    request = site_aware_request.get("/?col_page=2&page=1")
+    request.user = educator_user
+    content = panel.get_content(request)
+
+    # Student-pagination links must include col_page=2 to keep the column page.
+    assert "col_page=2" in content
 
 
 @pytest.mark.django_db

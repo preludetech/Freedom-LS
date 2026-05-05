@@ -103,98 +103,12 @@
             </table>
     </c-scroll-table-labels>
 
-    {% if page_obj and page_obj.paginator.num_pages > 1 %}
-        {# Mobile pagination: Previous / Page X of Y / Next #}
-        {# Note: URL/HTMX logic is intentionally duplicated from desktop pagination for clarity #}
-        <div class="flex sm:hidden items-center justify-between mt-6 px-4">
-            <div>
-                {% if page_obj.has_previous %}
-                    <a href="?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-get="{{ base_url }}?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-target="#{{ table_id }}"
-                       hx-swap="outerHTML"
-                       class="btn btn-outline px-4 py-3">
-                        Previous
-                    </a>
-                {% endif %}
-            </div>
-            <span class="text-sm text-muted">
-                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-            </span>
-            <div>
-                {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-get="{{ base_url }}?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-target="#{{ table_id }}"
-                       hx-swap="outerHTML"
-                       class="btn btn-outline px-4 py-3">
-                        Next
-                    </a>
-                {% endif %}
-            </div>
-        </div>
-
-        {# Desktop pagination: full page numbers #}
-        <div class="hidden sm:flex items-center justify-between mt-6 px-4">
-            <div class="flex gap-2">
-                {% if page_obj.has_previous %}
-                    <a href="?page=1{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-get="{{ base_url }}?page=1{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-target="#{{ table_id }}"
-                       hx-swap="outerHTML"
-                       class="btn btn-outline">
-                        First
-                    </a>
-                    <a href="?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-get="{{ base_url }}?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-target="#{{ table_id }}"
-                       hx-swap="outerHTML"
-                       class="btn btn-outline">
-                        Previous
-                    </a>
-                {% endif %}
-
-                {% for num in page_obj.paginator.page_range %}
-                    {% if num == page_obj.number %}
-                        {# Current page #}
-                        <span class="btn btn-primary">{{ num }}</span>
-                    {% elif num <= 2 or num >= page_obj.paginator.num_pages|add:'-1' or num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
-                        {# Show: first 2 pages, last 2 pages, or pages within 2 of current #}
-                        <a href="?page={{ num }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                           hx-get="{{ base_url }}?page={{ num }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                           hx-target="#{{ table_id }}"
-                           hx-swap="outerHTML"
-                           class="btn btn-outline">
-                            {{ num }}
-                        </a>
-                    {% elif num == 3 and page_obj.number > 5 %}
-                        {# Show ellipsis after first 2 pages if there's a gap #}
-                        <span class="btn btn-outline pointer-events-none">...</span>
-                    {% elif num == page_obj.paginator.num_pages|add:'-2' and page_obj.number < page_obj.paginator.num_pages|add:'-4' %}
-                        {# Show ellipsis before last 2 pages if there's a gap #}
-                        <span class="btn btn-outline pointer-events-none">...</span>
-                    {% endif %}
-                {% endfor %}
-
-                {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-get="{{ base_url }}?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-target="#{{ table_id }}"
-                       hx-swap="outerHTML"
-                       class="btn btn-outline">
-                        Next
-                    </a>
-                    <a href="?page={{ page_obj.paginator.num_pages }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-get="{{ base_url }}?page={{ page_obj.paginator.num_pages }}{% if sort_by %}&sort={{ sort_by }}&order={{ sort_order }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
-                       hx-target="#{{ table_id }}"
-                       hx-swap="outerHTML"
-                       class="btn btn-outline">
-                        Last
-                    </a>
-                {% endif %}
-            </div>
-        </div>
-    {% endif %}
+    <c-pagination :page_obj="page_obj"
+                  :base_url="base_url"
+                  :table_id="table_id"
+                  :sort_by="sort_by"
+                  :sort_order="sort_order"
+                  :search_query="search_query" />
 </div>
 
 {% comment %}

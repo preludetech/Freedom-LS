@@ -416,7 +416,12 @@ def _dispatch_resolved(
         rendered_content = result
 
     elif isinstance(current, Panel):
-        return HttpResponse(current.render(request, base_url=base_url))
+        panel_name = ""
+        if "/__panels/" in base_url:
+            panel_name = base_url.rsplit("/__panels/", 1)[1].strip("/").split("/")[0]
+        return HttpResponse(
+            current.render(request, base_url=base_url, panel_name=panel_name)
+        )
 
     elif isinstance(current, InstanceView):
         rendered_content = current.render(request, base_url=base_url)
