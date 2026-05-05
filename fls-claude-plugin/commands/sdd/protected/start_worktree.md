@@ -56,7 +56,7 @@ IMPORTANT: Never create a worktree inside an existing worktree. Always `cd` to t
 ## Step 5: Call install_dev.sh to make sure the new worktree is ready for development
 
 ```bash
-cd <spec-folder-path> && ./install_dev.sh
+cd <spec-folder-path> && .claude/fls/scripts/install_dev.sh
 ```
 
 ## Step 6: Report back
