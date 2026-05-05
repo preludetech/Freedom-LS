@@ -1,14 +1,12 @@
 {# Page wrapper. Owns horizontal padding, max-width, top/bottom padding for the content well. #}
 {# Variants: width="wide" (default, max-w-7xl) | width="narrow" (max-w-4xl) #}
+{# flush="true": drop horizontal padding. Use inside _base_interface.html, where the shell #}
+{# already owns outer px-* (header bar / overlay must span edge-to-edge). Otherwise the #}
+{# content column stacks shell-px + page-px and defeats lg:gap-12 as the single source of #}
+{# truth for sidebar/content distance. #}
 {# Inter-section rhythm is the responsibility of content inside the slot — use a single space-y-* on the parent. #}
-<c-vars width="wide" />
+<c-vars width="wide" flush="false" class="" />
 
-{% if width == "narrow" %}
-    <div class="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12 {{ class }}">
-        {{ slot }}
-    </div>
-{% else %}
-    <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12 {{ class }}">
-        {{ slot }}
-    </div>
-{% endif %}
+<div class="mx-auto w-full {% if width == 'narrow' %}max-w-4xl{% else %}max-w-7xl{% endif %} {% if flush != 'true' %}px-4 sm:px-6 lg:px-8 {% endif %}py-8 lg:py-12 {{ class }}">
+    {{ slot }}
+</div>

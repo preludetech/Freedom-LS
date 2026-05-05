@@ -2,10 +2,12 @@
 
 {% block body %}
 
-    {# This shell owns its own outer horizontal padding (the sole exception to the #}
-    {# "c-page owns horizontal padding" rule). c-page sits inside the right-hand #}
-    {# content column rather than wrapping the whole shell, so the header bar #}
-    {# and overlay backdrop need their own outer px-* to avoid pushing to the screen edge. #}
+    {# This shell owns its outer horizontal padding because c-page sits inside the #}
+    {# right-hand content column rather than wrapping the whole shell — the header #}
+    {# bar and grid need their own outer px-* to avoid pushing to the screen edge. #}
+    {# Templates rendered into {% block content %} use <c-page flush="true"> so the #}
+    {# inner content well doesn't double up on horizontal padding and lg:gap-12 stays #}
+    {# the single source of truth for sidebar/content distance. #}
     <div x-data="sidebarComponent"
          class="px-4 sm:px-6 lg:px-8"
          data-storage-key="{% block sidebar_storage_key %}sidebar{% endblock sidebar_storage_key %}"

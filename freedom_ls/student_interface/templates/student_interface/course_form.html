@@ -1,7 +1,7 @@
 {% extends "student_interface/_course_base.html" %}
 
 {% block content %}
-    <c-page>
+    <c-page flush="true">
         <div class="space-y-8">
 
             <div>
@@ -20,9 +20,8 @@
             </c-markdown-container>
 
             {% if completed_form_progress %}
-                <div>
-                    <hr />
-                    <h2 class="text-2xl font-bold mb-4 mt-8">
+                <section class="space-y-4 pt-8 border-t border-border">
+                    <h2 class="text-2xl font-bold">
                         Previous Submissions
                     </h2>
 
@@ -72,7 +71,7 @@
                             </div>
                         {% endfor %}
                     </div>
-                </div>
+                </section>
             {% endif %}
 
             <c-button-group variant="space-between" class="pt-4 border-t border-border">
