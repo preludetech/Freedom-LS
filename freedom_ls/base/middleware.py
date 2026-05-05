@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from django.contrib import messages
+from django.contrib.messages.storage.base import BaseStorage
 from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
 from django.template.loader import render_to_string
 
@@ -53,6 +54,13 @@ class HtmxMessagesMiddleware:
         # storage as used so the messages are cleared at the end of the
         # request cycle.
         storage = messages.get_messages(request)
+        # If the view already iterated the storage (e.g. it rendered
+        # partials/messages.html itself), those toasts are already in the
+        # response body. Django 6.x's BaseStorage.__iter__ does not drain
+        # _loaded_messages, so a second iteration here would re-emit the
+        # same messages and produce duplicate OOB toasts.
+        if isinstance(storage, BaseStorage) and storage.used:
+            return response
         queued = list(storage)
         if not queued:
             return response

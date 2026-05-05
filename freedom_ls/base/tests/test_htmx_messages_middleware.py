@@ -20,6 +20,7 @@ from django.http import (
     JsonResponse,
     StreamingHttpResponse,
 )
+from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from freedom_ls.base.middleware import HtmxMessagesMiddleware
@@ -260,3 +261,47 @@ class TestHtmxMessagesMiddleware:
         # Just confirms Message construction is compatible with the partial.
         msg = Message(level=message_constants.WARNING, message="Heads up")
         assert "warning" in msg.tags
+
+    def test_view_already_rendered_messages_partial_no_double_emit(self) -> None:
+        """If a view rendered partials/messages.html itself, the middleware must
+        not append a second OOB fragment for the same message.
+
+        Django 6.x's BaseStorage.__iter__ does not drain _loaded_messages, so
+        a second iteration in the middleware would otherwise pick up the same
+        message and produce a duplicate toast in the response body.
+        """
+        factory = RequestFactory()
+        request = _request_with_messages(
+            factory,
+            htmx=True,
+            messages_to_queue=[(message_constants.SUCCESS, "Saved successfully")],
+        )
+
+        view_body = render_to_string(
+            "partials/messages.html",
+            {"messages": request._messages, "oob": True},
+            request=request,
+        ).encode("utf-8")
+        response = HttpResponse(view_body, content_type="text/html")
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        body = result.content.decode("utf-8")
+        assert body.count('hx-swap-oob="beforeend:#toast-region-polite"') == 1
+        assert body.count("Saved successfully") == 1
+
+    def test_view_consumed_empty_storage_response_unchanged(self) -> None:
+        """If a view iterated an empty message storage (used=True, no messages),
+        the middleware must leave the response body untouched."""
+        factory = RequestFactory()
+        request = _request_with_messages(factory, htmx=True)
+        # Simulate the view iterating the storage (empty list, but used=True).
+        list(request._messages)
+        original_body = b"<p>page</p>"
+        response = HttpResponse(original_body, content_type="text/html")
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        assert result.content == original_body

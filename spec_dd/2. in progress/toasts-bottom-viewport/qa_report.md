@@ -1,218 +1,325 @@
-# Toast Notifications — Frontend QA Report
+# Toast Notifications — QA Report
 
 **Branch:** `toasts-bottom-viewport`
-**Date:** 2026-05-05
-**Site:** DemoDev (admin: `demodev@email.com`)
-**Dev server:** `127.0.0.1:8924` (custom port, killed at end of run)
+**Run date:** 2026-05-05
+**Site under test:** DemoDev (via `127.0.0.1:8927`)
+**Tooling:** Playwright MCP, dev server on port 8927.
+
+QA helper endpoints used (DEBUG-only):
+`/qa/toasts/full/?severity=…&count=…&text=…` and `/qa/toasts/playground/`
+(POST `htmx-success` 200, POST `htmx-error` 422).
 
 ## Summary
 
 | # | Test | Result |
-|---|------|--------|
-| 1 | Layout — desktop position (1440×900 / 1920×1080) | **PASS** |
-| 2 | Layout — tablet position (834×1194) | **PASS** |
-| 3 | Layout — mobile position (390×844) | **PASS** |
-| 4 | Live regions present at first paint | **PASS** |
-| 5 | Severity routing (success → polite, error → assertive) | **PASS** |
-| 6 | Auto-dismiss timing — success ≈ 5s | **PASS** (constant verified live; full live timing partially blocked — see notes) |
-| 7 | Auto-dismiss timing — warning ≈ 7s | **PASS** (constant verified) |
-| 8 | Auto-dismiss timing — error persistent | **PASS** (live: 15.5s, still visible) |
-| 9 | Pause on hover | **PASS** (event bindings + handlers verified) |
-| 10 | Pause on focus | **PASS** (event bindings + handlers verified) |
-| 11 | Pause on window blur | **PASS** (window listeners verified in code, registered in `init()`) |
-| 12 | Manual dismiss — close button (`aria-label="Dismiss notification"`) | **PASS** |
-| 13 | Manual dismiss — Esc key (only focused toast) | **PASS** |
-| 14 | HTMX delivery — success on partial response (one OOB fragment) | **PASS** *(initial QA helper produced 2 fragments — see Bug 1 below; helper was patched to expose the real path; toast spec itself is fine)* |
-| 15 | HTMX delivery — error on 422 | **PASS** |
-| 16 | Full-page delivery — signup + email verification (info, then success) | **PASS** |
-| 17 | Stacking — five concurrent (no overlap) | **PASS** |
-| 18 | Stacking — sixth non-error evicts oldest | **PASS** |
-| 19 | Stacking — errors persistent under non-error | **PASS** |
-| 20 | Mid-stack dismiss — neighbours adapt | **PASS** with caveat *(see Note 1: no animated reflow on neighbours)* |
-| 21 | Reduced motion (no translate) | **PASS** |
-| 22 | Pointer-events pass-through | **PASS** |
-| 23 | iOS safe-area | **NOT EXECUTED** (manual / requires real device) |
+|---|---|---|
+| 1 | Layout — desktop position | PASS |
+| 2 | Layout — tablet position | PASS |
+| 3 | Layout — mobile position | PASS |
+| 4 | Live regions present at first paint | PASS |
+| 5 | Severity routing | PASS |
+| 6 | Auto-dismiss timing — success (~5s) | PASS |
+| 7 | Auto-dismiss timing — warning (~7s) | PASS |
+| 8 | Auto-dismiss timing — error persistent | PASS |
+| 9 | Pause on hover | PASS |
+| 10 | Pause on focus | PASS |
+| 11 | Pause on window blur | PASS |
+| 12 | Manual dismiss — close button | PASS |
+| 13 | Manual dismiss — Esc key | PASS |
+| 14 | HTMX delivery — success on partial | PASS |
+| 15 | HTMX delivery — error on 4xx/5xx | PASS |
+| 16 | Full-page delivery — signup + verify | **FAIL** (no Django messages emitted) |
+| 17 | Stacking — five concurrent | PASS |
+| 18 | Stacking — sixth evicts oldest | PASS |
+| 19 | Stacking — errors are persistent | PASS |
+| 20 | Mid-stack dismiss animation | **PARTIAL** (siblings snap; no transform animation) |
+| 21 | Reduced motion | PASS (markup) |
+| 22 | Pointer-events pass-through | PASS |
+| 23 | iOS safe-area | N/A (manual hardware required) |
 
-No production-code defects were detected in the toast notification system itself. One bug was found in the `qa_helpers` test endpoint that was added during this QA run (**Bug 1** below), and one minor design observation (**Note 1**) is worth flagging for the spec author.
+## Detailed observations
 
----
+### Test 1 — Desktop (1440×900)
 
-## Bug 1 — `qa_helpers/toast_views.py` double-emitted OOB fragments
+`#toast-container` resolves to `position: fixed; right: 16px; bottom: 16px`.
+A success toast triggered via `/qa/toasts/full/?severity=success` rendered
+at `(x=1040, y=810, w=384, h=58)` — flush with the right edge minus 16px,
+the bottom edge minus 32px (16px container padding plus 16px safe-area).
+No overlap with the header bar or page heading. Auto-dismissed inside the
+success window.
 
-**Severity:** Low (test-helper only; production `HtmxMessagesMiddleware` is correct)
-**Test affected:** Test 14 (initially failed before the helper was fixed)
-
-### What went wrong
-
-The original implementation of `htmx_success` / `htmx_error` (added by the `qa-data-helper` agent earlier in this run) explicitly rendered `partials/messages.html` in OOB mode in the view and returned that as the response body. `HtmxMessagesMiddleware` (`freedom_ls/base/middleware.py`) then ran on the response and *also* appended an OOB fragment for the same message — so the response carried **two** identical OOB toasts.
-
-The duplication happens because Django's `BaseStorage.__iter__` (Django 6.0.4) does **not** drain `_loaded_messages` on iteration:
-
-```python
-def __iter__(self):
-    self.used = True
-    if self._queued_messages:
-        self._loaded_messages.extend(self._queued_messages)
-        self._queued_messages = []
-    return iter(self._loaded_messages)
-```
-
-After the view's first render iterates the storage, `used=True` and the message is *moved* into `_loaded_messages` but stays there. The middleware's subsequent `list(messages.get_messages(request))` then picks the same message up again and emits a second OOB fragment.
-
-### Reproduction (before fix)
-
-```
-$ uv run python manage.py shell -c "..."
-status: 200  toast count: 2  # POST /qa/toasts/htmx-success/ with HX-Request: true
-```
-
-`HTMX success toast` appears **twice** in the response body, with two distinct `id="toast-…"` attributes.
-
-### Fix applied during this run
-
-`htmx_success` / `htmx_error` now just call `messages.success(...)` / `messages.error(...)` and return an empty `HttpResponse`. The middleware is the single source of OOB toast HTML for HTMX responses. After the patch:
-
-- `htmx-success` body: 1 OOB fragment, severity `success`, in `#toast-region-polite`.
-- `htmx-error` body (status 422): 1 OOB fragment, severity `error`, in `#toast-region-assertive`.
-
-### Production impact
-
-**None observed.** No production view in the codebase (per `grep messages\.\(success\|info\|warning\|error\|debug\|add_message\)`) renders `partials/messages.html` directly the way the test helper did, so production HTMX endpoints emit a single OOB toast as expected. The bug should still be considered when authoring future HTMX endpoints — the convention is "call the messages API, return your real content; let the middleware add OOB toasts."
-
-![HTMX delivery — single OOB fragment per response](screenshots/desktop_14_15_htmx_delivery.png)
-
----
-
-## Note 1 — Mid-stack dismiss: surviving neighbours snap, they don't animate
-
-**Severity:** Cosmetic / spec interpretation
-**Test affected:** Test 20
-
-The spec says *"The toast below slides up smoothly to fill the gap (transform animation, no width/height jump)."* The dismissed toast itself fades + translates out via the Alpine `x-transition:leave` classes, which is correct. However:
-
-- The toast region is bottom-anchored with `flex flex-col` and **no** layout/transform transition on either the container or the surviving siblings.
-- When the middle of three toasts is dismissed, the surviving toasts re-flow instantly to fill the gap. Because the stack is bottom-anchored, the toast *above* slides down rather than the toast below sliding up — the visible result is the same (gap closes), but it happens in one frame, not animated.
-- The "no width/height jump" portion of the requirement is met (toast heights stay 58 px throughout).
-
-If the spec intent is "smooth animated reflow," the fix is a FLIP-style animation (record positions before, re-apply with transform on re-mount) or a CSS layout transition library — neither is wired up today. Confirm the spec's intent before deciding whether this is a bug or expected.
-
----
-
-## Test-by-test details
-
-### Test 1 — Desktop layout (1440×900)
-Triggered "Profile saved" success toast via `/accounts/profile/`. Toast rect: `top:810, right:1424, bottom:868, left:1040, w:384, h:58`. `md:right-4 md:bottom-4 md:max-w-sm` resolved exactly. Toast does not overlap the header bar, profile heading, or sidebar.
-
-![Desktop toast position](screenshots/desktop_1_toast_position.png)
+Screenshot: `qa-artifacts/toast-desktop-1440.png`,
+`screenshots/desktop_1_toast_position.png`.
 
 ### Test 2 — Tablet (834×1194)
-Toast rect: `top:1104, right:818, w:384, h:58` — bottom-right, same `md+` treatment as desktop.
 
-![Tablet toast position](screenshots/tablet_2_toast_position.png)
+Same fixed bottom-right anchor at md+ breakpoint:
+`right_inset=16, bottom_inset=32, width=384`. PASS.
+
+Screenshot: `qa-artifacts/toast-tablet-834.png`,
+`screenshots/tablet_2_toast_position.png`.
 
 ### Test 3 — Mobile (390×844)
-Toast spans the full viewport width minus an 8 px gutter on each side (`w:374`, `left:8`, `right:382`). `pb-[max(0.5rem,env(safe-area-inset-bottom))]` resolved. **No horizontal scroll.** The dev-only `debug-branch-badge` does sit visually on top of the toast's bottom-left edge, but that's dev tooling, not the production layout.
 
-![Mobile toast position](screenshots/mobile_3_toast_position.png)
+Below `md`, the container becomes full-bleed:
+`x=0, w=390, container has px-2 (8px each side)`, toast width 374px,
+right inset 8px, bottom inset 8px. `documentElement.scrollWidth === 390`
+— no horizontal scroll. PASS.
 
-### Test 4 — Live regions present at first paint
-Confirmed on a freshly-loaded page (no toast triggered):
+Screenshot: `qa-artifacts/toast-mobile-390.png`,
+`screenshots/mobile_3_toast_position.png`.
 
-| Region | role | aria-live | aria-atomic |
-|---|---|---|---|
-| `#toast-region-polite` | `status` | `polite` | _(absent — correct)_ |
-| `#toast-region-assertive` | `alert` | `assertive` | _(absent — correct)_ |
+### Test 4 — Live regions at first paint
+
+Verified via `getElementById` on `/`:
+
+- `#toast-region-polite`: `role="status"`, `aria-live="polite"`, no
+  `aria-atomic` on the region.
+- `#toast-region-assertive`: `role="alert"`, `aria-live="assertive"`, no
+  `aria-atomic` on the region.
+
+PASS.
 
 ### Test 5 — Severity routing
-- `messages.success("Profile saved")` → toast appears in `#toast-region-polite`, `data-severity="success"`, `aria-atomic="true"`.
-- Forced `messages.error("Test error toast")` via `/qa/toasts/full/?severity=error&...` → toast appears in `#toast-region-assertive`, `data-severity="error"`, `aria-atomic="true"`.
 
-![Error severity routing](screenshots/desktop_5_error_severity_routing.png)
+`messages.success(...)` (and warning, info, debug) renders inside
+`#toast-region-polite`. `messages.error(...)` renders inside
+`#toast-region-assertive`. Each toast carries `aria-atomic="true"` on its
+own root. PASS.
 
-### Tests 6, 7, 8 — Auto-dismiss timing
-`Alpine.$data(toast)._durationFor(severity)` returned:
-- `success` → 5000 (Test 6 ✅)
-- `warning` → 7000 (Test 7 ✅)
-- `error` → `null` (persistent — Test 8 ✅)
+Screenshot: `screenshots/desktop_5_error_severity_routing.png`.
 
-For Test 8 a live error toast was held on screen for 15.5 s and remained visible (`offsetParent !== null`, `_timeoutId === null`). For Tests 6/7 only the duration constant was asserted live (the `addInitScript` used to make screenshots possible also disables timers; full live wall-clock verification of 5 s and 7 s is doable separately but adds little value over inspecting the duration constant + verifying error-persistent live).
+### Test 6 — Success auto-dismiss timing
+
+Programmatic measurement from injection to `MutationObserver` removal:
+**5200 ms** for a success toast (5000 ms timer + ~200 ms leave transition
++ DOM removal). Within 4.5–5.5 s tolerance. PASS.
+
+### Test 7 — Warning auto-dismiss timing
+
+Same measurement for `data-severity="warning"`: **7201 ms**. Within ~7 s
+tolerance. PASS.
+
+### Test 8 — Error persistent
+
+After firing an error toast (HTMX 422 OOB), the toast was still present in
+`#toast-region-assertive` after 15 seconds. PASS.
 
 ### Test 9 — Pause on hover
-Toast root carries `x-on:mouseenter="onMouseEnter"` / `x-on:mouseleave="onMouseLeave"` (verified in DOM). The `onMouseEnter` handler calls `_pause()`, which clears the timeout and decrements `_remainingMs`; `onMouseLeave` calls `_resume()`, which restarts the timer with the remaining time. Logic was read in `freedom_ls/base/static/base/js/alpine-components.js` and matches the spec.
+
+Dispatched `mouseenter` on a fresh success toast immediately after
+injection, waited 10 s — toast still visible. Dispatched `mouseleave`,
+toast dismissed **5057 ms** later. The full duration is restored from the
+moment hover starts. PASS.
 
 ### Test 10 — Pause on focus
-Toast root carries `x-on:focusin="onFocusIn"` / `x-on:focusout="onFocusOut"` (verified). `onFocusOut` only resumes if focus actually left the toast (`!this.$el.contains(document.activeElement)`).
+
+Focused the close button immediately, waited 10 s, blurred — toast
+remained for the full 5 s after blur (5054 ms measured). Close button
+carries `aria-label="Dismiss notification"`. PASS.
 
 ### Test 11 — Pause on window blur
-`init()` registers `window.addEventListener("blur", ...)` and `"focus"` handlers, removed in `destroy()`. Verified in source.
 
-### Test 12 — Manual dismiss
-Close button has `aria-label="Dismiss notification"` ✅. Clicking the close button removes the toast within ~200 ms (leave transition). `dismiss()` clears `_timeoutId` so no ghost re-appearance.
+Dispatched `window.blur`, waited 10 s — toast still present. Dispatched
+`window.focus`, dismissed 5061 ms later. PASS.
 
-### Test 13 — Esc key
-With two toasts visible, focusing the first toast's close button and pressing **Esc** dismissed only that toast (count went 2 → 1). The toast's `x-on:keydown.escape="onKeydown"` handler checks `this.$el.contains(document.activeElement)` so unrelated Esc presses don't kill toasts.
+### Test 12 — Close button dismiss
 
-### Test 14 — HTMX success delivery
-Patched test-helper response body has exactly one `hx-swap-oob="beforeend:#toast-region-polite"` fragment. URL is unchanged (no full-page reload), no flash. Network tab shows a single `POST /qa/toasts/htmx-success/` returning 200.
+Click on the close button removed the toast in **~200 ms** (only the leave
+transition; the 5 s timer was cleared, no ghost reappearance). The close
+button has `aria-label="Dismiss notification"`. PASS.
 
-### Test 15 — HTMX error delivery
-`POST /qa/toasts/htmx-error/` returns 422 with one `hx-swap-oob="beforeend:#toast-region-assertive"` fragment carrying `data-severity="error"`. The 422 path is whitelisted by the `htmx:beforeSwap` listener in `alpine-components.js`, so HTMX swaps the OOB fragment instead of treating it as an error and refusing.
+### Test 13 — Esc key dismiss
 
-### Test 16 — Signup → confirm-email full-page flow
-1. Submitted signup form for `qa-toast-1777994425720@example.com`. Redirected to `/accounts/confirm-email/`. Info toast in `#toast-region-polite`, text `Confirmation email sent to qa-toast-…@example.com.` ✅
-   ![Signup info toast](screenshots/desktop_16a_signup_info_toast.png)
-2. Read the `/accounts/confirm-email/<key>/` URL out of the latest file in `gitignore/emails/`, navigated to it, and submitted the confirm form. Redirected to `/`. Success toast in `#toast-region-polite`, text `You have confirmed qa-toast-…@example.com.` ✅. (A second polite toast — `Successfully signed in as …` — is also rendered, which matches allauth's `ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION=True` behaviour and is expected.)
-   ![Email confirmed success toast](screenshots/desktop_16b_email_confirmed_success_toast.png)
+With two visible polite toasts, focused the close button on the first and
+dispatched a `keydown` Escape. The focused toast was removed; the second
+toast was unaffected. PASS.
 
-### Test 17 — Stacking, five concurrent
-`/qa/toasts/full/?severity=info&count=5` rendered 5 toasts at `top` 726, 792, 858, 924, 990 — uniform 8 px gap, heights all 58 px, no overlap.
+### Test 14 — HTMX success OOB delivery
 
-![Five concurrent toasts](screenshots/desktop_17_stacking_5_concurrent.png)
+POST to `/qa/toasts/htmx-success/` from the playground page:
+- HTTP 200, URL unchanged, no full-page reload.
+- Response body contains exactly **one** `hx-swap-oob` carrier, targeting
+  `beforeend:#toast-region-polite`.
+- The injected toast initialised correctly (Alpine attached, timer ran).
 
-### Test 18 — Sixth non-error evicts oldest
-After 5 HTMX success toasts, IDs `[a4f, 955, 437, 165, b78]`. The 6th success replaced `a4f` with a new `f83`, leaving `[955, 437, 165, b78, f83]` — oldest dropped, newest kept, count stayed at 5.
+PASS.
 
-![Sixth toast evicts oldest](screenshots/desktop_18_6th_evicts_oldest.png)
+Screenshot: `screenshots/desktop_14_15_htmx_delivery.png`.
 
-### Test 19 — Errors stay; non-error dropped
-With 5 error toasts visible in `#toast-region-assertive`, posting `htmx-success` results in `politeCount: 0` — the non-error was dropped silently per spec (`_enforceCap` short-circuits when `errorCount >= 5` for non-errors). The 5 errors remain visible.
+### Test 15 — HTMX error OOB delivery
 
-![Errors persistent under stacking](screenshots/desktop_19_errors_persistent.png)
+POST to `/qa/toasts/htmx-error/`:
+- HTTP **422**, single OOB fragment targeting
+  `beforeend:#toast-region-assertive`.
+- Toast persists (error severity is non-auto-dismiss).
 
-### Test 20 — Mid-stack dismiss
-3 toasts at `top` 858 / 924 / 990. Dismissing the middle one (`x-on:click="dismiss"`) leaves the bottom-anchored stack at `top` 924 / 990 — the toast that was at 858 has slid *down* to 924 (visually, the gap closes). See **Note 1** above for the animation caveat.
+PASS.
+
+### Test 16 — Signup + verify-email flow
+
+**FAIL** for the spec criterion (toast routing/visual treatment is fine,
+but the expected Django messages were not emitted on either redirect
+target).
+
+Steps executed:
+1. Logged out, navigated to `/accounts/signup/`.
+2. Submitted with `qa-toast-1714941484@example.com`, T&C and Privacy
+   consent ticked, password `ToastQA…`.
+3. Server returned 302 → `/accounts/confirm-email/`. Page rendered the
+   "Verify Your Email Address" body, **but `#toast-region-polite` and
+   `#toast-region-assertive` were both empty in the rendered HTML** (no
+   `<div id="toast-...">` nodes inside the regions, despite the regions
+   themselves being present). Curling
+   `http://127.0.0.1:8927/accounts/confirm-email/` while logged out
+   confirmed the rendered template contains no toast nodes — it is not a
+   timing race with the auto-dismiss timer.
+4. Read the verification URL out of `gitignore/emails/2026…log` and
+   POSTed the confirmation form. Server returned 302 → `/`.
+5. The home page rendered with **no toast in either live region** — the
+   expected "You have confirmed …" success toast did not appear.
+
+The toast UI machinery is unchanged on these pages (regions present and
+correctly attributed). The defect is upstream: the Django messages
+framework did not receive the expected `messages.INFO` (signup) or
+`messages.SUCCESS` (email confirmed) before the redirects. Likely
+allauth wiring or message-tag mapping rather than the toast spec, but the
+test as written cannot pass until it is investigated.
+
+Screenshot: `screenshots/desktop_16a_signup_no_toast_observed.png`
+(post-signup confirm-email page with empty regions).
+
+### Test 17 — Stacking five concurrent
+
+Five injected toasts in `#toast-region-polite` (flex-col with `gap-2`):
+
+| idx | top | bottom | h | gap to next |
+|-----|-----|--------|---|-------------|
+| 0 | 516 | 580 | 64 | 8 |
+| 1 | 588 | 652 | 64 | 8 |
+| 2 | 660 | 724 | 64 | 8 |
+| 3 | 732 | 796 | 64 | 8 |
+| 4 | 804 | 868 | 64 | – |
+
+No overlap; consistent 8px gap. PASS.
+
+Screenshot: `screenshots/desktop_17_stacking_5_concurrent.png`.
+
+### Test 18 — Sixth evicts oldest
+
+Fired five HTMX success toasts (paused via hover so timers do not
+interfere), then a sixth. Final state: `len === 5`, the original
+`children[0]` was removed, the new toast appended. The remaining order
+matches `[old[1..4], new]`. PASS.
+
+### Test 19 — Errors persistent under cap
+
+Five HTMX errors fired, all five rendered in `#toast-region-assertive`.
+A sixth non-error (HTMX success) was triggered. The new toast was
+**dropped immediately** (no presence in `#toast-region-polite`); all five
+errors remained. PASS.
+
+Screenshot: `screenshots/desktop_19_errors_persistent.png`.
+
+### Test 20 — Mid-stack dismiss animation
+
+**PARTIAL.**
+
+With three error toasts in the assertive region, the middle one was
+dismissed via its close button. Sampled the topmost toast's
+`getBoundingClientRect().top` every 10 ms for 600 ms after the click:
+
+```
+t=0..154 ms     top.top = 678   (n=3, dismissed toast leave-transitioning out)
+t=164 ms        top.top = 744   (n=3 still, but layout already snapped)
+t=218 ms onward top.top = 744   (n=2, dismissed root removed from DOM)
+```
+
+The dismissed toast itself animates fine (fade + slide right). The
+**siblings snap** to their new positions in a single frame when the
+dismissed toast collapses out of layout — there is no FLIP / transform
+animation on the survivors. The spec test phrasing ("The toast below
+slides up smoothly to fill the gap, transform animation, no width/height
+jump") expects a smooth transition on the surviving toasts, which is not
+implemented.
+
+The width/height of the survivors does not change — that part is fine.
+The motion is just instantaneous rather than animated.
 
 ### Test 21 — Reduced motion
-With `page.emulateMedia({reducedMotion: 'reduce'})` set, the success toast renders at `transform: none, opacity: 1` after enter. The toast template's `motion-reduce:translate-x-0 motion-reduce:translate-y-0` Tailwind variants override the slide-in/out translations, leaving an opacity-only fade. Implementation matches spec.
 
-![Reduced motion still renders](screenshots/desktop_21_reduced_motion.png)
+Verified via the toast template's class list rather than emulating
+`prefers-reduced-motion: reduce` (Playwright MCP's tools do not expose
+the DevTools `Emulate CSS media feature` toggle):
+
+- `x-transition:enter-start`:
+  `opacity-0 translate-y-full md:translate-x-full md:translate-y-0
+   motion-reduce:translate-x-0 motion-reduce:translate-y-0`
+- `x-transition:leave-end`: same shape.
+
+Under reduced motion, the `motion-reduce:translate-x-0` and
+`motion-reduce:translate-y-0` utilities cancel the translate transforms,
+leaving only the opacity portion of the transition (a fade). The 200 ms
+enter / 150 ms leave durations remain — this is the standard Tailwind
++ Alpine pattern for honouring `prefers-reduced-motion`.
+
+PASS at the markup level. A truly behavioural verification would require
+DevTools-emulated media queries or a real OS setting.
 
 ### Test 22 — Pointer-events pass-through
-Computed styles:
 
-| Element | `pointer-events` |
-|---|---|
-| `#toast-container` | `none` |
-| `#toast-region-polite` | `none` |
-| `#toast-region-assertive` | `none` |
-| Individual toast | `auto` |
+`#toast-container`, `#toast-region-polite`, `#toast-region-assertive` all
+resolve to `pointer-events: none`. Individual toast roots resolve to
+`pointer-events: auto`.
 
-A button placed under the gap between two toasts received the click (`document.elementFromPoint` returned the underlying button, `dispatchEvent('click')` fired the handler). Click does not get swallowed by the empty area of the toast container.
+`document.elementFromPoint(...)` aimed at the visual midpoint between two
+stacked toasts returned `<html>` (the underlying page), not a toast.
+Aimed at a toast's centre, it returned the toast's `<p>` content. PASS.
 
 ### Test 23 — iOS safe-area
-**Not executed.** Requires a real notched iOS device (or an iOS Simulator with `viewport-fit=cover`); not feasible from a desktop Playwright session. The CSS does include `pb-[max(0.5rem,env(safe-area-inset-bottom))]` and `md:pb-[max(1rem,env(safe-area-inset-bottom))]`, so the safe-area padding hook is present — manual confirmation on hardware still recommended.
 
----
+N/A in this run. Requires a real notched iOS device or the iOS Simulator.
+The CSS already uses `env(safe-area-inset-bottom)` and
+`env(safe-area-inset-right)` in the toast container, and the meta
+viewport handling lives in `_base.html` — both observable in source, but
+not exercised against real hardware here.
 
-## Tangential observations
+## Tangential observations (not part of the spec under test)
 
-- **Django Debug Toolbar** (`#djDebug`) covers the bottom-right of the viewport in `DEBUG=True` and visually overlaps the toast region until you collapse it (it does not actually intercept clicks because it's `pointer-events: none` on the panel exterior, but it makes the toast invisible to a user who hasn't toggled the DDT off). Not a toast bug, but if you screenshot or demo the toast feature in dev, collapse DDT first (cookie `djdt=hide` doesn't seem to fully suppress the panel — clicking the in-page **Hide »** link does).
-- The `qa_helpers` app added during this run (`/qa/toasts/playground/`, `/qa/toasts/full/`, `/qa/toasts/htmx-success/`, `/qa/toasts/htmx-error/`) is wired only when `DEBUG=True` and should be removed once the toast spec ships. Files: `freedom_ls/qa_helpers/toast_views.py`, `freedom_ls/qa_helpers/urls.py`, `freedom_ls/qa_helpers/templates/qa_helpers/toast_playground.html`, plus the `path("qa/", include(...))` block in `config/urls.py`.
+1. **Playground buttons are visually invisible** — the
+   `#qa-helpers/toast_playground.html` "POST htmx-success / htmx-error"
+   buttons use `bg-success` / `bg-danger` Tailwind classes, but those
+   class tokens are not present in the built `tailwind.output.css`, so
+   the buttons render as zero-styled white-on-white text. They are still
+   functional (clickable via JS). This affects QA tooling only, not the
+   toast feature itself; flagging in case a follow-up Tailwind build is
+   needed for the playground.
 
----
+2. **Test 16 dependency** — the signup flow rendered, but neither
+   redirect target included a Django message in the rendered partial.
+   This blocks the test as written. Worth a separate ticket: is allauth
+   currently configured to call `messages.add_message` on signup /
+   email-confirm? If so, where do those messages get lost between the
+   POST and the rendered GET? If not, Test 16 needs a different page
+   that *is* known to emit a full-page-load message under DemoDev.
 
-## Process notes
+3. **Toast region text whitespace** — the inline `{% for message %}`
+   block in `partials/messages.html` leaves whitespace inside
+   `#toast-region-polite` on render even when there are no messages.
+   Cosmetic, never observable to users.
 
-- All screenshots were captured by overriding the toast's auto-dismiss timer via Playwright's `page.addInitScript` so the toast stayed on screen long enough to take a clean shot. The override does **not** affect the timing constants exposed by `_durationFor`, which were verified via `Alpine.$data(toast)` immediately after init.
-- All test data was created either via the existing app flows (signup, profile save) or via the `qa_helpers` playground; no direct DB or shell mutation was required.
-- Browser context was reset between tests where session messages might bleed across requests (logout, `clearCookies`, fresh login).
+## Coverage notes
+
+- All HTMX delivery tests were exercised against the existing helper
+  endpoints (`htmx_success` 200, `htmx_error` 422).
+- Stacking, eviction, and timing tests used a mix of HTMX-driven toast
+  injection and direct DOM injection of templated HTML (with
+  `x-data="toast"` so Alpine still wired up the timers / cap logic). The
+  stacking layout screenshot specifically uses static (Alpine-free) DOM
+  to keep all five toasts visible long enough to capture, then the
+  Alpine-backed flow was used to verify cap behaviour separately
+  (Tests 18 / 19).
+- `data-severity="error"` (persistent) was used wherever a stable
+  visible state was needed for inspection or screenshot, since the
+  non-error timer would otherwise dismiss the toast before the next tool
+  call.
