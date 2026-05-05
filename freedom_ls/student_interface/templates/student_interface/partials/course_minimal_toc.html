@@ -126,6 +126,7 @@
                 {# Nested children of course part #}
                 <div x-show="expanded"
                      x-collapse
+                     x-cloak
                      class="ml-6 mt-1 space-y-1 border-l-2 border-border pl-3">
                     {% if child.children %}
                         {% for part_child in child.children %}

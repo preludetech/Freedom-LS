@@ -132,12 +132,11 @@
 {% endpartialdef %}
 
 {% partialdef recommended-courses %}
-    <div class="surface space-y-4">
-        <h2>
-            Recommended Courses
-        </h2>
-
-        {% if recommended_courses %}
+    {% if recommended_courses %}
+        <div class="surface space-y-4">
+            <h2>
+                Recommended Courses
+            </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for recommendation in recommended_courses %}
                     {% with course=recommendation.collection %}
@@ -145,21 +144,16 @@
                     {% endwith %}
                 {% endfor %}
             </div>
-        {% else %}
-            <p class="text-muted">
-                No recommended courses yet.
-            </p>
-        {% endif %}
-    </div>
+        </div>
+    {% endif %}
 {% endpartialdef %}
 
 {% partialdef learning-history %}
-    <div class="surface space-y-4">
-        <h2>
-            Learning History
-        </h2>
-
-        {% if completed_courses %}
+    {% if completed_courses %}
+        <div class="surface space-y-4">
+            <h2>
+                Learning History
+            </h2>
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {% with course_status="history" %}
                     {% for course in completed_courses %}
@@ -167,12 +161,8 @@
                     {% endfor %}
                 {% endwith %}
             </div>
-        {% else %}
-            <p class="text-muted">
-                No completed courses yet
-            </p>
-        {% endif %}
-    </div>
+        </div>
+    {% endif %}
 {% endpartialdef %}
 
 <div class="space-y-4">

@@ -140,3 +140,78 @@ def test_partial_list_courses_includes_recommended_courses(mock_site_context, co
     assert recommended[0].collection == courses[0]
     # Template binding check: the recommended course title must render.
     assert courses[0].title in response.content.decode()
+
+
+# --- empty-section guards on partial_list_courses ---
+#
+# The dashboard should emit zero DOM for the recommended-courses and
+# learning-history sections when their respective context lists are empty,
+# instead of rendering a heading + "No X yet" placeholder. Each test below
+# asserts a distinct slice of that behaviour.
+
+
+@pytest.mark.django_db
+def test_partial_list_courses_omits_recommended_section_when_empty(
+    mock_site_context, courses
+):
+    """When recommended_courses is empty, the section heading and placeholder are omitted."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:partial_list_courses"))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert list(response.context["recommended_courses"]) == []
+    assert "Recommended Courses" not in body
+    assert "No recommended courses yet" not in body
+
+
+@pytest.mark.django_db
+def test_partial_list_courses_omits_history_section_when_empty(
+    mock_site_context, courses
+):
+    """When completed_courses is empty, the section heading and placeholder are omitted."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:partial_list_courses"))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["completed_courses"] == []
+    assert "Learning History" not in body
+    assert "No completed courses yet" not in body
+
+
+@pytest.mark.django_db
+def test_partial_list_courses_renders_recommended_section_when_populated(
+    mock_site_context, courses
+):
+    """When a recommendation exists, the Recommended Courses heading renders."""
+    user = UserFactory()
+    RecommendedCourseFactory(user=user, collection=courses[1])
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:partial_list_courses"))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Recommended Courses" in body
+
+
+@pytest.mark.django_db
+def test_partial_list_courses_renders_history_section_when_populated(
+    mock_site_context, courses
+):
+    """When a completed course exists, the Learning History heading renders."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[2])
+    CourseProgressFactory(user=user, course=courses[2], completed_time=timezone.now())
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:partial_list_courses"))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Learning History" in body

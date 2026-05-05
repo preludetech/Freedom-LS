@@ -13,41 +13,41 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (cmd) Run `/spec_from_idea` to generate the spec
 - [x] (user) Review the spec carefully and edit where needed
 - [x] (cmd) Run `/spec_review` to sanity-check the spec
-- [ ] (user) Address any issues raised by the review
+- [x] (user) Address any issues raised by the review
 
 ## 3. Threat model
 
-- [ ] (cmd) Run `/threat-model` against the spec
-- [ ] (user) Update the spec to close any security gaps surfaced
+- [x] (cmd) Run `/threat-model` against the spec
+- [x] (user) Update the spec to close any security gaps surfaced
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
-- [ ] (user) Review both plans and edit where needed
+- [x] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
+- [x] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
 
-- [ ] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
-- [ ] (user) Address any concerns raised in the plan
+- [x] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
+- [x] (user) Address any concerns raised in the plan
 
 ## 6. Plan structure review
 
-- [ ] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
-- [ ] (user) Address any structure concerns raised in the plan
+- [x] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
+- [x] (user) Address any structure concerns raised in the plan
 
 ## 7. Implementation
 
-- [ ] (cmd) Run `/implement_plan` to execute the implementation plan
-- [ ] (user) Spot-check the changes
+- [x] (cmd) Run `/implement_plan` to execute the implementation plan
+- [x] (user) Spot-check the changes
 
 ## 8. Code security review
 
-- [ ] (cmd) Run `/security-review` on the pending changes
-- [ ] (user) Address any issues raised
+- [x] (cmd) Run `/security-review` on the pending changes
+- [x] (user) Address any issues raised
 
 ## 9. QA
 
-- [ ] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)
+- [x] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues

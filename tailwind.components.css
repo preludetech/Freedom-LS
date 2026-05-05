@@ -30,6 +30,11 @@
 
 
 @layer base {
+    /* Hide Alpine x-cloak elements until Alpine initialises (prevents FOUC). */
+    [x-cloak] {
+        display: none !important;
+    }
+
     /* Prevent horizontal scrolling on mobile */
     body {
         @apply overflow-x-hidden

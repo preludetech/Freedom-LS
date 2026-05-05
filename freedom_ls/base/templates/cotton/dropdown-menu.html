@@ -19,6 +19,7 @@
 
     <!-- Dropdown menu -->
     <div x-show="open"
+         x-cloak
          x-on:click.away="close"
          x-on:scroll.window="close"
          x-transition:enter="transition ease-out duration-100"
