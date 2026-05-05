@@ -181,9 +181,14 @@ document.addEventListener("alpine:init", () => {
             this.show = false;
             // Wait for the leave transition (~150ms) then remove from the DOM
             // so the live regions stay tidy and the cap accounting is accurate.
+            // Use $root (not $el) so the toast root is removed even when
+            // dismiss() fires from a click on the close button — Alpine binds
+            // $el to the listener's element, but $root always points at the
+            // x-data root.
+            const root = this.$root;
             setTimeout(() => {
-                if (this.$el && this.$el.parentNode) {
-                    this.$el.remove();
+                if (root && root.parentNode) {
+                    root.remove();
                 }
             }, 200);
         },
@@ -238,9 +243,9 @@ document.addEventListener("alpine:init", () => {
 
             // Cap non-error toasts at 5. If this is a non-error and we are now
             // over the cap, evict the oldest non-error from the polite region.
-            // Children are appended in DOM order; oldest is the first child.
-            // (Visual order is reversed via flex-col-reverse, but DOM order
-            // remains insertion order.)
+            // Children are appended in DOM order; oldest is the first child,
+            // which is also visually furthest from the viewport edge under
+            // flex-col (newest at the bottom).
             if (severity !== "error") {
                 while (nonErrorEls.length > 5) {
                     const oldest = nonErrorEls.shift();

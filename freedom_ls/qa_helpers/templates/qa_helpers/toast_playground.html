@@ -1,0 +1,71 @@
+{% extends "_base.html" %}
+{# QA-TEMP: Toast playground page. DEBUG-only. #}
+
+{% block head_title %}QA: Toast Playground{% endblock head_title %}
+
+{% block content %}
+    <h1 class="text-2xl font-bold">QA Toast Playground</h1>
+    <p class="text-sm text-muted">
+        Buttons here POST via HTMX to OOB endpoints; links use the full-page
+        redirect path. Inspect network + DOM to verify Test 14/15 behavior.
+    </p>
+
+    <section class="space-y-2">
+        <h2 class="text-lg font-semibold">HTMX OOB delivery</h2>
+        <div class="flex flex-wrap gap-2">
+            <button type="button"
+                    class="px-3 py-2 rounded bg-success text-white"
+                    hx-post="{% url 'qa_helpers:toasts_htmx_success' %}"
+                    hx-swap="none">
+                POST htmx-success (200)
+            </button>
+            <button type="button"
+                    class="px-3 py-2 rounded bg-danger text-white"
+                    hx-post="{% url 'qa_helpers:toasts_htmx_error' %}"
+                    hx-swap="none">
+                POST htmx-error (422)
+            </button>
+        </div>
+    </section>
+
+    <section class="space-y-2">
+        <h2 class="text-lg font-semibold">Full-page render path</h2>
+        <p class="text-sm text-muted">
+            Each link queues messages then redirects to <code>/</code>.
+        </p>
+        <ul class="list-disc list-inside space-y-1">
+            <li>
+                <a class="text-primary underline"
+                   href="{% url 'qa_helpers:toasts_full' %}?severity=success&count=1">success x1</a>
+            </li>
+            <li>
+                <a class="text-primary underline"
+                   href="{% url 'qa_helpers:toasts_full' %}?severity=info&count=1">info x1</a>
+            </li>
+            <li>
+                <a class="text-primary underline"
+                   href="{% url 'qa_helpers:toasts_full' %}?severity=warning&count=1">warning x1</a>
+            </li>
+            <li>
+                <a class="text-primary underline"
+                   href="{% url 'qa_helpers:toasts_full' %}?severity=error&count=1">error x1</a>
+            </li>
+            <li>
+                <a class="text-primary underline"
+                   href="{% url 'qa_helpers:toasts_full' %}?severity=debug&count=1">debug x1</a>
+            </li>
+            <li>
+                <a class="text-primary underline"
+                   href="{% url 'qa_helpers:toasts_full' %}?severity=info&count=5">info x5 (stack)</a>
+            </li>
+            <li>
+                <a class="text-primary underline"
+                   href="{% url 'qa_helpers:toasts_full' %}?severity=error&count=3">error x3 (assertive stack)</a>
+            </li>
+            <li>
+                <a class="text-primary underline"
+                   href="{% url 'qa_helpers:toasts_full' %}?severity=info&count=1&text=Custom%20message%20text">info x1 with custom text</a>
+            </li>
+        </ul>
+    </section>
+{% endblock content %}

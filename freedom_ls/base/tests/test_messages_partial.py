@@ -44,7 +44,7 @@ class TestMessagesPartialFullPage:
         assert 'aria-live="polite"' in html
         assert 'aria-live="assertive"' in html
 
-    def test_live_regions_do_not_carry_aria_atomic_true(
+    def test_live_regions_have_no_aria_atomic_attribute(
         self, mock_site_context: object
     ) -> None:
         html = render_to_string(
@@ -52,17 +52,14 @@ class TestMessagesPartialFullPage:
             {"messages": _make_messages()},
         )
 
-        # The live region containers must not assert aria-atomic="true",
+        # The live region containers must not carry any aria-atomic attribute,
         # only the individual toast elements do (Bootstrap pitfall).
         polite_region = re.search(r'<div id="toast-region-polite"[^>]*>', html)
         assertive_region = re.search(r'<div id="toast-region-assertive"[^>]*>', html)
         assert polite_region is not None
         assert assertive_region is not None
-        assert 'aria-atomic="true"' not in polite_region.group(0)
-        assert 'aria-atomic="true"' not in assertive_region.group(0)
-        # The regions are explicitly aria-atomic="false"
-        assert 'aria-atomic="false"' in polite_region.group(0)
-        assert 'aria-atomic="false"' in assertive_region.group(0)
+        assert "aria-atomic" not in polite_region.group(0)
+        assert "aria-atomic" not in assertive_region.group(0)
 
     def test_each_toast_carries_aria_atomic_true(
         self, mock_site_context: object
@@ -165,3 +162,51 @@ class TestMessagesPartialOob:
         ids = re.findall(r'id="(toast-[0-9a-f]+)"', html)
         assert len(ids) == 5
         assert len(set(ids)) == 5
+
+    def test_oob_attribute_is_not_on_the_toast_element(
+        self, mock_site_context: object
+    ) -> None:
+        """Bug 1: when HTMX swaps with `beforeend:`, the carrier element's
+        children are appended into the target — the carrier itself is
+        dropped. So `hx-swap-oob` must be on a wrapper, NOT on the toast
+        element, otherwise the toast wrapper (which carries
+        `id="toast-..."`, `x-data="toast"`, `data-severity=...`,
+        `aria-atomic="true"` and the entire visual chrome) is discarded.
+        """
+        html = render_to_string(
+            "partials/messages.html",
+            {"messages": _make_messages(), "oob": True},
+        )
+
+        # No element that carries id="toast-..." may also carry hx-swap-oob.
+        toast_elements = re.findall(r'<div\b[^>]*\bid="toast-[0-9a-f]+"[^>]*>', html)
+        assert len(toast_elements) == 5
+        for tag in toast_elements:
+            assert "hx-swap-oob" not in tag, (
+                f"Toast element carries hx-swap-oob — HTMX will strip the "
+                f"wrapper and only inject its children: {tag}"
+            )
+
+    def test_oob_carrier_wraps_each_toast(self, mock_site_context: object) -> None:
+        """Each OOB toast must sit inside a carrier <div hx-swap-oob=...>
+        whose direct child is the toast element. HTMX will then append
+        the toast div (with all its attributes) into the live region.
+        """
+        html = render_to_string(
+            "partials/messages.html",
+            {"messages": _make_messages(), "oob": True},
+        )
+
+        # Find each carrier element and check its first child is a toast div.
+        carriers = re.findall(
+            r'<div[^>]*\bhx-swap-oob="[^"]+"[^>]*>\s*(<div\b[^>]*>)',
+            html,
+        )
+        assert len(carriers) == 5
+        for first_child in carriers:
+            assert re.search(r'\bid="toast-[0-9a-f]+"', first_child), (
+                f"Carrier's first child is not a toast: {first_child}"
+            )
+            assert 'x-data="toast"' in first_child
+            assert "data-severity=" in first_child
+            assert 'aria-atomic="true"' in first_child

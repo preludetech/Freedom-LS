@@ -13,18 +13,35 @@ Severity routing:
   error                         -> #toast-region-assertive
 {% endcomment %}
 {% if oob %}
+    {% comment %}
+    With swap modifiers like `beforeend:`, HTMX appends the carrier element's
+    *children* into the target and drops the carrier itself. So we wrap each
+    toast in a carrier <div hx-swap-oob=...> and leave the toast element
+    itself free of `hx-swap-oob`, so the toast wrapper (id, x-data,
+    data-severity, aria-atomic, transitions, listeners) lands intact.
+    {% endcomment %}
     {% for message in messages %}
         {% toast_uid as uid %}
         {% if 'error' in message.tags %}
-            {% include "partials/_toast.html" with message=message uid=uid oob_target="beforeend:#toast-region-assertive" severity="error" severity_token="border-danger" icon_name="error" icon_class="text-danger" %}
+            <div hx-swap-oob="beforeend:#toast-region-assertive">
+                {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="error" severity_token="border-danger" icon_name="error" icon_class="text-danger" %}
+            </div>
         {% elif 'warning' in message.tags %}
-            {% include "partials/_toast.html" with message=message uid=uid oob_target="beforeend:#toast-region-polite" severity="warning" severity_token="border-warning" icon_name="warning" icon_class="text-warning" %}
+            <div hx-swap-oob="beforeend:#toast-region-polite">
+                {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="warning" severity_token="border-warning" icon_name="warning" icon_class="text-warning" %}
+            </div>
         {% elif 'success' in message.tags %}
-            {% include "partials/_toast.html" with message=message uid=uid oob_target="beforeend:#toast-region-polite" severity="success" severity_token="border-success" icon_name="success" icon_class="text-success" %}
+            <div hx-swap-oob="beforeend:#toast-region-polite">
+                {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="success" severity_token="border-success" icon_name="success" icon_class="text-success" %}
+            </div>
         {% elif 'debug' in message.tags %}
-            {% include "partials/_toast.html" with message=message uid=uid oob_target="beforeend:#toast-region-polite" severity="debug" severity_token="border-muted" icon_name="info" icon_class="text-muted" %}
+            <div hx-swap-oob="beforeend:#toast-region-polite">
+                {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="debug" severity_token="border-muted" icon_name="info" icon_class="text-muted" %}
+            </div>
         {% else %}
-            {% include "partials/_toast.html" with message=message uid=uid oob_target="beforeend:#toast-region-polite" severity="info" severity_token="border-primary" icon_name="info" icon_class="text-primary" %}
+            <div hx-swap-oob="beforeend:#toast-region-polite">
+                {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="info" severity_token="border-primary" icon_name="info" icon_class="text-primary" %}
+            </div>
         {% endif %}
     {% endfor %}
 {% else %}
@@ -33,8 +50,7 @@ Severity routing:
         <div id="toast-region-polite"
              role="status"
              aria-live="polite"
-             aria-atomic="false"
-             class="flex flex-col-reverse gap-2 pointer-events-none">
+             class="flex flex-col gap-2 pointer-events-none">
             {% for message in messages %}
                 {% if 'error' not in message.tags %}
                     {% toast_uid as uid %}
@@ -53,8 +69,7 @@ Severity routing:
         <div id="toast-region-assertive"
              role="alert"
              aria-live="assertive"
-             aria-atomic="false"
-             class="flex flex-col-reverse gap-2 pointer-events-none">
+             class="flex flex-col gap-2 pointer-events-none">
             {% for message in messages %}
                 {% if 'error' in message.tags %}
                     {% toast_uid as uid %}
