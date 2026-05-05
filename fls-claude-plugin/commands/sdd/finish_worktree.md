@@ -47,6 +47,10 @@ The spec directory should be named like this:
 yyyy-mm-dd_HH:MM_{spec title}
 ```
 
-# Step 6: Commit
+# Step 6: Tidy Claude project settings
+
+Invoke the `update-claude-project-settings` skill to promote any useful permissions accumulated in `.claude/settings.local.json` to the shared `.claude/settings.json`, and clean up redundant entries in the project settings.
+
+# Step 7: Commit
 
 Make a commit with the latest changes.
