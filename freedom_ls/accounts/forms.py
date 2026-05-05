@@ -7,7 +7,6 @@ from allauth.account.forms import SignupForm
 from allauth.core import context as allauth_context
 
 from django import forms
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.db import transaction
@@ -67,7 +66,11 @@ class SiteAwareSignupForm(SignupForm):
 
         # Local imports to avoid circulars at module import time.
         from .legal_docs import has_legal_doc
-        from .utils import get_signup_policy_for_request
+        from .utils import (
+            get_effective_require_name,
+            get_effective_require_terms_acceptance,
+            get_signup_policy_for_request,
+        )
 
         request = _get_request_or_none()
         site: Site | None
@@ -76,18 +79,16 @@ class SiteAwareSignupForm(SignupForm):
 
         policy = get_signup_policy_for_request(request) if request is not None else None
 
-        # Name handling
-        if policy is not None and not policy.require_name:
+        # Name handling. Per-site policy takes precedence; without one, fall
+        # back to settings.REQUIRE_NAME.
+        if not get_effective_require_name(policy):
             self.fields["first_name"].required = False
             self.fields["first_name"].label = _("First name (optional)")
 
-        # Terms / Privacy clickwrap. When no per-site policy exists, fall back
-        # to settings.REQUIRE_TERMS_ACCEPTANCE so operators can flip consent on
-        # for every site without creating a SiteSignupPolicy row per site.
-        if policy is not None:
-            require_terms = policy.require_terms_acceptance
-        else:
-            require_terms = getattr(settings, "REQUIRE_TERMS_ACCEPTANCE", False)
+        # Terms / Privacy clickwrap. Per-site policy takes precedence; without
+        # one, fall back to settings.REQUIRE_TERMS_ACCEPTANCE so operators can
+        # flip consent on for every site without creating a row per site.
+        require_terms = get_effective_require_terms_acceptance(policy)
 
         if require_terms and request is not None and site is not None:
             if has_legal_doc(site, "terms"):

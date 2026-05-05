@@ -283,7 +283,12 @@ ACCOUNT_RATE_LIMITS: dict[str, str] | bool = {
 
 # ACCOUNT_ADAPTER = "freedom_ls.accounts.allauth_account_adapter.AccountAdapter"
 ALLOW_SIGN_UPS = True
+
+# System-wide fallbacks used when a site has no `SiteSignupPolicy` row.
+# A per-site policy, if it exists, always wins over these settings.
 REQUIRE_TERMS_ACCEPTANCE = False
+REQUIRE_NAME = True
+ADDITIONAL_REGISTRATION_FORMS: list[str] = []
 
 # HEADLESS_FRONTEND_URLS = TODO
 

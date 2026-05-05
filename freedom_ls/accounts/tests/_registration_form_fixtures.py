@@ -87,6 +87,36 @@ class RaisesInIsCompleteForm(forms.Form):
         pass
 
 
+class AppliesToReturnsNoneForm(forms.Form):
+    """``applies_to`` returns ``None`` instead of a bool."""
+
+    @classmethod
+    def applies_to(cls, user):
+        return None
+
+    @classmethod
+    def is_complete(cls, user) -> bool:  # pragma: no cover — must not be called
+        raise RuntimeError("is_complete should not be reached")
+
+    def save(self, user) -> None:  # pragma: no cover — must not be called
+        pass
+
+
+class IsCompleteReturnsNoneForm(forms.Form):
+    """``is_complete`` returns ``None`` instead of a bool."""
+
+    @classmethod
+    def applies_to(cls, user) -> bool:
+        return True
+
+    @classmethod
+    def is_complete(cls, user):
+        return None
+
+    def save(self, user) -> None:  # pragma: no cover — must not be called
+        pass
+
+
 class NotAFormClass:
     """Not a forms.Form subclass."""
 

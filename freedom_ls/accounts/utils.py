@@ -51,3 +51,23 @@ def get_signup_policy_for_request(
     except SiteSignupPolicy.DoesNotExist:
         return None
     return policy
+
+
+def get_effective_require_name(policy: SiteSignupPolicy | None) -> bool:
+    if policy is not None:
+        return policy.require_name
+    return bool(getattr(settings, "REQUIRE_NAME", True))
+
+
+def get_effective_require_terms_acceptance(policy: SiteSignupPolicy | None) -> bool:
+    if policy is not None:
+        return policy.require_terms_acceptance
+    return bool(getattr(settings, "REQUIRE_TERMS_ACCEPTANCE", False))
+
+
+def get_effective_additional_registration_forms(
+    policy: SiteSignupPolicy | None,
+) -> list[str]:
+    if policy is not None:
+        return list(policy.additional_registration_forms)
+    return list(getattr(settings, "ADDITIONAL_REGISTRATION_FORMS", []))
