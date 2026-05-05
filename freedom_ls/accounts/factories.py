@@ -4,7 +4,7 @@ import factory
 
 from django.contrib.sites.models import Site
 
-from freedom_ls.accounts.models import SiteSignupPolicy, User
+from freedom_ls.accounts.models import LegalConsent, SiteSignupPolicy, User
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
 
 
@@ -69,3 +69,20 @@ class SiteSignupPolicyFactory(SiteAwareFactory):
         django_get_or_create = ("site",)  # mirrors UniqueConstraint(fields=["site"])
 
     allow_signups = True
+
+
+class LegalConsentFactory(SiteAwareFactory):
+    """Factory for LegalConsent.
+
+    Site-aware: by default the consent is created under the current
+    `mock_site_context` site. Pass `user=...` explicitly; the factory
+    creates a fresh user otherwise.
+    """
+
+    class Meta:
+        model = LegalConsent
+
+    user = factory.SubFactory(UserFactory)
+    document_type = "terms"
+    document_version = "1.0"
+    git_hash = factory.Sequence(lambda n: f"hash{n:08d}")

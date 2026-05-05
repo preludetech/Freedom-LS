@@ -154,6 +154,12 @@ All required environment variables must be set in production. Never hardcode cre
 |---|---|
 | `DJANGO_ADMIN_URL` | Custom admin URL path (e.g., `my-secret-admin/`). Defaults to `admin/`. |
 
+### Legal Documents
+
+| Variable | Description |
+|---|---|
+| `LEGAL_DOCS_MANIFEST_PATH` | Absolute path to the pre-built legal-docs manifest JSON. Required in deployments where `.git` is absent. Must point to a **read-only** location in the image filesystem. If set, the file MUST exist or startup raises `ImproperlyConfigured`. See section 11. |
+
 ### Email
 
 | Variable | Description |
@@ -177,7 +183,37 @@ All required environment variables must be set in production. Never hardcode cre
 | `AWS_DEFAULT_ACL` | Default ACL for uploaded files (e.g., `private`). |
 | `AWS_S3_REGION_NAME` | AWS region for the S3 bucket. |
 
-## 11. GitHub Security Features
+## 11. Legal Documents
+
+The `accounts` app reads Terms / Privacy from the git blob at HEAD so a tampered
+working tree cannot affect what users see at signup or what is recorded as
+consent evidence. **The git-checkout mode is the more tamper-resistant of the
+two — use the manifest only when `.git` is genuinely unavailable at runtime**
+(e.g. slim Docker images that ship without a `.git` directory). In that case,
+build a manifest at image-build time:
+
+- [ ] At image build time, BEFORE the `.git` directory is dropped, run:
+  ```bash
+  uv run manage.py build_legal_docs_manifest -o /app/legal_docs.manifest.json
+  ```
+- [ ] Bake the resulting manifest into a **read-only** layer of the image
+- [ ] Set `LEGAL_DOCS_MANIFEST_PATH` to the absolute path of that file in
+      production settings, e.g.:
+      ```python
+      LEGAL_DOCS_MANIFEST_PATH = "/app/legal_docs.manifest.json"
+      ```
+      If the setting is set but the file is missing, startup raises
+      `ImproperlyConfigured` — fail-loud is intentional.
+- [ ] Never regenerate the manifest at runtime — once built, the manifest IS
+      the source of truth in this mode, and an attacker with write access to
+      the manifest controls both the displayed content AND the recorded
+      `git_hash`
+- [ ] Rebuild the manifest as part of every build whenever a legal doc has
+      been edited and committed
+- [ ] Run `uv run manage.py check` and confirm no legal-doc system-check
+      warnings before promoting the image
+
+## 12. GitHub Security Features
 
 - [ ] Dependabot is enabled for dependency vulnerability alerts
 - [ ] Dependabot security updates are configured for automatic PRs
