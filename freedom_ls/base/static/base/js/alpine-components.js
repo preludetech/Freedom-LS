@@ -6,11 +6,23 @@
  * Load this script BEFORE the Alpine CSP script.
  */
 
-// Allow HTMX to swap content on 422 responses (validation errors)
+// Allow HTMX to swap content on 422 responses (validation errors), and
+// on any other 4xx/5xx response that contains an OOB toast fragment so
+// server-rendered messages still surface on errors.
 document.addEventListener("htmx:beforeSwap", (event) => {
-    if (event.detail.xhr.status === 422) {
+    const status = event.detail.xhr.status;
+    if (status === 422) {
         event.detail.shouldSwap = true;
         event.detail.isError = false;
+        return;
+    }
+    if (status >= 400 && status < 600) {
+        const body = event.detail.xhr.responseText || "";
+        if (body.includes('hx-swap-oob="beforeend:#toast-region-')) {
+            // Process the OOB toast fragment. Leave isError truthful so
+            // any other listeners still see the actual error status.
+            event.detail.shouldSwap = true;
+        }
     }
 });
 
@@ -78,16 +90,177 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // Toast message component (partials/messages.html)
-    Alpine.data("message", () => ({
+    // Toast component (partials/_toast.html).
+    //
+    // Per-severity timing:
+    //   success / info / debug -> 5000 ms
+    //   warning                -> 7000 ms
+    //   error                  -> persistent (no auto-dismiss)
+    //
+    // The dismiss timer pauses on hover, on keyboard focus inside the toast,
+    // and while the window has lost focus. Pause/resume preserves the
+    // remaining time rather than restarting the timer from zero.
+    //
+    // Soft cap: at most 5 visible non-error toasts. When this toast is the
+    // 6th non-error, the oldest non-error in either ARIA region is dismissed.
+    // If 5 errors are already visible and this is a non-error, this toast is
+    // dropped silently.
+    Alpine.data("toast", () => ({
         show: true,
+        _timeoutId: null,
+        _remainingMs: 0,
+        _startedAt: 0,
+        _paused: false,
+        _windowBlurHandler: null,
+        _windowFocusHandler: null,
+
         init() {
-            setTimeout(() => {
-                this.show = false;
-            }, 8000);
+            const severity = this.$el.dataset.severity || "info";
+
+            // Soft-cap eviction must run before we install timers / show.
+            if (this._enforceCap(severity)) {
+                // This toast was dropped (non-error and 5 errors are visible).
+                return;
+            }
+
+            const duration = this._durationFor(severity);
+            if (duration === null) {
+                // Errors are persistent. No timer, no window listeners.
+                return;
+            }
+            this._remainingMs = duration;
+            this._start();
+
+            this._windowBlurHandler = () => this._pause();
+            this._windowFocusHandler = () => this._resume();
+            window.addEventListener("blur", this._windowBlurHandler);
+            window.addEventListener("focus", this._windowFocusHandler);
         },
+
+        destroy() {
+            if (this._timeoutId !== null) {
+                clearTimeout(this._timeoutId);
+                this._timeoutId = null;
+            }
+            if (this._windowBlurHandler) {
+                window.removeEventListener("blur", this._windowBlurHandler);
+                this._windowBlurHandler = null;
+            }
+            if (this._windowFocusHandler) {
+                window.removeEventListener("focus", this._windowFocusHandler);
+                this._windowFocusHandler = null;
+            }
+        },
+
+        onMouseEnter() {
+            this._pause();
+        },
+        onMouseLeave() {
+            this._resume();
+        },
+        onFocusIn() {
+            this._pause();
+        },
+        onFocusOut() {
+            // Resume only if focus actually left this toast.
+            if (!this.$el.contains(document.activeElement)) {
+                this._resume();
+            }
+        },
+        onKeydown(event) {
+            if (event.key === "Escape" && this.$el.contains(document.activeElement)) {
+                this.dismiss();
+            }
+        },
+
         dismiss() {
+            if (this._timeoutId !== null) {
+                clearTimeout(this._timeoutId);
+                this._timeoutId = null;
+            }
             this.show = false;
+            // Wait for the leave transition (~150ms) then remove from the DOM
+            // so the live regions stay tidy and the cap accounting is accurate.
+            setTimeout(() => {
+                if (this.$el && this.$el.parentNode) {
+                    this.$el.remove();
+                }
+            }, 200);
+        },
+
+        _durationFor(severity) {
+            if (severity === "warning") return 7000;
+            if (severity === "error") return null;
+            return 5000;
+        },
+
+        _start() {
+            this._startedAt = Date.now();
+            this._paused = false;
+            this._timeoutId = setTimeout(() => this.dismiss(), this._remainingMs);
+        },
+
+        _pause() {
+            if (this._paused || this._timeoutId === null) return;
+            this._paused = true;
+            clearTimeout(this._timeoutId);
+            this._timeoutId = null;
+            this._remainingMs -= Date.now() - this._startedAt;
+            if (this._remainingMs < 0) this._remainingMs = 0;
+        },
+
+        _resume() {
+            if (!this._paused) return;
+            if (this._remainingMs <= 0) {
+                this.dismiss();
+                return;
+            }
+            this._start();
+        },
+
+        // Enforce the soft cap. Returns true if this toast was dropped.
+        _enforceCap(severity) {
+            const polite = document.getElementById("toast-region-polite");
+            const assertive = document.getElementById("toast-region-assertive");
+            // Visible non-error toasts (live in the polite region) and errors
+            // (live in the assertive region). $el is already in the DOM here.
+            const nonErrorEls = polite ? Array.from(polite.children) : [];
+            const errorCount = assertive ? assertive.children.length : 0;
+
+            // If 5 errors are already visible and this is a non-error, drop it.
+            if (severity !== "error" && errorCount >= 5) {
+                this.show = false;
+                if (this.$el && this.$el.parentNode) {
+                    this.$el.remove();
+                }
+                return true;
+            }
+
+            // Cap non-error toasts at 5. If this is a non-error and we are now
+            // over the cap, evict the oldest non-error from the polite region.
+            // Children are appended in DOM order; oldest is the first child.
+            // (Visual order is reversed via flex-col-reverse, but DOM order
+            // remains insertion order.)
+            if (severity !== "error") {
+                while (nonErrorEls.length > 5) {
+                    const oldest = nonErrorEls.shift();
+                    if (!oldest || oldest === this.$el) continue;
+                    this._dismissSibling(oldest);
+                }
+            }
+            return false;
+        },
+
+        _dismissSibling(el) {
+            // Try to invoke the sibling toast's dismiss() so its timer is
+            // cleared and its leave transition runs. Fall back to direct
+            // removal if Alpine isn't available on the element.
+            const data = window.Alpine && window.Alpine.$data ? window.Alpine.$data(el) : null;
+            if (data && typeof data.dismiss === "function") {
+                data.dismiss();
+                return;
+            }
+            el.remove();
         },
     }));
 

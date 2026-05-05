@@ -103,6 +103,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "freedom_ls.base.middleware.HtmxMessagesMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "freedom_ls.site_aware_models.middleware.CurrentSiteMiddleware",
     # "config.site_urlconf_middleware.SiteURLConfMiddleware",

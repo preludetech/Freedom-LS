@@ -1,58 +1,65 @@
-{% if messages %}
-    <div aria-live="assertive" class="fixed top-24 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 pointer-events-none z-50">
-        <div class="flex flex-col gap-3">
+{% load base_tags %}
+{% comment %}
+Toast messages partial.
+
+Two render modes:
+- Default (full-page load): renders the #toast-container wrapper with both
+  ARIA live regions and any queued messages routed by severity.
+- OOB mode (oob=True): renders only the toast nodes carrying
+  hx-swap-oob="beforeend:#toast-region-..." for HTMX response injection.
+
+Severity routing:
+  debug, info, success, warning -> #toast-region-polite
+  error                         -> #toast-region-assertive
+{% endcomment %}
+{% if oob %}
+    {% for message in messages %}
+        {% toast_uid as uid %}
+        {% if 'error' in message.tags %}
+            {% include "partials/_toast.html" with message=message uid=uid oob_target="beforeend:#toast-region-assertive" severity="error" severity_token="border-danger" icon_name="error" icon_class="text-danger" %}
+        {% elif 'warning' in message.tags %}
+            {% include "partials/_toast.html" with message=message uid=uid oob_target="beforeend:#toast-region-polite" severity="warning" severity_token="border-warning" icon_name="warning" icon_class="text-warning" %}
+        {% elif 'success' in message.tags %}
+            {% include "partials/_toast.html" with message=message uid=uid oob_target="beforeend:#toast-region-polite" severity="success" severity_token="border-success" icon_name="success" icon_class="text-success" %}
+        {% elif 'debug' in message.tags %}
+            {% include "partials/_toast.html" with message=message uid=uid oob_target="beforeend:#toast-region-polite" severity="debug" severity_token="border-muted" icon_name="info" icon_class="text-muted" %}
+        {% else %}
+            {% include "partials/_toast.html" with message=message uid=uid oob_target="beforeend:#toast-region-polite" severity="info" severity_token="border-primary" icon_name="info" icon_class="text-primary" %}
+        {% endif %}
+    {% endfor %}
+{% else %}
+    <div id="toast-container"
+         class="fixed inset-x-0 bottom-0 md:inset-x-auto md:right-4 md:left-auto md:bottom-4 z-50 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-0 md:pb-[max(1rem,env(safe-area-inset-bottom))] md:pr-[max(1rem,env(safe-area-inset-right))] md:max-w-sm pointer-events-none">
+        <div id="toast-region-polite"
+             role="status"
+             aria-live="polite"
+             aria-atomic="false"
+             class="flex flex-col-reverse gap-2 pointer-events-none">
             {% for message in messages %}
-                <div
-                    x-data="message"
-                    x-show="show"
-                    x-transition:enter="transition ease-out duration-300"
-                    x-transition:enter-start="opacity-0 translate-x-full"
-                    x-transition:enter-end="opacity-100 translate-x-0"
-                    x-transition:leave="transition ease-in duration-200"
-                    x-transition:leave-start="opacity-100 translate-x-0"
-                    x-transition:leave-end="opacity-0 translate-x-full"
-                    class="pointer-events-auto bg-surface rounded-lg shadow-lg border-l-4 flex items-start gap-3 p-4
-                    {% if 'debug' in message.tags %}
-                        border-muted
-                    {% elif 'info' in message.tags %}
-                        border-primary
+                {% if 'error' not in message.tags %}
+                    {% toast_uid as uid %}
+                    {% if 'warning' in message.tags %}
+                        {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="warning" severity_token="border-warning" icon_name="warning" icon_class="text-warning" %}
                     {% elif 'success' in message.tags %}
-                        border-success
-                    {% elif 'warning' in message.tags %}
-                        border-warning
-                    {% elif 'error' in message.tags %}
-                        border-danger
+                        {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="success" severity_token="border-success" icon_name="success" icon_class="text-success" %}
+                    {% elif 'debug' in message.tags %}
+                        {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="debug" severity_token="border-muted" icon_name="info" icon_class="text-muted" %}
                     {% else %}
-                        border-primary
-                    {% endif %}"
-                >
-                    <!-- Icon indicator -->
-                    <div class="shrink-0 mt-0.5">
-                        {% if 'success' in message.tags %}
-                            <c-icon name="success" class="size-5 text-success" />
-                        {% elif 'error' in message.tags %}
-                            <c-icon name="error" class="size-5 text-danger" />
-                        {% elif 'warning' in message.tags %}
-                            <c-icon name="warning" class="size-5 text-warning" />
-                        {% else %}
-                            <c-icon name="info" class="size-5 text-primary" />
-                        {% endif %}
-                    </div>
-
-                    <!-- Message text -->
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium leading-relaxed">{{ message }}</p>
-                    </div>
-
-                    <!-- Close button -->
-                    <button
-                        x-on:click="dismiss"
-                        class="shrink-0 text-muted hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary rounded"
-                        aria-label="Dismiss"
-                    >
-                        <c-icon name="close" class="size-4" />
-                    </button>
-                </div>
+                        {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="info" severity_token="border-primary" icon_name="info" icon_class="text-primary" %}
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        </div>
+        <div id="toast-region-assertive"
+             role="alert"
+             aria-live="assertive"
+             aria-atomic="false"
+             class="flex flex-col-reverse gap-2 pointer-events-none">
+            {% for message in messages %}
+                {% if 'error' in message.tags %}
+                    {% toast_uid as uid %}
+                    {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="error" severity_token="border-danger" icon_name="error" icon_class="text-danger" %}
+                {% endif %}
             {% endfor %}
         </div>
     </div>

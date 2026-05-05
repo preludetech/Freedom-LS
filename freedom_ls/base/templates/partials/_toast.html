@@ -1,0 +1,41 @@
+{% comment %}
+A single toast element. Caller passes:
+  - message: the django.contrib.messages Message instance
+  - uid: unique hex id; becomes id="toast-{{ uid }}"
+  - oob_target: e.g. "beforeend:#toast-region-polite", or None for non-OOB
+  - severity: one of "debug", "info", "success", "warning", "error"
+  - severity_token: tailwind border colour class, e.g. "border-success"
+  - icon_name: c-icon name for the severity icon
+  - icon_class: tailwind text colour class for the icon, e.g. "text-success"
+{% endcomment %}
+<div id="toast-{{ uid }}"
+     x-data="toast"
+     data-severity="{{ severity }}"
+     {% if oob_target %}hx-swap-oob="{{ oob_target }}"{% endif %}
+     aria-atomic="true"
+     x-show="show"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0 translate-y-full md:translate-x-full md:translate-y-0 motion-reduce:translate-x-0 motion-reduce:translate-y-0"
+     x-transition:enter-end="opacity-100 translate-x-0 translate-y-0"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100 translate-x-0 translate-y-0"
+     x-transition:leave-end="opacity-0 translate-y-full md:translate-x-full md:translate-y-0 motion-reduce:translate-x-0 motion-reduce:translate-y-0"
+     x-on:mouseenter="onMouseEnter"
+     x-on:mouseleave="onMouseLeave"
+     x-on:focusin="onFocusIn"
+     x-on:focusout="onFocusOut"
+     x-on:keydown.escape="onKeydown"
+     class="pointer-events-auto bg-surface rounded-lg shadow-lg border-l-4 {{ severity_token }} flex items-start gap-3 p-4 w-full md:w-96">
+    <div class="shrink-0 mt-0.5">
+        <c-icon name="{{ icon_name }}" class="size-5 {{ icon_class }}" />
+    </div>
+    <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium leading-relaxed">{{ message }}</p>
+    </div>
+    <button x-on:click="dismiss"
+            type="button"
+            class="shrink-0 p-1 -m-1 text-muted hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary rounded"
+            aria-label="Dismiss notification">
+        <c-icon name="close" class="size-4" />
+    </button>
+</div>

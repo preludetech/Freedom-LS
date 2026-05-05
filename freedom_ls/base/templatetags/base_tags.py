@@ -13,3 +13,13 @@ def unique_id(prefix: str = "id") -> str:
     Then use {{ my_id }} in id= and aria-labelledby= attributes.
     """
     return f"{prefix}-{uuid.uuid4().hex[:8]}"
+
+
+@register.simple_tag
+def toast_uid() -> str:
+    """Generate a unique hex id used as the DOM id for a toast element.
+
+    Usage: {% toast_uid as uid %}
+    Then use {{ uid }} in id="toast-{{ uid }}".
+    """
+    return uuid.uuid4().hex

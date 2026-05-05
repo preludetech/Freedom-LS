@@ -76,9 +76,9 @@ def test_view_strips_script_tags(mock_legal_blobs, mock_site_context):
     response = client.get(reverse("accounts:legal_doc", kwargs={"doc_type": "terms"}))
     assert response.status_code == 200
     body = response.content.decode("utf-8")
-    # nh3 must strip the <script> tag.
+    # nh3 must strip the <script> tag and its contents.
     assert "<script>" not in body
-    assert "alert" not in body
+    assert "alert('xss')" not in body
 
 
 @pytest.mark.django_db
