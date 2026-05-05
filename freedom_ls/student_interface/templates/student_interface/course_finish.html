@@ -42,11 +42,8 @@
 
         <!-- Navigation Buttons -->
         <div class="mt-8 flex justify-center gap-4">
-            <c-button href="{% url 'student_interface:home' %}">
-                <c-icon name="home" class="size-5 mr-2" />Return to Home
-            </c-button>
-            <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
-                <c-icon name="topic" class="size-5 mr-2" />View Course
+            <c-button href="{% url 'student_interface:home' %}" icon_left="home">
+                Return to Home
             </c-button>
         </div>
 

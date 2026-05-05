@@ -23,8 +23,7 @@
     <div class="flex items-center justify-between mt-8 pt-4 border-t border-border gap-3">
         <div>
             {% if previous_url %}
-                <c-button href="{{ previous_url }}" variant="outline">
-                    <c-icon name="previous" class="size-5" />
+                <c-button href="{{ previous_url }}" variant="outline" icon_left="previous">
                     Previous
                 </c-button>
             {% endif %}
@@ -33,28 +32,30 @@
         {% if not is_complete %}
             <form method="post">
                 {% csrf_token %}
-                <c-button type="submit" name="mark_complete" icon-left="check">
-                    {% if is_last_item %}
+                {% if is_last_item %}
+                    <c-button type="submit" name="mark_complete" icon_left="check">
                         Finish Course
-                    {% else %}
+                    </c-button>
+                {% else %}
+                    <c-button type="submit" name="mark_complete" icon_right="next">
                         Next
-                    {% endif %}
-                </c-button>
+                    </c-button>
+                {% endif %}
             </form>
         {% elif next_url %}
-            <c-button href="{{ next_url }}" icon-left="next">
+            <c-button href="{{ next_url }}" icon_right="next">
                 Next
             </c-button>
         {% elif is_last_item %}
             {% if is_course_complete %}
                 <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}"
                           variant="outline"
-                          icon-left="home">
+                          icon_left="home">
                     Home
                 </c-button>
             {% else %}
                 <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}"
-                          icon-left="check">
+                          icon_left="check">
                     Finish Course
                 </c-button>
             {% endif %}
