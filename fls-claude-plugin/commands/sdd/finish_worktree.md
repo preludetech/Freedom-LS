@@ -54,3 +54,7 @@ Invoke the `update-claude-project-settings` skill to promote any useful permissi
 # Step 7: Commit
 
 Make a commit with the latest changes.
+
+# Step 8: Git Status
+
+Run `git status` and confirm the working tree is clean — there must be nothing left to commit. If there are uncommitted changes, stop and resolve them before continuing.
