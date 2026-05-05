@@ -91,3 +91,4 @@ Decide which of these (if any) ride along with the v1 extraction.
 
 Add:
 The icons app should have its own clawed code plugin within its repo.
+Create a skill/command for extracting django apps once we have the mechanism defined
