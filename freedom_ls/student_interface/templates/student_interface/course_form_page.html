@@ -97,93 +97,96 @@
 {% endpartialdef form-content %}
 
 {% block content %}
+    <c-page>
+        <div class="space-y-8">
 
-    <div class="mb-8">
-        <h1 class="mb-2">
-            {{ form.title }}
-        </h1>
-        {% if form.subtitle %}
-            <p class="text-muted">
-                {{ form.subtitle }}
-            </p>
-        {% endif %}
-
-    </div>
-
-    <!-- Page Progress Indicator -->
-    {% if total_pages > 1 %}
-        {% partialdef page_progress_indicator inline %}
-            <div class="surface space-y-3">
-                <div class="text-sm font-medium text-muted">
-                    <p>
-                        Page {{ current_page_num }} of {{ total_pages }}:
-                        {{ form_page.title }}
+            <div>
+                <h1 class="mb-2">
+                    {{ form.title }}
+                </h1>
+                {% if form.subtitle %}
+                    <p class="text-muted">
+                        {{ form.subtitle }}
                     </p>
-                    {% if form_page.subtitle %}
-                        <p class="text-muted/50">
-                            {{ form_page.subtitle }}
-                        </p>
-                    {% endif %}
-                </div>
-
-                <!-- Page Navigation -->
-                <div class="flex gap-2 flex-wrap">
-                    {% for page in page_links %}
-                        <c-form-page-link number="{{ page.number }}" is_current="{{ page.is_current }}" is_accessible="{{ page.is_accessible }}" url="{{ page.url }}" title="{{ page.title }}" />
-                    {% endfor %}
-                </div>
-            </div>
-
-        {% endpartialdef %}
-
-    {% endif %}
-
-    {% partialdef form_and_navigation inline %}
-
-        <form method="post">
-
-            {% csrf_token %}
-
-            <!-- Form content -->
-            <div class="my-8 space-y-8">
-                {% for child in form_page.children %}
-                    {% if child.content_type == 'FORM_QUESTION' %}
-                        {% with question=child %}
-                            {% partial form-question %}
-                        {% endwith %}
-                    {% elif child.content_type == 'FORM_CONTENT' %}
-                        {% partial form-content %}
-                    {% endif %}
-                {% endfor %}
-            </div>
-
-            <!-- Navigation -->
-
-            {# flex-col-reverse: on mobile, Next/Finish appears above Back as the primary action #}
-            <div class="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-6 border-t border-border">
-                {% if previous_page_url %}
-                    <div class="w-full sm:w-auto">
-                        <c-button href="{{ previous_page_url }}" class="w-full sm:w-auto">
-                            Back
-                        </c-button>
-                    </div>
                 {% endif %}
 
-                <div class="w-full sm:w-auto sm:ml-auto">
-                    {% if has_next_page %}
-                        <c-button type="submit" class="w-full sm:w-auto">
-                            Next
-                        </c-button>
-                    {% else %}
-                        {# Last page - show Submit button #}
-                        <c-button type="submit" class="w-full sm:w-auto">
-                            Finish
-                        </c-button>
-                    {% endif %}
-                </div>
             </div>
 
-        </form>
-    {% endpartialdef %}
+            <!-- Page Progress Indicator -->
+            {% if total_pages > 1 %}
+                {% partialdef page_progress_indicator inline %}
+                    <div class="surface space-y-3">
+                        <div class="text-sm font-medium text-muted">
+                            <p>
+                                Page {{ current_page_num }} of {{ total_pages }}:
+                                {{ form_page.title }}
+                            </p>
+                            {% if form_page.subtitle %}
+                                <p class="text-muted/50">
+                                    {{ form_page.subtitle }}
+                                </p>
+                            {% endif %}
+                        </div>
 
+                        <!-- Page Navigation -->
+                        <div class="flex gap-2 flex-wrap">
+                            {% for page in page_links %}
+                                <c-form-page-link number="{{ page.number }}" is_current="{{ page.is_current }}" is_accessible="{{ page.is_accessible }}" url="{{ page.url }}" title="{{ page.title }}" />
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                {% endpartialdef %}
+
+            {% endif %}
+
+            {% partialdef form_and_navigation inline %}
+
+                <form method="post">
+
+                    {% csrf_token %}
+
+                    <!-- Form content -->
+                    <div class="space-y-8">
+                        {% for child in form_page.children %}
+                            {% if child.content_type == 'FORM_QUESTION' %}
+                                {% with question=child %}
+                                    {% partial form-question %}
+                                {% endwith %}
+                            {% elif child.content_type == 'FORM_CONTENT' %}
+                                {% partial form-content %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- Navigation -->
+
+                    {# flex-col-reverse: on mobile, Next/Finish appears above Back as the primary action #}
+                    <div class="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-6 mt-8 border-t border-border">
+                        {% if previous_page_url %}
+                            <div class="w-full sm:w-auto">
+                                <c-button href="{{ previous_page_url }}" class="w-full sm:w-auto">
+                                    Back
+                                </c-button>
+                            </div>
+                        {% endif %}
+
+                        <div class="w-full sm:w-auto sm:ml-auto">
+                            {% if has_next_page %}
+                                <c-button type="submit" class="w-full sm:w-auto">
+                                    Next
+                                </c-button>
+                            {% else %}
+                                {# Last page - show Submit button #}
+                                <c-button type="submit" class="w-full sm:w-auto">
+                                    Finish
+                                </c-button>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </form>
+            {% endpartialdef %}
+        </div>
+    </c-page>
 {% endblock content %}

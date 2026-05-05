@@ -2,7 +2,12 @@
 
 {% block body %}
 
+    {# This shell owns its own outer horizontal padding (the sole exception to the #}
+    {# "c-page owns horizontal padding" rule). c-page sits inside the right-hand #}
+    {# content column rather than wrapping the whole shell, so the header bar #}
+    {# and overlay backdrop need their own outer px-* to avoid pushing to the screen edge. #}
     <div x-data="sidebarComponent"
+         class="px-4 sm:px-6 lg:px-8"
          data-storage-key="{% block sidebar_storage_key %}sidebar{% endblock sidebar_storage_key %}"
          data-sidebar-heading="{% block sidebar_heading %}{% endblock sidebar_heading %}">
 
@@ -61,8 +66,11 @@
              aria-hidden="true">
         </div>
 
-        <!-- Sidebar + content flex container -->
-        <div class="flex relative {% block sidebar_class %}{% endblock sidebar_class %}">
+        {# Sidebar + content grid container. lg:gap-12 is the single source of #}
+        {# truth for sidebar/content distance. minmax(0, 1fr) keeps wide content #}
+        {# from blowing out the grid. gap-8 covers the (currently unused) stacked #}
+        {# breakpoint; on mobile the sidebar is overlay-only so the gap doesn't fire. #}
+        <div class="grid grid-cols-1 gap-8 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-12 relative {% block sidebar_class %}{% endblock sidebar_class %}">
 
             <!-- Sidebar column -->
             <div x-bind:class="sidebarColumnClass">

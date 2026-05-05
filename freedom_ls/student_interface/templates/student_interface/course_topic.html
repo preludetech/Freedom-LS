@@ -1,65 +1,68 @@
 {% extends "student_interface/_course_base.html" %}
 
 {% block content %}
+    <c-page>
+        <div class="space-y-8">
 
-    <div class="space-y-8">
+            <div class="space-y-8">
 
-        <div>
-            <h1>
-                {{ topic.title }}
-            </h1>
-            {% if topic.subtitle %}
-                <p>
-                    {{ topic.subtitle }}
-                </p>
-            {% endif %}
-        </div>
+                <div>
+                    <h1>
+                        {{ topic.title }}
+                    </h1>
+                    {% if topic.subtitle %}
+                        <p>
+                            {{ topic.subtitle }}
+                        </p>
+                    {% endif %}
+                </div>
 
-        <c-markdown-container>
-            {{ topic.rendered_content }}
-        </c-markdown-container>
-    </div>
+                <c-markdown-container>
+                    {{ topic.rendered_content }}
+                </c-markdown-container>
+            </div>
 
-    <div class="flex items-center justify-between mt-8 pt-4 border-t border-border gap-3">
-        <div>
-            {% if previous_url %}
-                <c-button href="{{ previous_url }}" variant="outline" icon_left="previous">
-                    Previous
-                </c-button>
-            {% endif %}
-        </div>
+            <div class="flex items-center justify-between pt-4 border-t border-border gap-3">
+                <div>
+                    {% if previous_url %}
+                        <c-button href="{{ previous_url }}" variant="outline" icon_left="previous">
+                            Previous
+                        </c-button>
+                    {% endif %}
+                </div>
 
-        {% if not is_complete %}
-            <form method="post">
-                {% csrf_token %}
-                {% if is_last_item %}
-                    <c-button type="submit" name="mark_complete" icon_left="check">
-                        Finish Course
-                    </c-button>
-                {% else %}
-                    <c-button type="submit" name="mark_complete" icon_right="next">
+                {% if not is_complete %}
+                    <form method="post">
+                        {% csrf_token %}
+                        {% if is_last_item %}
+                            <c-button type="submit" name="mark_complete" icon_left="check">
+                                Finish Course
+                            </c-button>
+                        {% else %}
+                            <c-button type="submit" name="mark_complete" icon_right="next">
+                                Next
+                            </c-button>
+                        {% endif %}
+                    </form>
+                {% elif next_url %}
+                    <c-button href="{{ next_url }}" icon_right="next">
                         Next
                     </c-button>
+                {% elif is_last_item %}
+                    {% if is_course_complete %}
+                        <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}"
+                                  variant="outline"
+                                  icon_left="home">
+                            Home
+                        </c-button>
+                    {% else %}
+                        <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}"
+                                  icon_left="check">
+                            Finish Course
+                        </c-button>
+                    {% endif %}
                 {% endif %}
-            </form>
-        {% elif next_url %}
-            <c-button href="{{ next_url }}" icon_right="next">
-                Next
-            </c-button>
-        {% elif is_last_item %}
-            {% if is_course_complete %}
-                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}"
-                          variant="outline"
-                          icon_left="home">
-                    Home
-                </c-button>
-            {% else %}
-                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}"
-                          icon_left="check">
-                    Finish Course
-                </c-button>
-            {% endif %}
-        {% endif %}
-    </div>
-
+            </div>
+        </div>
+    </c-page>
 {% endblock %}

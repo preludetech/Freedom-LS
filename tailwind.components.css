@@ -55,6 +55,12 @@
         @apply text-sm sm:text-base lg:text-xl font-bold text-foreground
     }
 
+    /* Anchor-link offset: headings with an id get a comfortable scroll buffer
+       so anchor navigation lands them with breathing room above. */
+    h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
+        scroll-margin-top: 6rem;
+    }
+
     p {
         @apply text-foreground
     }

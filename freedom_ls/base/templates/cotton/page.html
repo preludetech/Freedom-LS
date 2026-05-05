@@ -1,0 +1,14 @@
+{# Page wrapper. Owns horizontal padding, max-width, top/bottom padding for the content well. #}
+{# Variants: width="wide" (default, max-w-7xl) | width="narrow" (max-w-4xl) #}
+{# Inter-section rhythm is the responsibility of content inside the slot — use a single space-y-* on the parent. #}
+<c-vars width="wide" />
+
+{% if width == "narrow" %}
+    <div class="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12 {{ class }}">
+        {{ slot }}
+    </div>
+{% else %}
+    <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12 {{ class }}">
+        {{ slot }}
+    </div>
+{% endif %}

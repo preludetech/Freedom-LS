@@ -5,37 +5,39 @@
 {% endblock title %}
 
 {% block content %}
+    <c-page>
+        <div class="space-y-8 lg:space-y-12">
+            <div class="text-center sm:text-center">
+                {% if user.is_authenticated %}
 
-    <div class="text-center sm:text-center">
-        {% if user.is_authenticated %}
+                    {% block user_authenticated %}
 
-            {% block user_authenticated %}
+                        <h1 class="px-4 max-w-full">
+                            <span class="block sm:inline">Welcome back,</span>
+                            <span class="block sm:inline break-all overflow-hidden">{{ user.first_name|default:user.email }}</span>
+                        </h1>
 
-                <h1 class="mb-6 sm:mb-8 px-4 max-w-full">
-                    <span class="block sm:inline">Welcome back,</span>
-                    <span class="block sm:inline break-all overflow-hidden">{{ user.first_name|default:user.email }}</span>
-                </h1>
+                    {% endblock user_authenticated %}
 
-            {% endblock user_authenticated %}
+                {% else %}
+                    <h1>
+                        Welcome
+                    </h1>
 
-        {% else %}
-            <h1 class="mb-6 sm:mb-8">
-                Welcome
-            </h1>
+                    {% include "partials/login_prompt.html" %}
 
-            {% include "partials/login_prompt.html" %}
-
-        {% endif %}
-    </div>
-
-    {% block all_courses %}
-        <div class="mt-8 sm:mt-12">
-            <div hx-get="{% url 'student_interface:partial_list_courses' %}"
-                 hx-trigger="load"
-                 hx-indicator="#course-loading">
+                {% endif %}
             </div>
-            <c-loading-indicator id="course-loading" message="Loading courses..." />
-        </div>
-    {% endblock all_courses %}
 
+            {% block all_courses %}
+                <div>
+                    <div hx-get="{% url 'student_interface:partial_list_courses' %}"
+                         hx-trigger="load"
+                         hx-indicator="#course-loading">
+                    </div>
+                    <c-loading-indicator id="course-loading" message="Loading courses..." />
+                </div>
+            {% endblock all_courses %}
+        </div>
+    </c-page>
 {% endblock content %}
