@@ -24,7 +24,7 @@ This document covers the public interface only. Internals (middleware wiring, lo
 - Legal-doc content is read from the **git blob at HEAD**, never the working tree. Editing a file under `legal_docs/` is not enough — the change must be committed before any environment (including the local dev server) will serve it. See "Editing a document" below.
 - Every legal-doc file MUST have YAML frontmatter with `version`, `title`, `type`, `effective_date`. Bump `version` on every meaningful edit — business queries key on it.
 - `LegalConsent` is append-only and admin-read-only. Never write a code path that updates an existing row, and never register an admin "give consent" action.
-- A post-verification form must subclass `forms.Form` and implement three classmethods: `applies_to(user)`, `is_complete(user)`, `save(user)`. It MUST NOT define a field named `user`, `user_id`, or `email` — those names are forbidden and loading the form list will raise `ImproperlyConfigured`.
+- A post-verification form must subclass `forms.Form` (or the convenience base `RegistrationForm`, which inherits from `forms.Form` and provides a default `applies_to` returning `True`). It must implement `is_complete(user)` and `save(user)`, plus `applies_to(user)` if the default isn't right. The protocol still requires all three methods to exist on the class — the base class just gives you the most common default for `applies_to` for free. It MUST NOT define a field named `user`, `user_id`, or `email` — those names are forbidden and loading the form list will raise `ImproperlyConfigured`.
 - `applies_to` / `is_complete` MUST return strictly `True` or `False` — not `None`, not a truthy/falsy other value.
 
 ## Per-Site Configuration: `SiteSignupPolicy`
@@ -58,9 +58,10 @@ One row per `Site` controls signup behaviour for that site. If no row exists for
 | `ADDITIONAL_REGISTRATION_FORMS` | Global fallback for `SiteSignupPolicy.additional_registration_forms`. Default `[]`. |
 | `ALLOW_SIGN_UPS` | Global fallback for `SiteSignupPolicy.allow_signups`. |
 | `TRUSTED_PROXY_IP_HEADER` | e.g. `"HTTP_X_FORWARDED_FOR"`. `None` (default) → fall back to `REMOTE_ADDR`. Read by `get_client_ip` when recording consent. Set this if your app sits behind a trusted proxy or load balancer. |
-| `LEGAL_DOCS_MANIFEST_PATH` | Production deployments without `.git` at runtime — points at the JSON manifest produced by `build_legal_docs_manifest`. If set, the file MUST exist or startup raises `ImproperlyConfigured`. |
 
 The signup form itself is wired via `ACCOUNT_FORMS` / `ACCOUNT_SIGNUP_FIELDS` in `settings_base.py`. You should not need to touch these.
+
+For production deployment of legal documents (manifest builds, `LEGAL_DOCS_MANIFEST_PATH`, etc.), see `docs/deployment-security-checklist.md`.
 
 ## Legal Documents
 
@@ -109,10 +110,6 @@ Workflow when changing a Terms/Privacy doc:
 2. **Bump `version`** in the YAML frontmatter (and update `effective_date` if appropriate). This is what business queries key on.
 3. **Commit** — e.g. `uv run git add legal_docs/_default/terms.md && uv run git commit -m "..."`. Until this step, `runserver` keeps serving the **previously committed** version. Uncommitted edits, staged-but-not-committed changes, and a dirty working tree all behave the same way: `HEAD` is the source of truth.
 4. Reload the page on `runserver`. The new version is now what users see and what `LegalConsent.git_hash` records.
-5. For deployments using a manifest: rebuild the manifest as part of the build:
-   ```bash
-   uv run manage.py build_legal_docs_manifest -o /app/legal_docs.manifest.json
-   ```
 
 ### Why "git blob at HEAD"?
 
@@ -120,10 +117,11 @@ The recorded `git_hash` on `LegalConsent` is the blob SHA of the document as the
 
 ## Consent Tracking: `LegalConsent`
 
-One row is written per `(user, document_type, document_version, git_hash)` consent event.
+One row is written per `(user, document_type, document_version, git_hash)` consent event. `LegalConsent` is a `SiteAwareModel` — see `fls:multi-tenant` for what that implies for queries.
 
 | Field              | Notes |
 |--------------------|-------|
+| `site`             | FK to `Site`, set automatically from the user's site at create time. The default manager is site-scoped. |
 | `user`             | FK to `accounts.User` |
 | `document_type`    | `"terms"` or `"privacy"` |
 | `document_version` | From frontmatter at acceptance time |
@@ -140,8 +138,10 @@ One row is written per `(user, document_type, document_version, git_hash)` conse
 
 ### Querying
 
+`LegalConsent.objects` is the site-scoped default manager — queries return only consents for the current site. To audit consents across sites, follow the cross-site escape hatch documented in `fls:multi-tenant` rather than reaching into the manager directly.
+
 ```python
-# All users who accepted a specific version of the terms
+# All users on the current site who accepted a specific version of the terms
 LegalConsent.objects.filter(
     document_type="terms",
     document_version="1.2",
@@ -175,7 +175,7 @@ class RegistrationFormProtocol(Protocol):
     def save(self, user: AbstractBaseUser) -> None: ...
 ```
 
-- `applies_to` — return `False` for users this form should never block (staff, users without the relevant profile, etc.).
+- `applies_to` — return `False` for users this form should never block (staff, users without the relevant profile, etc.). If you inherit from `RegistrationForm`, the default returns `True` (form applies to everyone the middleware would otherwise gate); only override when you need to opt users out.
 - `is_complete` — return `True` if the data is already on file. The form will not be rendered for users where this is true.
 - `save(user)` — persist cleaned data to `user`. The completion view always passes `request.user` in; **the form must not look the user up itself.**
 
@@ -215,25 +215,6 @@ Then add `"downstream_project.profiles.forms.PhoneNumberForm"` to the relevant `
 - Bugs inside your `applies_to` / `is_complete` propagate. **Don't** wrap them in `try: ... except Exception: pass` — silent skip = bypass.
 - `applies_to` / `is_complete` must return `True` or `False`. Returning `None` (or any non-bool) raises `TypeError` at gate-check time. The strict check exists because `None` would otherwise be falsy and treated as "does not apply", silently bypassing a gate that should have applied.
 - Superusers are always exempt from registration completion checks.
-
-## Production Deployment
-
-For deployments without a `.git` directory at runtime (e.g. slim Docker images):
-
-```bash
-# In the build step, BEFORE the .git directory is dropped:
-uv run manage.py build_legal_docs_manifest -o /app/legal_docs.manifest.json
-```
-
-In production settings:
-
-```python
-LEGAL_DOCS_MANIFEST_PATH = "/app/legal_docs.manifest.json"
-```
-
-The manifest file MUST live on the read-only image filesystem. Once built, it IS the source of truth — an attacker with write access to the manifest controls both the displayed content AND the recorded `git_hash`. The git-checkout mode is more tamper-resistant; use the manifest only when `.git` is genuinely unavailable at runtime.
-
-Also see `docs/deployment-security-checklist.md`.
 
 ## Testing Patterns
 
