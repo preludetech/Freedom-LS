@@ -16,6 +16,7 @@
       "Bash(tail:*)",
       "Bash(git add:*)",
       "Bash(git fetch:*)",
+      "Bash(git push *)",
       "Bash(git stash:*)",
       "Bash(gh pr:*)",
       "Bash(ls:*)",
