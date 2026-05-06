@@ -50,10 +50,15 @@ def configure_theme(
     templates: list[dict],
     staticfiles_dirs: list,
 ) -> Path:
-    """Resolve the active theme and prepend its dirs to Django's settings.
+    """Resolve the active theme and prepend theme dirs to Django's settings.
 
-    - Prepends ``<theme>/templates/`` to ``templates[0]["DIRS"]`` if it exists.
-    - Prepends ``<theme>/static/`` to ``staticfiles_dirs`` if it exists.
+    - Prepends the active ``<theme>/templates/`` to ``templates[0]["DIRS"]``
+      if it exists.
+    - Prepends *every* discovered ``<theme>/static/`` to ``staticfiles_dirs``,
+      with the active theme first. Inactive themes' static dirs follow so that
+      ``/static/themes/<slug>/*`` resolves regardless of which theme is
+      active. Path namespacing under ``static/themes/<slug>/`` prevents
+      collisions between themes.
 
     A Tier-1-only theme (token bundle, no templates) is valid; the missing
     sub-directories are silently skipped.
@@ -63,10 +68,28 @@ def configure_theme(
     """
     resolved = resolve_theme_dir(theme_slug, themes_dirs)
     templates_dir = resolved / "templates"
-    static_dir = resolved / "static"
     if templates_dir.is_dir():
         templates[0].setdefault("DIRS", [])
         templates[0]["DIRS"].insert(0, str(templates_dir))
-    if static_dir.is_dir():
+
+    inactive_static_dirs: list[Path] = []
+    seen_slugs: set[str] = {theme_slug}
+    for parent in themes_dirs:
+        parent_path = Path(parent)
+        if not parent_path.is_dir():
+            continue
+        for theme_dir in sorted(parent_path.iterdir()):
+            if not theme_dir.is_dir() or theme_dir.name in seen_slugs:
+                continue
+            static_dir = theme_dir / "static"
+            if not static_dir.is_dir():
+                continue
+            seen_slugs.add(theme_dir.name)
+            inactive_static_dirs.append(static_dir)
+
+    for static_dir in reversed(inactive_static_dirs):
         staticfiles_dirs.insert(0, static_dir)
+    active_static_dir = resolved / "static"
+    if active_static_dir.is_dir():
+        staticfiles_dirs.insert(0, active_static_dir)
     return resolved

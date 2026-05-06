@@ -14,19 +14,19 @@
     }
 
     h1 {
-        @apply text-xl sm:text-2xl lg:text-4xl font-bold text-on-surface
+        @apply text-xl sm:text-2xl lg:text-4xl font-bold font-display text-on-surface
     }
 
     h2 {
-        @apply text-lg sm:text-xl lg:text-3xl font-bold text-on-surface
+        @apply text-lg sm:text-xl lg:text-3xl font-bold font-display text-on-surface
     }
 
     h3 {
-        @apply text-base sm:text-lg lg:text-2xl font-bold text-on-surface
+        @apply text-base sm:text-lg lg:text-2xl font-bold font-display text-on-surface
     }
 
     h4 {
-        @apply text-sm sm:text-base lg:text-xl font-bold text-on-surface
+        @apply text-sm sm:text-base lg:text-xl font-bold font-display text-on-surface
     }
 
     /* Anchor-link offset: headings with an id get a comfortable scroll buffer

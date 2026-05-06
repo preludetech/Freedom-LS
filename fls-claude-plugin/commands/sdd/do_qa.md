@@ -140,7 +140,7 @@ Create a new file called qa_report.md (in the same directory as the test plan fi
 
 For each error:
 - give it a title
-- include relevant screenshots using markdown syntax
+- include relevant screenshots using markdown image syntax: `![](screenshots/<filename>.png)`
 - mention the test that was failed
 - say what the expected behavior was, and what the actual behavior was
 
