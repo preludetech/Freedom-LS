@@ -93,9 +93,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    spec_dir = Path(__file__).parent / "spec_dd"
+    spec_dir = Path.cwd() / "spec_dd"
     if not spec_dir.exists():
-        print("spec_dd/ directory not found")
+        print(f"spec_dd/ directory not found in {Path.cwd()}")
         sys.exit(1)
 
     large_files = sorted(
