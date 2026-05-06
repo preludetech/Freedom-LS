@@ -51,11 +51,11 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: Close button dismiss leaves toast in DOM (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: Stack order reversed from spec (newest at top instead of bottom) (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: HTMX OOB swap strips toast wrapper element — Test 14 success delivery (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: HTMX OOB swap strips toast wrapper element — Test 15 4xx/5xx error delivery (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: signup + verify-email flow emits no Django messages — Test 16 polite-region info/success toast missing on /accounts/confirm-email/ and / (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Close button dismiss leaves toast in DOM (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Stack order reversed from spec (newest at top instead of bottom) (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: HTMX OOB swap strips toast wrapper element — Test 14 success delivery (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: HTMX OOB swap strips toast wrapper element — Test 15 4xx/5xx error delivery (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: signup + verify-email flow emits no Django messages — Test 16 polite-region info/success toast missing on /accounts/confirm-email/ and / (TDD — failing test first, then fix)
 - [ ] (user + cmd) Fix QA bug: mid-stack dismiss snaps siblings instead of animating — Test 20 expects transform animation on surviving toasts (TDD — failing test first, then fix)
 
 ## 10. Pull request

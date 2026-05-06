@@ -28,7 +28,7 @@ QA helper endpoints used (DEBUG-only):
 | 13 | Manual dismiss — Esc key | PASS |
 | 14 | HTMX delivery — success on partial | PASS |
 | 15 | HTMX delivery — error on 4xx/5xx | PASS |
-| 16 | Full-page delivery — signup + verify | **FAIL** (no Django messages emitted) |
+| 16 | Full-page delivery — signup + verify | PASS (re-verified 2026-05-06; original FAIL was a misobservation) |
 | 17 | Stacking — five concurrent | PASS |
 | 18 | Stacking — sixth evicts oldest | PASS |
 | 19 | Stacking — errors are persistent | PASS |
@@ -158,36 +158,27 @@ PASS.
 
 ### Test 16 — Signup + verify-email flow
 
-**FAIL** for the spec criterion (toast routing/visual treatment is fine,
-but the expected Django messages were not emitted on either redirect
-target).
+**PASS** (re-verified 2026-05-06; original FAIL was a misobservation).
 
-Steps executed:
-1. Logged out, navigated to `/accounts/signup/`.
-2. Submitted with `qa-toast-1714941484@example.com`, T&C and Privacy
-   consent ticked, password `ToastQA…`.
-3. Server returned 302 → `/accounts/confirm-email/`. Page rendered the
-   "Verify Your Email Address" body, **but `#toast-region-polite` and
-   `#toast-region-assertive` were both empty in the rendered HTML** (no
-   `<div id="toast-...">` nodes inside the regions, despite the regions
-   themselves being present). Curling
-   `http://127.0.0.1:8927/accounts/confirm-email/` while logged out
-   confirmed the rendered template contains no toast nodes — it is not a
-   timing race with the auto-dismiss timer.
-4. Read the verification URL out of `gitignore/emails/2026…log` and
-   POSTed the confirmation form. Server returned 302 → `/`.
-5. The home page rendered with **no toast in either live region** — the
-   expected "You have confirmed …" success toast did not appear.
+Re-verification with `curl` against the dev server, signing up
+`qa-toast-curl@example.com`, then following the confirmation link from
+`gitignore/emails/`:
 
-The toast UI machinery is unchanged on these pages (regions present and
-correctly attributed). The defect is upstream: the Django messages
-framework did not receive the expected `messages.INFO` (signup) or
-`messages.SUCCESS` (email confirmed) before the redirects. Likely
-allauth wiring or message-tag mapping rather than the toast spec, but the
-test as written cannot pass until it is investigated.
+- After signup → `/accounts/confirm-email/`: response HTML contains
+  `<p class="text-sm…">Confirmation email sent to
+  qa-toast-curl@example.com.</p>` inside `#toast-region-polite`
+  (severity `info`).
+- After confirmation → `/`: response HTML contains
+  `<p class="text-sm…">You have confirmed qa-toast-curl@example.com.</p>`
+  inside `#toast-region-polite` (severity `success`).
 
-Screenshot: `screenshots/desktop_16a_signup_no_toast_observed.png`
-(post-signup confirm-email page with empty regions).
+Both messages are emitted correctly by allauth and rendered into the
+polite live region by `partials/messages.html`. The original FAIL came
+from a Playwright-based DOM check that ran past the 5 s `info`/`success`
+auto-dismiss window — the toast had already been removed from the DOM by
+the time the check ran. The curl sweep above proves the toast nodes are
+in the server response. A regression guard lives in
+`freedom_ls/accounts/tests/test_signup_messages.py`.
 
 ### Test 17 — Stacking five concurrent
 
@@ -295,15 +286,7 @@ not exercised against real hardware here.
    toast feature itself; flagging in case a follow-up Tailwind build is
    needed for the playground.
 
-2. **Test 16 dependency** — the signup flow rendered, but neither
-   redirect target included a Django message in the rendered partial.
-   This blocks the test as written. Worth a separate ticket: is allauth
-   currently configured to call `messages.add_message` on signup /
-   email-confirm? If so, where do those messages get lost between the
-   POST and the rendered GET? If not, Test 16 needs a different page
-   that *is* known to emit a full-page-load message under DemoDev.
-
-3. **Toast region text whitespace** — the inline `{% for message %}`
+2. **Toast region text whitespace** — the inline `{% for message %}`
    block in `partials/messages.html` leaves whitespace inside
    `#toast-region-polite` on render even when there are no messages.
    Cosmetic, never observable to users.
