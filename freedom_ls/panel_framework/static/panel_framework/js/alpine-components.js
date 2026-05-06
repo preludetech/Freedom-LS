@@ -118,7 +118,7 @@ document.addEventListener("alpine:init", () => {
                 btn.classList.toggle("text-primary", isActive);
                 btn.classList.toggle("font-semibold", isActive);
                 btn.classList.toggle("text-muted", !isActive);
-                btn.classList.toggle("hover:text-foreground", !isActive);
+                btn.classList.toggle("hover:text-on-surface", !isActive);
                 btn.setAttribute("aria-selected", isActive.toString());
             });
         },

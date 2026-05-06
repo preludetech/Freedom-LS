@@ -22,11 +22,11 @@
         </a>
     {% elif child.status == "FAILED" %}
         <a href="{{ child.url }}"
-           class="text-danger hover:text-danger no-underline">
+           class="text-error hover:text-error no-underline">
             <c-icon name="retry" class="size-4" />
         </a>
     {% else %}
-        <span class="text-sm text-danger">Unknown status "{{ child.status }}"</span>
+        <span class="text-sm text-error">Unknown status "{{ child.status }}"</span>
     {% endif %}
 {% endpartialdef %}
 
@@ -34,7 +34,7 @@
     {% if child.deadlines %}
         {% for dl in child.deadlines %}
             {% if dl.is_hard_deadline %}
-                <span class="text-xs text-danger whitespace-nowrap" title="{{ dl.source }}">
+                <span class="text-xs text-error whitespace-nowrap" title="{{ dl.source }}">
                     <c-icon name="deadline" class="size-3" />
                     {{ dl.deadline|date:"d M" }}
                 </span>

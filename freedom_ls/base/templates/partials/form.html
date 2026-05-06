@@ -9,7 +9,7 @@
                 </p>
             {% endif %}
             {% if field.errors %}
-                <div class="text-sm text-danger mt-1">
+                <div class="text-sm text-error mt-1">
                     {{ field.errors }}
                 </div>
             {% endif %}
@@ -17,7 +17,7 @@
     {% endfor %}
 
     {% if form.non_field_errors %}
-        <div class="bg-danger/10 border border-danger/20 rounded-md p-3 text-sm text-danger-bold">
+        <div class="bg-error/10 border border-error/20 rounded-md p-3 text-sm text-error">
             {{ form.non_field_errors }}
         </div>
     {% endif %}

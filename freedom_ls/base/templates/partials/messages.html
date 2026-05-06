@@ -24,7 +24,7 @@ Severity routing:
         {% toast_uid as uid %}
         {% if 'error' in message.tags %}
             <div hx-swap-oob="beforeend:#toast-region-assertive">
-                {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="error" severity_token="border-danger" icon_name="error" icon_class="text-danger" %}
+                {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="error" severity_token="border-error" icon_name="error" icon_class="text-error" %}
             </div>
         {% elif 'warning' in message.tags %}
             <div hx-swap-oob="beforeend:#toast-region-polite">
@@ -73,7 +73,7 @@ Severity routing:
             {% for message in messages %}
                 {% if 'error' in message.tags %}
                     {% toast_uid as uid %}
-                    {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="error" severity_token="border-danger" icon_name="error" icon_class="text-danger" %}
+                    {% include "partials/_toast.html" with message=message uid=uid oob_target=None severity="error" severity_token="border-error" icon_name="error" icon_class="text-error" %}
                 {% endif %}
             {% endfor %}
         </div>

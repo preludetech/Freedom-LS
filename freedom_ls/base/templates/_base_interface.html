@@ -21,7 +21,7 @@
                       x-text="$root.dataset.sidebarHeading">
                 </span>
                 <button x-on:click="closeSidebar"
-                        class="p-1 rounded-md text-muted hover:text-foreground hover:bg-surface-2 transition-colors cursor-pointer"
+                        class="p-1 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
                         aria-label="Close sidebar">
                     <c-icon name="menu_close" class="size-5" />
                 </button>
@@ -30,7 +30,7 @@
             <!-- Toggle button: visible when sidebar is closed -->
             <div x-bind:class="headerBarToggleClass">
                 <button x-on:click="toggle"
-                        class="p-2 rounded-md text-muted hover:text-foreground hover:bg-surface-2 transition-colors cursor-pointer"
+                        class="p-2 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
                         aria-label="Open sidebar"
                         x-bind:aria-expanded="sidebarOpen">
                     <c-icon name="menu_open" class="size-5" />
@@ -95,7 +95,7 @@
                               x-text="$root.dataset.sidebarHeading">
                         </span>
                         <button x-on:click="closeSidebar"
-                                class="p-1 rounded-md text-muted hover:text-foreground hover:bg-surface-2 transition-colors cursor-pointer"
+                                class="p-1 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
                                 aria-label="Close sidebar">
                             <c-icon name="menu_close" class="size-5" />
                         </button>

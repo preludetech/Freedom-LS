@@ -460,6 +460,6 @@ def test_item_deadlines_shown_in_column_headers(mock_site_context, site_aware_re
     assert django_date(hard_deadline, "M d") in content
     assert django_date(soft_deadline, "M d") in content
 
-    # Hard deadline should have danger styling, soft should have warning styling
-    assert "text-danger" in content
+    # Hard deadline should have error styling, soft should have warning styling
+    assert "text-error" in content
     assert "text-warning" in content

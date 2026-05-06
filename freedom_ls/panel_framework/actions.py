@@ -216,7 +216,7 @@ class EditAction(FormPanelAction):
 
 class DeleteAction(PanelAction):
     label = "Delete"
-    variant = "danger"
+    variant = "error"
     action_name = "delete"
 
     def __init__(self, success_url: str = ""):
@@ -238,7 +238,7 @@ class DeleteAction(PanelAction):
         return summary
 
     def render(self, request: HttpRequest, context: object, base_url: str) -> str:
-        """Render danger button + confirmation modal."""
+        """Render error-variant button + confirmation modal."""
         if not isinstance(context, Model):
             raise TypeError("DeleteAction.render requires a Model instance")
         instance = context

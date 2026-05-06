@@ -10,11 +10,11 @@
                        hx-target="#main-content"
                        hx-push-url="true"
                        hx-swap="outerHTML"
-                       class="hover:text-foreground hover:underline focus:outline-2 focus:outline-offset-2 focus:outline-primary">
+                       class="hover:text-on-surface hover:underline focus:outline-2 focus:outline-offset-2 focus:outline-primary">
                         {{ crumb.label }}
                     </a>
                 {% else %}
-                    <span aria-current="page" class="text-foreground font-medium">
+                    <span aria-current="page" class="text-on-surface font-medium">
                         {{ crumb.label }}
                     </span>
                 {% endif %}

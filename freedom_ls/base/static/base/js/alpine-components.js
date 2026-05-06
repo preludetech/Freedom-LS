@@ -460,7 +460,7 @@ document.addEventListener("alpine:init", () => {
 
                 const label = document.createElement("div");
                 label.textContent = text;
-                label.className = "text-xs font-medium whitespace-nowrap bg-surface-2 text-foreground px-1.5 py-0.5 rounded shadow-sm";
+                label.className = "text-xs font-medium whitespace-nowrap bg-surface-2 text-on-surface px-1.5 py-0.5 rounded shadow-sm";
                 const rowRect = tr.getBoundingClientRect();
                 label.style.cssText = "position:absolute; left:4px; top:" + (rowRect.top - containerRect.top + container.scrollTop) + "px;";
                 overlay.appendChild(label);

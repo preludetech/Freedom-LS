@@ -62,11 +62,11 @@
 {% partialdef form-question %}
     <div class="surface">
         <div class="mb-3 flex flex-row gap-2">
-            <span class="font-semibold text-foreground"
+            <span class="font-semibold text-on-surface"
                   data-testid="question-number-{{ question.question_number }}">{{ question.question_number }}.</span>
-            <span class="text-foreground">{{ question.rendered_question }}</span>
+            <span class="text-on-surface">{{ question.rendered_question }}</span>
             {% if question.required %}
-                <span class="text-danger ml-1"
+                <span class="text-error ml-1"
                       data-testid="required-indicator-{{ question.question_number }}">*</span>
             {% endif %}
         </div>
@@ -82,7 +82,7 @@
             {% elif question.type == "long_text" %}
                 {% partial form-input-long-text %}
             {% else %}
-                <div class="p-3 bg-danger/10 border border-danger text-danger rounded">
+                <div class="p-3 bg-error/10 border border-error text-error rounded">
                     ERROR! UNHANDLED FORM TYPE {{ question.type }}
                 </div>
             {% endif %}

@@ -20,7 +20,7 @@ Supports levels: info, warning, error, success
 {% endpartialdef %}
 
 {% if level == "info" %}
-    {% with bg="bg-primary/10" border="border-primary" text="text-foreground" title_color="text-foreground" icon="info" %}
+    {% with bg="bg-primary/10" border="border-primary" text="text-on-surface" title_color="text-on-surface" icon="info" %}
         {% partial callout_box %}
     {% endwith %}
 {% elif level == "warning" %}
@@ -28,11 +28,11 @@ Supports levels: info, warning, error, success
         {% partial callout_box %}
     {% endwith %}
 {% elif level == "error" %}
-    {% with bg="bg-danger/10" border="border-danger" text="text-danger-bold" title_color="text-danger-bold" icon="error" %}
+    {% with bg="bg-error/10" border="border-error" text="text-error" title_color="text-error" icon="error" %}
         {% partial callout_box %}
     {% endwith %}
 {% elif level == "success" %}
-    {% with bg="bg-success/10" border="border-success" text="text-success-bold" title_color="text-success-bold" icon="success" %}
+    {% with bg="bg-success/10" border="border-success" text="text-success" title_color="text-success" icon="success" %}
         {% partial callout_box %}
     {% endwith %}
 {% endif %}

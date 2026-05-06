@@ -14,13 +14,13 @@
         <h2 class="text-lg font-semibold">HTMX OOB delivery</h2>
         <div class="flex flex-wrap gap-2">
             <button type="button"
-                    class="px-3 py-2 rounded bg-success text-white"
+                    class="px-3 py-2 rounded bg-success text-on-success"
                     hx-post="{% url 'qa_helpers:toasts_htmx_success' %}"
                     hx-swap="none">
                 POST htmx-success (200)
             </button>
             <button type="button"
-                    class="px-3 py-2 rounded bg-danger text-white"
+                    class="px-3 py-2 rounded bg-error text-on-error"
                     hx-post="{% url 'qa_helpers:toasts_htmx_error' %}"
                     hx-swap="none">
                 POST htmx-error (422)

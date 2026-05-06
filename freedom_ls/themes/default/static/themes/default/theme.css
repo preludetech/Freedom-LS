@@ -1,0 +1,67 @@
+/* FLS default theme — Tier-1 token bundle.
+ *
+ * The full role contract and rationale live in
+ * spec_dd/.../themable-implementations-phase-1.../1. spec.md.
+ *
+ * Conventions:
+ *  - Role tokens use the `--color-<role>` namespace so Tailwind v4 generates
+ *    the matching utility classes (`text-<role>`, `bg-<role>`, etc.).
+ *  - `on-*` pairs are the foreground colour to use on top of the matching
+ *    background role.
+ *  - Shape and type tokens are namespaced under `--fls-*` and aliased into
+ *    Tailwind's expected `--radius-*` / `--font-*` slots via `@theme inline`
+ *    so downstream themes can override the FLS values without re-declaring
+ *    the Tailwind contract.
+ */
+
+@theme {
+    /* Brand */
+    --color-primary: #2B6CB0;
+    --color-on-primary: #FFFFFF;
+    --color-secondary: #475569;
+    --color-on-secondary: #FFFFFF;
+    --color-accent: #F59E0B;
+    --color-on-accent: #1A2332;
+
+    /* Status */
+    --color-success: #38A169;
+    --color-on-success: #FFFFFF;
+    --color-warning: #F6E05E;
+    --color-on-warning: #1A2332;
+    --color-error: #E8553D;
+    --color-on-error: #FFFFFF;
+    --color-info: #0EA5E9;
+    --color-on-info: #FFFFFF;
+
+    /* Surfaces */
+    --color-surface: #FFFFFF;
+    --color-surface-2: #F3F4F6;
+    --color-on-surface: #1A2332;
+    --color-border: #D1D5DB;
+    --color-muted: #4A5568;
+
+    /* Shape tokens — FLS namespace. */
+    --fls-radius-sm: 0.25rem;
+    --fls-radius-md: 0.375rem;
+    --fls-radius-lg: 0.5rem;
+    --fls-radius-pill: 9999px;
+
+    /* Type tokens — FLS namespace. */
+    --fls-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    --fls-font-display: var(--fls-font-sans);
+}
+
+/* `@theme inline` aliases live tokens into Tailwind's expected slots so
+ * `rounded-md`, `font-sans`, etc. resolve via the FLS-namespaced variables. */
+@theme inline {
+    --color-focus-ring: var(--color-primary);
+
+    --radius-sm: var(--fls-radius-sm);
+    --radius-md: var(--fls-radius-md);
+    --radius-lg: var(--fls-radius-lg);
+    --radius-pill: var(--fls-radius-pill);
+
+    --font-sans: var(--fls-font-sans);
+    --font-display: var(--fls-font-display);
+}

@@ -33,7 +33,7 @@ Look up the File object by file_path to get the actual file URL
 
                 <button class="absolute top-0 right-0 bg-surface opacity-50 hover:opacity-70 "
                         @click="close">
-                    <c-icon name="close" class="size-12 text-foreground" />
+                    <c-icon name="close" class="size-12 text-on-surface" />
 
                 </button>
 
@@ -58,8 +58,8 @@ Look up the File object by file_path to get the actual file URL
         </div>
 
     {% else %}
-        <div class="my-6 p-4 bg-danger/10 border border-danger/20 rounded-lg">
-            <p class="text-danger-bold">
+        <div class="my-6 p-4 bg-error/10 border border-error/20 rounded-lg">
+            <p class="text-error">
                 Image not found: {{ src }}
             </p>
         </div>

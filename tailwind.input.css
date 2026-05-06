@@ -1,4 +1,18 @@
 @import "tailwindcss";
-@source "./freedom_ls/**/templates/**/*.html";
 
-@import "./tailwind.components.css"
+/* All FLS app templates (covers freedom_ls/themes/<slug>/templates/ if present). */
+@source "./freedom_ls/**/templates/**/*.html";
+/* Theme template overrides — Tier 3, used in Phase 4. */
+@source "./freedom_ls/themes/*/templates/**/*.html";
+
+/* Default theme tokens — always-on baseline. */
+@import "./freedom_ls/themes/default/static/themes/default/theme.css";
+
+/* Component classes — depend on tokens; main-project source of truth. */
+@import "./tailwind.components.css";
+
+/* Active-theme overrides go here in Phase 2 (added when FLS_THEME != default). */
+
+@theme {
+    /* repo-level overrides go here, optional */
+}

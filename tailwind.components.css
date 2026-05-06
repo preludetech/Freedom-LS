@@ -1,34 +1,3 @@
-
-@theme {
-    /* Primary - Interactive elements, links, highlights (Ocean) */
-    --color-primary: #2B6CB0;
-    --color-primary-bold: #4A9BD9;
-
-    /* Success - Completion, progress, positive states (Forest) */
-    --color-success: #38A169;
-    --color-success-bold: #2F855A;
-
-    /* Danger - Errors, destructive actions (Signal) */
-    --color-danger: #E8553D;
-    --color-danger-bold: #C74333;
-
-    /* Warning - Important notices, use sparingly (Sand) */
-    --color-warning: #F6E05E;
-
-    /* Text colors */
-    --color-foreground: #1A2332;
-    --color-muted: #4A5568;
-    --color-on-primary: #FFFFFF;
-
-    /* Surface (background) colors */
-    --color-surface: #FFFFFF;
-    --color-surface-2: #F3F4F6;
-
-    /* Border colors */
-    --color-border: #D1D5DB;
-}
-
-
 @layer base {
     /* Hide Alpine x-cloak elements until Alpine initialises (prevents FOUC). */
     [x-cloak] {
@@ -41,23 +10,23 @@
     }
 
     body {
-        @apply text-foreground
+        @apply text-on-surface
     }
 
     h1 {
-        @apply text-xl sm:text-2xl lg:text-4xl font-bold text-foreground
+        @apply text-xl sm:text-2xl lg:text-4xl font-bold text-on-surface
     }
 
     h2 {
-        @apply text-lg sm:text-xl lg:text-3xl font-bold text-foreground
+        @apply text-lg sm:text-xl lg:text-3xl font-bold text-on-surface
     }
 
     h3 {
-        @apply text-base sm:text-lg lg:text-2xl font-bold text-foreground
+        @apply text-base sm:text-lg lg:text-2xl font-bold text-on-surface
     }
 
     h4 {
-        @apply text-sm sm:text-base lg:text-xl font-bold text-foreground
+        @apply text-sm sm:text-base lg:text-xl font-bold text-on-surface
     }
 
     /* Anchor-link offset: headings with an id get a comfortable scroll buffer
@@ -67,7 +36,7 @@
     }
 
     p {
-        @apply text-foreground
+        @apply text-on-surface
     }
 
     a {
@@ -105,7 +74,7 @@
     }
 
     td {
-        @apply px-4 py-3 text-sm text-foreground
+        @apply px-4 py-3 text-sm text-on-surface
     }
 
     tbody tr {
@@ -184,7 +153,7 @@
     /* Button component variants */
     .btn-primary {
         @apply bg-primary text-on-primary
-               hover:bg-primary-bold focus:ring-primary
+               hover:brightness-110 focus:ring-primary
     }
 
     .btn-outline {
@@ -193,13 +162,13 @@
     }
 
     .btn-success {
-        @apply bg-success text-on-primary
-               hover:bg-success-bold focus:ring-success
+        @apply bg-success text-on-success
+               hover:brightness-110 focus:ring-success
     }
 
-    .btn-danger {
-        @apply bg-danger text-on-primary
-               hover:bg-danger-bold focus:ring-danger
+    .btn-error {
+        @apply bg-error text-on-error
+               hover:brightness-110 focus:ring-error
     }
 
     .surface {
@@ -216,15 +185,15 @@
     }
 
     .chip-warning {
-        @apply bg-warning/30 text-foreground
+        @apply bg-warning/30 text-on-warning
     }
 
     .chip-success {
-        @apply bg-success/15 text-success-bold
+        @apply bg-success/15 text-success
     }
 
-    .chip-danger {
-        @apply bg-danger/15 text-danger-bold
+    .chip-error {
+        @apply bg-error/15 text-error
     }
 
     .chip-xs {

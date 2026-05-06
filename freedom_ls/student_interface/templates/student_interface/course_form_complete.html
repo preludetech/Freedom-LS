@@ -9,7 +9,7 @@
         <div class="text-center mb-8">
             <div class="mb-6">
                 {% if is_failed_quiz %}
-                    <c-icon name="error" class="size-16 text-danger" />
+                    <c-icon name="error" class="size-16 text-error" />
                 {% else %}
                     <c-icon name="success" class="size-16 text-success" />
                 {% endif %}
@@ -82,7 +82,7 @@
 
                             <div class="space-y-6">
                                 {% for item in incorrect_answers %}
-                                    <div class="p-6 bg-danger/10 border border-danger/20 rounded-lg"
+                                    <div class="p-6 bg-error/10 border border-error/20 rounded-lg"
                                          data-testid="incorrect-question-{{ item.question.id }}">
                                         <!-- Question text -->
                                         <div class="mb-4">
@@ -96,13 +96,13 @@
 
                                         <!-- Student's answer -->
                                         <div class="mb-3">
-                                            <p class="text-sm font-medium text-danger mb-1">
+                                            <p class="text-sm font-medium text-error mb-1">
                                                 Your answer:
                                             </p>
                                             <div class="pl-4" data-testid="student-answer-{{ item.question.id }}">
                                                 {% for option in item.student_selected %}
                                                     <p class="text-muted">
-                                                        <c-icon name="error" class="size-5 text-danger mr-2" />{{ option.text }}
+                                                        <c-icon name="error" class="size-5 text-error mr-2" />{{ option.text }}
                                                     </p>
                                                 {% endfor %}
                                             </div>

@@ -32,11 +32,11 @@
 
     {# Course-level deadline #}
     {% if course_deadline %}
-        <div class="mb-4 p-3 rounded-md {% if course_deadline.is_hard_deadline %}bg-danger/10 border-l-4 border-danger{% else %}bg-warning/20 border-l-4 border-warning{% endif %}">
-            <span class="text-sm text-foreground font-medium">
+        <div class="mb-4 p-3 rounded-md {% if course_deadline.is_hard_deadline %}bg-error/10 border-l-4 border-error{% else %}bg-warning/20 border-l-4 border-warning{% endif %}">
+            <span class="text-sm text-on-surface font-medium">
                 Course deadline: {{ course_deadline.deadline|date:"M d, Y H:i" }}
                 {% if course_deadline.is_hard_deadline %}
-                    <span class="chip chip-danger chip-xs ml-1">Hard</span>
+                    <span class="chip chip-error chip-xs ml-1">Hard</span>
                 {% else %}
                     <span class="chip chip-warning chip-xs ml-1">Soft</span>
                 {% endif %}
@@ -76,12 +76,12 @@
                         {% for hi in header_items %}
                             <th scope="col"
                                 class="px-2 py-2 text-center min-w-[100px] max-w-[140px] border-r border-border last:border-r-0">
-                                <div class="truncate text-xs font-semibold text-foreground"
+                                <div class="truncate text-xs font-semibold text-on-surface"
                                      title="{{ hi.item.title }}">
                                     {{ hi.item.title }}
                                 </div>
                                 {% if hi.deadline %}
-                                    <div class="text-[10px] mt-0.5 {% if hi.deadline.is_hard_deadline %}text-danger font-semibold{% else %}text-warning{% endif %}">
+                                    <div class="text-[10px] mt-0.5 {% if hi.deadline.is_hard_deadline %}text-error font-semibold{% else %}text-warning{% endif %}">
                                         Due: {{ hi.deadline.deadline|date:"M d" }}
                                     </div>
                                 {% endif %}
@@ -101,16 +101,16 @@
                                 <span class="text-xs text-muted ml-1">({{ row.progress }}%)</span>
                             </th>
                             {% for cell in row.cells %}
-                                <td class="px-2 py-1.5 text-center text-xs border-r border-border last:border-r-0 {% if cell.is_hard_overdue %}bg-danger/15{% elif cell.is_overdue %}bg-warning/15{% endif %}">
+                                <td class="px-2 py-1.5 text-center text-xs border-r border-border last:border-r-0 {% if cell.is_hard_overdue %}bg-error/15{% elif cell.is_overdue %}bg-warning/15{% endif %}">
                                     {% if cell.is_completed %}
                                         {% if cell.is_quiz is True %}
                                             {# Quiz form: percentage + pass/fail + attempt count #}
-                                            <div class="{% if cell.passed %}text-success-bold{% elif cell.passed is False %}text-danger{% else %}text-foreground{% endif %} font-medium">
+                                            <div class="{% if cell.passed %}text-success{% elif cell.passed is False %}text-error{% else %}text-on-surface{% endif %} font-medium">
                                                 {{ cell.quiz_percentage }}%
                                                 {% if cell.passed is True %}
                                                     <span class="chip chip-success chip-xs">Pass</span>
                                                 {% elif cell.passed is False %}
-                                                    <span class="chip chip-danger chip-xs">Fail</span>
+                                                    <span class="chip chip-error chip-xs">Fail</span>
                                                 {% endif %}
                                             </div>
                                             {% if cell.completed_count > 0 %}

@@ -21,11 +21,20 @@ from django.utils.csp import (
 )
 
 from freedom_ls.accounts.email_utils import parse_tailwind_colors
+from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR, configure_theme
 from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, os.path.join(BASE_DIR, "concrete_apps"))
+
+# Active FLS theme. Resolved against `FLS_THEMES_DIRS` further down. An unknown
+# slug fails loud at startup via `ImproperlyConfigured`.
+FLS_THEME = os.environ.get("FLS_THEME", "default")
+FLS_THEMES_DIRS: list[Path] = [
+    BASE_DIR / "themes",
+    FREEDOM_LS_PACKAGE_DIR / "themes",
+]
 
 
 # Quick-start development settings - unsuitable for production
@@ -195,7 +204,17 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_DIRS: list = [BASE_DIR / "static"]
+
+# Resolve the active theme and prepend its templates/static dirs so it shadows
+# the FLS defaults at template-load and static-collection time. Fails loud at
+# startup if `FLS_THEME` does not resolve to a directory.
+RESOLVED_THEME_DIR = configure_theme(
+    theme_slug=FLS_THEME,
+    themes_dirs=FLS_THEMES_DIRS,
+    templates=TEMPLATES,
+    staticfiles_dirs=STATICFILES_DIRS,
+)
 
 # Media files (User uploaded files)
 MEDIA_URL = "media/"
@@ -301,9 +320,14 @@ EMAIL_FONT_FAMILY = "Arial, Helvetica, sans-serif"
 ACCOUNT_EMAIL_NOTIFICATIONS = True
 
 
-_tw_colors = parse_tailwind_colors(str(BASE_DIR / "tailwind.components.css"))
+# Tokens are now sourced from the active theme's `theme.css`, not the (legacy)
+# repo-root components file. `EMAIL_COLOR_FOREGROUND` keeps its Python name
+# because it is part of the email-template contract; only the lookup key
+# changes (`foreground` → `on-surface`, matching the renamed role token).
+_theme_css = RESOLVED_THEME_DIR / "static" / "themes" / FLS_THEME / "theme.css"
+_tw_colors = parse_tailwind_colors(str(_theme_css))
 EMAIL_COLOR_PRIMARY = _tw_colors.get("primary", "#2B6CB0")
-EMAIL_COLOR_FOREGROUND = _tw_colors.get("foreground", "#1A2332")
+EMAIL_COLOR_FOREGROUND = _tw_colors.get("on-surface", "#1A2332")
 EMAIL_COLOR_MUTED = _tw_colors.get("muted", "#4A5568")
 EMAIL_COLOR_SURFACE = _tw_colors.get("surface", "#FFFFFF")
 EMAIL_COLOR_SURFACE_2 = _tw_colors.get("surface-2", "#F3F4F6")
