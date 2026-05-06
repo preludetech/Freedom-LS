@@ -10,8 +10,9 @@
     "tailwindcss": "^4.1.16"
   },
   "scripts": {
-    "tailwind_watch": "npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css --watch",
-    "tailwind_build": "npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css"
+    "_write_active_theme": "node scripts/write-active-theme.mjs",
+    "tailwind_watch": "npm run _write_active_theme && npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css --watch",
+    "tailwind_build": "npm run _write_active_theme && npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css"
   },
   "devDependencies": {
     "wrangler": "^4.58.0"

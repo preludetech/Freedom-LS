@@ -1,0 +1,49 @@
+/* FLS first_class theme — Tier-1 token bundle ("Modern Altitude").
+ *
+ * Brand reference:
+ *   spec_dd/.../themable-implementations-master-decomposed-into-phases/first-class-theme.md
+ *
+ * This file is intentionally sparse: it redeclares only the token *values*
+ * that change versus the default theme. The `@theme inline` aliases that wire
+ * `--radius-*`, `--font-*`, and `--color-focus-ring` onto Tailwind's expected
+ * slots are established in
+ * `freedom_ls/themes/default/static/themes/default/theme.css` (always-on
+ * baseline) and remain in effect — overriding at the `--fls-*` and
+ * `--color-*` level is enough.
+ */
+
+@theme {
+    /* Brand */
+    --color-primary: #283593;        /* Deep Indigo */
+    --color-on-primary: #FFFFFF;
+    --color-secondary: #00CEC9;      /* Electric Teal */
+    --color-on-secondary: #1A1A2E;   /* Cockpit Dark */
+    --color-accent: #FF6B35;         /* Altitude Orange */
+    --color-on-accent: #FFFFFF;
+
+    /* Status */
+    --color-success: #38A169;
+    --color-on-success: #FFFFFF;
+    --color-warning: #D69E2E;
+    --color-on-warning: #1A1A2E;
+    --color-error: #E53E3E;
+    --color-on-error: #FFFFFF;
+    --color-info: #3182CE;
+    --color-on-info: #FFFFFF;
+
+    /* Surfaces */
+    --color-surface: #F8F9FC;        /* Stratosphere */
+    --color-surface-2: #EDF2F7;
+    --color-on-surface: #1A1A2E;
+    --color-border: #E2E8F0;
+    --color-muted: #718096;
+
+    /* Shape — bumped one step for the brand's rounder card treatment. */
+    --fls-radius-sm: 0.5rem;
+    --fls-radius-md: 0.75rem;
+    --fls-radius-lg: 1rem;
+
+    /* Type — DM Sans body, Outfit display. */
+    --fls-font-sans: "DM Sans", system-ui, sans-serif;
+    --fls-font-display: "Outfit", system-ui, sans-serif;
+}

@@ -11,7 +11,11 @@
 /* Component classes — depend on tokens; main-project source of truth. */
 @import "./tailwind.components.css";
 
-/* Active-theme overrides go here in Phase 2 (added when FLS_THEME != default). */
+/* Active theme — generated each build by `scripts/write-active-theme.mjs`
+ * keyed on the `FLS_THEME` env var. When FLS_THEME=default this re-imports
+ * the same baseline (no-op on cascade); for any other slug the active theme's
+ * token redeclarations win. */
+@import "./tailwind.active_theme.css";
 
 @theme {
     /* repo-level overrides go here, optional */
