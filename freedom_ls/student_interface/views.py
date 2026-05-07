@@ -4,6 +4,7 @@ import contextlib
 from typing import TYPE_CHECKING
 
 from django.contrib.auth.decorators import login_required
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -140,6 +141,8 @@ def register_for_course(request, course_slug):
 def view_course_item(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
     viewable_items = course.viewable_items()
+    if index < 1 or index > len(viewable_items):
+        raise Http404("No course item at this index.")
     current_item = viewable_items[index - 1]
 
     # Check if item is locked by a hard deadline
@@ -197,6 +200,8 @@ def view_course_item(request, course_slug, index):
             is_last_item=is_last_item,
             next_url=next_url,
         )
+
+    raise Http404("Unsupported course item type.")
 
 
 def view_topic(request, topic, course, next_url, previous_url, is_last_item=False):
@@ -281,6 +286,8 @@ def form_start(request, course_slug, index):
 
     course = get_object_or_404(Course, slug=course_slug)
     viewable_items = course.viewable_items()
+    if index < 1 or index > len(viewable_items):
+        raise Http404("No course item at this index.")
     form = viewable_items[index - 1]
 
     # Create a FormProgress instance if it doesn't yet exist
@@ -302,9 +309,13 @@ def form_start(request, course_slug, index):
 def form_fill_page(request, course_slug, index, page_number):
     course = get_object_or_404(Course, slug=course_slug)
     viewable_items = course.viewable_items()
+    if index < 1 or index > len(viewable_items):
+        raise Http404("No course item at this index.")
     form = viewable_items[index - 1]
     all_pages = list(form.pages.all())
     total_pages = len(all_pages)
+    if page_number < 1 or page_number > total_pages:
+        raise Http404("No form page at this number.")
     form_page = all_pages[page_number - 1]
 
     # Get the latest incomplete form progress instance
@@ -406,6 +417,8 @@ def form_fill_page(request, course_slug, index, page_number):
 def course_form_complete(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
     viewable_items = course.viewable_items()
+    if index < 1 or index > len(viewable_items):
+        raise Http404("No course item at this index.")
     form = viewable_items[index - 1]
 
     # Get the most recent completed form progress

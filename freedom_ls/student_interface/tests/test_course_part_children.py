@@ -13,7 +13,12 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, CoursePart
-from freedom_ls.student_interface.utils import BLOCKED, READY, get_course_index
+from freedom_ls.student_interface.utils import (
+    BLOCKED,
+    IN_PROGRESS,
+    READY,
+    get_course_index,
+)
 from freedom_ls.student_management.factories import (
     UserCourseRegistrationFactory,
 )
@@ -179,6 +184,67 @@ def test_consecutive_viewable_items_have_dense_indices(mock_site_context):
     assert diffs == [1] * len(diffs)
     # Sanity check: we actually had multiple rows to compare.
     assert len(indices) >= 2
+
+
+@pytest.mark.django_db
+def test_course_part_url_resumes_at_in_progress_child(mock_site_context):
+    """When a part has a completed child and an in-progress child, the part row routes to in-progress."""
+    course: Course = CourseFactory(title="Resume", slug="resume")
+    part: CoursePart = CoursePartFactory(title="Chapter", slug="chapter")
+    first = TopicFactory(title="First", slug="first", content="first")
+    second = TopicFactory(title="Second", slug="second", content="second")
+    third = TopicFactory(title="Third", slug="third", content="third")
+
+    course.items.create(child=part, order=0)
+    part.items.create(child=first, order=0)
+    part.items.create(child=second, order=1)
+    part.items.create(child=third, order=2)
+
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course)
+    # First item completed; second item started but not complete.
+    TopicProgressFactory(user=user, topic=first, complete_time=timezone.now())
+    TopicProgressFactory(user=user, topic=second, complete_time=None)
+
+    children = get_course_index(user=user, course=course)
+    part_dict = children[0]
+
+    second_index = course.viewable_items().index(second) + 1
+    expected_url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": second_index},
+    )
+    assert part_dict["status"] == IN_PROGRESS
+    assert part_dict["url"] == expected_url
+
+
+@pytest.mark.django_db
+def test_course_part_url_skips_completed_first_child_to_first_ready(mock_site_context):
+    """When the first child is complete and the next is READY, the part row routes to READY."""
+    course: Course = CourseFactory(title="ReadyAfter", slug="ready-after")
+    part: CoursePart = CoursePartFactory(title="Chapter", slug="chapter")
+    first = TopicFactory(title="First", slug="first", content="first")
+    second = TopicFactory(title="Second", slug="second", content="second")
+
+    course.items.create(child=part, order=0)
+    part.items.create(child=first, order=0)
+    part.items.create(child=second, order=1)
+
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course)
+    # Complete first item; second item has no progress (becomes READY).
+    TopicProgressFactory(user=user, topic=first, complete_time=timezone.now())
+
+    children = get_course_index(user=user, course=course)
+    part_dict = children[0]
+
+    second_index = course.viewable_items().index(second) + 1
+    expected_url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": second_index},
+    )
+    assert part_dict["status"] == READY
+    assert part_dict["url"] == expected_url
 
 
 @pytest.mark.django_db
