@@ -1,76 +1,66 @@
 ---
 name: update-claude-project-settings
-description: Audit `.claude/settings.local.json` for entries that belong in the shared `.claude/settings.json` (project settings) and migrate them with user approval. Use when the user asks to "promote", "share", "move to project settings", or "tidy up local settings".
+description: Audit `.claude/settings.json` (shared project settings) for entries to add, remove, or rewrite, using `.claude/settings.local.json` as a hint for useful permissions. Only edits `.claude/settings.json`. Use when the user asks to "tidy up project settings", "audit project settings", or "promote permissions to project settings".
 ---
 
 # Update Claude Project Settings
 
-`@.claude/settings.local.json` is per-user and gitignored. `@.claude/settings.json` is checked in and shared by everyone working on the project. Useful permissions accumulated locally should be promoted so the whole team benefits.
+`.claude/settings.json` is checked in and shared by everyone working on the project. Over time it accumulates duplicate, overlapping, or stale entries — and useful permissions sometimes live only in a developer's local settings.
 
-This skill walks the local settings, classifies each entry, and asks the user one-by-one whether to move it across.
+This skill audits the shared file and proposes cleanups. `.claude/settings.local.json` is read for context (to spot useful permissions worth promoting) but **never edited** — local settings belong to the user.
 
 ## Files
 
-- **Local (per-user, gitignored):** `.claude/settings.local.json`
-- **Project (shared, committed):** `.claude/settings.json`
+- **Project (shared, committed) — edited by this skill:** `.claude/settings.json`
+- **Local (per-user, gitignored) — read only, never edited:** `.claude/settings.local.json`
 
 ## Process
 
 ### 1. Read both files
 
-Read `.claude/settings.json` and `.claude/settings.local.json` in parallel.
+Read `.claude/settings.json` and `.claude/settings.local.json` in parallel. The local file is a reference only.
 
-### 2. Classify every entry in local settings
+### 2. Audit `permissions.allow` in project settings for redundancy
 
-For each entry under `permissions.allow` (and any other top-level key), decide one of:
-
-- **Promote** — generally useful for anyone working on the project (e.g. `Bash(uv run:*)`, `Bash(gh pr:*)`, project-relevant WebFetch domains, project commands).
-- **Keep local** — personal/exploratory/one-off (e.g. ad-hoc `curl` of a specific URL, a one-shot `awk` recipe, personal preferences like `disabledMcpjsonServers`, exploratory WebFetch domains).
-- **Already covered** — a broader rule in project settings already grants this (e.g. local has `Bash(npm run tailwind_build:*)` but project has `Bash(npm run tailwind_build)` — note the difference and ask).
-- **Redundant** — duplicate of something already in project settings; just delete from local.
-
-Skip entries already present verbatim in project settings.
-
-### 3. Audit project settings for redundancy
-
-Walk `permissions.allow` in `.claude/settings.json` and look for:
+Walk every entry in `.claude/settings.json` and look for:
 
 - **Duplicates** — the same pattern appearing twice.
 - **Subsumed entries** — a narrow pattern made redundant by a broader one in the same file (e.g. `Bash(npm run tailwind_build)` is subsumed by `Bash(npm run tailwind_build:*)`).
 - **Stale entries** — patterns referencing scripts, paths, or commands that no longer exist in the repo. Spot-check before suggesting removal.
+- **Too-narrow patterns** — entries so specific they only matched a one-off task and won't be useful again. Flag and suggest either broadening or removing.
+- **Too-broad patterns** — entries that grant more than the project needs. Flag and suggest narrowing.
 
-For each candidate, ask the user before deleting.
+### 3. Scan local settings for promotion candidates
+
+Walk `permissions.allow` in `.claude/settings.local.json` and classify each entry:
+
+- **Promote** — generally useful for anyone working on the project (e.g. `Bash(uv run:*)`, `Bash(gh pr:*)`, project-relevant WebFetch domains, project commands). Suggest adding to project settings.
+- **Already covered** — a broader rule in project settings already grants this. No action needed; mention if the local pattern suggests project settings should be broadened.
+- **Keep local** — personal/exploratory/one-off (e.g. ad-hoc `curl` of a specific URL, exploratory WebFetch domains). Ignore.
+
+Do not propose any edits to the local file. Only suggest additions to `.claude/settings.json`.
 
 ### 4. Ask the user, entry by entry
 
-For each candidate to **Promote** or **Already covered**, ask the user a clear yes/no:
+For each candidate (cleanup or promotion), ask a clear yes/no:
 
-> Move `Bash(uv run:*)` to project settings? (Currently only in local.) [y/n]
+> Remove `Bash(npm run tailwind_build)` from project settings? (Subsumed by `Bash(npm run tailwind_build:*)`.) [y/n]
 
-Batch related entries if it makes sense (e.g. "Move all 8 WebFetch domains for documentation sites?"), but do not silently bundle anything ambiguous.
+> Add `Bash(uv run:*)` to project settings? (Currently only in local settings.) [y/n]
 
-For **Keep local** entries: do not ask — leave them alone.
-
-For **Redundant** entries in local: mention them and ask if they should be removed from local.
-
-For project-settings cleanup candidates from step 3: ask before deleting each one (or each batch).
+Batch related entries if it makes sense (e.g. "Add these 8 documentation WebFetch domains?"), but do not silently bundle anything ambiguous.
 
 ### 5. Apply approved changes
 
-For each approval:
-- Promotions: add to `.claude/settings.json` and remove from `.claude/settings.local.json`.
-- Local redundancies: remove from `.claude/settings.local.json`.
-- Project cleanup: remove from `.claude/settings.json`.
-
-Preserve JSON formatting (2-space indent, trailing newline) to keep the diff clean.
+Edit **only** `.claude/settings.json`. Preserve JSON formatting (2-space indent, trailing newline) to keep the diff clean.
 
 ### 6. Report
 
-Summarise what moved, what stayed, and what was deleted from each file. Remind the user the project settings change should be committed.
+Summarise what was added, deleted, or rewritten in `.claude/settings.json`. Remind the user to commit the change. If useful permissions remain in local settings that they declined to promote, do not nag.
 
 ## Notes
 
-- Never move `deny` rules without explicit instruction — those are intentional safety boundaries.
-- Never move hooks, `enabledPlugins`, or `disabledMcpjsonServers` without explicit instruction — these are usually environment-specific.
-- If `.claude/settings.local.json` does not exist, there is nothing to do.
-- If a permission pattern looks too narrow or too broad to be useful project-wide, flag it and suggest a better pattern before promoting.
+- Never edit `.claude/settings.local.json` — that file belongs to the user.
+- Never touch `deny` rules without explicit instruction — those are intentional safety boundaries.
+- Never touch hooks, `enabledPlugins`, or `disabledMcpjsonServers` without explicit instruction — these are usually environment-specific.
+- If a permission pattern looks too narrow or too broad to be useful project-wide, flag it and suggest a better pattern before adding.
