@@ -59,6 +59,26 @@ Specifically:
 - **Mid-stage interruption.** When the agent is interrupted mid-stage, the right answer is `git stash`, not commit. Worth being explicit about in the spec so the agent doesn't paper over the interruption with a partial-state commit.
 - **Conflict-resolution affordances during `finish_worktree`'s rebase.** Worth enabling `git rerere` in the worktree so that repeated rebases (e.g., main moves while the worktree is in flight) don't compound conflict-resolution work.
 
+## Implementation note: delegate the commit to a Haiku subagent
+
+The mechanical part of each stage commit — `git status` → `git diff` → draft conventional-commit message → `uv run git commit` → `git push` — should be delegated to a thin subagent running on a smaller model (Haiku 4.5). The pattern matches the project's existing subagents (`code-reviewer`, `qa-data-helper`).
+
+Why:
+
+- **Context preservation.** Diff output is the main reason to delegate: keeping it out of the main agent's context is more valuable than the dollar saving.
+- **Right-sized model.** Drafting a `spec:` / `plan:` / `impl(N):` / `qa:` message from a stage label plus diff stats is well within Haiku's capability.
+- **Narrow contract.** The SDD slash command invokes the subagent with `{stage_prefix, short_description}` only. The subagent doesn't need the workflow's planning context.
+
+Constraints to lock down in the spec:
+
+- **The subagent does not fix hook failures.** Pre-commit can fail on type errors, lint, migrations — those need the main agent's full context. The subagent retries once only if the failure is trivially auto-fixable (e.g. ruff applied a fix and re-staging is enough); otherwise it returns a structured "hook failed, here is the output" result and the main agent takes over. This is the hook-failure protocol referenced in "In scope".
+- **Pure-bash steps stay out of the subagent.** `git status --porcelain` clean-tree assertions and `git push --force-with-lease --force-if-includes` are mechanical — keep them in the slash command body. The subagent's only job is "produce a good commit."
+- **Harness deny rules cover the subagent too.** `.claude/settings.json` deny rules for `--no-verify` and equivalents apply to subagent tool calls; the spec should assert this rather than leave it implicit.
+- **`finish_worktree` squash stays in the main agent.** Rebase + squash + conflict resolution benefits from full planning context; only the per-stage commits are the subagent's lane.
+- **Verification.** After the subagent returns, the main agent runs `git log -1 --format=%H%n%s` to confirm the commit landed with the expected stage prefix.
+
+Tradeoff: subagent invocation adds a few seconds of overhead per stage and introduces one extra failure mode (subagent's view of stage state diverges from caller's). Mitigated by the narrow contract and post-call verification.
+
 ## Research
 
 Three research notes accompany this idea in the same directory:
