@@ -24,6 +24,27 @@ Edit `.env` with your production values
 
 ### 2. Build and Start Services
 
+The Django image build must compile the Tailwind CSS bundle. The Dockerfile should include something like:
+
+```dockerfile
+# Node + npm are required at build time only
+RUN npm ci
+# FLS_THEME is read by scripts/write-active-theme.mjs at build time.
+# Pass it in via --build-arg or an ARG/ENV in the Dockerfile.
+ARG FLS_THEME=default
+ENV FLS_THEME=${FLS_THEME}
+RUN npm run tailwind_build
+RUN uv run manage.py collectstatic --noinput
+```
+
+Why this matters:
+
+- `npm run tailwind_build` generates `tailwind.active_theme.css` at the project root (gitignored) and compiles `static/vendor/tailwind.output.css` (also gitignored). Both are required for Django/whitenoise to serve correct CSS.
+- `FLS_THEME` is consumed at **build time** to bake the right theme tokens into the bundle. Setting it only at runtime will not change the compiled CSS.
+- Skipping this step results in either a build error (missing `tailwind.active_theme.css`) or stale styling from a previous build.
+
+Then build and start:
+
 ```bash
 # Build the Django container
 docker compose build

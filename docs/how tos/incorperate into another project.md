@@ -105,6 +105,12 @@ Run `npm run tailwind_watch`
 
 You can now edit `tailwind.input.css` to make it do what you want.
 
+#### Deploy / CI note
+
+`npm run tailwind_build` must run as part of your deploy pipeline (CI step, image build, or predeploy hook) — not just locally. It generates `tailwind.active_theme.css` at the project root and compiles `static/vendor/tailwind.output.css`; both are gitignored, so nothing useful ships from git alone.
+
+The `FLS_THEME` env var (default `default`) selects which theme's tokens are baked into the bundle and is read at **build time** by `scripts/write-active-theme.mjs`. Set it before you run `tailwind_build` — setting it only at runtime will not affect the compiled CSS. Node and npm must be available in the build environment.
+
 
 ### Conftest:
 copy it across

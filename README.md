@@ -26,6 +26,15 @@ If you are writing some frontend-related code then it is likely that you will ch
 
 Instead of having to remember to do this all the time, you can use `npm run tailwind_watch`.
 
+### Tailwind in deploys / CI
+
+`npm run tailwind_build` is **not** a dev-only command. It must run as part of every deploy (CI step, Docker image build, or Caprover predeploy hook) because:
+
+- It generates `tailwind.active_theme.css` at the project root (gitignored).
+- It compiles `static/vendor/tailwind.output.css` (also gitignored) — the file Django actually serves.
+
+Skipping it produces a build error or stale CSS. The `FLS_THEME` env var (default `default`) selects the active theme and is read **at build time** by `scripts/write-active-theme.mjs`, so it must be set before `tailwind_build` runs — runtime-only is too late for the CSS. Node and npm are required in the build environment.
+
 ## Database setup
 
 We are using a postgres database. There is a development docker composition in the dev_db directory.

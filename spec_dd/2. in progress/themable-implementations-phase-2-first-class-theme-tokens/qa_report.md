@@ -1,142 +1,144 @@
-# QA Report — Phase 2: First Class theme (Tier 1 tokens)
+# QA Report — Phase 2: First Class theme (Tier-1 tokens)
 
-Date: 2026-05-06
-Branch: `themable-implementations-phase-1-theme-resolver-and-default-tokens`
-Tested via Playwright MCP at desktop (1920×1080), mobile (375×812) and tablet (768×1024) viewports.
+Executed against branch `themable-implementations-phase-1-theme-resolver-and-default-tokens` on 2026-05-06 using the DemoDev site, dev server on port 8088. All interaction was via Playwright MCP (desktop 1920×1080, mobile 375×812, tablet 768×1024).
 
-## Summary
+## Result
 
-All 5 tests in the plan **pass**. The `first_class` theme cleanly rebrands every page using Tier-1 tokens only (colours, fonts, radii); switching back to `default` returns the Phase-1 baseline with no leakage; email colour fallbacks resolve correctly under both themes; and both themes' `theme.css` resolve regardless of which theme is active.
+**No bugs found. All five tests passed.**
 
-No bugs were found. A handful of cosmetic observations are listed under "Notes / observations (not bugs)" below — they are tangential to the Phase 2 scope and intentionally left for later phases.
-
-## Test results
-
-| # | Test | Result |
-|---|------|--------|
-| 1 | Default theme regression (Phase-1 baseline) | PASS |
-| 2 | `first_class` theme — end-to-end Tier-1 rebrand | PASS |
-| 3 | Switch back to default | PASS |
-| 4 | Email colour fallbacks under both themes | PASS |
-| 5 | Static asset isolation (both `theme.css` URLs resolvable) | PASS |
-| — | Mobile/tablet sanity check on `first_class` | PASS |
+No tests were skipped. No data gaps were encountered (all tests run against the existing DemoDev fixtures).
 
 ---
 
-### Test 1 — Default theme regression
+## Test 1 — Default-theme regression baseline ✅
 
-Built and started under `FLS_THEME=default`. The home, course list, course-home and topic pages render identically to the Phase-1 baseline.
+Server started with default theme; walked landing, course list, course home, topic, form pages.
 
-Tokens verified at runtime (`getComputedStyle(document.documentElement)`):
+CSS custom properties read from the document confirmed default values:
+- `--color-primary` = `#2B6CB0`
+- body `font-family` = system sans stack
+- body `color` = `rgb(26, 35, 50)` (`#1A2332`)
 
-- `--color-primary` = `#2B6CB0` (ocean blue)
-- `--color-secondary` = `#475569`
-- `--color-surface` = `#FFFFFF`
-- `--color-border` = `#D1D5DB`
-- body colour `rgb(26, 35, 50)` = `#1A2332` (default body text)
-- body font: system sans stack — no DM Sans
-
-Screenshots: `desktop_1.1_default_landing.png`, `desktop_1.2_default_courses.png`, `desktop_1.3_default_course_home.png`, `desktop_1.4_default_topic.png`.
+Visual baseline screenshots captured:
 
 ![](screenshots/desktop_1.1_default_landing.png)
+![](screenshots/desktop_1.2_default_courses.png)
+![](screenshots/desktop_1.3_default_course_home.png)
+![](screenshots/desktop_1.4_default_topic.png)
+![](screenshots/desktop_1.5_default_form.png)
 
 ---
 
-### Test 2 — `first_class` theme rebrand
+## Test 2 — `first_class` theme: end-to-end Tier-1 rebrand ✅
 
-Stopped server, ran `FLS_THEME=first_class npm run tailwind_build`, then `FLS_THEME=first_class uv run python manage.py runserver 8400`. Server started cleanly.
+Stopped server; rebuilt Tailwind with `FLS_THEME=first_class`; restarted server.
 
-Tokens verified at runtime:
+CSS custom properties read from document at `/`:
 
-- `--color-primary` = `#283593` (deep indigo) — visible on header, primary CTAs, links.
-- `--color-secondary` = `#00CEC9` (electric teal)
-- `--color-accent` = `#FF6B35` (altitude orange)
-- `--color-surface` = `#F8F9FC` (stratosphere off-white)
-- `--color-border` = `#E2E8F0`
-- body colour `rgb(26, 26, 46)` = `#1A1A2E` (cockpit dark)
-- `--font-sans` = `"DM Sans", system-ui, sans-serif`
-- `--font-heading` = `"Outfit", system-ui, sans-serif`
+| token | value | matches spec |
+| --- | --- | --- |
+| `--color-primary` | `#283593` | ✅ deep indigo |
+| `--color-secondary` | `#00CEC9` | ✅ electric teal |
+| `--color-accent` | `#FF6B35` | ✅ altitude orange |
+| `--color-surface` | `#F8F9FC` | ✅ stratosphere off-white |
+| `--color-border` | `#E2E8F0` | ✅ |
+| body `color` | `rgb(26,26,46)` | ✅ `#1A1A2E` cockpit dark |
+| body `font-family` | `"DM Sans", system-ui, sans-serif` | ✅ |
+| h1 `font-family` | `Outfit, system-ui, sans-serif` | ✅ |
 
-Pages walked: `/`, `/courses/`, course home, topic page, mid-course quiz form, educator interface, account profile, signed-out landing, login.
-
-**Tier-1 visible everywhere.** Header bar is indigo; "Continue", "All Courses", "Sign In", "Save", "Try Again", "Next", "Finish", "Continue" CTAs all render in indigo. Body is DM Sans, headings (`h1`–`h4`) are Outfit. Surface is the cooler off-white. Cards and inputs read slightly rounder.
-
-**Things that did not change (correctly):**
-
-- Button shape — `btn-primary` retains the same radius and shadow as default; only the colour changes.
-- Cotton component templates — same markup as default.
-- Layout / structure — every page matched the default-theme layout.
-- All routes that work under default work under first_class.
-
-**Interactive flow.** Signed out, signed back in, walked the Mid course Quiz, completed page 1 and page 2, and got the success screen. The "Quiz Passed!" view shows the green semantic-success check (correctly preserved across themes) alongside the indigo progress bar / score (primary colour rebranded).
-
-Screenshots: `desktop_2.1_first_class_landing.png` … `desktop_2.13_first_class_form_complete.png`.
+Pages walked under first_class — every page rebranded indigo, no template/structure change visible vs Test 1:
 
 ![](screenshots/desktop_2.1_first_class_landing.png)
+![](screenshots/desktop_2.2_first_class_courses.png)
+![](screenshots/desktop_2.3_first_class_course_home.png)
 ![](screenshots/desktop_2.4_first_class_topic.png)
-![](screenshots/desktop_2.13_first_class_form_complete.png)
+![](screenshots/desktop_2.5_first_class_form.png)
+![](screenshots/desktop_2.6_first_class_educator.png)
+![](screenshots/desktop_2.7_first_class_profile.png)
+
+### 2.3 Sign-out / sign-in / form completion flow
+
+Signed out, hit `/`, signed back in, navigated into a course, started the End course Quiz, filled both pages, finished. All transitions and the success "Quiz Passed!" panel rendered with first_class indigo and DM Sans. No template-resolution failures.
+
+![](screenshots/desktop_2.8_first_class_landing_logged_out.png)
+![](screenshots/desktop_2.9_first_class_login.png)
+![](screenshots/desktop_2.10_first_class_post_login.png)
+![](screenshots/desktop_2.11_first_class_form_questions.png)
+![](screenshots/desktop_2.13_first_class_form_page2.png)
+![](screenshots/desktop_2.14_first_class_form_complete.png)
+
+The success-panel circle/check, progress bar fill, primary CTA — all picked up the new indigo, confirming alerts/messages partials use the semantic tokens correctly.
+
+Things that explicitly did **not** change (as expected — those are later phases): button shape/radius, chip elevation, header/button cotton component templates, layout. Verified by visual diffing the Test 1 vs Test 2 screenshots.
 
 ---
 
-### Test 3 — Switch back to default
+## Test 3 — Switch back to default ✅
 
-Killed the runserver, ran `FLS_THEME=default npm run tailwind_build`, restarted on the same port. Reloaded `/`. Tokens at runtime came back to the Phase-1 baseline (`--color-primary` = `#2B6CB0`, system sans, white surface, etc.). Visual diff against Test 1 baseline shows no leakage.
+Stopped server, rebuilt Tailwind with `FLS_THEME=default`, restarted. Tokens revert exactly to baseline:
 
-Screenshot: `desktop_3.1_default_after_switch.png`.
+- `--color-primary` = `#2B6CB0` (back to ocean blue)
+- body `font-family` = system sans stack (no DM Sans leakage)
+- body `color` = `rgb(26, 35, 50)` (`#1A2332`)
 
 ![](screenshots/desktop_3.1_default_after_switch.png)
 
+Page renders identical to Test 1 baseline.
+
 ---
 
-### Test 4 — Email colour fallbacks
-
-Ran the documented shell -c probes under each theme:
+## Test 4 — Email colour fallbacks under both themes ✅
 
 ```
-FLS_THEME=default       → #2B6CB0 #1A2332
-FLS_THEME=first_class   → #283593 #1A1A2E
+default     → #2B6CB0 #1A2332
+first_class → #283593 #1A1A2E
 ```
 
-Both match the expected values. `parse_tailwind_colors` is correctly resolving brand keys from the active theme's `theme.css` rather than the hard-coded fallback.
+Both match spec exactly. `parse_tailwind_colors` is reading the active theme's `theme.css` correctly.
 
 ---
 
-### Test 5 — Static asset isolation
+## Test 5 — Static asset isolation ✅
 
-While `first_class` was active:
+Both `/static/themes/default/theme.css` and `/static/themes/first_class/theme.css` return **200** regardless of which theme is active:
 
-- `GET /static/themes/first_class/theme.css` → **200**
-- `GET /static/themes/default/theme.css` → **200**
+```
+first_class active → default     theme.css: 200
+first_class active → first_class theme.css: 200
+default     active → default     theme.css: 200
+default     active → first_class theme.css: 200
+```
 
-While `default` was active:
-
-- `GET /static/themes/default/theme.css` → **200**
-- `GET /static/themes/first_class/theme.css` → **200**
-
-Namespacing under `static/themes/<slug>/` works as designed; assets do not collide.
-
----
-
-### Mobile (375×812) and tablet (768×1024)
-
-Walked the home page and one topic page under each viewport with `first_class` active. Header collapses to the user-icon dropdown on mobile; the indigo bar fills the full width; cards stack into a single column at 375 and into two columns at 768. Tap targets remain large enough; nothing overflows or overlaps. Body fonts switch to DM Sans correctly at both widths.
-
-Screenshots: `mobile_2_first_class_landing.png`, `mobile_2_first_class_topic.png`, `tablet_2_first_class_landing.png`, `tablet_2_first_class_course_home.png`.
-
-![](screenshots/mobile_2_first_class_landing.png)
-![](screenshots/tablet_2_first_class_course_home.png)
+No collision; namespacing under `static/themes/<slug>/` works as designed.
 
 ---
 
-## Notes / observations (not bugs)
+## Mobile (375×812) and Tablet (768×1024) sweep
 
-These are tangential to the Phase 2 spec; they are **not** regressions and the spec explicitly defers them to later phases. Recording them so they're not forgotten:
+Walked landing, course home, topic under first_class on each viewport.
 
-1. **"last chapter" link colour and ordered-list link colour on topic page render in orange/red rather than indigo** under `first_class`. This is the existing markdown `<a>` styling using a non-primary colour — it pre-dates Phase 2 and behaves the same under `default`. Belongs to whatever phase tackles markdown content links / Tier-2 tokens for content links.
-2. **Body surface colour appears as plain white on most pages even under `first_class`.** The surface token (`#F8F9FC`) only shows where elements explicitly use `bg-surface`. The base layout currently doesn't apply it to `<body>` / page wrapper in many templates. Phase 3/4 (component-class shape and template work) will touch the page chrome and is the natural place to wire this up if desired.
-3. The Django debug toolbar intercepted clicks during the form-fill flow on desktop; I hid it via JS to proceed. Not a Phase 2 issue — pre-existing dev-only friction.
+Mobile:
+- Header collapses to hamburger / user-icon affordance.
+- Course cards stack to a single column, CTAs stay tap-sized.
+- Topic page collapses the Table-of-Contents sidebar; a "›" chevron at the top opens the drawer.
+- No overflow or overlap observed.
 
-## Difficulties / things not tested
+![](screenshots/mobile_2.1_first_class_landing.png)
+![](screenshots/mobile_2.2_first_class_topic.png)
 
-- The `compress_screenshots.py` helper expects `spec_dd/` adjacent to the script (`Path(__file__).parent / "spec_dd"`), so it errored with "spec_dd/ directory not found". I checked all screenshots manually — the largest was 176 KB, well below the 1 MB pre-commit limit, so compression wasn't needed. Worth fixing the script's path resolution separately.
-- Did not test signup or password-reset flows; the plan's interactive flow only required login + completing a form, both of which were exercised.
+Tablet:
+- Tablet gets the desktop nav (no hamburger), which is appropriate at 768px.
+- Course cards render two-up.
+- Course home content uses full width, no awkward gutters.
+
+![](screenshots/tablet_2.1_first_class_landing.png)
+![](screenshots/tablet_2.2_first_class_course_home.png)
+
+---
+
+## Tangential / out-of-scope observations
+
+- The console emits noisy `Rejected site domain '127.0.0.1:NNNN' as a legal-docs directory name; falling back to _default only` lines on every dev-server boot for the `127.0.0.1:80NN` Sites. This is unrelated to the theme work — it's the legal-docs resolver complaining about port-suffixed dev hostnames. Worth a separate ticket but not a regression of this phase.
+- One Playwright console *warning* surfaced when navigating directly to `/courses/.../1/` (single-line warning, no error). Not reproducible as a user-visible issue. Mentioned for completeness; not a phase-2 blocker.
+
+No phase-2 bugs or regressions to file.

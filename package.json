@@ -10,7 +10,7 @@
     "tailwindcss": "^4.1.16"
   },
   "scripts": {
-    "_write_active_theme": "node scripts/write-active-theme.mjs",
+    "_write_active_theme": "uv run manage.py write_active_theme_css",
     "tailwind_watch": "npm run _write_active_theme && npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css --watch",
     "tailwind_build": "npm run _write_active_theme && npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css"
   },
