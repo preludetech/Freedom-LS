@@ -1,0 +1,44 @@
+{% load course_icon_tags %}
+{# In-progress course card.
+
+   Shared silhouette: tinted icon tile + eyebrow + title + state-specific body
+   slot. The whole card is the click target via the stretched-link pattern: a
+   single <a> on the title with a ::before overlay that extends the hit zone.
+   Text selection inside the card still works because the overlay is empty.
+#}
+<article class="surface relative flex gap-4 items-start">
+    <div class="bg-{{ course.accent_role|default:'primary' }}-soft text-{{ course.accent_role|default:'primary' }} flex items-center justify-center size-16 shrink-0 rounded-md"
+         aria-hidden="true">
+        {% course_icon course.icon course.icon_fallback aria_label=course.title %}
+    </div>
+
+    <div class="flex-1 min-w-0 space-y-2">
+        <p class="text-xs text-muted uppercase tracking-wide">In progress</p>
+
+        <h3>
+            <a href="{% if course.next_up_url %}{{ course.next_up_url }}{% else %}{% url 'student_interface:course_home' course_slug=course.slug %}{% endif %}"
+               class="before:absolute before:inset-0 before:content-['']">
+                {{ course.title }}
+            </a>
+        </h3>
+
+        {% if course.next_up_title %}
+            <p class="text-sm text-muted">Next up: {{ course.next_up_title }}</p>
+        {% endif %}
+
+        <div class="flex items-center gap-2">
+            <progress
+                class="w-full h-2 rounded-full overflow-hidden bg-{{ course.accent_role|default:'primary' }}-soft [&::-webkit-progress-bar]:bg-{{ course.accent_role|default:'primary' }}-soft [&::-webkit-progress-value]:bg-{{ course.accent_role|default:'primary' }} [&::-moz-progress-bar]:bg-{{ course.accent_role|default:'primary' }}"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="{{ course.progress_percentage|default:0 }}"
+                aria-label="Progress for {{ course.title }}"
+                value="{{ course.progress_percentage|default:0 }}"
+                max="100">
+                {{ course.progress_percentage|default:0 }}%
+            </progress>
+            <span class="text-sm font-medium tabular-nums">{{ course.progress_percentage|default:0 }}%</span>
+        </div>
+    </div>
+</article>

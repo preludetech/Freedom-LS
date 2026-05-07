@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
+from freedom_ls.content_engine.course_accent import course_accent_role
 from freedom_ls.content_engine.models import (
     Course,
     Form,
@@ -28,6 +29,8 @@ from freedom_ls.student_progress.models import (
 )
 
 from .utils import (
+    IN_PROGRESS,
+    READY,
     form_start_page_buttons,
     get_all_courses,
     get_completed_courses,
@@ -38,9 +41,94 @@ from .utils import (
 )
 
 
-def home(request):
-    """Home page with list of available courses."""
-    return render(request, "student_interface/home.html")
+def _annotate_accent(course: Course) -> None:
+    """Attach a deterministic accent role to a course for template use.
+
+    Pure annotation: same input title -> same role across processes. The
+    helper is split out so it stays one line away from the future
+    ``course.accent_override`` seam.
+    """
+    # TODO: when Course.accent_override is added, prefer it over course_accent_role(title).
+    setattr(course, "accent_role", course_accent_role(course.title))  # noqa: B010
+
+
+def _annotate_next_up(course: Course, user) -> None:
+    """Annotate an in-progress course with ``next_up_title`` and ``next_up_url``.
+
+    Walks ``get_course_index`` for the course and picks the first
+    ``IN_PROGRESS`` child with a URL, falling back to the first ``READY``
+    child. If neither exists, both fields are set to empty strings — the
+    template never renders ``Next up: `` with a blank.
+    """
+    children = get_course_index(user=user, course=course)
+    flat = []
+    for c in children:
+        flat.append(c)
+        for nested in c.get("children", []):
+            flat.append(nested)
+    next_item = next(
+        (c for c in flat if c["status"] == IN_PROGRESS and c.get("url")),
+        None,
+    ) or next(
+        (c for c in flat if c["status"] == READY and c.get("url")),
+        None,
+    )
+    if next_item:
+        setattr(course, "next_up_title", next_item["title"])  # noqa: B010
+        setattr(course, "next_up_url", next_item["url"])  # noqa: B010
+    else:
+        setattr(course, "next_up_title", "")  # noqa: B010
+        setattr(course, "next_up_url", "")  # noqa: B010
+
+
+def _annotate_preview_context(course: Course, user) -> None:
+    """Attach ``preview_children`` + ``preview_is_registered`` for the modal.
+
+    The not-started card embeds ``course_preview_content.html`` inside a
+    desktop modal. That partial expects the same ``children`` /
+    ``is_registered`` context the standalone preview page has, so we
+    annotate it onto the course object here. The names use a
+    ``preview_`` prefix to avoid colliding with template-loop
+    ``children`` values from the existing ToC partial.
+    """
+    setattr(  # noqa: B010
+        course,
+        "preview_children",
+        get_course_index(user=user, course=course),
+    )
+    setattr(  # noqa: B010
+        course,
+        "preview_is_registered",
+        get_is_registered(user=user, course=course),
+    )
+
+
+@login_required
+def dashboard(request):
+    """Authenticated dashboard listing the learner's courses."""
+    registered_courses = get_current_courses(request.user)
+    completed_courses = get_completed_courses(request.user)
+    recommended_courses = get_recommended_courses(request.user)
+
+    for course in registered_courses:
+        _annotate_accent(course)
+        _annotate_next_up(course, request.user)
+        # Not-started cards (registered but progress == 0) also open the
+        # desktop modal preview, which needs the preview context.
+        if not getattr(course, "progress_percentage", 0):
+            _annotate_preview_context(course, request.user)
+    for course in completed_courses:
+        _annotate_accent(course)
+    for rec in recommended_courses:
+        _annotate_accent(rec.collection)
+        _annotate_preview_context(rec.collection, request.user)
+
+    context = {
+        "registered_courses": registered_courses,
+        "completed_courses": completed_courses,
+        "recommended_courses": recommended_courses,
+    }
+    return render(request, "student_interface/dashboard.html", context)
 
 
 def all_courses(request):
@@ -53,11 +141,35 @@ def all_courses(request):
     for course in courses:
         if course.id in progress_by_id:
             setattr(course, "progress_percentage", progress_by_id[course.id])  # noqa: B010
+        _annotate_accent(course)
+        # Not-started cards (progress 0 or absent) carry the same modal as
+        # the dashboard so they need the preview context. Authenticated
+        # users only — anonymous gets the empty-context defaults.
+        if request.user.is_authenticated and not progress_by_id.get(course.id):
+            _annotate_preview_context(course, request.user)
 
     return render(
         request,
         "student_interface/all_courses.html",
         {"all_courses": courses},
+    )
+
+
+@login_required
+def course_preview(request, course_slug):
+    """Standalone preview page for a course (used on mobile and as deep-link)."""
+    course = get_object_or_404(Course, slug=course_slug)
+    children = get_course_index(user=request.user, course=course)
+    is_registered = get_is_registered(user=request.user, course=course)
+    _annotate_accent(course)
+    return render(
+        request,
+        "student_interface/course_preview.html",
+        {
+            "course": course,
+            "children": children,
+            "is_registered": is_registered,
+        },
     )
 
 
@@ -97,21 +209,6 @@ def partial_course_toc(request, course_slug):
         "student_interface/partials/course_minimal_toc.html#course-children",
         {"course": course, "children": children, "is_registered": is_registered},
     )
-
-
-def partial_list_courses(request):
-    """Return a partial HTML section listing all available courses."""
-    registered_courses = get_current_courses(request.user)
-    completed_courses = get_completed_courses(request.user)
-    recommended_courses = get_recommended_courses(request.user)
-
-    context = {
-        "registered_courses": registered_courses,
-        "completed_courses": completed_courses,
-        "recommended_courses": recommended_courses,
-    }
-
-    return render(request, "student_interface/partials/course_list.html", context)
 
 
 @login_required

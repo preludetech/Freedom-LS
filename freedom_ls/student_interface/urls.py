@@ -5,13 +5,17 @@ from . import views
 app_name = "student_interface"
 
 urlpatterns = [
-    path("", views.home, name="home"),
+    path("", views.dashboard, name="dashboard"),
     path("courses/", views.all_courses, name="courses"),
-    path("partials/courses/", views.partial_list_courses, name="partial_list_courses"),
     path(
         "partials/courses/<slug:course_slug>/toc",
         views.partial_course_toc,
         name="partial_course_toc",
+    ),
+    path(
+        "courses/<slug:course_slug>/preview/",
+        views.course_preview,
+        name="course_preview",
     ),
     path("courses/<slug:course_slug>/", views.course_home, name="course_home"),
     path(

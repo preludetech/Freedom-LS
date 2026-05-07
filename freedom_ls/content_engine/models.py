@@ -151,6 +151,24 @@ class Course(MarkdownContent, TitledContent):
     CONTENT_TYPE = SchemaContentTypes.COURSE
 
     category = models.CharField(max_length=200, blank=True, default="")
+    icon = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text=_(
+            "Semantic icon name (e.g. 'notes') or a literal glyph name "
+            "(e.g. 'drone'). Empty means render the default 'course' icon."
+        ),
+    )
+    icon_fallback = models.CharField(
+        max_length=80,
+        blank=True,
+        default="",
+        help_text=_(
+            "Optional '<iconset>:<glyph>' reference, used only when 'icon' "
+            "is a literal glyph that does not resolve in the active icon set."
+        ),
+    )
     items = GenericRelation(
         "ContentCollectionItem",
         content_type_field="collection_type",
@@ -160,6 +178,15 @@ class Course(MarkdownContent, TitledContent):
 
     class Meta:
         unique_together = ["site", "slug"]
+
+    def clean(self):
+        super().clean()
+        # Local import to avoid circular imports during app loading.
+        from freedom_ls.content_engine.icon_validation import (
+            validate_course_icon_fields,
+        )
+
+        validate_course_icon_fields(self.icon, self.icon_fallback)
 
     def children(self):
         """Return ordered list of child content items."""

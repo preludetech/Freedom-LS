@@ -107,6 +107,43 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
 
     content: str | None = Field(None, description="Markdown content body")
 
+    icon: str | None = Field(
+        None,
+        description=(
+            "Semantic icon name from SEMANTIC_ICON_NAMES, or a literal glyph "
+            "name (e.g. 'drone') resolved against the active icon set."
+        ),
+    )
+    icon_fallback: str | None = Field(
+        None,
+        description=(
+            "Optional explicit '<iconset>:<name>' reference (e.g. "
+            "'phosphor:drone') used only when 'icon' fails to resolve in the "
+            "active icon set."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _validate_icon_fields(self) -> "Course":
+        """Mirror the Django-side validation on the schema."""
+        from django.core.exceptions import ValidationError
+
+        from freedom_ls.content_engine.icon_validation import (
+            validate_course_icon_fields,
+        )
+
+        try:
+            validate_course_icon_fields(self.icon or "", self.icon_fallback or "")
+        except ValidationError as exc:
+            # Re-raise as a pydantic-friendly ValueError so the same content
+            # validation tooling that handles other schema errors can pick
+            # this up.
+            raise ValueError(
+                f"Invalid course icon fields in {self.file_path}: "
+                f"{exc.message_dict if hasattr(exc, 'message_dict') else exc}"
+            ) from exc
+        return self
+
 
 class CoursePart(BaseContentModel, content_type=ContentType.COURSE_PART):
     """

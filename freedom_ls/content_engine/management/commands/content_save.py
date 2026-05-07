@@ -341,6 +341,15 @@ def save_activity(item, site, base_path):
 
 def save_course(item, site, base_path):
     """Save a Course to the database."""
+    # Defence-in-depth: the pydantic model_validator already enforces these
+    # rules during `validate.py`/`content_validate`, but the validation also
+    # runs here so that any caller that bypasses `validate(...)` still gets
+    # a clear ValidationError instead of a half-saved row.
+    from freedom_ls.content_engine.icon_validation import (
+        validate_course_icon_fields,
+    )
+
+    validate_course_icon_fields(item.icon or "", item.icon_fallback or "")
     return save_with_uuid(
         Course,
         item,

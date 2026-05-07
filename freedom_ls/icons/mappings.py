@@ -48,6 +48,7 @@ HEROICONS_MAPPING: dict[str, str] = {
     "unknown": "question-mark-circle",
     "star": "star",
     "notes": "document-text",
+    "course": "academic-cap",
 }
 
 LUCIDE_MAPPING: dict[str, str] = {
@@ -91,6 +92,7 @@ LUCIDE_MAPPING: dict[str, str] = {
     "unknown": "circle-question-mark",
     "star": "star",
     "notes": "file-text",
+    "course": "graduation-cap",
 }
 
 TABLER_MAPPING: dict[str, str] = {
@@ -134,6 +136,7 @@ TABLER_MAPPING: dict[str, str] = {
     "unknown": "help-circle",
     "star": "star",
     "notes": "file-text",
+    "course": "school",
 }
 
 PHOSPHOR_MAPPING: dict[str, str] = {
@@ -177,6 +180,7 @@ PHOSPHOR_MAPPING: dict[str, str] = {
     "unknown": "question",
     "star": "star",
     "notes": "file-text",
+    "course": "graduation-cap",
 }
 
 HEROICONS_VARIANTS: dict[str, str | None] = {

@@ -47,4 +47,5 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "unknown",
     "star",
     "notes",
+    "course",
 }

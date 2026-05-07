@@ -1,0 +1,63 @@
+{% load course_icon_tags %}
+{# Not-started course card.
+
+   Click destination is split:
+   * Desktop (>= md): the card opens a modal preview using <c-modal>.
+   * Mobile (< md):  the card links to the dedicated /courses/<slug>/preview/
+                     page so it deep-links and survives refresh.
+
+   Two siblings render the same article skeleton; CSS hides one or the other
+   so there is no JS branching on viewport width.
+#}
+
+{# Desktop: modal trigger. Hidden below md. #}
+<div class="hidden md:block">
+    <c-modal title="{{ course.title }}">
+        <c-slot name="trigger">
+            <article class="surface relative flex gap-4 items-start cursor-pointer">
+                <div class="bg-{{ course.accent_role|default:'primary' }}-soft text-{{ course.accent_role|default:'primary' }} flex items-center justify-center size-16 shrink-0 rounded-md"
+                     aria-hidden="true">
+                    {% course_icon course.icon course.icon_fallback aria_label=course.title %}
+                </div>
+                <div class="flex-1 min-w-0 space-y-2">
+                    <p class="text-xs text-muted uppercase tracking-wide">Not started</p>
+                    <h3>{{ course.title }}</h3>
+                </div>
+            </article>
+        </c-slot>
+
+        {% with children=course.preview_children is_registered=course.preview_is_registered %}
+            {% include "student_interface/partials/course_preview_content.html" %}
+        {% endwith %}
+
+        <c-slot name="footer">
+            <c-button variant="outline" x-on:click="close">
+                Close
+            </c-button>
+            {% if not is_registered %}
+                <c-button href="{% url 'student_interface:register_for_course' course.slug %}">
+                    Start
+                </c-button>
+            {% endif %}
+        </c-slot>
+    </c-modal>
+</div>
+
+{# Mobile: dedicated-page link. Hidden at md and up. #}
+<div class="md:hidden">
+    <article class="surface relative flex gap-4 items-start">
+        <div class="bg-{{ course.accent_role|default:'primary' }}-soft text-{{ course.accent_role|default:'primary' }} flex items-center justify-center size-16 shrink-0 rounded-md"
+             aria-hidden="true">
+            {% course_icon course.icon course.icon_fallback aria_label=course.title %}
+        </div>
+        <div class="flex-1 min-w-0 space-y-2">
+            <p class="text-xs text-muted uppercase tracking-wide">Not started</p>
+            <h3>
+                <a href="{% url 'student_interface:course_preview' course_slug=course.slug %}"
+                   class="before:absolute before:inset-0 before:content-['']">
+                    {{ course.title }}
+                </a>
+            </h3>
+        </div>
+    </article>
+</div>

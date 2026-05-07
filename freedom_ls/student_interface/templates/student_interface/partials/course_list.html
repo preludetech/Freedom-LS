@@ -1,90 +1,24 @@
-{% partialdef view-course-button %}
+{# Course-list partials shared by the dashboard and the all-courses page.
 
-    <c-modal title="{{ course.title }}">
-        <c-slot name="trigger">
-            <c-button variant="secondary">
-                Description
-            </c-button>
-        </c-slot>
+   `dispatch-card` selects between the three state-specific card partials:
+     * "history"        -> course_card_complete.html
+     * "current" + p>0  -> course_card_in_progress.html
+     * else             -> course_card_not_started.html (covers p==0)
 
-        {% if course.subtitle %}
-            <p>
-                {{ course.subtitle }}
-            </p>
-        {% endif %}
+   The four collection partials below (`current-courses`,
+   `recommended-courses`, `learning-history`, `all-courses`) all dispatch
+   through this single seam. The legacy `course-card` partialdef has been
+   deleted now that nothing references it.
+#}
 
-        {% with content=course.rendered_content %}
-            {% if content %}
-                <c-markdown-container>
-                    {{ content }}
-                </c-markdown-container>
-            {% endif %}
-        {% endwith %}
-
-        <c-slot name="footer">
-            <c-button variant="secondary" x-on:click="close">
-                Close
-            </c-button>
-            {% partial start_course_button %}
-        </c-slot>
-
-    </c-modal>
-{% endpartialdef view-course-button %}
-
-{% partialdef start_course_button %}
-    <c-button href="{% url 'student_interface:register_for_course' course.slug %}">
-        Start
-    </c-button>
-{% endpartialdef %}
-
-{% partialdef course-card %}
-    <div class="surface flex flex-col">
-        <div class="space-y-3 flex-1 mb-4">
-            <div class="flex items-start justify-between">
-                <h4>
-                    {{ course.title }}
-                </h4>
-            </div>
-            {% if course.description %}
-                <p class="text-muted">
-                    {{ course.description }}
-                </p>
-            {% endif %}
-        </div>
-
-        {% if course_status == "current" and course.progress_percentage is not None %}
-            <div class="space-y-1 mb-4">
-                <div class="flex justify-between text-sm">
-                    <span class="text-muted">Progress</span>
-                    <span class="font-medium">{{ course.progress_percentage }}%</span>
-                </div>
-                <div class="w-full bg-surface-2 rounded-full h-2">
-                    <div class="bg-primary h-2 rounded-full"
-                         style="width: {{ course.progress_percentage }}%">
-                    </div>
-                </div>
-            </div>
-        {% endif %}
-
-        <c-button-group variant="centered">
-            {% partial view-course-button %}
-
-            {% if course_status == "current" %}
-                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
-                    Continue
-                </c-button>
-
-            {% elif course_status == "history" %}
-                <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
-                    View
-                </c-button>
-
-            {% else %}
-                {% partial start_course_button %}
-            {% endif %}
-        </c-button-group>
-
-    </div>
+{% partialdef dispatch-card %}
+    {% if course_status == "history" %}
+        {% include "student_interface/partials/course_card_complete.html" %}
+    {% elif course_status == "current" and course.progress_percentage and course.progress_percentage > 0 %}
+        {% include "student_interface/partials/course_card_in_progress.html" %}
+    {% else %}
+        {% include "student_interface/partials/course_card_not_started.html" %}
+    {% endif %}
 {% endpartialdef %}
 
 {% partialdef all-courses %}
@@ -93,10 +27,10 @@
             {% for course in all_courses %}
                 {% if course.progress_percentage is not None %}
                     {% with course_status="current" %}
-                        {% partial course-card %}
+                        {% partial dispatch-card %}
                     {% endwith %}
                 {% else %}
-                    {% partial course-card %}
+                    {% partial dispatch-card %}
                 {% endif %}
             {% endfor %}
         </div>
@@ -119,14 +53,19 @@
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {% with course_status="current" %}
                     {% for course in registered_courses %}
-                        {% partial course-card %}
+                        {% partial dispatch-card %}
                     {% endfor %}
                 {% endwith %}
             </div>
         {% else %}
-            <p class="text-muted">
-                You haven't signed up for any courses yet
-            </p>
+            <div class="space-y-3 text-center">
+                <p class="text-muted">
+                    You haven't signed up for any courses yet.
+                </p>
+                <c-button href="{% url 'student_interface:courses' %}">
+                    Browse courses
+                </c-button>
+            </div>
         {% endif %}
     </div>
 {% endpartialdef %}
@@ -140,7 +79,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for recommendation in recommended_courses %}
                     {% with course=recommendation.collection %}
-                        {% partial course-card %}
+                        {% partial dispatch-card %}
                     {% endwith %}
                 {% endfor %}
             </div>
@@ -157,7 +96,7 @@
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {% with course_status="history" %}
                     {% for course in completed_courses %}
-                        {% partial course-card %}
+                        {% partial dispatch-card %}
                     {% endfor %}
                 {% endwith %}
             </div>

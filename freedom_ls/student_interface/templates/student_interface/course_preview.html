@@ -1,0 +1,12 @@
+{% extends "_base.html" %}
+
+{% block title %}{{ course.title }}{% endblock title %}
+
+{% block content %}
+    <c-page>
+        <div class="space-y-6">
+            <h1>{{ course.title }}</h1>
+            {% include "student_interface/partials/course_preview_content.html" %}
+        </div>
+    </c-page>
+{% endblock content %}

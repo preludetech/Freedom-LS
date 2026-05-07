@@ -1,4 +1,10 @@
-"""Tests for all_courses and partial_list_courses views."""
+"""Tests for the all_courses view and the dashboard view.
+
+The dashboard view replaces the old ``partial_list_courses`` HTMX
+endpoint; tests for that endpoint were deleted in the same change set.
+"""
+
+from __future__ import annotations
 
 import pytest
 
@@ -57,161 +63,134 @@ def test_all_courses_started_course_has_progress_percentage(mock_site_context, c
     assert started_course.progress_percentage == 0
 
 
-# --- partial_list_courses view ---
-#
-# Each test below asserts a distinct context-key behaviour (registered vs
-# completed vs recommended, anonymous-empty, progress_percentage attribute).
-# They share an outline but not a fixture/oracle pair — parametrizing them
-# would obscure intent (see spec: "If the variants need different fixtures
-# or different setup beyond a single value swap, don't parametrize"). The
-# audit cited this cluster as ~3 tests; a fresh read shows 5, and each one
-# is a separate behavioural axis.
-
-
 @pytest.mark.django_db
-def test_partial_list_courses_anonymous_sees_empty(client, courses, mock_site_context):
-    """Anonymous user sees empty course lists."""
-    response = client.get(reverse("student_interface:partial_list_courses"))
+def test_all_courses_annotates_accent_role(mock_site_context, courses):
+    """Every course returned to the all_courses page has an ``accent_role``."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+    response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
-    assert response.context["registered_courses"] == []
-    assert response.context["completed_courses"] == []
-    assert list(response.context["recommended_courses"]) == []
+    for course in response.context["all_courses"]:
+        assert hasattr(course, "accent_role")
+        assert course.accent_role in {
+            "primary",
+            "secondary",
+            "accent",
+            "info",
+            "success",
+        }
+
+
+# --- dashboard view ---
 
 
 @pytest.mark.django_db
-def test_partial_list_courses_current_courses(mock_site_context, courses):
-    """Registered non-completed courses show up as registered_courses."""
+def test_dashboard_anonymous_redirects_to_login(client, courses, mock_site_context):
+    """Anonymous user hitting / is redirected to login (login_required)."""
+    response = client.get(reverse("student_interface:dashboard"))
+    assert response.status_code == 302
+    # Login URL is the redirect target; we don't pin its exact path.
+    assert "login" in response["Location"].lower()
+
+
+@pytest.mark.django_db
+def test_dashboard_authenticated_returns_200_with_user_label(
+    mock_site_context, courses
+):
+    user = UserFactory()
+    client = _logged_in_client(user)
+    response = client.get(reverse("student_interface:dashboard"))
+    assert response.status_code == 200
+    body = response.content.decode()
+    # The greeting renders the user's first name (or email fallback).
+    expected: str = user.first_name or user.email
+    assert expected in body
+
+
+@pytest.mark.django_db
+def test_dashboard_current_courses(mock_site_context, courses):
+    """Registered non-completed courses appear under registered_courses."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = _logged_in_client(user)
 
-    response = client.get(reverse("student_interface:partial_list_courses"))
+    response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
     registered = response.context["registered_courses"]
     assert len(registered) == 1
     assert registered[0] == courses[0]
-    # Template binding check: the registered course title must show up in
-    # the rendered HTML, not only in the context dict.
     assert courses[0].title in response.content.decode()
 
 
 @pytest.mark.django_db
-def test_partial_list_courses_current_courses_have_progress_percentage(
-    mock_site_context, courses
-):
-    """Current courses should have progress_percentage attribute for progress bars."""
+def test_dashboard_current_courses_have_progress_percentage(mock_site_context, courses):
+    """In-progress courses show progress_percentage attribute for progress bars."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = _logged_in_client(user)
 
-    response = client.get(reverse("student_interface:partial_list_courses"))
+    response = client.get(reverse("student_interface:dashboard"))
     registered = response.context["registered_courses"]
     assert len(registered) == 1
     assert hasattr(registered[0], "progress_percentage")
 
 
 @pytest.mark.django_db
-def test_partial_list_courses_completed_courses(mock_site_context, courses):
-    """Completed courses show up in completed_courses, not registered_courses."""
+def test_dashboard_completed_courses(mock_site_context, courses):
+    """Completed courses surface in completed_courses, not registered_courses."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     CourseProgressFactory(user=user, course=courses[0], completed_time=timezone.now())
     client = _logged_in_client(user)
 
-    response = client.get(reverse("student_interface:partial_list_courses"))
+    response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
     assert courses[0] in response.context["completed_courses"]
     assert courses[0] not in list(response.context["registered_courses"])
-    # Template binding check: the completed course title must render.
     assert courses[0].title in response.content.decode()
 
 
 @pytest.mark.django_db
-def test_partial_list_courses_includes_recommended_courses(mock_site_context, courses):
-    """Recommended courses are passed to the template context."""
+def test_dashboard_recommended_courses(mock_site_context, courses):
+    """Recommended courses appear in recommended_courses context list."""
     user = UserFactory()
     RecommendedCourseFactory(user=user, collection=courses[0])
     client = _logged_in_client(user)
 
-    response = client.get(reverse("student_interface:partial_list_courses"))
+    response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
     recommended = list(response.context["recommended_courses"])
     assert len(recommended) == 1
     assert recommended[0].collection == courses[0]
-    # Template binding check: the recommended course title must render.
     assert courses[0].title in response.content.decode()
 
 
-# --- empty-section guards on partial_list_courses ---
-#
-# The dashboard should emit zero DOM for the recommended-courses and
-# learning-history sections when their respective context lists are empty,
-# instead of rendering a heading + "No X yet" placeholder. Each test below
-# asserts a distinct slice of that behaviour.
+@pytest.mark.django_db
+def test_dashboard_annotates_accent_on_every_course(mock_site_context, courses):
+    """Every current/completed/recommended course gets an accent_role."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    UserCourseRegistrationFactory(user=user, collection=courses[1])
+    CourseProgressFactory(user=user, course=courses[1], completed_time=timezone.now())
+    RecommendedCourseFactory(user=user, collection=courses[2])
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:dashboard"))
+    assert response.status_code == 200
+
+    for course in response.context["registered_courses"]:
+        assert hasattr(course, "accent_role")
+    for course in response.context["completed_courses"]:
+        assert hasattr(course, "accent_role")
+    for rec in response.context["recommended_courses"]:
+        assert hasattr(rec.collection, "accent_role")
+
+
+# --- dead URL ---
 
 
 @pytest.mark.django_db
-def test_partial_list_courses_omits_recommended_section_when_empty(
-    mock_site_context, courses
-):
-    """When recommended_courses is empty, the section heading and placeholder are omitted."""
-    user = UserFactory()
-    client = _logged_in_client(user)
-
-    response = client.get(reverse("student_interface:partial_list_courses"))
-    body = response.content.decode()
-
-    assert response.status_code == 200
-    assert list(response.context["recommended_courses"]) == []
-    assert 'id="recommended-courses"' not in body
-    assert "No recommended courses yet" not in body
-
-
-@pytest.mark.django_db
-def test_partial_list_courses_omits_history_section_when_empty(
-    mock_site_context, courses
-):
-    """When completed_courses is empty, the section heading and placeholder are omitted."""
-    user = UserFactory()
-    client = _logged_in_client(user)
-
-    response = client.get(reverse("student_interface:partial_list_courses"))
-    body = response.content.decode()
-
-    assert response.status_code == 200
-    assert response.context["completed_courses"] == []
-    assert 'id="learning-history"' not in body
-    assert "No completed courses yet" not in body
-
-
-@pytest.mark.django_db
-def test_partial_list_courses_renders_recommended_section_when_populated(
-    mock_site_context, courses
-):
-    """When a recommendation exists, the Recommended Courses heading renders."""
-    user = UserFactory()
-    RecommendedCourseFactory(user=user, collection=courses[1])
-    client = _logged_in_client(user)
-
-    response = client.get(reverse("student_interface:partial_list_courses"))
-    body = response.content.decode()
-
-    assert response.status_code == 200
-    assert 'id="recommended-courses"' in body
-
-
-@pytest.mark.django_db
-def test_partial_list_courses_renders_history_section_when_populated(
-    mock_site_context, courses
-):
-    """When a completed course exists, the Learning History heading renders."""
-    user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[2])
-    CourseProgressFactory(user=user, course=courses[2], completed_time=timezone.now())
-    client = _logged_in_client(user)
-
-    response = client.get(reverse("student_interface:partial_list_courses"))
-    body = response.content.decode()
-
-    assert response.status_code == 200
-    assert 'id="learning-history"' in body
+def test_partial_list_courses_url_is_404(client, mock_site_context):
+    """The old HTMX endpoint is gone; its path returns 404."""
+    response = client.get("/partials/courses/")
+    assert response.status_code == 404

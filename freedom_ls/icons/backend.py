@@ -31,6 +31,37 @@ class IconBackend:
         raise NotImplementedError("Subclasses must implement render()")
 
 
+def build_svg(
+    set_name: str,
+    lookup_name: str,
+    css_class: str,
+    aria_label: str,
+) -> str:
+    """Build an SVG string from an iconify-JSON entry.
+
+    Shared between :class:`DefaultIconBackend` (semantic-name path) and the
+    course-icon resolver (literal-glyph path). Caller is responsible for
+    having already determined the suffixed `lookup_name` to use.
+    """
+    data = load_iconify_data(set_name)
+    icons = data["icons"]
+    if lookup_name not in icons:
+        raise KeyError(f"Icon '{lookup_name}' not found in '{set_name}' Iconify JSON")
+    icon_data = icons[lookup_name]
+
+    body = _validate_svg_body(icon_data["body"])
+    width = int(icon_data.get("width", data.get("width", 24)))
+    height = int(icon_data.get("height", data.get("height", 24)))
+
+    label = escape(aria_label)
+
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
+        f'class="inline {escape(css_class)}" role="img" aria-label="{label}">'
+        f"{body}</svg>"
+    )
+
+
 class DefaultIconBackend(IconBackend):
     """Default backend that renders icons from iconify JSON data."""
 
@@ -62,26 +93,19 @@ class DefaultIconBackend(IconBackend):
             icon_name + variant_suffix if variant_suffix is not None else icon_name
         )
 
-        data = load_iconify_data(icon_set_name)
-        icons = data["icons"]
-        if lookup_name not in icons:
+        try:
+            return build_svg(
+                set_name=icon_set_name,
+                lookup_name=lookup_name,
+                css_class=css_class,
+                aria_label=aria_label if aria_label else semantic_name,
+            )
+        except KeyError:
+            # Re-raise with the semantic-name context the original exception had.
             raise KeyError(
                 f"Icon '{lookup_name}' not found in '{icon_set_name}' Iconify JSON "
                 f"(semantic_name={semantic_name!r}, variant={variant!r})"
-            )
-        icon_data = icons[lookup_name]
-
-        body = _validate_svg_body(icon_data["body"])
-        width = int(icon_data.get("width", data.get("width", 24)))
-        height = int(icon_data.get("height", data.get("height", 24)))
-
-        label = escape(aria_label if aria_label else semantic_name)
-
-        return (
-            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
-            f'class="inline {escape(css_class)}" role="img" aria-label="{label}">'
-            f"{body}</svg>"
-        )
+            ) from None
 
 
 @functools.cache

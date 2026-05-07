@@ -1,0 +1,40 @@
+{# Shared course-preview content.
+
+   Used by both:
+   * the desktop modal in `course_card_not_started.html`, and
+   * the dedicated mobile/standalone page `course_preview.html`.
+
+   Render context required: `course`, `children`, `is_registered`.
+#}
+<div class="space-y-4">
+    {% if course.subtitle %}
+        <p class="text-muted">{{ course.subtitle }}</p>
+    {% endif %}
+
+    {% with content=course.rendered_content %}
+        {% if content %}
+            <c-markdown-container>
+                {{ content }}
+            </c-markdown-container>
+        {% endif %}
+    {% endwith %}
+
+    {% if children %}
+        <div>
+            <h3 class="mt-4">Contents</h3>
+            <ul class="mt-2 space-y-1 list-disc list-inside text-sm text-muted">
+                {% for child in children %}
+                    <li>{{ child.title }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if not is_registered %}
+        <div class="pt-2">
+            <c-button href="{% url 'student_interface:register_for_course' course.slug %}">
+                Start
+            </c-button>
+        </div>
+    {% endif %}
+</div>

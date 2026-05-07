@@ -71,6 +71,16 @@
     --color-error-hover:     color-mix(in oklch, var(--color-error),     var(--fls-hover-mix-color) var(--fls-hover-mix-amount));
     --color-info-hover:      color-mix(in oklch, var(--color-info),      var(--fls-hover-mix-color) var(--fls-hover-mix-amount));
 
+    /* Soft tints used by per-course accent tiles & progress-bar tracks. The
+     * five soft roles map 1:1 to the curated palette in
+     * `freedom_ls.content_engine.course_accent.PALETTE`; error/warning are
+     * deliberately excluded so an accent never reads as an alert. */
+    --color-primary-soft:   color-mix(in oklab, var(--color-primary)   12%, var(--color-surface));
+    --color-secondary-soft: color-mix(in oklab, var(--color-secondary) 12%, var(--color-surface));
+    --color-accent-soft:    color-mix(in oklab, var(--color-accent)    12%, var(--color-surface));
+    --color-info-soft:      color-mix(in oklab, var(--color-info)      12%, var(--color-surface));
+    --color-success-soft:   color-mix(in oklab, var(--color-success)   12%, var(--color-surface));
+
     /* Shape tokens — FLS namespace. */
     --fls-radius-sm: 0.25rem;
     --fls-radius-md: 0.375rem;

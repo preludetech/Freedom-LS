@@ -1,0 +1,20 @@
+{% extends "_base.html" %}
+
+{% block title %}Dashboard{% endblock title %}
+
+{% block content %}
+    <c-page>
+        <div class="space-y-8 lg:space-y-12">
+            <div class="text-center sm:text-center">
+                <h1 class="px-4 max-w-full">
+                    <span class="block sm:inline">Welcome back,</span>
+                    <span class="block sm:inline break-all overflow-hidden">{{ user.first_name|default:user.email }}</span>
+                </h1>
+            </div>
+
+            <div>
+                {% include "student_interface/partials/course_list.html" %}
+            </div>
+        </div>
+    </c-page>
+{% endblock content %}
