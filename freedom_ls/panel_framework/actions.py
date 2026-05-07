@@ -116,7 +116,7 @@ class CreateInstanceAction(FormPanelAction):
     submit_buttons: list[dict[str, str]] = [
         {
             "label": "Save and add another",
-            "variant": "outline",
+            "variant": "secondary",
             "name": "action",
             "value": "save_and_add",
         },
@@ -173,7 +173,7 @@ class CreateInstanceAction(FormPanelAction):
 
 class EditAction(FormPanelAction):
     label = "Edit"
-    variant = "outline"
+    variant = "secondary"
     action_name = "edit"
     submit_buttons: list[dict[str, str]] = [
         {"label": "Save", "variant": "primary"},

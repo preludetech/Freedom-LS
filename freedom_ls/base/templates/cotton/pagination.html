@@ -20,7 +20,7 @@
                    hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
-                   class="btn btn-outline px-4 py-3">
+                   class="btn btn-secondary px-4 py-3">
                     Previous
                 </a>
             {% endif %}
@@ -34,7 +34,7 @@
                    hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.next_page_number }}{{ suffix }}"
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
-                   class="btn btn-outline px-4 py-3">
+                   class="btn btn-secondary px-4 py-3">
                     Next
                 </a>
             {% endif %}
@@ -49,14 +49,14 @@
                    hx-get="{{ base_url }}?{{ page_param_name }}=1{{ suffix }}"
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
-                   class="btn btn-outline">
+                   class="btn btn-secondary">
                     First
                 </a>
                 <a href="?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
                    hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
-                   class="btn btn-outline">
+                   class="btn btn-secondary">
                     Previous
                 </a>
             {% endif %}
@@ -69,13 +69,13 @@
                        hx-get="{{ base_url }}?{{ page_param_name }}={{ num }}{{ suffix }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-outline">
+                       class="btn btn-secondary">
                         {{ num }}
                     </a>
                 {% elif num == 3 and page_obj.number > 5 %}
-                    <span class="btn btn-outline pointer-events-none">...</span>
+                    <span class="btn btn-secondary pointer-events-none">...</span>
                 {% elif num == page_obj.paginator.num_pages|add:'-2' and page_obj.number < page_obj.paginator.num_pages|add:'-4' %}
-                    <span class="btn btn-outline pointer-events-none">...</span>
+                    <span class="btn btn-secondary pointer-events-none">...</span>
                 {% endif %}
             {% endfor %}
 
@@ -84,14 +84,14 @@
                    hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.next_page_number }}{{ suffix }}"
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
-                   class="btn btn-outline">
+                   class="btn btn-secondary">
                     Next
                 </a>
                 <a href="?{{ page_param_name }}={{ page_obj.paginator.num_pages }}{{ suffix }}"
                    hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.paginator.num_pages }}{{ suffix }}"
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
-                   class="btn btn-outline">
+                   class="btn btn-secondary">
                     Last
                 </a>
             {% endif %}

@@ -17,7 +17,7 @@
     {% endif %}
 
     <c-slot name="footer">
-        <c-button variant="outline" @click="close">Cancel</c-button>
+        <c-button variant="secondary" @click="close">Cancel</c-button>
         <form hx-delete="{{ delete_url }}"
               hx-disabled-elt="find button[type='submit']">
             <c-button type="submit" variant="error" loading="true" loading_text="Deleting...">

@@ -33,6 +33,20 @@
     --color-info: #0EA5E9;
     --color-on-info: #FFFFFF;
 
+    /* Status — light tints (named replacements for ad-hoc /15 opacity
+     * modifiers in chip/alert backgrounds). Tailwind v3 *-50 values. */
+    --color-success-light: #F0FFF4;
+    --color-warning-light: #FFFFF0;
+    --color-error-light: #FFF5F5;
+    --color-info-light: #EBF8FF;
+
+    /* Status — paired foregrounds for use on the *-light surfaces (the
+     * default `--color-on-*` whites are illegible against a near-white tint). */
+    --color-on-success-light: #22543D;
+    --color-on-warning-light: #744210;
+    --color-on-error-light: #742A2A;
+    --color-on-info-light: #2A4365;
+
     /* Surfaces */
     --color-surface: #FFFFFF;
     --color-surface-2: #F3F4F6;
@@ -67,6 +81,8 @@
     --fls-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
         "Helvetica Neue", Arial, "Noto Sans", sans-serif;
     --fls-font-display: var(--fls-font-sans);
+    --fls-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas,
+        "Liberation Mono", "Courier New", monospace;
 }
 
 /* `@theme inline` aliases live tokens into Tailwind's expected slots so
@@ -81,4 +97,5 @@
 
     --font-sans: var(--fls-font-sans);
     --font-display: var(--fls-font-display);
+    --font-mono: var(--fls-font-mono);
 }

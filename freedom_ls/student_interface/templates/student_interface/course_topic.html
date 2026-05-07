@@ -25,7 +25,7 @@
             <div class="flex items-center justify-between pt-4 border-t border-border gap-3">
                 <div>
                     {% if previous_url %}
-                        <c-button href="{{ previous_url }}" variant="outline" icon_left="previous">
+                        <c-button href="{{ previous_url }}" variant="secondary" icon_left="previous">
                             Previous
                         </c-button>
                     {% endif %}
@@ -51,7 +51,7 @@
                 {% elif is_last_item %}
                     {% if is_course_complete %}
                         <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}"
-                                  variant="outline"
+                                  variant="secondary"
                                   icon_left="home">
                             Home
                         </c-button>

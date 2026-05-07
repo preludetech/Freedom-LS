@@ -31,6 +31,19 @@
     --color-info: #3182CE;
     --color-on-info: #FFFFFF;
 
+    /* Status — light tints (same hex values as the default theme; the
+     * brand-doc lights are also Tailwind v3's canonical *-50). */
+    --color-success-light: #F0FFF4;
+    --color-warning-light: #FFFFF0;
+    --color-error-light: #FFF5F5;
+    --color-info-light: #EBF8FF;
+
+    /* Status — paired foregrounds for use on the *-light surfaces. */
+    --color-on-success-light: #22543D;
+    --color-on-warning-light: #744210;
+    --color-on-error-light: #742A2A;
+    --color-on-info-light: #2A4365;
+
     /* Surfaces */
     --color-surface: #F8F9FC;        /* Stratosphere */
     --color-surface-2: #EDF2F7;
@@ -38,12 +51,91 @@
     --color-border: #E2E8F0;
     --color-muted: #718096;
 
-    /* Shape — bumped one step for the brand's rounder card treatment. */
-    --fls-radius-sm: 0.5rem;
-    --fls-radius-md: 0.75rem;
-    --fls-radius-lg: 1rem;
+    /* Shape — radii match design-system/radii.html. */
+    --fls-radius-sm: 0.375rem;  /* 6px  — chips, badges */
+    --fls-radius-md: 0.5rem;    /* 8px  — buttons, inputs */
+    --fls-radius-lg: 0.75rem;   /* 12px — cards, modals */
+    /* --fls-radius-pill stays inherited from default (9999px) */
 
-    /* Type — DM Sans body, Outfit display. */
+    /* Type — DM Sans body, Outfit display, IBM Plex Mono for code. The
+     * `--font-mono` Tailwind alias is set once in the default theme; this
+     * file only redeclares the `--fls-font-mono` value. */
     --fls-font-sans: "DM Sans", system-ui, sans-serif;
     --fls-font-display: "Outfit", system-ui, sans-serif;
+    --fls-font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* Tier-2 component overrides — reopen the default-contract classes from
+ * `tailwind.components.css` and apply the brand's chunkier shapes,
+ * pastel chip tints, and accent transitions. Cascade order is set by
+ * `tailwind.input.css` (default tokens -> components -> active theme),
+ * so these rules win over the default contract. */
+@layer components {
+    .btn {
+        @apply px-6 py-3 text-sm font-semibold rounded-md;
+        transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+                    color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .btn-secondary {
+        @apply border-2;
+    }
+
+    .chip {
+        @apply gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-pill;
+    }
+
+    .chip-primary {
+        @apply bg-primary/10 text-primary;
+    }
+
+    .chip-warning {
+        @apply bg-warning-light text-on-warning-light;
+    }
+
+    .chip-success {
+        @apply bg-success-light text-on-success-light;
+    }
+
+    .chip-error {
+        @apply bg-error-light text-on-error-light;
+    }
+
+    .chip-info {
+        @apply bg-info-light text-on-info-light;
+    }
+
+    .chip-secondary {
+        @apply bg-secondary/10 text-secondary;
+    }
+    /* .chip-muted: default `bg-surface-2 text-muted` reads correctly on
+     * the first_class surfaces, so no override is needed. Retune here
+     * if QA finds the contrast inadequate. */
+
+    .surface {
+        @apply bg-surface rounded-lg;
+    }
+
+    .alert-success {
+        @apply bg-success-light border-success/30 text-on-success-light;
+    }
+
+    .alert-error {
+        @apply bg-error-light border-error/30 text-on-error-light;
+    }
+
+    .alert-info {
+        @apply bg-info-light border-info/30 text-on-info-light;
+    }
+}
+
+/* Heading-weight override — the brand uses `font-semibold` (not the
+ * default contract's `font-bold`) for h2-h4, with `tracking-tight` on the
+ * largest two headings. Body, mono, and the responsive size scale stay
+ * as set by `tailwind.components.css`. */
+@layer base {
+    h1 { @apply tracking-tight; }
+    h2 { @apply font-semibold tracking-tight; }
+    h3 { @apply font-semibold; }
+    h4 { @apply font-semibold; }
 }

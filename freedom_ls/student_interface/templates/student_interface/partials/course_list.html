@@ -2,7 +2,7 @@
 
     <c-modal title="{{ course.title }}">
         <c-slot name="trigger">
-            <c-button variant="outline">
+            <c-button variant="secondary">
                 Description
             </c-button>
         </c-slot>
@@ -22,7 +22,7 @@
         {% endwith %}
 
         <c-slot name="footer">
-            <c-button variant="outline" x-on:click="close">
+            <c-button variant="secondary" x-on:click="close">
                 Close
             </c-button>
             {% partial start_course_button %}
