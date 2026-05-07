@@ -1,4 +1,9 @@
+import itertools
+
 import pytest
+
+from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
@@ -12,6 +17,7 @@ from freedom_ls.student_interface.utils import BLOCKED, READY, get_course_index
 from freedom_ls.student_management.factories import (
     UserCourseRegistrationFactory,
 )
+from freedom_ls.student_progress.factories import TopicProgressFactory
 
 
 @pytest.mark.django_db
@@ -85,3 +91,106 @@ def test_course_part_status_based_on_children(mock_site_context):
     # CoursePart URL should point to the READY child's URL
     topic_child_dict = course_part_dict["children"][0]
     assert course_part_dict["url"] == topic_child_dict["url"]
+
+
+@pytest.mark.django_db
+def test_course_part_row_url_resolves_to_first_viewable_child_index(mock_site_context):
+    """A CoursePart's TOC row url must point to its first viewable child's URL."""
+    course: Course = CourseFactory(title="Multi", slug="multi")
+    p1: CoursePart = CoursePartFactory(title="P1", slug="p1")
+    p2: CoursePart = CoursePartFactory(title="P2", slug="p2")
+    p1a = TopicFactory(title="P1A", slug="p1a")
+    p1b = TopicFactory(title="P1B", slug="p1b")
+    p2a = TopicFactory(title="P2A", slug="p2a")
+
+    course.items.create(child=p1, order=0)
+    course.items.create(child=p2, order=1)
+    p1.items.create(child=p1a, order=0)
+    p1.items.create(child=p1b, order=1)
+    p2.items.create(child=p2a, order=0)
+
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course)
+    # Complete all viewable items so every item has a non-BLOCKED status (and thus a URL).
+    now = timezone.now()
+    for topic in (p1a, p1b, p2a):
+        TopicProgressFactory(user=user, topic=topic, complete_time=now)
+
+    children = get_course_index(user=user, course=course)
+
+    # Independent oracle: viewable order is [p1a, p1b, p2a] -> indices [1, 2, 3].
+    viewable_order = course.viewable_items()
+    p1_first_child_idx = viewable_order.index(p1a) + 1
+    p2_first_child_idx = viewable_order.index(p2a) + 1
+
+    p1_dict = children[0]
+    p2_dict = children[1]
+
+    expected_p1_url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": p1_first_child_idx},
+    )
+    expected_p2_url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": p2_first_child_idx},
+    )
+
+    assert p1_dict["url"] == expected_p1_url
+    assert p2_dict["url"] == expected_p2_url
+
+
+@pytest.mark.django_db
+def test_consecutive_viewable_items_have_dense_indices(mock_site_context):
+    """URLs of consecutive viewable items in the TOC differ by exactly 1 in index."""
+    course: Course = CourseFactory(title="Dense", slug="dense")
+    p1: CoursePart = CoursePartFactory(title="P1", slug="p1")
+    p2: CoursePart = CoursePartFactory(title="P2", slug="p2")
+    p1a = TopicFactory(title="P1A", slug="p1a")
+    p1b = TopicFactory(title="P1B", slug="p1b")
+    p2a = TopicFactory(title="P2A", slug="p2a")
+    direct = TopicFactory(title="Direct", slug="direct")
+
+    course.items.create(child=p1, order=0)
+    course.items.create(child=p2, order=1)
+    course.items.create(child=direct, order=2)
+    p1.items.create(child=p1a, order=0)
+    p1.items.create(child=p1b, order=1)
+    p2.items.create(child=p2a, order=0)
+
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course)
+    # Complete all viewable items so every viewable row has a URL we can compare.
+    now = timezone.now()
+    for topic in (p1a, p1b, p2a, direct):
+        TopicProgressFactory(user=user, topic=topic, complete_time=now)
+
+    children = get_course_index(user=user, course=course)
+
+    # Flatten viewable rows in URL-order: each part's children, then direct items.
+    flat_rows = []
+    for row in children:
+        if "children" in row:
+            flat_rows.extend(row["children"])
+        else:
+            flat_rows.append(row)
+
+    indices = [int(row["url"].rstrip("/").rsplit("/", 1)[-1]) for row in flat_rows]
+    diffs = [b - a for a, b in itertools.pairwise(indices)]
+    assert diffs == [1] * len(diffs)
+    # Sanity check: we actually had multiple rows to compare.
+    assert len(indices) >= 2
+
+
+@pytest.mark.django_db
+def test_empty_course_part_row_has_no_url(mock_site_context):
+    """A CoursePart with no viewable children gets url=None."""
+    course: Course = CourseFactory(title="WithEmpty", slug="with-empty")
+    empty_part: CoursePart = CoursePartFactory(title="Empty", slug="empty")
+    course.items.create(child=empty_part, order=0)
+
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course)
+
+    children = get_course_index(user=user, course=course)
+
+    assert children[0]["url"] is None

@@ -10,7 +10,6 @@ from django.utils import timezone
 
 from freedom_ls.content_engine.models import (
     Course,
-    CoursePart,
     Form,
     FormStrategy,
     Topic,
@@ -140,22 +139,18 @@ def register_for_course(request, course_slug):
 @login_required
 def view_course_item(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
-    children = course.children_flat()
-    current_item = children[index - 1]
+    viewable_items = course.viewable_items()
+    current_item = viewable_items[index - 1]
 
     # Check if item is locked by a hard deadline
-    if (
-        config.DEADLINES_ACTIVE
-        and request.user.is_authenticated
-        and not isinstance(current_item, CoursePart)
-    ):
+    if config.DEADLINES_ACTIVE and request.user.is_authenticated:
         is_completed = _is_content_item_completed(current_item, request.user)
         if is_item_locked_by_deadline(
             request.user, course, current_item, is_completed=is_completed
         ):
             return redirect("student_interface:course_home", course_slug=course_slug)
 
-    total_children = len(children)
+    total = len(viewable_items)
 
     # Update or create course progress to track last accessed time
     if request.user.is_authenticated:
@@ -165,20 +160,23 @@ def view_course_item(request, course_slug, index):
         course_progress.save()  # This updates last_accessed_time via auto_now
 
     # Calculate navigation URLs
-    next_url = None
-    is_last_item = index >= total_children
-    if not is_last_item:
-        next_url = reverse(
+    is_last_item = index >= total
+    next_url = (
+        reverse(
             "student_interface:view_course_item",
             kwargs={"course_slug": course_slug, "index": index + 1},
         )
-
-    previous_url = None
-    if index > 1:
-        previous_url = reverse(
+        if index < total
+        else None
+    )
+    previous_url = (
+        reverse(
             "student_interface:view_course_item",
             kwargs={"course_slug": course_slug, "index": index - 1},
         )
+        if index > 1
+        else None
+    )
 
     if isinstance(current_item, Topic):
         return view_topic(
@@ -199,15 +197,6 @@ def view_course_item(request, course_slug, index):
             is_last_item=is_last_item,
             next_url=next_url,
         )
-
-    # Handle CoursePart by redirecting to the next item (first child of the part)
-    if isinstance(current_item, CoursePart):
-        # CourseParts are not directly viewable, redirect to next item
-        if next_url:
-            return redirect(next_url)
-        else:
-            # If this is the last item, go to course home
-            return redirect("student_interface:course_home", course_slug=course.slug)
 
 
 def view_topic(request, topic, course, next_url, previous_url, is_last_item=False):
@@ -291,8 +280,8 @@ def form_start(request, course_slug, index):
     """Start or resume a form for the current user."""
 
     course = get_object_or_404(Course, slug=course_slug)
-    children = course.children_flat()
-    form = children[index - 1]
+    viewable_items = course.viewable_items()
+    form = viewable_items[index - 1]
 
     # Create a FormProgress instance if it doesn't yet exist
     form_progress = FormProgress.get_or_create_incomplete(request.user, form)
@@ -312,8 +301,8 @@ def form_start(request, course_slug, index):
 @login_required
 def form_fill_page(request, course_slug, index, page_number):
     course = get_object_or_404(Course, slug=course_slug)
-    children = course.children_flat()
-    form = children[index - 1]
+    viewable_items = course.viewable_items()
+    form = viewable_items[index - 1]
     all_pages = list(form.pages.all())
     total_pages = len(all_pages)
     form_page = all_pages[page_number - 1]
@@ -416,8 +405,8 @@ def form_fill_page(request, course_slug, index, page_number):
 @login_required
 def course_form_complete(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
-    children = course.children_flat()
-    form = children[index - 1]
+    viewable_items = course.viewable_items()
+    form = viewable_items[index - 1]
 
     # Get the most recent completed form progress
     form_progress = (
@@ -440,8 +429,8 @@ def course_form_complete(request, course_slug, index):
             is_failed_quiz = not form_progress.passed()
 
     # Calculate next URL for continue button
-    total_children = len(children)
-    is_last_item = index >= total_children
+    total_viewable_items = len(viewable_items)
+    is_last_item = index >= total_viewable_items
     if is_last_item:
         # Last item - go to course finish page
         next_url = reverse(

@@ -134,8 +134,8 @@ def command(
             f"Available: {available}"
         ) from e
 
-    # Gather course content items
-    children = course.children_flat()
+    # Gather course content items (CourseParts excluded — they aren't viewable destinations).
+    children = course.viewable_items()
     topics = [c for c in children if isinstance(c, Topic)]
     forms = [c for c in children if isinstance(c, Form)]
     total_items = len(topics) + len(forms)

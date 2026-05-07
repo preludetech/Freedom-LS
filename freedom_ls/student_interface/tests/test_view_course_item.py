@@ -24,11 +24,11 @@ def course_with_nested_structure(mock_site_context, request):
     """
     Create a course with nested structure for testing flattened indices.
 
-    Structure:
-      - CoursePart "Chapter 1" (index 1)
-        - First content item (index 2)
-        - Second content item (index 3)
-      - Third content item (index 4, direct child of course)
+    Structure (URL indices in the viewable-only scheme):
+      - CoursePart "Chapter 1" (no URL slot)
+        - First content item (index 1)
+        - Second content item (index 2)
+      - Third content item (index 3, direct child of course)
 
     Can be parameterized with first_item_type to use Topic or Form.
     Returns dict with course and all content items.
@@ -106,10 +106,10 @@ def test_accessing_topic_inside_course_part_should_display_topic(
     """
     first_topic = course_with_nested_structure["first_item"]
 
-    # The first topic inside the course part should be at index 2
+    # The first viewable item is at index 1 (CoursePart no longer consumes a slot)
     url = reverse(
         "student_interface:view_course_item",
-        kwargs={"course_slug": "test-course", "index": 2},
+        kwargs={"course_slug": "test-course", "index": 1},
     )
 
     response = authenticated_client.get(url)
@@ -140,10 +140,10 @@ def test_starting_form_inside_course_part_should_work(
     """
     first_form = course_with_nested_structure["first_item"]
 
-    # The first form inside the course part should be at index 2
+    # The first viewable item is at index 1 (CoursePart no longer consumes a slot)
     url = reverse(
         "student_interface:form_start",
-        kwargs={"course_slug": "test-course", "index": 2},
+        kwargs={"course_slug": "test-course", "index": 1},
     )
 
     response = authenticated_client.get(url, follow=True)
@@ -164,9 +164,10 @@ def test_view_course_item_anonymous_redirects_to_login(
     course_with_nested_structure, client
 ):
     """Anonymous user hitting view_course_item is redirected to login (login_required)."""
+    # The first viewable item is at index 1 (CoursePart no longer consumes a slot)
     url = reverse(
         "student_interface:view_course_item",
-        kwargs={"course_slug": "test-course", "index": 2},
+        kwargs={"course_slug": "test-course", "index": 1},
     )
     response = client.get(url)
     assert response.status_code == 302
@@ -177,9 +178,10 @@ def test_view_course_item_anonymous_redirects_to_login(
 @pytest.mark.parametrize("course_with_nested_structure", [Form], indirect=True)
 def test_form_start_anonymous_redirects_to_login(course_with_nested_structure, client):
     """Anonymous user hitting form_start is redirected to login (login_required)."""
+    # The first viewable item is at index 1 (CoursePart no longer consumes a slot)
     url = reverse(
         "student_interface:form_start",
-        kwargs={"course_slug": "test-course", "index": 2},
+        kwargs={"course_slug": "test-course", "index": 1},
     )
     response = client.get(url)
     assert response.status_code == 302
@@ -198,10 +200,10 @@ def test_form_complete_inside_course_part_should_work(
     """
     first_form = course_with_nested_structure["first_item"]
 
-    # The first form inside the course part should be at index 2
+    # The first viewable item is at index 1 (CoursePart no longer consumes a slot)
     url = reverse(
         "student_interface:course_form_complete",
-        kwargs={"course_slug": "test-course", "index": 2},
+        kwargs={"course_slug": "test-course", "index": 1},
     )
 
     response = authenticated_client.get(url)
