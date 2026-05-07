@@ -59,9 +59,11 @@ override below where the look diverges.
 Buttons:
 - `.btn-secondary` — transparent background, primary border, primary text;
   hover fills with `bg-primary/10`. The "secondary CTA" affordance.
-  **Note:** `.btn-outline` keeps its current neutral-grey "cancel"
-  semantics in both themes — it is **not** flipped to indigo. The two
-  classes coexist with distinct meanings.
+  **Replaces `.btn-outline` everywhere.** `.btn-outline` is removed from
+  `tailwind.components.css`, both themes, and every call site (templates +
+  the `<c-button variant="outline">` cotton component). Audit existing
+  `btn-outline` usages and migrate them to `btn-secondary` as part of this
+  work — there is no neutral-grey "cancel" variant going forward.
 - `.btn-ghost` — transparent background, no border, primary text;
   hover fills with `bg-primary/10`. Lower-emphasis text-button affordance.
 - `.btn-accent` — solid `bg-accent text-on-accent` with `hover:bg-accent-hover`.
@@ -116,7 +118,7 @@ Newly-added classes (overrides where first_class diverges):
 
 Tier-1-only classes (no Tier-2 override needed — token swap alone is
 enough): `.btn-primary`, `.btn-success`, `.btn-error`, `.btn-accent`,
-`.btn-ghost`, `.btn-outline`, `.chip-xs`, `.alert` (base shape).
+`.btn-ghost`, `.chip-xs`, `.alert` (base shape).
 
 ## Tier 2 — `@layer base` override in first_class theme.css
 
