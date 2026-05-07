@@ -1,0 +1,27 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Buttons</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  .btn { font-family:var(--font-body); font-weight:600; font-size:14px;
+         padding:12px 24px; border-radius:8px; border:none; cursor:pointer;
+         transition: background 200ms cubic-bezier(.22,1,.36,1), color 200ms; }
+  .btn-primary { background:var(--color-primary); color:white; }
+  .btn-secondary { background:transparent; color:var(--color-primary); border:1px solid var(--color-primary); }
+  .btn-ghost { background:transparent; color:var(--color-primary); }
+  .btn-accent { background:var(--color-accent); color:white; }
+  .btn-danger { background:var(--color-error); color:white; }
+  .btn-disabled { background:var(--grey-200); color:var(--grey-400); cursor:not-allowed; }
+</style>
+</head><body>
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+  <button class="btn btn-primary">Start module</button>
+  <button class="btn btn-secondary">View syllabus</button>
+  <button class="btn btn-ghost">Cancel</button>
+  <button class="btn btn-accent">Get certified</button>
+  <button class="btn btn-danger">Delete cohort</button>
+  <button class="btn btn-disabled">Locked</button>
+</div>
+<div style="margin-top:14px;font-family:var(--font-mono);font-size:10px;color:var(--fg-3)">
+  primary · secondary (outline) · ghost · accent / CTA · danger · disabled
+</div>
+</body></html>

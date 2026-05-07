@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Semantic colors</title>
+<link rel="stylesheet" href="_card.css">
+<style>
+  .pair { display:flex; flex-direction:column; flex:1; border-radius:10px; overflow:hidden; border:1px solid var(--border); }
+  .pair .solid { padding:12px 14px; color:white; font-family: var(--font-heading); font-weight:600; font-size:13px; }
+  .pair .light { padding:10px 14px; font-size:11px; font-family: var(--font-mono); display:flex; justify-content:space-between; }
+</style>
+</head><body>
+<div class="row">
+  <div class="pair">
+    <div class="solid" style="background:#38A169">Success<div style="font-family:var(--font-mono);font-weight:400;font-size:11px;opacity:.9">#38A169</div></div>
+    <div class="light" style="background:#F0FFF4;color:#22543D"><span>Pass · Complete · Correct</span><span>#F0FFF4</span></div>
+  </div>
+  <div class="pair">
+    <div class="solid" style="background:#D69E2E">Warning<div style="font-family:var(--font-mono);font-weight:400;font-size:11px;opacity:.9">#D69E2E</div></div>
+    <div class="light" style="background:#FFFFF0;color:#744210"><span>In progress · Caution</span><span>#FFFFF0</span></div>
+  </div>
+  <div class="pair">
+    <div class="solid" style="background:#E53E3E">Error<div style="font-family:var(--font-mono);font-weight:400;font-size:11px;opacity:.9">#E53E3E</div></div>
+    <div class="light" style="background:#FFF5F5;color:#742A2A"><span>Failed · Validation</span><span>#FFF5F5</span></div>
+  </div>
+  <div class="pair">
+    <div class="solid" style="background:#3182CE">Info<div style="font-family:var(--font-mono);font-weight:400;font-size:11px;opacity:.9">#3182CE</div></div>
+    <div class="light" style="background:#EBF8FF;color:#2A4365"><span>Hint · Guidance</span><span>#EBF8FF</span></div>
+  </div>
+</div>
+</body></html>
