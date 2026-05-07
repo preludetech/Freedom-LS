@@ -1,0 +1,15 @@
+<c-vars variant="primary" size="" icon="" class="" />
+
+{# first_class Tier-3 override of base/templates/cotton/chip.html.
+   Demo override: pill-shaped with a left-border colour stripe instead of a
+   background tint. Honours the same <c-vars> contract as the default and
+   forwards {{ attrs }} and {{ slot }} unchanged. #}
+{% with computed_class=class|add:" fls-first-class-chip chip chip-"|add:variant %}
+    <span class="inline-flex items-center gap-1.5 rounded-full border-l-4 border-{{ variant }} bg-surface px-3 py-0.5 text-sm text-on-surface {% if size %}chip-{{ size }}{% endif %} {{ computed_class }}"
+          {{ attrs }}>
+        {% if icon %}
+            <c-icon :name="icon" class="size-4" />
+        {% endif %}
+        {{ slot }}
+    </span>
+{% endwith %}
