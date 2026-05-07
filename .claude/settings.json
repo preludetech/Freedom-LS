@@ -22,7 +22,7 @@
       "Bash(ls:*)",
       "Skill(template)",
       "Skill(icon-usage)",
-      "Bash(npm run tailwind_build)",
+      "Bash(npm run tailwind_build:*)",
       "mcp__plugin_fls_playwright__*",
       "Skill(fls:sdd:protected:update_todo)",
       "WebFetch",
