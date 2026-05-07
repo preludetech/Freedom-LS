@@ -173,7 +173,9 @@ def get_course_index(user: User, course: Course) -> list[dict]:
 
     children = []
     next_status = READY  # First item starts as READY
-    global_index = 0  # Track flattened index for nested items
+    global_index = (
+        0  # Running count of viewable items consumed (CourseParts are skipped)
+    )
 
     for child in course.children():
         child_dict, next_status, items_added = create_child_dict_with_flattened_index(
@@ -255,24 +257,30 @@ def create_child_dict_with_flattened_index(
     if deadlines_map is None:
         deadlines_map = {}
 
-    items_added = 1  # This item itself
-
     # Handle CoursePart specially - don't calculate its status yet, process children first
     if isinstance(content_item, CoursePart):
+        # CourseParts do not consume a URL slot in the viewable-only index space.
+        items_added = 0
         part_children = content_item.children()
         part_children_dicts = []
         part_next_status = next_status  # Use the incoming next_status for children
-        nested_index = start_index + 1  # Start right after the CoursePart itself
 
         # Calculate status and URL for each child of the CoursePart
         for part_child in part_children:
+            if isinstance(part_child, CoursePart):
+                # Defensive: today's data model does not nest parts; skip URL allocation
+                # for any unexpected nested CoursePart and let status logic ignore it.
+                continue
             if is_registered:
                 child_status, part_next_status = get_content_status(
                     part_child, user, part_next_status
                 )
                 child_url = reverse(
                     "student_interface:view_course_item",
-                    kwargs={"course_slug": course.slug, "index": nested_index + 1},
+                    kwargs={
+                        "course_slug": course.slug,
+                        "index": start_index + items_added + 1,
+                    },
                 )
             else:
                 child_status = BLOCKED
@@ -288,7 +296,6 @@ def create_child_dict_with_flattened_index(
             }
             _apply_deadline_locking(part_child_dict, part_child_deadlines)
             part_children_dicts.append(part_child_dict)
-            nested_index += 1
             items_added += 1
 
         # Now calculate CoursePart's own status and URL based on children
@@ -296,26 +303,16 @@ def create_child_dict_with_flattened_index(
         url = ""
 
         if part_children_dicts:
-            # Check for READY or IN_PROGRESS children
-            ready_child = next(
-                (c for c in part_children_dicts if c["status"] == READY), None
-            )
-            in_progress_child = next(
-                (c for c in part_children_dicts if c["status"] == IN_PROGRESS), None
-            )
-
-            if in_progress_child:
-                # Prioritize IN_PROGRESS
+            # Status: prioritise IN_PROGRESS, then READY, then all-COMPLETE.
+            statuses = {c["status"] for c in part_children_dicts}
+            if IN_PROGRESS in statuses:
                 status = IN_PROGRESS
-                url = in_progress_child["url"]
-            elif ready_child:
-                # Then READY
+            elif READY in statuses:
                 status = READY
-                url = ready_child["url"]
-            elif all(c["status"] == COMPLETE for c in part_children_dicts):
-                # All complete
+            elif statuses == {COMPLETE}:
                 status = COMPLETE
-                url = part_children_dicts[0]["url"]
+            # The CoursePart row's URL is its first viewable child's URL.
+            url = part_children_dicts[0]["url"]
 
         # CoursePart-level deadlines (from the CoursePart itself)
         part_deadlines = _get_deadlines_for_item(content_item, deadlines_map)
@@ -336,6 +333,7 @@ def create_child_dict_with_flattened_index(
 
     else:
         # Regular content item (Topic, Form, etc.)
+        items_added = 1
         if is_registered:
             status, next_status = get_content_status(content_item, user, next_status)
             url = reverse(

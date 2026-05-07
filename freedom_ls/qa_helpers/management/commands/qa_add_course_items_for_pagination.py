@@ -25,7 +25,6 @@ from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
     CoursePart,
-    Form,
     Topic,
 )
 
@@ -36,7 +35,7 @@ QA_TOPIC_SLUG_PREFIX = "qa-pagination-topic"
 
 def _count_flat_items(course: Course) -> int:
     """Count topics+forms (excluding CourseParts) reachable from the course."""
-    return sum(1 for c in course.children_flat() if isinstance(c, Topic | Form))
+    return len(course.viewable_items())
 
 
 @click.command()

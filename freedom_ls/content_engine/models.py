@@ -178,6 +178,12 @@ class Course(MarkdownContent, TitledContent):
                     flattened.append(part_child)
         return flattened
 
+    def viewable_items(self) -> list:
+        """Return ordered list of all viewable child content items (no CoursePart sentinels)."""
+        return [
+            item for item in self.children_flat() if not isinstance(item, CoursePart)
+        ]
+
     def __str__(self):
         return self.title
 
