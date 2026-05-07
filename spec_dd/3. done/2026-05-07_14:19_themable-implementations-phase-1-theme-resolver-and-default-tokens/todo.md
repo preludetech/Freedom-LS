@@ -48,8 +48,6 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 9. QA
 
 - [x] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)
-- [ ] (user + cmd) Fix QA bug: Inactive theme's `/static/themes/<slug>/theme.css` returns 404 — Test 5 expects 200 for both themes regardless of which is active (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: Headings render in DM Sans, not Outfit — `--fls-font-display` token plumbed but no template/preflight consumes `font-display` for h1–h4 (TDD — failing test first, then fix; or, if Phase 4-only, update `3. frontend_qa.md` Test 2.2)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
@@ -62,5 +60,5 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 11. Cleanup
 
-- [ ] (cmd) Run `/finish_worktree` to clean up the worktree
+- [x] (cmd) Run `/finish_worktree` to clean up the worktree
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved
