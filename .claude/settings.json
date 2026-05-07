@@ -26,7 +26,8 @@
       "mcp__plugin_fls_playwright__*",
       "Skill(fls:sdd:protected:update_todo)",
       "WebFetch",
-      "WebSearch"
+      "WebSearch",
+      "Skill(fls:use-playwright)"
     ],
     "deny": [
       "Read(.env)",
