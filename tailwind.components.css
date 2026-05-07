@@ -153,7 +153,7 @@
     /* Button component variants */
     .btn-primary {
         @apply bg-primary text-on-primary
-               hover:brightness-110 focus:ring-primary
+               hover:bg-primary-hover focus:ring-primary
     }
 
     .btn-outline {
@@ -163,12 +163,12 @@
 
     .btn-success {
         @apply bg-success text-on-success
-               hover:brightness-110 focus:ring-success
+               hover:bg-success-hover focus:ring-success
     }
 
     .btn-error {
         @apply bg-error text-on-error
-               hover:brightness-110 focus:ring-error
+               hover:bg-error-hover focus:ring-error
     }
 
     .surface {

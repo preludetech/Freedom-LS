@@ -1,11 +1,18 @@
 @import "tailwindcss";
 
+/* The paths below are hardcoded because the Tailwind CLI runs in Node and
+ * cannot read Django settings. They mirror `FLS_THEMES_DIRS` in
+ * `config/settings_base.py` — keep them in sync. The *active* theme is fine:
+ * `manage.py write_active_theme_css` resolves it through Django settings and
+ * writes `tailwind.active_theme.css`, which is imported below. */
+
 /* All FLS app templates (covers freedom_ls/themes/<slug>/templates/ if present). */
 @source "./freedom_ls/**/templates/**/*.html";
 /* Theme template overrides — Tier 3, used in Phase 4. */
 @source "./freedom_ls/themes/*/templates/**/*.html";
 
-/* Default theme tokens — always-on baseline. */
+/* Default theme tokens — always-on baseline. Hardcoded; downstream projects
+ * shadowing `themes/default/` at `BASE_DIR` will not be picked up here. */
 @import "./freedom_ls/themes/default/static/themes/default/theme.css";
 
 /* Component classes — depend on tokens; main-project source of truth. */

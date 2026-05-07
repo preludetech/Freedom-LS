@@ -31,6 +31,25 @@ sys.path.insert(0, os.path.join(BASE_DIR, "concrete_apps"))
 # Active FLS theme. Resolved against `FLS_THEMES_DIRS` further down. An unknown
 # slug fails loud at startup via `ImproperlyConfigured`.
 FLS_THEME = os.environ.get("FLS_THEME", "default")
+# Theme search path. The first directory that contains `<slug>/` wins, so a
+# downstream project can shadow the FLS-package defaults by dropping a theme at
+# `BASE_DIR / "themes" / <slug> /`.
+#
+# IMPORTANT — keep in sync with `tailwind.input.css`:
+#   The Tailwind build runs in Node and does not read Django settings. It
+#   hardcodes two paths:
+#     1. `@source "./freedom_ls/themes/*/templates/**/*.html"`  — class scanning
+#     2. `@import "./freedom_ls/themes/default/static/themes/default/theme.css"`
+#        — the always-on baseline tokens
+#   The *active* theme's tokens are picked up correctly because
+#   `manage.py write_active_theme_css` resolves through this list and writes
+#   `tailwind.active_theme.css`. The *default-theme baseline* and template
+#   scanning do not.
+#
+# If you change `FLS_THEMES_DIRS` (e.g. add a third location, rename `themes/`,
+# or move the FLS package), update the hardcoded paths in `tailwind.input.css`
+# to match — otherwise a shadowed default theme will silently fail to load and
+# Tailwind will not see classes used in the new locations.
 FLS_THEMES_DIRS: list[Path] = [
     BASE_DIR / "themes",
     FREEDOM_LS_PACKAGE_DIR / "themes",
