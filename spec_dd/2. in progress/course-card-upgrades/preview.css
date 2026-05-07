@@ -1,0 +1,212 @@
+/* Component preview pages — page chrome only.
+   Component visuals come from ../styles.css and ../styles-mobile.css. */
+
+body {
+  margin: 0;
+  background: #ECEEF3;
+  font-family: var(--font-body);
+  color: var(--fg-1);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Top label strip */
+.pv-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 24px;
+  background: #FFFFFF;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.pv-bar .name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+.pv-bar h1 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--fg-1);
+}
+.pv-bar .sub {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg-3);
+}
+
+.pv-bar a {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.pv-bar a:hover { text-decoration: underline; }
+
+.pv-page {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* Each variant gets a labeled card */
+.pv-variant {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .03);
+}
+.pv-variant-head {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  background: #FAFBFD;
+}
+.pv-variant-head .label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+.pv-variant-head .desc {
+  font-size: 13px;
+  color: var(--fg-3);
+}
+
+.pv-variant-body {
+  padding: 0;
+  background: var(--bg);
+}
+.pv-variant-body.padded { padding: 24px; }
+
+/* Used to give artboards a fixed-width canvas inside the body */
+.pv-canvas {
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+
+/* Used in the primitives gallery to lay out atoms */
+.pv-grid {
+  display: grid;
+  gap: 24px;
+}
+.pv-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pv-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pv-grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pv-grid.cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+.pv-cell {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 96px;
+}
+.pv-cell .lbl {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+.pv-cell .stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Section header inside a preview body */
+.pv-section-h {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 12px;
+}
+
+/* Mobile / device row */
+.pv-device-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  padding: 32px;
+  background: #ECEEF3;
+}
+
+/* Index page */
+.pv-index {
+  max-width: 1080px;
+  margin: 48px auto;
+  padding: 0 32px;
+}
+.pv-index h1 {
+  font-family: var(--font-heading);
+  font-size: 32px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.pv-index p.lede {
+  font-size: 15px;
+  color: var(--fg-3);
+  margin: 0 0 32px;
+  max-width: 64ch;
+}
+.pv-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.pv-list a {
+  display: block;
+  padding: 18px;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .12s, transform .12s;
+}
+.pv-list a:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+.pv-list .name {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--fg-1);
+  margin: 0 0 4px;
+}
+.pv-list .meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.pv-list .desc {
+  font-size: 13px;
+  color: var(--fg-2);
+  margin-top: 8px;
+}

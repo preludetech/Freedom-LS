@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>In-progress card — Component</title>
+  <link rel="stylesheet" href="../design-system/colors_and_type.css" />
+  <link rel="stylesheet" href="../design-system/kit.css" />
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="../course-thumbs.css" />
+  <link rel="stylesheet" href="_preview.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1" />
+</head>
+<body>
+  <header class="pv-bar">
+    <span class="name">Component</span>
+    <h1>In-progress course card</h1>
+    <span class="sub"><a href="../index.html">← All components</a></span>
+  </header>
+
+  <div class="pv-page">
+
+    <section class="pv-variant">
+      <div class="pv-variant-head">
+        <span class="label">In-progress course tile</span>
+        <span class="desc">Thumb · title · progress bar · due-date footer.</span>
+      </div>
+      <div class="pv-variant-body padded" style="background:var(--bg)">
+        <div class="fc-grid-3" style="gap:16px">
+
+          <div class="fc-card-interactive fc-course-card">
+            <div class="ct ct-weather ct-md">
+              <i class="ph-fill ph-cloud-sun"></i><div class="grid"></div>
+              <div class="chip"><span class="fc-chip fc-chip-primary">Theory</span></div>
+              <div class="stamp">FC · WEATHER</div>
+            </div>
+            <div class="fc-card-body">
+              <div class="fc-card-eyebrow">In progress</div>
+              <div class="fc-card-title">Aviation Weather</div>
+              <div class="fc-card-sub">4 modules · 5 hrs</div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div class="fc-track" style="flex:1"><div class="fc-fill" style="width:28%"></div></div>
+                <span class="fc-mono" style="font-size:12px;color:var(--fg-3);width:38px;text-align:right">28%</span>
+              </div>
+              <div class="fc-card-foot">
+                <span class="fc-card-due urgent"><i class="ph ph-calendar-blank"></i>Due Mar 14</span>
+                <i class="ph ph-arrow-right fc-card-arrow"></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="fc-card-interactive fc-course-card">
+            <div class="ct ct-comms ct-md">
+              <i class="ph-fill ph-broadcast"></i><div class="grid"></div>
+              <div class="chip"><span class="fc-chip fc-chip-primary">Practical</span></div>
+              <div class="stamp">FC · COMMS</div>
+            </div>
+            <div class="fc-card-body">
+              <div class="fc-card-eyebrow">In progress</div>
+              <div class="fc-card-title">Radiotelephony &amp; Comms</div>
+              <div class="fc-card-sub">3 modules · 4 hrs</div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div class="fc-track" style="flex:1"><div class="fc-fill" style="width:81%"></div></div>
+                <span class="fc-mono" style="font-size:12px;color:var(--fg-3);width:38px;text-align:right">81%</span>
+              </div>
+              <div class="fc-card-foot">
+                <span class="fc-card-due"><i class="ph ph-calendar-blank"></i>Due Mar 02</span>
+                <i class="ph ph-arrow-right fc-card-arrow"></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="fc-card-interactive fc-course-card">
+            <div class="ct ct-rules ct-md">
+              <i class="ph-fill ph-scales"></i><div class="grid"></div>
+              <div class="chip"><span class="fc-chip fc-chip-primary">Theory</span></div>
+              <div class="stamp">FC · RULES</div>
+            </div>
+            <div class="fc-card-body">
+              <div class="fc-card-eyebrow">In progress</div>
+              <div class="fc-card-title">Air Law &amp; Regulations</div>
+              <div class="fc-card-sub">5 modules · 7 hrs</div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div class="fc-track" style="flex:1"><div class="fc-fill" style="width:14%"></div></div>
+                <span class="fc-mono" style="font-size:12px;color:var(--fg-3);width:38px;text-align:right">14%</span>
+              </div>
+              <div class="fc-card-foot">
+                <span class="fc-card-due muted"><i class="ph ph-infinity"></i>No deadline</span>
+                <i class="ph ph-arrow-right fc-card-arrow"></i>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>

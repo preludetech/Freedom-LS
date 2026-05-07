@@ -1,0 +1,30 @@
+/* Course thumb palettes — mirrors CourseThumb in Primitives.jsx */
+.ct { position: relative; overflow: hidden; border-radius: 0; display: flex; align-items: center; justify-content: center; }
+.ct .grid { position: absolute; inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+.ct .stamp { position: absolute; bottom: 8px; left: 12px; font-size: 10px; color: rgba(255,255,255,0.55); font-family: var(--font-mono); letter-spacing: 0.08em; }
+.ct .chip { position: absolute; top: 10px; right: 10px; }
+.ct i { opacity: 0.92; }
+
+.ct-rpas       { background: linear-gradient(135deg, #283593 0%, #1A237E 100%); } .ct-rpas i       { color: #00CEC9; }
+.ct-weather    { background: linear-gradient(135deg, #1f4496 0%, #283593 100%); } .ct-weather i    { color: #FFD580; }
+.ct-airspace   { background: linear-gradient(135deg, #00A8A4 0%, #007570 100%); } .ct-airspace i   { color: #FFFFFF; }
+.ct-instrument { background: linear-gradient(135deg, #00CEC9 0%, #009A97 100%); } .ct-instrument i { color: #1A1A2E; }
+.ct-examiner   { background: linear-gradient(135deg, #1A1A2E 0%, #0F0F1F 100%); } .ct-examiner i   { color: #FF6B35; }
+.ct-night      { background: linear-gradient(135deg, #14143b 0%, #283593 100%); } .ct-night i      { color: #FFD580; }
+.ct-rules      { background: linear-gradient(135deg, #2D3748 0%, #1A202C 100%); } .ct-rules i      { color: #00CEC9; }
+.ct-comms      { background: linear-gradient(135deg, #283593 0%, #4F86F7 100%); } .ct-comms i      { color: #FFFFFF; }
+.ct-photogram  { background: linear-gradient(135deg, #FF6B35 0%, #C43F1A 100%); } .ct-photogram i  { color: #FFFFFF; }
+.ct-emergency  { background: linear-gradient(135deg, #C53030 0%, #742A2A 100%); } .ct-emergency i  { color: #FFFFFF; }
+
+.ct-hero { height: 168px; }  .ct-hero i { font-size: 64px; }
+.ct-lg   { height: 100%; min-height: 220px; }   .ct-lg   i { font-size: 56px; }
+.ct-md   { height: 132px; }  .ct-md   i { font-size: 48px; }
+.ct-sm   { height: 96px;  }  .ct-sm   i { font-size: 36px; }
+
+.pv-canvas-dashboard { background: var(--bg); }
