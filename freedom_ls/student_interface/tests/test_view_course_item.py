@@ -217,3 +217,101 @@ def test_form_complete_inside_course_part_should_work(
     )
     # Template binding check.
     assert first_form.title in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_view_course_item_out_of_range_index_returns_404(
+    course_with_nested_structure, authenticated_client
+):
+    """An index past the end of viewable_items returns 404, not 500."""
+    course = course_with_nested_structure["course"]
+    out_of_range = len(course.viewable_items()) + 1
+    url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": "test-course", "index": out_of_range},
+    )
+    response = authenticated_client.get(url)
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_view_course_item_zero_index_returns_404(
+    course_with_nested_structure, authenticated_client
+):
+    """index=0 returns 404 instead of indexing into the last item."""
+    url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": "test-course", "index": 0},
+    )
+    response = authenticated_client.get(url)
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("course_with_nested_structure", [Form], indirect=True)
+def test_form_start_out_of_range_index_returns_404(
+    course_with_nested_structure, authenticated_client
+):
+    """form_start with an out-of-range index returns 404."""
+    course = course_with_nested_structure["course"]
+    out_of_range = len(course.viewable_items()) + 1
+    url = reverse(
+        "student_interface:form_start",
+        kwargs={"course_slug": "test-course", "index": out_of_range},
+    )
+    response = authenticated_client.get(url)
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("course_with_nested_structure", [Form], indirect=True)
+def test_course_form_complete_out_of_range_index_returns_404(
+    course_with_nested_structure, authenticated_client
+):
+    """course_form_complete with an out-of-range index returns 404."""
+    course = course_with_nested_structure["course"]
+    out_of_range = len(course.viewable_items()) + 1
+    url = reverse(
+        "student_interface:course_form_complete",
+        kwargs={"course_slug": "test-course", "index": out_of_range},
+    )
+    response = authenticated_client.get(url)
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("course_with_nested_structure", [Form], indirect=True)
+def test_form_fill_page_out_of_range_index_returns_404(
+    course_with_nested_structure, authenticated_client
+):
+    """form_fill_page with an out-of-range index returns 404."""
+    course = course_with_nested_structure["course"]
+    out_of_range = len(course.viewable_items()) + 1
+    url = reverse(
+        "student_interface:form_fill_page",
+        kwargs={
+            "course_slug": "test-course",
+            "index": out_of_range,
+            "page_number": 1,
+        },
+    )
+    response = authenticated_client.get(url)
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("course_with_nested_structure", [Form], indirect=True)
+def test_form_fill_page_out_of_range_page_returns_404(
+    course_with_nested_structure, authenticated_client
+):
+    """form_fill_page with a valid index but out-of-range page_number returns 404."""
+    url = reverse(
+        "student_interface:form_fill_page",
+        kwargs={
+            "course_slug": "test-course",
+            "index": 1,
+            "page_number": 999,
+        },
+    )
+    response = authenticated_client.get(url)
+    assert response.status_code == 404

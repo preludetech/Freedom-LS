@@ -48,9 +48,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 9. QA
 
 - [x] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)
-- [ ] (user) Review the QA report
-- [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
-- [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
+- [x] (user) Review the QA report
+- [x] (user) If bugs were found, fix them using TDD (failing test first, then fix)
+- [x] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
 
 ## 10. Pull request
 

@@ -303,16 +303,26 @@ def create_child_dict_with_flattened_index(
         url = ""
 
         if part_children_dicts:
-            # Status: prioritise IN_PROGRESS, then READY, then all-COMPLETE.
-            statuses = {c["status"] for c in part_children_dicts}
-            if IN_PROGRESS in statuses:
+            # Resume-aware: route to the first IN_PROGRESS child (so a returning
+            # student lands where they left off), then the first READY child, then
+            # the first child if everything is complete. Skipping BLOCKED children
+            # also avoids producing a row with status READY but url=None when the
+            # first child is hard-deadline-locked.
+            in_progress_child = next(
+                (c for c in part_children_dicts if c["status"] == IN_PROGRESS), None
+            )
+            ready_child = next(
+                (c for c in part_children_dicts if c["status"] == READY), None
+            )
+            if in_progress_child:
                 status = IN_PROGRESS
-            elif READY in statuses:
+                url = in_progress_child["url"]
+            elif ready_child:
                 status = READY
-            elif statuses == {COMPLETE}:
+                url = ready_child["url"]
+            elif all(c["status"] == COMPLETE for c in part_children_dicts):
                 status = COMPLETE
-            # The CoursePart row's URL is its first viewable child's URL.
-            url = part_children_dicts[0]["url"]
+                url = part_children_dicts[0]["url"]
 
         # CoursePart-level deadlines (from the CoursePart itself)
         part_deadlines = _get_deadlines_for_item(content_item, deadlines_map)
