@@ -27,7 +27,7 @@ Typography and forms have automatic styling via `@layer base`:
 ## Component Classes
 
 Available in `tailwind.components.css`:
-- `.btn`, `.btn-primary`, `.btn-danger` - Buttons
+- `.btn`, `.btn-primary`, `.btn-error` - Buttons
 - `.surface` - Cards/panels
 - Form components
 

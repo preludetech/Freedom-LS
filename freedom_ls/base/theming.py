@@ -48,7 +48,7 @@ def configure_theme(
     theme_slug: str,
     themes_dirs: list[Path],
     templates: list[dict],
-    staticfiles_dirs: list,
+    staticfiles_dirs: list[Path | str],
 ) -> Path:
     """Resolve the active theme and prepend theme dirs to Django's settings.
 

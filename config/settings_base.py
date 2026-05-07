@@ -204,7 +204,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
-STATICFILES_DIRS: list = [BASE_DIR / "static"]
+STATICFILES_DIRS: list[Path | str] = [BASE_DIR / "static"]
 
 # Resolve the active theme and prepend its templates/static dirs so it shadows
 # the FLS defaults at template-load and static-collection time. Fails loud at

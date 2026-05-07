@@ -84,7 +84,7 @@ def test_configure_theme_prepends_both_dirs(tmp_path: Path) -> None:
     _make_theme(parent, "default", with_templates=True, with_static=True)
 
     templates: list[dict] = [{"DIRS": ["/existing/templates"]}]
-    staticfiles_dirs: list = ["/existing/static"]
+    staticfiles_dirs: list[Path | str] = ["/existing/static"]
 
     resolved = configure_theme(
         theme_slug="default",
@@ -107,7 +107,7 @@ def test_configure_theme_skips_missing_subdirs(tmp_path: Path) -> None:
     _make_theme(parent, "tier1_only", with_templates=False, with_static=True)
 
     templates: list[dict] = [{"DIRS": []}]
-    staticfiles_dirs: list = []
+    staticfiles_dirs: list[Path | str] = []
 
     resolved = configure_theme(
         theme_slug="tier1_only",
@@ -127,7 +127,7 @@ def test_configure_theme_no_static_no_templates(tmp_path: Path) -> None:
     _make_theme(parent, "bare", with_templates=False, with_static=False)
 
     templates: list[dict] = [{"DIRS": []}]
-    staticfiles_dirs: list = []
+    staticfiles_dirs: list[Path | str] = []
 
     configure_theme(
         theme_slug="bare",
@@ -151,7 +151,7 @@ def test_configure_theme_exposes_inactive_themes_static_dirs(tmp_path: Path) -> 
     _make_theme(parent, "third", with_static=True)
 
     templates: list[dict] = [{"DIRS": []}]
-    staticfiles_dirs: list = ["/existing/static"]
+    staticfiles_dirs: list[Path | str] = ["/existing/static"]
 
     configure_theme(
         theme_slug="first_class",
@@ -181,7 +181,7 @@ def test_configure_theme_does_not_duplicate_shadowed_slugs(tmp_path: Path) -> No
     _make_theme(fls_pkg, "default", with_static=True)
 
     templates: list[dict] = [{"DIRS": []}]
-    staticfiles_dirs: list = []
+    staticfiles_dirs: list[Path | str] = []
 
     configure_theme(
         theme_slug="default",
@@ -201,7 +201,7 @@ def test_configure_theme_inactive_theme_without_static_skipped(tmp_path: Path) -
     _make_theme(parent, "tier1_only", with_static=False)
 
     templates: list[dict] = [{"DIRS": []}]
-    staticfiles_dirs: list = []
+    staticfiles_dirs: list[Path | str] = []
 
     configure_theme(
         theme_slug="default",
@@ -220,7 +220,7 @@ def test_configure_theme_initialises_dirs_when_missing(tmp_path: Path) -> None:
     _make_theme(parent, "t", with_templates=True)
 
     templates: list[dict] = [{}]
-    staticfiles_dirs: list = []
+    staticfiles_dirs: list[Path | str] = []
 
     configure_theme(
         theme_slug="t",
