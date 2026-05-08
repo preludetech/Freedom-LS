@@ -99,3 +99,14 @@
     --font-display: var(--fls-font-display);
     --font-mono: var(--fls-font-mono);
 }
+
+/* Header component-tier tokens — defaults alias the brand role tokens so
+ * themes that only override `--color-primary` continue to get the same
+ * header look. Themes that explicitly set these tokens win. `@theme inline`
+ * (not bare `@theme`) is required so the alias resolves at use time. */
+@theme inline {
+    --color-header: var(--color-primary);
+    --color-on-header: var(--color-on-primary);
+    --color-header-action: var(--color-primary);
+    --color-on-header-action: var(--color-on-primary);
+}

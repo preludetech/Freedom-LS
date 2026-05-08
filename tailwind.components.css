@@ -4,6 +4,13 @@
         display: none !important;
     }
 
+    /* Anchor links and `:focus-visible` autoscroll should land below the
+     * sticky header rather than behind it. ~80px clears `p-3` (≈56px tall)
+     * and `sm:p-4` (≈64px) on both themes with comfortable margin. */
+    html {
+        scroll-padding-top: 5rem;
+    }
+
     /* Prevent horizontal scrolling on mobile */
     body {
         @apply overflow-x-hidden

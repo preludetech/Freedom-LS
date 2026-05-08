@@ -1,6 +1,11 @@
-<header class="bg-primary p-3 sm:p-4 shadow-md flex justify-between items-center">
+<header class="bg-header text-on-header sticky top-0 z-30
+               shadow-md data-[scrolled=true]:shadow-lg
+               transition-shadow duration-200 motion-reduce:transition-none
+               p-3 sm:p-4 flex justify-between items-center"
+        x-data="headerScroll"
+        x-bind:data-scrolled="scrolled">
     <a href="/" class="flex-shrink min-w-0">
-        <h1 class="text-lg sm:text-xl lg:text-2xl font-bold text-on-primary truncate">
+        <h1 class="text-lg sm:text-xl lg:text-2xl font-bold text-on-header truncate">
             {{ site_title }}
         </h1>
     </a>

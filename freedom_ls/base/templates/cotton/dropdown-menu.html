@@ -1,6 +1,7 @@
 {# djlint:off H037 H026 H021 #}
 <c-vars trigger=""
         class=""
+        aria_label="Menu"
         trigger_class="p-2 hover:bg-surface-2 rounded-md transition-colors" />
 
 <div class="relative inline-block {{ class }}" x-data="dropdownMenu">
@@ -8,7 +9,9 @@
     <button type="button"
             x-on:click="toggle"
             class="{{ trigger_class }}"
-            aria-label="Menu"
+            aria-label="{{ aria_label }}"
+            aria-haspopup="menu"
+            x-bind:aria-expanded="open"
             x-ref="menuButton">
         {% if trigger %}
             {{ trigger }}
@@ -18,10 +21,19 @@
     </button>
 
     <!-- Dropdown menu -->
+    {% comment %}
+    @claude The auto-close on window scroll below is shared by every
+    dropdown in the app. With the now-sticky header, the user menu and
+    its trigger remain on screen during scroll, so this close-on-scroll
+    fires more visibly. Spec defers any change. If QA finds the close
+    too aggressive on the sticky header specifically, scope the
+    listener to non-sticky triggers in a follow-up.
+    {% endcomment %}
     <div x-show="open"
          x-cloak
          x-on:click.away="close"
          x-on:scroll.window="close"
+         x-on:keydown.escape.window="onEscape"
          x-transition:enter="transition ease-out duration-100"
          x-transition:enter-start="transform opacity-0 scale-95"
          x-transition:enter-end="transform opacity-100 scale-100"

@@ -139,3 +139,32 @@
     h3 { @apply font-semibold; }
     h4 { @apply font-semibold; }
 }
+
+/* Header component-tier overrides — first_class flips the header to a
+ * white-with-an-indigo-pill profile look. The avatar background is the
+ * brand primary so it reads as a coloured pill against the white bar. */
+@theme inline {
+    --color-header: var(--color-surface);              /* white-ish */
+    --color-on-header: var(--color-on-surface);        /* dark text */
+    --color-header-action: var(--color-primary);       /* indigo pill */
+    --color-on-header-action: var(--color-on-primary); /* white initials */
+}
+
+/* Scrolled-state surface treatment — only first_class swaps to a frosted-
+ * glass header once the page has scrolled. Default keeps an opaque header
+ * (just a stronger shadow); the rules below intentionally do not appear in
+ * the default-theme bundle, so success-criterion 6 ("no `backdrop-blur`
+ * applied" in default) is met literally rather than by happy accident. */
+@layer utilities {
+    header[data-scrolled="true"] {
+        background-color: color-mix(in oklch, var(--color-header) 85%, transparent);
+        backdrop-filter: blur(12px) saturate(1.5);
+        -webkit-backdrop-filter: blur(12px) saturate(1.5);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        header {
+            transition: none;
+        }
+    }
+}

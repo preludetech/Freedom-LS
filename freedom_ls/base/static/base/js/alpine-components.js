@@ -27,6 +27,36 @@ document.addEventListener("htmx:beforeSwap", (event) => {
 });
 
 document.addEventListener("alpine:init", () => {
+    // Sticky-header scroll state (partials/header_bar.html).
+    //
+    // Exposes a single boolean `scrolled` reflecting `window.scrollY > 0`,
+    // which the template binds to `data-scrolled` so theme CSS can swap
+    // surface treatments (stronger shadow in default, translucent frosted
+    // glass in first_class) without per-theme template branches.
+    //
+    // Listener is passive and cheap. The change-detection guard means the
+    // attribute only re-renders when the boolean state actually flips, so
+    // no class thrash on every scroll tick.
+    Alpine.data("headerScroll", () => ({
+        scrolled: false,
+        _onScroll: null,
+        init() {
+            this._onScroll = () => {
+                const next = window.scrollY > 0;
+                if (next !== this.scrolled) this.scrolled = next;
+            };
+            // Set initial state for back-button restore / mid-page loads.
+            this._onScroll();
+            window.addEventListener("scroll", this._onScroll, { passive: true });
+        },
+        destroy() {
+            if (this._onScroll) {
+                window.removeEventListener("scroll", this._onScroll);
+                this._onScroll = null;
+            }
+        },
+    }));
+
     // Dropdown menu component (cotton/dropdown-menu.html)
     Alpine.data("dropdownMenu", () => ({
         open: false,
@@ -35,6 +65,13 @@ document.addEventListener("alpine:init", () => {
         },
         close() {
             this.open = false;
+        },
+        onEscape() {
+            if (!this.open) return;
+            this.open = false;
+            if (this.$refs.menuButton) {
+                this.$refs.menuButton.focus();
+            }
         },
         positionMenu() {
             if (this.open) {
