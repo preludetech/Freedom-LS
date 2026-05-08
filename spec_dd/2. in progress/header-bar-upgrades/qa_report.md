@@ -1,87 +1,222 @@
-# Header bar upgrades — QA report
+# QA Report — Header bar upgrades
 
-## Environment
-
-- Default theme tested at `http://127.0.0.1:8619` (FLS_THEME=default)
-- first_class theme tested at `http://127.0.0.1:8605` (FLS_THEME=first_class)
-- Site: DemoDev (forced via `FORCE_SITE_NAME` in dev settings)
-- Test users created on DemoDev via the qa-data-helper agent (all six listed in the spec).
+Branch: `header-bar-upgrades` (verified via `debug-branch-badge` on both servers).
+Tester: Playwright MCP, on the DemoDev site, at desktop 1920×1080, mobile 375×812, tablet 768×1024.
+Themes covered: `default` (port 8212), `first_class` (port 8339).
+Test data: created via the `qa-data-helper` agent (`qa_create_header_bar_users` management command).
 
 ## Summary
 
-- 14 of 15 tests pass.
-- 1 minor bug found: avatar trigger `aria-label` does not include the user's last name.
-- 1 small caveat: prefers-reduced-motion was verified by code inspection only — Playwright MCP does not expose `emulateMedia`, so functional emulation could not be performed in-browser.
-- No regressions to existing buttons / chips / focus rings / alerts.
+**14 of 15 tests pass; Test 7 has a visual regression** (site title is underlined). One additional observation worth noting (not a regression — see "Observations" below): the focus ring colour in the default theme is the same as the header background, so the ring's *outer* halo is invisible against the header — only the white ring-offset stays visible. This is by design (`--color-focus-ring` resolves to `--color-primary`) and pre-dates this change, but it's perceptually subtle on the now-sticky header.
 
----
+## Bugs found
 
-## Bugs
+### Bug 1 — Site title rendered with underline
 
-### Bug 1 — Avatar `aria-label` missing last name
+**Failed test:** Test 7 (also visible at Test 1 in default but much subtler).
 
-**Test:** Test 3 (default theme dropdown opens, accessibility) — also confirmed in Test 7 (first_class).
+**Expected:** the site title text (`{{ site_title }}`, e.g. "DemoDev") is plain bold text — no underline — in both themes.
 
-**Expected:** `aria-label="Open user menu for Mary Jane"` (per spec section "Test 3").
+**Actual:** the `<a href="/">` wrapper around the `<h1>` site title has a computed `text-decoration: underline`, so the title renders underlined. In the default theme the underline is currentColor (white) on blue and is muted but present; in first_class it's dark on light and is clearly visible.
 
-**Actual:** `aria-label="Open user menu for Mary"` for `mary.jane@demodev.example.com` (first_name="Mary", last_name="Jane").
+Computed style on the wrapper link:
+- `text-decoration-line: underline`
+- Inner `<h1>` overrides to `text-decoration-line: none`, but the parent `<a>`'s decoration still propagates onto the rendered glyphs.
 
-`freedom_ls/base/templates/partials/header_bar_user_menu.html:3` interpolates `{{ user.display_name }}` into the aria-label, and `User.display_name` (`freedom_ls/accounts/models.py:118`) returns `self.first_name or self.email`. So whenever both first and last name are set, only the first name reaches the aria-label.
+The wrapper `<a>` exists on `main` too, so the underlined-title issue pre-existed; the first_class theme rewrites in this branch make it newly-prominent. Recommend fixing on this branch (it's directly within scope of the header rework, and Test 7 is failing visually).
 
-Side effect: for users with no first_name (`noname@`, `123@`), the email is used instead, e.g. `aria-label="Open user menu for noname@demodev.example.com"`. Reading the entire email aloud in a screen reader is awkward but the spec only specifies the multi-name case.
+Suggested fix: add `no-underline` (or equivalent) to the `<a href="/">` in `freedom_ls/base/templates/partials/header_bar.html:7`, then assert in a template/regression test that the rendered link has no `text-decoration: underline`.
 
-**Suggested fix:** either change the aria-label to use `user.get_full_name()` (with a sensible fallback when both names are blank), or add a dedicated `User.full_display_name` property that returns `"first last"` when both are present. Then update the test in `freedom_ls/accounts/tests/test_models.py` accordingly.
-
-![](screenshots/desktop_1_default-mary.png)
-
----
+![Default header — title underline (subtle)](screenshots/bug_default_title_underline.png)
+![first_class header — title underline (prominent)](screenshots/desktop_7_first_class_mary.png)
 
 ## Test results
 
-| # | Test | Result | Notes |
-| --- | --- | --- | --- |
-| 1 | Default: avatar appearance (Mary Jane) | ✅ | 40px brand-coloured circle, semibold "MJ", no caret, no name text. |
-| 2 | Default: avatar variants matrix | ✅ | All six users render the expected initials / fallback icon (table below). |
-| 3 | Default: dropdown a11y | ⚠️ | Dropdown opens; `aria-haspopup="menu"`, `aria-expanded` toggles correctly; Escape closes the menu. **`aria-label` is wrong** — see Bug 1. |
-| 4 | Default: sticky + scrolled shadow | ✅ | `position: sticky`, `data-scrolled` flips on scroll, box-shadow upgrades from `shadow-md` to `shadow-lg` and reverts at top. |
-| 5 | Default: scroll-padding for anchors / focus | ✅ | `html { scroll-padding-top: 80px }` (5rem) — header is 72px tall. |
-| 6 | Default: reduced motion | ⚠️ (code only) | `motion-reduce:transition-none` class is on the header. Playwright MCP cannot toggle `prefers-reduced-motion` on the page so I verified by inspecting the markup; functional emulation needs DevTools (or `Page.emulateMedia`, not exposed by the MCP). |
-| 7 | first_class: avatar appearance | ✅ | White-ish header (`#F8F9FC`), dark site title, deep indigo avatar pill (`#283593`) with white "MJ". |
-| 8 | first_class: contrast | ✅ | White-on-indigo ≈ 10:1; dark-on-white-ish ≈ 16:1 (well above WCAG AA 4.5:1). |
-| 9 | first_class: scrolled translucent + blur | ✅ | At `scrollY=200`, `background-color` resolves to `oklch(... / 0.85)` and `backdrop-filter: blur(12px) saturate(1.5)`. Returns to opaque + no backdrop at top. |
-| 10 | first_class: contrast under translucency | ✅ (estimated) | The translucent state still composites onto a light surface. Avatar is fully opaque indigo regardless, so its 10:1 contrast holds. Site title sits on a header at 0.85 alpha over body content; visually readable in the screenshot. |
-| 11 | first_class: reduced motion | ⚠️ (code only) | Same caveat as Test 6 — `motion-reduce:transition-none` is in the markup but not functionally emulated. |
-| 12 | first_class: scroll-padding | ✅ | Same `scroll-padding-top: 80px`. |
-| 13 | Both themes: dropdown close-on-scroll | ✅ | Confirmed. Dropdown closes on any scroll event. The behaviour feels acceptable on the now-sticky header — not jarring in casual use. |
-| 14 | Both themes: regression on existing surfaces | ✅ | Brand-coloured "Start" buttons on the courses list still resolve to `--color-primary` (`rgb(40, 53, 147)` in first_class). No leakage from the new `--color-header*` tokens. |
-| 15 | Both themes: sidebar / mobile sidebar still works | ✅ | At 375×812: hamburger opens sidebar; backdrop covers content area below the header (header rect 0..64, backdrop rect 64..812 — backdrop does **not** overlap the header); tapping backdrop closes the sidebar. Header avatar stays visible and clickable while sidebar is open. |
+| # | Test | Theme | Result |
+|---|---|---|---|
+| 1 | Default avatar appearance (Mary Jane) | default | PASS |
+| 2 | Avatar variants (6 users) | default | PASS |
+| 3 | Dropdown opens, accessibility (aria-label, haspopup, expanded, Escape) | default | PASS |
+| 4 | Sticky header + scrolled shadow step | default | PASS |
+| 5 | Anchor / focus scroll-padding (`scroll-padding-top: 80px`) | default | PASS |
+| 6 | Reduced motion → instant shadow change | default | PASS |
+| 7 | first_class avatar appearance (indigo on white) | first_class | **FAIL** (site title underline) |
+| 8 | first_class contrast (avatar / title) | first_class | PASS |
+| 9 | first_class translucent + blur on scroll | first_class | PASS |
+| 10 | first_class contrast under translucency | first_class | PASS |
+| 11 | first_class reduced motion | first_class | PASS |
+| 12 | first_class anchor / focus padding | first_class | PASS |
+| 13 | Dropdown close-on-scroll | both | PASS |
+| 14 | Regression — primary buttons unchanged | both | PASS |
+| 15 | Mobile sidebar still works under sticky header | default | PASS |
 
-### Avatar variants matrix (Test 2)
+## Test 1 — Default avatar appearance (Mary Jane)
 
-| User email | Expected | Actual | Result |
-| --- | --- | --- | --- |
-| `mary.jane@demodev.example.com` | `MJ` | `MJ` | ✅ |
-| `single.first@demodev.example.com` | `MA` | `MA` | ✅ |
-| `multi.token@demodev.example.com` | `MJ` | `MJ` | ✅ |
-| `noname@demodev.example.com` | `NO` | `NO` | ✅ |
-| `123@demodev.example.com` | fallback icon | fallback icon (40px circle, indigo bg in first_class / brand bg in default) | ✅ |
-| `elise@demodev.example.com` | `ÉÖ` | `ÉÖ` (U+00C9, U+00D6) | ✅ |
+PASS. Mary Jane shows a 40×40 circular avatar with `MJ` (semibold, white) on the brand-blue header background `rgb(43, 108, 176)` (`#2B6CB0`). Avatar bg matches header bg → visually merged. No caret, no name/email text. Identical at 375 px width.
 
-![Default theme — Mary Jane avatar](screenshots/desktop_1_default-mary.png)
-![Default theme — fallback user icon (123@)](screenshots/desktop_2_fallback_icon.png)
-![Default theme — dropdown open viewport](screenshots/desktop_3_dropdown_viewport.png)
-![Default theme — header at scrollY=0 (baseline shadow)](screenshots/desktop_4_default_baseline.png)
-![Default theme — header scrolled (stronger shadow)](screenshots/desktop_4_default_scrolled.png)
-![first_class theme — Mary Jane on white-ish header](screenshots/desktop_7_first_class_mary.png)
-![first_class theme — header translucent + blurred while scrolled](screenshots/desktop_9_first_class_scrolled.png)
-![Mobile (375×812) — first_class header with avatar](screenshots/mobile_1_first_class_avatar.png)
-![Mobile — sidebar open with backdrop, header still visible above](screenshots/mobile_15_sidebar_actually_open.png)
-![Tablet (768×1024) — first_class topic page](screenshots/tablet_1_first_class_topic.png)
+![Desktop](screenshots/desktop_1_default-mary.png)
+![Mobile](screenshots/mobile_1_default-mary.png)
 
----
+## Test 2 — Avatar variants
 
-## Notes / things not directly under test
+All six users render the expected initials or fallback icon:
 
-- The Django Debug Toolbar overlays in the bottom-left can intercept pointer events in tests; in the dev environment it cosmetically covers a corner of the viewport but does not affect production.
-- Test data (the six avatar QA users) was created via the qa-data-helper agent on the DemoDev site. A reusable management command was not added — the script lives at `/tmp/create_avatar_qa_users.py`. Promote it to `qa_helpers` if these users are wanted long-term.
-- `prefers-reduced-motion` could not be toggled via the Playwright MCP (no `emulateMedia` support); coverage for Tests 6 and 11 is therefore limited to confirming the right Tailwind class is on the header. If you want runtime confirmation, run a Playwright test with `page.emulateMedia({ reducedMotion: 'reduce' })`.
+| User | Expected | Observed | Screenshot |
+|---|---|---|---|
+| `mary.jane@…` | MJ | MJ | `desktop_1_default-mary.png` |
+| `single.first@…` | MA | MA | `desktop_2_avatar_single_first.png` |
+| `multi.token@…` | MJ | MJ | `desktop_2_avatar_multi_token.png` |
+| `noname@…` | NO | NO | `desktop_2_avatar_noname.png` |
+| `123@…` | user-icon SVG | SVG (`role="img" aria-label="user"`) | `desktop_2_avatar_123_fallback.png` |
+| `elise@…` | ÉÖ | ÉÖ (diacritics preserved) | `desktop_2_avatar_elise_diacritics.png` |
+
+The fallback (`123@…`) renders the user-icon SVG in the same 40×40 circle (`bg-header-action`), confirming a uniform avatar shape regardless of code-path.
+
+![Single first](screenshots/desktop_2_avatar_single_first.png)
+![Multi token](screenshots/desktop_2_avatar_multi_token.png)
+![Noname](screenshots/desktop_2_avatar_noname.png)
+![123 fallback](screenshots/desktop_2_avatar_123_fallback.png)
+![Elise diacritics](screenshots/desktop_2_avatar_elise_diacritics.png)
+
+## Test 3 — Dropdown / accessibility
+
+PASS. Inspecting the avatar trigger:
+
+- `aria-label="Open user menu for Mary Jane"` ✓
+- `aria-haspopup="menu"` ✓
+- `aria-expanded` flips `false` → `true` on click and back to `false` on Escape ✓
+- Dropdown contains Profile + Sign Out (no Educator/Admin links because Mary Jane is a student) ✓
+
+Focus ring: when the avatar is focused, the computed `box-shadow` shows the expected 2 px white ring-offset + 4 px `var(--color-focus-ring)` ring. See observation under "Observations" — in default the ring colour equals the header background.
+
+![Focus ring](screenshots/desktop_3_avatar_focus_ring.png)
+
+## Test 4 — Default theme: sticky + scrolled shadow
+
+PASS.
+
+- At `scrollY === 0`: header at `top:0`, `position:sticky`, `z-index:30`, `box-shadow` = `shadow-md` (`0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px ...`).
+- At `scrollY > 0` (tested at 400 px): `data-scrolled="true"`, `box-shadow` becomes `shadow-lg` (`0 10px 15px -3px ..., 0 4px 6px -4px ...`). Header remains fully opaque (`rgb(43,108,176)`), `backdrop-filter: none`. Header height ≈ 72 px.
+- Returning to top resets `data-scrolled` to null and box-shadow to baseline.
+
+![Top](screenshots/desktop_4_default_top_baseline.png)
+![Scrolled](screenshots/desktop_4_default_scrolled.png)
+
+## Test 5 — Anchor / focus scroll-padding
+
+PASS. `getComputedStyle(html).scrollPaddingTop === "80px"` (≈ header height 72 px + breathing room). Anchor jumps and Tab-focus to off-screen elements will land below the sticky header.
+
+## Test 6 — Reduced motion (default)
+
+PASS. With `prefers-reduced-motion: reduce` emulated:
+
+- `getComputedStyle(header).transitionProperty === "none"` (the `motion-reduce:transition-none` utility kicks in)
+- The shadow-step on scroll is therefore instant.
+
+## Test 7 — first_class avatar appearance
+
+**FAIL** — see "Bug 1 — Site title rendered with underline" above. Avatar itself is correct; the failure is on the site title rendering.
+
+Avatar checks (all pass):
+
+- `--color-header` = `#F8F9FC`, header bg = `rgb(248,249,252)` ✓
+- `--color-header-action` = `#283593` (deep indigo), avatar bg matches ✓
+- Avatar text white, semibold, "MJ" ✓
+- Site title color `rgb(26,26,46)` (dark) on the white header — reads cleanly ✓
+- No caret, no name text, identical 40×40 footprint as default theme.
+
+![first_class Mary](screenshots/desktop_7_first_class_mary.png)
+
+## Test 8 — first_class contrast
+
+PASS (computed via `getComputedStyle()` and the WCAG 2.x relative-luminance formula):
+
+- Avatar text (white) on `--color-header-action` (indigo) → **10.39:1** (≥ 4.5:1) ✓
+- Site title (`text-on-header` `#1A1A2E`) on `--color-header` (`#F8F9FC`) → **16.20:1** (≥ 4.5:1) ✓
+
+## Test 9 — first_class scrolled state (translucent + blur)
+
+PASS.
+
+- At `scrollY === 0`: `bg = rgb(248,249,252)` (fully opaque), `backdrop-filter: none`, header sits flush against the page surface (which is also `--color-surface` → no visible seam).
+- At `scrollY > 0`: `bg = oklch(0.982… / 0.85)` (translucent at 0.85 alpha), `backdrop-filter: blur(12px) saturate(1.5)` ✓. Box-shadow steps to `shadow-lg`.
+- Scrolling back to top returns to fully opaque + `backdrop-filter: none` + baseline shadow.
+
+![first_class top](screenshots/desktop_9_first_class_top.png)
+![first_class scrolled](screenshots/desktop_9_first_class_scrolled.png)
+
+## Test 10 — first_class contrast under translucency
+
+PASS. Worst-case analysis: composite `bg-header/85` (`#F8F9FC` at 0.85 alpha) over the darkest body element it could overlap (page text `#1A1A2E`):
+
+- Effective header bg ≈ `rgb(215, 216, 221)` (still light grey)
+- Site title contrast on this worst-case bg = **11.99:1** (≥ 4.5:1) ✓
+- Avatar text contrast unchanged (`bg-header-action` is fully opaque, no alpha) → **10.39:1** ✓
+
+No tuning of the alpha is required.
+
+![Mid-scroll text behind header](screenshots/desktop_10_first_class_scrolled_with_text_behind.png)
+
+## Test 11 — first_class reduced motion
+
+PASS. Same as Test 6 — `transition-property` resolves to `"none"` under `prefers-reduced-motion: reduce`. The colour-and-blur transition is therefore instant.
+
+## Test 12 — first_class anchor / focus padding
+
+PASS. `scroll-padding-top: 80px` is the same global value, applied via the root selector — works in both themes.
+
+## Test 13 — Dropdown close-on-scroll (both themes)
+
+PASS in both themes. After clicking the avatar (`aria-expanded` → `"true"`), scrolling 100 px instantly closes the dropdown (`aria-expanded` → `"false"`).
+
+The spec explicitly defers any change to this behaviour. Observation: on the now-sticky header it does feel slightly abrupt — opening the menu and then nudging the wheel even slightly snaps it shut. This is consistent with the spec's note that any UX change here is out of scope; flagged here so the deferred follow-up has data.
+
+## Test 14 — Regression on existing surfaces
+
+PASS.
+
+- Default theme `/courses/`: primary buttons (`btn-primary`) computed bg = `rgb(43, 108, 176)` (= `--color-primary`). Unchanged.
+- first_class `/courses/`: primary buttons computed bg = `rgb(40, 53, 147)` (= `--color-primary` = `#283593`). Unchanged.
+
+The new `--color-header*` tokens did not leak into surface/primary utilities.
+
+![Default regression](screenshots/desktop_14_default_courses_regression.png)
+![first_class regression](screenshots/desktop_14_first_class_courses_regression.png)
+
+## Test 15 — Mobile sidebar still works under sticky header
+
+PASS (default theme; behaviour is the same in first_class).
+
+- Header rect: y=0, height=64 px, z-index=30.
+- Sidebar backdrop rect: **y=64, height=748** — backdrop intentionally starts *below* the header, leaving the avatar accessible while the drawer is open.
+- Drawer itself is z-40 (above both), as expected.
+
+The avatar element-from-point at the visual centre still resolves to the avatar `<span>`, confirming the header is not occluded.
+
+![Mobile sidebar open](screenshots/mobile_15_default_sidebar_open.png)
+
+## Mobile + tablet checks (first_class)
+
+Spot-checked the sticky header on long topic pages:
+
+- Mobile (375×812): top-of-page renders as expected (white-ish header, indigo avatar, no caret). On scroll, translucent + blur kicks in. Header height stays at 64 px on mobile per the responsive padding.
+- Tablet (768×1024): identical behaviour to desktop. Title is readable, avatar is touch-target sized, no overflow or layout breakage.
+
+![Mobile first_class top](screenshots/mobile_7_first_class_top.png)
+![Mobile first_class scrolled](screenshots/mobile_9_first_class_scrolled.png)
+![Tablet first_class top](screenshots/tablet_7_first_class_top.png)
+![Tablet first_class scrolled](screenshots/tablet_9_first_class_scrolled.png)
+
+## Observations (not blockers)
+
+1. **Default focus ring colour ≈ header bg.** `--color-focus-ring` resolves to `--color-primary` (`#2B6CB0`), which is *also* the header background in the default theme. The 2 px white ring-offset is what's actually visible against the header — the outer 4 px ring blends in. Functionally a focus indicator is present; visually it's subtle. Pre-existing token wiring; not introduced by this change. Worth a follow-up to either give the focus ring its own dedicated token, or to use a contrasting colour when the focus ring is over `--color-header`.
+
+2. **Dropdown close-on-scroll feels abrupt on sticky header.** Spec already calls this out as deferred; confirming here that the UX impression matches the spec's prediction.
+
+3. **`elise@…` aria-label uses the full localized name** (`Open user menu for Élise Önen`) — diacritics carry through to assistive tech correctly.
+
+## Difficulties / not tested
+
+- **Anchor jump live test.** The default DemoDev topic page does not auto-generate `id` attributes on headings, so I could not click an in-page anchor link. I verified `scroll-padding-top: 80px` via computed style — the browser uses this for both anchor jumps and sequential focus, so the behaviour is guaranteed by CSS. If you want a live demo of an anchor click, the spec's test plan would need either ToC links or auto-id'd headings, which is unrelated to this feature.
+
+- **Test 13 "feels acceptable" subjective rating.** Recorded under Observations; not a pass/fail item per the spec.
