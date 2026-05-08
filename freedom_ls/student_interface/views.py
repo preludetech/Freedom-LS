@@ -44,28 +44,25 @@ from .utils import (
 def _annotate_accent(course: Course) -> None:
     """Attach a deterministic accent role to a course for template use.
 
-    Pure annotation: same input title -> same role across processes. The
-    helper is split out so it stays one line away from the future
-    ``course.accent_override`` seam.
+    Same input title -> same role across processes.
     """
     # TODO: when Course.accent_override is added, prefer it over course_accent_role(title).
     setattr(course, "accent_role", course_accent_role(course.title))  # noqa: B010
 
 
 def _annotate_next_up(course: Course, user) -> None:
-    """Annotate an in-progress course with ``next_up_title`` and ``next_up_url``.
+    """Pick the first IN_PROGRESS child (then READY) and stamp it on the course.
 
-    Walks ``get_course_index`` for the course and picks the first
-    ``IN_PROGRESS`` child with a URL, falling back to the first ``READY``
-    child. If neither exists, both fields are set to empty strings — the
-    template never renders ``Next up: `` with a blank.
+    Walks at most two levels of ``get_course_index`` (top-level children plus
+    their direct children — which matches the depth ``get_course_index``
+    itself produces). Sets empty strings when nothing is actionable so the
+    template never renders ``Next up:`` with a blank tail.
     """
     children = get_course_index(user=user, course=course)
     flat = []
     for c in children:
         flat.append(c)
-        for nested in c.get("children", []):
-            flat.append(nested)
+        flat.extend(c.get("children", []))
     next_item = next(
         (c for c in flat if c["status"] == IN_PROGRESS and c.get("url")),
         None,
@@ -73,34 +70,22 @@ def _annotate_next_up(course: Course, user) -> None:
         (c for c in flat if c["status"] == READY and c.get("url")),
         None,
     )
-    if next_item:
-        setattr(course, "next_up_title", next_item["title"])  # noqa: B010
-        setattr(course, "next_up_url", next_item["url"])  # noqa: B010
-    else:
-        setattr(course, "next_up_title", "")  # noqa: B010
-        setattr(course, "next_up_url", "")  # noqa: B010
+    setattr(course, "next_up_title", next_item["title"] if next_item else "")  # noqa: B010
+    setattr(course, "next_up_url", next_item["url"] if next_item else "")  # noqa: B010
 
 
-def _annotate_preview_context(course: Course, user) -> None:
+def _annotate_preview_context(course: Course, *, is_registered: bool) -> None:
     """Attach ``preview_children`` + ``preview_is_registered`` for the modal.
 
     The not-started card embeds ``course_preview_content.html`` inside a
-    desktop modal. That partial expects the same ``children`` /
-    ``is_registered`` context the standalone preview page has, so we
-    annotate it onto the course object here. The names use a
-    ``preview_`` prefix to avoid colliding with template-loop
-    ``children`` values from the existing ToC partial.
+    desktop modal. That partial only needs child *titles* (not statuses or
+    URLs), so we use the lightweight ``course.children()`` model accessor
+    rather than the full ``get_course_index`` walk. ``is_registered`` is
+    passed in by the caller — the dashboard always knows it from the
+    queryset that produced the course, avoiding an extra EXISTS query.
     """
-    setattr(  # noqa: B010
-        course,
-        "preview_children",
-        get_course_index(user=user, course=course),
-    )
-    setattr(  # noqa: B010
-        course,
-        "preview_is_registered",
-        get_is_registered(user=user, course=course),
-    )
+    setattr(course, "preview_children", course.children())  # noqa: B010
+    setattr(course, "preview_is_registered", is_registered)  # noqa: B010
 
 
 @login_required
@@ -112,16 +97,19 @@ def dashboard(request):
 
     for course in registered_courses:
         _annotate_accent(course)
-        _annotate_next_up(course, request.user)
-        # Not-started cards (registered but progress == 0) also open the
-        # desktop modal preview, which needs the preview context.
-        if not getattr(course, "progress_percentage", 0):
-            _annotate_preview_context(course, request.user)
+        # Not-started cards (registered but progress == 0) open the modal
+        # preview; in-progress cards instead need a "next up" target. The
+        # two paths are mutually exclusive, so only do one walk per card.
+        if getattr(course, "progress_percentage", 0):
+            _annotate_next_up(course, request.user)
+        else:
+            _annotate_preview_context(course, is_registered=True)
     for course in completed_courses:
         _annotate_accent(course)
     for rec in recommended_courses:
         _annotate_accent(rec.collection)
-        _annotate_preview_context(rec.collection, request.user)
+        # Recommendations are by definition not yet registered.
+        _annotate_preview_context(rec.collection, is_registered=False)
 
     context = {
         "registered_courses": registered_courses,
@@ -131,22 +119,22 @@ def dashboard(request):
     return render(request, "student_interface/dashboard.html", context)
 
 
+@login_required
 def all_courses(request):
     """Page listing all available courses."""
     courses = list(get_all_courses())
 
-    # Annotate started courses with progress_percentage
     current = get_current_courses(request.user)
     progress_by_id = {c.id: getattr(c, "progress_percentage", 0) for c in current}
+    registered_ids = {c.id for c in current}
     for course in courses:
         if course.id in progress_by_id:
             setattr(course, "progress_percentage", progress_by_id[course.id])  # noqa: B010
         _annotate_accent(course)
-        # Not-started cards (progress 0 or absent) carry the same modal as
-        # the dashboard so they need the preview context. Authenticated
-        # users only — anonymous gets the empty-context defaults.
-        if request.user.is_authenticated and not progress_by_id.get(course.id):
-            _annotate_preview_context(course, request.user)
+        # Not-started cards (progress 0 or absent) open the same modal as
+        # the dashboard, which needs the preview context.
+        if not progress_by_id.get(course.id):
+            _annotate_preview_context(course, is_registered=course.id in registered_ids)
 
     return render(
         request,

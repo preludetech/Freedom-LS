@@ -8,7 +8,7 @@ To create a QA student user that can actually log in and view a course in the br
 
 1. `User` via `UserFactory(email=..., password=..., site=site)` from `freedom_ls.accounts.factories` — the factory's `post_generation` password hook sets password when extracted value is passed.
 2. `allauth.account.models.EmailAddress` with `verified=True, primary=True` — without this, allauth redirects login to `/accounts/confirm-email/`. Use `get_or_create` keyed on `(user, email)`.
-3. `UserCourseRegistration` via `UserCourseRegistrationFactory(user=user, collection=course, site=site)` from `freedom_ls.student_management.factories` — note the FK is `collection`, not `course`.
+3. `UserCourseRegistration` via `UserCourseRegistrationFactory(user=user, collection=course, site=site)` from `freedom_ls.student_management.factories` — note the FK is `collection`, not `course`. The user FK is `user` (not `student`); a query like `UserCourseRegistration.objects.filter(student__user__email=...)` will raise `FieldError`.
 
 The DemoDev site is used for all QA data (see `feedback_use_demodev_site` in user-auto-memory, and `FORCE_SITE_NAME = "DemoDev"` in `config/settings_dev.py`).
 

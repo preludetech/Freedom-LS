@@ -159,14 +159,16 @@ def validate_course_icon_fields(icon: str, icon_fallback: str) -> None:
             }
         )
 
-    if variant_problems:
+    if variant_problems and not icon_fallback:
         raise ValidationError(
             {
                 "icon": (
                     f"icon {icon!r} is missing variant glyph(s): "
                     f"{variant_problems}. The icon set has the unsuffixed "
                     f"glyph but is missing one or more suffixed variants. "
-                    f"Pick a different glyph or fix the icon set."
+                    f"Pick a different glyph, fix the icon set, or set "
+                    f"icon_fallback to '<iconset>:<glyph>' as an explicit "
+                    f"override."
                 )
             }
         )

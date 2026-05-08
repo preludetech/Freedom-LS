@@ -1,15 +1,16 @@
-{# Course-list partials shared by the dashboard and the all-courses page.
+{% comment %}
+Course-list partials shared by the dashboard and the all-courses page.
 
-   `dispatch-card` selects between the three state-specific card partials:
-     * "history"        -> course_card_complete.html
-     * "current" + p>0  -> course_card_in_progress.html
-     * else             -> course_card_not_started.html (covers p==0)
+`dispatch-card` selects between the three state-specific card partials:
+    * "history"        -> course_card_complete.html
+    * "current" + p>0  -> course_card_in_progress.html
+    * else             -> course_card_not_started.html (covers p==0)
 
-   The four collection partials below (`current-courses`,
-   `recommended-courses`, `learning-history`, `all-courses`) all dispatch
-   through this single seam. The legacy `course-card` partialdef has been
-   deleted now that nothing references it.
-#}
+The four collection partials below (`current-courses`,
+`recommended-courses`, `learning-history`, `all-courses`) all dispatch
+through this single seam. The legacy `course-card` partialdef has been
+deleted now that nothing references it.
+{% endcomment %}
 
 {% partialdef dispatch-card %}
     {% if course_status == "history" %}

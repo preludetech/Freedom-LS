@@ -1,10 +1,11 @@
 {% load course_icon_tags %}
-{# Completed course card.
+{% comment %}
+Completed course card.
 
-   Status conveyed three ways for WCAG 1.4.1: eyebrow text + check badge
-   shape + colour. Colour alone never conveys state. No 100% progress bar
-   (Carbon Design System guidance).
-#}
+Status conveyed three ways for WCAG 1.4.1: eyebrow text + check badge
+shape + colour. Colour alone never conveys state. No 100% progress bar
+(Carbon Design System guidance).
+{% endcomment %}
 <article class="surface relative flex gap-4 items-start">
     <div class="bg-{{ course.accent_role|default:'primary' }}-soft text-{{ course.accent_role|default:'primary' }} flex items-center justify-center size-16 shrink-0 rounded-md"
          aria-hidden="true">

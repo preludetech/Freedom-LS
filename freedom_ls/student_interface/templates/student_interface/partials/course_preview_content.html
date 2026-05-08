@@ -1,11 +1,12 @@
-{# Shared course-preview content.
+{% comment %}
+Shared course-preview content.
 
-   Used by both:
-   * the desktop modal in `course_card_not_started.html`, and
-   * the dedicated mobile/standalone page `course_preview.html`.
+Used by both:
+* the desktop modal in `course_card_not_started.html`, and
+* the dedicated mobile/standalone page `course_preview.html`.
 
-   Render context required: `course`, `children`, `is_registered`.
-#}
+Render context required: `course`, `children`, `is_registered`.
+{% endcomment %}
 <div class="space-y-4">
     {% if course.subtitle %}
         <p class="text-muted">{{ course.subtitle }}</p>

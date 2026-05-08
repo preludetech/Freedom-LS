@@ -25,5 +25,6 @@ Use this Skill when:
 - Don't hardcode URLs — use `{% url 'app:name' %}`
 - Check existing cotton components before creating new ones
 - Views returning partials use `partial_` prefix
+- Use Django-style comments `{% comment %}...{% endcomment %}` — never Jinja-style `{# ... #}`
 
 Refer to `${CLAUDE_PLUGIN_ROOT}/resources/templates_and_cotton.md` for full patterns and examples.

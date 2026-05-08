@@ -46,6 +46,14 @@ def _logged_in_client(user) -> Client:
 
 
 @pytest.mark.django_db
+def test_all_courses_anonymous_redirects_to_login(client, courses, mock_site_context):
+    """Anonymous users get bounced to login — same gate as the dashboard."""
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 302
+    assert "login" in response["Location"].lower()
+
+
+@pytest.mark.django_db
 def test_all_courses_started_course_has_progress_percentage(mock_site_context, courses):
     """Started courses in the all_courses view should have progress_percentage for progress bars."""
     user = UserFactory()
@@ -184,6 +192,91 @@ def test_dashboard_annotates_accent_on_every_course(mock_site_context, courses):
         assert hasattr(course, "accent_role")
     for rec in response.context["recommended_courses"]:
         assert hasattr(rec.collection, "accent_role")
+
+
+# --- page <title> tags (Bug 2) ---
+
+
+def _extract_title(body: str) -> str:
+    """Pull the trimmed text inside the first <title>...</title> tag."""
+    start = body.find("<title>")
+    assert start != -1, "no opening <title> tag in response"
+    end = body.find("</title>", start)
+    assert end != -1, "no closing </title> tag in response"
+    return body[start + len("<title>") : end].strip()
+
+
+@pytest.mark.django_db
+def test_dashboard_title_tag_says_dashboard(mock_site_context, courses):
+    """The dashboard's browser-tab title is 'Dashboard'."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+    response = client.get(reverse("student_interface:dashboard"))
+    assert response.status_code == 200
+    assert _extract_title(response.content.decode()) == "Dashboard"
+
+
+@pytest.mark.django_db
+def test_all_courses_title_tag_says_all_courses(mock_site_context, courses):
+    """The all-courses page's browser-tab title is 'All Courses'."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+    assert _extract_title(response.content.decode()) == "All Courses"
+
+
+@pytest.mark.django_db
+def test_course_preview_title_tag_uses_course_title(mock_site_context, courses):
+    """The course-preview page's browser-tab title matches the course title."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+    response = client.get(
+        reverse(
+            "student_interface:course_preview", kwargs={"course_slug": courses[0].slug}
+        )
+    )
+    assert response.status_code == 200
+    assert _extract_title(response.content.decode()) == courses[0].title
+
+
+# --- template comment hygiene (Bug 1) ---
+
+
+@pytest.mark.django_db
+def test_dashboard_does_not_leak_template_comments(mock_site_context, courses):
+    """Dashboard must not leak `{# ... #}` template-comment text into the body."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    UserCourseRegistrationFactory(user=user, collection=courses[1])
+    CourseProgressFactory(user=user, course=courses[1], completed_time=timezone.now())
+    RecommendedCourseFactory(user=user, collection=courses[2])
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    assert "Course-list partials shared by" not in body
+    assert "Shared silhouette" not in body
+    assert "Click destination is split" not in body
+    assert "Status conveyed three ways" not in body
+    assert "{#" not in body
+
+
+@pytest.mark.django_db
+def test_all_courses_does_not_leak_template_comments(mock_site_context, courses):
+    """All-courses page must not leak `{# ... #}` template-comment text either."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    body = response.content.decode()
+
+    assert "Course-list partials shared by" not in body
+    assert "Shared silhouette" not in body
+    assert "Click destination is split" not in body
+    assert "{#" not in body
 
 
 # --- dead URL ---

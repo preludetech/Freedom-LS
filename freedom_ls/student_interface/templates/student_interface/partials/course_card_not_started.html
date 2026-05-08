@@ -1,14 +1,15 @@
 {% load course_icon_tags %}
-{# Not-started course card.
+{% comment %}
+Not-started course card.
 
-   Click destination is split:
-   * Desktop (>= md): the card opens a modal preview using <c-modal>.
-   * Mobile (< md):  the card links to the dedicated /courses/<slug>/preview/
-                     page so it deep-links and survives refresh.
+Click destination is split:
+* Desktop (>= md): the card opens a modal preview using c-modal.
+* Mobile (< md):  the card links to the dedicated /courses/[slug]/preview/
+                    page so it deep-links and survives refresh.
 
-   Two siblings render the same article skeleton; CSS hides one or the other
-   so there is no JS branching on viewport width.
-#}
+Two siblings render the same article skeleton; CSS hides one or the other
+so there is no JS branching on viewport width.
+{% endcomment %}
 
 {# Desktop: modal trigger. Hidden below md. #}
 <div class="hidden md:block">
@@ -34,7 +35,7 @@
             <c-button variant="outline" x-on:click="close">
                 Close
             </c-button>
-            {% if not is_registered %}
+            {% if not course.preview_is_registered %}
                 <c-button href="{% url 'student_interface:register_for_course' course.slug %}">
                     Start
                 </c-button>

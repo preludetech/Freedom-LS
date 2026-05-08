@@ -16,6 +16,7 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.student_management.factories import (
+    RecommendedCourseFactory,
     UserCourseRegistrationFactory,
 )
 from freedom_ls.student_progress.factories import (
@@ -144,6 +145,48 @@ def test_course_preview_has_start_button_when_not_registered(
     body = response.content.decode()
     # The shared partial drops a "Start" button when is_registered is False.
     assert "Start" in body
+
+
+@pytest.mark.django_db
+def test_not_started_modal_hides_start_for_registered_user(
+    mock_site_context, course_with_topics
+):
+    """The not-started modal footer must not offer a Start button when the
+    learner is already registered. Bug 3: `is_registered` was scoped to the
+    `{% with %}` wrapping the body, so the footer's `{% if not is_registered %}`
+    evaluated true and rendered Start for everyone."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    register_url = reverse(
+        "student_interface:register_for_course",
+        kwargs={"course_slug": course_with_topics.slug},
+    )
+    assert register_url not in body
+
+
+@pytest.mark.django_db
+def test_not_started_modal_shows_start_for_unregistered_user(
+    mock_site_context, course_with_topics
+):
+    """The converse of the bug: a recommended (unregistered) course on the
+    dashboard renders the Start button linking to the registration URL."""
+    user = UserFactory()
+    RecommendedCourseFactory(user=user, collection=course_with_topics)
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    register_url = reverse(
+        "student_interface:register_for_course",
+        kwargs={"course_slug": course_with_topics.slug},
+    )
+    assert register_url in body
 
 
 @pytest.mark.django_db

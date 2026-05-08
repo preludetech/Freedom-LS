@@ -126,6 +126,83 @@ def test_variant_pairing_missing_raises(monkeypatch: pytest.MonkeyPatch) -> None
     assert "variant" in str(excinfo.value).lower()
 
 
+def test_literal_glyph_with_missing_variant_accepts_when_fallback_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Bug 4: when ``icon_fallback`` is provided it short-circuits the
+    variant-completeness check on ``icon``. Heroicons has the unsuffixed
+    glyph but is missing required variants; phosphor has the same glyph
+    fully populated, so the fallback is a valid escape hatch and the row
+    must not be rejected."""
+    real_heroicons = load_iconify_data("heroicons")
+    real_phosphor = load_iconify_data("phosphor")
+    fake_heroicons = {
+        "icons": {
+            **real_heroicons["icons"],
+            "halfshipped": {"body": "<path d='M0 0'/>"},
+            # missing -solid / -20-solid / -16-solid variants
+        },
+        "width": 24,
+        "height": 24,
+    }
+    fake_phosphor = {
+        "icons": {
+            **real_phosphor["icons"],
+            "halfshipped": {"body": "<path d='M0 0'/>"},
+            "halfshipped-fill": {"body": "<path d='M0 0'/>"},
+            "halfshipped-bold": {"body": "<path d='M0 0'/>"},
+            "halfshipped-light": {"body": "<path d='M0 0'/>"},
+            "halfshipped-thin": {"body": "<path d='M0 0'/>"},
+        },
+        "width": 24,
+        "height": 24,
+    }
+
+    def fake_loader(set_name: str):
+        if set_name == "heroicons":
+            return fake_heroicons
+        if set_name == "phosphor":
+            return fake_phosphor
+        return load_iconify_data(set_name)
+
+    monkeypatch.setattr(
+        "freedom_ls.content_engine.icon_validation.load_iconify_data",
+        fake_loader,
+    )
+
+    validate_course_icon_fields("halfshipped", "phosphor:halfshipped")
+
+
+def test_literal_glyph_with_missing_variant_still_raises_without_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Guard test for Bug 4: with no fallback the variant-completeness
+    check still applies. We must not regress to silently accepting half-
+    populated icons when there's no escape hatch."""
+    real = load_iconify_data("heroicons")
+    fake_heroicons = {
+        "icons": {
+            **real["icons"],
+            "halfshipped": {"body": "<path d='M0 0'/>"},
+        },
+        "width": 24,
+        "height": 24,
+    }
+
+    def fake_loader(set_name: str):
+        if set_name == "heroicons":
+            return fake_heroicons
+        return load_iconify_data(set_name)
+
+    monkeypatch.setattr(
+        "freedom_ls.content_engine.icon_validation.load_iconify_data",
+        fake_loader,
+    )
+
+    with pytest.raises(ValidationError):
+        validate_course_icon_fields("halfshipped", "")
+
+
 def test_malformed_fallback_raises() -> None:
     with pytest.raises(ValidationError):
         validate_course_icon_fields("notes", "  phosphor:drone   ".strip() + "::")

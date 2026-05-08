@@ -1,11 +1,12 @@
 {% load course_icon_tags %}
-{# In-progress course card.
+{% comment %}
+In-progress course card.
 
-   Shared silhouette: tinted icon tile + eyebrow + title + state-specific body
-   slot. The whole card is the click target via the stretched-link pattern: a
-   single <a> on the title with a ::before overlay that extends the hit zone.
-   Text selection inside the card still works because the overlay is empty.
-#}
+Shared silhouette: tinted icon tile + eyebrow + title + state-specific body
+slot. The whole card is the click target via the stretched-link pattern: a
+single anchor on the title with a ::before overlay that extends the hit zone.
+Text selection inside the card still works because the overlay is empty.
+{% endcomment %}
 <article class="surface relative flex gap-4 items-start">
     <div class="bg-{{ course.accent_role|default:'primary' }}-soft text-{{ course.accent_role|default:'primary' }} flex items-center justify-center size-16 shrink-0 rounded-md"
          aria-hidden="true">

@@ -38,19 +38,25 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 7. Implementation
 
 - [x] (cmd) Run `/implement_plan` to execute the implementation plan
-- [ ] (user) Spot-check the changes
+- [x] (user) Spot-check the changes
 
 ## 8. Code security review
 
-- [ ] (cmd) Run `/security-review` on the pending changes
-- [ ] (user) Address any issues raised
+- [x] (cmd) Run `/security-review` on the pending changes
+- [x] (user) Address any issues raised
 
 ## 9. QA
 
-- [ ] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)
+- [x] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
+- [x] (user + cmd) Fix QA bug: Multi-line `{# ... #}` template comments leak as visible text and corrupt the DOM (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Dashboard `<title>` is empty (no `head_title` block set) (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Modal-vs-page parity — Start button in not-started modal footer is outside the `{% with is_registered=... %}` scope, so it always renders (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: `content_save` rejects valid `icon: drone` + `icon_fallback: phosphor:drone` because validator requires every variant of `icon` to exist in the active set (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: Not-started preview (modal + page) is missing the `Start` button (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: Card focus ring does not visibly wrap the whole card (TDD — failing test first, then fix)
 
 ## 10. Pull request
 
