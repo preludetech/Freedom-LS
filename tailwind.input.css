@@ -27,8 +27,3 @@
 @theme {
     /* repo-level overrides go here, optional */
 }
-
-/* Course-card accents no longer interpolate Tailwind role utilities — they
- * use the hand-authored `.course-accent-*` / `.course-progress-*` component
- * classes in `tailwind.components.css`, which are always emitted. No safelist
- * is required for them. */
