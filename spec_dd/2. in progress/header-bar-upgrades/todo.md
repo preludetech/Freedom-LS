@@ -48,14 +48,14 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 9. QA
 
 - [x] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)
-- [ ] (QA|user + cmd) Fix QA bug: Django comment leaks into rendered HTML next to the avatar (TDD — failing test first, then fix)
-- [ ] (QA|user + cmd) Fix QA bug: Escape key does not close the user menu dropdown (TDD — failing test first, then fix)
-- [ ] (QA|cmd) Use the qa-data-helper agent to create missing data for the avatar-initials test matrix (mary.jane / single.first / multi.token / noname / 123 / elise on DemoDev), then re-run `/do_qa`
+- [x] (QA|user + cmd) Fix QA bug: Django comment leaks into rendered HTML next to the avatar (TDD — failing test first, then fix)
+- [x] (QA|user + cmd) Fix QA bug: Escape key does not close the user menu dropdown (TDD — failing test first, then fix)
+- [x] (QA|cmd) Use the qa-data-helper agent to create missing data for the avatar-initials test matrix (mary.jane / single.first / multi.token / noname / 123 / elise on DemoDev), then re-run `/do_qa`
 - [x] (QA|user + cmd) Fix QA bug: Avatar `aria-label` missing last name (TDD — failing test first, then fix)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
-- [ ] (QA|user + cmd) Fix QA bug: Site title rendered with underline in header (TDD — failing test first, then fix)
+- [x] (QA|user + cmd) Fix QA bug: Site title rendered with underline in header (TDD — failing test first, then fix)
 
 ## 10. Pull request
 

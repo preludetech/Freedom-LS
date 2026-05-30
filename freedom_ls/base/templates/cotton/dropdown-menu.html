@@ -5,7 +5,7 @@
         trigger_class="p-2 hover:bg-surface-2 rounded-md transition-colors" />
 
 <div class="relative inline-block {{ class }}" x-data="dropdownMenu">
-    <!-- 3-dots menu button -->
+    {% comment %} 3-dots menu button {% endcomment %}
     <button type="button"
             x-on:click="toggle"
             class="{{ trigger_class }}"
@@ -20,7 +20,7 @@
         {% endif %}
     </button>
 
-    <!-- Dropdown menu -->
+    {% comment %} Dropdown menu {% endcomment %}
     {% comment %}
     @claude The auto-close on window scroll below is shared by every
     dropdown in the app. With the now-sticky header, the user menu and
