@@ -55,6 +55,10 @@ FLS_THEMES_DIRS: list[Path] = [
     FREEDOM_LS_PACKAGE_DIR / "themes",
 ]
 
+# Active icon set. Downstream projects can override this; the value must be a
+# key in `freedom_ls.icons.mappings.ICON_SETS`.
+FREEDOM_LS_ICON_SET = "heroicons"
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/

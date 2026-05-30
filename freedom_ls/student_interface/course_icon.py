@@ -38,7 +38,7 @@ class IconResolutionError(RuntimeError):
 
 
 def _active_set_name() -> str:
-    return getattr(settings, "FREEDOM_LS_ICON_SET", "heroicons")
+    return settings.FREEDOM_LS_ICON_SET
 
 
 def _render_literal(

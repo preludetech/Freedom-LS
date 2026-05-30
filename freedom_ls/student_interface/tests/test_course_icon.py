@@ -47,22 +47,23 @@ def _stub_iconify(monkeypatch: pytest.MonkeyPatch, datasets: dict[str, dict[str,
     )
 
 
-def test_empty_icon_renders_default_course_semantic() -> None:
-    out = render_course_icon("")
+@pytest.mark.parametrize(
+    ("icon", "icon_fallback", "expected_aria"),
+    [
+        # rule 1: empty icon -> default "course" semantic
+        ("", "", "course"),
+        # rule 2: semantic name -> rendered via backend; the fallback is unused
+        # because the "notes" semantic resolves on every set.
+        ("notes", "phosphor:drone", "notes"),
+    ],
+)
+def test_render_returns_safestring_svg_with_expected_aria(
+    icon: str, icon_fallback: str, expected_aria: str
+) -> None:
+    out = render_course_icon(icon, icon_fallback)
     assert isinstance(out, SafeString)
     assert "<svg" in out
-    assert 'aria-label="course"' in out
-
-
-def test_semantic_name_renders_via_backend_and_ignores_fallback() -> None:
-    out = render_course_icon("notes", "phosphor:drone")
-    assert isinstance(out, SafeString)
-    # The notes semantic resolves on every set; the fallback is unused.
-    assert "<svg" in out
-
-
-def test_safe_string_returned() -> None:
-    assert isinstance(render_course_icon(""), SafeString)
+    assert f'aria-label="{expected_aria}"' in out
 
 
 def test_literal_glyph_in_active_set(monkeypatch: pytest.MonkeyPatch) -> None:

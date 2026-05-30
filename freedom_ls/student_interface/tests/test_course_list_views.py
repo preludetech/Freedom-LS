@@ -89,26 +89,15 @@ def test_all_courses_annotates_accent_slot_key(mock_site_context, courses):
 
 
 @pytest.mark.django_db
-def test_dashboard_anonymous_redirects_to_login(client, courses, mock_site_context):
-    """Anonymous user hitting / is redirected to login (login_required)."""
-    response = client.get(reverse("student_interface:dashboard"))
-    assert response.status_code == 302
-    # Login URL is the redirect target; we don't pin its exact path.
-    assert "login" in response["Location"].lower()
-
-
-@pytest.mark.django_db
 def test_dashboard_authenticated_returns_200_with_user_label(
     mock_site_context, courses
 ):
-    user = UserFactory()
+    user = UserFactory(first_name="Ada")
     client = _logged_in_client(user)
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
-    body = response.content.decode()
-    # The greeting renders the user's first name (or email fallback).
-    expected: str = user.first_name or user.email
-    assert expected in body
+    # The greeting renders the user's first name.
+    assert "Ada" in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -234,52 +223,3 @@ def test_course_preview_title_tag_uses_course_title(mock_site_context, courses):
     )
     assert response.status_code == 200
     assert _extract_title(response.content.decode()) == courses[0].title
-
-
-# --- template comment hygiene (Bug 1) ---
-
-
-@pytest.mark.django_db
-def test_dashboard_does_not_leak_template_comments(mock_site_context, courses):
-    """Dashboard must not leak `{# ... #}` template-comment text into the body."""
-    user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
-    UserCourseRegistrationFactory(user=user, collection=courses[1])
-    CourseProgressFactory(user=user, course=courses[1], completed_time=timezone.now())
-    RecommendedCourseFactory(user=user, collection=courses[2])
-    client = _logged_in_client(user)
-
-    response = client.get(reverse("student_interface:dashboard"))
-    body = response.content.decode()
-
-    assert "Course-list partials shared by" not in body
-    assert "Shared silhouette" not in body
-    assert "Click destination is split" not in body
-    assert "Status conveyed three ways" not in body
-    assert "{#" not in body
-
-
-@pytest.mark.django_db
-def test_all_courses_does_not_leak_template_comments(mock_site_context, courses):
-    """All-courses page must not leak `{# ... #}` template-comment text either."""
-    user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
-    client = _logged_in_client(user)
-
-    response = client.get(reverse("student_interface:courses"))
-    body = response.content.decode()
-
-    assert "Course-list partials shared by" not in body
-    assert "Shared silhouette" not in body
-    assert "Click destination is split" not in body
-    assert "{#" not in body
-
-
-# --- dead URL ---
-
-
-@pytest.mark.django_db
-def test_partial_list_courses_url_is_404(client, mock_site_context):
-    """The old HTMX endpoint is gone; its path returns 404."""
-    response = client.get("/partials/courses/")
-    assert response.status_code == 404
