@@ -1,5 +1,17 @@
 # Deterministic name → theme-palette mapping
 
+> **Implementation note (post-build):** the shipped feature diverged from the
+> hash-of-title → role-token recommendation below. It instead uses a **separate,
+> neutral 5-slot accent series** (`PALETTE = ("1".."5")`) rendered as vibrant
+> **gradients** (`--fls-course-accent-<N>`), decoupled from the semantic UI role
+> tokens so card vibrancy can be tuned without recolouring buttons/badges. The slot
+> is **stored** on `Course.accent_slot` and assigned by per-site creation order
+> (`count() % 5`) for guaranteed even distribution, rather than hashed from the title.
+> The role soft-tints below (`--color-{role}-soft`, 12%) still exist and are used for
+> general accents (e.g. the completed-card badge), just not for the accent tiles.
+> The notes below are retained as the research record of the original approach. See
+> `1. spec.md` §2 for the as-built contract.
+
 ## Recommendations for FLS
 
 - **Use a 5-token subset, not the full role set.** Pick `primary`, `secondary`, `accent`, `info`, `success` for the per-course accent. Deliberately **exclude `error`/`warning`** so a course card never reads as a status alert, and exclude `surface`/`surface-2` (they are the card itself). Five buckets is enough variety for most cohorts; six (add `tertiary` if the theme defines one) is the upper limit before the wall of cards starts to look chaotic.
