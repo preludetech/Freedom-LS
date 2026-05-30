@@ -9,5 +9,6 @@
     "editor.codeActionsOnSave": {
         "source.fixAll.ruff": "explicit",
         "source.organizeImports.ruff": "explicit"
-    }}
+    }},
+    "vscode-color-picker.languages": ["css"]
 }

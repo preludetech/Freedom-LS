@@ -58,9 +58,9 @@
      * here; the default theme's -gradient and -soft composites are inherited
      * and recompute. */
     --fls-course-accent-1-from: #1E3A8A;  --fls-course-accent-1-to: #2563EB;   --fls-course-accent-1-icon: #FBBF24;  /* very dark blue   → gold icon   */
-    --fls-course-accent-2-from: #5AB0E8;  --fls-course-accent-2-to: #38BDF8;   --fls-course-accent-2-icon: #14366E;  /* lighter blue     → navy icon   */
-    --fls-course-accent-3-from: #00CEC9;  --fls-course-accent-3-to: #0D9488;   --fls-course-accent-3-icon: #E11D48;  /* teal             → coral icon  */
-    --fls-course-accent-4-from: #FF6B35;  --fls-course-accent-4-to: #FB9514;   --fls-course-accent-4-icon: #14366E;  /* orange           → navy icon   */
+    --fls-course-accent-2-from: #1E6FB0;  --fls-course-accent-2-to: #38BDF8;   --fls-course-accent-2-icon: #F5B14C;  /* lighter blue     → amber icon  */
+    --fls-course-accent-3-from: #0D9488;  --fls-course-accent-3-to: #00CEC9;   --fls-course-accent-3-icon: #F5B14C;  /* teal             → amber icon  */
+    --fls-course-accent-4-from: #D8451A;  --fls-course-accent-4-to: #FB9514;   --fls-course-accent-4-icon: #14366E;  /* orange           → navy icon   */
     --fls-course-accent-5-from: #2A2A40;  --fls-course-accent-5-to: #14141F;   --fls-course-accent-5-icon: #F5B14C;  /* black            → amber icon  */
 
     /* Shape — radii match design-system/radii.html. */
