@@ -24,10 +24,12 @@
       "Skill(icon-usage)",
       "Bash(npm run tailwind_build:*)",
       "mcp__plugin_fls_playwright__*",
-      "Skill(fls:sdd:protected:update_todo)",
+      "Skill(fls:*)",
       "WebFetch",
       "WebSearch",
-      "Skill(fls:use-playwright)"
+      "Bash(grep *)",
+      "Bash(.claude/fls/scripts/fetch_pr_comments.sh *)",
+      "Bash(git rm *)"
     ],
     "deny": [
       "Read(.env)",
