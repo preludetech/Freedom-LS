@@ -182,7 +182,13 @@ class Course(MarkdownContent, TitledContent):
         unique_together = ["site", "slug"]
 
     @property
-    def accent_role(self) -> str:
+    def accent_slot_key(self) -> str:
+        """Palette slot key (e.g. ``"1"``) for this course's accent.
+
+        Used as the suffix in the ``course-accent-<key>`` /
+        ``course-progress-<key>`` component classes. It is a slot key, not a
+        semantic UI role — see :mod:`freedom_ls.content_engine.course_accent`.
+        """
         return PALETTE[self.accent_slot]
 
     def save(self, *args, **kwargs):

@@ -164,14 +164,12 @@ def test_course_preview_has_start_button_when_not_registered(
 
 
 @pytest.mark.django_db
-def test_not_started_modal_hides_register_url_for_registered_user(
+def test_registered_card_does_not_link_to_register_url(
     mock_site_context, course_with_topics
 ):
-    """The not-started modal footer must not link to the registration URL
-    when the learner is already registered — registering again would be a
-    no-op redirect. Bug 3: `is_registered` was scoped to the `{% with %}`
-    wrapping the body, so the footer's `{% if not is_registered %}` evaluated
-    true and rendered the register link for everyone."""
+    """A registered learner's card never links to the registration URL —
+    registering again would be a no-op redirect. Registered courses render
+    the progress card (no preview modal), so the register link is absent."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
     client = _logged_in_client(user)
@@ -213,12 +211,12 @@ def test_course_preview_has_start_button_when_registered_zero_progress(
 
 
 @pytest.mark.django_db
-def test_not_started_modal_has_start_button_when_registered_zero_progress(
+def test_registered_zero_progress_card_links_title_to_first_item(
     mock_site_context, course_with_topics
 ):
-    """Bug: the dashboard's not-started modal must offer a Start button to a
-    registered 0-progress learner, linking to the first course item — parity
-    with the standalone preview page (which both surfaces share)."""
+    """A registered 0-progress course renders the progress card (not a modal):
+    the "Not started" eyebrow, a 0% progress bar, and a title that links
+    straight to the first course item via the "Next up" target."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
     client = _logged_in_client(user)
@@ -230,7 +228,8 @@ def test_not_started_modal_has_start_button_when_registered_zero_progress(
         "student_interface:view_course_item",
         kwargs={"course_slug": course_with_topics.slug, "index": 1},
     )
-    assert "Start" in body
+    assert "Not started" in body
+    assert 'aria-valuenow="0"' in body
     assert first_item_url in body
 
 
@@ -260,9 +259,13 @@ def test_modal_and_page_share_preview_content_partial(
 ):
     """Rendering the dashboard's not-started modal and the standalone
     preview page must surface the same title + ToC items, because they
-    both include `course_preview_content.html`."""
+    both include `course_preview_content.html`.
+
+    The modal only renders for unregistered (recommended) courses — a
+    registered course gets the progress card instead — so the dashboard
+    course here is a recommendation."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    RecommendedCourseFactory(user=user, collection=course_with_topics)
     client = _logged_in_client(user)
 
     # Standalone preview page.
@@ -274,7 +277,7 @@ def test_modal_and_page_share_preview_content_partial(
     )
     page_body = page.content.decode()
 
-    # Dashboard with the not-started modal trigger (registered, p == 0).
+    # Dashboard with the not-started modal trigger (unregistered recommendation).
     dashboard = client.get(reverse("student_interface:dashboard"))
     dash_body = dashboard.content.decode()
 

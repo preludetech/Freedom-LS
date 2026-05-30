@@ -1,7 +1,7 @@
 """Tests for the per-course accent palette.
 
 Covers the ``PALETTE`` contract (pure) and the stored ``accent_slot``
-assignment / ``accent_role`` property on ``Course`` (DB-backed).
+assignment / ``accent_slot_key`` property on ``Course`` (DB-backed).
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ def test_palette_is_decoupled_from_ui_role_names() -> None:
     assert not (set(PALETTE) & ui_roles)
 
 
-# --- accent_slot assignment & accent_role property (DB-backed) ---
+# --- accent_slot assignment & accent_slot_key property (DB-backed) ---
 
 
 @pytest.mark.django_db
@@ -40,10 +40,10 @@ def test_slots_cycle_through_palette_in_creation_order(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_accent_role_maps_slots_to_palette_entries(mock_site_context):
+def test_accent_slot_key_maps_slots_to_palette_entries(mock_site_context):
     """The first two courses (slots 0, 1) expose the first two palette keys."""
     first, second = CourseFactory(), CourseFactory()
-    assert (first.accent_role, second.accent_role) == ("1", "2")
+    assert (first.accent_slot_key, second.accent_slot_key) == ("1", "2")
 
 
 @pytest.mark.django_db

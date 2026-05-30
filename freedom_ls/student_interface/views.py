@@ -118,11 +118,12 @@ def dashboard(request):
     recommended_courses = get_recommended_courses(request.user)
 
     for course in registered_courses:
+        setattr(course, "is_registered", True)  # noqa: B010
         _annotate_next_up(course, request.user)
-        if not getattr(course, "progress_percentage", 0):
-            _annotate_preview_context(course, is_registered=True)
     for rec in recommended_courses:
-        # Recommendations are by definition not yet registered.
+        # Recommendations are by definition not yet registered, so they get
+        # the preview card rather than a progress bar.
+        setattr(rec.collection, "is_registered", False)  # noqa: B010
         _annotate_preview_context(rec.collection, is_registered=False)
 
     context = {
@@ -142,14 +143,17 @@ def all_courses(request):
     progress_by_id = {c.id: getattr(c, "progress_percentage", 0) for c in current}
     registered_ids = {c.id for c in current}
     for course in courses:
-        if course.id in progress_by_id:
+        is_registered = course.id in registered_ids
+        setattr(course, "is_registered", is_registered)  # noqa: B010
+        if is_registered:
+            # Registered courses show a progress bar + "Next up"; the bar
+            # reads 0% for a course the learner hasn't started yet.
             setattr(course, "progress_percentage", progress_by_id[course.id])  # noqa: B010
-        if course.id in registered_ids:
             _annotate_next_up(course, request.user)
-        # Not-started cards (progress 0 or absent) open the same modal as
-        # the dashboard, which needs the preview context.
-        if not progress_by_id.get(course.id):
-            _annotate_preview_context(course, is_registered=course.id in registered_ids)
+        else:
+            # Unregistered courses open the same preview modal as the
+            # dashboard, which needs the preview context.
+            _annotate_preview_context(course, is_registered=False)
 
     return render(
         request,

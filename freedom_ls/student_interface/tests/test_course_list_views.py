@@ -72,8 +72,8 @@ def test_all_courses_started_course_has_progress_percentage(mock_site_context, c
 
 
 @pytest.mark.django_db
-def test_all_courses_annotates_accent_role(mock_site_context, courses):
-    """Every course returned to the all_courses page has an ``accent_role``."""
+def test_all_courses_annotates_accent_slot_key(mock_site_context, courses):
+    """Every course returned to the all_courses page has an ``accent_slot_key``."""
     user = UserFactory()
     client = _logged_in_client(user)
     response = client.get(reverse("student_interface:courses"))
@@ -81,8 +81,8 @@ def test_all_courses_annotates_accent_role(mock_site_context, courses):
     from freedom_ls.content_engine.course_accent import PALETTE
 
     for course in response.context["all_courses"]:
-        assert hasattr(course, "accent_role")
-        assert course.accent_role in PALETTE
+        assert hasattr(course, "accent_slot_key")
+        assert course.accent_slot_key in PALETTE
 
 
 # --- dashboard view ---
@@ -171,7 +171,7 @@ def test_dashboard_recommended_courses(mock_site_context, courses):
 
 @pytest.mark.django_db
 def test_dashboard_annotates_accent_on_every_course(mock_site_context, courses):
-    """Every current/completed/recommended course gets an accent_role."""
+    """Every current/completed/recommended course gets an accent_slot_key."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     UserCourseRegistrationFactory(user=user, collection=courses[1])
@@ -183,11 +183,11 @@ def test_dashboard_annotates_accent_on_every_course(mock_site_context, courses):
     assert response.status_code == 200
 
     for course in response.context["registered_courses"]:
-        assert hasattr(course, "accent_role")
+        assert hasattr(course, "accent_slot_key")
     for course in response.context["completed_courses"]:
-        assert hasattr(course, "accent_role")
+        assert hasattr(course, "accent_slot_key")
     for rec in response.context["recommended_courses"]:
-        assert hasattr(rec.collection, "accent_role")
+        assert hasattr(rec.collection, "accent_slot_key")
 
 
 # --- page <title> tags (Bug 2) ---

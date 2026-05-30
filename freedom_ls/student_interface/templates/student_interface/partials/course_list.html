@@ -1,24 +1,24 @@
 {% comment %}
 Course-list partials shared by the dashboard and the all-courses page.
 
-`dispatch-card` selects between the three state-specific card partials:
-    * "history"        -> course_card_complete.html
-    * "current" + p>0  -> course_card_in_progress.html
-    * else             -> course_card_not_started.html (covers p==0)
+`dispatch-card` selects between two card partials:
+    * "history" -> course_card_complete.html
+    * else      -> course_card.html
+
+`course_card.html` then chooses its own layout from `course.is_registered`
+(progress card vs preview card), so the seam only needs to split off the
+completed state.
 
 The four collection partials below (`current-courses`,
 `recommended-courses`, `learning-history`, `all-courses`) all dispatch
-through this single seam. The legacy `course-card` partialdef has been
-deleted now that nothing references it.
+through this single seam.
 {% endcomment %}
 
 {% partialdef dispatch-card %}
     {% if course_status == "history" %}
         {% include "student_interface/partials/course_card_complete.html" %}
-    {% elif course_status == "current" and course.progress_percentage and course.progress_percentage > 0 %}
-        {% include "student_interface/partials/course_card_in_progress.html" %}
     {% else %}
-        {% include "student_interface/partials/course_card_not_started.html" %}
+        {% include "student_interface/partials/course_card.html" %}
     {% endif %}
 {% endpartialdef %}
 
@@ -26,13 +26,7 @@ deleted now that nothing references it.
     {% if all_courses %}
         <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {% for course in all_courses %}
-                {% if course.progress_percentage is not None %}
-                    {% with course_status="current" %}
-                        {% partial dispatch-card %}
-                    {% endwith %}
-                {% else %}
-                    {% partial dispatch-card %}
-                {% endif %}
+                {% partial dispatch-card %}
             {% endfor %}
         </div>
     {% else %}
