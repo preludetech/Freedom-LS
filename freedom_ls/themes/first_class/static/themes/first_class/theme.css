@@ -161,10 +161,4 @@
         backdrop-filter: blur(12px) saturate(1.5);
         -webkit-backdrop-filter: blur(12px) saturate(1.5);
     }
-
-    @media (prefers-reduced-motion: reduce) {
-        header {
-            transition: none;
-        }
-    }
 }

@@ -4,6 +4,11 @@ Creates (or updates) six users that exercise each branch of
 ``User.initials``. Also ensures a long markdown topic exists so the
 sticky-header / scroll behaviour can be exercised on a real topic page.
 
+DemoDev-only convention: each user's password is set to their email address.
+Re-running this command resets the password, names, and ``is_staff`` /
+``is_superuser`` flags on any existing ``@demodev.example.com`` user it
+matches — so do not point it at addresses you have manually customised.
+
 Usage:
     uv run python manage.py qa_create_header_bar_users
     uv run python manage.py qa_create_header_bar_users --site-name DemoDev

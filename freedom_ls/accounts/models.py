@@ -134,11 +134,14 @@ class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
              skipping any leading non-alphabetic characters.
           4. Otherwise: ``None`` — caller renders a fallback icon.
 
-        Diacritics are preserved (no ASCII folding). Non-Latin scripts return
-        a single grapheme rather than two characters.
+        Diacritics are preserved (no ASCII folding). Source strings are
+        normalised to NFC first, so a decomposed accent (e.g. ``E`` + combining
+        acute) is folded back into a single precomposed grapheme before slicing
+        rather than being silently dropped. Non-Latin scripts return a single
+        grapheme rather than two characters.
         """
-        first = (self.first_name or "").strip()
-        last = (self.last_name or "").strip()
+        first = unicodedata.normalize("NFC", (self.first_name or "").strip())
+        last = unicodedata.normalize("NFC", (self.last_name or "").strip())
 
         if first and last:
             return _two_or_one(first[0], last[0])
@@ -152,7 +155,7 @@ class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
             return _two_or_one(name[0], name[1] if len(name) > 1 else "")
 
         # Email local-part fallback — skip leading non-alphabetic chars.
-        local = (self.email or "").split("@", 1)[0]
+        local = unicodedata.normalize("NFC", (self.email or "").split("@", 1)[0])
         alphas = [ch for ch in local if ch.isalpha()]
         if not alphas:
             return None

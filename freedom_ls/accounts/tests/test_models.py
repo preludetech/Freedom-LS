@@ -67,6 +67,21 @@ def test_user_initials_non_latin_returns_single_grapheme(mock_site_context):
 
 
 @pytest.mark.django_db
+def test_user_initials_normalises_decomposed_diacritics(mock_site_context):
+    """A decomposed accent (E + combining acute) is folded to a single grapheme.
+
+    Without NFC normalisation, slicing ``first[0]`` would yield bare ``E`` and
+    drop the accent. NFC folds it back to precomposed ``É`` before slicing.
+    """
+    decomposed_first = "Élise"  # E + COMBINING ACUTE ACCENT
+    decomposed_last = "Önen"  # O + COMBINING DIAERESIS
+    user = UserFactory.build(
+        first_name=decomposed_first, last_name=decomposed_last, email="e@example.com"
+    )
+    assert user.initials == "ÉÖ"
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     ("first_name", "last_name", "email", "expected"),
     [
