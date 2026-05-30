@@ -2,23 +2,24 @@
 {% comment %}
 In-progress course card.
 
-Shared silhouette: tinted icon tile + eyebrow + title + state-specific body
-slot. The whole card is the click target via the stretched-link pattern: a
-single anchor on the title with a ::before overlay that extends the hit zone.
-Text selection inside the card still works because the overlay is empty.
+Shared silhouette: wide accent hero with centered icon, then eyebrow,
+linked title, "Next up:" line, and progress row beneath. The whole card
+is the click target via the stretched-link pattern: a single anchor on
+the title with a ::before overlay extending the hit zone. Text
+selection inside the card still works because the overlay is empty.
 {% endcomment %}
-<article class="surface relative flex gap-4 items-start">
-    <div class="bg-{{ course.accent_role|default:'primary' }}-soft text-{{ course.accent_role|default:'primary' }} flex items-center justify-center size-16 shrink-0 rounded-md"
+<article class="surface border-gray-200 rounded-2xl h-full relative p-0 overflow-hidden flex flex-col transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
+    <div class="course-accent-{{ course.accent_role|default:'1' }} flex items-center justify-center h-28"
          aria-hidden="true">
-        {% course_icon course.icon course.icon_fallback aria_label=course.title %}
+        {% course_icon course.icon course.icon_fallback css_class="size-12" aria_label=course.title %}
     </div>
 
-    <div class="flex-1 min-w-0 space-y-2">
+    <div class="flex-1 p-4 space-y-2">
         <p class="text-xs text-muted uppercase tracking-wide">In progress</p>
 
         <h3>
             <a href="{% if course.next_up_url %}{{ course.next_up_url }}{% else %}{% url 'student_interface:course_home' course_slug=course.slug %}{% endif %}"
-               class="before:absolute before:inset-0 before:content-['']">
+               class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">
                 {{ course.title }}
             </a>
         </h3>
@@ -29,7 +30,7 @@ Text selection inside the card still works because the overlay is empty.
 
         <div class="flex items-center gap-2">
             <progress
-                class="w-full h-2 rounded-full overflow-hidden bg-{{ course.accent_role|default:'primary' }}-soft [&::-webkit-progress-bar]:bg-{{ course.accent_role|default:'primary' }}-soft [&::-webkit-progress-value]:bg-{{ course.accent_role|default:'primary' }} [&::-moz-progress-bar]:bg-{{ course.accent_role|default:'primary' }}"
+                class="w-full h-2 rounded-full overflow-hidden course-progress-{{ course.accent_role|default:'1' }}"
                 role="progressbar"
                 aria-valuemin="0"
                 aria-valuemax="100"

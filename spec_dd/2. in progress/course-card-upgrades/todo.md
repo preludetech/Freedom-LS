@@ -55,8 +55,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user + cmd) Fix QA bug: Dashboard `<title>` is empty (no `head_title` block set) (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: Modal-vs-page parity — Start button in not-started modal footer is outside the `{% with is_registered=... %}` scope, so it always renders (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: `content_save` rejects valid `icon: drone` + `icon_fallback: phosphor:drone` because validator requires every variant of `icon` to exist in the active set (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: Not-started preview (modal + page) is missing the `Start` button (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: Card focus ring does not visibly wrap the whole card (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Not-started preview (modal + page) is missing the `Start` button (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Card focus ring does not visibly wrap the whole card (TDD — failing test first, then fix)
 
 ## 10. Pull request
 

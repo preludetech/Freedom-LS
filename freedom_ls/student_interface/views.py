@@ -9,7 +9,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from freedom_ls.content_engine.course_accent import course_accent_role
 from freedom_ls.content_engine.models import (
     Course,
     Form,
@@ -41,15 +40,6 @@ from .utils import (
 )
 
 
-def _annotate_accent(course: Course) -> None:
-    """Attach a deterministic accent role to a course for template use.
-
-    Same input title -> same role across processes.
-    """
-    # TODO: when Course.accent_override is added, prefer it over course_accent_role(title).
-    setattr(course, "accent_role", course_accent_role(course.title))  # noqa: B010
-
-
 def _annotate_next_up(course: Course, user) -> None:
     """Pick the first IN_PROGRESS child (then READY) and stamp it on the course.
 
@@ -74,8 +64,32 @@ def _annotate_next_up(course: Course, user) -> None:
     setattr(course, "next_up_url", next_item["url"] if next_item else "")  # noqa: B010
 
 
+def _preview_start_url(course: Course, *, is_registered: bool, has_items: bool) -> str:
+    """URL the not-started preview's Start button should target.
+
+    Unregistered learners go through ``register_for_course`` (idempotent
+    registration + redirect). Already-registered, 0-progress learners skip
+    that step and land directly on the first course item; if the course has
+    no items, fall back to ``course_home``.
+    """
+    if not is_registered:
+        return reverse(
+            "student_interface:register_for_course",
+            kwargs={"course_slug": course.slug},
+        )
+    if has_items:
+        return reverse(
+            "student_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    return reverse(
+        "student_interface:course_home",
+        kwargs={"course_slug": course.slug},
+    )
+
+
 def _annotate_preview_context(course: Course, *, is_registered: bool) -> None:
-    """Attach ``preview_children`` + ``preview_is_registered`` for the modal.
+    """Attach preview children + registration + start URL for the modal.
 
     The not-started card embeds ``course_preview_content.html`` inside a
     desktop modal. That partial only needs child *titles* (not statuses or
@@ -84,8 +98,16 @@ def _annotate_preview_context(course: Course, *, is_registered: bool) -> None:
     passed in by the caller — the dashboard always knows it from the
     queryset that produced the course, avoiding an extra EXISTS query.
     """
-    setattr(course, "preview_children", course.children())  # noqa: B010
+    children = list(course.children())
+    setattr(course, "preview_children", children)  # noqa: B010
     setattr(course, "preview_is_registered", is_registered)  # noqa: B010
+    setattr(  # noqa: B010
+        course,
+        "preview_start_url",
+        _preview_start_url(
+            course, is_registered=is_registered, has_items=bool(children)
+        ),
+    )
 
 
 @login_required
@@ -96,18 +118,10 @@ def dashboard(request):
     recommended_courses = get_recommended_courses(request.user)
 
     for course in registered_courses:
-        _annotate_accent(course)
-        # Not-started cards (registered but progress == 0) open the modal
-        # preview; in-progress cards instead need a "next up" target. The
-        # two paths are mutually exclusive, so only do one walk per card.
-        if getattr(course, "progress_percentage", 0):
-            _annotate_next_up(course, request.user)
-        else:
+        _annotate_next_up(course, request.user)
+        if not getattr(course, "progress_percentage", 0):
             _annotate_preview_context(course, is_registered=True)
-    for course in completed_courses:
-        _annotate_accent(course)
     for rec in recommended_courses:
-        _annotate_accent(rec.collection)
         # Recommendations are by definition not yet registered.
         _annotate_preview_context(rec.collection, is_registered=False)
 
@@ -130,7 +144,8 @@ def all_courses(request):
     for course in courses:
         if course.id in progress_by_id:
             setattr(course, "progress_percentage", progress_by_id[course.id])  # noqa: B010
-        _annotate_accent(course)
+        if course.id in registered_ids:
+            _annotate_next_up(course, request.user)
         # Not-started cards (progress 0 or absent) open the same modal as
         # the dashboard, which needs the preview context.
         if not progress_by_id.get(course.id):
@@ -149,7 +164,9 @@ def course_preview(request, course_slug):
     course = get_object_or_404(Course, slug=course_slug)
     children = get_course_index(user=request.user, course=course)
     is_registered = get_is_registered(user=request.user, course=course)
-    _annotate_accent(course)
+    start_url = _preview_start_url(
+        course, is_registered=is_registered, has_items=bool(children)
+    )
     return render(
         request,
         "student_interface/course_preview.html",
@@ -157,6 +174,7 @@ def course_preview(request, course_slug):
             "course": course,
             "children": children,
             "is_registered": is_registered,
+            "start_url": start_url,
         },
     )
 

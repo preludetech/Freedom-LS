@@ -5,7 +5,7 @@ Used by both:
 * the desktop modal in `course_card_not_started.html`, and
 * the dedicated mobile/standalone page `course_preview.html`.
 
-Render context required: `course`, `children`, `is_registered`.
+Render context required: `course`, `children`, `start_url`.
 {% endcomment %}
 <div class="space-y-4">
     {% if course.subtitle %}
@@ -31,9 +31,9 @@ Render context required: `course`, `children`, `is_registered`.
         </div>
     {% endif %}
 
-    {% if not is_registered %}
+    {% if start_url %}
         <div class="pt-2">
-            <c-button href="{% url 'student_interface:register_for_course' course.slug %}">
+            <c-button href="{{ start_url }}">
                 Start
             </c-button>
         </div>

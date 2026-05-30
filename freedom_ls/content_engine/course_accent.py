@@ -1,24 +1,23 @@
-"""Deterministic per-course accent role.
+"""Per-course accent palette.
 
-Hashes a course title to one of a curated palette of theme-token roles.
-The mapping is **stable across processes** because we use SHA-256, not
-Python's randomised :func:`hash` builtin. Reordering :data:`PALETTE` would
-remap every existing course — never reorder.
+The palette is a **separate, themeable colour series** — not the semantic UI
+role tokens (``primary``/``secondary``/…) — so card vibrancy can be tuned
+without touching button/badge colours. Each slot key maps to
+``--fls-course-accent-<slot>`` tokens in the theme.
+
+Slot assignment is persisted on ``Course.accent_slot`` (chosen at row creation
+time from the per-site course count modulo the palette size) so a course
+keeps the same colour everywhere it appears and distribution stays balanced
+across the catalogue. Reordering :data:`PALETTE` would remap every existing
+course — never reorder.
 """
 
 from __future__ import annotations
 
-import hashlib
-
 # Order is fixed. Reordering would remap every existing course's accent.
-PALETTE: tuple[str, ...] = ("primary", "secondary", "accent", "info", "success")
-
-
-def course_accent_role(title: str) -> str:
-    """Return one of :data:`PALETTE` for the given course title.
-
-    Pure function; deterministic across processes and platforms.
-    """
-    digest = hashlib.sha256(title.encode("utf-8")).digest()
-    bucket = int.from_bytes(digest[:4], "big") % len(PALETTE)
-    return PALETTE[bucket]
+# Neutral slot keys (not role names) — the resolved colours live in the
+# `--fls-course-accent-<slot>` token series, keeping cards decoupled from the
+# semantic UI roles. Each slot must have matching `--fls-course-accent-<slot>*`
+# tokens in the theme and `.course-accent-<slot>` / `.course-progress-<slot>`
+# component classes; the three stay in lockstep.
+PALETTE: tuple[str, ...] = ("1", "2", "3", "4", "5")

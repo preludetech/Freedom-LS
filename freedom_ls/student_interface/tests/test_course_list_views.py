@@ -78,15 +78,11 @@ def test_all_courses_annotates_accent_role(mock_site_context, courses):
     client = _logged_in_client(user)
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
+    from freedom_ls.content_engine.course_accent import PALETTE
+
     for course in response.context["all_courses"]:
         assert hasattr(course, "accent_role")
-        assert course.accent_role in {
-            "primary",
-            "secondary",
-            "accent",
-            "info",
-            "success",
-        }
+        assert course.accent_role in PALETTE
 
 
 # --- dashboard view ---

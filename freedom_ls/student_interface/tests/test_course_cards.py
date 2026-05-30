@@ -58,6 +58,22 @@ def test_not_started_card_for_zero_progress(mock_site_context, course_with_topic
 
 
 @pytest.mark.django_db
+def test_not_started_card_shows_empty_progress_bar(
+    mock_site_context, course_with_topics
+):
+    """The Not started card always renders an empty (0%) progress bar so it
+    visually anchors next to in-progress cards in a mixed grid row."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    client = _logged_in_client(user)
+    response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+    assert "Not started" in body
+    assert 'aria-valuenow="0"' in body
+    assert "0%" in body
+
+
+@pytest.mark.django_db
 def test_in_progress_card_when_progress_above_zero(
     mock_site_context, course_with_topics
 ):
@@ -148,13 +164,14 @@ def test_course_preview_has_start_button_when_not_registered(
 
 
 @pytest.mark.django_db
-def test_not_started_modal_hides_start_for_registered_user(
+def test_not_started_modal_hides_register_url_for_registered_user(
     mock_site_context, course_with_topics
 ):
-    """The not-started modal footer must not offer a Start button when the
-    learner is already registered. Bug 3: `is_registered` was scoped to the
-    `{% with %}` wrapping the body, so the footer's `{% if not is_registered %}`
-    evaluated true and rendered Start for everyone."""
+    """The not-started modal footer must not link to the registration URL
+    when the learner is already registered — registering again would be a
+    no-op redirect. Bug 3: `is_registered` was scoped to the `{% with %}`
+    wrapping the body, so the footer's `{% if not is_registered %}` evaluated
+    true and rendered the register link for everyone."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
     client = _logged_in_client(user)
@@ -167,6 +184,54 @@ def test_not_started_modal_hides_start_for_registered_user(
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert register_url not in body
+
+
+@pytest.mark.django_db
+def test_course_preview_has_start_button_when_registered_zero_progress(
+    mock_site_context, course_with_topics
+):
+    """Bug: a registered learner with 0 progress lands on the preview page
+    and must see a Start button taking them into the course's first item.
+    Previously the partial only rendered Start for unregistered users, so a
+    registered-but-not-yet-started learner had no way forward from preview."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    client = _logged_in_client(user)
+    response = client.get(
+        reverse(
+            "student_interface:course_preview",
+            kwargs={"course_slug": course_with_topics.slug},
+        )
+    )
+    body = response.content.decode()
+    first_item_url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course_with_topics.slug, "index": 1},
+    )
+    assert "Start" in body
+    assert first_item_url in body
+
+
+@pytest.mark.django_db
+def test_not_started_modal_has_start_button_when_registered_zero_progress(
+    mock_site_context, course_with_topics
+):
+    """Bug: the dashboard's not-started modal must offer a Start button to a
+    registered 0-progress learner, linking to the first course item — parity
+    with the standalone preview page (which both surfaces share)."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    first_item_url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course_with_topics.slug, "index": 1},
+    )
+    assert "Start" in body
+    assert first_item_url in body
 
 
 @pytest.mark.django_db

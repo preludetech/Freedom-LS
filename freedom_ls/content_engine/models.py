@@ -9,6 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 from freedom_ls.site_aware_models.models import SiteAwareModel
 
+from .course_accent import PALETTE
 from .schema import ContentType as SchemaContentTypes
 
 
@@ -169,6 +170,7 @@ class Course(MarkdownContent, TitledContent):
             "is a literal glyph that does not resolve in the active icon set."
         ),
     )
+    accent_slot = models.PositiveSmallIntegerField(default=0, editable=False)
     items = GenericRelation(
         "ContentCollectionItem",
         content_type_field="collection_type",
@@ -178,6 +180,18 @@ class Course(MarkdownContent, TitledContent):
 
     class Meta:
         unique_together = ["site", "slug"]
+
+    @property
+    def accent_role(self) -> str:
+        return PALETTE[self.accent_slot]
+
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            self._set_site_from_request()
+            self.accent_slot = Course.objects.filter(
+                site_id=self.site_id
+            ).count() % len(PALETTE)
+        super().save(*args, **kwargs)
 
     def clean(self):
         super().clean()

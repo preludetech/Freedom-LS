@@ -246,6 +246,38 @@
         @apply bg-info/10 border-info/30 text-on-surface
     }
 
+    /* Course-card accent tiles — vibrant gradients drawn from the dedicated
+     * `--fls-course-accent-*` series (separate from the UI role tokens). The
+     * slot number is interpolated into the class name from the per-course
+     * hash; these are hand-authored rules (always emitted), so no safelist. */
+    .course-accent-1 { background-image: var(--fls-course-accent-1); color: var(--fls-course-accent-1-icon); }
+    .course-accent-2 { background-image: var(--fls-course-accent-2); color: var(--fls-course-accent-2-icon); }
+    .course-accent-3 { background-image: var(--fls-course-accent-3); color: var(--fls-course-accent-3-icon); }
+    .course-accent-4 { background-image: var(--fls-course-accent-4); color: var(--fls-course-accent-4-icon); }
+    .course-accent-5 { background-image: var(--fls-course-accent-5); color: var(--fls-course-accent-5-icon); }
+
+    /* In-progress bar tinted to match its card accent: soft track + solid fill. */
+    .course-progress-1 { background-color: var(--fls-course-accent-1-soft); }
+    .course-progress-1::-webkit-progress-bar   { background-color: var(--fls-course-accent-1-soft); }
+    .course-progress-1::-webkit-progress-value { background-color: var(--fls-course-accent-1-to); }
+    .course-progress-1::-moz-progress-bar      { background-color: var(--fls-course-accent-1-to); }
+    .course-progress-2 { background-color: var(--fls-course-accent-2-soft); }
+    .course-progress-2::-webkit-progress-bar   { background-color: var(--fls-course-accent-2-soft); }
+    .course-progress-2::-webkit-progress-value { background-color: var(--fls-course-accent-2-to); }
+    .course-progress-2::-moz-progress-bar      { background-color: var(--fls-course-accent-2-to); }
+    .course-progress-3 { background-color: var(--fls-course-accent-3-soft); }
+    .course-progress-3::-webkit-progress-bar   { background-color: var(--fls-course-accent-3-soft); }
+    .course-progress-3::-webkit-progress-value { background-color: var(--fls-course-accent-3-to); }
+    .course-progress-3::-moz-progress-bar      { background-color: var(--fls-course-accent-3-to); }
+    .course-progress-4 { background-color: var(--fls-course-accent-4-soft); }
+    .course-progress-4::-webkit-progress-bar   { background-color: var(--fls-course-accent-4-soft); }
+    .course-progress-4::-webkit-progress-value { background-color: var(--fls-course-accent-4-to); }
+    .course-progress-4::-moz-progress-bar      { background-color: var(--fls-course-accent-4-to); }
+    .course-progress-5 { background-color: var(--fls-course-accent-5-soft); }
+    .course-progress-5::-webkit-progress-bar   { background-color: var(--fls-course-accent-5-soft); }
+    .course-progress-5::-webkit-progress-value { background-color: var(--fls-course-accent-5-to); }
+    .course-progress-5::-moz-progress-bar      { background-color: var(--fls-course-accent-5-to); }
+
     /* HTMX request state utilities for loading indicators */
     .htmx-request .htmx-hide-on-request {
         display: none;

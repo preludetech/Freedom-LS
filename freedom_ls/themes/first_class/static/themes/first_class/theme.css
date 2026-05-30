@@ -51,6 +51,18 @@
     --color-border: #E2E8F0;
     --color-muted: #718096;
 
+    /* Course-card accent palette — five base hues in order:
+     *   1: very dark blue,  2: lighter blue,  3: teal,  4: orange,  5: black.
+     * Each icon colour is the gradient's complement so the glyph pops rather
+     * than reading as plain white. Only the -from/-to/-icon values change
+     * here; the default theme's -gradient and -soft composites are inherited
+     * and recompute. */
+    --fls-course-accent-1-from: #1E3A8A;  --fls-course-accent-1-to: #2563EB;   --fls-course-accent-1-icon: #FBBF24;  /* very dark blue   → gold icon   */
+    --fls-course-accent-2-from: #5AB0E8;  --fls-course-accent-2-to: #38BDF8;   --fls-course-accent-2-icon: #14366E;  /* lighter blue     → navy icon   */
+    --fls-course-accent-3-from: #00CEC9;  --fls-course-accent-3-to: #0D9488;   --fls-course-accent-3-icon: #E11D48;  /* teal             → coral icon  */
+    --fls-course-accent-4-from: #FF6B35;  --fls-course-accent-4-to: #FB9514;   --fls-course-accent-4-icon: #14366E;  /* orange           → navy icon   */
+    --fls-course-accent-5-from: #2A2A40;  --fls-course-accent-5-to: #14141F;   --fls-course-accent-5-icon: #F5B14C;  /* black            → amber icon  */
+
     /* Shape — radii match design-system/radii.html. */
     --fls-radius-sm: 0.375rem;  /* 6px  — chips, badges */
     --fls-radius-md: 0.5rem;    /* 8px  — buttons, inputs */

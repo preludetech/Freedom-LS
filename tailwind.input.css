@@ -28,13 +28,7 @@
     /* repo-level overrides go here, optional */
 }
 
-/* Safelist for course-card accent classes. The accent role is chosen at
- * runtime by `course_accent_role()` and interpolated into class names in
- * the course-card templates (e.g. `bg-{{ accent_role }}-soft`). Tailwind's
- * source scanner cannot see these concatenations, so we name every
- * resulting class here. PALETTE order in
- * `freedom_ls.content_engine.course_accent` is the source of truth. */
-@source inline("{bg-,text-}{primary,secondary,accent,info,success}{,-soft}");
-@source inline("[&::-webkit-progress-bar]:bg-{primary,secondary,accent,info,success}-soft");
-@source inline("[&::-webkit-progress-value]:bg-{primary,secondary,accent,info,success}");
-@source inline("[&::-moz-progress-bar]:bg-{primary,secondary,accent,info,success}");
+/* Course-card accents no longer interpolate Tailwind role utilities — they
+ * use the hand-authored `.course-accent-*` / `.course-progress-*` component
+ * classes in `tailwind.components.css`, which are always emitted. No safelist
+ * is required for them. */

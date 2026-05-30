@@ -81,6 +81,32 @@
     --color-info-soft:      color-mix(in oklab, var(--color-info)      12%, var(--color-surface));
     --color-success-soft:   color-mix(in oklab, var(--color-success)   12%, var(--color-surface));
 
+    /* Course-card accent palette — a curated, vibrant series used ONLY by
+     * course-card hero tiles & progress bars. Deliberately separate from the
+     * semantic role tokens above so card vibrancy is independent of UI colours.
+     * Slot count maps 1:1 to `freedom_ls.content_engine.course_accent.PALETTE`.
+     * Themes rebrand cards by overriding the `-from`/`-to` gradient stops and
+     * the `-icon` glyph colour; the `-gradient`/`-soft` composites follow
+     * automatically. `-icon` is the foreground colour of the hero glyph and is
+     * specified per slot so it stays legible on that slot's gradient. */
+    --fls-course-accent-1-from: #4F46E5;  --fls-course-accent-1-to: #2563EB;   --fls-course-accent-1-icon: #FFFFFF;  /* indigo → blue */
+    --fls-course-accent-2-from: #7C3AED;  --fls-course-accent-2-to: #C026D3;   --fls-course-accent-2-icon: #FFFFFF;  /* violet → fuchsia */
+    --fls-course-accent-3-from: #0D9488;  --fls-course-accent-3-to: #0891B2;   --fls-course-accent-3-icon: #FFFFFF;  /* teal → cyan */
+    --fls-course-accent-4-from: #059669;  --fls-course-accent-4-to: #16A34A;   --fls-course-accent-4-icon: #FFFFFF;  /* emerald → green */
+    --fls-course-accent-5-from: #D97706;  --fls-course-accent-5-to: #EA580C;   --fls-course-accent-5-icon: #FFFFFF;  /* amber → orange */
+
+    --fls-course-accent-1: linear-gradient(135deg, var(--fls-course-accent-1-from) 0%, var(--fls-course-accent-1-to) 100%);
+    --fls-course-accent-2: linear-gradient(135deg, var(--fls-course-accent-2-from) 0%, var(--fls-course-accent-2-to) 100%);
+    --fls-course-accent-3: linear-gradient(135deg, var(--fls-course-accent-3-from) 0%, var(--fls-course-accent-3-to) 100%);
+    --fls-course-accent-4: linear-gradient(135deg, var(--fls-course-accent-4-from) 0%, var(--fls-course-accent-4-to) 100%);
+    --fls-course-accent-5: linear-gradient(135deg, var(--fls-course-accent-5-from) 0%, var(--fls-course-accent-5-to) 100%);
+
+    --fls-course-accent-1-soft: color-mix(in oklab, var(--fls-course-accent-1-to) 14%, var(--color-surface));
+    --fls-course-accent-2-soft: color-mix(in oklab, var(--fls-course-accent-2-to) 14%, var(--color-surface));
+    --fls-course-accent-3-soft: color-mix(in oklab, var(--fls-course-accent-3-to) 14%, var(--color-surface));
+    --fls-course-accent-4-soft: color-mix(in oklab, var(--fls-course-accent-4-to) 14%, var(--color-surface));
+    --fls-course-accent-5-soft: color-mix(in oklab, var(--fls-course-accent-5-to) 14%, var(--color-surface));
+
     /* Shape tokens — FLS namespace. */
     --fls-radius-sm: 0.25rem;
     --fls-radius-md: 0.375rem;

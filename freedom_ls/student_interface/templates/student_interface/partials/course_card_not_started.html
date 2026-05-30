@@ -9,25 +9,45 @@ Click destination is split:
 
 Two siblings render the same article skeleton; CSS hides one or the other
 so there is no JS branching on viewport width.
+
+An empty (0%) progress bar is always rendered beneath the title so the
+card visually anchors next to the in-progress variant in a mixed grid.
 {% endcomment %}
 
 {# Desktop: modal trigger. Hidden below md. #}
-<div class="hidden md:block">
-    <c-modal title="{{ course.title }}">
+<div class="hidden md:block h-full">
+    <c-modal title="{{ course.title }}" class="h-full block">
         <c-slot name="trigger">
-            <article class="surface relative flex gap-4 items-start cursor-pointer">
-                <div class="bg-{{ course.accent_role|default:'primary' }}-soft text-{{ course.accent_role|default:'primary' }} flex items-center justify-center size-16 shrink-0 rounded-md"
+            <article class="surface border-gray-200 rounded-2xl h-full relative p-0 overflow-hidden flex flex-col cursor-pointer transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
+                <div class="course-accent-{{ course.accent_role|default:'1' }} flex items-center justify-center h-28"
                      aria-hidden="true">
-                    {% course_icon course.icon course.icon_fallback aria_label=course.title %}
+                    {% course_icon course.icon course.icon_fallback css_class="size-12" aria_label=course.title %}
                 </div>
-                <div class="flex-1 min-w-0 space-y-2">
+                <div class="flex-1 p-4 space-y-2">
                     <p class="text-xs text-muted uppercase tracking-wide">Not started</p>
                     <h3>{{ course.title }}</h3>
+                    {% if course.next_up_title %}
+                        <p class="text-sm text-muted">Next up: {{ course.next_up_title }}</p>
+                    {% endif %}
+                    <div class="flex items-center gap-2">
+                        <progress
+                            class="w-full h-2 rounded-full overflow-hidden course-progress-{{ course.accent_role|default:'1' }}"
+                            role="progressbar"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            aria-valuenow="0"
+                            aria-label="Progress for {{ course.title }}"
+                            value="0"
+                            max="100">
+                            0%
+                        </progress>
+                        <span class="text-sm font-medium tabular-nums">0%</span>
+                    </div>
                 </div>
             </article>
         </c-slot>
 
-        {% with children=course.preview_children is_registered=course.preview_is_registered %}
+        {% with children=course.preview_children start_url=course.preview_start_url %}
             {% include "student_interface/partials/course_preview_content.html" %}
         {% endwith %}
 
@@ -35,30 +55,42 @@ so there is no JS branching on viewport width.
             <c-button variant="outline" x-on:click="close">
                 Close
             </c-button>
-            {% if not course.preview_is_registered %}
-                <c-button href="{% url 'student_interface:register_for_course' course.slug %}">
-                    Start
-                </c-button>
-            {% endif %}
         </c-slot>
     </c-modal>
 </div>
 
 {# Mobile: dedicated-page link. Hidden at md and up. #}
-<div class="md:hidden">
-    <article class="surface relative flex gap-4 items-start">
-        <div class="bg-{{ course.accent_role|default:'primary' }}-soft text-{{ course.accent_role|default:'primary' }} flex items-center justify-center size-16 shrink-0 rounded-md"
+<div class="md:hidden h-full">
+    <article class="surface border-gray-200 rounded-2xl h-full relative p-0 overflow-hidden flex flex-col transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
+        <div class="course-accent-{{ course.accent_role|default:'1' }} flex items-center justify-center h-28"
              aria-hidden="true">
-            {% course_icon course.icon course.icon_fallback aria_label=course.title %}
+            {% course_icon course.icon course.icon_fallback css_class="size-12" aria_label=course.title %}
         </div>
-        <div class="flex-1 min-w-0 space-y-2">
+        <div class="flex-1 p-4 space-y-2">
             <p class="text-xs text-muted uppercase tracking-wide">Not started</p>
             <h3>
                 <a href="{% url 'student_interface:course_preview' course_slug=course.slug %}"
-                   class="before:absolute before:inset-0 before:content-['']">
+                   class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">
                     {{ course.title }}
                 </a>
             </h3>
+            {% if course.next_up_title %}
+                <p class="text-sm text-muted">Next up: {{ course.next_up_title }}</p>
+            {% endif %}
+            <div class="flex items-center gap-2">
+                <progress
+                    class="w-full h-2 rounded-full overflow-hidden course-progress-{{ course.accent_role|default:'1' }}"
+                    role="progressbar"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="0"
+                    aria-label="Progress for {{ course.title }}"
+                    value="0"
+                    max="100">
+                    0%
+                </progress>
+                <span class="text-sm font-medium tabular-nums">0%</span>
+            </div>
         </div>
     </article>
 </div>
