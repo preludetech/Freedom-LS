@@ -52,16 +52,16 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (QA|user + cmd) Fix QA bug: Escape key does not close the user menu dropdown (TDD — failing test first, then fix)
 - [x] (QA|cmd) Use the qa-data-helper agent to create missing data for the avatar-initials test matrix (mary.jane / single.first / multi.token / noname / 123 / elise on DemoDev), then re-run `/do_qa`
 - [x] (QA|user + cmd) Fix QA bug: Avatar `aria-label` missing last name (TDD — failing test first, then fix)
-- [ ] (user) Review the QA report
-- [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
-- [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
+- [x] (user) Review the QA report
+- [x] (user) If bugs were found, fix them using TDD (failing test first, then fix)
+- [x] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
 - [x] (QA|user + cmd) Fix QA bug: Site title rendered with underline in header (TDD — failing test first, then fix)
 
 ## 10. Pull request
 
-- [ ] (user) Open a pull request
-- [ ] (cmd) Run `/address_pr_review` as review feedback comes in
-- [ ] (user) Merge the PR once approved
+- [x] (user) Open a pull request
+- [x] (cmd) Run `/address_pr_review` as review feedback comes in
+- [x] (user) Merge the PR once approved
 
 ## 11. Cleanup
 
