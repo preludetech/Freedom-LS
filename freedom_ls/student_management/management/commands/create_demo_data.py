@@ -1,9 +1,12 @@
 from typing import Any
 
+from allauth.account.models import EmailAddress
+
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 
+from freedom_ls.accounts.models import User
 from freedom_ls.student_management.models import Cohort, CohortMembership
 
 # from app_authentication.models import Client
@@ -46,6 +49,15 @@ demo_sites: list[dict[str, Any]] = [
 class Command(BaseCommand):
     help = "Create a superuser and 2 sites for initial setup"
 
+    @staticmethod
+    def _ensure_verified_email(user: User) -> None:
+        """Ensure an allauth verified+primary EmailAddress exists for the user."""
+        EmailAddress.objects.update_or_create(
+            user=user,
+            email=user.email,
+            defaults={"verified": True, "primary": True},
+        )
+
     def handle(self, *args, **options):
         user_model = get_user_model()
 
@@ -64,7 +76,8 @@ class Command(BaseCommand):
 
             # Create user for this site
             user_email = f"{site_data['name'].lower()}@email.com"
-            if not user_model.objects.filter(email=user_email).exists():
+            user = user_model.objects.filter(email=user_email).first()
+            if user is None:
                 user = user_model(
                     email=user_email,
                     is_staff=True,
@@ -83,6 +96,7 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.WARNING(f"User '{user_email}' already exists")
                 )
+            self._ensure_verified_email(user)
 
             # Create cohorts for this site
             created_cohorts = []
@@ -124,6 +138,8 @@ class Command(BaseCommand):
                 if user_created:
                     student_user.set_password(email)
                     student_user.save()
+
+                self._ensure_verified_email(student_user)
 
                 created_users.append(student_user)
                 if user_created:
