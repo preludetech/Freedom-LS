@@ -17,18 +17,32 @@ through this single seam.
 {% partialdef dispatch-card %}
     {% if course_status == "history" %}
         {% include "student_interface/partials/course_card_complete.html" %}
+
     {% else %}
         {% include "student_interface/partials/course_card.html" %}
+
     {% endif %}
+{% endpartialdef %}
+
+{% partialdef section-heading %}
+    <h2 class="text-base sm:text-lg lg:text-xl font-semibold">
+        {{ heading }}
+    </h2>
+{% endpartialdef %}
+
+{% partialdef course-grid %}
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {% for course in courses %}
+            {% partial dispatch-card %}
+        {% endfor %}
+    </div>
 {% endpartialdef %}
 
 {% partialdef all-courses %}
     {% if all_courses %}
-        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {% for course in all_courses %}
-                {% partial dispatch-card %}
-            {% endfor %}
-        </div>
+        {% with courses=all_courses %}
+            {% partial course-grid %}
+        {% endwith %}
     {% else %}
         {% if not registered_courses %}
             <p class="text-muted/50">
@@ -40,26 +54,20 @@ through this single seam.
 
 {% partialdef current-courses %}
     <div class="space-y-4">
-        <h2 class="text-base sm:text-lg lg:text-xl font-semibold">
-            Your Courses
-        </h2>
+        {% with heading="In Progress" %}{% partial section-heading %}{% endwith %}
 
         {% if registered_courses %}
-            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {% with course_status="current" %}
-                    {% for course in registered_courses %}
-                        {% partial dispatch-card %}
-                    {% endfor %}
-                {% endwith %}
-            </div>
+            {% with courses=registered_courses course_status="current" %}
+                {% partial course-grid %}
+            {% endwith %}
         {% else %}
             <div class="space-y-3 text-center">
                 <p class="text-muted">
                     You haven't signed up for any courses yet.
                 </p>
-                <c-button href="{% url 'student_interface:courses' %}">
+                <!-- <c-button href="{% url 'student_interface:courses' %}">
                     Browse courses
-                </c-button>
+                </c-button> -->
             </div>
         {% endif %}
     </div>
@@ -68,10 +76,8 @@ through this single seam.
 {% partialdef recommended-courses %}
     {% if recommended_courses %}
         <div id="recommended-courses" class="space-y-4">
-            <h2 class="text-base sm:text-lg lg:text-xl font-semibold">
-                Recommended Courses
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% with heading="Recommended Courses" %}{% partial section-heading %}{% endwith %}
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {% for recommendation in recommended_courses %}
                     {% with course=recommendation.collection %}
                         {% partial dispatch-card %}
@@ -86,9 +92,7 @@ through this single seam.
     {% if available_courses %}
         <div id="available-courses" class="space-y-4">
             <div class="flex items-center justify-between gap-4">
-                <h2 class="text-base sm:text-lg lg:text-xl font-semibold">
-                    Available courses
-                </h2>
+                {% with heading="Available courses" %}{% partial section-heading %}{% endwith %}
                 <a href="{% url 'student_interface:courses' %}"
                    class="inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium no-underline hover:text-primary-hover">
                     Browse all courses
@@ -97,11 +101,9 @@ through this single seam.
                     </span>
                 </a>
             </div>
-            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {% for course in available_courses %}
-                    {% partial dispatch-card %}
-                {% endfor %}
-            </div>
+            {% with courses=available_courses %}
+                {% partial course-grid %}
+            {% endwith %}
         </div>
     {% endif %}
 {% endpartialdef %}
@@ -109,16 +111,10 @@ through this single seam.
 {% partialdef learning-history %}
     {% if completed_courses %}
         <div id="learning-history" class="space-y-4">
-            <h2 class="text-base sm:text-lg lg:text-xl font-semibold">
-                Learning History
-            </h2>
-            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {% with course_status="history" %}
-                    {% for course in completed_courses %}
-                        {% partial dispatch-card %}
-                    {% endfor %}
-                {% endwith %}
-            </div>
+            {% with heading="Learning History" %}{% partial section-heading %}{% endwith %}
+            {% with courses=completed_courses course_status="history" %}
+                {% partial course-grid %}
+            {% endwith %}
         </div>
     {% endif %}
 {% endpartialdef %}
