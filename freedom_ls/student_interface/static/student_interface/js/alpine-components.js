@@ -32,4 +32,35 @@ document.addEventListener("alpine:init", () => {
             if (icon) icon.hidden = this.expanded;
         },
     }));
+
+    // Date eyebrow shown above the dashboard greeting
+    // (student_interface/dashboard.html). Formats today's date in the
+    // browser's own locale and timezone, spelled out (e.g. "Friday, 30 May
+    // 2026"). Refreshes when the tab regains visibility so a long-open tab
+    // does not show a stale date.
+    Alpine.data("dateEyebrow", () => ({
+        formatted: "",
+        _onVisibility: null,
+        init() {
+            this._format();
+            this._onVisibility = () => {
+                if (!document.hidden) this._format();
+            };
+            document.addEventListener("visibilitychange", this._onVisibility);
+        },
+        destroy() {
+            if (this._onVisibility) {
+                document.removeEventListener("visibilitychange", this._onVisibility);
+            }
+        },
+        _format() {
+            // undefined locale -> browser locale; no timeZone -> browser timezone.
+            this.formatted = new Date().toLocaleDateString(undefined, {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+            });
+        },
+    }));
 });

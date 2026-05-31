@@ -34,6 +34,7 @@ from .utils import (
     get_all_courses,
     get_completed_courses,
     get_course_index,
+    get_course_registrations,
     get_current_courses,
     get_is_registered,
     get_recommended_courses,
@@ -126,10 +127,24 @@ def dashboard(request):
         setattr(rec.collection, "is_registered", False)  # noqa: B010
         _annotate_preview_context(rec.collection, is_registered=False)
 
+    registered_ids = {c.id for c in get_course_registrations(request.user)}
+    recommended_ids = {rec.collection_id for rec in recommended_courses}
+
+    available_courses: list[Course] = []
+    for course in get_all_courses():
+        if course.id in registered_ids or course.id in recommended_ids:
+            continue
+        setattr(course, "is_registered", False)  # noqa: B010
+        _annotate_preview_context(course, is_registered=False)
+        available_courses.append(course)
+        if len(available_courses) == 3:
+            break
+
     context = {
         "registered_courses": registered_courses,
         "completed_courses": completed_courses,
         "recommended_courses": recommended_courses,
+        "available_courses": available_courses,
     }
     return render(request, "student_interface/dashboard.html", context)
 

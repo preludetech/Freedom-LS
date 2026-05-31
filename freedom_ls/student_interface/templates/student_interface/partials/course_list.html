@@ -9,8 +9,8 @@ Course-list partials shared by the dashboard and the all-courses page.
 (progress card vs preview card), so the seam only needs to split off the
 completed state.
 
-The four collection partials below (`current-courses`,
-`recommended-courses`, `learning-history`, `all-courses`) all dispatch
+The collection partials below (`current-courses`, `recommended-courses`,
+`available-courses`, `learning-history`, `all-courses`) all dispatch
 through this single seam.
 {% endcomment %}
 
@@ -39,8 +39,8 @@ through this single seam.
 {% endpartialdef %}
 
 {% partialdef current-courses %}
-    <div class="surface space-y-4">
-        <h2>
+    <div class="space-y-4">
+        <h2 class="text-base sm:text-lg lg:text-xl font-semibold">
             Your Courses
         </h2>
 
@@ -67,8 +67,8 @@ through this single seam.
 
 {% partialdef recommended-courses %}
     {% if recommended_courses %}
-        <div id="recommended-courses" class="surface space-y-4">
-            <h2>
+        <div id="recommended-courses" class="space-y-4">
+            <h2 class="text-base sm:text-lg lg:text-xl font-semibold">
                 Recommended Courses
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -82,10 +82,34 @@ through this single seam.
     {% endif %}
 {% endpartialdef %}
 
+{% partialdef available-courses %}
+    {% if available_courses %}
+        <div id="available-courses" class="space-y-4">
+            <div class="flex items-center justify-between gap-4">
+                <h2 class="text-base sm:text-lg lg:text-xl font-semibold">
+                    Available courses
+                </h2>
+                <a href="{% url 'student_interface:courses' %}"
+                   class="inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium no-underline hover:text-primary-hover">
+                    Browse all courses
+                    <span aria-hidden="true">
+                        <c-icon name="next" class="size-4" />
+                    </span>
+                </a>
+            </div>
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {% for course in available_courses %}
+                    {% partial dispatch-card %}
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+{% endpartialdef %}
+
 {% partialdef learning-history %}
     {% if completed_courses %}
-        <div id="learning-history" class="surface space-y-4">
-            <h2>
+        <div id="learning-history" class="space-y-4">
+            <h2 class="text-base sm:text-lg lg:text-xl font-semibold">
                 Learning History
             </h2>
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -99,14 +123,9 @@ through this single seam.
     {% endif %}
 {% endpartialdef %}
 
-<div class="space-y-4">
+<div class="space-y-8 lg:space-y-12">
     {% partial current-courses %}
     {% partial recommended-courses %}
+    {% partial available-courses %}
     {% partial learning-history %}
-
-    <c-button-group variant="centered">
-        <c-button href="{% url 'student_interface:courses' %}">
-            All Courses
-        </c-button>
-    </c-button-group>
 </div>

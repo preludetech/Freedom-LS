@@ -1,12 +1,18 @@
 {% extends "_base.html" %}
+{% load static %}
+
+{% block extra_alpine_components %}
+    <script defer src="{% static 'student_interface/js/alpine-components.js' %}"></script>
+{% endblock extra_alpine_components %}
 
 {% block head_title %}Dashboard{% endblock head_title %}
 
 {% block content %}
     <c-page>
         <div class="space-y-8 lg:space-y-12">
-            <div class="text-center sm:text-center">
-                <h1 class="px-4 max-w-full">
+            <div x-data="dateEyebrow" class="text-left">
+                <p x-text="formatted" x-cloak class="text-sm text-muted"></p>
+                <h1 class="max-w-full">
                     <span class="block sm:inline">Welcome back,</span>
                     <span class="block sm:inline break-all overflow-hidden">{{ user.first_name|default:user.email }}</span>
                 </h1>
