@@ -31,7 +31,7 @@ through this single seam.
 {% endpartialdef %}
 
 {% partialdef course-grid %}
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div class="grid gap-6 md:gap-8 lg:gap-10 md:grid-cols-2 lg:grid-cols-3">
         {% for course in courses %}
             {% partial dispatch-card %}
         {% endfor %}
@@ -54,7 +54,9 @@ through this single seam.
 
 {% partialdef current-courses %}
     <div class="space-y-4">
-        {% with heading="In Progress" %}{% partial section-heading %}{% endwith %}
+        {% with heading="In Progress" %}
+            {% partial section-heading %}
+        {% endwith %}
 
         {% if registered_courses %}
             {% with courses=registered_courses course_status="current" %}
@@ -76,8 +78,10 @@ through this single seam.
 {% partialdef recommended-courses %}
     {% if recommended_courses %}
         <div id="recommended-courses" class="space-y-4">
-            {% with heading="Recommended Courses" %}{% partial section-heading %}{% endwith %}
-            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {% with heading="Recommended Courses" %}
+                {% partial section-heading %}
+            {% endwith %}
+            <div class="grid gap-6 md:gap-8 lg:gap-10 md:grid-cols-2 lg:grid-cols-3">
                 {% for recommendation in recommended_courses %}
                     {% with course=recommendation.collection %}
                         {% partial dispatch-card %}
@@ -92,7 +96,9 @@ through this single seam.
     {% if available_courses %}
         <div id="available-courses" class="space-y-4">
             <div class="flex items-center justify-between gap-4">
-                {% with heading="Available courses" %}{% partial section-heading %}{% endwith %}
+                {% with heading="Available courses" %}
+                    {% partial section-heading %}
+                {% endwith %}
                 <a href="{% url 'student_interface:courses' %}"
                    class="inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium no-underline hover:text-primary-hover">
                     Browse all courses
@@ -111,7 +117,9 @@ through this single seam.
 {% partialdef learning-history %}
     {% if completed_courses %}
         <div id="learning-history" class="space-y-4">
-            {% with heading="Learning History" %}{% partial section-heading %}{% endwith %}
+            {% with heading="Learning History" %}
+                {% partial section-heading %}
+            {% endwith %}
             {% with courses=completed_courses course_status="history" %}
                 {% partial course-grid %}
             {% endwith %}
