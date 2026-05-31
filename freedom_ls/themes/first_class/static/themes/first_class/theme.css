@@ -139,6 +139,17 @@
     .alert-info {
         @apply bg-info-light border-info/30 text-on-info-light;
     }
+
+    /* first_class reads as a clean white bar: no drop shadow, just a subtle
+     * bottom border. The scrolled state keeps the border (and the frosted-
+     * glass blur from the @layer utilities rule below) rather than a shadow. */
+    .header {
+        @apply shadow-none border-b border-border;
+    }
+
+    .header[data-scrolled="true"] {
+        @apply shadow-none;
+    }
 }
 
 /* Heading-weight override — the brand uses `font-semibold` (not the
@@ -156,7 +167,7 @@
  * white-with-an-indigo-pill profile look. The avatar background is the
  * brand primary so it reads as a coloured pill against the white bar. */
 @theme inline {
-    --color-header: var(--color-surface);              /* white-ish */
+    --color-header: white;              /* white-ish */
     --color-on-header: var(--color-on-surface);        /* dark text */
     --color-header-action: var(--color-primary);       /* indigo pill */
     --color-on-header-action: var(--color-on-primary); /* white initials */

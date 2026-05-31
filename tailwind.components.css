@@ -246,6 +246,20 @@
         @apply bg-info/10 border-info/30 text-on-surface
     }
 
+    /* Site header bar. Default treatment is a drop shadow that deepens on
+     * scroll (`data-scrolled` is toggled by the `headerScroll` Alpine
+     * component). Themes reopen `.header` to swap the shadow for other
+     * treatments — e.g. first_class drops the shadow for a bottom border. */
+    .header {
+        @apply bg-header text-on-header sticky top-0 z-30 shadow-md
+               transition-shadow duration-200 motion-reduce:transition-none
+               p-3 sm:p-4 sm:px-6 flex justify-between items-center
+    }
+
+    .header[data-scrolled="true"] {
+        @apply shadow-lg
+    }
+
     /* Course-card accent tiles — vibrant gradients drawn from the dedicated
      * `--fls-course-accent-*` series (separate from the UI role tokens). The
      * slot number is interpolated into the class name from the per-course
