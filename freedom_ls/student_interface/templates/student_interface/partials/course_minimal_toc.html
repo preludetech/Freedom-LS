@@ -3,27 +3,27 @@
 {% partialdef status-icon %}
     {% if child.status == "BLOCKED" %}
         <span class="text-sm text-muted/50">
-            <c-icon name="locked" class="size-4" />
+            <c-icon name="locked" class="size-4" aria_label="Locked" />
         </span>
     {% elif child.status == "READY" %}
         <a href="{{ child.url }}"
            class="text-primary hover:text-primary no-underline">
-            <c-icon name="in_progress" class="size-4" />
+            <c-icon name="in_progress" class="size-4" aria_label="Not started" />
         </a>
     {% elif child.status == "IN_PROGRESS" %}
         <a href="{{ child.url }}"
            class="text-primary hover:text-primary no-underline">
-            <c-icon name="in_progress" class="size-4" />
+            <c-icon name="in_progress" class="size-4" aria_label="In progress" />
         </a>
     {% elif child.status == "COMPLETE" %}
         <a href="{{ child.url }}"
            class="text-success hover:text-success no-underline">
-            <c-icon name="complete" class="size-4" />
+            <c-icon name="complete" class="size-4" aria_label="Completed" />
         </a>
     {% elif child.status == "FAILED" %}
         <a href="{{ child.url }}"
            class="text-error hover:text-error no-underline">
-            <c-icon name="retry" class="size-4" />
+            <c-icon name="retry" class="size-4" aria_label="Needs retry" />
         </a>
     {% else %}
         <span class="text-sm text-error">Unknown status "{{ child.status }}"</span>
@@ -62,6 +62,9 @@
 {% partialdef content-title %}
     {% if child.type == "COURSE_PART" %}
         <span class="text-muted">{{ child.title }}</span>
+    {% elif child.is_current %}
+        {% comment %} Current item: highlighted, not a link, exposed to AT. {% endcomment %}
+        <span class="font-semibold text-on-surface" aria-current="page">{{ child.title }}</span>
     {% elif child.url %}
         <a href="{{ child.url }}"
            class="text-muted hover:text-primary no-underline">{{ child.title }}</a>
@@ -80,6 +83,7 @@
     </span>
     {% if is_expandable %}
         <button x-on:click="toggleExpanded"
+                x-bind:aria-expanded="expanded"
                 class="flex items-center gap-2 text-left hover:text-primary transition-colors cursor-pointer flex-1 min-w-0">
             <span class="text-muted shrink-0 {{ text_size }}">
                 <span x-show="expanded" x-cloak>
@@ -104,66 +108,71 @@
 {% endpartialdef %}
 
 {% partialdef course-children %}
-    {% for child in children %}
-        {% if child.type == "COURSE_PART" %}
-            {# Course Part with expandable children #}
-            {% course_part_storage_key_tag course.slug forloop.counter as part_storage_key %}
+    <nav aria-label="Course outline">
+        <ul class="list-none ml-0 space-y-0">
+            {% for child in children %}
+                {% if child.type == "COURSE_PART" %}
+                    {% comment %} Course Part with expandable children. {% endcomment %}
+                    {% course_part_storage_key_tag course.slug forloop.counter as part_storage_key %}
 
-            <div x-data="coursePart"
-                 data-storage-key="{{ part_storage_key }}"
-                 class="py-1.5">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-2 flex-1 min-w-0">
-                        {% with parent_counter=forloop.counter is_expandable=True text_size="text-sm" counter_width="w-5" %}
-                            {% partial content-row-inner %}
-                        {% endwith %}
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        {% partial deadline-badges %}
-                        {% partial status-icon %}
-                    </div>
-                </div>
-                {# Nested children of course part #}
-                <div x-show="expanded"
-                     x-collapse
-                     x-cloak
-                     class="ml-6 mt-1 space-y-1 border-l-2 border-border pl-3">
-                    {% if child.children %}
-                        {% for part_child in child.children %}
-                            <div class="flex items-center justify-between gap-2 text-sm">
-                                <div class="flex items-center gap-1 flex-1 min-w-0">
-                                    {% with child=part_child parent_counter=forloop.parentloop.counter child_counter=forloop.counter is_expandable=False text_size="text-xs" counter_width="w-8" %}
-                                        {% partial content-row-inner %}
-                                    {% endwith %}
-                                </div>
-                                <div class="flex items-center gap-2 shrink-0">
-                                    {% with child=part_child %}
-                                        {% partial deadline-badges %}
-                                        {% partial status-icon %}
-                                    {% endwith %}
-                                </div>
+                    <li x-data="coursePart"
+                        data-storage-key="{{ part_storage_key }}"
+                        {% if child.contains_current %}data-contains-current="true"{% endif %}
+                        class="py-1.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 flex-1 min-w-0">
+                                {% with parent_counter=forloop.counter is_expandable=True text_size="text-sm" counter_width="w-5" %}
+                                    {% partial content-row-inner %}
+                                {% endwith %}
                             </div>
-                        {% endfor %}
-                    {% else %}
-                        <span class="text-xs text-muted/50 italic">No items in this part</span>
-                    {% endif %}
-                </div>
-            </div>
-        {% else %}
-            {# Regular content item (Topic, Form, Course) #}
-            <div class="flex items-center justify-between gap-2 py-1.5">
-                <div class="flex items-center gap-2 flex-1 min-w-0">
-                    {% with parent_counter=forloop.counter is_expandable=False text_size="text-sm" counter_width="w-5" %}
-                        {% partial content-row-inner %}
-                    {% endwith %}
-                </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    {% partial deadline-badges %}
-                    {% partial status-icon %}
-                </div>
-            </div>
-        {% endif %}
-    {% endfor %}
+                            <div class="flex items-center gap-2 shrink-0">
+                                {% partial deadline-badges %}
+                                {% partial status-icon %}
+                            </div>
+                        </div>
+                        {% comment %} Nested children of course part. {% endcomment %}
+                        <ul x-show="expanded"
+                            x-collapse
+                            x-cloak
+                            class="list-none ml-6 mt-1 space-y-1 border-l-2 border-border pl-3">
+                            {% if child.children %}
+                                {% for part_child in child.children %}
+                                    <li class="flex items-center justify-between gap-2 text-sm{% if part_child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
+                                        <div class="flex items-center gap-1 flex-1 min-w-0">
+                                            {% with child=part_child parent_counter=forloop.parentloop.counter child_counter=forloop.counter is_expandable=False text_size="text-xs" counter_width="w-8" %}
+                                                {% partial content-row-inner %}
+                                            {% endwith %}
+                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            {% with child=part_child %}
+                                                {% partial deadline-badges %}
+                                                {% partial status-icon %}
+                                            {% endwith %}
+                                        </div>
+                                    </li>
+                                {% endfor %}
+                            {% else %}
+                                <li class="text-xs text-muted/50 italic list-none">No items in this part</li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                {% else %}
+                    {% comment %} Regular content item (Topic, Form, Course). {% endcomment %}
+                    <li class="flex items-center justify-between gap-2 py-1.5{% if child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                            {% with parent_counter=forloop.counter is_expandable=False text_size="text-sm" counter_width="w-5" %}
+                                {% partial content-row-inner %}
+                            {% endwith %}
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            {% partial deadline-badges %}
+                            {% partial status-icon %}
+                        </div>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    </nav>
 {% endpartialdef %}
 
 <div class="space-y-2">

@@ -1,0 +1,86 @@
+{% comment %}
+Player orientation chrome. Two presentations from one set of context values:
+
+  - Desktop (lg+): a full breadcrumb trail
+        course > [part] > current item
+    Ancestor crumbs link to concrete item URLs (never the bare course URL); the
+    current item is plain text with aria-current="page". The part crumb is
+    dropped entirely when current_part is None. The > separators are CSS
+    decoration (player-crumbs ::before), so screen readers never announce them.
+
+  - Phones (< lg): a compact bar with a back arrow, a middle-truncated trail, a
+    labelled TOC toggle, and a thin progress bar with %.
+{% endcomment %}
+
+{% url 'student_interface:view_course_item' course_slug=course.slug index=1 as first_item_url %}
+
+{% comment %} Desktop breadcrumbs. {% endcomment %}
+<nav aria-label="Breadcrumb" class="hidden lg:block pt-4 pb-2">
+    <ol class="player-crumbs list-none ml-0 flex items-center gap-2 text-sm text-muted min-w-0">
+        <li class="truncate max-w-[16rem]">
+            <a href="{{ first_item_url }}"
+               class="no-underline text-muted hover:text-primary"
+               title="{{ course.title }}">{{ course.title }}</a>
+        </li>
+        {% if current_part and current_part_index %}
+            <li class="truncate max-w-[16rem]">
+                <a href="{% url 'student_interface:view_course_item' course_slug=course.slug index=current_part_index %}"
+                   class="no-underline text-muted hover:text-primary"
+                   title="{{ current_part.title }}">{{ current_part.title }}</a>
+            </li>
+        {% endif %}
+        {% if item_title %}
+            <li class="truncate max-w-[20rem]">
+                <span class="text-on-surface font-medium"
+                      aria-current="page"
+                      title="{{ item_title }}">{{ item_title }}</span>
+            </li>
+        {% endif %}
+    </ol>
+</nav>
+
+{% comment %} Mobile compact header. {% endcomment %}
+<div class="lg:hidden pt-2 pb-2">
+    <div class="flex items-center gap-2">
+        {% if previous_url %}
+            <a href="{{ previous_url }}"
+               class="p-1 rounded-md text-muted hover:text-on-surface shrink-0"
+               aria-label="Previous item">
+                <c-icon name="previous" class="size-5" />
+            </a>
+        {% endif %}
+        <div class="flex-1 min-w-0 flex items-center gap-1 text-sm text-muted">
+            <span class="truncate shrink">{{ course.title }}</span>
+            {% if current_part %}
+                <span aria-hidden="true">·</span>
+                <span class="truncate shrink hidden sm:inline">{{ current_part.title }}</span>
+            {% endif %}
+            {% if item_title %}
+                <span aria-hidden="true">·</span>
+                <span class="truncate text-on-surface font-medium"
+                      aria-current="page">{{ item_title }}</span>
+            {% endif %}
+        </div>
+        <button x-on:click="toggle"
+                x-bind:aria-expanded="open"
+                aria-label="Open course outline"
+                class="p-1 rounded-md text-muted hover:text-on-surface shrink-0 flex items-center gap-1">
+            <c-icon name="menu_open" class="size-5" />
+        </button>
+    </div>
+    {% if course_progress %}
+        <div class="flex items-center gap-2 mt-2">
+            <progress class="w-full h-1.5 rounded-full overflow-hidden"
+                      role="progressbar"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                      aria-valuenow="{{ course_progress.progress_percentage|default:0 }}"
+                      aria-label="Course progress"
+                      value="{{ course_progress.progress_percentage|default:0 }}"
+                      max="100">
+                {{ course_progress.progress_percentage|default:0 }}%
+            </progress>
+            <span class="text-xs font-medium tabular-nums text-muted">{{ course_progress.progress_percentage|default:0 }}%</span>
+        </div>
+    {% endif %}
+</div>

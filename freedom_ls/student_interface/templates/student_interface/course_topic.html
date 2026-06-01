@@ -1,13 +1,15 @@
 {% extends "student_interface/_course_base.html" %}
 
+{% block item_head_title %}{{ topic.title }}{% endblock %}
+
 {% block content %}
     <c-page flush="true">
-        <div class="space-y-8">
+        <div class="space-y-8" x-data="coursePlayer">
 
             <div class="space-y-8">
 
                 <div>
-                    <h1>
+                    <h1 tabindex="-1">
                         {{ topic.title }}
                     </h1>
                     {% if topic.subtitle %}
@@ -50,13 +52,13 @@
                     </c-button>
                 {% elif is_last_item %}
                     {% if is_course_complete %}
-                        <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}"
+                        <c-button href="{% url 'student_interface:view_course_item' course_slug=course.slug index=1 %}"
                                   variant="secondary"
                                   icon_left="home">
                             Home
                         </c-button>
                     {% else %}
-                        <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}"
+                        <c-button href="{% url 'student_interface:view_course_item' course_slug=course.slug index=1 %}"
                                   icon_left="check">
                             Finish Course
                         </c-button>

@@ -127,6 +127,43 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
+    // Shared <dialog> overlay controller (cotton/overlay.html).
+    //
+    // Wraps a native <dialog>. open(triggerEl) calls showModal() so the browser
+    // gives us a focus trap, background inertness, Escape-to-close, and a
+    // ::backdrop scrim for free. close() calls dialog.close(). On the dialog's
+    // native "close" event (covers Escape and device Back) we restore focus to
+    // the trigger and dispatch "overlay-closed" so an external trigger can sync
+    // aria-expanded. A click that lands on the dialog element itself (i.e. the
+    // backdrop region, not the panel) also closes.
+    Alpine.data("overlayDialog", () => ({
+        triggerEl: null,
+        init() {
+            this.dialog = this.$refs.dialog;
+            this.dialog.addEventListener("close", () => {
+                this.$dispatch("overlay-closed");
+                if (this.triggerEl) this.triggerEl.focus();
+            });
+            this.dialog.addEventListener("click", (event) => {
+                if (event.target === this.dialog) this.close();
+            });
+        },
+        open(eventOrEl) {
+            // Called either directly with a trigger element or from x-on:click
+            // (which passes an Event). Resolve the triggering element so focus
+            // can be restored to it on close.
+            if (eventOrEl instanceof Event) {
+                this.triggerEl = eventOrEl.currentTarget;
+            } else {
+                this.triggerEl = eventOrEl || null;
+            }
+            this.dialog.showModal();
+        },
+        close() {
+            this.dialog.close();
+        },
+    }));
+
     // Toast component (partials/_toast.html).
     //
     // Per-severity timing:
@@ -306,76 +343,106 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // Sidebar component (cotton/sidebar.html)
-    Alpine.data("sidebarComponent", () => ({
-        sidebarOpen: false,
+    // Unified side panel (base/_base_interface.html).
+    //
+    // One <dialog> drives every sidebar in the app (student course TOC,
+    // educator nav, panel_framework nav). The presentation differs per consumer
+    // (bottom-sheet vs side-drawer, set via a data attribute) but the mechanism
+    // is identical:
+    //
+    //   - Desktop (lg+): the dialog is opened NON-modally with dialog.show() so
+    //     it renders in-flow as a persistent docked column (no inertness, no
+    //     scrim) and coexists with the page. Open/closed state persists to
+    //     localStorage under data-storage-key (preserving the existing keys).
+    //   - Below lg: the dialog is opened with dialog.showModal() so it becomes a
+    //     modal overlay with a scrim, an inert background, a focus trap,
+    //     Escape-to-close, and device-Back dismissal — all native to <dialog>.
+    //
+    // aria-expanded on the toggle is bound to `open`; the dialog's native
+    // "close" event syncs it back and returns focus to the toggle.
+    Alpine.data("sidePanel", () => ({
+        open: false,
         isMobile: false,
-        // localStorage key used to persist sidebar open/closed state across page loads
         _storageKey: "sidebar",
-        // Bound reference to the media-query change callback, kept so we can removeEventListener in destroy()
-        _mqHandler: null,
-        // matchMedia instance for the lg (1024px) breakpoint, used to detect mobile vs desktop
         _mq: null,
+        _mqHandler: null,
+        triggerEl: null,
         init() {
+            this.dialog = this.$refs.panelDialog;
             this._storageKey = this.$el.dataset.storageKey || "sidebar";
             this._mq = window.matchMedia("(min-width: 1024px)");
             this.isMobile = !this._mq.matches;
 
+            // Position the docked panel below the header bar (consumed by the
+            // CSS var on the dialog). Carried over from the old sidebar.
             const top = this.$el.getBoundingClientRect().top;
             this.$el.style.setProperty("--sidebar-top", top + "px");
 
+            this.dialog.addEventListener("close", () => {
+                this.open = false;
+                if (this.triggerEl) this.triggerEl.focus();
+            });
+            this.dialog.addEventListener("click", (event) => {
+                // A click on the dialog element itself (the modal backdrop) closes.
+                if (event.target === this.dialog && this.isMobile) this.close();
+            });
+
+            // On desktop, default to the persisted state (open if never set).
+            // On mobile, always start collapsed.
             const stored = localStorage.getItem(this._storageKey);
-            if (stored !== null) {
-                this.sidebarOpen = stored === "true";
-            } else {
-                this.sidebarOpen = this._mq.matches;
+            if (!this.isMobile) {
+                this._setDesktopOpen(stored === null ? true : stored === "true");
             }
 
             this._mqHandler = (e) => {
+                const wasMobile = this.isMobile;
                 this.isMobile = !e.matches;
-                if (e.matches && localStorage.getItem(this._storageKey) === null) {
-                    this.sidebarOpen = true;
+                if (wasMobile === this.isMobile) return;
+                // Reset to the correct mode for the new breakpoint.
+                if (this.dialog.open) this.dialog.close();
+                this.open = false;
+                if (!this.isMobile) {
+                    const desktopStored = localStorage.getItem(this._storageKey);
+                    this._setDesktopOpen(
+                        desktopStored === null ? true : desktopStored === "true",
+                    );
                 }
             };
             this._mq.addEventListener("change", this._mqHandler);
-
-            this.$watch("sidebarOpen", (val) => localStorage.setItem(this._storageKey, val));
         },
         destroy() {
             if (this._mq && this._mqHandler) {
                 this._mq.removeEventListener("change", this._mqHandler);
             }
         },
-        toggle() {
-            this.sidebarOpen = !this.sidebarOpen;
-        },
-        closeSidebar() {
-            this.sidebarOpen = false;
-        },
-        handleSidebarClick(event) {
-            if (this.isMobile && event.target.closest("a")) {
-                this.closeSidebar();
+        _setDesktopOpen(value) {
+            this.open = value;
+            if (value && !this.dialog.open) {
+                this.dialog.show();
+            } else if (!value && this.dialog.open) {
+                this.dialog.close();
             }
         },
-        headerBarLeftClass() {
-            if (!this.sidebarOpen) return "hidden";
-            if (this.isMobile) return "hidden";
-            return "w-64 shrink-0 flex items-center justify-between px-4";
+        toggle(event) {
+            this.triggerEl = (event && event.currentTarget) || null;
+            if (this.isMobile) {
+                if (this.dialog.open) {
+                    this.close();
+                } else {
+                    this.open = true;
+                    this.dialog.showModal();
+                }
+            } else {
+                this._setDesktopOpen(!this.open);
+                localStorage.setItem(this._storageKey, this.open);
+            }
         },
-        headerBarToggleClass() {
-            if (this.sidebarOpen) return "hidden";
-            return "";
-        },
-        sidebarColumnClass() {
-            if (this.sidebarOpen && !this.isMobile) return "w-64 shrink-0";
-            return "";
-        },
-        sidebarPanelClass() {
-            if (this.isMobile) return "fixed left-0 z-40 w-4/5 max-w-96 bg-surface shadow-lg overflow-y-auto";
-            return "";
-        },
-        backdropVisible() {
-            return this.sidebarOpen && this.isMobile;
+        close() {
+            if (this.dialog.open) this.dialog.close();
+            this.open = false;
+            if (!this.isMobile) {
+                localStorage.setItem(this._storageKey, false);
+            }
         },
     }));
 

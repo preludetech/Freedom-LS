@@ -1,11 +1,13 @@
 {% extends "student_interface/_course_base.html" %}
 
+{% block item_head_title %}{{ form.title }}{% endblock %}
+
 {% block content %}
     <c-page flush="true">
-        <div class="space-y-8">
+        <div class="space-y-8" x-data="coursePlayer">
 
             <div>
-                <h1>
+                <h1 tabindex="-1">
                     {{ form.title }}
                 </h1>
                 {% if form.subtitle %}

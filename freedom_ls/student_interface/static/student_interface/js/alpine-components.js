@@ -18,8 +18,22 @@ document.addEventListener("alpine:init", () => {
             if (this.storageKey) {
                 this.expanded = localStorage.getItem(this.storageKey) === "true";
             }
+            // Auto-expand the part that contains the current item, without
+            // writing to localStorage — so a part the learner manually
+            // collapsed elsewhere keeps its stored state, and this auto-expand
+            // does not clobber their choices.
+            if (this.$el.dataset.containsCurrent === "true") {
+                this.expanded = true;
+                this._scrollCurrentIntoView();
+            }
             this.$watch("expanded", () => this._updateUI());
             this.$nextTick(() => this._updateUI());
+        },
+        _scrollCurrentIntoView() {
+            this.$nextTick(() => {
+                const current = this.$el.querySelector('[aria-current="page"]');
+                if (current) current.scrollIntoView({ block: "nearest" });
+            });
         },
         toggleExpanded() {
             this.expanded = !this.expanded;
@@ -30,6 +44,25 @@ document.addEventListener("alpine:init", () => {
         _updateUI() {
             const icon = this.$el.querySelector("[data-collapse-icon]");
             if (icon) icon.hidden = this.expanded;
+        },
+    }));
+
+    // Course player content region (course_topic.html / course_form.html ...).
+    //
+    // On load, move focus to the content heading (so keyboard / screen-reader
+    // users land on the new content rather than the top of the page) and scroll
+    // any current TOC row into view. The heading carries tabindex="-1" so it is
+    // programmatically focusable without entering the tab order.
+    Alpine.data("coursePlayer", () => ({
+        init() {
+            this.$nextTick(() => {
+                const heading = this.$el.querySelector("h1");
+                if (heading) heading.focus();
+                const current = document.querySelector(
+                    '[aria-label="Course outline"] [aria-current="page"]',
+                );
+                if (current) current.scrollIntoView({ block: "nearest" });
+            });
         },
     }));
 

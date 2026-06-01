@@ -5,6 +5,8 @@
     <link rel="stylesheet" href="{% static 'content_engine/vendor/katex/katex.min.css' %}">
 {% endblock extra_head %}
 
+{% block head_title %}{% block item_head_title %}{% endblock %}{% if current_part %} — {{ current_part.title }}{% endif %} — {{ course.title }} — {{ site_name }}{% endblock head_title %}
+
 {% block extra_alpine_components %}{{ block.super }}
     <script defer src="{% static 'student_interface/js/alpine-components.js' %}"></script>
     <script defer src="{% static 'content_engine/vendor/katex/katex.min.js' %}"></script>
@@ -12,14 +14,24 @@
 {% endblock extra_alpine_components %}
 
 {% block sidebar_storage_key %}sidebar-course-toc{% endblock sidebar_storage_key %}
+{% block sidebar_presentation %}bottom-sheet{% endblock sidebar_presentation %}
+{% block sidebar_heading_aria %}Course outline{% endblock sidebar_heading_aria %}
 
 {% block header_bar_text %}{{ course.title }}{% endblock header_bar_text %}
 {% block sidebar_heading %}Table of Contents{% endblock sidebar_heading %}
 
+{% block breadcrumbs %}
+    {% include "student_interface/partials/player_breadcrumbs.html" %}
+{% endblock breadcrumbs %}
+
 {% block sidebar_content %}
-    <div hx-get="{% url 'student_interface:partial_course_toc' course.slug %}"
-         hx-trigger="load"
-         hx-indicator="#course-loading">
-        <c-loading-indicator id="course-loading" message="Loading courses..." />
-    </div>
+    {% comment %}
+    The outline is rendered inline (not via hx-get) so the current-item
+    highlight is present in the first paint and there is no second request /
+    highlight race. course_index already carries is_current / contains_current.
+    {% endcomment %}
+    {% include "student_interface/partials/course_toc_header.html" %}
+    {% with children=course_index %}
+        {% include "student_interface/partials/course_minimal_toc.html#course-children" %}
+    {% endwith %}
 {% endblock sidebar_content %}

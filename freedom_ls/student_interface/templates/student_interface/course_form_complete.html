@@ -1,12 +1,10 @@
 {% extends 'student_interface/_course_base.html' %}
 
-{% block title %}
-    Form Complete - {{ form.title }}
-{% endblock %}
+{% block item_head_title %}{{ form.title }} — Complete{% endblock %}
 
 {% block content %}
     <c-page width="narrow" flush="true">
-        <div class="text-center mb-8">
+        <div class="text-center mb-8" x-data="coursePlayer">
             <div class="mb-6">
                 {% if is_failed_quiz %}
                     <c-icon name="error" class="size-16 text-error" />
@@ -15,7 +13,7 @@
                 {% endif %}
             </div>
 
-            <h1 class="mb-4">
+            <h1 class="mb-4" tabindex="-1">
                 {% if form.strategy == "QUIZ" %}
                     {% if is_failed_quiz %}
                         Quiz Not Passed
@@ -191,7 +189,7 @@
                         Continue <c-icon name="next" class="size-5 ml-2" />
                     </c-button>
                 {% else %}
-                    <c-button href="{% url 'student_interface:course_home' course_slug=course.slug %}">
+                    <c-button href="{% url 'student_interface:view_course_item' course_slug=course.slug index=1 %}">
                         Return to Course <c-icon name="home" class="size-5 ml-2" />
                     </c-button>
                 {% endif %}

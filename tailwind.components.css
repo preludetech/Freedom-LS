@@ -331,4 +331,160 @@
         align-items: center;
         gap: 0.5rem;
     }
+
+    /* Shared <dialog> overlay (cotton/overlay.html).
+     *
+     * Native <dialog> toggles display:none <-> block, so the panel and the
+     * ::backdrop are animated with transform/opacity using @starting-style and
+     * allow-discrete so the enter/leave transitions still play across the
+     * discrete display change. Never animate height/top (avoids layout jank). */
+    .overlay-dialog {
+        transition:
+            overlay 200ms ease allow-discrete,
+            display 200ms ease allow-discrete;
+    }
+    .overlay-dialog::backdrop {
+        opacity: 0;
+        transition:
+            opacity 200ms ease,
+            overlay 200ms ease allow-discrete,
+            display 200ms ease allow-discrete;
+    }
+    .overlay-dialog[open]::backdrop {
+        opacity: 1;
+    }
+    @starting-style {
+        .overlay-dialog[open]::backdrop {
+            opacity: 0;
+        }
+    }
+
+    .overlay-dialog .overlay-panel {
+        opacity: 0;
+        transition:
+            transform 200ms ease,
+            opacity 200ms ease;
+    }
+    .overlay-dialog[open] .overlay-panel {
+        opacity: 1;
+        transform: none;
+    }
+    .overlay-bottom-sheet .overlay-panel {
+        transform: translateY(100%);
+    }
+    .overlay-side-drawer .overlay-panel {
+        transform: translateX(-100%);
+    }
+    .overlay-lightbox .overlay-panel {
+        transform: scale(0.95);
+    }
+    @starting-style {
+        .overlay-dialog[open] .overlay-panel {
+            opacity: 0;
+        }
+        .overlay-bottom-sheet[open] .overlay-panel {
+            transform: translateY(100%);
+        }
+        .overlay-side-drawer[open] .overlay-panel {
+            transform: translateX(-100%);
+        }
+        .overlay-lightbox[open] .overlay-panel {
+            transform: scale(0.95);
+        }
+    }
+
+    /* Unified side panel (_base_interface.html).
+     *
+     * One <dialog> behaves two ways: a docked in-flow column on desktop
+     * (opened with dialog.show()) and a modal overlay below lg (opened with
+     * dialog.showModal()). The default <dialog> UA chrome (border, padding,
+     * centring margins) is reset so it lays out cleanly in both modes. */
+    .side-panel-dialog {
+        border: 0;
+        padding: 0;
+        margin: 0;
+        max-width: none;
+        max-height: none;
+        background: transparent;
+        color: inherit;
+    }
+    .side-panel-dialog .side-panel-body {
+        opacity: 1;
+        transition:
+            transform 200ms ease,
+            opacity 200ms ease;
+    }
+
+    /* Mobile (< lg): modal overlay. UA gives [open] modal dialogs position:fixed.
+     * Pin per variant and animate the inner body via transform/opacity. */
+    @media (max-width: 1023.98px) {
+        .side-panel-dialog[open] {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .side-panel-dialog[data-variant="side-drawer"][open] {
+            inset: 0 auto 0 0;
+            width: 80%;
+            max-width: 24rem;
+        }
+        .side-panel-dialog[data-variant="bottom-sheet"][open] {
+            inset: auto 0 0 0;
+            width: 100%;
+            max-height: 85vh;
+            height: auto;
+        }
+        .side-panel-dialog[data-variant="bottom-sheet"] .side-panel-body {
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+        }
+        .side-panel-dialog .side-panel-body {
+            box-shadow: 0 10px 25px rgb(0 0 0 / 0.25);
+        }
+        .side-panel-dialog[data-variant="side-drawer"] .side-panel-body {
+            opacity: 0;
+            transform: translateX(-100%);
+        }
+        .side-panel-dialog[data-variant="bottom-sheet"] .side-panel-body {
+            opacity: 0;
+            transform: translateY(100%);
+        }
+        .side-panel-dialog[open] .side-panel-body {
+            opacity: 1;
+            transform: none;
+        }
+        @starting-style {
+            .side-panel-dialog[data-variant="side-drawer"][open] .side-panel-body {
+                opacity: 0;
+                transform: translateX(-100%);
+            }
+            .side-panel-dialog[data-variant="bottom-sheet"][open] .side-panel-body {
+                opacity: 0;
+                transform: translateY(100%);
+            }
+        }
+    }
+
+    /* Player breadcrumb separators (partials/player_breadcrumbs.html).
+     * Rendered as CSS decoration so screen readers don't announce them. */
+    .player-crumbs > li + li::before {
+        content: ">";
+        margin-right: 0.5rem;
+        color: var(--color-muted, currentColor);
+        flex: none;
+    }
+
+    /* Desktop (lg+): docked, sticky, full-height column with its own scroll. */
+    @media (min-width: 1024px) {
+        .side-panel-dialog {
+            position: sticky;
+            top: var(--sidebar-top, 0px);
+            height: calc(100vh - var(--sidebar-top, 0px));
+            width: 100%;
+        }
+        .side-panel-dialog .side-panel-body {
+            height: 100%;
+        }
+    }
 }

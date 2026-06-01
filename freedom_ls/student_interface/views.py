@@ -39,7 +39,9 @@ from .utils import (
     get_course_registrations,
     get_current_courses,
     get_is_registered,
+    get_item_part,
     get_recommended_courses,
+    get_resume_index,
 )
 
 
@@ -73,7 +75,8 @@ def _preview_start_url(course: Course, *, is_registered: bool, has_items: bool) 
     Unregistered learners go through ``register_for_course`` (idempotent
     registration + redirect). Already-registered, 0-progress learners skip
     that step and land directly on the first course item; if the course has
-    no items, fall back to ``course_home``.
+    no items, fall back to ``course_home`` — now a resume redirector, so for an
+    item-less / edge-case course it simply bounces to the preview page.
     """
     if not is_registered:
         return reverse(
@@ -192,35 +195,42 @@ def course_preview(request, course_slug):
     )
 
 
+@login_required
 def course_home(request, course_slug):
+    """Resume redirector for the bare course URL.
+
+    Never renders a start page. Anonymous users hit the login flow via
+    ``login_required``. Unenrolled learners go to the loop-free preview page.
+    Enrolled learners 302 to their resume item (first item with no progress,
+    last-accessed item otherwise) — a different canonical URL, with nothing in
+    the player linking back here, so the browser Back button cannot loop.
+    """
     course = get_object_or_404(Course, slug=course_slug)
 
-    children = get_course_index(user=request.user, course=course)
-    is_registered = get_is_registered(user=request.user, course=course)
+    if not get_is_registered(user=request.user, course=course):
+        return redirect("student_interface:course_preview", course_slug=course_slug)
 
-    # Get course progress if user is authenticated
-    course_progress = None
-    if request.user.is_authenticated:
-        course_progress = CourseProgress.objects.filter(
-            user=request.user, course=course
-        ).first()
-
-    return render(
-        request,
-        "student_interface/course_home.html",
-        {
-            "course": course,
-            "children": children,
-            "is_registered": is_registered,
-            "course_progress": course_progress,
-        },
+    index = get_resume_index(request.user, course)
+    return redirect(
+        "student_interface:view_course_item",
+        course_slug=course_slug,
+        index=index,
     )
 
 
 def partial_course_toc(request, course_slug):
     course = get_object_or_404(Course, slug=course_slug)
 
-    children = get_course_index(user=request.user, course=course)
+    # Optional ?current=<1-based index> so the HTMX-loaded TOC body can highlight
+    # the item the learner is viewing and auto-expand its part.
+    current_index: int | None = None
+    raw_current = request.GET.get("current")
+    if raw_current is not None and raw_current.isdigit():
+        current_index = int(raw_current)
+
+    children = get_course_index(
+        user=request.user, course=course, current_index=current_index
+    )
     is_registered = get_is_registered(user=request.user, course=course)
 
     return render(
@@ -246,7 +256,8 @@ def register_for_course(request, course_slug):
     # Delete any existing RecommendedCourse for this user and course
     RecommendedCourse.objects.filter(user=request.user, collection=course).delete()
 
-    # Redirect back to the course home page
+    # Redirect into the player. course_home is now a resume redirector, so a
+    # freshly registered (0-progress) learner lands on the first course item.
     return redirect("student_interface:course_home", course_slug=course_slug)
 
 
@@ -264,16 +275,23 @@ def view_course_item(request, course_slug, index):
         if is_item_locked_by_deadline(
             request.user, course, current_item, is_completed=is_completed
         ):
-            return redirect("student_interface:course_home", course_slug=course_slug)
+            # Redirect to the loop-free preview page. course_home is now a
+            # resume redirector, so redirecting a locked item there would loop
+            # straight back to the same locked item.
+            return redirect("student_interface:course_preview", course_slug=course_slug)
 
     total = len(viewable_items)
 
-    # Update or create course progress to track last accessed time
+    # Update or create course progress, recording this item as the resume
+    # target. This is the single write point for both topics and forms, so
+    # resume no longer depends on per-item progress timestamps. The
+    # deadline-locked branch returns above, so a locked item is never recorded.
     if request.user.is_authenticated:
         course_progress, _ = CourseProgress.objects.get_or_create(
             user=request.user, course=course
         )
-        course_progress.save()  # This updates last_accessed_time via auto_now
+        course_progress.last_accessed_item = current_item
+        course_progress.save()  # auto_now also bumps last_accessed_time
 
     # Calculate navigation URLs
     is_last_item = index >= total
@@ -294,6 +312,11 @@ def view_course_item(request, course_slug, index):
         else None
     )
 
+    # Player chrome context shared by topic and form item pages: the outline
+    # with the current item marked, the containing part (for breadcrumb / title),
+    # the CourseProgress (for the header progress bar / %), and the 1-based index.
+    player_context = _player_chrome_context(request.user, course, current_item, index)
+
     if isinstance(current_item, Topic):
         return view_topic(
             request,
@@ -302,6 +325,7 @@ def view_course_item(request, course_slug, index):
             next_url=next_url,
             previous_url=previous_url,
             is_last_item=is_last_item,
+            player_context=player_context,
         )
 
     if isinstance(current_item, Form):
@@ -312,12 +336,55 @@ def view_course_item(request, course_slug, index):
             index=index,
             is_last_item=is_last_item,
             next_url=next_url,
+            player_context=player_context,
         )
 
     raise Http404("Unsupported course item type.")
 
 
-def view_topic(request, topic, course, next_url, previous_url, is_last_item=False):
+def _player_chrome_context(
+    user, course: Course, current_item: Topic | Form, index: int
+) -> dict:
+    """Build the shared player-chrome context (TOC, breadcrumb, header, title)."""
+    course_progress = (
+        CourseProgress.objects.filter(user=user, course=course).first()
+        if user.is_authenticated
+        else None
+    )
+    current_part = get_item_part(course, current_item)
+
+    # The breadcrumb part crumb links to the part's first viewable item. Resolve
+    # its 1-based index in viewable_items() once, in memory.
+    current_part_index: int | None = None
+    if current_part is not None:
+        part_children = current_part.children()
+        if part_children:
+            viewable = course.viewable_items()
+            first_child = part_children[0]
+            for n, item in enumerate(viewable, start=1):
+                if type(item) is type(first_child) and item.pk == first_child.pk:
+                    current_part_index = n
+                    break
+
+    return {
+        "course_index": get_course_index(user=user, course=course, current_index=index),
+        "current_part": current_part,
+        "current_part_index": current_part_index,
+        "course_progress": course_progress,
+        "item_title": current_item.title,
+        "index": index,
+    }
+
+
+def view_topic(
+    request,
+    topic,
+    course,
+    next_url,
+    previous_url,
+    is_last_item=False,
+    player_context=None,
+):
     topic_progress, created = TopicProgress.objects.get_or_create(
         user=request.user, topic=topic
     )
@@ -334,13 +401,11 @@ def view_topic(request, topic, course, next_url, previous_url, is_last_item=Fals
             # If no next_url (last item), redirect to course finish page
             return redirect("student_interface:course_finish", course_slug=course.slug)
 
-    # Check if the course is already complete
-    is_course_complete = False
-    course_progress = CourseProgress.objects.filter(
-        user=request.user, course=course
-    ).first()
-    if course_progress:
-        is_course_complete = course_progress.completed_time is not None
+    # Check if the course is already complete. Reuse the CourseProgress already
+    # fetched into player_context rather than querying it a second time.
+    player_context = player_context or {}
+    course_progress = player_context.get("course_progress")
+    is_course_complete = bool(course_progress and course_progress.completed_time)
 
     context = {
         "course": course,
@@ -350,11 +415,20 @@ def view_topic(request, topic, course, next_url, previous_url, is_last_item=Fals
         "previous_url": previous_url,
         "is_last_item": is_last_item,
         "is_course_complete": is_course_complete,
+        **player_context,
     }
     return render(request, "student_interface/course_topic.html", context)
 
 
-def view_form(request, form, course, index, is_last_item=False, next_url=None):
+def view_form(
+    request,
+    form,
+    course,
+    index,
+    is_last_item=False,
+    next_url=None,
+    player_context=None,
+):
     """Show the front page of the form"""
 
     # Try to get existing incomplete form progress (don't create if it doesn't exist)
@@ -388,6 +462,7 @@ def view_form(request, form, course, index, is_last_item=False, next_url=None):
         "page_number": page_number,
         "buttons": buttons,
         "next_url": next_url,
+        **(player_context or {}),
     }
 
     return render(request, "student_interface/course_form.html", context)
@@ -521,6 +596,9 @@ def form_fill_page(request, course_slug, index, page_number):
         "has_next_page": next_page_url,
         "existing_answers": existing_answers,
         "page_links": page_links,
+        # Player chrome (outline panel + breadcrumb) so the fill page keeps the
+        # same orientation as the rest of the player.
+        **_player_chrome_context(request.user, course, form, index),
     }
 
     return render(request, "student_interface/course_form_page.html", context)
@@ -585,6 +663,8 @@ def course_form_complete(request, course_slug, index):
         "is_failed_quiz": is_failed_quiz,
         "next_url": next_url,
         "retry_url": retry_url,
+        # Player chrome (outline panel + breadcrumb).
+        **_player_chrome_context(request.user, course, form, index),
     }
 
     return render(request, "student_interface/course_form_complete.html", context)
@@ -622,6 +702,8 @@ def course_finish(request, course_slug):
     context = {
         "course": course,
         "course_progress": course_progress,
+        # Outline panel for the completion page (no single current item).
+        "course_index": get_course_index(user=request.user, course=course),
     }
 
     return render(request, "student_interface/course_finish.html", context)

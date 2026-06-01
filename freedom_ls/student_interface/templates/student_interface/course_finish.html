@@ -1,17 +1,15 @@
 {% extends 'student_interface/_course_base.html' %}
 
-{% block title %}
-    Course Complete - {{ course.title }}
-{% endblock %}
+{% block item_head_title %}Course complete{% endblock %}
 
 {% block content %}
     <c-page width="narrow" flush="true">
-        <div class="text-center mb-8">
+        <div class="text-center mb-8" x-data="coursePlayer">
             <div class="mb-6">
                 <c-icon name="achievement" class="size-16 text-warning" />
             </div>
 
-            <h1 class="mb-4">
+            <h1 class="mb-4" tabindex="-1">
                 Congratulations!
             </h1>
 

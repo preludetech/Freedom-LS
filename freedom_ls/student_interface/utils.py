@@ -172,7 +172,51 @@ def get_course_registrations(user: RequestUser) -> list[Course]:
     return list(Course.objects.filter(Q(pk__in=direct) | Q(pk__in=cohort)).distinct())
 
 
-def get_course_index(user: User, course: Course) -> list[dict]:
+def get_resume_index(user: RequestUser, course: Course) -> int:
+    """Return the 1-based index in ``course.viewable_items()`` to resume at.
+
+    Reads ``CourseProgress.last_accessed_item`` for ``(user, course)``. If there
+    is no progress row, no recorded item, or the recorded item is no longer
+    viewable (deleted / unpublished / removed from the course), falls back to the
+    first item. One row fetch + one FK resolve — no per-item query loop.
+    """
+    if not user.is_authenticated:
+        return 1
+    progress = (
+        CourseProgress.objects.filter(user=user, course=course)
+        .select_related("last_accessed_content_type")
+        .first()
+    )
+    if progress is None or progress.last_accessed_item is None:
+        return 1
+    item = progress.last_accessed_item
+    index_by_key = {
+        (type(i), i.pk): n for n, i in enumerate(course.viewable_items(), start=1)
+    }
+    return index_by_key.get((type(item), item.pk), 1)
+
+
+def get_item_part(course: Course, current_item: Topic | Form) -> CoursePart | None:
+    """Return the ``CoursePart`` that directly contains ``current_item``, or None.
+
+    Walks ``course.children()`` once (the same traversal the index build uses)
+    and checks each ``CoursePart``'s direct children in memory — no extra
+    queries per item. Top-level items (not inside any part) return None.
+    """
+    for child in course.children():
+        if isinstance(child, CoursePart):
+            for part_child in child.children():
+                if (
+                    type(part_child) is type(current_item)
+                    and part_child.pk == current_item.pk
+                ):
+                    return child
+    return None
+
+
+def get_course_index(
+    user: User, course: Course, current_index: int | None = None
+) -> list[dict]:
     """
     Generate an index of course children with their status and metadata.
 
@@ -202,6 +246,7 @@ def get_course_index(user: User, course: Course) -> list[dict]:
             next_status,
             is_registered,
             deadlines_map=deadlines_map,
+            current_index=current_index,
         )
         children.append(child_dict)
         global_index += items_added
@@ -264,9 +309,15 @@ def create_child_dict_with_flattened_index(
     is_registered: bool,
     deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]]
     | None = None,
+    current_index: int | None = None,
 ) -> tuple[dict, str, int]:
     """
     Create a child dict with proper flattened indices for nested items.
+
+    When ``current_index`` (a 1-based viewable index) is supplied, the matching
+    item dict is marked ``is_current=True`` and the containing CoursePart dict is
+    marked ``contains_current=True`` so the TOC can highlight the current item
+    and auto-expand its part.
 
     Returns tuple of (child_dict, updated_next_status, number_of_items_added)
     """
@@ -302,6 +353,7 @@ def create_child_dict_with_flattened_index(
                 child_status = BLOCKED
                 child_url = ""
 
+            part_child_index = start_index + items_added + 1
             part_child_deadlines = _get_deadlines_for_item(part_child, deadlines_map)
             part_child_dict = {
                 "title": part_child.title,
@@ -309,6 +361,7 @@ def create_child_dict_with_flattened_index(
                 "url": child_url if child_status != BLOCKED else None,
                 "status": child_status,
                 "deadlines": part_child_deadlines,
+                "is_current": current_index == part_child_index,
             }
             _apply_deadline_locking(part_child_dict, part_child_deadlines)
             part_children_dicts.append(part_child_dict)
@@ -350,6 +403,7 @@ def create_child_dict_with_flattened_index(
             "type": content_item.content_type,
             "children": part_children_dicts,
             "deadlines": part_deadlines,
+            "contains_current": any(c.get("is_current") for c in part_children_dicts),
         }
 
         _apply_deadline_locking(child_dict, part_deadlines)
@@ -378,6 +432,7 @@ def create_child_dict_with_flattened_index(
             "url": url if status != BLOCKED else None,
             "type": content_item.content_type,
             "deadlines": item_deadlines,
+            "is_current": current_index == start_index + 1,
         }
 
         _apply_deadline_locking(child_dict, item_deadlines)

@@ -23,7 +23,7 @@ def test_toc_course_part_expands_and_collapses_on_course_detail_page(
     """Clicking a course-part toggle on a course detail page reveals the part's children.
 
     Previously the Alpine component backing ``x-data="coursePart"`` was only loaded on
-    ``course_home.html``, so on detail pages clicking the toggle did nothing.
+    the retired course start page, so on detail pages clicking the toggle did nothing.
     """
     course = CourseFactory(title="Test Course", slug="test-course")
     landing_topic = TopicFactory(
@@ -109,10 +109,12 @@ def test_toc_course_part_expand_state_persists_across_navigation(
         "student_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
-    course_home_url = reverse_url(
+    # course_home is now a resume redirector, so navigate to a concrete item URL
+    # to re-render the player TOC and assert the expand state persisted.
+    second_item_url = reverse_url(
         live_server,
-        "student_interface:course_home",
-        kwargs={"course_slug": course.slug},
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 2},
     )
     # Single source of truth for the storage key — production helper, not an
     # ad-hoc f-string in the test.
@@ -137,7 +139,7 @@ def test_toc_course_part_expand_state_persists_across_navigation(
         f"got {stored_value!r}"
     )
 
-    # Navigating to the course home should find the part already expanded.
-    logged_in_page.goto(course_home_url)
-    inner_topic_on_home = logged_in_page.get_by_text("Inner Topic", exact=True)
-    expect(inner_topic_on_home).to_be_visible()
+    # Navigating to another item page should find the part already expanded.
+    logged_in_page.goto(second_item_url)
+    inner_topic_after_nav = logged_in_page.get_by_text("Inner Topic", exact=True)
+    expect(inner_topic_after_nav).to_be_visible()

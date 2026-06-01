@@ -1,0 +1,36 @@
+<c-vars id="" variant="lightbox" aria_label="Dialog" close_label="Close" />
+
+{% comment %}
+Shared accessible overlay built on the native <dialog> element.
+
+Opened with showModal() (via the overlayDialog Alpine component) so it gets
+focus trapping, background inertness, Escape-to-close, and a ::backdrop scrim
+for free. Each consumer supplies its foreground content in the default slot and
+opens the dialog by calling open(triggerEl) on the overlayDialog component.
+
+Variants control the slide direction / presentation:
+  - bottom-sheet: rises from the bottom edge (mobile TOC)
+  - side-drawer:  slides in from the left (educator / panel nav)
+  - lightbox:     fade + scale from centre (picture zoom)
+
+Animation uses transform/opacity only (never height/top) to avoid layout jank.
+{% endcomment %}
+
+<dialog x-ref="dialog"
+        {% if id %}id="{{ id }}"{% endif %}
+        aria-label="{{ aria_label }}"
+        data-variant="{{ variant }}"
+        class="overlay-dialog overlay-{{ variant }} bg-transparent p-0 m-0 max-w-none max-h-none w-full h-full backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+        {{ attrs }}>
+    <div class="overlay-positioner flex h-full w-full {% if variant == 'bottom-sheet' %}items-end justify-center{% elif variant == 'side-drawer' %}items-stretch justify-start{% else %}items-center justify-center{% endif %}">
+        <div class="overlay-panel relative bg-surface overscroll-contain overflow-y-auto {% if variant == 'bottom-sheet' %}w-full max-h-[85vh] rounded-t-2xl{% elif variant == 'side-drawer' %}h-full w-4/5 max-w-96 shadow-lg{% else %}max-w-7xl max-h-[90vh] rounded-lg{% endif %}">
+            <button type="button"
+                    x-on:click="close"
+                    aria-label="{{ close_label }}"
+                    class="absolute top-2 right-2 z-10 p-1 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer">
+                <c-icon name="close" class="size-6" />
+            </button>
+            {{ slot }}
+        </div>
+    </div>
+</dialog>

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.db import models
 from django.utils import timezone
@@ -563,6 +564,25 @@ class CourseProgress(SiteAwareModel):
     last_accessed_time = models.DateTimeField(auto_now=True)
     completed_time = models.DateTimeField(blank=True, null=True)
     progress_percentage = models.IntegerField(default=0, db_index=True)
+
+    # The viewable item (Topic | Form) the learner last visited in this course.
+    # Used as the resume target for the bare course URL. Polymorphic, so a
+    # GenericForeignKey, mirroring student_management.CohortDeadline. Nullable:
+    # existing rows and freshly-registered (0-progress) learners have none and
+    # resume at the first item. SET_NULL on the content-type FK so deleting a
+    # content model type cannot cascade-delete progress; a dangling object_id
+    # simply resolves to None and falls back to item 1.
+    last_accessed_content_type = models.ForeignKey(
+        DjangoContentType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    last_accessed_object_id = models.UUIDField(null=True, blank=True)
+    last_accessed_item = GenericForeignKey(
+        "last_accessed_content_type", "last_accessed_object_id"
+    )
 
     class Meta:
         verbose_name_plural = "Course progress records"

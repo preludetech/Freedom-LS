@@ -3,6 +3,8 @@
 {% load content_tags %}
 {% load fls_base_filters %}
 
+{% block item_head_title %}{{ form_page.title }} — {{ form.title }}{% endblock %}
+
 {% partialdef form-input-multiple-choice %}
     {% for option in question.options.all %}
         <div class="flex items-center">
