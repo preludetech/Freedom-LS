@@ -44,31 +44,33 @@ def course_with_topics(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_not_started_card_for_zero_progress(mock_site_context, course_with_topics):
+def test_registered_card_for_zero_progress(mock_site_context, course_with_topics):
     """A registered course with progress_percentage == 0 renders the
-    Not started card variant, not the In progress one."""
+    Registered card variant, not the In progress one. The old ambiguous
+    "Not started" label (shared with unregistered courses) is retired."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
     # No progress => percentage stays 0.
     client = _logged_in_client(user)
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
-    assert "Not started" in body
+    assert "Registered" in body
     assert "In progress" not in body  # no in-progress card rendered
+    assert "Not started" not in body  # retired label
 
 
 @pytest.mark.django_db
-def test_not_started_card_shows_empty_progress_bar(
+def test_registered_card_shows_empty_progress_bar(
     mock_site_context, course_with_topics
 ):
-    """The Not started card always renders an empty (0%) progress bar so it
+    """The Registered card always renders an empty (0%) progress bar so it
     visually anchors next to in-progress cards in a mixed grid row."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
     client = _logged_in_client(user)
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
-    assert "Not started" in body
+    assert "Registered" in body
     assert 'aria-valuenow="0"' in body
     assert "0%" in body
 
@@ -109,6 +111,22 @@ def test_complete_card_for_completed_course(mock_site_context, course_with_topic
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
     assert "Completed" in body
+
+
+@pytest.mark.django_db
+def test_not_registered_card_shows_not_registered_label(
+    mock_site_context, course_with_topics
+):
+    """A recommended (unregistered) course on the dashboard shows the
+    "Not registered" status — distinct from a registered-but-unstarted
+    course — instead of the old ambiguous "Not started"."""
+    user = UserFactory()
+    RecommendedCourseFactory(user=user, collection=course_with_topics)
+    client = _logged_in_client(user)
+    response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+    assert "Not registered" in body
+    assert "Not started" not in body
 
 
 # --- course_preview view ---
@@ -215,7 +233,7 @@ def test_registered_zero_progress_card_links_title_to_first_item(
     mock_site_context, course_with_topics
 ):
     """A registered 0-progress course renders the progress card (not a modal):
-    the "Not started" eyebrow, a 0% progress bar, and a title that links
+    the "Registered" eyebrow, a 0% progress bar, and a title that links
     straight to the first course item via the "Next up" target."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
@@ -228,7 +246,7 @@ def test_registered_zero_progress_card_links_title_to_first_item(
         "student_interface:view_course_item",
         kwargs={"course_slug": course_with_topics.slug, "index": 1},
     )
-    assert "Not started" in body
+    assert "Registered" in body
     assert 'aria-valuenow="0"' in body
     assert first_item_url in body
 

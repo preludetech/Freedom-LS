@@ -535,6 +535,44 @@ def test_all_courses_registered_course_not_annotated_with_annotate_next_up(
     assert not hasattr(course, "next_up_url")
 
 
+@pytest.mark.django_db
+def test_all_courses_renders_four_distinct_status_labels(mock_site_context, courses):
+    """Each of the four registration states renders its own visible label, so a
+    registered-but-unstarted course is no longer indistinguishable from an
+    unregistered one. The old ambiguous "Not started" label is gone entirely."""
+    user = UserFactory()
+    # courses[0] -> Not registered (left unregistered)
+    # courses[1] -> Registered (enrolled, 0% progress)
+    UserCourseRegistrationFactory(user=user, collection=courses[1])
+    # courses[2] -> In progress (enrolled, >0% progress)
+    UserCourseRegistrationFactory(user=user, collection=courses[2])
+    CourseProgressFactory(
+        user=user, course=courses[2], progress_percentage=40, completed_time=None
+    )
+    # A fourth course -> Completed.
+    completed = CourseFactory(title="Course D", slug="course-d")
+    completed_topic = TopicFactory(title="Topic D", slug="topic-d", content="content")
+    completed.items.create(child=completed_topic, order=0)
+    UserCourseRegistrationFactory(user=user, collection=completed)
+    CourseProgressFactory(
+        user=user,
+        course=completed,
+        progress_percentage=100,
+        completed_time=timezone.now(),
+    )
+
+    client = _logged_in_client(user)
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+    body = response.content.decode()
+
+    assert "Not registered" in body
+    assert "Registered" in body  # the registered-0% row (capital R, standalone)
+    assert "In progress" in body
+    assert "Completed" in body
+    assert "Not started" not in body  # retired ambiguous label
+
+
 # ---------------------------------------------------------------------------
 # Task A3 — query-count regression tests (criterion 5)
 # ---------------------------------------------------------------------------

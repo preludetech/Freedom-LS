@@ -19,7 +19,7 @@ Shell slots used:
                      icon_fallback="{{ course.icon_fallback }}"
                      title="{{ course.title }}">
     <c-slot name="eyebrow">
-        <p class="text-xs text-muted uppercase tracking-wide">Completed</p>
+        {% include "student_interface/partials/course_status_eyebrow.html" with status="complete" with_icon=False %}
     </c-slot>
 
     {% with url=finish_url title=course.title %}

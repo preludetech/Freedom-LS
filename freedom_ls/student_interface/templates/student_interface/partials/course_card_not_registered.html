@@ -21,9 +21,7 @@ eyebrow inline inside the shell call).
                                  icon_fallback="{{ course.icon_fallback }}"
                                  title="{{ course.title }}"
                                  clickable="true">
-                <p class="text-xs text-muted uppercase tracking-wide">
-                    Not started
-                </p>
+                {% include "student_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=False %}
                 <h3>
                     {{ course.title }}
                 </h3>
@@ -48,9 +46,7 @@ eyebrow inline inside the shell call).
                          icon="{{ course.icon }}"
                          icon_fallback="{{ course.icon_fallback }}"
                          title="{{ course.title }}">
-        <p class="text-xs text-muted uppercase tracking-wide">
-            Not started
-        </p>
+        {% include "student_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=False %}
         <h3>
             <a href="{% url 'student_interface:course_preview' course_slug=course.slug %}"
                class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">

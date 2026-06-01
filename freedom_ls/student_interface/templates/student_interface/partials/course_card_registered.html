@@ -1,19 +1,20 @@
 {% comment %}
-Registered-course card leaf (In progress / Not started states).
+Registered-course card leaf (Registered / In progress states).
 
 Dispatch seam: course_list.html > dispatch-card > here (course.is_registered).
-The only internal branch is progress_percentage > 0 (In progress vs Not started
+The only internal branch is progress_percentage > 0 (In progress vs Registered
 eyebrow text) — layout and slots are identical in both states.
 
 Shell slots used:
-  eyebrow — status label (In progress / Not started)
+  eyebrow — status label (Registered / In progress), via the shared
+            course_status_eyebrow.html (text-only on the dashboard)
   footer  — progress bar
   slot    — stretched title link via card_title_link.html
 
 Behaviour:
   Title links to course.next_up_url when available, otherwise to the
   first course item (course_home fallback).
-  Progress bar renders at 0% for Not started courses.
+  Progress bar renders at 0% for Registered (not-yet-started) courses.
 {% endcomment %}
 {% url 'student_interface:course_home' course_slug=course.slug as fallback_url %}
 {% with card_url=course.next_up_url|default:fallback_url %}
@@ -22,13 +23,11 @@ Behaviour:
                      icon_fallback="{{ course.icon_fallback }}"
                      title="{{ course.title }}">
     <c-slot name="eyebrow">
-        <p class="text-xs text-muted uppercase tracking-wide">
-            {% if course.progress_percentage and course.progress_percentage > 0 %}
-                In progress
-            {% else %}
-                Not started
-            {% endif %}
-        </p>
+        {% if course.progress_percentage and course.progress_percentage > 0 %}
+            {% include "student_interface/partials/course_status_eyebrow.html" with status="in_progress" with_icon=False %}
+        {% else %}
+            {% include "student_interface/partials/course_status_eyebrow.html" with status="registered" with_icon=False %}
+        {% endif %}
     </c-slot>
 
     {% with url=card_url title=course.title %}

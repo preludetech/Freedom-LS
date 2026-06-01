@@ -11,8 +11,9 @@ Desktop (>= md): opens a c-modal preview trigger.
 Mobile (< md):   links to /courses/[slug]/preview/ for a dedicated page
                  that survives refresh.
 
-No progress bar. Status label conveys "Not started" via text + icon
-(WCAG 1.4.1 — colour reinforcement only, not sole indicator).
+No progress bar. Status label conveys "Not registered" via text + icon
+(WCAG 1.4.1 — colour reinforcement only, not sole indicator), through the
+shared course_status_eyebrow.html partial.
 
 Preview context (course.preview_children, course.preview_start_url) is
 set by _annotate_preview_context in the all_courses view for every
@@ -28,10 +29,7 @@ NOT_REGISTERED course.
                                 icon_fallback="{{ course.icon_fallback }}"
                                 title="{{ course.title }}"
                                 clickable="true">
-                <p class="flex items-center gap-1 text-xs text-muted uppercase tracking-wide">
-                    <span aria-hidden="true"><c-icon name="not_started" class="size-4" /></span>
-                    Not started
-                </p>
+                {% include "student_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
                 <h3>{{ course.title }}</h3>
             </c-course-row-shell>
         </c-slot>
@@ -54,10 +52,7 @@ NOT_REGISTERED course.
                         icon="{{ course.icon }}"
                         icon_fallback="{{ course.icon_fallback }}"
                         title="{{ course.title }}">
-        <p class="flex items-center gap-1 text-xs text-muted uppercase tracking-wide">
-            <span aria-hidden="true"><c-icon name="not_started" class="size-4" /></span>
-            Not started
-        </p>
+        {% include "student_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
         <h3>
             <a href="{% url 'student_interface:course_preview' course_slug=course.slug %}"
                class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">

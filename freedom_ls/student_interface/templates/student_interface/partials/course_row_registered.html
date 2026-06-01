@@ -8,7 +8,8 @@ Dispatch seam: course_row_list.html > dispatch-row > here
   (listing_status == "registered" OR listing_status == "in_progress")
 
 Shell slots used:
-  eyebrow — status label + icon (Not started / In progress)
+  eyebrow — status label + icon (Registered / In progress), via the shared
+            course_status_eyebrow.html (single source of truth for wording)
   footer  — progress bar (shows at 0% for Registered state — Decision 1)
   slot    — stretched title link via card_title_link.html
 
@@ -27,15 +28,8 @@ Do NOT rely on colour alone.
                     title="{{ course.title }}">
 
     <c-slot name="eyebrow">
-        <p class="flex items-center gap-1 text-xs text-muted uppercase tracking-wide">
-            {% if course.progress_percentage and course.progress_percentage > 0 %}
-                <span aria-hidden="true"><c-icon name="in_progress" class="size-4" /></span>
-                In progress
-            {% else %}
-                <span aria-hidden="true"><c-icon name="not_started" class="size-4" /></span>
-                Not started
-            {% endif %}
-        </p>
+        {% comment %}listing_status is already "registered" (0%) or "in_progress" (>0%).{% endcomment %}
+        {% include "student_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
     </c-slot>
 
     {% with url=course_item_url title=course.title %}

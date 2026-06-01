@@ -24,10 +24,7 @@ Behaviour:
                     title="{{ course.title }}">
 
     <c-slot name="eyebrow">
-        <p class="flex items-center gap-1 text-xs text-muted uppercase tracking-wide">
-            <span aria-hidden="true"><c-icon name="check" class="size-4" /></span>
-            Completed
-        </p>
+        {% include "student_interface/partials/course_status_eyebrow.html" with status="complete" with_icon=True %}
     </c-slot>
 
     {% with url=finish_url title=course.title %}
