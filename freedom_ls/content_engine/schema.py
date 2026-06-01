@@ -2,6 +2,7 @@
 Schema for yaml structures like this:
 """
 
+from datetime import timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, ClassVar
@@ -36,6 +37,15 @@ class FormStrategy(StrEnum):
 
     CATEGORY_VALUE_SUM = "CATEGORY_VALUE_SUM"
     QUIZ = "QUIZ"
+
+
+class DifficultyLevel(StrEnum):
+    """Course difficulty level enumeration (mirrors models.DifficultyLevel)."""
+
+    BEGINNER = "beginner"
+    INTERMEDIATE = "intermediate"
+    ADVANCED = "advanced"
+    ALL_LEVELS = "all_levels"
 
 
 class BaseBaseContentModel(BaseModel):
@@ -98,7 +108,7 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
     You can think of this as a folder. It contains an ordered list of child content.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
     children: list[Child] = Field(
         default_factory=list,
@@ -121,6 +131,19 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
             "'phosphor:drone') used only when 'icon' fails to resolve in the "
             "active icon set."
         ),
+    )
+
+    learning_outcomes: list[str] = Field(
+        default_factory=list,
+        description="Ordered 'what you'll learn' outcomes",
+    )
+    difficulty: DifficultyLevel | None = Field(
+        None,
+        description="Course difficulty level",
+    )
+    estimated_duration: timedelta | None = Field(
+        None,
+        description="Estimated time to complete",
     )
 
     @model_validator(mode="after")

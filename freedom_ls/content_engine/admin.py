@@ -192,7 +192,20 @@ class CourseAdmin(SiteAwareModelAdmin):
     inlines = [ContentCollectionItemInline]
 
     fieldsets = (
-        (None, {"fields": ("title", "subtitle", "description", "slug")}),
+        (
+            None,
+            {
+                "fields": (
+                    "title",
+                    "subtitle",
+                    "description",
+                    "slug",
+                    "learning_outcomes",
+                    "difficulty",
+                    "estimated_duration",
+                )
+            },
+        ),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 

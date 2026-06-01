@@ -2,6 +2,7 @@ from pathlib import Path
 
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
@@ -27,6 +28,15 @@ class FormStrategy(models.TextChoices):
 
     CATEGORY_VALUE_SUM = "CATEGORY_VALUE_SUM", _("Category Value Sum")
     QUIZ = "QUIZ", _("Quiz")
+
+
+class DifficultyLevel(models.TextChoices):
+    """Course difficulty level enumeration."""
+
+    BEGINNER = "beginner", _("Beginner")
+    INTERMEDIATE = "intermediate", _("Intermediate")
+    ADVANCED = "advanced", _("Advanced")
+    ALL_LEVELS = "all_levels", _("All levels")
 
 
 class BaseContent(SiteAwareModel):
@@ -171,6 +181,21 @@ class Course(MarkdownContent, TitledContent):
         ),
     )
     accent_slot = models.PositiveSmallIntegerField(default=0, editable=False)
+    learning_outcomes = ArrayField(
+        models.CharField(max_length=255),
+        blank=True,
+        default=list,
+        help_text=_(
+            "Ordered list of 'what you'll learn' outcomes. Empty hides the section."
+        ),
+    )
+    difficulty = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        choices=DifficultyLevel.choices,
+    )
+    estimated_duration = models.DurationField(null=True, blank=True)
     items = GenericRelation(
         "ContentCollectionItem",
         content_type_field="collection_type",
@@ -190,6 +215,21 @@ class Course(MarkdownContent, TitledContent):
         semantic UI role — see :mod:`freedom_ls.content_engine.course_accent`.
         """
         return PALETTE[self.accent_slot]
+
+    def display_estimated_duration(self) -> str:
+        """Human, coarse duration like '~2 hours' / '~45 min' / '~1 hour 30 min'. '' when unset."""
+        # Treat both None and a zero timedelta as "unset" (a zero timedelta is
+        # falsy, but be explicit so a stored 0 doesn't render a bare "~").
+        if not self.estimated_duration or not self.estimated_duration.total_seconds():
+            return ""
+        total_minutes = round(self.estimated_duration.total_seconds() / 60)
+        hours, minutes = divmod(total_minutes, 60)
+        parts: list[str] = []
+        if hours:
+            parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+        if minutes:
+            parts.append(f"{minutes} min")
+        return "~" + " ".join(parts) if parts else ""
 
     def save(self, *args, **kwargs):
         if self._state.adding:
