@@ -16,7 +16,7 @@ Named slots:
 Mergeable `class` prop allows callers to append extra utility classes
 to the article element without forking the shell.
 {% endcomment %}
-<article class="course-card surface border-gray-200 h-full relative p-0 overflow-hidden flex flex-col {% if clickable %}cursor-pointer {% endif %}transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 {{ class }}">
+<article class="course-card surface border-gray-200 h-full relative p-0 overflow-hidden flex flex-col {% if clickable %}cursor-pointer {% endif %}{{ class }}">
     <div class="course-accent-{{ accent_slot_key }} course-card-hero flex items-center justify-center"
          aria-hidden="true">
         {% course_icon icon icon_fallback css_class="size-12" aria_label=title %}

@@ -272,8 +272,16 @@
     }
 
     /* Course-card shape classes — consume the component-tier tokens so themes
-     * can reshape cards by overriding `--fls-card-*` in their theme.css. */
-    .course-card        { border-radius: var(--fls-card-radius); }
+     * can reshape cards by overriding `--fls-card-*` in their theme.css.
+     * `.course-card` also carries the shared interaction behaviour (lift +
+     * shadow on hover, focus ring) so every course card/row presents the same
+     * affordance from one source of truth. */
+    .course-card {
+        border-radius: var(--fls-card-radius);
+        @apply transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md
+               motion-reduce:transition-none motion-reduce:hover:translate-y-0
+               focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2;
+    }
     .course-card-hero   { height: var(--fls-card-hero-height); }
     .course-card-body   { padding: var(--fls-card-padding); }
 

@@ -26,7 +26,7 @@ The `relative` position on the article and `z-index` on secondary controls
 the stretched link.
 {% endcomment %}
 
-<article class="course-card border border-gray-200 relative overflow-hidden flex items-stretch {% if clickable %}cursor-pointer {% endif %}transition duration-200 ease-out hover:shadow-sm motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 {{ class }}">
+<article class="course-card border border-gray-200 relative overflow-hidden flex items-stretch {% if clickable %}cursor-pointer {% endif %}{{ class }}">
 
     {% comment %}Left: full-height accent hero panel, flush to the card edge with no
     surrounding padding so the icon reads as a prominent hero image rather than an

@@ -128,6 +128,16 @@
         @apply bg-surface rounded-lg;
     }
 
+    /* Course cards read as clean white panels rather than picking up the
+     * off-white Stratosphere surface (grid cards) or staying transparent
+     * (all-courses rows), so they lift off the page background. The accent
+     * hero panels are child elements with their own gradient, so they keep
+     * their colour. Declared after `.surface` so it wins on the grid card,
+     * which carries both `.course-card` and `.surface`. */
+    .course-card {
+        @apply bg-white;
+    }
+
     .alert-success {
         @apply bg-success-light border-success/30 text-on-success-light;
     }
