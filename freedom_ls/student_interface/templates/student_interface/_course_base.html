@@ -1,18 +1,34 @@
 {% extends "_base_interface.html" %}
+
 {% load static %}
 
-{% block extra_head %}{{ block.super }}
-    <link rel="stylesheet" href="{% static 'content_engine/vendor/katex/katex.min.css' %}">
+{% block extra_head %}
+    {{ block.super }}
+    <link rel="stylesheet"
+          href="{% static 'content_engine/vendor/katex/katex.min.css' %}" />
 {% endblock extra_head %}
 
-{% block head_title %}{% block item_head_title %}{% endblock %}{% if current_part %} — {{ current_part.title }}{% endif %} — {{ course.title }} — {{ site_name }}{% endblock head_title %}
+{% block head_title %}
+    {% block item_head_title %}
+    {% endblock %}
+    {% if current_part %}
+        — {{ current_part.title }}
+    {% endif %}
+    — {{ course.title }} — {{ site_name }}
+{% endblock head_title %}
 
-{% block extra_alpine_components %}{{ block.super }}
+{% block extra_alpine_components %}
+    {{ block.super }}
     <script defer src="{% static 'student_interface/js/alpine-components.js' %}"></script>
     <script defer src="{% static 'content_engine/vendor/katex/katex.min.js' %}"></script>
     <script defer src="{% static 'content_engine/js/alpine-components.js' %}"></script>
 {% endblock extra_alpine_components %}
 
+{% comment %}
+These blocks feed exact-match HTML attributes (data-variant powers the CSS
+bottom-sheet selector, data-storage-key is a JS key) — keep them single-line so
+no surrounding whitespace leaks into the attribute value.
+{% endcomment %}
 {% block sidebar_storage_key %}sidebar-course-toc{% endblock sidebar_storage_key %}
 {% block sidebar_presentation %}bottom-sheet{% endblock sidebar_presentation %}
 {% block sidebar_heading_aria %}Course outline{% endblock sidebar_heading_aria %}
@@ -22,13 +38,31 @@ The player TOC is always open on desktop (no close control) and supplies its own
 chrome via the breadcrumb / compact header, so the shared shell header bar is
 suppressed.
 {% endcomment %}
+
 {% block sidebar_desktop_lock %}true{% endblock sidebar_desktop_lock %}
 {% block header_bar %}{% endblock header_bar %}
+{% comment %}
+The bottom sheet shows the same outline header/chrome as the desktop docked
+panel, so the shared mobile title-and-close row is suppressed — keeping mobile
+and desktop content identical.
+{% endcomment %}
+{% block sidebar_mobile_header %}{% endblock sidebar_mobile_header %}
+{% comment %}
+No mobile header row, so the body itself owns the top inset at every breakpoint.
+{% endcomment %}
+{% block sidebar_body_top_pad %}pt-6{% endblock sidebar_body_top_pad %}
 
-{% block sidebar_heading %}Table of Contents{% endblock sidebar_heading %}
+{% comment %}
+Give the outline a roomier desktop column than the shared 16rem default so the
+course title and nested TOC rows have space to breathe. --sidebar-width is read
+by .side-panel-grid; only the lg grid is two-column, so the override is harmless
+below lg.
+{% endcomment %}
+{% block sidebar_class %}[--sidebar-width:20rem]{% endblock sidebar_class %}
 
 {% block breadcrumbs %}
     {% include "student_interface/partials/player_breadcrumbs.html" %}
+
 {% endblock breadcrumbs %}
 
 {% block sidebar_content %}
@@ -38,7 +72,9 @@ suppressed.
     highlight race. course_index already carries is_current / contains_current.
     {% endcomment %}
     {% include "student_interface/partials/course_toc_header.html" %}
+
     {% with children=course_index %}
         {% include "student_interface/partials/course_minimal_toc.html#course-children" %}
+
     {% endwith %}
 {% endblock sidebar_content %}

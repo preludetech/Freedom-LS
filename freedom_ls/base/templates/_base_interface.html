@@ -72,7 +72,14 @@
                     class="side-panel-dialog backdrop:bg-black/50 backdrop:backdrop-blur-sm"
                     aria-label="{% block sidebar_heading_aria %}Navigation{% endblock sidebar_heading_aria %}">
                 <div class="overlay-panel side-panel-body bg-surface h-full overflow-y-auto overscroll-contain">
-                    {% comment %} Mobile panel header with close control. {% endcomment %}
+                    {% comment %}
+                    Mobile panel header with close control. Consumers whose panel
+                    body already carries its own heading/chrome (e.g. the course
+                    player's outline header) override this block to empty so the
+                    mobile sheet shows exactly the same content as the desktop
+                    docked panel — no duplicated title row.
+                    {% endcomment %}
+                    {% block sidebar_mobile_header %}
                     <div class="flex items-center justify-between p-4 lg:hidden">
                         <span class="text-lg font-semibold text-muted truncate"
                               x-text="$root.dataset.sidebarHeading">
@@ -83,7 +90,16 @@
                             <c-icon name="menu_close" class="size-5" />
                         </button>
                     </div>
-                    <div class="pl-4 pr-4 pb-4">
+                    {% endblock sidebar_mobile_header %}
+                    {% comment %}
+                    The mobile panel header (above, lg:hidden) supplies the top
+                    space below lg, so by default the body only needs a top pad on
+                    desktop (lg:pt-6) — without it the outline squashes against the
+                    panel top once the shell header bar is suppressed. Consumers
+                    that also suppress the mobile header (e.g. the player) override
+                    sidebar_body_top_pad to add a top pad at every breakpoint.
+                    {% endcomment %}
+                    <div class="px-4 pb-6 lg:px-6 {% block sidebar_body_top_pad %}lg:pt-6{% endblock sidebar_body_top_pad %}">
                         {% block sidebar_content %}
                         {% endblock sidebar_content %}
                     </div>

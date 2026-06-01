@@ -491,7 +491,7 @@
          * it leaves grid flow, so collapse to a single column and let the
          * content fill the width instead of squashing into the 16rem track. */
         .side-panel-grid {
-            grid-template-columns: 16rem minmax(0, 1fr);
+            grid-template-columns: var(--sidebar-width, 16rem) minmax(0, 1fr);
         }
         .side-panel-grid[data-panel-open="false"] {
             grid-template-columns: minmax(0, 1fr);
