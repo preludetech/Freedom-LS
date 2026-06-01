@@ -11,8 +11,8 @@ its own concern (registered leaf: eyebrow text; not-registered leaf: desktop
 modal vs mobile deep-link).
 
 The collection partials below (`current-courses`, `recommended-courses`,
-`available-courses`, `learning-history`, `all-courses`) all dispatch
-through this single seam.
+`available-courses`, `learning-history`) all dispatch through this single
+seam.
 {% endcomment %}
 
 {% partialdef dispatch-card %}
@@ -37,20 +37,6 @@ through this single seam.
             {% partial dispatch-card %}
         {% endfor %}
     </div>
-{% endpartialdef %}
-
-{% partialdef all-courses %}
-    {% if all_courses %}
-        {% with courses=all_courses %}
-            {% partial course-grid %}
-        {% endwith %}
-    {% else %}
-        {% if not registered_courses %}
-            <p class="text-muted/50">
-                No courses available yet.
-            </p>
-        {% endif %}
-    {% endif %}
 {% endpartialdef %}
 
 {% partialdef current-courses %}
