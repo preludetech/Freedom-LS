@@ -227,6 +227,55 @@ def test_course_detail_has_start_button_when_registered_zero_progress(
 
 
 @pytest.mark.django_db
+def test_course_detail_shows_continue_when_registered_with_progress(
+    mock_site_context, course_with_topics
+):
+    """A registered learner with partial (>0) progress and no completion
+    sees a 'Continue' CTA."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    cp = CourseProgressFactory(user=user, course=course_with_topics)
+    cp.progress_percentage = 50
+    cp.completed_time = None
+    cp.save()
+
+    client = _logged_in_client(user)
+    response = client.get(
+        reverse(
+            "student_interface:course_detail",
+            kwargs={"course_slug": course_with_topics.slug},
+        )
+    )
+    body = response.content.decode()
+    assert "Continue" in body
+
+
+@pytest.mark.django_db
+def test_course_detail_shows_review_course_when_completed(
+    mock_site_context, course_with_topics
+):
+    """A registered learner who has completed the course sees a
+    'Review course' CTA."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    CourseProgressFactory(
+        user=user,
+        course=course_with_topics,
+        completed_time=timezone.now(),
+    )
+
+    client = _logged_in_client(user)
+    response = client.get(
+        reverse(
+            "student_interface:course_detail",
+            kwargs={"course_slug": course_with_topics.slug},
+        )
+    )
+    body = response.content.decode()
+    assert "Review course" in body
+
+
+@pytest.mark.django_db
 def test_course_detail_renders_breadcrumbs(mock_site_context, course_with_topics):
     """The detail page renders breadcrumbs including the 'All courses' link
     and the current course title."""
