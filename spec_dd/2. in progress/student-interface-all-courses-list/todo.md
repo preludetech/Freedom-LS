@@ -43,8 +43,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 8. Code security review
 
-- [ ] (cmd) Run `/security-review` on the pending changes
-- [ ] (user) Address any issues raised
+- [x] (cmd) Run `/security-review` on the pending changes
+- [x] (user) Address any issues raised
 
 ## 9. QA
 
