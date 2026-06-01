@@ -12,8 +12,9 @@
 
     The sidebar is a single <dialog> driven by the shared sidePanel controller:
     docked in-flow on desktop (dialog.show()), modal overlay below lg
-    (dialog.showModal()). Presentation (bottom-sheet vs side-drawer) is chosen
-    per consumer via the sidebar_presentation block.
+    (dialog.showModal()). The shared default presentation is the bottom-sheet
+    (slides up from the bottom on mobile); a consumer can override it via the
+    sidebar_presentation block.
     {% endcomment %}
     <div x-data="sidePanel"
          class="px-4 sm:px-6 lg:px-8"
@@ -68,7 +69,7 @@
             would shadow the inherited one and pin the docked panel at top: 0).
             {% endcomment %}
             <dialog x-ref="panelDialog"
-                    data-variant="{% block sidebar_presentation %}side-drawer{% endblock sidebar_presentation %}"
+                    data-variant="{% block sidebar_presentation %}bottom-sheet{% endblock sidebar_presentation %}"
                     class="side-panel-dialog backdrop:bg-black/50 backdrop:backdrop-blur-sm"
                     aria-label="{% block sidebar_heading_aria %}Navigation{% endblock sidebar_heading_aria %}">
                 <div class="overlay-panel side-panel-body bg-surface h-full overflow-y-auto overscroll-contain">

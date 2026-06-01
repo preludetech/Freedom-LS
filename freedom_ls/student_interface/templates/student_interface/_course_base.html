@@ -25,12 +25,12 @@
 {% endblock extra_alpine_components %}
 
 {% comment %}
-These blocks feed exact-match HTML attributes (data-variant powers the CSS
-bottom-sheet selector, data-storage-key is a JS key) — keep them single-line so
-no surrounding whitespace leaks into the attribute value.
+These blocks feed exact-match HTML attributes (data-storage-key is a JS key) —
+keep them single-line so no surrounding whitespace leaks into the attribute
+value. The mobile bottom-sheet presentation is the shared base default, so it is
+not overridden here.
 {% endcomment %}
 {% block sidebar_storage_key %}sidebar-course-toc{% endblock sidebar_storage_key %}
-{% block sidebar_presentation %}bottom-sheet{% endblock sidebar_presentation %}
 {% block sidebar_heading_aria %}Course outline{% endblock sidebar_heading_aria %}
 
 {% comment %}

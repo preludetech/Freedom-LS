@@ -194,4 +194,13 @@
         backdrop-filter: blur(12px) saturate(1.5);
         -webkit-backdrop-filter: blur(12px) saturate(1.5);
     }
+
+    /* The side panel (course-player outline, educator/test nav) reads as a clean
+     * white card against the Stratosphere page surface at every breakpoint,
+     * mirroring the white header — identical on the docked desktop column and
+     * the mobile bottom sheet. The two-class selector beats the element's own
+     * `bg-surface` utility. */
+    .side-panel-dialog .side-panel-body {
+        background-color: #FFFFFF;
+    }
 }
