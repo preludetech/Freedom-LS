@@ -1,0 +1,41 @@
+<c-vars
+    percentage="0"
+    accent_slot_key=""
+    label="Course progress"
+    bar_class="h-2"
+    label_class="text-sm font-medium tabular-nums text-muted"
+    suffix=""
+/>
+
+{% comment %}
+Single source of truth for the course-progress bar shown on course cards, the
+player TOC header, and the player breadcrumb chrome. The fill is always tinted
+to the course accent via `course-progress-<accent_slot_key>`, so every progress
+bar matches its course's colours.
+
+Props:
+  percentage      - 0-100 value; drives the bar and the `{N}%` readout.
+  accent_slot_key - course palette slot (e.g. "1") for the accent tint.
+  label           - aria-label for the bar.
+  bar_class       - bar thickness/shape utilities (default h-2).
+  label_class     - classes for the percentage readout span.
+  suffix          - text appended after the percentage (e.g. " complete").
+
+Usage:
+<c-course-progress-bar percentage="{{ course.progress_percentage|default:0 }}"
+                       accent_slot_key="{{ course.accent_slot_key }}"
+                       label="Progress for {{ course.title }}" />
+{% endcomment %}
+<div class="flex items-center gap-2">
+    <progress class="w-full {{ bar_class }} rounded-full overflow-hidden course-progress-{{ accent_slot_key }}"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="{{ percentage|default:0 }}"
+              aria-label="{{ label }}"
+              value="{{ percentage|default:0 }}"
+              max="100">
+        {{ percentage|default:0 }}%
+    </progress>
+    <span class="{{ label_class }} whitespace-nowrap">{{ percentage|default:0 }}%{{ suffix }}</span>
+</div>

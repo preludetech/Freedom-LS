@@ -69,18 +69,11 @@ Player orientation chrome. Two presentations from one set of context values:
         </button>
     </div>
     {% if course_progress %}
-        <div class="flex items-center gap-2 mt-2">
-            <progress class="w-full h-1.5 rounded-full overflow-hidden"
-                      role="progressbar"
-                      aria-valuemin="0"
-                      aria-valuemax="100"
-                      aria-valuenow="{{ course_progress.progress_percentage|default:0 }}"
-                      aria-label="Course progress"
-                      value="{{ course_progress.progress_percentage|default:0 }}"
-                      max="100">
-                {{ course_progress.progress_percentage|default:0 }}%
-            </progress>
-            <span class="text-xs font-medium tabular-nums text-muted">{{ course_progress.progress_percentage|default:0 }}%</span>
+        <div class="mt-2">
+            <c-course-progress-bar percentage="{{ course_progress.progress_percentage|default:0 }}"
+                                   accent_slot_key="{{ course.accent_slot_key }}"
+                                   bar_class="h-1.5"
+                                   label_class="text-xs font-medium tabular-nums text-muted" />
         </div>
     {% endif %}
 </div>
