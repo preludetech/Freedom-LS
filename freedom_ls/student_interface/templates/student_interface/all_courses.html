@@ -1,11 +1,16 @@
 {% extends "_base.html" %}
 
-{% block head_title %}All Courses{% endblock head_title %}
+{% block head_title %}
+    All Courses
+{% endblock head_title %}
 
 {% block content %}
     <c-page>
-        <h1 class="text-center">All Courses</h1>
+        <h1 class="pb-8">
+            All Courses
+        </h1>
 
         {% include "student_interface/partials/course_row_list.html#all-courses-rows" %}
+
     </c-page>
 {% endblock content %}
