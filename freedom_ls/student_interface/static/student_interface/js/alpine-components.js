@@ -6,6 +6,13 @@
  */
 
 document.addEventListener("alpine:init", () => {
+    // Shared between examRunner (owns the beforeunload guard) and examRunnerForm
+    // (owns submit). Set true when the user triggers a DELIBERATE in-runner
+    // navigation (Next / Previous / Submit / exit) so the beforeunload warning
+    // does not fire for it — the warning is only meant to catch accidental
+    // leaves (closing the tab, typing a new URL).
+    let runnerNavigating = false;
+
     // Course part expand/collapse (student_interface/partials/course_minimal_toc.html)
     Alpine.data("coursePart", () => ({
         expanded: false,
@@ -85,11 +92,33 @@ document.addEventListener("alpine:init", () => {
     //     screen readers announce page context immediately after navigation.
     Alpine.data("examRunner", () => ({
         _unloadHandler: null,
+        _navHandler: null,
         init() {
+            // Warn only on accidental leaves — skip deliberate in-runner
+            // navigation, which sets runnerNavigating (see below + submit()).
             this._unloadHandler = (e) => {
+                if (runnerNavigating) return;
                 e.preventDefault();
             };
             window.addEventListener("beforeunload", this._unloadHandler);
+
+            // Mark deliberate in-runner navigations so the beforeunload guard
+            // does not fire for them. Capture phase so the flag is set before
+            // the navigation begins. Covers Next (form submit), Submit-on-exit
+            // (form submit), and Previous / Leave-and-save (anchor clicks).
+            // The programmatic Submit path goes through examRunnerForm.submit(),
+            // which sets the flag directly (form.submit() fires no submit event).
+            this._navHandler = (e) => {
+                if (e.type === "submit") {
+                    runnerNavigating = true;
+                    return;
+                }
+                if (e.target.closest && e.target.closest("a[href]")) {
+                    runnerNavigating = true;
+                }
+            };
+            document.addEventListener("submit", this._navHandler, true);
+            document.addEventListener("click", this._navHandler, true);
 
             // Focus the page heading for screen reader context on page load.
             this.$nextTick(() => {
@@ -102,6 +131,12 @@ document.addEventListener("alpine:init", () => {
                 window.removeEventListener("beforeunload", this._unloadHandler);
                 this._unloadHandler = null;
             }
+            if (this._navHandler) {
+                document.removeEventListener("submit", this._navHandler, true);
+                document.removeEventListener("click", this._navHandler, true);
+                this._navHandler = null;
+            }
+            runnerNavigating = false;
         },
     }));
 
@@ -216,6 +251,7 @@ document.addEventListener("alpine:init", () => {
         _answeredBase: 0,
         _formEl: null,
         _recompute: null,
+        _onPageShow: null,
 
         init() {
             const base = parseInt(this.$el.dataset.answeredBase || "0", 10);
@@ -229,12 +265,27 @@ document.addEventListener("alpine:init", () => {
                 this._formEl.addEventListener("input", this._recompute);
                 this._formEl.addEventListener("change", this._recompute);
             }
+
+            // Re-enable the Submit button if the page is restored from the
+            // bfcache (e.g. back button), which does not re-run init().
+            // Without this the button could come back disabled from a prior
+            // submit attempt. Also clear the nav flag so the beforeunload
+            // guard is armed again on the restored page.
+            this._onPageShow = () => {
+                this.submitting = false;
+                runnerNavigating = false;
+            };
+            window.addEventListener("pageshow", this._onPageShow);
         },
 
         destroy() {
             if (this._formEl && this._recompute) {
                 this._formEl.removeEventListener("input", this._recompute);
                 this._formEl.removeEventListener("change", this._recompute);
+            }
+            if (this._onPageShow) {
+                window.removeEventListener("pageshow", this._onPageShow);
+                this._onPageShow = null;
             }
             this._closeDialog();
         },
@@ -276,6 +327,10 @@ document.addEventListener("alpine:init", () => {
         submit(formEl) {
             if (this.submitting) return;
             this.submitting = true;
+            // Deliberate submit — suppress the beforeunload "Leave site?" prompt.
+            // form.submit() fires no submit event, so the examRunner capture
+            // listener cannot catch this path; set the flag directly.
+            runnerNavigating = true;
             formEl.submit();
         },
     }));
