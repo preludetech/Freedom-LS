@@ -1,0 +1,27 @@
+<c-vars caption="" />
+
+{% load content_tags %}
+{% comment %}
+Table component. The author writes a GitHub-flavoured markdown table in the
+slot; this supplies the accessible caption, a focusable horizontally
+scrollable wrapper, and brand styling.
+
+Attribute:
+  caption  Optional. Splices a real <caption> into the table and names the
+           scroll region.
+
+Independent of the base app's c-data-table / scrollTableLabels.
+{% endcomment %}
+
+{% markdown slot as rendered_table %}
+<div class="my-6 overflow-x-auto rounded-xl border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-focus-ring
+            [&_table]:w-full [&_table]:text-left
+            [&_caption]:px-4 [&_caption]:py-3 [&_caption]:text-left [&_caption]:font-semibold [&_caption]:text-on-surface [&_caption]:border-b [&_caption]:border-border
+            [&_thead]:bg-surface-2
+            [&_th]:px-4 [&_th]:py-3 [&_th]:text-xs [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted
+            [&_td]:px-4 [&_td]:py-3 [&_td]:text-on-surface [&_td]:border-t [&_td]:border-border"
+     tabindex="0"
+     role="group"
+     aria-label="{{ caption|default:'Data table' }}">
+    {% if caption %}{{ rendered_table|inject_table_caption:caption }}{% else %}{{ rendered_table }}{% endif %}
+</div>

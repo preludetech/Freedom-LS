@@ -1,9 +1,72 @@
+import re
+from urllib.parse import urlparse
+
 from django import template
+from django.utils.html import escape
+from django.utils.safestring import SafeString
 
 from freedom_ls.content_engine.models import File, Form, Topic
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 
 register = template.Library()
+
+_FIRST_TABLE_RE = re.compile(r"<table[^>]*>", re.IGNORECASE)
+
+
+@register.filter
+def inject_table_caption(rendered_html: str, caption: str) -> SafeString:
+    """Insert a ``<caption>`` as the first child of the first ``<table>``.
+
+    The markdown ``tables`` extension emits no caption, so this splices one in
+    to give the table a real, SR-associated accessible caption. The element is
+    inserted unstyled — caption styling is supplied declaratively by the
+    ``<c-table>`` wrapper's ``[&_caption]:`` Tailwind variants in
+    ``cotton/table.html``, alongside the rest of the table styling. The caption
+    text is escaped (it is author input). If there is no ``<table>`` (or no
+    caption), the input is returned unchanged.
+
+    ``rendered_html`` is trusted markup straight from ``render_markdown``
+    (already nh3-sanitised) and the only untrusted input (``caption``) is
+    escaped, so the assembled string is safe to return as a ``SafeString``.
+    """
+    if not caption:
+        # Safe: already sanitised by render_markdown.
+        return SafeString(rendered_html)  # nosec B703 B308
+    match = _FIRST_TABLE_RE.search(rendered_html)
+    if not match:
+        # Safe: already sanitised by render_markdown.
+        return SafeString(rendered_html)  # nosec B703 B308
+    caption_html = f"<caption>{escape(caption)}</caption>"
+    insert_at = match.end()
+    # Safe: sanitised markup spliced with an escaped author caption.
+    return SafeString(  # nosec B703 B308
+        rendered_html[:insert_at] + caption_html + rendered_html[insert_at:]
+    )
+
+
+@register.filter
+def safe_url(value: str | None) -> str:
+    """Return ``value`` only when it is a safe link target.
+
+    Permits http(s) URLs and relative URLs; blocks dangerous schemes
+    (``javascript:``, ``data:``, ``vbscript:``, …) so author-supplied values
+    can be emitted into URL attributes without smuggling executable content.
+
+    The sole consumer is the non-navigable ``blockquote[cite]`` attribute, so a
+    scheme-less (relative) value is treated as safe. If reused for a navigable
+    attribute (``href``/``src``), scheme-relative ``//host`` values should be
+    re-evaluated for that context.
+    """
+    if not value:
+        return ""
+    try:
+        scheme = urlparse(value).scheme.lower()
+    except ValueError:
+        # Malformed input (e.g. an unterminated IPv6 literal) fails closed.
+        return ""
+    if scheme in ("", "http", "https"):
+        return value
+    return ""
 
 
 @register.filter  # (needs_context=True)
