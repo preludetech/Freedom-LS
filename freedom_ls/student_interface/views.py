@@ -30,7 +30,6 @@ from freedom_ls.student_progress.models import (
 from .utils import (
     IN_PROGRESS,
     READY,
-    CourseListingStatus,
     form_start_page_buttons,
     get_all_courses,
     get_completed_courses,
@@ -109,28 +108,6 @@ def _detail_cta_label(course: Course, user, *, is_registered: bool) -> str:
     return "Review course"
 
 
-def _annotate_preview_context(course: Course, *, is_registered: bool) -> None:
-    """Attach preview children + registration + start URL for the modal.
-
-    The not-started card embeds ``course_preview_content.html`` inside a
-    desktop modal. That partial only needs child *titles* (not statuses or
-    URLs), so we use the lightweight ``course.children()`` model accessor
-    rather than the full ``get_course_index`` walk. ``is_registered`` is
-    passed in by the caller — the dashboard always knows it from the
-    queryset that produced the course, avoiding an extra EXISTS query.
-    """
-    children = list(course.children())
-    setattr(course, "preview_children", children)  # noqa: B010
-    setattr(course, "preview_is_registered", is_registered)  # noqa: B010
-    setattr(  # noqa: B010
-        course,
-        "preview_start_url",
-        _detail_start_url(
-            course, is_registered=is_registered, has_items=bool(children)
-        ),
-    )
-
-
 @login_required
 def dashboard(request):
     """Authenticated dashboard listing the learner's courses."""
@@ -143,9 +120,8 @@ def dashboard(request):
         _annotate_next_up(course, request.user)
     for rec in recommended_courses:
         # Recommendations are by definition not yet registered, so they get
-        # the preview card rather than a progress bar.
+        # the not-registered card (single link to detail page).
         setattr(rec.collection, "is_registered", False)  # noqa: B010
-        _annotate_preview_context(rec.collection, is_registered=False)
 
     registered_ids = {c.id for c in get_course_registrations(request.user)}
     recommended_ids = {rec.collection_id for rec in recommended_courses}
@@ -155,7 +131,6 @@ def dashboard(request):
         if course.id in registered_ids or course.id in recommended_ids:
             continue
         setattr(course, "is_registered", False)  # noqa: B010
-        _annotate_preview_context(course, is_registered=False)
         available_courses.append(course)
         if len(available_courses) == 3:
             break
@@ -177,11 +152,6 @@ def all_courses(request):
         course = entry.course
         setattr(course, "listing_status", entry.status)  # noqa: B010
         setattr(course, "progress_percentage", entry.progress_percentage)  # noqa: B010
-        if entry.status == CourseListingStatus.NOT_REGISTERED:
-            # Pre-existing preview behaviour for unregistered rows (out of scope
-            # to change). Registered/in-progress/complete rows need no preview
-            # context and add no per-course query.
-            _annotate_preview_context(course, is_registered=False)
     return render(
         request,
         "student_interface/all_courses.html",

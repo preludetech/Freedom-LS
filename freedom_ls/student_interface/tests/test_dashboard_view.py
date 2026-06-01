@@ -185,10 +185,12 @@ def test_dashboard_available_includes_eligible_course(mock_site_context, courses
 
 
 @pytest.mark.django_db
-def test_dashboard_available_courses_have_preview_annotations(
-    mock_site_context, courses
-):
-    """Available courses carry preview context with is_registered False."""
+def test_dashboard_available_courses_are_not_registered(mock_site_context, courses):
+    """Available courses have is_registered=False and no stale preview annotations.
+
+    The dead ``_annotate_preview_context`` helper has been removed; the not-registered
+    card now links directly to the course_detail page via the course slug only.
+    """
     user = UserFactory()
     client = _logged_in_client(user)
 
@@ -197,8 +199,9 @@ def test_dashboard_available_courses_have_preview_annotations(
     available = response.context["available_courses"]
     assert available
     for course in available:
-        assert course.preview_is_registered is False
-        assert course.preview_start_url
+        assert course.is_registered is False
+        assert not hasattr(course, "preview_is_registered")
+        assert not hasattr(course, "preview_start_url")
 
 
 # --- dashboard "Available courses" section + Browse-all link ---

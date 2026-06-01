@@ -4,11 +4,11 @@ Course-list partials shared by the dashboard and the all-courses page.
 `dispatch-card` is the single dispatch seam for all card states:
     * "history"           -> course_card_complete.html   (completed course)
     * course.is_registered -> course_card_registered.html (in-progress / not-started)
-    * else                -> course_card_not_registered.html (preview / unregistered)
+    * else                -> course_card_not_registered.html (single link to course detail page)
 
 Each leaf is single-purpose and contains no further state branching beyond
-its own concern (registered leaf: eyebrow text; not-registered leaf: desktop
-modal vs mobile deep-link).
+its own concern (registered leaf: eyebrow text; not-registered leaf: plain
+link to the course_detail page on all screen sizes).
 
 The collection partials below (`current-courses`, `recommended-courses`,
 `available-courses`, `learning-history`) all dispatch through this single

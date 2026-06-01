@@ -2,7 +2,7 @@
 
 These exercise the status/annotation logic the view attaches to each course
 object it puts in the ``all_courses`` context: listing_status, progress
-percentage, preview context, accent slot, and the absence of next_up_*
+percentage, accent slot, and the absence of next_up_*
 annotations. Rendered-HTML row assertions live in ``test_all_courses_rows``.
 """
 
@@ -91,8 +91,14 @@ def test_all_courses_not_registered_has_not_registered_status(
 
 
 @pytest.mark.django_db
-def test_all_courses_not_registered_has_preview_context(mock_site_context, courses):
-    """An unregistered course carries preview context (modal/deep-link affordance)."""
+def test_all_courses_not_registered_has_no_preview_annotations(
+    mock_site_context, courses
+):
+    """An unregistered course does not carry the old preview context attributes.
+
+    The dead ``_annotate_preview_context`` helper has been removed; the not-registered
+    row now links directly to the course_detail page via the course slug only.
+    """
     user = UserFactory()
     client = _logged_in_client(user)
 
@@ -101,9 +107,10 @@ def test_all_courses_not_registered_has_preview_context(mock_site_context, cours
 
     all_courses_list = list(response.context["all_courses"])
     course = next(c for c in all_courses_list if c.id == courses[0].id)
-    # _annotate_preview_context sets preview_is_registered=False and preview_start_url
-    assert course.preview_is_registered is False
-    assert course.preview_start_url
+    assert course.listing_status == CourseListingStatus.NOT_REGISTERED
+    # No stale preview annotations from the removed _annotate_preview_context
+    assert not hasattr(course, "preview_is_registered")
+    assert not hasattr(course, "preview_start_url")
 
 
 @pytest.mark.django_db
@@ -147,7 +154,7 @@ def test_all_courses_in_progress_has_in_progress_status(mock_site_context, cours
 
 @pytest.mark.django_db
 def test_all_courses_complete_has_complete_status(mock_site_context, courses):
-    """A completed course has listing_status=COMPLETE and no preview context."""
+    """A completed course has listing_status=COMPLETE."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     CourseProgressFactory(
@@ -164,8 +171,6 @@ def test_all_courses_complete_has_complete_status(mock_site_context, courses):
     all_courses_list = list(response.context["all_courses"])
     course = next(c for c in all_courses_list if c.id == courses[0].id)
     assert course.listing_status == CourseListingStatus.COMPLETE
-    # Completed rows do not receive preview context — no _annotate_preview_context call
-    assert not hasattr(course, "preview_is_registered")
     # NOTE (B4): when B4 row templates exist, assert link → course_finish URL in HTML
 
 
