@@ -20,6 +20,8 @@ This is only used in the tests.
     {% include "panel_framework/partials/breadcrumbs.html" %}
 {% endblock breadcrumbs %}
 
+{% block page_title %}{% include "partials/page_title.html" with page_title=heading %}{% endblock page_title %}
+
 {% block content %}
     {% include "panel_framework/partials/main_content.html" %}
 {% endblock content %}

@@ -5,6 +5,8 @@
 
 {% block item_head_title %}{{ form_page.title }} — {{ form.title }}{% endblock %}
 
+{% block page_title %}{% include "partials/page_title.html" with page_title=form.title page_subtitle=form.subtitle %}{% endblock page_title %}
+
 {% partialdef form-input-multiple-choice %}
     {% for option in question.options.all %}
         <div class="flex items-center">
@@ -101,18 +103,6 @@
 {% block content %}
     <c-page flush="true">
         <div class="space-y-8">
-
-            <div>
-                <h1 class="mb-2">
-                    {{ form.title }}
-                </h1>
-                {% if form.subtitle %}
-                    <p class="text-muted">
-                        {{ form.subtitle }}
-                    </p>
-                {% endif %}
-
-            </div>
 
             <!-- Page Progress Indicator -->
             {% if total_pages > 1 %}

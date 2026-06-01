@@ -581,12 +581,18 @@ def panel_framework_view(
             request=request,
         )
 
+        title_html = render_to_string(
+            "partials/page_title.html",
+            {"page_title": heading, "oob": True},
+            request=request,
+        )
+
         # TODO: Fix or figure out if we should worry
         # Semgrep Finding: python.django.security.audit.xss.direct-use-of-httpresponse.direct-use-of-httpresponse
         # Detected data rendered directly to the end user via 'HttpResponse' or a similar object. This bypasses Django's built-in cross-site scripting (XSS) defenses and could result in an XSS vulnerability. Use Django's template engine to safely render HTML.
         # Semgrep OSS
 
-        return HttpResponse(main_html + breadcrumb_html + sidebar_html)
+        return HttpResponse(main_html + breadcrumb_html + sidebar_html + title_html)
 
     context = {
         "menu_items": menu_items,

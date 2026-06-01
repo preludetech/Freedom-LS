@@ -123,7 +123,7 @@ class TestHtmxNavigation:
         assert 'id="main-content"' in content
 
     def test_htmx_navigation_includes_heading(self, mock_site_context: None) -> None:
-        """HTMX navigation response includes heading from menu_label."""
+        """HTMX navigation response carries the heading in the OOB page-title fragment."""
         request = _make_request(is_htmx=True, hx_target="main-content")
         response = panel_framework_view(
             config=CONFIG,
@@ -133,4 +133,7 @@ class TestHtmxNavigation:
             url_name=URL_NAME,
         )
         content = response.content.decode()
-        assert "<h1>Stubs</h1>" in content
+        # The heading moved out of #main-content into the shared header; on HTMX
+        # navigation it is swapped in via the OOB #page-title fragment.
+        assert 'id="page-title"' in content
+        assert "Stubs" in content

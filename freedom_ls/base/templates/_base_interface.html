@@ -61,16 +61,24 @@
             <div class="flex-1 min-w-0">
                 {% comment %}
                 Shared content header. Same markup on every breakpoint:
-                breadcrumbs (whose terminal crumb is the page title) plus an
-                optional header_extra slot for other elements (e.g. a progress
-                bar). The expand button is mobile-only (lg:hidden) and sits to the
-                right of the breadcrumbs — on desktop the panel is always docked,
-                so there is nothing to toggle.
+                breadcrumbs, then the shared page_title region (an <h1> styled
+                identically everywhere via partials/page_title.html, with an
+                optional subtitle), then an optional header_extra slot for other
+                elements (e.g. a progress bar). A bottom border separates the
+                header from the content on desktop only. The expand button is
+                mobile-only (lg:hidden) and sits to the right — on desktop the
+                panel is always docked, so there is nothing to toggle.
                 {% endcomment %}
-                <header class="flex items-start gap-2 pt-4 pb-2">
+                <header class="flex items-start gap-2 pt-4 pb-2 lg:pb-4 border-b border-border">
                     <div class="flex-1 min-w-0">
-                        {% block breadcrumbs %}{% endblock breadcrumbs %}
-                        {% block header_extra %}{% endblock header_extra %}
+                        {% block breadcrumbs %}
+                        {% endblock breadcrumbs %}
+                        {% block page_title %}
+                            {% include "partials/page_title.html" %}
+
+                        {% endblock page_title %}
+                        {% block header_extra %}
+                        {% endblock header_extra %}
                     </div>
                     <button x-on:click="toggle"
                             x-bind:aria-expanded="open"

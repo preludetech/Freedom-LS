@@ -2,27 +2,15 @@
 
 {% block item_head_title %}{{ topic.title }}{% endblock %}
 
+{% block page_title %}{% include "partials/page_title.html" with page_title=topic.title page_subtitle=topic.subtitle %}{% endblock page_title %}
+
 {% block content %}
     <c-page flush="true">
         <div class="space-y-8" x-data="coursePlayer">
 
-            <div class="space-y-8">
-
-                <div>
-                    <h1 tabindex="-1" class="focus:outline-none">
-                        {{ topic.title }}
-                    </h1>
-                    {% if topic.subtitle %}
-                        <p>
-                            {{ topic.subtitle }}
-                        </p>
-                    {% endif %}
-                </div>
-
-                <c-markdown-container>
-                    {{ topic.rendered_content }}
-                </c-markdown-container>
-            </div>
+            <c-markdown-container>
+                {{ topic.rendered_content }}
+            </c-markdown-container>
 
             <div class="flex items-center justify-between pt-4 border-t border-border gap-3">
                 <div>
