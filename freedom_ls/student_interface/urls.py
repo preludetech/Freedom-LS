@@ -39,6 +39,11 @@ urlpatterns = [
         name="course_form_complete",
     ),
     path(
+        "courses/<slug:course_slug>/<int:index>/submit-and-exit",
+        views.form_submit_and_exit,
+        name="form_submit_and_exit",
+    ),
+    path(
         "courses/<slug:course_slug>/finish/",
         views.course_finish,
         name="course_finish",

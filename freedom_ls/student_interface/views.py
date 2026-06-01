@@ -8,6 +8,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from freedom_ls.content_engine.models import (
     Course,
@@ -30,6 +31,8 @@ from freedom_ls.student_progress.models import (
 from .utils import (
     IN_PROGRESS,
     READY,
+    CourseListingStatus,
+    count_form_questions,
     form_start_page_buttons,
     get_all_courses,
     get_completed_courses,
@@ -37,6 +40,7 @@ from .utils import (
     get_course_listing,
     get_course_registrations,
     get_current_courses,
+    get_form_for_index,
     get_is_registered,
     get_item_part,
     get_recommended_courses,
@@ -428,6 +432,10 @@ def view_form(
 ):
     """Show the front page of the form"""
 
+    # §4a — stale-attempt safety net: finalise any stale incomplete attempt
+    # for submit-on-exit forms before reading progress state. No-op for save-on-exit.
+    FormProgress.finalise_stale_incomplete(request.user, form)
+
     # Try to get existing incomplete form progress (don't create if it doesn't exist)
     incomplete_form_progress = FormProgress.get_latest_incomplete(
         user=request.user, form=form
@@ -460,6 +468,9 @@ def view_form(
         "buttons": buttons,
         "next_url": next_url,
         **(player_context or {}),
+        # §4b — start screen context: truthful, derivable facts
+        "question_count": count_form_questions(form),
+        "page_count": form.pages.count(),
     }
 
     return render(request, "student_interface/course_form.html", context)
@@ -470,10 +481,11 @@ def form_start(request, course_slug, index):
     """Start or resume a form for the current user."""
 
     course = get_object_or_404(Course, slug=course_slug)
-    viewable_items = course.viewable_items()
-    if index < 1 or index > len(viewable_items):
-        raise Http404("No course item at this index.")
-    form = viewable_items[index - 1]
+    form = get_form_for_index(course, index)
+
+    # §4a — stale-attempt safety net: finalise any stale incomplete attempt
+    # for submit-on-exit forms before get_or_create_incomplete runs.
+    FormProgress.finalise_stale_incomplete(request.user, form)
 
     # Create a FormProgress instance if it doesn't yet exist
     form_progress = FormProgress.get_or_create_incomplete(request.user, form)
@@ -493,10 +505,7 @@ def form_start(request, course_slug, index):
 @login_required
 def form_fill_page(request, course_slug, index, page_number):
     course = get_object_or_404(Course, slug=course_slug)
-    viewable_items = course.viewable_items()
-    if index < 1 or index > len(viewable_items):
-        raise Http404("No course item at this index.")
-    form = viewable_items[index - 1]
+    form = get_form_for_index(course, index)
     all_pages = list(form.pages.all())
     total_pages = len(all_pages)
     if page_number < 1 or page_number > total_pages:
@@ -582,6 +591,16 @@ def form_fill_page(request, course_slug, index, page_number):
             }
         )
 
+    # §4c — runner context: honest answered count (persisted answers only)
+    answered_count = form_progress.answers.count() if form_progress else 0
+    total_question_count = count_form_questions(form)
+
+    # URL for the submit-and-exit endpoint (used by the exit dialog)
+    submit_and_exit_url = reverse(
+        "student_interface:form_submit_and_exit",
+        kwargs={"course_slug": course_slug, "index": index},
+    )
+
     context = {
         "course": course,
         "form": form,
@@ -596,18 +615,23 @@ def form_fill_page(request, course_slug, index, page_number):
         # Player chrome (outline panel + breadcrumb) so the fill page keeps the
         # same orientation as the rest of the player.
         **_player_chrome_context(request.user, course, form, index),
+        # §4c additions
+        "answered_count": answered_count,
+        "total_question_count": total_question_count,
+        "submit_and_exit_url": submit_and_exit_url,
     }
 
-    return render(request, "student_interface/course_form_page.html", context)
+    response = render(request, "student_interface/course_form_page.html", context)
+    # §4c — set Cache-Control: no-store on GET runner responses
+    response["Cache-Control"] = "no-store"
+    return response
 
 
 @login_required
 def course_form_complete(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
+    form = get_form_for_index(course, index)
     viewable_items = course.viewable_items()
-    if index < 1 or index > len(viewable_items):
-        raise Http404("No course item at this index.")
-    form = viewable_items[index - 1]
 
     # Get the most recent completed form progress
     form_progress = (
@@ -628,6 +652,13 @@ def course_form_complete(request, course_slug, index):
     if form_progress and form.strategy == FormStrategy.QUIZ:
         with contextlib.suppress(ValueError):
             is_failed_quiz = not form_progress.passed()
+
+    # §4e — percentage for QUIZ results: guarded with suppress(ValueError)
+    # Only set for QUIZ forms; non-quiz forms do not have a numeric percentage.
+    percentage = None
+    if form_progress and form.strategy == FormStrategy.QUIZ:
+        with contextlib.suppress(ValueError):
+            percentage = form_progress.quiz_percentage()
 
     # Calculate next URL for continue button
     total_viewable_items = len(viewable_items)
@@ -663,6 +694,11 @@ def course_form_complete(request, course_slug, index):
         # Player chrome (outline panel + breadcrumb).
         **_player_chrome_context(request.user, course, form, index),
     }
+
+    # Only include percentage in context for QUIZ forms (avoids None littering the context
+    # for non-quiz forms; template branches on form.strategy == "QUIZ" already).
+    if percentage is not None:
+        context["percentage"] = percentage
 
     return render(request, "student_interface/course_form_complete.html", context)
 
@@ -704,6 +740,28 @@ def course_finish(request, course_slug):
     }
 
     return render(request, "student_interface/course_finish.html", context)
+
+
+@login_required
+@require_POST
+def form_submit_and_exit(request, course_slug: str, index: int):
+    """POST-only endpoint: finalise the learner's current attempt and redirect to results.
+
+    Used by the exit dialog's "Leave and submit" action on submit-on-exit forms.
+    Calling complete() is idempotent so double-submits are safe.
+    """
+    course = get_object_or_404(Course, slug=course_slug)
+    form = get_form_for_index(course, index)
+
+    form_progress = FormProgress.get_latest_incomplete(user=request.user, form=form)
+    if form_progress is not None:
+        form_progress.complete()  # idempotent
+
+    return redirect(
+        "student_interface:course_form_complete",
+        course_slug=course_slug,
+        index=index,
+    )
 
 
 if TYPE_CHECKING:
