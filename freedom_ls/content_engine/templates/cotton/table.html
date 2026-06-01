@@ -14,11 +14,11 @@ Independent of the base app's c-data-table / scrollTableLabels.
 {% endcomment %}
 
 {% markdown slot as rendered_table %}
-<div class="my-6 overflow-x-auto rounded-md focus:outline-none focus:ring-2 focus:ring-focus-ring
+<div class="my-6 overflow-x-auto rounded-xl border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-focus-ring
             [&_table]:w-full [&_table]:text-left
             [&_thead]:bg-surface-2
-            [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-on-surface
-            [&_td]:px-3 [&_td]:py-2 [&_td]:border-t [&_td]:border-border"
+            [&_th]:px-4 [&_th]:py-3 [&_th]:text-xs [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted
+            [&_td]:px-4 [&_td]:py-3 [&_td]:text-on-surface [&_td]:border-t [&_td]:border-border"
      tabindex="0"
      role="group"
      aria-label="{{ caption|default:'Data table' }}">

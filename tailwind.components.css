@@ -89,7 +89,7 @@
     }
 
     thead {
-        @apply bg-surface-2 border-b-2 border-border
+        @apply bg-surface-1
     }
 
     th {

@@ -34,7 +34,8 @@ def inject_table_caption(rendered_html: str, caption: str) -> SafeString:
         # Safe: already sanitised by render_markdown.
         return SafeString(rendered_html)  # nosec B703 B308
     caption_html = (
-        f'<caption class="text-muted text-sm text-left px-3 py-2">'
+        f'<caption class="text-on-surface font-semibold text-left '
+        f'px-4 py-3 border-b border-border">'
         f"{escape(caption)}</caption>"
     )
     insert_at = match.end()
