@@ -1,51 +1,153 @@
-# Remove course start page
+# Course Player
 
-When a student starts a course then we need to go straight to the course-player, not the course start page. The course start page should either automatically redirect or get removed.
+Rework the student course-reading experience into a focused two-pane **course
+player**: a persistent left-hand Table of Contents (TOC) panel and the current
+section's content on the right. Remove the intermediate course start page so
+enrolled students go straight to the content, add breadcrumbs and per-section
+page titles for orientation, and make the TOC behave well on phones.
 
-Eg: http://127.0.0.1:8000/courses/functionality-demo-show-end-with-topic/ should not exist, it should not render a template. Go straight to http://127.0.0.1:8000/courses/functionality-demo-show-end-with-topic/{N}/
+This stays high-level on purpose. Research backing each decision lives in:
+- `research_desktop_toc_sidebar.md`
+- `research_mobile_bottom_sheet_nav.md`
+- `research_breadcrumbs_resume_titles.md`
 
-# Breadcrumbs
+---
 
-At the top of the actual content area, show breadcrumbs.
+## 1. Remove the course start page
 
+Today opening a course lands on a course-home / start page. Enrolled students
+should skip it and go straight into the player.
+
+- The bare course URL (e.g. `http://127.0.0.1:8000/courses/functionality-demo-show-end-with-topic/`)
+  should no longer render the old start-page template.
+- **For an enrolled student** it resolves to the right item in the player
+  (`/courses/{slug}/{N}/`):
+  - **No progress yet → the first item** (a true start).
+  - **Has progress → the last-accessed item** (resume where you left off).
+  - Because it always resolves to the student's *current* spot, the bare course
+    URL stays a stable, bookmarkable "take me to where I am" entry point.
+- **For a visitor who is not registered**, the player is off-limits. Nothing
+  should link an unregistered user into the player. They belong on the existing
+  **course preview page**, which is where the course description / overview /
+  register call-to-action lives. (So the description does not need a new home —
+  it stays on the preview page; for enrolled students the always-on outline is
+  their overview.)
+- Verify the **browser Back button** behaves sanely from the resolved item
+  (no redirect loop back through the bare course URL).
+
+---
+
+## 2. Breadcrumbs
+
+At the top of the main content area, show a breadcrumb trail:
+
+```
 {course title} > {course-part if there is one} > {title of current section}
-
-![alt text](image-1.png)
-
-# Left hand panel contents
-
-![alt text](image.png)
-
-Header area:
 ```
-course outline
+
+![breadcrumb example](image-1.png)
+
+- When the current section has no course-part, **drop that crumb** — don't show a
+  dangling separator or pad the trail.
+- The **current section is plain text, not a link** (and marked as the current
+  location for assistive tech). Ancestor crumbs are links.
+- Wrap in a breadcrumb navigation landmark; render the `>` separators as
+  decoration (not real text) so screen readers don't announce them.
+- Truncate an over-long course or section title gracefully rather than wrapping
+  or breaking the layout.
+
+---
+
+## 3. Left-hand TOC panel
+
+![TOC panel](image.png)
+
+### Header (pinned to the top of the panel)
+
+```
+COURSE OUTLINE          ← small eyebrow label
 {Course Title}
-[####...... progress bar]
-Amount complete %
+[####......] progress bar
+{X}% complete           {N} / {M} mods
 ```
 
-Body: show the table of contents. Course-parts should be expandable
-Match the style of the image above.
-Scrolling should be independant of the content
+- The bar %, the `% complete`, and the `N / M` counter must all derive from the
+  **same progress data** so they never disagree.
 
-[left hand panel][main content]
+### Body (scrolls independently of the content)
 
-# Left hand panel responsive behavior
+- Show the table of contents. **Course parts are expandable** (collapse/expand
+  disclosure controls), matching the style in the image above.
+- Keep nesting to **two levels** (part → item); no third tier.
+- **Highlight the current item** and auto-expand the part that contains it; keep
+  it scrolled into view after navigation. Preserve any expand/collapse the
+  student does manually during the session — don't reset it on every navigation.
+- Per-item **status icons** (complete / current / not-started / locked / failed)
+  must not rely on colour alone — pair with an icon and accessible text.
+- The panel and the content area **scroll independently**.
 
-In big screens (laptops), the TOC panel should always be open. No option to close it.
-![alt text](image.png)
+---
 
-## Phones:
-- allow the left hand panel to be collapsed
-- Dont have it expanded by default.
-- Scroll it up from the bottom, dont have it be a slide in from the side. See image here: ![alt text](image-2.png)
+## 4. Left-hand panel responsive behaviour
 
-## Expanding the table of contents (phones)
+### Large screens (laptops)
 
-Instead of minimal breadcrumbs, show something like this at the top of the content
-![alt text](image-3.png)
-It'll have a button on the right that allows the user to expand the table of contents.
+- The TOC panel is **always open**. No option to close it.
 
-# Page title
+![always-open panel](image.png)
 
-The page title should reflect the section of the course we are visiting, eg a specific topic
+### Phones
+
+- The panel is **collapsed by default** (not expanded).
+- It opens as a **bottom sheet that scrolls up from the bottom** — explicitly
+  *not* a slide-in drawer from the side.
+
+  ![bottom sheet on phone](image-2.png)
+
+- Treat it as a **modal** sheet: a scrim dims the background, the background is
+  inert while it's open, and it opens to a partial height (showing current
+  context) with the TOC list scrolling **inside** the sheet.
+- Provide **multiple dismiss routes with the same outcome**: a visible close
+  (×) control, tapping the scrim, swiping the sheet down, the Escape key, and the
+  device Back button. A drag handle is an affordance hint only — never the sole
+  way to close.
+
+> Implementation note: this differs from the side-drawer behaviour of the shared
+> interface sidebar, so the course player likely needs its own mobile treatment
+> rather than changing the shared component used elsewhere. The native `<dialog>`
+> element is a strong, low-JS baseline (focus trapping, inertness, Escape,
+> backdrop for free). Decide details at spec/plan time.
+
+### Compact header on phones (instead of full breadcrumbs)
+
+Instead of the full breadcrumb trail, show a compact bar at the top of the
+content:
+
+![compact mobile header](image-3.png)
+
+- Back arrow on the far left.
+- A condensed trail (e.g. `RPAS · M3 · Pre-flight`) — keep the course root and
+  the current section, abbreviating/eliding the middle if space is tight.
+- A **clearly labelled TOC toggle** button on the right that opens the bottom
+  sheet (an obvious control, not a bare hamburger).
+- A thin progress bar with a `%`.
+- (The bookmark icon shown in the mockup is **out of scope** — omit it.)
+
+---
+
+## 5. Page title
+
+The browser page `<title>` should reflect the current section of the course.
+
+- Order **most-specific first**: `{Section} — {Course} — {Site}`. Drop the
+  course-part (if any) before dropping the section, and the site/brand can be
+  trimmed first if length is a concern.
+- If sections ever swap without a full page load, the title must still update on
+  navigation.
+
+---
+
+## Out of scope
+
+- **Bookmarking** sections (the bookmark icon in the mobile mockup is decoration).
+- Reworking the shared interface sidebar used by other parts of the app.
