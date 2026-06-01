@@ -1,6 +1,7 @@
 ---
 description: Create a specification based on an idea
-allowed-tools: Read, Write, Glob, Agent
+allowed-tools: Read, Write, Glob, Bash, Agent
+# based on https://github.com/iamshaunjp/Claude-Code-Masterclass/blob/claude/snippets/commands/spec-v1.md
 ---
 
 You are helping to spin up a new feature spec for this application, from a short idea provided in the user input below.

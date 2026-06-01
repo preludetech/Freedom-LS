@@ -36,9 +36,13 @@ feature.
    artifacts are **not** deleted. An abandoned `.sdd-work/` from an interrupted run is **intentional**
    — it is what makes resume (step 3) cheap.
 
-## Atomic writes
-Workers write `<path>.tmp` then rename to `<path>`, so a crash mid-write never leaves a half-file
-that looks complete. *(Pattern A2.)*
+## Atomic writes & the completeness contract
+A worker emits its output in a **single `Write`** to the final path: the `Write` tool puts the whole
+file down in one operation, so a crash leaves either the complete file or nothing — there is no
+half-written state to guard against, and a research/review worker therefore needs **no `Bash`/rename
+tool**. Completeness is signalled **only** by the `status:` footer; the resume scan (step 3) re-runs
+any file that lacks it. (A shell-style temp-then-rename would require `mv`, which these workers
+deliberately don't have.) *(Pattern A2.)*
 
 Source: https://www.anthropic.com/engineering/multi-agent-research-system ·
 https://code.claude.com/docs/en/sub-agents · https://code.claude.com/docs/en/headless

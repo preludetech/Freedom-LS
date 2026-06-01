@@ -1,6 +1,6 @@
 ---
 description: Review the implementation plan for new cross-app dependencies before any code is written
-allowed-tools: Read, Glob, Grep, Edit, Agent
+allowed-tools: Read, Glob, Grep, Edit, Bash, Agent
 ---
 
 You are reviewing an **implementation plan** (not code) against the project's authoritative app-dependency diagram at `docs/app_structure.md`. Your job is to catch any new cross-app imports the plan would introduce, so structural changes get approved before implementation time is spent on them.

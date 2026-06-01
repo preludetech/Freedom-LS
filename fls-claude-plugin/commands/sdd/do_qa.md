@@ -38,6 +38,8 @@ Remove artifacts from the previous QA run (the `qa_report.md` and `screenshots/`
 
 `${CLAUDE_PLUGIN_ROOT}/scripts/qa_cleanup.sh`
 
+No pre-emptive server kill is needed here: Step 2 always selects an unused port, and Step 10 kills the server this run started. A stale server left by a crashed earlier run is harmless — it just occupies a port Step 2 will skip.
+
 ## Step 2: Find an unused PORT
 
 Find an unused PORT that we can use for running the development server.
@@ -139,7 +141,7 @@ Kill the development server you started:
 Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
 
 - `<todo-path>`: the `todo.md` in the spec directory (same directory as `qa_report.md`)
-- `tick:"Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)"`
+- `tick:"Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)"`
 - For each failing test recorded in `qa_report.md`, pass one `add:"QA|user + cmd|Fix QA bug: <short title from the report> (TDD — failing test first, then fix)"`.
-- For each test that was skipped because of missing data, pass one `add:"QA|cmd|Use the qa-data-helper agent to create missing data for <short description>, then re-run `/do_qa`"`.
+- For each test that was skipped because of missing data, pass one `add:"QA|cmd|Use the `fls:qa-data-helper` agent to create missing data for <short description>, then re-run `/do_qa`"`.
 - If no bugs were found and no tests were skipped, omit `add:`.

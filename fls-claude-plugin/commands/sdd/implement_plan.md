@@ -33,7 +33,7 @@ For each remaining batch, spawn **one implementation sub-agent** via the `Agent`
 4. Use the `request-code-review` skill to review the batch's changes
 5. Fix any issues raised by the review
 6. Re-run tests after fixes
-7. **As its final step, make the `[batch N] <summary>` git commit itself** (it has `Bash`), then return a structured status (`status: ok|failed|blocked` · `reason:`).
+7. **As its final step, make the `[batch N] <summary>` git commit itself** with `uv run git commit` (it has `Bash`; the `uv run` prefix is required so the project's pre-commit hooks fire — see `CLAUDE.md`), then return a structured status (`status: ok|failed|blocked` · `reason:`).
 
 Committing inside the worker keeps the work and its completion marker **atomic**: a crash between "work done" and "marker written" can't leave an uncommitted batch that the resume scan would wrongly re-run over a dirty tree. (This is the one place a worker commits its own work instead of delegating the commit to `fls:sdd-mechanic` — the atomic-resume guarantee outweighs tiering that single commit down to Haiku.)
 

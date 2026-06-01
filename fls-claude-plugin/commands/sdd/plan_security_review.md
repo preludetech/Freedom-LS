@@ -1,6 +1,6 @@
 ---
 description: Review the implementation plan for security issues before any code is written
-allowed-tools: Read, Glob, Grep, Edit, Agent
+allowed-tools: Read, Glob, Grep, Edit, Bash, Agent
 ---
 
 You are doing a security review of an **implementation plan** (not code). The plan describes *how* a feature will be built. Your job is to catch insecure design choices in the plan before implementation time is spent on them.

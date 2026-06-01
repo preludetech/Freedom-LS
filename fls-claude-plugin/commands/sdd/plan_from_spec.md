@@ -1,6 +1,6 @@
 ---
 description: Create an implementation plan based on a spec file
-allowed-tools: Read, Write, Glob, Agent
+allowed-tools: Read, Write, Glob, Bash, Agent
 ---
 
 You are helping to take a comprehensive development plan, based on this a spec file.
