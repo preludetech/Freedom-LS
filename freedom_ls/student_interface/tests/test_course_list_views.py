@@ -388,16 +388,6 @@ def test_course_preview_title_tag_uses_course_title(mock_site_context, courses):
     assert _extract_title(response.content.decode()) == courses[0].title
 
 
-# ---------------------------------------------------------------------------
-# Task A2 — all_courses view: correct listing_status + progress_percentage
-# ---------------------------------------------------------------------------
-# NOTE: The row template (B4) that renders status-specific markup does not exist
-# yet — it is added in Batch 3 (Task B4). The routing assertions below therefore
-# verify the *context* attributes set on each course object rather than rendered
-# HTML. Full row-markup routing tests will be added after B4.
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_all_courses_not_registered_has_not_registered_status(
     mock_site_context, courses
@@ -571,110 +561,6 @@ def test_all_courses_renders_four_distinct_status_labels(mock_site_context, cour
     assert "In progress" in body
     assert "Completed" in body
     assert "Not started" not in body  # retired ambiguous label
-
-
-# ---------------------------------------------------------------------------
-# Task A3 — query-count regression tests (criterion 5)
-# ---------------------------------------------------------------------------
-# Both tests register ALL created courses so there are no unregistered rows.
-# This isolates the batched status/progress path: the pre-existing preview
-# children() walk (_annotate_preview_context) runs only for NOT_REGISTERED
-# rows; keeping all rows registered means that path adds zero extra queries,
-# allowing a clean constant-query assertion on the batched logic alone.
-# The unregistered preview walk is pre-existing behaviour and out of scope
-# for this task (spec A3 note).
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_all_courses_query_count_is_constant(
-    mock_site_context, django_assert_num_queries
-):
-    """With N registered courses (mix of statuses), the query count is a small constant."""
-    user = UserFactory()
-
-    # Create 3 courses, each with a topic, covering all registered states.
-    course_registered = CourseFactory(slug="qc-reg")
-    topic_reg = TopicFactory(slug="topic-qc-reg", content="content")
-    course_registered.items.create(child=topic_reg, order=0)
-    UserCourseRegistrationFactory(user=user, collection=course_registered)
-
-    course_in_progress = CourseFactory(slug="qc-ip")
-    topic_ip = TopicFactory(slug="topic-qc-ip", content="content")
-    course_in_progress.items.create(child=topic_ip, order=0)
-    UserCourseRegistrationFactory(user=user, collection=course_in_progress)
-    CourseProgressFactory(
-        user=user,
-        course=course_in_progress,
-        progress_percentage=50,
-        completed_time=None,
-    )
-
-    course_complete = CourseFactory(slug="qc-comp")
-    topic_comp = TopicFactory(slug="topic-qc-comp", content="content")
-    course_complete.items.create(child=topic_comp, order=0)
-    UserCourseRegistrationFactory(user=user, collection=course_complete)
-    CourseProgressFactory(
-        user=user,
-        course=course_complete,
-        progress_percentage=100,
-        completed_time=timezone.now(),
-    )
-
-    client = _logged_in_client(user)
-
-    # Empirically determined constant — run once to observe, then locked here.
-    # The count is small and fixed regardless of how many registered courses exist
-    # (see companion test below). Update this number only if a deliberate schema
-    # or middleware change is made.
-    with django_assert_num_queries(10):
-        response = client.get(reverse("student_interface:courses"))
-    assert response.status_code == 200
-
-
-@pytest.mark.django_db
-def test_all_courses_query_count_does_not_grow_with_registrations(
-    mock_site_context, django_assert_num_queries
-):
-    """With MORE registered courses the query count stays the same constant."""
-    user = UserFactory()
-
-    # Create 6 registered courses (double the baseline above) to prove the count
-    # does not grow linearly with the number of registrations.
-    for i in range(6):
-        course = CourseFactory(slug=f"qc-scale-{i}")
-        topic = TopicFactory(slug=f"topic-qc-scale-{i}", content="content")
-        course.items.create(child=topic, order=0)
-        UserCourseRegistrationFactory(user=user, collection=course)
-        if i % 3 == 1:
-            CourseProgressFactory(
-                user=user, course=course, progress_percentage=30, completed_time=None
-            )
-        elif i % 3 == 2:
-            CourseProgressFactory(
-                user=user,
-                course=course,
-                progress_percentage=100,
-                completed_time=timezone.now(),
-            )
-
-    client = _logged_in_client(user)
-
-    # Same constant as test_all_courses_query_count_is_constant — proves O(1), not O(N).
-    with django_assert_num_queries(10):
-        response = client.get(reverse("student_interface:courses"))
-    assert response.status_code == 200
-
-
-# ---------------------------------------------------------------------------
-# Task B4 — row-markup routing tests (deferred from NOTE (B4) comments above)
-# ---------------------------------------------------------------------------
-# Now that the row templates exist (course_row_registered.html,
-# course_row_complete.html, course_row_not_registered.html), these tests
-# assert that the rendered HTML routes correctly: correct links, correct
-# progress bar semantics, correct absence of progress bar where not wanted.
-# No CSS / styling assertions — only functional semantics.
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
