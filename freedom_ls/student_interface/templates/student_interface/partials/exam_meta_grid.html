@@ -1,0 +1,27 @@
+{% comment %}
+Exam meta grid partial — start screen.
+Displays two truthful cells: question count and page count.
+Context vars: question_count (int), page_count (int).
+One-off partial: not a cotton component.
+{% endcomment %}
+<div class="grid grid-cols-2 gap-3">
+
+    {% comment %}Questions cell{% endcomment %}
+    <div class="flex flex-col items-center gap-2 rounded-lg border border-border bg-white p-4 text-center">
+        <c-icon name="form" class="size-6 text-primary" />
+        <div class="text-2xl font-bold font-display text-primary">{{ question_count }}</div>
+        <div class="text-xs text-muted uppercase tracking-wide">
+            Question{{ question_count|pluralize }}
+        </div>
+    </div>
+
+    {% comment %}Pages cell{% endcomment %}
+    <div class="flex flex-col items-center gap-2 rounded-lg border border-border bg-white p-4 text-center">
+        <c-icon name="course_part" class="size-6 text-primary" />
+        <div class="text-2xl font-bold font-display text-primary">{{ page_count }}</div>
+        <div class="text-xs text-muted uppercase tracking-wide">
+            Page{{ page_count|pluralize }}
+        </div>
+    </div>
+
+</div>

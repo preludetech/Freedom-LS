@@ -1,0 +1,66 @@
+{% comment %}
+Exam score ring partial — results screen (QUIZ only).
+SVG circle with stroke-dasharray/dashoffset computed from `percentage` (int, 0–100).
+Uses stroke="currentColor" under a token text colour wrapper.
+Context vars: percentage (int), is_failed_quiz (bool), scores (dict with .score/.max_score).
+
+SVG geometry:
+  radius = 54, circumference = 2 * pi * 54 ≈ 339.292
+  dashoffset = circumference * (1 - percentage / 100)
+{% endcomment %}
+{% with circumference=339 %}
+<div class="flex flex-col items-center gap-4">
+
+    {% comment %}Ring SVG{% endcomment %}
+    <div class="relative">
+        <svg viewBox="0 0 120 120"
+             class="size-32 -rotate-90"
+             aria-hidden="true">
+
+            {% comment %}Track circle{% endcomment %}
+            <circle cx="60"
+                    cy="60"
+                    r="54"
+                    fill="none"
+                    stroke-width="10"
+                    class="text-border"
+                    stroke="currentColor" />
+
+            {% comment %}Fill circle — colour depends on pass/fail{% endcomment %}
+            <circle cx="60"
+                    cy="60"
+                    r="54"
+                    fill="none"
+                    stroke-width="10"
+                    stroke-linecap="round"
+                    stroke-dasharray="{{ circumference }}"
+                    style="stroke-dashoffset: calc({{ circumference }} * (1 - {{ percentage }} / 100))"
+                    class="{% if is_failed_quiz %}text-error{% else %}text-success{% endif %} transition-all duration-700"
+                    stroke="currentColor" />
+
+        </svg>
+
+        {% comment %}Percentage label centred in ring{% endcomment %}
+        <div class="absolute inset-0 flex items-center justify-center">
+            <div class="text-center">
+                <span class="text-2xl font-bold font-display {% if is_failed_quiz %}text-error{% else %}text-success{% endif %}"
+                      data-testid="quiz-percentage">
+                    {{ percentage }}%
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {% comment %}Score fraction{% endcomment %}
+    {% if scores %}
+        <div class="text-center">
+            <div class="text-3xl font-bold font-display text-on-surface"
+                 data-testid="quiz-score">
+                {{ scores.score }}&thinsp;/&thinsp;{{ scores.max_score }}
+            </div>
+            <div class="text-sm text-muted mt-1">correct</div>
+        </div>
+    {% endif %}
+
+</div>
+{% endwith %}

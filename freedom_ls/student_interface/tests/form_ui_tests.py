@@ -52,8 +52,9 @@ def answer_multiple_choice_question(page: Page, question, option_filter):
         option_filter: Dict to filter options (e.g., {'correct': True} or {'text': '7'})
     """
     option = question.options.filter(**option_filter).first()
-    radio = page.locator(f"input[type='radio'][value='{option.id}']")
-    radio.check()
+    # Radio inputs are sr-only (visually hidden); click the label to select them.
+    radio_label = page.locator(f"label[for='q{question.id}_opt{option.id}']")
+    radio_label.click()
 
 
 def click_next(page: Page):
@@ -331,9 +332,10 @@ def test_start_and_fill_form_complete_workflow(
     navigate_to_form(logged_in_page, live_server, course.slug)
     start_form(logged_in_page)
 
-    # Page 1: Verify page indicator
-    page_indicator = logged_in_page.locator("text=Page 1 of 2")
+    # Page 1: Verify page indicator (use data-testid to avoid matching sr-only aria-live region)
+    page_indicator = logged_in_page.locator("[data-testid='page-indicator']")
     assert page_indicator.is_visible()
+    assert "Page 1 of 2" in (page_indicator.text_content() or "")
 
     # Verify question numbers are visible (using test IDs instead of style-based selectors)
     question_1 = logged_in_page.locator("[data-testid='question-number-1']")
@@ -356,10 +358,11 @@ def test_start_and_fill_form_complete_workflow(
         .options.all()
     )
     correct_option = next(opt for opt in mc_options if opt.text == "4")
-    radio_button = logged_in_page.locator(
-        f"input[type='radio'][value='{correct_option.id}']"
+    # The radio input is sr-only (visually hidden); click its label to select it.
+    radio_label = logged_in_page.locator(
+        f"label[for='q{correct_option.question_id}_opt{correct_option.id}']"
     )
-    radio_button.check()
+    radio_label.click()
 
     # Fill short text question
     text_question = (
@@ -372,20 +375,22 @@ def test_start_and_fill_form_complete_workflow(
 
     click_next(logged_in_page)
 
-    # Page 2: Verify page indicator
-    page_indicator = logged_in_page.locator("text=Page 2 of 2")
+    # Page 2: Verify page indicator (use data-testid to avoid matching sr-only aria-live region)
+    page_indicator = logged_in_page.locator("[data-testid='page-indicator']")
     assert page_indicator.is_visible()
+    assert "Page 2 of 2" in (page_indicator.text_content() or "")
 
     # Select checkbox options
     page2 = list(complete_form_with_questions.pages.all())[1]
     cb_question = page2.questions.filter(type="checkboxes").first()
     cb_options = cb_question.options.all()
 
+    # Checkbox inputs are sr-only (visually hidden); click their labels to select.
     for option in cb_options:
-        checkbox = logged_in_page.locator(
-            f"input[type='checkbox'][value='{option.id}']"
+        cb_label = logged_in_page.locator(
+            f"label[for='q{cb_question.id}_opt{option.id}']"
         )
-        checkbox.check()
+        cb_label.click()
 
     # Fill long text question
     long_text_question = page2.questions.filter(type="long_text").first()
@@ -425,10 +430,11 @@ def test_form_resumption(
         .options.all()
     )
     correct_option = next(opt for opt in mc_options if opt.text == "4")
-    radio_button = logged_in_page.locator(
-        f"input[type='radio'][value='{correct_option.id}']"
+    # The radio input is sr-only (visually hidden); click its label to select it.
+    radio_label = logged_in_page.locator(
+        f"label[for='q{correct_option.question_id}_opt{correct_option.id}']"
     )
-    radio_button.check()
+    radio_label.click()
 
     text_question = (
         complete_form_with_questions.pages.first()
@@ -440,9 +446,10 @@ def test_form_resumption(
 
     click_next(logged_in_page)
 
-    # Verify we're on page 2
-    page_indicator = logged_in_page.locator("text=Page 2 of 2")
+    # Verify we're on page 2 (use data-testid to avoid matching sr-only aria-live region)
+    page_indicator = logged_in_page.locator("[data-testid='page-indicator']")
     assert page_indicator.is_visible()
+    assert "Page 2 of 2" in (page_indicator.text_content() or "")
 
     # Navigate away - go back to form landing page
     logged_in_page.goto(form_url)
@@ -459,8 +466,9 @@ def test_form_resumption(
     logged_in_page.wait_for_url("**/fill_form/**")
 
     # Verify we're redirected to page 2 (current progress)
-    page_indicator = logged_in_page.locator("text=Page 2 of 2")
+    page_indicator = logged_in_page.locator("[data-testid='page-indicator']")
     assert page_indicator.is_visible()
+    assert "Page 2 of 2" in (page_indicator.text_content() or "")
 
     # Complete the form
     page2 = list(complete_form_with_questions.pages.all())[1]
@@ -652,8 +660,8 @@ def test_completed_quiz_shows_scores_on_landing_page(
     logged_in_page.goto(quiz_url)
     logged_in_page.wait_for_load_state("networkidle")
 
-    # Verify "Previous Submissions" section exists
-    previous_submissions = logged_in_page.locator("h2:has-text('Previous Submissions')")
+    # Verify "Previous attempts" section exists
+    previous_submissions = logged_in_page.locator("h2:has-text('Previous attempts')")
     assert previous_submissions.is_visible()
 
     # Verify the score is displayed in the previous submissions section

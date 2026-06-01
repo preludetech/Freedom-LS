@@ -275,7 +275,8 @@ examSubmitDialog scope (no intermediate x-data between them).
 
                 {% comment %}Progress bar: track bg-border rounded-pill, fill bg-secondary (research §5){% endcomment %}
                 <div class="flex items-center gap-3">
-                    <span class="text-xs text-muted whitespace-nowrap">
+                    <span class="text-xs text-muted whitespace-nowrap"
+                          data-testid="page-indicator">
                         Page {{ current_page_num }} of {{ total_pages }}
                     </span>
                     <div class="flex-1 h-1.5 bg-border rounded-pill overflow-hidden">

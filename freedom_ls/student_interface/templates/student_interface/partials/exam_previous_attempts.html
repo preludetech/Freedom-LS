@@ -1,0 +1,45 @@
+{% comment %}
+Exam previous attempts partial — start screen.
+Shows best / most-recent score for QUIZ; completion dates for CATEGORY_VALUE_SUM.
+Context vars: completed_form_progress (queryset), form (Form model instance).
+No "View all" link.
+{% endcomment %}
+{% if completed_form_progress %}
+<section class="space-y-3" aria-labelledby="previous-attempts-heading">
+    <h2 id="previous-attempts-heading" class="text-base font-semibold font-display text-on-surface">
+        Previous attempts
+    </h2>
+
+    <div class="space-y-2">
+        {% for progress in completed_form_progress %}
+            <div class="flex items-center justify-between rounded-lg border border-border bg-white px-4 py-3"
+                 data-testid="previous-submission-score">
+
+                {% comment %}Date{% endcomment %}
+                <div class="text-sm text-muted">
+                    {{ progress.completed_time|date:"j M Y" }}
+                </div>
+
+                {% comment %}Score (QUIZ only) or completion indicator{% endcomment %}
+                {% if form.strategy == "QUIZ" and progress.scores %}
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-semibold text-on-surface">
+                            {% widthratio progress.scores.score progress.scores.max_score 100 as attempt_pct %}
+                            {{ attempt_pct }}%
+                        </span>
+                        <span class="text-xs text-muted">
+                            ({{ progress.scores.score }}&thinsp;/&thinsp;{{ progress.scores.max_score }})
+                        </span>
+                    </div>
+                {% else %}
+                    <div class="flex items-center gap-1 text-sm text-success">
+                        <c-icon name="check" class="size-4" />
+                        Completed
+                    </div>
+                {% endif %}
+
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
