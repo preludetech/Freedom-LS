@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import pytest
 
+# This is the nearest `conftest` module for the playwright tests in this
+# package, so it shadows the top-level one for their
+# `from conftest import reverse_url` imports. Re-export the helper so those
+# imports keep resolving to it.
+from freedom_ls.conftest import reverse_url
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course
 
