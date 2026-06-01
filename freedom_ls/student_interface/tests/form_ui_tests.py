@@ -64,8 +64,20 @@ def click_next(page: Page):
 
 
 def submit_form(page: Page):
-    """Click the Finish button."""
-    submit_button = page.locator("button[type='submit']:has-text('Finish')")
+    """Submit the final form page via the review/submit dialog.
+
+    The final page now shows a 'Next' button that opens a submit dialog,
+    followed by a 'Submit' button inside the dialog.
+    """
+    # Open the submit dialog (final-page Next button)
+    next_button = page.locator("button[type='button']:has-text('Next')")
+    next_button.click()
+    # Wait for the dialog to appear
+    page.wait_for_selector("[role='dialog']:visible", timeout=5000)
+    # Click Submit inside the dialog
+    submit_button = page.locator(
+        "[role='dialog'] button[type='button']:has-text('Submit')"
+    )
     submit_button.click()
     page.wait_for_load_state("networkidle")
 
