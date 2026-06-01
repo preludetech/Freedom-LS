@@ -28,13 +28,13 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 5. Plan security review
 
 - [x] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
-- [ ] (user) Plan security review|user|Resolve plan security concern: CourseProgress site filtering — rely on SiteAwareManager (recommended) vs explicit site= defence-in-depth
-- [ ] (user) Address any concerns raised in the plan
+- [x] (user) Plan security review|user|Resolve plan security concern: CourseProgress site filtering — rely on SiteAwareManager (recommended) vs explicit site= defence-in-depth
+- [x] (user) Address any concerns raised in the plan
 
 ## 6. Plan structure review
 
-- [ ] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
-- [ ] (user) Address any structure concerns raised in the plan
+- [x] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
+- [x] (user) Address any structure concerns raised in the plan
 
 ## 7. Implementation
 
