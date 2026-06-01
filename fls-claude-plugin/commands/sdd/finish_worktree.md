@@ -22,7 +22,7 @@ Run the unit tests via `fls:sdd-mechanic`. Fix any problems.
 If there is a frontend_qa.md file for the specification this branch is for (inside spec_dd/2. in progress/{branch name}/3. frontend_qa.md) then:
 - summarise any changes made
 - say whether you think it would be useful to run the frontend_qa again or not
-- ask the user for confirmation before moving forward
+- only if you think the frontend_qa should be run again, ask the user for confirmation before moving forward
 
 # Step 3
 

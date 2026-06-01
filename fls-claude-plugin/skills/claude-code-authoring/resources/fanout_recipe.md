@@ -1,7 +1,7 @@
 # The fan-out resilience recipe (Claude Code 2.1.x)
 
-Distilled from `research_resilience_patterns.md`. This is the canonical explanation of the recipe
-that SDD fan-out commands embed in compact form. Every claim traces to that research.
+This is the canonical explanation of the recipe
+that SDD fan-out commands embed in compact form.
 
 ## Why a recipe is needed
 Claude Code's subagent model is **fire-and-forget and one-shot**: task in → single result out, in an

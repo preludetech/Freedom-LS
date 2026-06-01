@@ -3,7 +3,7 @@ description: Execute a frontend QA test plan using Playwright MCP
 allowed-tools: Read, Write, Glob, Bash, Agent, mcp__playwright*
 ---
 
-Act like a human QA expert. Execute the given test plan. This command runs at **depth 0**, so its `fls:qa-data-helper` delegation and the Step 6 exploration spawn are legal. See the `claude-code-authoring` skill for the model behind this.
+Act like a human QA expert. Execute the given test plan. This command runs at **depth 0**, so its `fls:qa-data-helper` delegation and the Step 5 exploration spawn are legal. See the `claude-code-authoring` skill for the model behind this.
 
 # Useful info
 
@@ -34,18 +34,11 @@ These two rules apply at **every** step (Desktop, Mobile, Tablet) — stated onc
 
 ## Step 1: Clean up last QA run
 
-- if there is a qa_report in the current directory, delete it
-- if there is a screenshots directory in the current directory, delete it
+Remove artifacts from the previous QA run (the `qa_report.md` and `screenshots/` directory in the current directory):
 
-## Step 2: Kill any previous server you started
+`${CLAUDE_PLUGIN_ROOT}/scripts/qa_cleanup.sh`
 
-If you previously started a runserver on a port, kill it now using:
-
-`.claude/fls/scripts/kill_runserver.sh $PORT`
-
-This avoids port conflicts and leftover processes.
-
-## Step 3: Find an unused PORT
+## Step 2: Find an unused PORT
 
 Find an unused PORT that we can use for running the development server.
 
@@ -57,23 +50,22 @@ Then run the development server:
 
 **CRITICAL** There might be other servers running, and those might be associated with different branches or applications. It is CRITICAL that you do not use existing processes. Launch your own `runserver` at your own port!
 
-Proceed to step 4.
 
-## Step 4: Check that the runserver is pointing at the right branch
+## Step 3: Check that the runserver is pointing at the right branch
 
 Go to the base url at http://127.0.0.1:$PORT/ using the playwright MCP (if Playwright MCP is unavailable, follow rule 1 in the CRITICAL section above and STOP).
 
 Look for the debug-branch-badge on the bottom left of the page. It has the id `debug-branch-badge`. It should name the current branch.
 
-If the debug-branch-badge names a branch other than the one we are on then that means that there is a PORT collision and some other process is using the PORT we chose. If this happens, return to STEP 3.
+If the debug-branch-badge names a branch other than the one we are on then that means that there is a PORT collision and some other process is using the PORT we chose. If this happens, return to STEP 2.
 
-## Step 5: (Optional) Login
+## Step 4: (Optional) Login
 
-If you don't need to log in, go to Step 6
+If you don't need to log in, go to Step 5
 
-Navigate to the base url and log in using the admin credentials above. Confirm you are logged in before proceeding with the test plan.
+Navigate to the base url and log in using the credentials above. Confirm you are logged in before proceeding with the test plan.
 
-## Step 6: Desktop testing
+## Step 5: Desktop testing
 
 Use the Playwright MCP server tools (browser_navigate, browser_snapshot, browser_click, browser_type, browser_take_screenshot, etc.) to manually walk through the test plan.
 DO NOT write test scripts — interact with the site directly using the MCP tools, just as a human tester would.
@@ -86,22 +78,22 @@ If anything unrelated to the current feature under test seems out of place or br
 
 If you are unable to run a test due to missing or incorrect data, follow rule 2 in the CRITICAL section above: delegate to `fls:qa-data-helper` rather than creating the data yourself or skipping the test.
 
-## Step 7: Mobile testing
+## Step 6: Mobile testing
 
 Don't do mobile tests if we are checking the django admin interface. Only do mobile tests for custom frontend code.
 
 
 Resize the browser to 375x812 (iPhone-sized viewport).
 
-You do NOT need to re-run every test from Step 6. Focus on:
+You do NOT need to re-run every test from Step 5. Focus on:
 - Navigation and menu behaviour (hamburger menus, drawers, etc.)
 - Layout and readability — do elements overflow, overlap, or become unusable?
 - Touch-target sizing — are buttons and links large enough?
-- Any test from Step 6 that involves tables, forms, or multi-column layouts
+- Any test from Step 5 that involves tables, forms, or multi-column layouts
 
 Name mobile screenshots with the pattern: `mobile_<test-id>_<short-description>.png`.
 
-## Step 8: Tablet testing
+## Step 7: Tablet testing
 
 Don't do tablet tests if we are checking the django admin interface. Only do tablet tests for custom frontend code.
 
@@ -116,13 +108,13 @@ As with mobile testing, you do NOT need to re-run every test. Focus on:
 
 Name tablet screenshots with the pattern: `tablet_<test-id>_<short-description>.png`.
 
-## Step 9: Compress screenshots
+## Step 8: Compress screenshots
 
 Compress all screenshots to reduce file sizes:
 
 `uv run --with pillow python ${CLAUDE_PLUGIN_ROOT}/scripts/compress_screenshots.py`
 
-## Step 10: Generate a report
+## Step 9: Generate a report
 
 Create a new file called qa_report.md (in the same directory as the test plan file).
 
@@ -136,13 +128,13 @@ If anything was not tested for any reason, or if there were any difficulties, th
 
 If anything unrelated to the current tests, or tangential to the functionality under test seemed out of place then include that in the report.
 
-## Step 11: Clean up
+## Step 10: Clean up
 
 Kill the development server you started:
 
 `.claude/fls/scripts/kill_runserver.sh $PORT`
 
-## Step 12: Update the todo list
+## Step 11: Update the todo list
 
 Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
 

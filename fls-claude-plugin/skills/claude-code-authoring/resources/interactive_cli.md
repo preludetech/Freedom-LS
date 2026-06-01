@@ -1,7 +1,5 @@
 # Interactive-CLI notes (Claude Code 2.1.x)
 
-Distilled from `research_cc_features.md`. Every claim traces to that research.
-
 ## AskUserQuestion is orchestrator-only
 `AskUserQuestion` pauses and asks the user 1–4 questions (each a short `header`, full text, 2–4
 `options`, optional `multiSelect`, auto-added "Other", "(Recommended)" marker). **It is NOT available

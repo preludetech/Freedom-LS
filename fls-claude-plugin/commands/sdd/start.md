@@ -3,7 +3,7 @@ description: Initialise an SDD workflow — create the todo.md checklist next to
 allowed-tools: Read, Write, Glob, Bash, Skill, Agent
 ---
 
-This command kicks off Spec-Driven Development for a new spec. It is a thin orchestrator — all the real work happens in two protected helpers, which the mechanic runs in order. It runs at **depth 0**, so it delegates the mechanical helper work to the `fls:sdd-mechanic` (Haiku) agent and handles any user input itself. See the `claude-code-authoring` skill for the model behind this.
+This command kicks off Spec-Driven Development for a new spec. It is a thin orchestrator.
 
 ## Step 1: Set up the todo list
 

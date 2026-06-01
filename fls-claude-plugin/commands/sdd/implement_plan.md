@@ -6,7 +6,7 @@ allowed-tools: Read, Glob, Write, Edit, Bash, Skill, Agent
 
 # Executing Plans
 
-This command runs at **depth 0** (the main thread) and orchestrates batch sub-agents. See the `claude-code-authoring` skill for the model behind it (fan-out only at depth 0, structured returns, model tiering on agent files).
+This command runs at **depth 0** (the main thread) and orchestrates batch sub-agents.
 
 ## Step 1: Read and Review the Plan
 

@@ -1,7 +1,5 @@
 # Model tiering & token efficiency (Claude Code 2.1.x)
 
-Distilled from `research_model_selection.md`. Every claim here traces to that research.
-
 ## Per-agent `model:` is the reliable knob
 A subagent file's `model:` accepts an alias (`haiku`/`sonnet`/`opus`, also `best`, `opusplan`,
 `sonnet[1m]`, `opus[1m]`), a full dated ID (e.g. `claude-haiku-4-5`, `claude-sonnet-4-6`,

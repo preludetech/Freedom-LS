@@ -5,10 +5,6 @@ allowed-tools: Read, Glob, Bash, Write, Edit, Skill, Agent
 
 This command inspects the `todo.md` checklist for the current spec and works out what should happen next. When the next item is a slash command, it runs that command **inline on the main thread (depth 0)** — it reads the command file and follows its steps here, rather than wrapping it in a fresh subagent. Running inline at depth 0 keeps the single fan-out level free, so commands that fan out (research/review) can legally spawn their own workers via this command's `Agent` tool. Manual (`(user)`) items are still the user's responsibility.
 
-> **Run `/clear` before `/sdd:next`.** `/sdd:next` runs the next command on the main thread (depth 0); it does **not** isolate context for you. Clearing first keeps the previous step's context from leaking in.
-
-> See the `claude-code-authoring` skill for why commands run inline at depth 0 (no subagent nesting, fan-out only at depth 0, model tiering on agent files).
-
 ## Step 1: Locate the todo.md
 
 Figure out which spec we're working with, in this order:

@@ -1,7 +1,5 @@
 # Subagent capabilities & limits (Claude Code 2.1.x)
 
-Distilled from `research_subagent_capabilities.md`. Every claim here traces to that research.
-
 ## No nesting
 Subagents **cannot spawn subagents**. If `Agent` is listed in a subagent's `tools`, it is ignored at
 depth 1. Depth is capped at 1: main session → subagent. Workflows needing "nested delegation" must
