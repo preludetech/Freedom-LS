@@ -844,7 +844,7 @@ def test_all_courses_status_icons_are_decorative(mock_site_context, courses):
     Status is conveyed by the adjacent visible text (WCAG 1.4.1), never the slug.
     """
     user = UserFactory()
-    # In-progress and complete rows exercise the in_progress/check/complete icons.
+    # In-progress and complete rows exercise the in_progress/complete icons.
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     CourseProgressFactory(
         user=user, course=courses[0], progress_percentage=40, completed_time=None
@@ -865,7 +865,7 @@ def test_all_courses_status_icons_are_decorative(mock_site_context, courses):
     body = response.content.decode()
     # Every status-icon svg (which carries aria-label="<slug>") must sit directly
     # inside an aria-hidden wrapper.
-    for slug in ("in_progress", "not_started", "complete", "check"):
+    for slug in ("in_progress", "not_started", "complete"):
         assert f'aria-label="{slug}"' in body, f"expected {slug} icon to render"
         assert re.search(
             rf'aria-hidden="true">\s*<svg[^>]*aria-label="{slug}"', body

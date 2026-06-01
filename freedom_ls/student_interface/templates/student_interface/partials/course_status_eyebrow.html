@@ -6,7 +6,7 @@ labels and their icons. Every row leaf (all-courses page) and card leaf
     not_registered -> minus icon  + "Not registered"
     registered     -> play  icon  + "Registered"      (enrolled, 0%)
     in_progress    -> play  icon  + "In progress"      (enrolled, >0%)
-    complete       -> check icon  + "Completed"
+    complete       -> complete icon + "Completed"
 
 Params:
   status    — one of: not_registered | registered | in_progress | complete
@@ -17,7 +17,7 @@ reinforcement only — never the sole indicator of state.
 {% endcomment %}
 <p class="{% if with_icon %}flex items-center gap-1 {% endif %}text-xs text-muted uppercase tracking-wide">
     {% if status == "complete" %}
-        {% if with_icon %}<span aria-hidden="true"><c-icon name="check" class="size-4" /></span>{% endif %}
+        {% if with_icon %}<span aria-hidden="true"><c-icon name="complete" class="size-4" /></span>{% endif %}
         Completed
     {% elif status == "in_progress" %}
         {% if with_icon %}<span aria-hidden="true"><c-icon name="in_progress" class="size-4" /></span>{% endif %}
