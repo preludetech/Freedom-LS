@@ -50,11 +50,8 @@ docked outline panel carries its own progress, so the header stays uncluttered.
 {% endcomment %}
 {% block header_extra %}
     {% if course_progress %}
-        <div class="mt-2 lg:hidden">
-            <c-course-progress-bar percentage="{{ course_progress.progress_percentage|default:0 }}"
-                                   accent_slot_key="{{ course.accent_slot_key }}"
-                                   bar_class="h-1.5"
-                                   label_class="text-xs font-medium tabular-nums text-muted" />
+        <div class="mt-2 lg:hidden border-b border-border mb-4 pb-4">
+            <c-course-progress-bar percentage="{{ course_progress.progress_percentage|default:0 }}" accent_slot_key="{{ course.accent_slot_key }}" bar_class="h-1.5" label_class="text-xs font-medium tabular-nums text-muted" />
         </div>
     {% endif %}
 {% endblock header_extra %}

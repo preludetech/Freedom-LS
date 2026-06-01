@@ -71,7 +71,7 @@
                 breadcrumbs — on desktop the panel is always docked, so there
                 is nothing to toggle.
                 {% endcomment %}
-                <header class="pt-4 pb-4 border-b border-border">
+                <header class="pt-4 pb-4 lg:border-b lg:border-border">
                     <div class="flex items-center gap-2">
                         <div class="flex-1 min-w-0">
                             {% block breadcrumbs %}
@@ -84,12 +84,13 @@
                             <c-icon name="table_of_contents" class="size-5" />
                         </button>
                     </div>
+                    {% block header_extra %}
+                    {% endblock header_extra %}
+
                     {% block page_title %}
                         {% include "partials/page_title.html" %}
 
                     {% endblock page_title %}
-                    {% block header_extra %}
-                    {% endblock header_extra %}
                 </header>
 
                 {% block content %}
