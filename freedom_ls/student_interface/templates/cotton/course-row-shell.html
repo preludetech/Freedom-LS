@@ -1,0 +1,44 @@
+{% load course_icon_tags %}
+<c-vars accent_slot_key="" icon="" icon_fallback="" title="" clickable="" class="" />
+
+{% comment %}
+Horizontal [icon][details] row skeleton for the all-courses page.
+
+The article is `position: relative` so a leaf can use the stretched-link
+pattern (an anchor with a ::before overlay) to make the whole row a click
+target. Pass `clickable="true"` for the modal-trigger variant so the cursor
+signals the row opens something.
+
+The accent icon box reuses `course-accent-{n}` + `{% course_icon %}` but
+is compact (no course-card-hero full band). The details column uses the
+same named slot contract as course-card-shell so leaves are straightforward
+to read side-by-side.
+
+Named slots:
+  eyebrow — rendered above the default slot (e.g. status label + icon)
+  footer  — rendered below the default slot (e.g. progress bar)
+
+Mergeable `class` prop allows callers to append extra utility classes to
+the article element without forking the shell.
+
+The `relative` position on the article and `z-index` on secondary controls
+(none currently required) leave the seam open for future additions above
+the stretched link.
+{% endcomment %}
+
+<article class="course-card surface border border-gray-200 relative overflow-hidden flex items-center gap-4 py-3 {% if clickable %}cursor-pointer {% endif %}transition duration-200 ease-out hover:shadow-sm motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 {{ class }}">
+
+    {% comment %}Left: compact accent icon box (no course-card-hero band — compact row format).{% endcomment %}
+    <div class="course-accent-{{ accent_slot_key }} flex-shrink-0 flex items-center justify-center size-14 rounded-lg ml-3"
+         aria-hidden="true">
+        {% course_icon icon icon_fallback css_class="size-7" aria_label=title %}
+    </div>
+
+    {% comment %}Right: details column — course-card-body provides token-backed padding.{% endcomment %}
+    <div class="course-card-body flex-1 min-w-0 space-y-1">
+        {% if eyebrow %}{{ eyebrow }}{% endif %}
+        {{ slot }}
+        {% if footer %}{{ footer }}{% endif %}
+    </div>
+
+</article>

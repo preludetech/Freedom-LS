@@ -624,3 +624,173 @@ def test_all_courses_query_count_does_not_grow_with_registrations(
     with django_assert_num_queries(10):
         response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Task B4 — row-markup routing tests (deferred from NOTE (B4) comments above)
+# ---------------------------------------------------------------------------
+# Now that the row templates exist (course_row_registered.html,
+# course_row_complete.html, course_row_not_registered.html), these tests
+# assert that the rendered HTML routes correctly: correct links, correct
+# progress bar semantics, correct absence of progress bar where not wanted.
+# No CSS / styling assertions — only functional semantics.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_all_courses_not_registered_row_has_preview_affordance(
+    mock_site_context, courses
+):
+    """A not-registered course row renders a link to the course_preview URL (mobile path)."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    preview_url = reverse(
+        "student_interface:course_preview",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    body = response.content.decode()
+    assert preview_url in body
+
+
+@pytest.mark.django_db
+def test_all_courses_not_registered_row_has_no_progress_bar(mock_site_context, courses):
+    """A not-registered course row does not render a progress bar."""
+    user = UserFactory()
+    # No registration — courses[0] is NOT_REGISTERED
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    body = response.content.decode()
+    # The progress bar element is only present for registered/in-progress rows.
+    # Locate the not-registered course section by its title and confirm no <progress>
+    # appears in the page for the not-registered row.
+    # (A simple check: if no courses are registered, NO progress bars exist.)
+    assert "<progress" not in body
+
+
+@pytest.mark.django_db
+def test_all_courses_registered_zero_percent_row_links_to_first_item(
+    mock_site_context, courses
+):
+    """A registered-0% row links to view_course_item at index=1."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    item_url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": courses[0].slug, "index": 1},
+    )
+    body = response.content.decode()
+    assert item_url in body
+
+
+@pytest.mark.django_db
+def test_all_courses_registered_zero_percent_row_has_aria_valuenow_zero(
+    mock_site_context, courses
+):
+    """A registered-0% row renders a progress bar with aria-valuenow='0'."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    body = response.content.decode()
+    assert 'aria-valuenow="0"' in body
+
+
+@pytest.mark.django_db
+def test_all_courses_in_progress_row_links_to_first_item(mock_site_context, courses):
+    """An in-progress row links to view_course_item at index=1."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    CourseProgressFactory(
+        user=user, course=courses[0], progress_percentage=55, completed_time=None
+    )
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    item_url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": courses[0].slug, "index": 1},
+    )
+    body = response.content.decode()
+    assert item_url in body
+
+
+@pytest.mark.django_db
+def test_all_courses_in_progress_row_has_aria_valuenow_above_zero(
+    mock_site_context, courses
+):
+    """An in-progress row renders a progress bar with aria-valuenow > 0."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    CourseProgressFactory(
+        user=user, course=courses[0], progress_percentage=55, completed_time=None
+    )
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    body = response.content.decode()
+    assert 'aria-valuenow="55"' in body
+
+
+@pytest.mark.django_db
+def test_all_courses_complete_row_links_to_course_finish(mock_site_context, courses):
+    """A completed-course row links to the course_finish URL."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    CourseProgressFactory(
+        user=user,
+        course=courses[0],
+        progress_percentage=100,
+        completed_time=timezone.now(),
+    )
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    finish_url = reverse(
+        "student_interface:course_finish",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    body = response.content.decode()
+    assert finish_url in body
+
+
+@pytest.mark.django_db
+def test_all_courses_complete_row_has_no_progress_bar(mock_site_context, courses):
+    """A completed-course row does not render a progress bar."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    CourseProgressFactory(
+        user=user,
+        course=courses[0],
+        progress_percentage=100,
+        completed_time=timezone.now(),
+    )
+    # Register and complete only courses[0]; courses[1] and [2] remain unregistered.
+    # No registered-but-incomplete courses means no progress bars in the whole page.
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    body = response.content.decode()
+    assert "<progress" not in body

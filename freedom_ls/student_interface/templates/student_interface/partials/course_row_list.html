@@ -1,0 +1,35 @@
+{% comment %}
+Row-list partials for the all-courses page.
+
+`dispatch-row` is the single dispatch seam for all row states:
+    * "not_registered" -> course_row_not_registered.html (preview / unregistered)
+    * "complete"       -> course_row_complete.html       (completed course)
+    * else             -> course_row_registered.html     (registered or in_progress)
+
+`CourseListingStatus` is a StrEnum, so string comparison works in templates.
+
+`all-courses-rows` is the full-page list wrapper — flat list, no grouping,
+no special ordering. Consumed by all_courses.html.
+{% endcomment %}
+
+{% partialdef dispatch-row %}
+    {% if course.listing_status == "not_registered" %}
+        {% include "student_interface/partials/course_row_not_registered.html" %}
+    {% elif course.listing_status == "complete" %}
+        {% include "student_interface/partials/course_row_complete.html" %}
+    {% else %}
+        {% include "student_interface/partials/course_row_registered.html" %}
+    {% endif %}
+{% endpartialdef %}
+
+{% partialdef all-courses-rows %}
+    {% if all_courses %}
+        <ul class="flex flex-col divide-y divide-gray-100">
+            {% for course in all_courses %}
+                <li class="relative">{% partial dispatch-row %}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-muted/50">No courses available yet.</p>
+    {% endif %}
+{% endpartialdef %}

@@ -1,0 +1,61 @@
+{% comment %}
+Registered-course row leaf — serves both Registered (0%) and In progress.
+
+Only the eyebrow text and bar value differ between the two states; layout
+and slots are identical.
+
+Dispatch seam: course_row_list.html > dispatch-row > here
+  (listing_status == "registered" OR listing_status == "in_progress")
+
+Shell slots used:
+  eyebrow — status label + icon (Not started / In progress)
+  footer  — progress bar (shows at 0% for Registered state — Decision 1)
+  slot    — stretched title link via card_title_link.html
+
+Behaviour:
+  Title links to view_course_item at index=1 (every course has ≥1 item).
+  Progress bar renders at 0% for Registered state, mirroring the dashboard.
+
+Status display (WCAG 1.4.1): text + icon, colour as reinforcement only.
+Do NOT rely on colour alone.
+{% endcomment %}
+{% url 'student_interface:view_course_item' course_slug=course.slug index=1 as course_item_url %}
+
+<c-course-row-shell accent_slot_key="{{ course.accent_slot_key }}"
+                    icon="{{ course.icon }}"
+                    icon_fallback="{{ course.icon_fallback }}"
+                    title="{{ course.title }}">
+
+    <c-slot name="eyebrow">
+        <p class="flex items-center gap-1 text-xs text-muted uppercase tracking-wide">
+            {% if course.progress_percentage and course.progress_percentage > 0 %}
+                <c-icon name="in_progress" class="size-4" aria_label="" />
+                In progress
+            {% else %}
+                <c-icon name="not_started" class="size-4" aria_label="" />
+                Not started
+            {% endif %}
+        </p>
+    </c-slot>
+
+    {% with url=course_item_url title=course.title %}
+        {% include "student_interface/partials/card_title_link.html" %}
+    {% endwith %}
+
+    <c-slot name="footer">
+        <div class="flex items-center gap-2">
+            <progress class="w-full h-1.5 rounded-full overflow-hidden course-progress-{{ course.accent_slot_key }}"
+                      role="progressbar"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                      aria-valuenow="{{ course.progress_percentage|default:0 }}"
+                      aria-label="Progress for {{ course.title }}"
+                      value="{{ course.progress_percentage|default:0 }}"
+                      max="100">
+                {{ course.progress_percentage|default:0 }}%
+            </progress>
+            <span class="text-xs font-medium tabular-nums text-muted">{{ course.progress_percentage|default:0 }}%</span>
+        </div>
+    </c-slot>
+
+</c-course-row-shell>
