@@ -1,57 +1,73 @@
-<c-vars src alt caption="" />
+<c-vars src alt caption="" number="" />
 
 {% load content_tags %}
 {% comment %}
-Look up the File object by file_path to get the actual file URL
+Picture component with an accessible lightbox.
+
+Attributes:
+  src      File path looked up via get_file_by_path.
+  alt      Alt text describing the image for non-sighted users.
+  caption  Optional visible caption (figcaption + lightbox heading).
+  number   Optional figure number -> "Figure N" prefix in the caption.
+
+Authoring note: `alt` describes the image for screen-reader users; the
+figcaption is the visible caption. Don't duplicate them. Decorative images
+should use alt="".
 {% endcomment %}
 
 {% with file_obj=src|get_file_by_path:content_instance %}
 
     {% if file_obj %}
-        <div x-data="pictureModal" class="my-6">
-            <!-- Thumbnail Image -->
+        <div x-data="contentLightbox" class="my-6">
             <figure class="max-w-xl mx-auto m-4">
-                {# djlint:off H006 #}
-                <img src="{{ file_obj.file.url }}"
-                     alt="{{ alt }}"
-                     @click="show"
-                     class="w-full h-auto rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow p-4"
-                     loading="lazy" />
-                {# djlint:on H006 #}
-                {% if caption %}
-                    <figcaption class="mt-2  text-muted text-center">
-                        {{ caption }}
+                {# Real button so the lightbox trigger is keyboard-accessible. #}
+                <button type="button"
+                        x-ref="trigger"
+                        @click="show"
+                        class="block w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring">
+                    <img src="{{ file_obj.file.url }}"
+                         alt="{{ alt }}"
+                         class="w-full h-auto rounded-lg shadow-md hover:shadow-lg transition-shadow p-4"
+                         loading="lazy" />
+                </button>
+                {% if number or caption %}
+                    <figcaption class="mt-2 text-muted text-center">
+                        {% if number %}<span class="font-semibold">Figure {{ number }}</span>{% if caption %}: {% endif %}{% endif %}{{ caption }}
                     </figcaption>
                 {% endif %}
             </figure>
 
             <div x-show="open"
                  x-cloak
+                 x-transition.opacity
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="{{ caption|default:alt }}"
                  @keydown.escape.window="onEscape"
+                 @keydown.tab.prevent="onTab"
                  @click="close"
-                 class="fixed inset-0  flex justify-center items-center  z-50 backdrop-blur-lg">
+                 class="fixed inset-0 flex justify-center items-center z-50 backdrop-blur-lg motion-reduce:transition-none">
 
-                <button class="absolute top-0 right-0 bg-surface opacity-50 hover:opacity-70 "
+                <button x-ref="closeBtn"
+                        type="button"
+                        aria-label="Close image"
+                        class="absolute top-0 right-0 bg-surface opacity-50 hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-focus-ring"
                         @click="close">
                     <c-icon name="close" class="size-12 text-on-surface" />
-
                 </button>
 
                 {% if caption %}
                     <div class="absolute top-0">
-
                         <p class="text-center text-4xl pt-6">
                             {{ caption }}
                         </p>
                     </div>
                 {% endif %}
 
-                <div class="relative w-7xl max-h-screen p-6 overflow-auto rounded-sm bg-surface ">
-
+                <div class="relative w-7xl max-h-screen p-6 overflow-auto rounded-sm bg-surface">
                     <img src="{{ file_obj.file.url }}"
                          alt="{{ alt }}"
-                         class="w-full max-h-screen object-contain " />
-
+                         class="w-full max-h-screen object-contain" />
                 </div>
 
             </div>

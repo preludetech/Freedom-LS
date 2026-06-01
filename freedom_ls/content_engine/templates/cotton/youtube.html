@@ -1,15 +1,18 @@
 
-<c-vars video_id video_title="YouTube video player"/>
+<c-vars video_id video_title="YouTube video player" caption="" />
 
 
-<div class="relative w-full overflow-hidden rounded-lg shadow-md aspect-video">
-    <iframe
-        class="absolute inset-0 w-full h-full"
-        src="https://www.youtube.com/embed/{{video_id}}"
-        title="{{video_title}}"
-        frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        referrerpolicy="strict-origin-when-cross-origin"
-        allowfullscreen>
-    </iframe>
-</div>
+<figure class="my-6">
+    <div class="relative w-full overflow-hidden rounded-lg shadow-md aspect-video">
+        <iframe
+            class="absolute inset-0 w-full h-full"
+            src="https://www.youtube.com/embed/{{video_id}}"
+            title="{{video_title}}"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen>
+        </iframe>
+    </div>
+    {% if caption %}<figcaption class="mt-2 text-muted">{{ caption }}</figcaption>{% endif %}
+</figure>

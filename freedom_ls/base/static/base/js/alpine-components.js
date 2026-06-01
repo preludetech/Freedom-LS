@@ -379,20 +379,6 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // Picture modal component (cotton/picture.html)
-    Alpine.data("pictureModal", () => ({
-        open: false,
-        show() {
-            this.open = true;
-        },
-        close() {
-            this.open = false;
-        },
-        onEscape() {
-            this.open = false;
-        },
-    }));
-
     // Scroll table with floating row labels on mobile (cotton/scroll-table-labels.html)
     Alpine.data("scrollTableLabels", () => ({
         scrolledPastFirst: false,

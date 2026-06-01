@@ -286,12 +286,17 @@ LEGAL_DOCS_MANIFEST_PATH: str | None = None
 
 
 MARKDOWN_ALLOWED_TAGS = {
-    "c-youtube": {"video_id", "video_title"},
-    "c-picture": {"src", "alt", "caption"},
+    "c-youtube": {"video_id", "video_title", "caption"},
+    "c-picture": {"src", "alt", "caption", "number"},
     "c-callout": {"level", "title"},
     "c-content-link": {"path"},
     "c-pdf-embed": {"src", "caption", "height"},
     "c-file-download": {"src", "text"},
+    "c-pull-quote": {"attribution", "cite", "source"},
+    "c-equation": {"label"},
+    "c-image-grid": {"columns"},
+    "c-table": {"caption"},
+    "c-code-block": {"title", "language", "wrap"},
 }
 
 MARKDOWN_TEMPLATE_RENDER_ON = True

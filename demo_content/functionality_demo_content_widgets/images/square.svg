@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500" role="img" aria-label="Square placeholder">
+  <rect width="500" height="500" fill="#E8553D"/>
+  <circle cx="250" cy="250" r="150" fill="#1A2332"/>
+  <text x="250" y="265" font-family="Inter, sans-serif" font-size="40" font-weight="700" fill="#F7F8FA" text-anchor="middle">Square</text>
+</svg>
