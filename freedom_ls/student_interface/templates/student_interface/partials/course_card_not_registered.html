@@ -1,0 +1,61 @@
+{% comment %}
+Not-registered course card leaf (preview / unregistered state).
+
+Dispatch seam: course_list.html > dispatch-card > here (not course.is_registered).
+The only internal branch is desktop vs mobile (modal vs deep-link) — this is
+behaviour, not look.
+
+Desktop (>= md): opens a c-modal preview trigger.
+Mobile (< md):   links to /courses/[slug]/preview/ for a dedicated page that
+                 survives refresh.
+
+No progress bar. No eyebrow slot needed (both desktop and mobile render the
+eyebrow inline inside the shell call).
+{% endcomment %}
+{% comment %}Desktop: modal trigger. Hidden below md.{% endcomment %}
+<div class="hidden md:block h-full">
+    <c-modal title="{{ course.title }}" class="h-full block">
+        <c-slot name="trigger">
+            <c-course-card-shell accent_slot_key="{{ course.accent_slot_key }}"
+                                 icon="{{ course.icon }}"
+                                 icon_fallback="{{ course.icon_fallback }}"
+                                 title="{{ course.title }}"
+                                 clickable="true">
+                <p class="text-xs text-muted uppercase tracking-wide">
+                    Not started
+                </p>
+                <h3>
+                    {{ course.title }}
+                </h3>
+            </c-course-card-shell>
+        </c-slot>
+
+        {% with children=course.preview_children start_url=course.preview_start_url %}
+            {% include "student_interface/partials/course_preview_content.html" %}
+        {% endwith %}
+
+        <c-slot name="footer">
+            <c-button variant="outline" x-on:click="close">
+                Close
+            </c-button>
+        </c-slot>
+    </c-modal>
+</div>
+
+{% comment %}Mobile: dedicated-page link. Hidden at md and up.{% endcomment %}
+<div class="md:hidden h-full">
+    <c-course-card-shell accent_slot_key="{{ course.accent_slot_key }}"
+                         icon="{{ course.icon }}"
+                         icon_fallback="{{ course.icon_fallback }}"
+                         title="{{ course.title }}">
+        <p class="text-xs text-muted uppercase tracking-wide">
+            Not started
+        </p>
+        <h3>
+            <a href="{% url 'student_interface:course_preview' course_slug=course.slug %}"
+               class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">
+                {{ course.title }}
+            </a>
+        </h3>
+    </c-course-card-shell>
+</div>

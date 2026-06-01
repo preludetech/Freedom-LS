@@ -1,13 +1,14 @@
 {% comment %}
 Course-list partials shared by the dashboard and the all-courses page.
 
-`dispatch-card` selects between two card partials:
-    * "history" -> course_card_complete.html
-    * else      -> course_card.html
+`dispatch-card` is the single dispatch seam for all card states:
+    * "history"           -> course_card_complete.html   (completed course)
+    * course.is_registered -> course_card_registered.html (in-progress / not-started)
+    * else                -> course_card_not_registered.html (preview / unregistered)
 
-`course_card.html` then chooses its own layout from `course.is_registered`
-(progress card vs preview card), so the seam only needs to split off the
-completed state.
+Each leaf is single-purpose and contains no further state branching beyond
+its own concern (registered leaf: eyebrow text; not-registered leaf: desktop
+modal vs mobile deep-link).
 
 The collection partials below (`current-courses`, `recommended-courses`,
 `available-courses`, `learning-history`, `all-courses`) all dispatch
@@ -17,10 +18,10 @@ through this single seam.
 {% partialdef dispatch-card %}
     {% if course_status == "history" %}
         {% include "student_interface/partials/course_card_complete.html" %}
-
+    {% elif course.is_registered %}
+        {% include "student_interface/partials/course_card_registered.html" %}
     {% else %}
-        {% include "student_interface/partials/course_card.html" %}
-
+        {% include "student_interface/partials/course_card_not_registered.html" %}
     {% endif %}
 {% endpartialdef %}
 
