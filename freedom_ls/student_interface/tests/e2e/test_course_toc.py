@@ -123,9 +123,13 @@ def test_toc_course_part_expand_state_persists_across_navigation(
     # ``reset_local_storage`` (autouse) clears localStorage before navigation.
     logged_in_page.goto(topic_url)
 
-    toggle_button = logged_in_page.get_by_role("button", name="Chapter One")
+    # Scope lookups to the outline panel: the current item's title also appears
+    # in the breadcrumb, the mobile compact header, and the content <h1>, so an
+    # unscoped get_by_text would match several elements.
+    outline = logged_in_page.get_by_role("navigation", name="Course outline")
+    toggle_button = outline.get_by_role("button", name="Chapter One")
     expect(toggle_button).to_be_visible()
-    inner_topic_in_toc = logged_in_page.get_by_text("Inner Topic", exact=True)
+    inner_topic_in_toc = outline.get_by_text("Inner Topic", exact=True)
     expect(inner_topic_in_toc).to_be_hidden()
 
     # Expanding should write the persisted state to localStorage.
@@ -141,5 +145,6 @@ def test_toc_course_part_expand_state_persists_across_navigation(
 
     # Navigating to another item page should find the part already expanded.
     logged_in_page.goto(second_item_url)
-    inner_topic_after_nav = logged_in_page.get_by_text("Inner Topic", exact=True)
+    outline_after_nav = logged_in_page.get_by_role("navigation", name="Course outline")
+    inner_topic_after_nav = outline_after_nav.get_by_text("Inner Topic", exact=True)
     expect(inner_topic_after_nav).to_be_visible()

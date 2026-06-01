@@ -399,6 +399,15 @@
      * (opened with dialog.show()) and a modal overlay below lg (opened with
      * dialog.showModal()). The default <dialog> UA chrome (border, padding,
      * centring margins) is reset so it lays out cleanly in both modes. */
+
+    /* Grid columns are owned here (not via a Tailwind grid-cols-* utility) so
+     * the desktop two-column / closed single-column rules below win cleanly —
+     * a utility-layer grid-cols-* would otherwise override this components
+     * layer regardless of specificity. Mobile is a single column (the panel is
+     * a modal overlay, not an in-flow column). */
+    .side-panel-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
     .side-panel-dialog {
         border: 0;
         padding: 0;
@@ -477,6 +486,16 @@
 
     /* Desktop (lg+): docked, sticky, full-height column with its own scroll. */
     @media (min-width: 1024px) {
+        /* Sidebar + content columns. data-panel-open is maintained by the
+         * sidePanel controller: when the docked panel is closed (display:none),
+         * it leaves grid flow, so collapse to a single column and let the
+         * content fill the width instead of squashing into the 16rem track. */
+        .side-panel-grid {
+            grid-template-columns: 16rem minmax(0, 1fr);
+        }
+        .side-panel-grid[data-panel-open="false"] {
+            grid-template-columns: minmax(0, 1fr);
+        }
         .side-panel-dialog {
             position: sticky;
             top: var(--sidebar-top, 0px);

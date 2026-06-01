@@ -17,7 +17,14 @@
 {% block sidebar_presentation %}bottom-sheet{% endblock sidebar_presentation %}
 {% block sidebar_heading_aria %}Course outline{% endblock sidebar_heading_aria %}
 
-{% block header_bar_text %}{{ course.title }}{% endblock header_bar_text %}
+{% comment %}
+The player TOC is always open on desktop (no close control) and supplies its own
+chrome via the breadcrumb / compact header, so the shared shell header bar is
+suppressed.
+{% endcomment %}
+{% block sidebar_desktop_lock %}true{% endblock sidebar_desktop_lock %}
+{% block header_bar %}{% endblock header_bar %}
+
 {% block sidebar_heading %}Table of Contents{% endblock sidebar_heading %}
 
 {% block breadcrumbs %}

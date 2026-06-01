@@ -18,9 +18,15 @@
     <div x-data="sidePanel"
          class="px-4 sm:px-6 lg:px-8"
          data-storage-key="{% block sidebar_storage_key %}sidebar{% endblock sidebar_storage_key %}"
+         data-desktop-lock="{% block sidebar_desktop_lock %}{% endblock sidebar_desktop_lock %}"
          data-sidebar-heading="{% block sidebar_heading %}{% endblock sidebar_heading %}">
 
-        {% comment %} Header bar: toggle button + contextual text. {% endcomment %}
+        {% comment %}
+        Header bar: toggle button + contextual text. Consumers that supply their
+        own chrome (e.g. the course player's breadcrumb / compact header) override
+        this block to empty.
+        {% endcomment %}
+        {% block header_bar %}
         <div class="flex items-center bg-surface pt-4 pb-4">
             {% comment %} Toggle button: opens/closes the panel. {% endcomment %}
             <div>
@@ -44,13 +50,16 @@
             <div class="w-10">
             </div>
         </div>
+        {% endblock header_bar %}
 
         {% comment %}
         Sidebar + content grid container. lg:gap-12 is the single source of
         truth for sidebar/content distance. minmax(0, 1fr) keeps wide content
         from blowing out the grid.
         {% endcomment %}
-        <div class="grid grid-cols-1 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-12 relative {% block sidebar_class %}{% endblock sidebar_class %}">
+        <div x-ref="panelGrid"
+             data-panel-open="true"
+             class="side-panel-grid grid lg:gap-12 relative {% block sidebar_class %}{% endblock sidebar_class %}">
 
             {% comment %} Sidebar panel: one <dialog>, docked on desktop, overlay on mobile. {% endcomment %}
             {% comment %}

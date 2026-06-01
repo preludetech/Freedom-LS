@@ -364,12 +364,16 @@ document.addEventListener("alpine:init", () => {
         open: false,
         isMobile: false,
         _storageKey: "sidebar",
+        _desktopLock: false,
         _mq: null,
         _mqHandler: null,
         triggerEl: null,
         init() {
             this.dialog = this.$refs.panelDialog;
+            this.grid = this.$refs.panelGrid;
             this._storageKey = this.$el.dataset.storageKey || "sidebar";
+            // Player TOC locks the panel open on desktop (no close control).
+            this._desktopLock = this.$el.dataset.desktopLock === "true";
             this._mq = window.matchMedia("(min-width: 1024px)");
             this.isMobile = !this._mq.matches;
 
@@ -387,12 +391,18 @@ document.addEventListener("alpine:init", () => {
                 if (event.target === this.dialog && this.isMobile) this.close();
             });
 
-            // On desktop, default to the persisted state (open if never set).
+            // On desktop, default to the persisted state (open if never set);
+            // when locked (player TOC) always open and ignore stored state.
             // On mobile, always start collapsed.
             const stored = localStorage.getItem(this._storageKey);
             if (!this.isMobile) {
-                this._setDesktopOpen(stored === null ? true : stored === "true");
+                if (this._desktopLock) {
+                    this._setDesktopOpen(true);
+                } else {
+                    this._setDesktopOpen(stored === null ? true : stored === "true");
+                }
             }
+            this._syncGrid();
 
             this._mqHandler = (e) => {
                 const wasMobile = this.isMobile;
@@ -402,11 +412,16 @@ document.addEventListener("alpine:init", () => {
                 if (this.dialog.open) this.dialog.close();
                 this.open = false;
                 if (!this.isMobile) {
-                    const desktopStored = localStorage.getItem(this._storageKey);
-                    this._setDesktopOpen(
-                        desktopStored === null ? true : desktopStored === "true",
-                    );
+                    if (this._desktopLock) {
+                        this._setDesktopOpen(true);
+                    } else {
+                        const desktopStored = localStorage.getItem(this._storageKey);
+                        this._setDesktopOpen(
+                            desktopStored === null ? true : desktopStored === "true",
+                        );
+                    }
                 }
+                this._syncGrid();
             };
             this._mq.addEventListener("change", this._mqHandler);
         },
@@ -422,6 +437,17 @@ document.addEventListener("alpine:init", () => {
             } else if (!value && this.dialog.open) {
                 this.dialog.close();
             }
+            this._syncGrid();
+        },
+        // Reflect whether the docked panel occupies a grid column so the CSS can
+        // collapse the content area to full width when the desktop panel is
+        // closed. On mobile the panel is a modal overlay (no column), so the
+        // grid is always single-column; report "true" to keep the attribute
+        // coherent (the column rules are desktop-only anyway).
+        _syncGrid() {
+            if (!this.grid) return;
+            const panelInColumn = this.isMobile ? true : this.open;
+            this.grid.dataset.panelOpen = panelInColumn ? "true" : "false";
         },
         toggle(event) {
             this.triggerEl = (event && event.currentTarget) || null;
@@ -433,6 +459,7 @@ document.addEventListener("alpine:init", () => {
                     this.dialog.showModal();
                 }
             } else {
+                if (this._desktopLock) return;
                 this._setDesktopOpen(!this.open);
                 localStorage.setItem(this._storageKey, this.open);
             }
@@ -443,6 +470,7 @@ document.addEventListener("alpine:init", () => {
             if (!this.isMobile) {
                 localStorage.setItem(this._storageKey, false);
             }
+            this._syncGrid();
         },
     }));
 

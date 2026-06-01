@@ -52,7 +52,7 @@ Player orientation chrome. Two presentations from one set of context values:
         <div class="flex-1 min-w-0 flex items-center gap-1 text-sm text-muted">
             <span class="truncate shrink">{{ course.title }}</span>
             {% if current_part %}
-                <span aria-hidden="true">·</span>
+                <span aria-hidden="true" class="hidden sm:inline">·</span>
                 <span class="truncate shrink hidden sm:inline">{{ current_part.title }}</span>
             {% endif %}
             {% if item_title %}
