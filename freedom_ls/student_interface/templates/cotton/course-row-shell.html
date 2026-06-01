@@ -26,12 +26,14 @@ The `relative` position on the article and `z-index` on secondary controls
 the stretched link.
 {% endcomment %}
 
-<article class="course-card surface border border-gray-200 relative overflow-hidden flex items-center gap-4 py-3 {% if clickable %}cursor-pointer {% endif %}transition duration-200 ease-out hover:shadow-sm motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 {{ class }}">
+<article class="course-card border border-gray-200 relative overflow-hidden flex items-stretch {% if clickable %}cursor-pointer {% endif %}transition duration-200 ease-out hover:shadow-sm motion-reduce:transition-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 {{ class }}">
 
-    {% comment %}Left: compact accent icon box (no course-card-hero band — compact row format).{% endcomment %}
-    <div class="course-accent-{{ accent_slot_key }} flex-shrink-0 flex items-center justify-center size-14 rounded-lg ml-3"
+    {% comment %}Left: full-height accent hero panel, flush to the card edge with no
+    surrounding padding so the icon reads as a prominent hero image rather than an
+    inline icon. `overflow-hidden` on the article clips the panel to the card radius.{% endcomment %}
+    <div class="course-accent-{{ accent_slot_key }} flex-shrink-0 self-stretch flex items-center justify-center w-20"
          aria-hidden="true">
-        {% course_icon icon icon_fallback css_class="size-7" aria_label=title %}
+        {% course_icon icon icon_fallback css_class="size-9" aria_label=title %}
     </div>
 
     {% comment %}Right: details column — course-card-body provides token-backed padding.{% endcomment %}
