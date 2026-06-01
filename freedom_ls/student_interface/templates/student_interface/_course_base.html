@@ -8,14 +8,8 @@
           href="{% static 'content_engine/vendor/katex/katex.min.css' %}" />
 {% endblock extra_head %}
 
-{% block head_title %}
-    {% block item_head_title %}
-    {% endblock %}
-    {% if current_part %}
-        — {{ current_part.title }}
-    {% endif %}
-    — {{ course.title }} — {{ site_name }}
-{% endblock head_title %}
+{# Single-line so no whitespace leaks into the rendered <title>. #}
+{% block head_title %}{% block item_head_title %}{% endblock %}{% if current_part %} — {{ current_part.title }}{% endif %} — {{ course.title }} — {{ site_name }}{% endblock head_title %}
 
 {% block extra_alpine_components %}
     {{ block.super }}

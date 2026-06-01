@@ -41,19 +41,10 @@ Behaviour:
     {% endif %}
 
     <c-slot name="footer">
-        <div class="flex items-center gap-2">
-            <progress class="w-full h-2 rounded-full overflow-hidden course-progress-{{ course.accent_slot_key }}"
-                      role="progressbar"
-                      aria-valuemin="0"
-                      aria-valuemax="100"
-                      aria-valuenow="{{ course.progress_percentage|default:0 }}"
-                      aria-label="Progress for {{ course.title }}"
-                      value="{{ course.progress_percentage|default:0 }}"
-                      max="100">
-                {{ course.progress_percentage|default:0 }}%
-            </progress>
-            <span class="text-sm font-medium tabular-nums">{{ course.progress_percentage|default:0 }}%</span>
-        </div>
+        <c-course-progress-bar percentage="{{ course.progress_percentage|default:0 }}"
+                               accent_slot_key="{{ course.accent_slot_key }}"
+                               label="Progress for {{ course.title }}"
+                               label_class="text-sm font-medium tabular-nums" />
     </c-slot>
 </c-course-card-shell>
 {% endwith %}
