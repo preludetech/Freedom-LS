@@ -150,14 +150,6 @@
     .header[data-scrolled="true"] {
         @apply shadow-none;
     }
-
-    /* Pull-quote decorative mark — a first_class-only flourish. The default
-     * theme leaves the glyph at inline size (subtle); first_class scales it
-     * into an oversized opening quotation mark that floats beside the quote.
-     * Scaled down on small screens so it never crowds the prose. */
-    .pull-quote-mark {
-        @apply absolute -top-2 -left-3 text-4xl leading-none opacity-40 sm:text-6xl;
-    }
 }
 
 /* Heading-weight override — the brand uses `font-semibold` (not the

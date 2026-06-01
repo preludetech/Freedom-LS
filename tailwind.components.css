@@ -49,11 +49,11 @@
     a {
         @apply underline text-primary
     }
-
+/*
     blockquote {
         @apply border-l-4 border-primary bg-primary/10 pl-4 pr-4 py-3 my-4
                italic text-muted rounded-r-md
-    }
+    } */
 
     ul {
         @apply list-disc list-outside ml-6 space-y-2
