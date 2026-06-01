@@ -200,6 +200,11 @@ class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM
         description="Required if strategy is QUIZ. Percentage (0-100) required to pass the quiz",
     )
 
+    submit_on_exit: bool = Field(
+        False,
+        description="If True, leaving the test mid-attempt finalises and scores it. Default False.",
+    )
+
     @model_validator(mode="after")
     def validate_quiz_fields(self):
         """Validate that quiz fields are set correctly based on strategy."""

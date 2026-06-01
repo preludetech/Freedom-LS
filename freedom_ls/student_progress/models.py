@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
@@ -185,6 +187,21 @@ class FormProgress(CourseItemProgress):
         # No incomplete progress found, create a new one
         return cls.objects.create(user=user, form=form)
 
+    @classmethod
+    def finalise_stale_incomplete(cls, user, form) -> FormProgress | None:
+        """
+        For submit-on-exit forms: if the user has an incomplete attempt, complete it.
+        Safe for save-on-exit forms (no-op) and idempotent via complete().
+        Returns the finalised FormProgress or None.
+        """
+        if not form.submit_on_exit:
+            return None
+        incomplete = cast(FormProgress | None, cls.get_latest_incomplete(user, form))
+        if incomplete is None:
+            return None
+        incomplete.complete()
+        return incomplete
+
     def get_current_page_number(self):
         """
         Determine which page number the user should be on based on their progress.
@@ -262,10 +279,9 @@ class FormProgress(CourseItemProgress):
                 answer.save()
 
     def complete(self):
-        """
-        Mark the form as completed and calculate the final score.
-        """
-
+        """Mark the form as completed and calculate the final score (idempotent)."""
+        if self.completed_time:
+            return
         self.completed_time = timezone.now()
         self.score()
         self.save()

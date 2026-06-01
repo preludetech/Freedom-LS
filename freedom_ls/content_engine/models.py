@@ -387,6 +387,14 @@ class Form(TitledContent, MarkdownContent):
         help_text=_("Percentage (0-100) required to pass the quiz"),
     )
 
+    submit_on_exit = models.BooleanField(
+        default=False,
+        help_text=_(
+            "If True, leaving the test mid-attempt finalises and scores it. "
+            "If False (default), the attempt is saved and can be resumed."
+        ),
+    )
+
     class Meta:
         unique_together = ["site", "slug"]
 
