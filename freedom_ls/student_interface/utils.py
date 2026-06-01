@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from django.contrib.contenttypes.models import ContentType
@@ -44,6 +46,20 @@ READY = "READY"
 IN_PROGRESS = "IN_PROGRESS"
 COMPLETE = "COMPLETE"
 FAILED = "FAILED"
+
+
+class CourseListingStatus(StrEnum):
+    NOT_REGISTERED = "not_registered"
+    REGISTERED = "registered"  # registered, 0%, not complete
+    IN_PROGRESS = "in_progress"  # registered, >0%, completed_time is None
+    COMPLETE = "complete"  # registered, completed_time is not None
+
+
+@dataclass(frozen=True)
+class CourseListingEntry:
+    course: Course
+    status: CourseListingStatus
+    progress_percentage: int
 
 
 def get_content_status(
@@ -483,3 +499,46 @@ def get_recommended_courses(user: RequestUser) -> QuerySet[RecommendedCourse]:
     if not user.is_authenticated:
         return RecommendedCourse.objects.none()
     return RecommendedCourse.objects.filter(user=user).select_related("collection")
+
+
+def get_course_listing(user: RequestUser) -> list[CourseListingEntry]:
+    """Status + progress for every course, from a constant set of batched queries.
+
+    Query budget is a small CONSTANT, independent of course count:
+      1) get_all_courses()              -> 1 query (the listing loop)
+      2) get_course_registrations(user) -> the registered set (incl. completed)
+      3) one CourseProgress .values()   -> 1 query
+    No per-course queries. The exact constant is locked by the regression
+    test in Task A3 (determined empirically — do not hard-code a guess here).
+    """
+    if not user.is_authenticated:
+        return [
+            CourseListingEntry(course, CourseListingStatus.NOT_REGISTERED, 0)
+            for course in get_all_courses()
+        ]
+    courses = get_all_courses()
+    registered_ids = {c.id for c in get_course_registrations(user)}
+    progress_rows = {
+        row["course_id"]: row
+        for row in CourseProgress.objects.filter(
+            user=user, course__in=registered_ids
+        ).values("course_id", "progress_percentage", "completed_time")
+    }
+
+    entries: list[CourseListingEntry] = []
+    for course in courses:
+        if course.id not in registered_ids:
+            entries.append(
+                CourseListingEntry(course, CourseListingStatus.NOT_REGISTERED, 0)
+            )
+            continue
+        row = progress_rows.get(course.id)  # may be missing -> treat as 0%
+        pct = row["progress_percentage"] if row else 0
+        if row and row["completed_time"] is not None:
+            status = CourseListingStatus.COMPLETE
+        elif pct > 0:
+            status = CourseListingStatus.IN_PROGRESS
+        else:
+            status = CourseListingStatus.REGISTERED
+        entries.append(CourseListingEntry(course, status, pct))
+    return entries
