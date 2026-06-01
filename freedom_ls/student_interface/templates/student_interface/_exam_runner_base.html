@@ -1,0 +1,41 @@
+{% extends "_base.html" %}
+{% load static %}
+
+{% comment %}
+Runner base template for the exam/test flow.
+Extends _base.html directly — no sidebar, no course TOC.
+Suppresses the global header; the runner owns its own top bar.
+Child templates fill three blocks: runner_bar, runner_body, runner_footer.
+{% endcomment %}
+
+{% block extra_alpine_components %}{{ block.super }}
+    <script defer src="{% static 'student_interface/js/alpine-components.js' %}"></script>
+{% endblock extra_alpine_components %}
+
+{% block header %}
+{% comment %}runner owns its own bar{% endcomment %}
+{% endblock header %}
+
+{% block body %}
+    <div class="h-screen flex flex-col overflow-hidden">
+
+        {% comment %}Sticky top bar — runner_bar{% endcomment %}
+        <div class="flex-none sticky top-0 z-20">
+            {% block runner_bar %}
+            {% endblock runner_bar %}
+        </div>
+
+        {% comment %}Scrollable question area — runner_body{% endcomment %}
+        <div class="flex-1 overflow-y-auto">
+            {% block runner_body %}
+            {% endblock runner_body %}
+        </div>
+
+        {% comment %}Sticky footer nav — runner_footer{% endcomment %}
+        <div class="flex-none sticky bottom-0 z-20">
+            {% block runner_footer %}
+            {% endblock runner_footer %}
+        </div>
+
+    </div>
+{% endblock body %}
