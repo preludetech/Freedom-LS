@@ -69,8 +69,8 @@ def _annotate_next_up(course: Course, user) -> None:
     setattr(course, "next_up_url", next_item["url"] if next_item else "")  # noqa: B010
 
 
-def _preview_start_url(course: Course, *, is_registered: bool, has_items: bool) -> str:
-    """URL the not-started preview's Start button should target.
+def _detail_start_url(course: Course, *, is_registered: bool, has_items: bool) -> str:
+    """URL the detail page's CTA button should target.
 
     Unregistered learners go through ``register_for_course`` (idempotent
     registration + redirect). Already-registered, 0-progress learners skip
@@ -94,6 +94,21 @@ def _preview_start_url(course: Course, *, is_registered: bool, has_items: bool) 
     )
 
 
+def _detail_cta_label(course: Course, user, *, is_registered: bool) -> str:
+    """State-aware CTA label for the course detail page.
+
+    Uses a single CourseProgress lookup — does not scan TopicProgress/FormProgress.
+    """
+    if not is_registered:
+        return "Enrol & start"
+    progress = CourseProgress.objects.filter(user=user, course=course).first()
+    if progress is None or progress.completed_time is None:
+        if progress is not None and progress.progress_percentage > 0:
+            return "Continue"
+        return "Start course"
+    return "Review course"
+
+
 def _annotate_preview_context(course: Course, *, is_registered: bool) -> None:
     """Attach preview children + registration + start URL for the modal.
 
@@ -110,7 +125,7 @@ def _annotate_preview_context(course: Course, *, is_registered: bool) -> None:
     setattr(  # noqa: B010
         course,
         "preview_start_url",
-        _preview_start_url(
+        _detail_start_url(
             course, is_registered=is_registered, has_items=bool(children)
         ),
     )
@@ -175,22 +190,34 @@ def all_courses(request):
 
 
 @login_required
-def course_preview(request, course_slug):
-    """Standalone preview page for a course (used on mobile and as deep-link)."""
+def course_detail(request, course_slug):
+    """Canonical course detail page — accessible on all screen sizes."""
     course = get_object_or_404(Course, slug=course_slug)
     children = get_course_index(user=request.user, course=course)
     is_registered = get_is_registered(user=request.user, course=course)
-    start_url = _preview_start_url(
+    start_url = _detail_start_url(
         course, is_registered=is_registered, has_items=bool(children)
     )
+    cta_label = _detail_cta_label(course, request.user, is_registered=is_registered)
+    breadcrumbs = [
+        {"label": "All courses", "url": reverse("student_interface:courses")},
+        {"label": course.title},
+    ]
+    viewable = course.viewable_items()
+    lesson_count = len(viewable)
+    includes_assessments = any(isinstance(c, Form) for c in viewable)
     return render(
         request,
-        "student_interface/course_preview.html",
+        "student_interface/course_detail.html",
         {
             "course": course,
             "children": children,
             "is_registered": is_registered,
             "start_url": start_url,
+            "cta_label": cta_label,
+            "breadcrumbs": breadcrumbs,
+            "lesson_count": lesson_count,
+            "includes_assessments": includes_assessments,
         },
     )
 

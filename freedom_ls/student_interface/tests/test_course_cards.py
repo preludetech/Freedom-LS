@@ -1,4 +1,4 @@
-"""Tests for the three course-card variants and the course-preview view.
+"""Tests for the three course-card variants and the course-detail view.
 
 Per project conventions: no CSS class assertions. We assert on
 content the user sees (course title, eyebrow text, "Next up:" line) and
@@ -129,18 +129,18 @@ def test_not_registered_card_shows_not_registered_label(
     assert "Not started" not in body
 
 
-# --- course_preview view ---
+# --- course_detail view ---
 
 
 @pytest.mark.django_db
-def test_course_preview_returns_200_for_authenticated_user(
+def test_course_detail_returns_200_for_authenticated_user(
     mock_site_context, course_with_topics
 ):
     user = UserFactory()
     client = _logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_preview",
+            "student_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
@@ -153,11 +153,11 @@ def test_course_preview_returns_200_for_authenticated_user(
 
 
 @pytest.mark.django_db
-def test_course_preview_requires_login(mock_site_context, course_with_topics, client):
-    """Anonymous users get redirected from the preview page."""
+def test_course_detail_requires_login(mock_site_context, course_with_topics, client):
+    """Anonymous users get redirected from the detail page."""
     response = client.get(
         reverse(
-            "student_interface:course_preview",
+            "student_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
@@ -165,20 +165,156 @@ def test_course_preview_requires_login(mock_site_context, course_with_topics, cl
 
 
 @pytest.mark.django_db
-def test_course_preview_has_start_button_when_not_registered(
+def test_course_detail_shows_enrol_and_start_for_unregistered_user(
     mock_site_context, course_with_topics
 ):
+    """An unregistered user sees 'Enrol & start' CTA on the detail page."""
     user = UserFactory()
     client = _logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_preview",
+            "student_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
     body = response.content.decode()
-    # The shared partial drops a "Start" button when is_registered is False.
-    assert "Start" in body
+    assert "Enrol &amp; start" in body or "Enrol & start" in body
+
+
+@pytest.mark.django_db
+def test_course_detail_enrol_cta_links_to_register_for_course_when_unregistered(
+    mock_site_context, course_with_topics
+):
+    """The CTA for an unregistered user links to the register_for_course URL."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+    response = client.get(
+        reverse(
+            "student_interface:course_detail",
+            kwargs={"course_slug": course_with_topics.slug},
+        )
+    )
+    body = response.content.decode()
+    register_url = reverse(
+        "student_interface:register_for_course",
+        kwargs={"course_slug": course_with_topics.slug},
+    )
+    assert register_url in body
+
+
+@pytest.mark.django_db
+def test_course_detail_has_start_button_when_registered_zero_progress(
+    mock_site_context, course_with_topics
+):
+    """A registered learner with 0 progress lands on the detail page
+    and sees a Start course button pointing to the first item."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    client = _logged_in_client(user)
+    response = client.get(
+        reverse(
+            "student_interface:course_detail",
+            kwargs={"course_slug": course_with_topics.slug},
+        )
+    )
+    body = response.content.decode()
+    first_item_url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course_with_topics.slug, "index": 1},
+    )
+    assert "Start course" in body
+    assert first_item_url in body
+
+
+@pytest.mark.django_db
+def test_course_detail_renders_breadcrumbs(mock_site_context, course_with_topics):
+    """The detail page renders breadcrumbs including the 'All courses' link
+    and the current course title."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+    response = client.get(
+        reverse(
+            "student_interface:course_detail",
+            kwargs={"course_slug": course_with_topics.slug},
+        )
+    )
+    body = response.content.decode()
+    all_courses_url = reverse("student_interface:courses")
+    assert all_courses_url in body
+    assert "All courses" in body
+    assert course_with_topics.title in body
+
+
+@pytest.mark.django_db
+def test_course_detail_renders_lesson_count_in_stats(
+    mock_site_context, course_with_topics
+):
+    """The detail page stats strip always shows the lesson count."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+    response = client.get(
+        reverse(
+            "student_interface:course_detail",
+            kwargs={"course_slug": course_with_topics.slug},
+        )
+    )
+    body = response.content.decode()
+    # course_with_topics has 3 topics
+    assert "3 lesson" in body
+
+
+@pytest.mark.django_db
+def test_course_detail_omits_difficulty_when_not_set(
+    mock_site_context, course_with_topics
+):
+    """When difficulty is not set, the detail page shows no difficulty text."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+    response = client.get(
+        reverse(
+            "student_interface:course_detail",
+            kwargs={"course_slug": course_with_topics.slug},
+        )
+    )
+    body = response.content.decode()
+    # course_with_topics has no difficulty set — none of the difficulty display values should appear
+    for label in ("Beginner", "Intermediate", "Advanced", "All levels"):
+        assert label not in body
+
+
+@pytest.mark.django_db
+def test_course_detail_omits_duration_when_not_set(
+    mock_site_context, course_with_topics
+):
+    """When estimated_duration is not set, the detail page shows no duration."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+    response = client.get(
+        reverse(
+            "student_interface:course_detail",
+            kwargs={"course_slug": course_with_topics.slug},
+        )
+    )
+    body = response.content.decode()
+    # No duration marker (the helper returns "" for null, and we render nothing)
+    assert "~" not in body
+
+
+@pytest.mark.django_db
+def test_course_detail_omits_learning_outcomes_section_when_not_set(
+    mock_site_context, course_with_topics
+):
+    """When learning_outcomes is empty, the 'What you'll learn' section is absent."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+    response = client.get(
+        reverse(
+            "student_interface:course_detail",
+            kwargs={"course_slug": course_with_topics.slug},
+        )
+    )
+    body = response.content.decode()
+    assert "What you'll learn" not in body
 
 
 @pytest.mark.django_db
@@ -200,32 +336,6 @@ def test_registered_card_does_not_link_to_register_url(
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert register_url not in body
-
-
-@pytest.mark.django_db
-def test_course_preview_has_start_button_when_registered_zero_progress(
-    mock_site_context, course_with_topics
-):
-    """Bug: a registered learner with 0 progress lands on the preview page
-    and must see a Start button taking them into the course's first item.
-    Previously the partial only rendered Start for unregistered users, so a
-    registered-but-not-yet-started learner had no way forward from preview."""
-    user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
-    client = _logged_in_client(user)
-    response = client.get(
-        reverse(
-            "student_interface:course_preview",
-            kwargs={"course_slug": course_with_topics.slug},
-        )
-    )
-    body = response.content.decode()
-    first_item_url = reverse(
-        "student_interface:view_course_item",
-        kwargs={"course_slug": course_with_topics.slug, "index": 1},
-    )
-    assert "Start" in body
-    assert first_item_url in body
 
 
 @pytest.mark.django_db
@@ -252,11 +362,10 @@ def test_registered_zero_progress_card_links_title_to_first_item(
 
 
 @pytest.mark.django_db
-def test_not_started_modal_shows_start_for_unregistered_user(
+def test_not_registered_card_links_to_course_detail(
     mock_site_context, course_with_topics
 ):
-    """The converse of the bug: a recommended (unregistered) course on the
-    dashboard renders the Start button linking to the registration URL."""
+    """A not-registered course card links to the course_detail URL (not a modal)."""
     user = UserFactory()
     RecommendedCourseFactory(user=user, collection=course_with_topics)
     client = _logged_in_client(user)
@@ -264,45 +373,30 @@ def test_not_started_modal_shows_start_for_unregistered_user(
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
 
-    register_url = reverse(
-        "student_interface:register_for_course",
+    detail_url = reverse(
+        "student_interface:course_detail",
         kwargs={"course_slug": course_with_topics.slug},
     )
-    assert register_url in body
+    assert detail_url in body
 
 
 @pytest.mark.django_db
-def test_modal_and_page_share_preview_content_partial(
+def test_not_registered_card_has_no_modal_trigger(
     mock_site_context, course_with_topics
 ):
-    """Rendering the dashboard's not-started modal and the standalone
-    preview page must surface the same title + ToC items, because they
-    both include `course_preview_content.html`.
-
-    The modal only renders for unregistered (recommended) courses — a
-    registered course gets the progress card instead — so the dashboard
-    course here is a recommendation."""
+    """The not-registered card links to course_detail, not a modal, on the dashboard."""
     user = UserFactory()
     RecommendedCourseFactory(user=user, collection=course_with_topics)
     client = _logged_in_client(user)
 
-    # Standalone preview page.
-    page = client.get(
-        reverse(
-            "student_interface:course_preview",
-            kwargs={"course_slug": course_with_topics.slug},
-        )
+    response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": course_with_topics.slug},
     )
-    page_body = page.content.decode()
-
-    # Dashboard with the not-started modal trigger (unregistered recommendation).
-    dashboard = client.get(reverse("student_interface:dashboard"))
-    dash_body = dashboard.content.decode()
-
-    # The course title + ToC items appear in both renderings.
-    assert course_with_topics.title in page_body
-    assert course_with_topics.title in dash_body
-    for child in course_with_topics.children():
-        assert child.title in page_body
-        # ToC items render in the not-started modal too.
-        assert child.title in dash_body
+    # The card links to the detail page (not a modal trigger)
+    assert detail_url in body
+    # No modal close button present for the not-registered card
+    assert "course_preview_content" not in body

@@ -1,63 +1,34 @@
 {% comment %}
-Not-registered course row leaf (preview / unregistered state).
+Not-registered course row leaf (unregistered state).
 
 Dispatch seam: course_row_list.html > dispatch-row > here
   (listing_status == "not_registered")
 
-The only internal branch is desktop vs mobile (modal vs deep-link) —
-this is behaviour, not look.
+All screen sizes: a single plain link to student_interface:course_detail.
+No desktop/mobile branch. No modal.
 
-Desktop (>= md): opens a c-modal preview trigger.
-Mobile (< md):   links to /courses/[slug]/preview/ for a dedicated page
-                 that survives refresh.
+Uses the stretched-link pattern (before:absolute before:inset-0) on the title
+anchor so the whole row is clickable — same pattern as course_row_registered.html.
 
-No progress bar. Status label conveys "Not registered" via text + icon
-(WCAG 1.4.1 — colour reinforcement only, not sole indicator), through the
-shared course_status_eyebrow.html partial.
+Status label conveys "Not registered" via text + icon (WCAG 1.4.1 — colour
+reinforcement only, not sole indicator), through the shared
+course_status_eyebrow.html partial.
 
-Preview context (course.preview_children, course.preview_start_url) is
-set by _annotate_preview_context in the all_courses view for every
-NOT_REGISTERED course.
+Required context: course (needs course.slug, course.accent_slot_key, course.icon,
+course.icon_fallback, course.title).
 {% endcomment %}
-
-{% comment %}Desktop: modal trigger. Hidden below md.{% endcomment %}
-<div class="hidden md:block">
-    <c-modal title="{{ course.title }}" class="w-full max-w-lg">
-        <c-slot name="trigger">
-            <c-course-row-shell accent_slot_key="{{ course.accent_slot_key }}"
-                                icon="{{ course.icon }}"
-                                icon_fallback="{{ course.icon_fallback }}"
-                                title="{{ course.title }}"
-                                clickable="true">
-                {% include "student_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
-                <h3>{{ course.title }}</h3>
-            </c-course-row-shell>
-        </c-slot>
-
-        {% with children=course.preview_children start_url=course.preview_start_url %}
-            {% include "student_interface/partials/course_preview_content.html" %}
-        {% endwith %}
-
-        <c-slot name="footer">
-            <c-button variant="outline" x-on:click="close">
-                Close
-            </c-button>
-        </c-slot>
-    </c-modal>
-</div>
-
-{% comment %}Mobile: dedicated-page link. Hidden at md and up.{% endcomment %}
-<div class="md:hidden">
-    <c-course-row-shell accent_slot_key="{{ course.accent_slot_key }}"
-                        icon="{{ course.icon }}"
-                        icon_fallback="{{ course.icon_fallback }}"
-                        title="{{ course.title }}">
+{% url 'student_interface:course_detail' course_slug=course.slug as detail_url %}
+<c-course-row-shell accent_slot_key="{{ course.accent_slot_key }}"
+                    icon="{{ course.icon }}"
+                    icon_fallback="{{ course.icon_fallback }}"
+                    title="{{ course.title }}">
+    <c-slot name="eyebrow">
         {% include "student_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
-        <h3>
-            <a href="{% url 'student_interface:course_preview' course_slug=course.slug %}"
-               class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">
-                {{ course.title }}
-            </a>
-        </h3>
-    </c-course-row-shell>
-</div>
+    </c-slot>
+    <h3>
+        <a href="{{ detail_url }}"
+           class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">
+            {{ course.title }}
+        </a>
+    </h3>
+</c-course-row-shell>

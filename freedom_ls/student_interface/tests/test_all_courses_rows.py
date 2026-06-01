@@ -68,22 +68,47 @@ def test_all_courses_renders_four_distinct_status_labels(mock_site_context, cour
 
 
 @pytest.mark.django_db
-def test_all_courses_not_registered_row_has_preview_affordance(
+def test_all_courses_not_registered_row_links_to_course_detail(
     mock_site_context, courses
 ):
-    """A not-registered course row renders a link to the course_preview URL (mobile path)."""
+    """A not-registered course row renders a single link to the course_detail URL."""
     user = UserFactory()
     client = _logged_in_client(user)
 
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
 
-    preview_url = reverse(
-        "student_interface:course_preview",
+    detail_url = reverse(
+        "student_interface:course_detail",
         kwargs={"course_slug": courses[0].slug},
     )
     body = response.content.decode()
-    assert preview_url in body
+    assert detail_url in body
+
+
+@pytest.mark.django_db
+def test_all_courses_not_registered_row_has_no_modal_trigger(
+    mock_site_context, courses
+):
+    """A not-registered course row contains no modal markup."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    body = response.content.decode()
+    # The modal trigger pattern from the old card used x-on:click="open" with a c-modal.
+    # The detail_url should be present as a plain link without modal attributes.
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    assert detail_url in body
+    # No Close button from modal footer (which was "Close" inside c-modal slot)
+    # is expected for the not-registered state rows
+    # Verify the link is a straight href, not a modal trigger
+    assert "course_preview_content" not in body
 
 
 @pytest.mark.django_db

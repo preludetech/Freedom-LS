@@ -1,6 +1,6 @@
 """Tests for the browser-tab <title> tags across the student-facing pages.
 
-Covers the dashboard, all-courses, and course-preview pages (Bug 2).
+Covers the dashboard, all-courses, and course-detail pages.
 """
 
 from __future__ import annotations
@@ -50,13 +50,13 @@ def test_all_courses_title_tag_says_all_courses(mock_site_context, courses):
 
 
 @pytest.mark.django_db
-def test_course_preview_title_tag_uses_course_title(mock_site_context, courses):
-    """The course-preview page's browser-tab title matches the course title."""
+def test_course_detail_title_tag_uses_course_title(mock_site_context, courses):
+    """The course-detail page's browser-tab title matches the course title."""
     user = UserFactory()
     client = _logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_preview", kwargs={"course_slug": courses[0].slug}
+            "student_interface:course_detail", kwargs={"course_slug": courses[0].slug}
         )
     )
     assert response.status_code == 200
