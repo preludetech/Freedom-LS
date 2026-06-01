@@ -4,54 +4,22 @@
 
     {% comment %}
     This shell owns its outer horizontal padding because c-page sits inside the
-    right-hand content column rather than wrapping the whole shell — the header
-    bar and grid need their own outer px-* to avoid pushing to the screen edge.
+    right-hand content column rather than wrapping the whole shell — the content
+    header and grid need their own outer px-* to avoid pushing to the screen edge.
     Templates rendered into {% block content %} use <c-page flush="true"> so the
     inner content well doesn't double up on horizontal padding and lg:gap-12
     stays the single source of truth for sidebar/content distance.
 
     The sidebar is a single <dialog> driven by the shared sidePanel controller:
-    docked in-flow on desktop (dialog.show()), modal overlay below lg
-    (dialog.showModal()). The shared default presentation is the bottom-sheet
-    (slides up from the bottom on mobile); a consumer can override it via the
-    sidebar_presentation block.
+    docked in-flow on desktop (dialog.show(), always open) and a modal overlay
+    below lg (dialog.showModal()), opened from the content header's expand button.
+    The shared default presentation is the bottom-sheet (slides up on mobile); a
+    consumer can override it via the sidebar_presentation block.
     {% endcomment %}
     <div x-data="sidePanel"
          class="px-4 sm:px-6 lg:px-8"
          data-storage-key="{% block sidebar_storage_key %}sidebar{% endblock sidebar_storage_key %}"
-         data-desktop-lock="{% block sidebar_desktop_lock %}{% endblock sidebar_desktop_lock %}"
-         data-sidebar-heading="{% block sidebar_heading %}{% endblock sidebar_heading %}">
-
-        {% comment %}
-        Header bar: toggle button + contextual text. Consumers that supply their
-        own chrome (e.g. the course player's breadcrumb / compact header) override
-        this block to empty.
-        {% endcomment %}
-        {% block header_bar %}
-        <div class="flex items-center bg-surface pt-4 pb-4">
-            {% comment %} Toggle button: opens/closes the panel. {% endcomment %}
-            <div>
-                <button x-on:click="toggle"
-                        class="p-2 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
-                        aria-label="Toggle navigation panel"
-                        x-bind:aria-expanded="open">
-                    <c-icon name="menu_open" class="size-5" />
-                </button>
-            </div>
-
-            {% comment %} Center: contextual text. {% endcomment %}
-            <div class="flex-1 min-w-0 text-center px-2">
-                <span class="text-xl font-medium text-muted truncate">
-                    {% block header_bar_text %}
-                    {% endblock header_bar_text %}
-                </span>
-            </div>
-
-            {% comment %} Right spacer to balance layout. {% endcomment %}
-            <div class="w-10">
-            </div>
-        </div>
-        {% endblock header_bar %}
+         data-desktop-lock="true">
 
         {% comment %}
         Sidebar + content grid container. lg:gap-12 is the single source of
@@ -74,33 +42,15 @@
                     aria-label="{% block sidebar_heading_aria %}Navigation{% endblock sidebar_heading_aria %}">
                 <div class="overlay-panel side-panel-body bg-surface h-full overflow-y-auto overscroll-contain">
                     {% comment %}
-                    Mobile panel header with close control. Consumers whose panel
-                    body already carries its own heading/chrome (e.g. the course
-                    player's outline header) override this block to empty so the
-                    mobile sheet shows exactly the same content as the desktop
-                    docked panel — no duplicated title row.
+                    The panel has no chrome of its own — no title row or close
+                    control. On mobile it is a native modal sheet dismissed by the
+                    backdrop / Escape / device-back; on desktop it is docked and
+                    always open. The body therefore owns the top inset at every
+                    breakpoint, and consumers slot their own heading (if any) into
+                    sidebar_content. This keeps the panel identical across every
+                    interface — only the slotted content differs.
                     {% endcomment %}
-                    {% block sidebar_mobile_header %}
-                    <div class="flex items-center justify-between p-4 lg:hidden">
-                        <span class="text-lg font-semibold text-muted truncate"
-                              x-text="$root.dataset.sidebarHeading">
-                        </span>
-                        <button x-on:click="close"
-                                class="p-1 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
-                                aria-label="Close navigation panel">
-                            <c-icon name="menu_close" class="size-5" />
-                        </button>
-                    </div>
-                    {% endblock sidebar_mobile_header %}
-                    {% comment %}
-                    The mobile panel header (above, lg:hidden) supplies the top
-                    space below lg, so by default the body only needs a top pad on
-                    desktop (lg:pt-6) — without it the outline squashes against the
-                    panel top once the shell header bar is suppressed. Consumers
-                    that also suppress the mobile header (e.g. the player) override
-                    sidebar_body_top_pad to add a top pad at every breakpoint.
-                    {% endcomment %}
-                    <div class="px-4 pb-6 lg:px-6 {% block sidebar_body_top_pad %}lg:pt-6{% endblock sidebar_body_top_pad %}">
+                    <div class="px-4 pb-6 lg:px-6 {% block sidebar_body_top_pad %}pt-6{% endblock sidebar_body_top_pad %}">
                         {% block sidebar_content %}
                         {% endblock sidebar_content %}
                     </div>
@@ -109,7 +59,27 @@
 
             {% comment %} Main content area. {% endcomment %}
             <div class="flex-1 min-w-0">
-                {% block breadcrumbs %}{% endblock breadcrumbs %}
+                {% comment %}
+                Shared content header. Same markup on every breakpoint:
+                breadcrumbs (whose terminal crumb is the page title) plus an
+                optional header_extra slot for other elements (e.g. a progress
+                bar). The expand button is mobile-only (lg:hidden) and sits to the
+                right of the breadcrumbs — on desktop the panel is always docked,
+                so there is nothing to toggle.
+                {% endcomment %}
+                <header class="flex items-start gap-2 pt-4 pb-2">
+                    <div class="flex-1 min-w-0">
+                        {% block breadcrumbs %}{% endblock breadcrumbs %}
+                        {% block header_extra %}{% endblock header_extra %}
+                    </div>
+                    <button x-on:click="toggle"
+                            x-bind:aria-expanded="open"
+                            class="lg:hidden shrink-0 p-2 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
+                            aria-label="{% block panel_toggle_label %}Open navigation panel{% endblock panel_toggle_label %}">
+                        <c-icon name="table_of_contents" class="size-5" />
+                    </button>
+                </header>
+
                 {% block content %}
                 {% endblock content %}
             </div>

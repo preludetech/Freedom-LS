@@ -1,21 +1,19 @@
 {% comment %}
-Player orientation chrome. Two presentations from one set of context values:
+Player breadcrumb trail, identical on every breakpoint:
 
-  - Desktop (lg+): a full breadcrumb trail
-        course > [part] > current item
-    Ancestor crumbs link to concrete item URLs (never the bare course URL); the
-    current item is plain text with aria-current="page". The part crumb is
-    dropped entirely when current_part is None. The > separators are CSS
-    decoration (player-crumbs ::before), so screen readers never announce them.
+    course > [part] > current item
 
-  - Phones (< lg): a compact bar with a back arrow, a middle-truncated trail, a
-    labelled TOC toggle, and a thin progress bar with %.
+Ancestor crumbs link to concrete item URLs (never the bare course URL); the
+current item is plain text with aria-current="page" and acts as the page title.
+The part crumb is dropped entirely when current_part is None. The > separators
+are CSS decoration (player-crumbs ::before), so screen readers never announce
+them. The mobile expand button and the progress bar are supplied by the shared
+content header in _base_interface.html, not here.
 {% endcomment %}
 
 {% url 'student_interface:view_course_item' course_slug=course.slug index=1 as first_item_url %}
 
-{% comment %} Desktop breadcrumbs. {% endcomment %}
-<nav aria-label="Breadcrumb" class="hidden lg:block pt-4 pb-2">
+<nav aria-label="Breadcrumb">
     <ol class="player-crumbs list-none ml-0 flex items-center gap-2 text-sm text-muted min-w-0">
         <li class="flex items-center min-w-0">
             <a href="{{ first_item_url }}"
@@ -38,42 +36,3 @@ Player orientation chrome. Two presentations from one set of context values:
         {% endif %}
     </ol>
 </nav>
-
-{% comment %} Mobile compact header. {% endcomment %}
-<div class="lg:hidden pt-2 pb-2">
-    <div class="flex items-center gap-2">
-        {% if previous_url %}
-            <a href="{{ previous_url }}"
-               class="p-1 rounded-md text-muted hover:text-on-surface shrink-0"
-               aria-label="Previous item">
-                <c-icon name="previous" class="size-5" />
-            </a>
-        {% endif %}
-        <div class="flex-1 min-w-0 flex items-center gap-1 text-sm text-muted">
-            <span class="truncate shrink">{{ course.title }}</span>
-            {% if current_part %}
-                <span aria-hidden="true" class="hidden sm:inline">·</span>
-                <span class="truncate shrink hidden sm:inline">{{ current_part.title }}</span>
-            {% endif %}
-            {% if item_title %}
-                <span aria-hidden="true">·</span>
-                <span class="truncate text-on-surface font-medium"
-                      aria-current="page">{{ item_title }}</span>
-            {% endif %}
-        </div>
-        <button x-on:click="toggle"
-                x-bind:aria-expanded="open"
-                aria-label="Open course outline"
-                class="p-1 rounded-md text-muted hover:text-on-surface shrink-0 flex items-center gap-1">
-            <c-icon name="table_of_contents" class="size-5" />
-        </button>
-    </div>
-    {% if course_progress %}
-        <div class="mt-2">
-            <c-course-progress-bar percentage="{{ course_progress.progress_percentage|default:0 }}"
-                                   accent_slot_key="{{ course.accent_slot_key }}"
-                                   bar_class="h-1.5"
-                                   label_class="text-xs font-medium tabular-nums text-muted" />
-        </div>
-    {% endif %}
-</div>

@@ -28,23 +28,9 @@ not overridden here.
 {% block sidebar_heading_aria %}Course outline{% endblock sidebar_heading_aria %}
 
 {% comment %}
-The player TOC is always open on desktop (no close control) and supplies its own
-chrome via the breadcrumb / compact header, so the shared shell header bar is
-suppressed.
+The shared mobile expand button opens the course outline, so label it for that.
 {% endcomment %}
-
-{% block sidebar_desktop_lock %}true{% endblock sidebar_desktop_lock %}
-{% block header_bar %}{% endblock header_bar %}
-{% comment %}
-The bottom sheet shows the same outline header/chrome as the desktop docked
-panel, so the shared mobile title-and-close row is suppressed — keeping mobile
-and desktop content identical.
-{% endcomment %}
-{% block sidebar_mobile_header %}{% endblock sidebar_mobile_header %}
-{% comment %}
-No mobile header row, so the body itself owns the top inset at every breakpoint.
-{% endcomment %}
-{% block sidebar_body_top_pad %}pt-6{% endblock sidebar_body_top_pad %}
+{% block panel_toggle_label %}Open course outline{% endblock panel_toggle_label %}
 
 {% comment %}
 Give the outline a roomier desktop column than the shared 16rem default so the
@@ -56,8 +42,22 @@ below lg.
 
 {% block breadcrumbs %}
     {% include "student_interface/partials/player_breadcrumbs.html" %}
-
 {% endblock breadcrumbs %}
+
+{% comment %}
+Course progress lives under the breadcrumbs on mobile only — on desktop the
+docked outline panel carries its own progress, so the header stays uncluttered.
+{% endcomment %}
+{% block header_extra %}
+    {% if course_progress %}
+        <div class="mt-2 lg:hidden">
+            <c-course-progress-bar percentage="{{ course_progress.progress_percentage|default:0 }}"
+                                   accent_slot_key="{{ course.accent_slot_key }}"
+                                   bar_class="h-1.5"
+                                   label_class="text-xs font-medium tabular-nums text-muted" />
+        </div>
+    {% endif %}
+{% endblock header_extra %}
 
 {% block sidebar_content %}
     {% comment %}
