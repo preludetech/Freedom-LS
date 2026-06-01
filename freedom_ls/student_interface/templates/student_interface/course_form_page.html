@@ -22,9 +22,14 @@ All Alpine wiring uses registered method names only (CSP build — zero inline e
 
 {% comment %}Question input partials{% endcomment %}
 
+{% comment %}
+`relative` on the option labels keeps the sr-only input positioned within its
+label so it scrolls with the label. Without it the absolutely-positioned input
+anchors to the scroll container and focusing it on selection makes the page jump.
+{% endcomment %}
 {% partialdef form-input-multiple-choice %}
     {% for option in question.options.all %}
-        <label class="flex items-start gap-3 p-3 rounded-md border border-border cursor-pointer
+        <label class="relative flex items-start gap-3 p-3 rounded-md border border-border cursor-pointer
                        has-[:checked]:border-primary has-[:checked]:bg-primary/5
                        hover:bg-surface-2 transition-colors"
                for="q{{ question.id }}_opt{{ option.id }}">
@@ -42,7 +47,7 @@ All Alpine wiring uses registered method names only (CSP build — zero inline e
 
 {% partialdef form-input-checkboxes %}
     {% for option in question.options.all %}
-        <label class="flex items-start gap-3 p-3 rounded-md border border-border cursor-pointer
+        <label class="relative flex items-start gap-3 p-3 rounded-md border border-border cursor-pointer
                        has-[:checked]:border-primary has-[:checked]:bg-primary/5
                        hover:bg-surface-2 transition-colors"
                for="q{{ question.id }}_opt{{ option.id }}">
@@ -243,7 +248,7 @@ examSubmitDialog scope (no intermediate x-data between them).
                                     {% else %}
                                         {% comment %}Save-on-exit: GET back to the form start page{% endcomment %}
                                         <c-button variant="primary"
-                                                  href="{% url 'student_interface:view_course_item' course.slug index %}">
+                                                  href="{{ save_and_exit_url }}">
                                             Leave and save
                                         </c-button>
                                     {% endif %}

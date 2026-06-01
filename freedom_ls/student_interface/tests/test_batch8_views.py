@@ -480,6 +480,49 @@ def test_form_fill_page_context_includes_submit_and_exit_url(mock_site_context, 
 
 
 @pytest.mark.django_db
+def test_save_on_exit_dialog_renders_real_view_course_item_url(
+    mock_site_context, client
+):
+    """The save-on-exit exit dialog renders a real view_course_item URL.
+
+    Regression: the "Leave and save" link used a `{% url %}` tag in a c-button
+    href on a continuation line, which django-cotton passed through literally,
+    producing a 404 redirect to the unrendered template tag.
+    """
+    user = UserFactory()
+    form, _pages, _questions = _make_two_page_form(submit_on_exit=False)
+    course = _make_course_with_form(form)
+    _register(user, course)
+
+    client.force_login(user)
+    client.get(
+        reverse(
+            "student_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    url = reverse(
+        "student_interface:form_fill_page",
+        kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    expected_url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    # The "Leave and save" link must point at the real save-and-exit URL.
+    assert f'href="{expected_url}"' in content
+    # The unrendered template tag must not leak into the HTML (cotton would
+    # otherwise pass the literal `{% url ... %}` through, HTML-escaped).
+    assert "view_course_item" not in content.split("Leave and save")[0][-300:]
+    assert "{% url" not in content
+
+
+@pytest.mark.django_db
 def test_form_fill_page_context_includes_submit_on_exit(mock_site_context, client):
     """form_fill_page context includes form.submit_on_exit."""
     user = UserFactory()

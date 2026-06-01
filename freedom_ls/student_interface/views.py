@@ -601,6 +601,12 @@ def form_fill_page(request, course_slug, index, page_number):
         kwargs={"course_slug": course_slug, "index": index},
     )
 
+    # URL for the save-and-exit link (used by the exit dialog)
+    save_and_exit_url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course_slug, "index": index},
+    )
+
     context = {
         "course": course,
         "form": form,
@@ -619,6 +625,7 @@ def form_fill_page(request, course_slug, index, page_number):
         "answered_count": answered_count,
         "total_question_count": total_question_count,
         "submit_and_exit_url": submit_and_exit_url,
+        "save_and_exit_url": save_and_exit_url,
     }
 
     response = render(request, "student_interface/course_form_page.html", context)
