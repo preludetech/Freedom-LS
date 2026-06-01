@@ -80,7 +80,7 @@ All Alpine wiring uses registered method names only (CSP build — zero inline e
 
 {% partialdef form-question %}
     <fieldset class="surface space-y-3">
-        <legend class="font-semibold text-on-surface w-full flex flex-wrap items-baseline gap-x-1">
+        <legend class="font-semibold text-on-surface w-full float-left px-0 flex flex-wrap items-baseline gap-x-1">
             <span data-testid="question-number-{{ question.question_number }}">{{ question.question_number }}.</span>
             {{ question.rendered_question }}
             {% if question.required %}
@@ -91,7 +91,7 @@ All Alpine wiring uses registered method names only (CSP build — zero inline e
             {% endif %}
         </legend>
 
-        <div class="space-y-2">
+        <div class="space-y-2 clear-both">
             {% if question.type == "multiple_choice" %}
                 {% partial form-input-multiple-choice %}
             {% elif question.type == "checkboxes" %}
