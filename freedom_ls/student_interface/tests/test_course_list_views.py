@@ -15,6 +15,7 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course
+from freedom_ls.student_interface.utils import CourseListingStatus
 from freedom_ls.student_management.factories import (
     RecommendedCourseFactory,
     UserCourseRegistrationFactory,
@@ -383,3 +384,243 @@ def test_course_preview_title_tag_uses_course_title(mock_site_context, courses):
     )
     assert response.status_code == 200
     assert _extract_title(response.content.decode()) == courses[0].title
+
+
+# ---------------------------------------------------------------------------
+# Task A2 — all_courses view: correct listing_status + progress_percentage
+# ---------------------------------------------------------------------------
+# NOTE: The row template (B4) that renders status-specific markup does not exist
+# yet — it is added in Batch 3 (Task B4). The routing assertions below therefore
+# verify the *context* attributes set on each course object rather than rendered
+# HTML. Full row-markup routing tests will be added after B4.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_all_courses_not_registered_has_not_registered_status(
+    mock_site_context, courses
+):
+    """An unregistered course has listing_status=NOT_REGISTERED on the context object."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    all_courses_list = list(response.context["all_courses"])
+    course = next(c for c in all_courses_list if c.id == courses[0].id)
+    assert course.listing_status == CourseListingStatus.NOT_REGISTERED
+    assert course.progress_percentage == 0
+
+
+@pytest.mark.django_db
+def test_all_courses_not_registered_has_preview_context(mock_site_context, courses):
+    """An unregistered course carries preview context (modal/deep-link affordance)."""
+    user = UserFactory()
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    all_courses_list = list(response.context["all_courses"])
+    course = next(c for c in all_courses_list if c.id == courses[0].id)
+    # _annotate_preview_context sets preview_is_registered=False and preview_start_url
+    assert course.preview_is_registered is False
+    assert course.preview_start_url
+
+
+@pytest.mark.django_db
+def test_all_courses_registered_zero_percent_has_registered_status(
+    mock_site_context, courses
+):
+    """A registered-but-not-started course has listing_status=REGISTERED and 0% progress."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    all_courses_list = list(response.context["all_courses"])
+    course = next(c for c in all_courses_list if c.id == courses[0].id)
+    assert course.listing_status == CourseListingStatus.REGISTERED
+    assert course.progress_percentage == 0
+    # NOTE (B4): when B4 row templates exist, assert aria-valuenow="0" in rendered HTML
+
+
+@pytest.mark.django_db
+def test_all_courses_in_progress_has_in_progress_status(mock_site_context, courses):
+    """A started course has listing_status=IN_PROGRESS and progress_percentage > 0."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    CourseProgressFactory(
+        user=user, course=courses[0], progress_percentage=40, completed_time=None
+    )
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    all_courses_list = list(response.context["all_courses"])
+    course = next(c for c in all_courses_list if c.id == courses[0].id)
+    assert course.listing_status == CourseListingStatus.IN_PROGRESS
+    assert course.progress_percentage == 40
+    # NOTE (B4): when B4 row templates exist, assert aria-valuenow > 0 in rendered HTML
+
+
+@pytest.mark.django_db
+def test_all_courses_complete_has_complete_status(mock_site_context, courses):
+    """A completed course has listing_status=COMPLETE and no preview context."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    CourseProgressFactory(
+        user=user,
+        course=courses[0],
+        progress_percentage=100,
+        completed_time=timezone.now(),
+    )
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    all_courses_list = list(response.context["all_courses"])
+    course = next(c for c in all_courses_list if c.id == courses[0].id)
+    assert course.listing_status == CourseListingStatus.COMPLETE
+    # Completed rows do not receive preview context — no _annotate_preview_context call
+    assert not hasattr(course, "preview_is_registered")
+    # NOTE (B4): when B4 row templates exist, assert link → course_finish URL in HTML
+
+
+@pytest.mark.django_db
+def test_all_courses_complete_course_not_annotated_with_annotate_next_up(
+    mock_site_context, courses
+):
+    """Completed courses must not have next_up_* attributes (annotate_next_up removed)."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    CourseProgressFactory(
+        user=user,
+        course=courses[0],
+        progress_percentage=100,
+        completed_time=timezone.now(),
+    )
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    all_courses_list = list(response.context["all_courses"])
+    course = next(c for c in all_courses_list if c.id == courses[0].id)
+    assert not hasattr(course, "next_up_title")
+    assert not hasattr(course, "next_up_url")
+
+
+@pytest.mark.django_db
+def test_all_courses_registered_course_not_annotated_with_annotate_next_up(
+    mock_site_context, courses
+):
+    """Registered in-progress courses must not have next_up_* attributes (_annotate_next_up not called)."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    CourseProgressFactory(
+        user=user, course=courses[0], progress_percentage=30, completed_time=None
+    )
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    all_courses_list = list(response.context["all_courses"])
+    course = next(c for c in all_courses_list if c.id == courses[0].id)
+    assert not hasattr(course, "next_up_title")
+    assert not hasattr(course, "next_up_url")
+
+
+# ---------------------------------------------------------------------------
+# Task A3 — query-count regression tests (criterion 5)
+# ---------------------------------------------------------------------------
+# Both tests register ALL created courses so there are no unregistered rows.
+# This isolates the batched status/progress path: the pre-existing preview
+# children() walk (_annotate_preview_context) runs only for NOT_REGISTERED
+# rows; keeping all rows registered means that path adds zero extra queries,
+# allowing a clean constant-query assertion on the batched logic alone.
+# The unregistered preview walk is pre-existing behaviour and out of scope
+# for this task (spec A3 note).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_all_courses_query_count_is_constant(
+    mock_site_context, django_assert_num_queries
+):
+    """With N registered courses (mix of statuses), the query count is a small constant."""
+    user = UserFactory()
+
+    # Create 3 courses, each with a topic, covering all registered states.
+    course_registered = CourseFactory(slug="qc-reg")
+    topic_reg = TopicFactory(slug="topic-qc-reg", content="content")
+    course_registered.items.create(child=topic_reg, order=0)
+    UserCourseRegistrationFactory(user=user, collection=course_registered)
+
+    course_in_progress = CourseFactory(slug="qc-ip")
+    topic_ip = TopicFactory(slug="topic-qc-ip", content="content")
+    course_in_progress.items.create(child=topic_ip, order=0)
+    UserCourseRegistrationFactory(user=user, collection=course_in_progress)
+    CourseProgressFactory(
+        user=user,
+        course=course_in_progress,
+        progress_percentage=50,
+        completed_time=None,
+    )
+
+    course_complete = CourseFactory(slug="qc-comp")
+    topic_comp = TopicFactory(slug="topic-qc-comp", content="content")
+    course_complete.items.create(child=topic_comp, order=0)
+    UserCourseRegistrationFactory(user=user, collection=course_complete)
+    CourseProgressFactory(
+        user=user,
+        course=course_complete,
+        progress_percentage=100,
+        completed_time=timezone.now(),
+    )
+
+    client = _logged_in_client(user)
+
+    # Empirically determined constant — run once to observe, then locked here.
+    # The count is small and fixed regardless of how many registered courses exist
+    # (see companion test below). Update this number only if a deliberate schema
+    # or middleware change is made.
+    with django_assert_num_queries(10):
+        response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_all_courses_query_count_does_not_grow_with_registrations(
+    mock_site_context, django_assert_num_queries
+):
+    """With MORE registered courses the query count stays the same constant."""
+    user = UserFactory()
+
+    # Create 6 registered courses (double the baseline above) to prove the count
+    # does not grow linearly with the number of registrations.
+    for i in range(6):
+        course = CourseFactory(slug=f"qc-scale-{i}")
+        topic = TopicFactory(slug=f"topic-qc-scale-{i}", content="content")
+        course.items.create(child=topic, order=0)
+        UserCourseRegistrationFactory(user=user, collection=course)
+        if i % 3 == 1:
+            CourseProgressFactory(
+                user=user, course=course, progress_percentage=30, completed_time=None
+            )
+        elif i % 3 == 2:
+            CourseProgressFactory(
+                user=user,
+                course=course,
+                progress_percentage=100,
+                completed_time=timezone.now(),
+            )
+
+    client = _logged_in_client(user)
+
+    # Same constant as test_all_courses_query_count_is_constant — proves O(1), not O(N).
+    with django_assert_num_queries(10):
+        response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200

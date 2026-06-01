@@ -30,10 +30,12 @@ from freedom_ls.student_progress.models import (
 from .utils import (
     IN_PROGRESS,
     READY,
+    CourseListingStatus,
     form_start_page_buttons,
     get_all_courses,
     get_completed_courses,
     get_course_index,
+    get_course_listing,
     get_course_registrations,
     get_current_courses,
     get_is_registered,
@@ -151,29 +153,21 @@ def dashboard(request):
 
 @login_required
 def all_courses(request):
-    """Page listing all available courses."""
-    courses = list(get_all_courses())
-
-    current = get_current_courses(request.user)
-    progress_by_id = {c.id: getattr(c, "progress_percentage", 0) for c in current}
-    registered_ids = {c.id for c in current}
-    for course in courses:
-        is_registered = course.id in registered_ids
-        setattr(course, "is_registered", is_registered)  # noqa: B010
-        if is_registered:
-            # Registered courses show a progress bar + "Next up"; the bar
-            # reads 0% for a course the learner hasn't started yet.
-            setattr(course, "progress_percentage", progress_by_id[course.id])  # noqa: B010
-            _annotate_next_up(course, request.user)
-        else:
-            # Unregistered courses open the same preview modal as the
-            # dashboard, which needs the preview context.
+    """Flat list of all courses with correct, cheaply-derived statuses."""
+    entries = get_course_listing(request.user)
+    for entry in entries:
+        course = entry.course
+        setattr(course, "listing_status", entry.status)  # noqa: B010
+        setattr(course, "progress_percentage", entry.progress_percentage)  # noqa: B010
+        if entry.status == CourseListingStatus.NOT_REGISTERED:
+            # Pre-existing preview behaviour for unregistered rows (out of scope
+            # to change). Registered/in-progress/complete rows need no preview
+            # context and add no per-course query.
             _annotate_preview_context(course, is_registered=False)
-
     return render(
         request,
         "student_interface/all_courses.html",
-        {"all_courses": courses},
+        {"all_courses": [e.course for e in entries]},
     )
 
 
