@@ -148,3 +148,112 @@ def test_toc_course_part_expand_state_persists_across_navigation(
     outline_after_nav = logged_in_page.get_by_role("navigation", name="Course outline")
     inner_topic_after_nav = outline_after_nav.get_by_text("Inner Topic", exact=True)
     expect(inner_topic_after_nav).to_be_visible()
+
+
+@pytest.mark.playwright
+# transaction=True so the Playwright browser (separate connection) sees committed data
+@pytest.mark.django_db(transaction=True)
+def test_back_button_closes_mobile_bottom_sheet(
+    live_server,
+    logged_in_page: Page,
+):
+    """Pressing Back with the mobile outline bottom sheet open closes the sheet.
+
+    The browser/device Back button is one of the three required dismiss routes
+    (alongside scrim tap and Escape). It must close the modal sheet and keep the
+    learner on the same page — it must NOT perform a normal navigation away.
+    """
+    course = CourseFactory(title="Test Course", slug="test-course")
+    landing_topic = TopicFactory(
+        title="Landing Topic",
+        slug="landing-topic",
+        content="Welcome to the course",
+    )
+    course_part = CoursePartFactory(title="Chapter One", slug="chapter-one")
+    inner_topic = TopicFactory(
+        title="Inner Topic",
+        slug="inner-topic",
+        content="Inside chapter one",
+    )
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=landing_topic, order=0
+    )
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=course_part, order=1
+    )
+    ContentCollectionItemFactory(
+        collection_object=course_part, child_object=inner_topic, order=0
+    )
+
+    item_url = reverse_url(
+        live_server,
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+    # Below lg the panel becomes a modal bottom sheet with a visible toggle.
+    logged_in_page.set_viewport_size({"width": 375, "height": 812})
+    logged_in_page.goto(item_url)
+
+    sheet = logged_in_page.get_by_role("dialog", name="Course outline")
+    toggle = logged_in_page.get_by_role("button", name="Open course outline")
+
+    expect(sheet).to_be_hidden()
+    toggle.click()
+    expect(sheet).to_be_visible()
+
+    logged_in_page.go_back()
+
+    # Back closes the sheet and we stay on the same item page (no navigation).
+    expect(sheet).to_be_hidden()
+    expect(toggle).to_have_attribute("aria-expanded", "false")
+    expect(logged_in_page).to_have_url(item_url)
+
+
+@pytest.mark.playwright
+# transaction=True so the Playwright browser (separate connection) sees committed data
+@pytest.mark.django_db(transaction=True)
+def test_course_part_toggle_accessible_name_is_just_the_title(
+    live_server,
+    logged_in_page: Page,
+):
+    """The part-toggle's accessible name is the part title only.
+
+    The decorative expand/collapse chevron must not fold its icon name into the
+    button's accessible name (state is conveyed by ``aria-expanded``), so a
+    screen reader announces "Chapter One", not "expand Chapter One".
+    """
+    course = CourseFactory(title="Test Course", slug="test-course")
+    landing_topic = TopicFactory(
+        title="Landing Topic",
+        slug="landing-topic",
+        content="Welcome to the course",
+    )
+    course_part = CoursePartFactory(title="Chapter One", slug="chapter-one")
+    inner_topic = TopicFactory(
+        title="Inner Topic",
+        slug="inner-topic",
+        content="Inside chapter one",
+    )
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=landing_topic, order=0
+    )
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=course_part, order=1
+    )
+    ContentCollectionItemFactory(
+        collection_object=course_part, child_object=inner_topic, order=0
+    )
+
+    item_url = reverse_url(
+        live_server,
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    logged_in_page.goto(item_url)
+
+    outline = logged_in_page.get_by_role("navigation", name="Course outline")
+    # exact=True fails if the chevron's icon name ("expand"/"collapse") leaks
+    # into the accessible name.
+    toggle = outline.get_by_role("button", name="Chapter One", exact=True)
+    expect(toggle).to_be_visible()

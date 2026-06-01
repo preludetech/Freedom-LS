@@ -318,8 +318,10 @@ document.addEventListener("alpine:init", () => {
     //     scrim) and coexists with the page. Open/closed state persists to
     //     localStorage under data-storage-key (preserving the existing keys).
     //   - Below lg: the dialog is opened with dialog.showModal() so it becomes a
-    //     modal overlay with a scrim, an inert background, a focus trap,
-    //     Escape-to-close, and device-Back dismissal — all native to <dialog>.
+    //     modal overlay with a scrim, an inert background, a focus trap, and
+    //     Escape-to-close — all native to <dialog>. showModal() does NOT push a
+    //     history entry, so device/browser Back is wired manually (pushState on
+    //     open, popstate to close) mirroring the tabContainer component.
     //
     // aria-expanded on the toggle is bound to `open`; the dialog's native
     // "close" event syncs it back and returns focus to the toggle.
@@ -330,6 +332,9 @@ document.addEventListener("alpine:init", () => {
         _desktopLock: false,
         _mq: null,
         _mqHandler: null,
+        _popstateHandler: null,
+        _historyPushed: false,
+        _closingFromPopstate: false,
         triggerEl: null,
         init() {
             this.dialog = this.$refs.panelDialog;
@@ -345,14 +350,32 @@ document.addEventListener("alpine:init", () => {
             const top = this.$el.getBoundingClientRect().top;
             this.$el.style.setProperty("--sidebar-top", top + "px");
 
+            // Single point every dismiss route (Escape, scrim, programmatic,
+            // Back) funnels through. Unwind the pushed history entry here unless
+            // Back is what closed us (in which case the entry is already gone).
             this.dialog.addEventListener("close", () => {
                 this.open = false;
                 if (this.triggerEl) this.triggerEl.focus();
+                if (this._historyPushed) {
+                    this._historyPushed = false;
+                    if (!this._closingFromPopstate) history.back();
+                    this._closingFromPopstate = false;
+                }
             });
             this.dialog.addEventListener("click", (event) => {
                 // A click on the dialog element itself (the modal backdrop) closes.
                 if (event.target === this.dialog && this.isMobile) this.close();
             });
+
+            // Back closes the modal sheet instead of navigating the page. The
+            // entry pushed on open has just been popped, so only close here.
+            this._popstateHandler = () => {
+                if (this.dialog.open) {
+                    this._closingFromPopstate = true;
+                    this.dialog.close();
+                }
+            };
+            window.addEventListener("popstate", this._popstateHandler);
 
             // On desktop, default to the persisted state (open if never set);
             // when locked (player TOC) always open and ignore stored state.
@@ -392,6 +415,9 @@ document.addEventListener("alpine:init", () => {
             if (this._mq && this._mqHandler) {
                 this._mq.removeEventListener("change", this._mqHandler);
             }
+            if (this._popstateHandler) {
+                window.removeEventListener("popstate", this._popstateHandler);
+            }
         },
         _setDesktopOpen(value) {
             this.open = value;
@@ -420,6 +446,10 @@ document.addEventListener("alpine:init", () => {
                 } else {
                     this.open = true;
                     this.dialog.showModal();
+                    // showModal() pushes no history entry; add one so Back
+                    // dismisses the sheet instead of navigating the page.
+                    history.pushState({ flsSidePanel: true }, "");
+                    this._historyPushed = true;
                 }
             } else {
                 if (this._desktopLock) return;

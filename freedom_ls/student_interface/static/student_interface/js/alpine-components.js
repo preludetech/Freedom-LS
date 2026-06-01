@@ -42,7 +42,7 @@ document.addEventListener("alpine:init", () => {
             }
         },
         _updateUI() {
-            const icon = this.$el.querySelector("[data-collapse-icon]");
+            const icon = this.$el.querySelector("[data-toggle-icon]");
             if (icon) icon.hidden = this.expanded;
         },
     }));
