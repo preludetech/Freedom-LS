@@ -80,7 +80,7 @@ All Alpine wiring uses registered method names only (CSP build — zero inline e
 
 {% partialdef form-question %}
     <fieldset class="surface space-y-3">
-        <legend class="font-semibold text-on-surface w-full">
+        <legend class="font-semibold text-on-surface w-full flex flex-wrap items-baseline gap-x-1">
             <span data-testid="question-number-{{ question.question_number }}">{{ question.question_number }}.</span>
             {{ question.rendered_question }}
             {% if question.required %}
@@ -320,7 +320,7 @@ examSubmitDialog scope (no intermediate x-data between them).
                     {% comment %}Visible page heading — data-runner-page-heading + tabindex="-1" for focus management (research §5.5){% endcomment %}
                     {% if form_page.title %}
                         <div>
-                            <h2 class="text-xl font-semibold text-on-surface font-display"
+                            <h2 class="text-xl font-semibold text-on-surface font-display focus:outline-none"
                                 data-runner-page-heading
                                 tabindex="-1">
                                 {{ form_page.title }}
