@@ -18,7 +18,10 @@ def inject_table_caption(rendered_html: str, caption: str) -> SafeString:
     """Insert a ``<caption>`` as the first child of the first ``<table>``.
 
     The markdown ``tables`` extension emits no caption, so this splices one in
-    to give the table a real, SR-associated accessible caption. The caption
+    to give the table a real, SR-associated accessible caption. The element is
+    inserted unstyled — caption styling is supplied declaratively by the
+    ``<c-table>`` wrapper's ``[&_caption]:`` Tailwind variants in
+    ``cotton/table.html``, alongside the rest of the table styling. The caption
     text is escaped (it is author input). If there is no ``<table>`` (or no
     caption), the input is returned unchanged.
 
@@ -33,11 +36,7 @@ def inject_table_caption(rendered_html: str, caption: str) -> SafeString:
     if not match:
         # Safe: already sanitised by render_markdown.
         return SafeString(rendered_html)  # nosec B703 B308
-    caption_html = (
-        f'<caption class="text-on-surface font-semibold text-left '
-        f'px-4 py-3 border-b border-border">'
-        f"{escape(caption)}</caption>"
-    )
+    caption_html = f"<caption>{escape(caption)}</caption>"
     insert_at = match.end()
     # Safe: sanitised markup spliced with an escaped author caption.
     return SafeString(  # nosec B703 B308
