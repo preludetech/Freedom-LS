@@ -70,7 +70,7 @@ Run `/do_qa` to execute the QA plan.
 
 ### Reacting to the QA report
 
-- If tests were skipped because of missing data or fixtures, create the needed test data (the `qa-data-helper` agent is designed for this).
+- If tests were skipped because of missing data or fixtures, create the needed test data (the `fls:qa-data-helper` agent is designed for this).
 - If bugs were detected, fix them using TDD — write a failing test that reproduces the bug, then implement the fix. *(A dedicated bugfix command is still TODO.)*
 - If QA fixes change code significantly, re-run `/security-review`.
 
@@ -85,6 +85,20 @@ If no structural change happened, skip this step.
 1. Open a pull request.
 2. Run `/address_pr_review` to work through review feedback.
 3. Once merged, run `/finish_worktree` to clean up the worktree.
+
+---
+
+## How the workflow runs
+
+1. **`/clear` before `/sdd:next`.** `/sdd:next` runs the next command **on the main thread (depth 0)** — it no longer isolates the step in a fresh agent. So run `/clear` first to keep the previous step's context from leaking in. This is a deliberate trade-off: we lose automatic context isolation, and in return commands can legally fan out (research/review) again — fan-out is only allowed at depth 0 — and the workflow costs fewer tokens.
+
+2. **Model tiering & the override knob.** Defaults: mechanical work (test runs, commits, file moves, todo ticking) → the `fls:sdd-mechanic` agent (Haiku); non-interactive fan-out (research topics, review dimensions, scans) → the `fls:sdd-worker` agent (Sonnet); interactive authoring/review commands run at depth 0 on the **user's session model** (so run the session on a strong model). To change a step's model, **edit the relevant agent file's `model:` frontmatter** (`fls-claude-plugin/agents/sdd-mechanic.md`, `sdd-worker.md`). The env var `CLAUDE_CODE_SUBAGENT_MODEL` can force one model for **all** subagents in a pinch — but it **overrides every per-agent `model:` frontmatter**, so it must be left **unset (or `inherit`)** for normal tiered operation.
+
+3. **Aliases vs pinned IDs.** The agents use aliases (`haiku`/`sonnet`) for readability. A user who wants frozen, reproducible automation can pin dated IDs (e.g. `claude-haiku-4-5`) in the agent files instead.
+
+4. **Target Claude Code version.** These files target the current **2.1.x** line — per-agent/per-command `model:` frontmatter, `AskUserQuestion`, non-nesting subagents, and "commands merged into skills" all hold here. There is no runtime version check; this is a documented target, not enforced.
+
+5. **Why it runs this way.** See the **`claude-code-authoring`** skill for the canonical reference on the Claude Code mechanics behind all of the above: no subagent nesting or fan-out, no slash commands from subagents, no `AskUserQuestion` in subagents, model tiering, and file-based hand-off.
 
 ---
 

@@ -5,8 +5,6 @@ allowed-tools: Read, Glob, Edit
 
 You are helping to refine a feature spec. The spec might have problems. You are doing a final check to make sure it can be implemented.
 
-Always adhere to any rules or requirements set out in any CLAUDE.md files when responding.
-
 # Output
 
 - Edit the spec document to overcome all the problems
@@ -32,7 +30,7 @@ Read any mentioned source code files and any related code and look for inconsist
 
 For each problem you find:
 - Clearly describe the problem, ask for input if the solution if needed
-- Edit the spec file to fix the contradiction
+- Edit the spec file to fix the problem
 
 # Step 3
 

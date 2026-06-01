@@ -5,7 +5,7 @@ allowed-tools: Bash, Read, Glob, Skill
 
 This is a helper command, invoked by `/sdd:start`. It prepares a new git worktree so that work on a spec can happen in isolation.
 
-IMPORTANT! DO THE STEPS IN ORDER!
+Do the steps in order — each step depends on the previous one being complete.
 
 ## Step 1: Identify the current spec
 
@@ -27,22 +27,17 @@ mv "spec_dd/0. drafts/my-feature" "spec_dd/2. in progress/my-feature"
 mv "spec_dd/1. next/my-feature" "spec_dd/2. in progress/my-feature"
 ```
 
-DO NOT PROCEED UNTIL THE SPEC FILE IS IN PROGRESS!
+Do not proceed until the spec directory is in `spec_dd/2. in progress/`.
 
 ## Step 3: Commit all changes
 
-Make a git commit. DO NOT RUN PYTEST NOW.
+Make a git commit. Do **not** run pytest now: we only moved files that are not under test, so running the tests would be a waste of time.
 
-We don't need to run pytest because we did not change any code at all. We only moved some files that are not under test. So DO NOT run the tests. Running the tests now is a waste of time.
-
-Do not proceed to step 4 unless:
-The working tree is clean (no uncommitted changes)
+Do not proceed to Step 4 until the working tree is clean (no uncommitted changes).
 
 ## Step 4: Create the worktree
 
-ALL PREVIOUS STEPS MUST BE COMPLETE BEFORE YOU DO THIS STEP.
-
-Create the worktree from the **bare repo parent directory** (not from inside an existing worktree).
+Create the worktree from the **bare repo parent directory** (not from inside an existing worktree). Never create a worktree inside an existing worktree.
 
 The bare repo is the parent of all worktree directories. To find it, navigate one directory up from your current worktree:
 
@@ -50,8 +45,6 @@ The bare repo is the parent of all worktree directories. To find it, navigate on
 cd ..  # from current worktree to bare repo
 git worktree add <spec-folder-name>
 ```
-
-IMPORTANT: Never create a worktree inside an existing worktree. Always `cd` to the bare repo parent first.
 
 ## Step 5: Call install_dev.sh to make sure the new worktree is ready for development
 

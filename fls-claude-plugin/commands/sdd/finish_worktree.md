@@ -1,9 +1,9 @@
 ---
 description: Do the final cleanup for the current worktree
-allowed-tools: Bash, Read, Glob, Skill
+allowed-tools: Bash, Read, Glob, Skill, Agent
 ---
 
-This command merges the current worktree back into the main branch after doing some final cleanup and checks.
+This command merges the current worktree back into the main branch after doing some final cleanup and checks. It runs at **depth 0** and delegates mechanical steps to the `fls:sdd-mechanic` (Haiku) agent. See the `claude-code-authoring` skill for the model behind this.
 
 # Step 1
 
@@ -11,13 +11,13 @@ This command merges the current worktree back into the main branch after doing s
 git rebase main
 ```
 
-Fix any merge conflicts.
+Fix any merge conflicts (this may need judgement — keep it on the main thread).
 
 If there are any changes to the functionality or code proceed to step 2. Otherwise skip step 2 and go to step 3.
 
 # Step 2
 
-Run the unit tests in a sub-agent. Fix any problems
+Run the unit tests via `fls:sdd-mechanic`. Fix any problems.
 
 If there is a frontend_qa.md file for the specification this branch is for (inside spec_dd/2. in progress/{branch name}/3. frontend_qa.md) then:
 - summarise any changes made
@@ -30,7 +30,7 @@ Call `.claude/fls/scripts/dev_db_delete.sh`
 
 # Step 4: Update the todo list
 
-Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+Delegate to `fls:sdd-mechanic`: invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
 
 - `<todo-path>`: the `todo.md` in the spec directory (now under `spec_dd/3. done/…/`)
 - `tick:"Run `/finish_worktree` to clean up the worktree"`
@@ -39,7 +39,7 @@ No new items to add.
 
 # Step 5
 
-Move the current spec directory from `in progress` to `done` and name them appropriately with the current data and time
+Delegate to `fls:sdd-mechanic`: move the current spec directory from `in progress` to `done` and name it appropriately with the current date and time.
 
 The spec directory should be named like this:
 
@@ -53,7 +53,7 @@ Invoke the `update-claude-project-settings` skill to promote any useful permissi
 
 # Step 7: Commit
 
-Make a commit with the latest changes.
+Delegate to `fls:sdd-mechanic`: make a commit with the latest changes.
 
 # Step 8: Git Status
 

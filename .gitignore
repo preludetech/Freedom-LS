@@ -48,4 +48,7 @@ htmlcov/
 # Security scan artifacts
 *.sarif
 bandit.sarif
+
+# SDD fan-out scratch directory (intermediate worker outputs; cleaned on success)
+.sdd-work/
 .claude/scheduled_tasks.lock

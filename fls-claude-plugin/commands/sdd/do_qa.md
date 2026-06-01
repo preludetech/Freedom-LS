@@ -3,7 +3,7 @@ description: Execute a frontend QA test plan using Playwright MCP
 allowed-tools: Read, Write, Glob, Bash, Agent, mcp__playwright*
 ---
 
-Act like a human QA expert. Execute the given test plan
+Act like a human QA expert. Execute the given test plan. This command runs at **depth 0**, so its `fls:qa-data-helper` delegation and the Step 6 exploration spawn are legal. See the `claude-code-authoring` skill for the model behind this.
 
 # Useful info
 
@@ -12,35 +12,25 @@ Act like a human QA expert. Execute the given test plan
 - Base url: http://127.0.0.1:$PORT/
 - Read `.claude/fls/config.md` for admin credentials
 
-# CRITICAL
+# CRITICAL: rules that apply throughout this command
 
-You MUST use Playwright MCP. If you can't use it then:
+These two rules apply at **every** step (Desktop, Mobile, Tablet) — stated once here; later steps refer back to them.
 
-- Explain why you can't use it
-- Explain how to fix the error
-- DO NOT CONTINUE WITH THE TESTS IF YOU CAN'T USE PLAYWRIGHT
+1. **You MUST use Playwright MCP.** If you can't use it, then: explain why, explain how to fix the error, and **do not continue with the tests**. Before doing anything else, use Playwright to open the base url and make sure it works.
+2. **Test data is created by the `fls:qa-data-helper` agent — NOT by you.** If a test cannot be executed because the dev database lacks the required data (e.g. a paginator can't be exercised because there aren't enough rows, a panel can't be tested because no instance of the relevant model exists, a flow can't be walked because a user/cohort/course is missing), you MUST delegate to the **`fls:qa-data-helper`** agent via the `Agent` tool.
 
-Before doing anything else, use playwright to open the base url and make sure it works.
+   Do NOT:
+   - Run `manage.py shell` yourself to create data
+   - Run ad-hoc ORM scripts yourself to create data
+   - Mark a test as `PARTIAL` / `N/A` / `NOT EXECUTED` because of missing data without first invoking `fls:qa-data-helper` to fix the gap
+   - Skip a test that `fls:qa-data-helper` could unblock
 
-# CRITICAL: Test data is created by the qa-data-helper agent — NOT by you
-
-If a test cannot be executed because the dev database lacks the required data (e.g. a paginator can't be exercised because there aren't enough rows, a panel can't be tested because no instance of the relevant model exists, a flow can't be walked because a user/cohort/course is missing), you MUST delegate to the **qa-data-helper** agent via the `Agent` tool.
-
-Do NOT:
-- Run `manage.py shell` yourself to create data
-- Run ad-hoc ORM scripts yourself to create data
-- Mark a test as `PARTIAL` / `N/A` / `NOT EXECUTED` because of missing data without first invoking qa-data-helper to fix the gap
-- Skip a test that the qa-data-helper agent could unblock
-
-Do:
-- Spawn the qa-data-helper agent and tell it exactly what data shape you need (entity counts, relationships, which Site, which fixtures it should attach to)
-- Wait for it to confirm the data exists, then re-attempt the test
-- Only mark a test PARTIAL / skipped if qa-data-helper itself reports the scenario is impossible to set up
-
-This applies at every step (Desktop, Mobile, Tablet) — not just the first time you hit missing data.
+   Do:
+   - Spawn the `fls:qa-data-helper` agent and tell it exactly what data shape you need (entity counts, relationships, which Site, which fixtures it should attach to)
+   - Wait for it to confirm the data exists, then re-attempt the test
+   - Only mark a test PARTIAL / skipped if `fls:qa-data-helper` itself reports the scenario is impossible to set up
 
 # Instructions
-
 
 ## Step 1: Clean up last QA run
 
@@ -71,9 +61,7 @@ Proceed to step 4.
 
 ## Step 4: Check that the runserver is pointing at the right branch
 
-Go to the base url at http://127.0.0.1:$PORT/ using the playwright MCP
-
-**IMPORTANT** if the playwright MCP is not available, STOP IMMEDIATELY and tell the user. DO NOT PROCEED!
+Go to the base url at http://127.0.0.1:$PORT/ using the playwright MCP (if Playwright MCP is unavailable, follow rule 1 in the CRITICAL section above and STOP).
 
 Look for the debug-branch-badge on the bottom left of the page. It has the id `debug-branch-badge`. It should name the current branch.
 
@@ -94,9 +82,9 @@ Set the browser to a desktop resolution of 1920x1080.
 
 Take screenshots of relevant functionality and put them in a "screenshots" directory in this current directory (alongside the test plan file). Name screenshots with this pattern: `desktop_<test-id>_<short-description>.png` (e.g. `desktop_1.1_cohort_list.png`).
 
-If anything unrelated to the current feature under test seems out of place or broken then use a subagent to explore it.
+If anything unrelated to the current feature under test seems out of place or broken, spawn **one `fls:sdd-worker`** to explore it (non-interactive; it returns a structured `status`/`reason`). This is a single ad-hoc probe — no scratch-file resume is needed — but it follows the "one subagent per unit + structured return" shape so no fan-out site is left ad-hoc.
 
-**IMPORTANT** If you are unable to run a test due to missing or incorrect data, follow the rule in the top-level "Test data is created by the qa-data-helper agent" section: delegate to qa-data-helper rather than creating the data yourself or skipping the test.
+If you are unable to run a test due to missing or incorrect data, follow rule 2 in the CRITICAL section above: delegate to `fls:qa-data-helper` rather than creating the data yourself or skipping the test.
 
 ## Step 7: Mobile testing
 
