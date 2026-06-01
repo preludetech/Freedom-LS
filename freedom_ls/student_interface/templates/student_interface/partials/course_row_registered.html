@@ -29,10 +29,10 @@ Do NOT rely on colour alone.
     <c-slot name="eyebrow">
         <p class="flex items-center gap-1 text-xs text-muted uppercase tracking-wide">
             {% if course.progress_percentage and course.progress_percentage > 0 %}
-                <c-icon name="in_progress" class="size-4" aria_label="" />
+                <span aria-hidden="true"><c-icon name="in_progress" class="size-4" /></span>
                 In progress
             {% else %}
-                <c-icon name="not_started" class="size-4" aria_label="" />
+                <span aria-hidden="true"><c-icon name="not_started" class="size-4" /></span>
                 Not started
             {% endif %}
         </p>

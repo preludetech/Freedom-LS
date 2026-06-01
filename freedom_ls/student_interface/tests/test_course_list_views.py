@@ -6,6 +6,8 @@ endpoint; tests for that endpoint were deleted in the same change set.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from django.test import Client
@@ -794,3 +796,39 @@ def test_all_courses_complete_row_has_no_progress_bar(mock_site_context, courses
 
     body = response.content.decode()
     assert "<progress" not in body
+
+
+@pytest.mark.django_db
+def test_all_courses_status_icons_are_decorative(mock_site_context, courses):
+    """Status icons are decorative: the icon backend always stamps the semantic
+    slug as the svg's aria-label, so each status icon must be wrapped in an
+    `aria-hidden="true"` element to keep that slug out of the accessibility tree.
+    Status is conveyed by the adjacent visible text (WCAG 1.4.1), never the slug.
+    """
+    user = UserFactory()
+    # In-progress and complete rows exercise the in_progress/check/complete icons.
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    CourseProgressFactory(
+        user=user, course=courses[0], progress_percentage=40, completed_time=None
+    )
+    UserCourseRegistrationFactory(user=user, collection=courses[1])
+    CourseProgressFactory(
+        user=user,
+        course=courses[1],
+        progress_percentage=100,
+        completed_time=timezone.now(),
+    )
+    # courses[2] stays unregistered -> exercises the not_started icon.
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    body = response.content.decode()
+    # Every status-icon svg (which carries aria-label="<slug>") must sit directly
+    # inside an aria-hidden wrapper.
+    for slug in ("in_progress", "not_started", "complete", "check"):
+        assert f'aria-label="{slug}"' in body, f"expected {slug} icon to render"
+        assert re.search(
+            rf'aria-hidden="true">\s*<svg[^>]*aria-label="{slug}"', body
+        ), f"status icon {slug!r} is not wrapped in aria-hidden"

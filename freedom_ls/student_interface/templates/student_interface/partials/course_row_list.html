@@ -24,12 +24,16 @@ no special ordering. Consumed by all_courses.html.
 
 {% partialdef all-courses-rows %}
     {% if all_courses %}
-        <ul class="flex flex-col divide-y divide-gray-100">
+        <ul class="flex flex-col divide-y divide-gray-100 list-none">
             {% for course in all_courses %}
-                <li class="relative">{% partial dispatch-row %}</li>
+                <li class="relative">
+                    {% partial dispatch-row %}
+                </li>
             {% endfor %}
         </ul>
     {% else %}
-        <p class="text-muted/50">No courses available yet.</p>
+        <p class="text-muted/50">
+            No courses available yet.
+        </p>
     {% endif %}
 {% endpartialdef %}

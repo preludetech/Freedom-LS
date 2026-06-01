@@ -29,7 +29,7 @@ NOT_REGISTERED course.
                                 title="{{ course.title }}"
                                 clickable="true">
                 <p class="flex items-center gap-1 text-xs text-muted uppercase tracking-wide">
-                    <c-icon name="not_started" class="size-4" aria_label="" />
+                    <span aria-hidden="true"><c-icon name="not_started" class="size-4" /></span>
                     Not started
                 </p>
                 <h3>{{ course.title }}</h3>
@@ -55,7 +55,7 @@ NOT_REGISTERED course.
                         icon_fallback="{{ course.icon_fallback }}"
                         title="{{ course.title }}">
         <p class="flex items-center gap-1 text-xs text-muted uppercase tracking-wide">
-            <c-icon name="not_started" class="size-4" aria_label="" />
+            <span aria-hidden="true"><c-icon name="not_started" class="size-4" /></span>
             Not started
         </p>
         <h3>
