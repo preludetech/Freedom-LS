@@ -417,32 +417,46 @@
         background: transparent;
         color: inherit;
     }
-    .side-panel-dialog .side-panel-body {
-        opacity: 1;
-        transition:
-            transform 200ms ease,
-            opacity 200ms ease;
-    }
-
     /* Mobile (< lg): modal overlay. UA gives [open] modal dialogs position:fixed.
-     * Pin per variant and animate the inner body via transform/opacity. */
+     * Pin per variant and slide the whole dialog in/out via transform/opacity. */
     @media (max-width: 1023.98px) {
-        .side-panel-dialog[open] {
+        /* Animate the dialog element itself, not the inner .side-panel-body.
+         * The dialog is the top-layer box and is correctly positioned from the
+         * first frame, so transforming it slides the whole panel without ever
+         * touching layout. Animating the body instead made the bottom sheet
+         * flash near centre for one frame, then jump down and slide up: the
+         * body's height:100% and the dialog's height:auto form a circular height
+         * dependency that settles a frame after @starting-style applies.
+         *
+         * Positioning is ungated by [open] so the panel stays pinned through the
+         * close transition (allow-discrete keeps it in the top layer) and slides
+         * straight back out, rather than losing its fixed position and jumping
+         * to the top before sliding down. Closed dialogs are display:none, so
+         * the position has no effect until the panel opens. */
+        .side-panel-dialog {
             position: fixed;
             inset: 0;
             width: 100%;
             height: 100%;
+            opacity: 0;
+            transition:
+                transform 200ms ease,
+                opacity 200ms ease,
+                overlay 200ms ease allow-discrete,
+                display 200ms ease allow-discrete;
         }
-        .side-panel-dialog[data-variant="side-drawer"][open] {
+        .side-panel-dialog[data-variant="side-drawer"] {
             inset: 0 auto 0 0;
             width: 80%;
             max-width: 24rem;
+            transform: translateX(-100%);
         }
-        .side-panel-dialog[data-variant="bottom-sheet"][open] {
+        .side-panel-dialog[data-variant="bottom-sheet"] {
             inset: auto 0 0 0;
             width: 100%;
             max-height: 85vh;
             height: auto;
+            transform: translateY(100%);
         }
         .side-panel-dialog[data-variant="bottom-sheet"] .side-panel-body {
             border-top-left-radius: 1rem;
@@ -451,24 +465,16 @@
         .side-panel-dialog .side-panel-body {
             box-shadow: 0 10px 25px rgb(0 0 0 / 0.25);
         }
-        .side-panel-dialog[data-variant="side-drawer"] .side-panel-body {
-            opacity: 0;
-            transform: translateX(-100%);
-        }
-        .side-panel-dialog[data-variant="bottom-sheet"] .side-panel-body {
-            opacity: 0;
-            transform: translateY(100%);
-        }
-        .side-panel-dialog[open] .side-panel-body {
+        .side-panel-dialog[open] {
             opacity: 1;
             transform: none;
         }
         @starting-style {
-            .side-panel-dialog[data-variant="side-drawer"][open] .side-panel-body {
+            .side-panel-dialog[data-variant="side-drawer"][open] {
                 opacity: 0;
                 transform: translateX(-100%);
             }
-            .side-panel-dialog[data-variant="bottom-sheet"][open] .side-panel-body {
+            .side-panel-dialog[data-variant="bottom-sheet"][open] {
                 opacity: 0;
                 transform: translateY(100%);
             }
