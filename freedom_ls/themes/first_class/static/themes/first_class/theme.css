@@ -199,8 +199,12 @@
      * white card against the Stratosphere page surface at every breakpoint,
      * mirroring the white header — identical on the docked desktop column and
      * the mobile bottom sheet. The two-class selector beats the element's own
-     * `bg-surface` utility. */
-    .side-panel-dialog .side-panel-body {
+     * `bg-surface` utility. The sticky in-panel header (e.g. the course-player
+     * outline header) carries its own `bg-surface` so scrolled content vanishes
+     * cleanly beneath it; whiten it too so it matches the white panel rather
+     * than showing the Stratosphere surface as a separate band. */
+    .side-panel-dialog .side-panel-body,
+    .side-panel-dialog .side-panel-body .sticky {
         background-color: #FFFFFF;
     }
 }
