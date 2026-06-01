@@ -1,0 +1,17 @@
+<c-vars footer="" class="" />
+
+{# Base card for embedded media (image, video, etc).
+
+   The default slot holds the media and fills the top of the card. The optional
+   `footer` slot renders in a bordered bar below it for captions and actions.
+   Media that needs padding (e.g. images) sets it on its own element; media that
+   should sit flush to the edges (e.g. video embeds) adds none. `class` sets
+   card-level layout such as margins and max-width. #}
+<figure class="border border-border rounded-xl overflow-hidden bg-surface {{ class }}">
+    {{ slot }}
+    {% if footer %}
+        <figcaption class="border-t border-border px-4 py-3">
+            {{ footer }}
+        </figcaption>
+    {% endif %}
+</figure>

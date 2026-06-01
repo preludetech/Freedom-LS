@@ -19,23 +19,27 @@ should use alt="".
 
     {% if file_obj %}
         <div x-data="contentLightbox" class="my-6">
-            <figure class="max-w-xl mx-auto m-4">
-                {# Real button so the lightbox trigger is keyboard-accessible. #}
-                <button type="button"
-                        x-ref="trigger"
-                        @click="show"
-                        class="block w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring">
-                    <img src="{{ file_obj.file.url }}"
-                         alt="{{ alt }}"
-                         class="w-full h-auto rounded-lg shadow-md hover:shadow-lg transition-shadow p-4"
-                         loading="lazy" />
-                </button>
-                {% if number or caption %}
-                    <figcaption class="mt-2 text-muted text-center">
-                        {% if number %}<span class="font-semibold">Figure {{ number }}</span>{% if caption %}: {% endif %}{% endif %}{{ caption }}
-                    </figcaption>
-                {% endif %}
-            </figure>
+            <c-media-card class="max-w-xl mx-auto m-4">
+                <img src="{{ file_obj.file.url }}"
+                     alt="{{ alt }}"
+                     class="w-full h-auto"
+                     loading="lazy" />
+                <c-slot name="footer">
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-muted text-sm">
+                            {% if number %}<span class="font-semibold">Figure {{ number }}</span>{% if caption %}: {% endif %}{% endif %}{{ caption }}
+                        </span>
+                        {# Real button so the lightbox trigger is keyboard-accessible. #}
+                        <button type="button"
+                                x-ref="trigger"
+                                @click="show"
+                                class="btn btn-secondary shrink-0 inline-flex items-center gap-1.5 px-3 py-1 text-sm">
+                            <c-icon name="fullscreen" class="size-4" />
+                            Open image
+                        </button>
+                    </div>
+                </c-slot>
+            </c-media-card>
 
             <div x-show="open"
                  x-cloak
