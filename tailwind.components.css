@@ -332,67 +332,6 @@
         gap: 0.5rem;
     }
 
-    /* Shared <dialog> overlay (cotton/overlay.html).
-     *
-     * Native <dialog> toggles display:none <-> block, so the panel and the
-     * ::backdrop are animated with transform/opacity using @starting-style and
-     * allow-discrete so the enter/leave transitions still play across the
-     * discrete display change. Never animate height/top (avoids layout jank). */
-    .overlay-dialog {
-        transition:
-            overlay 200ms ease allow-discrete,
-            display 200ms ease allow-discrete;
-    }
-    .overlay-dialog::backdrop {
-        opacity: 0;
-        transition:
-            opacity 200ms ease,
-            overlay 200ms ease allow-discrete,
-            display 200ms ease allow-discrete;
-    }
-    .overlay-dialog[open]::backdrop {
-        opacity: 1;
-    }
-    @starting-style {
-        .overlay-dialog[open]::backdrop {
-            opacity: 0;
-        }
-    }
-
-    .overlay-dialog .overlay-panel {
-        opacity: 0;
-        transition:
-            transform 200ms ease,
-            opacity 200ms ease;
-    }
-    .overlay-dialog[open] .overlay-panel {
-        opacity: 1;
-        transform: none;
-    }
-    .overlay-bottom-sheet .overlay-panel {
-        transform: translateY(100%);
-    }
-    .overlay-side-drawer .overlay-panel {
-        transform: translateX(-100%);
-    }
-    .overlay-lightbox .overlay-panel {
-        transform: scale(0.95);
-    }
-    @starting-style {
-        .overlay-dialog[open] .overlay-panel {
-            opacity: 0;
-        }
-        .overlay-bottom-sheet[open] .overlay-panel {
-            transform: translateY(100%);
-        }
-        .overlay-side-drawer[open] .overlay-panel {
-            transform: translateX(-100%);
-        }
-        .overlay-lightbox[open] .overlay-panel {
-            transform: scale(0.95);
-        }
-    }
-
     /* Unified side panel (_base_interface.html).
      *
      * One <dialog> behaves two ways: a docked in-flow column on desktop
