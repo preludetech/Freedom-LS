@@ -47,10 +47,14 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)
+- [x] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: runner omits `content_engine/js/alpine-components.js` — markdown images break the lightbox and the full-screen overlay blocks quiz Submit (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: submit dialog focus not moved into dialog and focus trap spans whole runner instead of the dialog (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: sr-only runner heading says "Question N of M" using page numbers; should say "Page" (`course_form_page.html:326`) (TDD — failing test first, then fix)
+- [ ] (user + cmd) Reconcile answered-count discrepancy: live tally vs spec/QA "persisted answers only" (spec §113/§239, QA §2) — decide to update the docs or revert (TDD if code changes)
 
 ## 10. Pull request
 
