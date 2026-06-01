@@ -502,14 +502,21 @@ def get_recommended_courses(user: RequestUser) -> QuerySet[RecommendedCourse]:
 
 
 def get_course_listing(user: RequestUser) -> list[CourseListingEntry]:
-    """Status + progress for every course, from a constant set of batched queries.
+    """Build the all-courses listing for the student interface.
 
-    Query budget is a small CONSTANT, independent of course count:
-      1) get_all_courses()              -> 1 query (the listing loop)
-      2) get_course_registrations(user) -> the registered set (incl. completed)
-      3) one CourseProgress .values()   -> 1 query
-    No per-course queries. The exact constant is locked by the regression
-    test in Task A3 (determined empirically — do not hard-code a guess here).
+    Returns one :class:`CourseListingEntry` per available course, pairing each
+    course with the user's status and progress so the courses page can render
+    every course in a single list regardless of registration state.
+
+    The status of each entry is one of:
+
+    - ``NOT_REGISTERED`` — the user is not registered for the course (always
+      the case for anonymous users, who see every course at 0%).
+    - ``REGISTERED`` — registered but no progress recorded yet (0%).
+    - ``IN_PROGRESS`` — registered with some progress and not yet complete.
+    - ``COMPLETE`` — registered and the course has a ``completed_time``.
+
+    Used by the all-courses view (see ``views.py``) to populate the listing.
     """
     if not user.is_authenticated:
         return [
