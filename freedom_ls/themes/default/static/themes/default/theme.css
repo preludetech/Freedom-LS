@@ -101,6 +101,13 @@
     --fls-course-accent-4-soft: color-mix(in oklab, var(--fls-course-accent-4-to) 14%, var(--color-surface));
     --fls-course-accent-5-soft: color-mix(in oklab, var(--fls-course-accent-5-to) 14%, var(--color-surface));
 
+    /* Course-card shape — component-tier tokens. Default to today's hard-coded
+     * values so existing cards are visually unchanged; themes reshape cards by
+     * overriding these. */
+    --fls-card-radius: 1rem;        /* was rounded-2xl */
+    --fls-card-hero-height: 7rem;   /* was h-28 */
+    --fls-card-padding: 1rem;       /* was p-4 */
+
     /* Shape tokens — FLS namespace. */
     --fls-radius-sm: 0.25rem;
     --fls-radius-md: 0.375rem;

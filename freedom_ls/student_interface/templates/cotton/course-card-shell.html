@@ -1,5 +1,5 @@
 {% load course_icon_tags %}
-<c-vars accent_slot_key="" icon="" icon_fallback="" title="" clickable="" />
+<c-vars accent_slot_key="" icon="" icon_fallback="" title="" clickable="" class="" />
 
 {% comment %}
 Shared skeleton for every course card (in-progress / not-started /
@@ -8,14 +8,23 @@ the article is `relative` so a card variant can use the stretched-link
 pattern (an anchor with a ::before overlay) to make the whole card a
 click target. Pass `clickable="true"` for the modal-trigger variant so
 the cursor signals the card opens something.
+
+Named slots:
+  eyebrow — rendered above the default slot (e.g. status label)
+  footer  — rendered below the default slot (e.g. progress bar)
+
+Mergeable `class` prop allows callers to append extra utility classes
+to the article element without forking the shell.
 {% endcomment %}
-<article class="surface border-gray-200 rounded-2xl h-full relative p-0 overflow-hidden flex flex-col {% if clickable %}cursor-pointer {% endif %}transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
-    <div class="course-accent-{{ accent_slot_key }} flex items-center justify-center h-28"
+<article class="course-card surface border-gray-200 h-full relative p-0 overflow-hidden flex flex-col {% if clickable %}cursor-pointer {% endif %}transition duration-200 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 {{ class }}">
+    <div class="course-accent-{{ accent_slot_key }} course-card-hero flex items-center justify-center"
          aria-hidden="true">
         {% course_icon icon icon_fallback css_class="size-12" aria_label=title %}
     </div>
 
-    <div class="flex-1 p-4 space-y-2">
+    <div class="course-card-body flex-1 space-y-2">
+        {% if eyebrow %}{{ eyebrow }}{% endif %}
         {{ slot }}
+        {% if footer %}{{ footer }}{% endif %}
     </div>
 </article>

@@ -271,6 +271,12 @@
         @apply shadow-lg
     }
 
+    /* Course-card shape classes — consume the component-tier tokens so themes
+     * can reshape cards by overriding `--fls-card-*` in their theme.css. */
+    .course-card        { border-radius: var(--fls-card-radius); }
+    .course-card-hero   { height: var(--fls-card-hero-height); }
+    .course-card-body   { padding: var(--fls-card-padding); }
+
     /* Course-card accent tiles — vibrant gradients drawn from the dedicated
      * `--fls-course-accent-*` series (separate from the UI role tokens). The
      * slot number is interpolated into the class name from the per-course
