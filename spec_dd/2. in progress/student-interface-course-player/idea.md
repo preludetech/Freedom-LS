@@ -118,6 +118,17 @@ COURSE OUTLINE          ← small eyebrow label
 > element is a strong, low-JS baseline (focus trapping, inertness, Escape,
 > backdrop for free). Decide details at spec/plan time.
 
+> Implementation note: the course player will need **several distinct kinds of
+> modal**, presented differently depending on content. The mobile TOC bottom
+> sheet is one kind; another is expanding a picture/diagram in the course player
+> (e.g. tap-to-zoom a figure), which should present as a centred lightbox rather
+> than a bottom sheet. These share common **background behaviour** — the scrim /
+> background blur, inertness of the background, and dismiss routes (scrim tap,
+> Escape, Back) — but differ in how the foreground content is laid out and
+> animated. Plan for the shared scrim/blur/inertness behaviour to be **factored
+> out and reused** across modal types, with each modal type supplying its own
+> presentation. Decide details at spec/plan time.
+
 ### Compact header on phones (instead of full breadcrumbs)
 
 Instead of the full breadcrumb trail, show a compact bar at the top of the
