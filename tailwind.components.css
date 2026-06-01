@@ -49,13 +49,6 @@
     a {
         @apply underline text-primary
     }
-    /* Plain markdown blockquotes (`> quote`). Scoped with :not() to skip the
-       c-pull-quote widget, whose own <figure> supplies the left border and
-       padding — applying this here too would double the border and tint it. */
-    blockquote:not(figure blockquote) {
-        @apply border-l-4 border-primary bg-primary/10 pl-4 pr-4 py-3 my-4
-               italic text-muted rounded-r-md
-    }
 
     ul {
         @apply list-disc list-outside ml-6 space-y-2
