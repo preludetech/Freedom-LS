@@ -6,12 +6,14 @@
 {% comment %}
 Exam runner page template.
 Extends the sidebar-less runner base and overrides {% block body %} so that
-x-data="examSubmitDialog" (final page) can wrap both the <form x-ref="pageForm">
-and the submit dialog in the same Alpine component scope.
+x-data="examRunnerForm" wraps both the <form x-ref="pageForm"> and (on the final
+page) the submit dialog in the same Alpine component scope. examRunnerForm also
+keeps the answered tally live (see its registration in alpine-components.js).
 
 x-ref="pageForm" is placed on the <form> which is a direct child of the
-examSubmitDialog scope (NOT nested inside another x-data). This ensures
-$refs.pageForm is accessible from the Submit button's x-on:click.
+examRunnerForm scope (NOT nested inside another x-data). This ensures
+$refs.pageForm is accessible from the Submit button's x-on:click and from the
+live answered-count logic.
 
 x-data="examRunner" wraps only the visible-heading / aria-live section (no x-ref
 needed there) so it does not interfere with ref collection.
@@ -145,24 +147,24 @@ Do NOT reuse c-form-page-link — it is a numbered link, not a dot.
 {% endpartialdef %}
 
 {% comment %}
-Override the full body block so x-data="examSubmitDialog" (final page) wraps
-both <form x-ref="pageForm"> and the submit dialog.
+Override the full body block so x-data="examRunnerForm" wraps both
+<form x-ref="pageForm"> and (on the final page) the submit dialog.
 x-ref is placed directly on the form, which is a direct child of the
-examSubmitDialog scope (no intermediate x-data between them).
+examRunnerForm scope (no intermediate x-data between them).
 {% endcomment %}
 {% block body %}
 
     {% comment %}
-    Outermost wrapper.
-    Final page: x-data="examSubmitDialog" so $refs.pageForm is accessible from
-    the Submit button in the dialog.
-    Non-final pages: plain div, no submit-dialog scope needed.
+    Outermost wrapper — x-data="examRunnerForm" on every page.
+    It keeps the top-bar / modal answered tally live (counting answers filled in
+    on this page, added to data-answered-base = answers persisted on other pages)
+    and, on the final page, owns the submit dialog ($refs.pageForm is accessible
+    from the Submit button because the <form> is a descendant of this scope).
+    The submit dialog panel itself is still only rendered on the final page.
     {% endcomment %}
-    {% if not has_next_page %}
-        <div x-data="examSubmitDialog" class="h-screen flex flex-col overflow-hidden">
-    {% else %}
-        <div class="h-screen flex flex-col overflow-hidden">
-    {% endif %}
+    <div x-data="examRunnerForm"
+         data-answered-base="{{ answered_other_pages }}"
+         class="h-screen flex flex-col overflow-hidden">
 
         {% comment %}=== STICKY TOP BAR ==={% endcomment %}
         <div class="flex-none sticky top-0 z-20">
@@ -268,9 +270,14 @@ examSubmitDialog scope (no intermediate x-data between them).
                     {{ form.title }}
                 </h2>
 
-                {% comment %}Right: honest answered count (persisted only — no "saved" claim, research §4){% endcomment %}
-                <div class="text-sm text-muted whitespace-nowrap">
-                    {{ answered_count }} of {{ total_question_count }} answered
+                {% comment %}
+                Right: live answered count. x-text="answeredCount" (examRunnerForm)
+                reflects answers filled in on this page; {{ answered_count }} is the
+                no-JS fallback.
+                {% endcomment %}
+                <div class="text-sm text-muted whitespace-nowrap"
+                     data-testid="answered-summary">
+                    <span x-text="answeredCount">{{ answered_count }}</span> of {{ total_question_count }} answered
                 </div>
 
             </div>
@@ -347,11 +354,10 @@ examSubmitDialog scope (no intermediate x-data between them).
 
                 {% comment %}
                 Page form — wraps all questions on this page.
-                x-ref="pageForm" is a direct child of the outer wrapper div.
-                On the final page the outer wrapper is x-data="examSubmitDialog",
-                so $refs.pageForm is accessible from the Submit button's x-on:click.
-                On non-final pages the outer wrapper is a plain div; x-ref is ignored
-                (there is no examSubmitDialog scope using it).
+                x-ref="pageForm" is a direct child of the outer examRunnerForm
+                wrapper, so $refs.pageForm is accessible both to the live
+                answered-count logic (every page) and to the Submit button's
+                x-on:click (final page only).
                 {% endcomment %}
                 <form id="runner-page-form" method="post" x-ref="pageForm" class="space-y-6">
                     {% csrf_token %}
@@ -414,7 +420,7 @@ examSubmitDialog scope (no intermediate x-data between them).
                             {% comment %}
                             Final page: opens the submit dialog.
                             x-on:click="openSubmitDialog($el)" — CSP-safe registered method.
-                            The examSubmitDialog scope wraps both this button and the dialog panel.
+                            The examRunnerForm scope wraps both this button and the dialog panel.
                             {% endcomment %}
                             <button type="button"
                                     class="btn btn-primary w-full sm:w-auto flex items-center justify-center gap-2"
@@ -428,7 +434,7 @@ examSubmitDialog scope (no intermediate x-data between them).
                 </div>
             </div>
 
-            {% comment %}Submit dialog — only rendered on final page, within examSubmitDialog scope{% endcomment %}
+            {% comment %}Submit dialog — only rendered on final page, within examRunnerForm scope{% endcomment %}
             {% if not has_next_page %}
                 <div x-show="open"
                      x-cloak
@@ -471,7 +477,9 @@ examSubmitDialog scope (no intermediate x-data between them).
                                 {% comment %}Answered / total summary{% endcomment %}
                                 <div class="grid grid-cols-2 gap-3">
                                     <div class="rounded-lg border border-border bg-surface p-3 text-center">
-                                        <div class="text-2xl font-bold text-primary font-display">{{ answered_count }}</div>
+                                        <div class="text-2xl font-bold text-primary font-display"
+                                             data-testid="modal-answered-count"
+                                             x-text="answeredCount">{{ answered_count }}</div>
                                         <div class="text-xs text-muted mt-1">Answered</div>
                                     </div>
                                     <div class="rounded-lg border border-border bg-surface p-3 text-center">

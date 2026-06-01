@@ -248,6 +248,51 @@ def test_answered_count_does_not_include_unsaved_page_edits(mock_site_context, c
     assert response.context["answered_count"] == 0
 
 
+@pytest.mark.django_db
+def test_answered_other_pages_excludes_current_page_questions(
+    mock_site_context, client
+):
+    """
+    answered_other_pages is the base for the live client-side count: it counts
+    persisted answers for questions NOT on the current page, so the current
+    page's own answers are not double-counted by the live in-browser tally.
+
+    After saving page 1, the final page (page 2) sees that one persisted answer
+    as a base of 1; revisiting page 1 sees a base of 0 (its own answer is on the
+    current page).
+    """
+    user = UserFactory()
+    form, _pages, questions = _make_two_page_form()
+    course = _make_course_with_form(form)
+    _register(user, course)
+
+    client.force_login(user)
+    client.get(
+        reverse(
+            "student_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    # Persist page 1's answer.
+    correct_option = questions[0].options.filter(correct=True).first()
+    page1_url = reverse(
+        "student_interface:form_fill_page",
+        kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
+    )
+    client.post(page1_url, {f"question_{questions[0].id}": str(correct_option.id)})
+
+    # On the final page, page 1's persisted answer is "another page" → base 1.
+    page2_url = reverse(
+        "student_interface:form_fill_page",
+        kwargs={"course_slug": course.slug, "index": 1, "page_number": 2},
+    )
+    assert client.get(page2_url).context["answered_other_pages"] == 1
+
+    # Back on page 1, its own persisted answer is on the current page → base 0.
+    assert client.get(page1_url).context["answered_other_pages"] == 0
+
+
 # ---------------------------------------------------------------------------
 # §4a — stale-attempt safety net: returning to submit-on-exit form finalises stale attempt
 # ---------------------------------------------------------------------------

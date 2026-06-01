@@ -591,8 +591,17 @@ def form_fill_page(request, course_slug, index, page_number):
             }
         )
 
-    # §4c — runner context: honest answered count (persisted answers only)
+    # §4c — runner context: honest answered count (persisted answers only).
+    # answered_count is the no-JS fallback; answered_other_pages is the base the
+    # client adds the live current-page tally to (questions on this page are
+    # excluded so the in-browser count is not double-counted).
     answered_count = form_progress.answers.count() if form_progress else 0
+    current_page_question_ids = {q.id for q in questions}
+    answered_other_pages = (
+        form_progress.answers.exclude(question_id__in=current_page_question_ids).count()
+        if form_progress
+        else 0
+    )
     total_question_count = count_form_questions(form)
 
     # URL for the submit-and-exit endpoint (used by the exit dialog)
@@ -623,6 +632,7 @@ def form_fill_page(request, course_slug, index, page_number):
         **_player_chrome_context(request.user, course, form, index),
         # §4c additions
         "answered_count": answered_count,
+        "answered_other_pages": answered_other_pages,
         "total_question_count": total_question_count,
         "submit_and_exit_url": submit_and_exit_url,
         "save_and_exit_url": save_and_exit_url,

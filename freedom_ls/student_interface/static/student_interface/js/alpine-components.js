@@ -106,11 +106,11 @@ document.addEventListener("alpine:init", () => {
     }));
 
     // confirmDialog — shared focus-trap factory backing the exit and submit
-    // dialogs. Both examExitDialog and examSubmitDialog delegate to this
+    // dialogs. Both examExitDialog and examRunnerForm delegate to this
     // pattern: open state, focus trap, focus return to trigger, Escape-to-close.
     //
     // Template usage:
-    //   x-data="examExitDialog"  or  x-data="examSubmitDialog"
+    //   x-data="examExitDialog"  or  x-data="examRunnerForm"
     //
     // Public API shared by both:
     //   open          — boolean; bind x-show on dialog panel, x-cloak on panel
@@ -190,20 +190,79 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // examSubmitDialog — review/submit confirmation dialog (final-page Next button).
+    // examRunnerForm — wraps the whole runner body on every page. It owns two
+    // things:
+    //   1. A live "answered" tally (answeredCount) shown in the top bar and the
+    //      submit modal. Persisted answers on OTHER pages come from the server as
+    //      data-answered-base; answers on the CURRENT page are counted live from
+    //      the DOM and added on every input/change.
+    //   2. The final-page review/submit confirmation dialog (built on the shared
+    //      makeConfirmDialog focus-trap pattern). The dialog panel is only
+    //      rendered on the final page, but the component wraps every page so the
+    //      top-bar tally is live everywhere.
     //
     // Template wires:
-    //   x-data="examSubmitDialog" on the wrapper that contains the trigger + panel
-    //   x-on:click="openSubmitDialog"  on the "Next" button on the final page
-    //   x-on:click="closeSubmitDialog" on the "Go back and review" button
+    //   x-data="examRunnerForm"  data-answered-base="{N}"  on the runner wrapper
+    //   x-text="answeredCount"   on the top-bar count and the modal count
+    //   x-ref="pageForm"         on the <form> holding this page's questions
+    //   x-on:click="openSubmitDialog"  on the final-page "Next" button
+    //   x-on:click="closeSubmitDialog" on "Go back and review" / close
     //   x-on:keydown.escape.window="closeSubmitDialog"  on the dialog panel
     //   x-show="open"  x-cloak  on the dialog panel
-    //   x-on:click="submit($refs.pageForm)"  on the Submit button
-    //   x-bind:disabled="submitting"  on the Submit button
-    //
-    // The pageForm $ref must be set on the <form> element in the runner template.
-    Alpine.data("examSubmitDialog", makeConfirmDialog({
+    //   x-on:click="submit($refs.pageForm)"  x-bind:disabled="submitting"  on Submit
+    Alpine.data("examRunnerForm", makeConfirmDialog({
         submitting: false,
+        answeredCount: 0,
+        _answeredBase: 0,
+        _formEl: null,
+        _recompute: null,
+
+        init() {
+            const base = parseInt(this.$el.dataset.answeredBase || "0", 10);
+            this._answeredBase = Number.isNaN(base) ? 0 : base;
+            this._formEl = this.$refs.pageForm || null;
+            this._recompute = () => {
+                this.answeredCount = this._answeredBase + this._countAnsweredOnPage();
+            };
+            this._recompute();
+            if (this._formEl) {
+                this._formEl.addEventListener("input", this._recompute);
+                this._formEl.addEventListener("change", this._recompute);
+            }
+        },
+
+        destroy() {
+            if (this._formEl && this._recompute) {
+                this._formEl.removeEventListener("input", this._recompute);
+                this._formEl.removeEventListener("change", this._recompute);
+            }
+            this._closeDialog();
+        },
+
+        // Count questions on this page that have an answer. Inputs are grouped by
+        // name (question_{id}) so a radio/checkbox option group counts once.
+        _countAnsweredOnPage() {
+            if (!this._formEl) return 0;
+            const groups = {};
+            this._formEl
+                .querySelectorAll(
+                    'input[name^="question_"], textarea[name^="question_"]'
+                )
+                .forEach((el) => {
+                    (groups[el.name] ||= []).push(el);
+                });
+            let count = 0;
+            Object.values(groups).forEach((els) => {
+                const answered = els.some((el) => {
+                    if (el.type === "radio" || el.type === "checkbox") {
+                        return el.checked;
+                    }
+                    return el.value.trim() !== "";
+                });
+                if (answered) count += 1;
+            });
+            return count;
+        },
 
         openSubmitDialog(triggerEl) {
             this._openDialog(triggerEl);
