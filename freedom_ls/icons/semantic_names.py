@@ -7,6 +7,7 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "collapse",
     "menu_open",
     "menu_close",
+    "table_of_contents",
     "dropdown",
     "fullscreen",
     # Status
