@@ -475,6 +475,15 @@
         }
     }
 
+    /* Neutralise the global `ol { space-y-2 }` and `li { py-1 }` content-typography
+     * rules (in @layer base) that otherwise give breadcrumb <li>s unequal box heights
+     * — every <li> except the last gets a bottom margin, so under `align-items: center`
+     * the current-item crumb (and its `>`) drops ~4px below the row. */
+    .player-crumbs > li {
+        margin: 0;
+        padding: 0;
+    }
+
     /* Player breadcrumb separators (partials/player_breadcrumbs.html).
      * Rendered as CSS decoration so screen readers don't announce them. */
     .player-crumbs > li + li::before {
