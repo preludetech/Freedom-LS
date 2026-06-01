@@ -38,3 +38,31 @@ question: Would you recommend this course to others?
 required: true
 type: multiple_choice
 uuid: 31e68d64-64d7-4910-a6dd-880c2f9ff971
+---
+options:
+- text: Better explanations
+  uuid: 0feebdec-852f-48e3-8773-f60b8adb6264
+  value: explanations
+- text: More examples
+  uuid: 55e4f2a8-23a8-4c3b-adaf-4f9b24d00b92
+  value: examples
+- text: More practice exercises
+  uuid: c2f2ac10-eb06-432f-a452-77562f9c8c84
+  value: exercises
+- text: Better visuals
+  uuid: d0ca76e7-fab1-4535-b16b-c55b1d3c83d2
+  value: visuals
+question: Which areas would you most like to see improved? (Select all that apply)
+required: false
+type: checkboxes
+uuid: adcf99a9-2507-461c-9936-fd3a2346ff96
+---
+question: What was the most valuable thing you learned in this course?
+required: false
+type: short_text
+uuid: 0eb7ceb7-a525-4a0f-867d-3dec2c5518ce
+---
+question: Do you have any other feedback or suggestions for improving this course?
+required: false
+type: long_text
+uuid: 89635191-1d56-41d9-899d-d1a6ba35f4c5
