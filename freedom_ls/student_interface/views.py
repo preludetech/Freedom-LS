@@ -218,28 +218,6 @@ def course_home(request, course_slug):
     )
 
 
-def partial_course_toc(request, course_slug):
-    course = get_object_or_404(Course, slug=course_slug)
-
-    # Optional ?current=<1-based index> so the HTMX-loaded TOC body can highlight
-    # the item the learner is viewing and auto-expand its part.
-    current_index: int | None = None
-    raw_current = request.GET.get("current")
-    if raw_current is not None and raw_current.isdigit():
-        current_index = int(raw_current)
-
-    children = get_course_index(
-        user=request.user, course=course, current_index=current_index
-    )
-    is_registered = get_is_registered(user=request.user, course=course)
-
-    return render(
-        request,
-        "student_interface/partials/course_minimal_toc.html#course-children",
-        {"course": course, "children": children, "is_registered": is_registered},
-    )
-
-
 @login_required
 def register_for_course(request, course_slug):
     """Register the current user for a course."""
@@ -315,7 +293,11 @@ def view_course_item(request, course_slug, index):
     # Player chrome context shared by topic and form item pages: the outline
     # with the current item marked, the containing part (for breadcrumb / title),
     # the CourseProgress (for the header progress bar / %), and the 1-based index.
-    player_context = _player_chrome_context(request.user, course, current_item, index)
+    # Reuse the viewable_items already resolved above so the chrome helper does
+    # not re-traverse the course a second time.
+    player_context = _player_chrome_context(
+        request.user, course, current_item, index, viewable_items=viewable_items
+    )
 
     if isinstance(current_item, Topic):
         return view_topic(
@@ -343,9 +325,20 @@ def view_course_item(request, course_slug, index):
 
 
 def _player_chrome_context(
-    user, course: Course, current_item: Topic | Form, index: int
+    user,
+    course: Course,
+    current_item: Topic | Form,
+    index: int,
+    viewable_items: list | None = None,
 ) -> dict:
-    """Build the shared player-chrome context (TOC, breadcrumb, header, title)."""
+    """Build the shared player-chrome context (TOC, breadcrumb, header, title).
+
+    ``viewable_items`` may be passed in by a caller that has already resolved it
+    (``view_course_item``) to avoid re-traversing the course; callers that have
+    not (the form fill / complete pages) let it default to ``viewable_items()``.
+    """
+    if viewable_items is None:
+        viewable_items = course.viewable_items()
     course_progress = (
         CourseProgress.objects.filter(user=user, course=course).first()
         if user.is_authenticated
@@ -354,14 +347,13 @@ def _player_chrome_context(
     current_part = get_item_part(course, current_item)
 
     # The breadcrumb part crumb links to the part's first viewable item. Resolve
-    # its 1-based index in viewable_items() once, in memory.
+    # its 1-based index in the already-computed viewable_items, in memory.
     current_part_index: int | None = None
     if current_part is not None:
         part_children = current_part.children()
         if part_children:
-            viewable = course.viewable_items()
             first_child = part_children[0]
-            for n, item in enumerate(viewable, start=1):
+            for n, item in enumerate(viewable_items, start=1):
                 if type(item) is type(first_child) and item.pk == first_child.pk:
                     current_part_index = n
                     break
@@ -383,7 +375,7 @@ def view_topic(
     next_url,
     previous_url,
     is_last_item=False,
-    player_context=None,
+    player_context: dict | None = None,
 ):
     topic_progress, created = TopicProgress.objects.get_or_create(
         user=request.user, topic=topic
@@ -427,7 +419,7 @@ def view_form(
     index,
     is_last_item=False,
     next_url=None,
-    player_context=None,
+    player_context: dict | None = None,
 ):
     """Show the front page of the form"""
 

@@ -12,8 +12,11 @@ Shell slots used:
   slot    — stretched title link via card_title_link.html
 
 Behaviour:
-  Title links to course.next_up_url when available, otherwise to the
-  first course item (course_home fallback).
+  Title links to course.next_up_url when available, otherwise to course_home,
+  which 302-redirects to the learner's resume item. The dashboard is not a
+  player page, so this redirect does not create a Back-button loop (see spec
+  Section 1, "Dashboard cards are exempt"); landing on the resume item is more
+  correct than hard-coding item 1 for, e.g., a completed course.
   Progress bar renders at 0% for Registered (not-yet-started) courses.
 {% endcomment %}
 {% url 'student_interface:course_home' course_slug=course.slug as fallback_url %}

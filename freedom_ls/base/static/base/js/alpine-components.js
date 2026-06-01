@@ -127,43 +127,6 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // Shared <dialog> overlay controller (cotton/overlay.html).
-    //
-    // Wraps a native <dialog>. open(triggerEl) calls showModal() so the browser
-    // gives us a focus trap, background inertness, Escape-to-close, and a
-    // ::backdrop scrim for free. close() calls dialog.close(). On the dialog's
-    // native "close" event (covers Escape and device Back) we restore focus to
-    // the trigger and dispatch "overlay-closed" so an external trigger can sync
-    // aria-expanded. A click that lands on the dialog element itself (i.e. the
-    // backdrop region, not the panel) also closes.
-    Alpine.data("overlayDialog", () => ({
-        triggerEl: null,
-        init() {
-            this.dialog = this.$refs.dialog;
-            this.dialog.addEventListener("close", () => {
-                this.$dispatch("overlay-closed");
-                if (this.triggerEl) this.triggerEl.focus();
-            });
-            this.dialog.addEventListener("click", (event) => {
-                if (event.target === this.dialog) this.close();
-            });
-        },
-        open(eventOrEl) {
-            // Called either directly with a trigger element or from x-on:click
-            // (which passes an Event). Resolve the triggering element so focus
-            // can be restored to it on close.
-            if (eventOrEl instanceof Event) {
-                this.triggerEl = eventOrEl.currentTarget;
-            } else {
-                this.triggerEl = eventOrEl || null;
-            }
-            this.dialog.showModal();
-        },
-        close() {
-            this.dialog.close();
-        },
-    }));
-
     // Toast component (partials/_toast.html).
     //
     // Per-severity timing:

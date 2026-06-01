@@ -350,3 +350,31 @@ def test_register_for_course_lands_on_item_url(course_structure):
         "student_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 1},
     )
+
+
+# --- query-count guard --------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_player_page_query_count_is_bounded(
+    course_structure, enrolled_user, django_assert_max_num_queries
+):
+    """Pin the player page's query budget so regressions stay visible.
+
+    The player chrome assembles the outline, breadcrumb part lookup, progress,
+    and per-item status. ``view_course_item`` resolves ``viewable_items`` once
+    and threads it into the chrome helper, and ``Course.children`` prefetches
+    the generic-FK ``child``, so the page must not re-traverse the course or
+    issue a per-item ``child`` lookup. The ceiling is comfortably above the
+    current count (~47 for this 4-item fixture) but well below what a
+    reintroduced full traversal or a child N+1 would cost.
+    """
+    client = Client()
+    client.force_login(enrolled_user)
+    url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": "resume-course", "index": 1},
+    )
+    with django_assert_max_num_queries(55):
+        response = client.get(url)
+    assert response.status_code == 200

@@ -210,7 +210,10 @@ class Course(MarkdownContent, TitledContent):
 
     def children(self):
         """Return ordered list of child content items."""
-        return [item.child for item in self.items.all()]
+        # prefetch_related batches the generic-FK ``child`` resolution into one
+        # query per content type instead of one per item (this accessor is
+        # walked repeatedly per request by the course-index / player chrome).
+        return [item.child for item in self.items.prefetch_related("child")]
 
     def children_flat(self) -> list:
         """Get a flattened list of all content items in the course.
@@ -253,7 +256,8 @@ class CoursePart(TitledContent):
 
     def children(self):
         """Return ordered list of child content items."""
-        return [item.child for item in self.items.all()]
+        # See Course.children: batch the generic-FK ``child`` resolution.
+        return [item.child for item in self.items.prefetch_related("child")]
 
     def __str__(self):
         return self.title
