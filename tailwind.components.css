@@ -67,6 +67,22 @@
         @apply py-1
     }
 
+    /* Definition lists — legends for annotated diagrams and term/description
+       pairs. Two-column grid lays the term to the left of its description; the
+       `auto` column sizes to the widest term, so single-letter markers and
+       longer terms both align cleanly. */
+    dl {
+        @apply grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 items-baseline
+    }
+
+    dt {
+        @apply font-semibold font-display text-primary
+    }
+
+    dd {
+        @apply text-on-surface
+    }
+
     /* Tables */
     table {
         @apply w-full border-collapse
