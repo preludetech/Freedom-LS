@@ -363,8 +363,34 @@ document.addEventListener("alpine:init", () => {
                 }
             });
             this.dialog.addEventListener("click", (event) => {
+                if (!this.isMobile) return;
                 // A click on the dialog element itself (the modal backdrop) closes.
-                if (event.target === this.dialog && this.isMobile) this.close();
+                if (event.target === this.dialog) {
+                    this.close();
+                    return;
+                }
+                // A tap on a navigation link inside the sheet: opening the sheet
+                // pushed a history entry (so Back dismisses it). If we let the
+                // link navigate normally, that entry would stack under the
+                // destination and Back from there would replay a phantom
+                // "sheet open" view of the page we just left. Replace the pushed
+                // entry with the destination instead, so Back goes to the page
+                // the learner actually came from. Plain left-clicks only —
+                // modified / non-default-target clicks keep native behaviour.
+                const link = event.target.closest("a[href]");
+                if (
+                    !link ||
+                    event.button !== 0 ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey ||
+                    (link.target && link.target !== "_self")
+                ) {
+                    return;
+                }
+                event.preventDefault();
+                window.location.replace(link.href);
             });
 
             // Back closes the modal sheet instead of navigating the page. The

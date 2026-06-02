@@ -49,15 +49,18 @@ document.addEventListener("alpine:init", () => {
 
     // Course player content region (course_topic.html / course_form.html ...).
     //
-    // On load, move focus to the content heading (so keyboard / screen-reader
-    // users land on the new content rather than the top of the page) and scroll
-    // any current TOC row into view. The heading carries tabindex="-1" so it is
-    // programmatically focusable without entering the tab order.
+    // On load, scroll the current row of the outline panel into view so the
+    // learner can see where they are in a long course. Scoped to the outline's
+    // own scroll container (block: "nearest"), so it nudges only that panel,
+    // never the main content.
+    //
+    // It deliberately does NOT move focus to the heading: each player item is a
+    // full page load, so the browser already lands at the top and assistive
+    // tech reads from there. Programmatic heading focus added no real benefit
+    // while forcing a visible focus ring and a scroll jump on every navigation.
     Alpine.data("coursePlayer", () => ({
         init() {
             this.$nextTick(() => {
-                const heading = this.$el.querySelector("h1");
-                if (heading) heading.focus();
                 const current = document.querySelector(
                     '[aria-label="Course outline"] [aria-current="page"]',
                 );

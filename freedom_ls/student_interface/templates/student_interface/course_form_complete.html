@@ -4,7 +4,7 @@
 
 {% block content %}
     <c-page width="narrow" flush="true">
-        <div class="text-center mb-8" x-data="coursePlayer">
+        <div class="text-center mb-8">
             <div class="mb-6">
                 {% if is_failed_quiz %}
                     <c-icon name="error" class="size-16 text-error" />
@@ -13,7 +13,7 @@
                 {% endif %}
             </div>
 
-            <h1 class="mb-4 focus:outline-none" tabindex="-1">
+            <h1 class="mb-4">
                 {% if form.strategy == "QUIZ" %}
                     {% if is_failed_quiz %}
                         Quiz Not Passed
