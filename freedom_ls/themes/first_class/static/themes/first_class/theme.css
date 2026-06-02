@@ -138,6 +138,12 @@
         @apply bg-white;
     }
 
+    /* The sign-up / CTA panel reads as a clean white card here rather than
+     * the off-white surface-2 tint, matching the white course cards above. */
+    .signup-panel {
+        @apply bg-white;
+    }
+
     .alert-success {
         @apply bg-success-light border-success/30 text-on-success-light;
     }

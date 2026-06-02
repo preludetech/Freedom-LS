@@ -203,6 +203,13 @@
         @apply border border-border rounded-md py-4 px-4 sm:py-6 sm:px-8
     }
 
+    /* Course-detail sign-up / CTA panel. Default sits on the off-white
+     * surface-2 tint so it reads as a distinct panel against the page;
+     * themes reopen this to retune the panel background. */
+    .signup-panel {
+        @apply bg-surface-2
+    }
+
     /* Chip / badge component */
     .chip {
         @apply inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-lg
