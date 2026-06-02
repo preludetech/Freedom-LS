@@ -12,6 +12,24 @@
 {% endblock head_title %}
 
 {% block content %}
+    {% comment %}One stat inside the hero's glass stats strip. The dividers and
+    glass surface live on the container; this is just the icon + label + value.
+    Reads stat_icon / stat_label / stat_value from the surrounding context —
+    call it inside a {% templatetag openblock %} with … {% templatetag closeblock %}.{% endcomment %}
+    {% partialdef stat-card %}
+        <div class="flex flex-1 items-center gap-3 px-5 py-4">
+            <c-icon :name="stat_icon" class="size-5 shrink-0 opacity-80" />
+            <div class="min-w-0">
+                <p class="text-xs font-semibold uppercase tracking-wider opacity-70">
+                    {{ stat_label }}
+                </p>
+                <p class="font-semibold leading-tight">
+                    {{ stat_value }}
+                </p>
+            </div>
+        </div>
+    {% endpartialdef %}
+
     <c-page>
         <div class="space-y-6">
 
@@ -37,39 +55,54 @@
 
             {% comment %}Hero (spec §6.2): accent gradient bg + large semi-transparent course icon.
             Uses existing course-accent-<key> classes from tailwind.components.css.{% endcomment %}
-            <section class="course-accent-{{ course.accent_slot_key }} relative rounded-xl overflow-hidden p-6 sm:p-8 lg:p-10">
-                {% if course.category %}
-                    <span class="inline-block text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-white/20 mb-3">
-                        {{ course.category }}
-                    </span>
-                {% endif %}
-                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
-                    {{ course.title }}
-                </h1>
-                {% if course.subtitle %}
-                    <p class="mt-2 text-base sm:text-lg opacity-90">
-                        {{ course.subtitle }}
-                    </p>
-                {% endif %}
-
-                {% comment %}Semi-transparent icon anchored bottom-right{% endcomment %}
+            <section class="course-accent-{{ course.accent_slot_key }} relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden py-6 sm:py-8 lg:py-10">
+                {% comment %}Semi-transparent icon anchored bottom-right of the full-bleed section{% endcomment %}
                 <span class="absolute bottom-0 right-0 opacity-20 pointer-events-none"
                       aria-hidden="true">
                     {% course_icon course.icon course.icon_fallback css_class="size-40" %}
                 </span>
 
-                {% comment %}Stats strip — render each only when genuinely present{% endcomment %}
-                <div class="mt-4 flex flex-wrap gap-3 text-sm font-medium">
-                    <span>{{ lesson_count }} lesson{{ lesson_count|pluralize }}</span>
-                    {% if course.get_difficulty_display %}
-                        <span>{{ course.get_difficulty_display }}</span>
+                {% comment %}Inner well — matches c-page's max-width + horizontal padding so the
+                hero content lines up with the breadcrumbs and the content below.{% endcomment %}
+                <div class="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+                    {% if course.category %}
+                        <span class="inline-block text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-white/20 mb-3">
+                            {{ course.category }}
+                        </span>
                     {% endif %}
-                    {% with dur=course.display_estimated_duration %}
-                        {% if dur %}
-                            <span>{{ dur }}</span>
+                    <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
+                        {{ course.title }}
+                    </h1>
+                    {% if course.subtitle %}
+                        <p class="mt-2 text-base sm:text-lg opacity-90">
+                            {{ course.subtitle }}
+                        </p>
+                    {% endif %}
+
+                    {% comment %}Stats strip — one glass surface over the hero gradient,
+                    stats separated by internal dividers. Render each only when present.{% endcomment %}
+                    <div class="mt-6 flex flex-col divide-y divide-white/20 overflow-hidden rounded-xl border border-white/20 bg-white/10 backdrop-blur-md sm:flex-row sm:divide-x sm:divide-y-0">
+                        {% with lesson_word=lesson_count|pluralize:"lesson,lessons" %}
+                            {% with stat_icon="topic" stat_label="Lessons" stat_value=lesson_count|stringformat:"d"|add:" "|add:lesson_word %}
+                                {% partial stat-card %}
+                            {% endwith %}
+                        {% endwith %}
+                        {% if course.get_difficulty_display %}
+                            {% with stat_icon="achievement" stat_label="Level" stat_value=course.get_difficulty_display %}
+                                {% partial stat-card %}
+                            {% endwith %}
                         {% endif %}
-                    {% endwith %}
-                    <span>Free &middot; open enrolment</span>
+                        {% with dur=course.display_estimated_duration %}
+                            {% if dur %}
+                                {% with stat_icon="deadline" stat_label="Duration" stat_value=dur %}
+                                    {% partial stat-card %}
+                                {% endwith %}
+                            {% endif %}
+                        {% endwith %}
+                        {% with stat_icon="check" stat_label="Enrolment" stat_value="Free · open" %}
+                            {% partial stat-card %}
+                        {% endwith %}
+                    </div>
                 </div>
             </section>
 
