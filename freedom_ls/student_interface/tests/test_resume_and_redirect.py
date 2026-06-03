@@ -194,7 +194,7 @@ def test_course_home_enrolled_with_progress_redirects_to_last_item(
 
 
 @pytest.mark.django_db
-def test_course_home_unenrolled_redirects_to_preview(course_structure):
+def test_course_home_unenrolled_redirects_to_detail(course_structure):
     user = UserFactory()
     client = Client()
     client.force_login(user)
@@ -204,7 +204,7 @@ def test_course_home_unenrolled_redirects_to_preview(course_structure):
     response = client.get(url)
     assert response.status_code == 302
     assert response.url == reverse(
-        "student_interface:course_preview", kwargs={"course_slug": "resume-course"}
+        "student_interface:course_detail", kwargs={"course_slug": "resume-course"}
     )
 
 

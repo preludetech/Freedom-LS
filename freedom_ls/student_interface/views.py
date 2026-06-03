@@ -203,7 +203,7 @@ def course_home(request, course_slug):
     """Resume redirector for the bare course URL.
 
     Never renders a start page. Anonymous users hit the login flow via
-    ``login_required``. Unenrolled learners go to the loop-free preview page.
+    ``login_required``. Unenrolled learners go to the loop-free detail page.
     Enrolled learners 302 to their resume item (first item with no progress,
     last-accessed item otherwise) — a different canonical URL, with nothing in
     the player linking back here, so the browser Back button cannot loop.
@@ -211,7 +211,7 @@ def course_home(request, course_slug):
     course = get_object_or_404(Course, slug=course_slug)
 
     if not get_is_registered(user=request.user, course=course):
-        return redirect("student_interface:course_preview", course_slug=course_slug)
+        return redirect("student_interface:course_detail", course_slug=course_slug)
 
     index = get_resume_index(request.user, course)
     return redirect(
@@ -256,10 +256,10 @@ def view_course_item(request, course_slug, index):
         if is_item_locked_by_deadline(
             request.user, course, current_item, is_completed=is_completed
         ):
-            # Redirect to the loop-free preview page. course_home is now a
+            # Redirect to the loop-free detail page. course_home is now a
             # resume redirector, so redirecting a locked item there would loop
             # straight back to the same locked item.
-            return redirect("student_interface:course_preview", course_slug=course_slug)
+            return redirect("student_interface:course_detail", course_slug=course_slug)
 
     total = len(viewable_items)
 

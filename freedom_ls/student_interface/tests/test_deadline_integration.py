@@ -117,7 +117,7 @@ def test_no_deadlines_no_deadline_key(mock_site_context):
 @pytest.mark.django_db
 @override_settings(DEADLINES_ACTIVE=True)
 def test_view_course_item_redirects_if_locked(client, mock_site_context):
-    """A deadline-locked item redirects to the loop-free preview page.
+    """A deadline-locked item redirects to the loop-free detail page.
 
     Not to course_home (now a resume redirector), which would loop straight
     back to the same locked item.
@@ -145,7 +145,7 @@ def test_view_course_item_redirects_if_locked(client, mock_site_context):
 
     assert response.status_code == 302
     assert response.url == reverse(
-        "student_interface:course_preview", kwargs={"course_slug": course.slug}
+        "student_interface:course_detail", kwargs={"course_slug": course.slug}
     )
 
 
