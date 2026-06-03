@@ -118,12 +118,27 @@ reports. It cannot be done from inside one session or via subagents (no MCP at d
 runs, so this is the last lever to pull and only pays off when the full matrix is genuinely the
 bottleneck.
 
+**Before building Phase 4, run the `agent-browser` spike.** `vercel-labs/agent-browser` is a
+**Bash-driven CLI** (not an MCP server), so — unlike Playwright MCP — it *can* be driven by depth-1
+subagents. That would turn parallel viewport QA into an ordinary depth-0 fan-out (a new
+`fls:qa-viewport-agent` with `Bash` + a single `Bash(agent-browser *)` allow-list entry) instead of
+the external multi-session orchestrator above, and it's markedly cheaper per flow (~7k tokens vs
+Playwright's ~27–50k after Phase-1 tuning). Catches, in fairness: true session isolation needs
+`--profile` (separate Chrome processes, so it's *not* actually lighter than three Playwright
+instances), it's **pre-1.0 with weekly breaking-change risk**, and adopting it forfeits the official
+Playwright codegen/Healer ecosystem. So this is a **go/no-go spike, not a commitment**: after Phases
+1–3, run the 4-step spike in `research_agent_browser_alternative.md` (install → drive one FLS flow &
+measure tokens → prove 2-`profile` parallel isolation → decide). Pass → build Phase 4 as
+agent-browser fan-out; fail → fall back to the Playwright external-orchestrator approach.
+
 ## Out of scope / explicitly rejected
 
 - Weakening `security-guard.sh` to permit `rm -rf` — wrap deletions in committed scripts instead.
 - Tiering the browser-driving steps below the session model — visual judgement is the point.
 - Replacing Playwright MCP wholesale (Chrome DevTools MCP, browser-use) — MCP is the right tool for
-  the exploratory role; we tune it and add a deterministic fast-path, we don't replace it.
+  the exploratory role; we tune it and add a deterministic fast-path, we don't replace it. The one
+  exception under *active evaluation* is `vercel-labs/agent-browser`, gated behind the Phase 4 spike
+  above — not adopted now, but not dismissed either.
 - A reusable Playwright test-runner fast-path for re-verification is an attractive *future* idea
   (near-zero token re-checks) but is not part of this work; the pytest suite already covers the
   cheap deterministic regression layer for the bug-fix loop.
@@ -140,3 +155,6 @@ Full findings, measurements, and citations live alongside this file:
   loop guard.
 - `research_resilient_tool_batching.md` — cascade-cancel semantics, `cd`/`rm -rf`/hook trips, the
   exact allow-list entries and batching rules to add.
+- `research_agent_browser_alternative.md` — `vercel-labs/agent-browser` evaluated against our
+  constraints: the Bash-driven depth-1 parallelism unlock, token comparison, the `--session` vs
+  `--profile` isolation catch, pre-1.0 risk, and the go/no-go spike plan gating Phase 4.
