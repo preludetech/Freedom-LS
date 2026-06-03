@@ -73,7 +73,7 @@
                     dividers come from each cell's top/left border; the inner row is
                     nudged -1px so the outer edges tuck under the rounded border.
                     Render each stat only when present.{% endcomment %}
-                    <div class="mt-6 w-fit max-w-full overflow-hidden rounded-xl border border-white/20 bg-white/10 backdrop-blur-md">
+                    <div class="mt-6 w-fit max-w-full overflow-hidden rounded-xl border border-white/20 bg-white/20 backdrop-blur-md">
                         <div class="flex max-w-[36.5rem] flex-wrap -mt-px -ml-px">
                             {% with lesson_word=lesson_count|pluralize:"lesson,lessons" %}
                                 {% with stat_icon="topic" stat_label="Lessons" stat_value=lesson_count|stringformat:"d"|add:" "|add:lesson_word %}
