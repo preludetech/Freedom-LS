@@ -17,6 +17,7 @@
       "Bash(git fetch:*)",
       "Bash(git push *)",
       "Bash(git stash:*)",
+      "Bash(git rebase *)",
       "Bash(gh pr:*)",
       "Bash(ls:*)",
       "Bash(npm run tailwind_build:*)",
@@ -26,6 +27,7 @@
       "WebSearch",
       "Bash(grep *)",
       "Bash(.claude/fls/scripts/fetch_pr_comments.sh *)",
+      "Bash(.claude/fls/scripts/kill_runserver.sh:*)",
       "Bash(git rm *)"
     ],
     "deny": [
