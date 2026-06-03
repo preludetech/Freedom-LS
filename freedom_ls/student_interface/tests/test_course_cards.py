@@ -345,8 +345,8 @@ def test_course_detail_omits_duration_when_not_set(
         )
     )
     body = response.content.decode()
-    # No duration marker (the helper returns "" for null, and we render nothing)
-    assert "~" not in body
+    # The duration stat is omitted entirely — its "Duration" label never renders.
+    assert "Duration" not in body
 
 
 @pytest.mark.django_db
@@ -445,7 +445,7 @@ def test_not_registered_card_has_no_modal_trigger(
         "student_interface:course_detail",
         kwargs={"course_slug": course_with_topics.slug},
     )
-    # The card links to the detail page (not a modal trigger)
-    assert detail_url in body
-    # No modal close button present for the not-registered card
-    assert "course_preview_content" not in body
+    # The card links to the detail page via a real anchor...
+    assert f'href="{detail_url}"' in body
+    # ...and no modal component is rendered (the c-modal root carries x-data="modal").
+    assert 'x-data="modal"' not in body

@@ -98,17 +98,14 @@ def test_all_courses_not_registered_row_has_no_modal_trigger(
     assert response.status_code == 200
 
     body = response.content.decode()
-    # The modal trigger pattern from the old card used x-on:click="open" with a c-modal.
-    # The detail_url should be present as a plain link without modal attributes.
     detail_url = reverse(
         "student_interface:course_detail",
         kwargs={"course_slug": courses[0].slug},
     )
-    assert detail_url in body
-    # No Close button from modal footer (which was "Close" inside c-modal slot)
-    # is expected for the not-registered state rows
-    # Verify the link is a straight href, not a modal trigger
-    assert "course_preview_content" not in body
+    # The row links to the detail page via a real anchor...
+    assert f'href="{detail_url}"' in body
+    # ...and no modal component is rendered (the c-modal root carries x-data="modal").
+    assert 'x-data="modal"' not in body
 
 
 @pytest.mark.django_db

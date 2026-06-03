@@ -74,8 +74,12 @@ def _detail_start_url(course: Course, *, is_registered: bool, has_items: bool) -
     Unregistered learners go through ``register_for_course`` (idempotent
     registration + redirect). Already-registered, 0-progress learners skip
     that step and land directly on the first course item; if the course has
-    no items, fall back to ``course_home`` — now a resume redirector, so for an
-    item-less / edge-case course it simply bounces to the preview page.
+    no items, fall back to ``course_home``.
+
+    A completed learner (CTA label "Review course", see ``_detail_cta_label``)
+    intentionally reuses the first-item target — reviewing starts from the
+    beginning — so the two functions stay in sync without branching on
+    completion here.
     """
     if not is_registered:
         return reverse(
@@ -174,7 +178,9 @@ def course_detail(request, course_slug):
         {"label": course.title},
     ]
     viewable = course.viewable_items()
-    lesson_count = len(viewable)
+    # "Lessons" counts content items only — assessments (Form children) are
+    # surfaced separately via ``includes_assessments``, so exclude them here.
+    lesson_count = sum(1 for c in viewable if not isinstance(c, Form))
     includes_assessments = any(isinstance(c, Form) for c in viewable)
     return render(
         request,
