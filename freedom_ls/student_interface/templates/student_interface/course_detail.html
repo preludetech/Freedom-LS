@@ -30,7 +30,10 @@
         </div>
     {% endpartialdef %}
 
-    <c-page>
+    {% comment %}Trim c-page's default top padding (py-8 lg:py-12) — the breadcrumbs
+    sit just under the site header and directly above the full-bleed hero, so the
+    standard well rhythm leaves an oversized white band here.{% endcomment %}
+    <c-page class="pt-4 lg:pt-6">
         <div class="space-y-6">
 
             {% comment %}Breadcrumbs (spec §6.1). Shared c-breadcrumbs component with plain
