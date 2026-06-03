@@ -1,0 +1,56 @@
+<c-vars
+    crumbs=""
+    hx_target=""
+    id=""
+    oob=""
+    class=""
+/>
+
+{% comment %}
+Shared breadcrumb trail, rendered from a list of crumbs:
+
+    Root / Section / Current page
+
+Each crumb is a dict {"label": "...", "url": "..."}. Crumbs with a `url` render
+as links; the final crumb — or any crumb without a `url` — renders as plain
+text marked aria-current="page". The `/` separators are aria-hidden so screen
+readers never announce them.
+
+The <ol>/<li> reset (list-none + m-0 + p-0) neutralises the global
+`ol { space-y-2 }` / `li { py-1 }` base rules, which would otherwise give the
+crumbs unequal box heights under `align-items: center`.
+
+Props:
+  crumbs    — list of dicts: [{"label": "All courses", "url": "/courses"}, …].
+  hx_target — optional CSS selector. When set, links navigate via HTMX
+              (hx-get + hx-push-url) into that target instead of full-page loads.
+  id, oob   — optional. Set the id and hx-swap-oob on the <nav> so the trail can
+              be swapped out-of-band (used by the panel framework).
+  class     — extra classes for the <nav>.
+
+Usage:
+  <c-breadcrumbs :crumbs="breadcrumbs" />
+  <c-breadcrumbs :crumbs="breadcrumbs" hx_target="#main-content" id="breadcrumbs" oob="true" />
+{% endcomment %}
+
+<nav aria-label="Breadcrumb"
+     {% if id %}id="{{ id }}"{% endif %}
+     {% if oob %}hx-swap-oob="true"{% endif %}
+     class="{{ class }}">
+    <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 list-none m-0 p-0 text-sm text-muted min-w-0">
+        {% for crumb in crumbs %}
+            <li class="flex items-center gap-2 m-0 p-0 min-w-0">
+                {% if not forloop.first %}
+                    <span aria-hidden="true" class="shrink-0 text-muted/50">/</span>
+                {% endif %}
+                {% if crumb.url %}
+                    <a href="{{ crumb.url }}"
+                       {% if hx_target %}hx-get="{{ crumb.url }}" hx-target="{{ hx_target }}" hx-push-url="true" hx-swap="outerHTML"{% endif %}
+                       class="no-underline text-muted hover:text-primary truncate max-w-[16rem]">{{ crumb.label }}</a>
+                {% else %}
+                    <span aria-current="page" class="font-medium text-on-surface truncate max-w-[20rem]">{{ crumb.label }}</span>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ol>
+</nav>

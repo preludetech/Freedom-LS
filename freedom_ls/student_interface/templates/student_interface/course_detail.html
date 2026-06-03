@@ -33,33 +33,18 @@
     <c-page>
         <div class="space-y-6">
 
-            {% comment %}Breadcrumbs (spec §6.1). Inline nav — NOT the panel_framework partial,
-            which hard-codes hx-target="#main-content" that only exists in _base_interface.html.
-            These are plain full-page anchors with no HTMX attributes.{% endcomment %}
-            <nav aria-label="Breadcrumb">
-                <ol class="flex items-center gap-1 list-none p-0 m-0 text-sm text-muted">
-                    {% for crumb in breadcrumbs %}
-                        <li class="flex items-center gap-1">
-                            {% if not forloop.first %}
-                                <span aria-hidden="true" class="text-muted/50">/</span>
-                            {% endif %}
-                            {% if crumb.url %}
-                                <a href="{{ crumb.url }}" class="hover:text-primary no-underline">{{ crumb.label }}</a>
-                            {% else %}
-                                <span aria-current="page" class="text-foreground font-medium">{{ crumb.label }}</span>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ol>
-            </nav>
+            {% comment %}Breadcrumbs (spec §6.1). Shared c-breadcrumbs component with plain
+            full-page anchors (no hx_target) — the panel framework's HTMX target
+            #main-content does not exist on this standalone page.{% endcomment %}
+            <c-breadcrumbs :crumbs="breadcrumbs" />
 
             {% comment %}Hero (spec §6.2): accent gradient bg + large semi-transparent course icon.
             Uses existing course-accent-<key> classes from tailwind.components.css.{% endcomment %}
             <section class="course-accent-{{ course.accent_slot_key }} relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden py-6 sm:py-8 lg:py-10">
                 {% comment %}Semi-transparent icon anchored bottom-right of the full-bleed section{% endcomment %}
-                <span class="absolute bottom-0 right-0 opacity-20 pointer-events-none"
+                <span class="absolute bottom-0 right-75 opacity-20 pointer-events-none"
                       aria-hidden="true">
-                    {% course_icon course.icon course.icon_fallback css_class="size-50" %}
+                    {% course_icon course.icon course.icon_fallback css_class="size-60" %}
                 </span>
 
                 {% comment %}Inner well — matches c-page's max-width + horizontal padding so the

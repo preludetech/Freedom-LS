@@ -1,27 +1,12 @@
+{% comment %}Panel-framework breadcrumb trail. Delegates rendering to the shared
+c-breadcrumbs component, passing the panel's HTMX target so crumb links swap
+#main-content in place. The id/oob keep the <nav> swappable out-of-band; the
+empty-state div preserves the #breadcrumbs target when there are no crumbs.{% endcomment %}
 {% if breadcrumbs %}
-<nav id="breadcrumbs" aria-label="Breadcrumb"
-     {% if oob %}hx-swap-oob="true"{% endif %}>
-    <ol class="flex items-center text-sm text-muted list-none">
-        {% for crumb in breadcrumbs %}
-            <li{% if not forloop.first %} class="before:content-['/'] before:mx-1 before:opacity-50"{% endif %}>
-                {% if crumb.url %}
-                    <a href="{{ crumb.url }}"
-                       hx-get="{{ crumb.url }}"
-                       hx-target="#main-content"
-                       hx-push-url="true"
-                       hx-swap="outerHTML"
-                       class="hover:text-on-surface hover:underline focus:outline-2 focus:outline-offset-2 focus:outline-primary">
-                        {{ crumb.label }}
-                    </a>
-                {% else %}
-                    <span aria-current="page" class="text-on-surface font-medium">
-                        {{ crumb.label }}
-                    </span>
-                {% endif %}
-            </li>
-        {% endfor %}
-    </ol>
-</nav>
+    <c-breadcrumbs :crumbs="breadcrumbs"
+                   hx_target="#main-content"
+                   id="breadcrumbs"
+                   :oob="oob" />
 {% else %}
-<div id="breadcrumbs" {% if oob %}hx-swap-oob="true"{% endif %}></div>
+    <div id="breadcrumbs" {% if oob %}hx-swap-oob="true"{% endif %}></div>
 {% endif %}
