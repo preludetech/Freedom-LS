@@ -71,7 +71,7 @@ def test_registered_card_shows_empty_progress_bar(
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
     assert "Registered" in body
-    assert 'aria-valuenow="0"' in body
+    assert 'value="0"' in body
     assert "0%" in body
 
 
@@ -247,7 +247,7 @@ def test_registered_zero_progress_card_links_title_to_first_item(
         kwargs={"course_slug": course_with_topics.slug, "index": 1},
     )
     assert "Registered" in body
-    assert 'aria-valuenow="0"' in body
+    assert 'value="0"' in body
     assert first_item_url in body
 
 

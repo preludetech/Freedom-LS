@@ -27,11 +27,9 @@ Usage:
                        label="Progress for {{ course.title }}" />
 {% endcomment %}
 <div class="flex items-center gap-2">
+    {# Native <progress> already exposes an implicit progressbar role and its #}
+    {# value/max to assistive tech, so no role/aria-value* is added here. #}
     <progress class="w-full {{ bar_class }} rounded-full overflow-hidden course-progress-{{ accent_slot_key }}"
-              role="progressbar"
-              aria-valuemin="0"
-              aria-valuemax="100"
-              aria-valuenow="{{ percentage|default:0 }}"
               aria-label="{{ label }}"
               value="{{ percentage|default:0 }}"
               max="100">
