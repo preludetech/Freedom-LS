@@ -18,6 +18,10 @@
 /* Component classes — depend on tokens; main-project source of truth. */
 @import "./tailwind.components.css";
 
+/* Side-panel layout for the shared interface shell (_base_interface.html).
+ * Single-use layout, kept out of the reusable-primitives file above. */
+@import "./tailwind.base_interface.css";
+
 /* Active theme — generated each build by `scripts/write-active-theme.mjs`
  * keyed on the `FLS_THEME` env var. When FLS_THEME=default this re-imports
  * the same baseline (no-op on cascade); for any other slug the active theme's

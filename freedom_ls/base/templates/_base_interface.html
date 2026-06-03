@@ -36,11 +36,17 @@
             wrapper and inherits down to this dialog (no inline value here, which
             would shadow the inherited one and pin the docked panel at top: 0).
             {% endcomment %}
+            {% comment %}
+            border-0/p-0/m-0/max-w-none/max-h-none/bg-transparent/text-inherit reset
+            the default <dialog> UA chrome so it lays out cleanly in both the
+            docked-desktop and modal-mobile modes. The positioning, animation and
+            grid rules live in tailwind.base_interface.css.
+            {% endcomment %}
             <dialog x-ref="panelDialog"
                     data-variant="{% block sidebar_presentation %}bottom-sheet{% endblock sidebar_presentation %}"
-                    class="side-panel-dialog backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+                    class="side-panel-dialog border-0 p-0 m-0 max-w-none max-h-none bg-transparent text-inherit backdrop:bg-black/50 backdrop:backdrop-blur-sm"
                     aria-label="{% block sidebar_heading_aria %}Navigation{% endblock sidebar_heading_aria %}">
-                <div class="side-panel-body bg-surface h-full overflow-y-auto overscroll-contain">
+                <div class="side-panel-body bg-sidepanel h-full overflow-y-auto overscroll-contain">
                     {% comment %}
                     The panel has no chrome of its own — no title row or close
                     control. On mobile it is a native modal sheet dismissed by the

@@ -146,4 +146,9 @@
     --color-on-header: var(--color-on-primary);
     --color-header-action: var(--color-primary);
     --color-on-header-action: var(--color-on-primary);
+
+    /* Side-panel surface (the docked/overlay nav in _base_interface.html).
+     * Defaults to the page surface; themes wanting a distinct panel colour set
+     * --color-sidepanel rather than overriding the component selectors. */
+    --color-sidepanel: var(--color-surface);
 }

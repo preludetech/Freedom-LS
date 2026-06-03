@@ -5,30 +5,34 @@ Player breadcrumb trail, identical on every breakpoint:
 
 Ancestor crumbs link to concrete item URLs (never the bare course URL); the
 current item is plain text with aria-current="page" and acts as the page title.
-The part crumb is dropped entirely when current_part is None. The > separators
-are CSS decoration (player-crumbs ::before), so screen readers never announce
-them. The mobile expand button and the progress bar are supplied by the shared
-content header in _base_interface.html, not here.
+The part crumb is dropped entirely when current_part is None. The `>` separators
+are aria-hidden <span>s so screen readers never announce them. The <li> m-0/p-0
+neutralise the global `ol { space-y-2 }` / `li { py-1 }` base rules that would
+otherwise give the crumbs unequal box heights under `align-items: center`. The
+mobile expand button and the progress bar are supplied by the shared content
+header in _base_interface.html, not here.
 {% endcomment %}
 
 {% url 'student_interface:view_course_item' course_slug=course.slug index=1 as first_item_url %}
 
 <nav aria-label="Breadcrumb">
-    <ol class="player-crumbs list-none ml-0 flex items-center gap-2 text-sm text-muted min-w-0">
-        <li class="flex items-center min-w-0">
+    <ol class="list-none ml-0 flex items-center gap-2 text-sm text-muted min-w-0">
+        <li class="m-0 p-0 flex items-center min-w-0">
             <a href="{{ first_item_url }}"
                class="no-underline text-muted hover:text-primary truncate max-w-[16rem]"
                title="{{ course.title }}">{{ course.title }}</a>
         </li>
         {% if current_part and current_part_index %}
-            <li class="flex items-center min-w-0">
+            <li class="m-0 p-0 flex items-center gap-2 min-w-0">
+                <span aria-hidden="true" class="shrink-0">&gt;</span>
                 <a href="{% url 'student_interface:view_course_item' course_slug=course.slug index=current_part_index %}"
                    class="no-underline text-muted hover:text-primary truncate max-w-[16rem]"
                    title="{{ current_part.title }}">{{ current_part.title }}</a>
             </li>
         {% endif %}
         {% if item_title %}
-            <li class="flex items-center min-w-0">
+            <li class="m-0 p-0 flex items-center gap-2 min-w-0">
+                <span aria-hidden="true" class="shrink-0">&gt;</span>
                 <span class="text-on-surface font-medium truncate max-w-[20rem]"
                       aria-current="page"
                       title="{{ item_title }}">{{ item_title }}</span>

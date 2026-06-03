@@ -181,6 +181,11 @@
     --color-on-header: var(--color-on-surface);        /* dark text */
     --color-header-action: var(--color-primary);       /* indigo pill */
     --color-on-header-action: var(--color-on-primary); /* white initials */
+
+    /* The side panel reads as a clean white card against the off-white
+     * Stratosphere surface, mirroring the white header — identical on the
+     * docked desktop column and the mobile sheet. */
+    --color-sidepanel: #FFFFFF;
 }
 
 /* Scrolled-state surface treatment — only first_class swaps to a frosted-
@@ -193,18 +198,5 @@
         background-color: color-mix(in oklch, var(--color-header) 85%, transparent);
         backdrop-filter: blur(12px) saturate(1.5);
         -webkit-backdrop-filter: blur(12px) saturate(1.5);
-    }
-
-    /* The side panel (course-player outline, educator/test nav) reads as a clean
-     * white card against the Stratosphere page surface at every breakpoint,
-     * mirroring the white header — identical on the docked desktop column and
-     * the mobile bottom sheet. The two-class selector beats the element's own
-     * `bg-surface` utility. The sticky in-panel header (e.g. the course-player
-     * outline header) carries its own `bg-surface` so scrolled content vanishes
-     * cleanly beneath it; whiten it too so it matches the white panel rather
-     * than showing the Stratosphere surface as a separate band. */
-    .side-panel-dialog .side-panel-body,
-    .side-panel-dialog .side-panel-body .sticky {
-        background-color: #FFFFFF;
     }
 }
