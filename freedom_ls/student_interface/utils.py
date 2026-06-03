@@ -66,16 +66,20 @@ def get_content_status(
     content_item: Topic | Form | CoursePart | Course,
     user: User,
     next_status: str,
+    topic_progress_map: dict[uuid.UUID, TopicProgress],
+    form_progress_map: dict[uuid.UUID, FormProgress],
 ) -> tuple[str, str]:
     """
     Get the status for a content item based on user progress.
 
+    Progress is read from ``topic_progress_map`` / ``form_progress_map`` (keyed
+    by item id), which the caller bulk-fetches once via
+    ``_fetch_player_progress_maps`` so this runs without per-item queries.
+
     Returns tuple of (status, updated_next_status)
     """
     if isinstance(content_item, Topic):
-        topic_progress = TopicProgress.objects.filter(
-            user=user, topic=content_item
-        ).first()
+        topic_progress = topic_progress_map.get(content_item.id)
 
         if topic_progress and topic_progress.complete_time:
             return COMPLETE, READY
@@ -87,11 +91,7 @@ def get_content_status(
             return BLOCKED, BLOCKED
 
     elif isinstance(content_item, Form):
-        form_progress = (
-            FormProgress.objects.filter(user=user, form=content_item)
-            .order_by("-start_time")
-            .first()
-        )
+        form_progress = form_progress_map.get(content_item.id)
 
         if form_progress and form_progress.completed_time:
             if form_progress.form.strategy == FormStrategy.QUIZ:
@@ -121,7 +121,7 @@ def get_content_status(
 
         for child in children:
             child_status, temp_next_status = get_content_status(
-                child, user, temp_next_status
+                child, user, temp_next_status, topic_progress_map, form_progress_map
             )
             child_statuses.append(child_status)
 
@@ -214,6 +214,45 @@ def get_item_part(course: Course, current_item: Topic | Form) -> CoursePart | No
     return None
 
 
+def _fetch_player_progress_maps(
+    user: User,
+    viewable_items: list[Topic | Form],
+) -> tuple[dict[uuid.UUID, TopicProgress], dict[uuid.UUID, FormProgress]]:
+    """Bulk-fetch this user's progress for all viewable items in two queries.
+
+    Returns (topic_progress_by_id, latest_form_progress_by_id):
+    - topic map keyed by topic_id -> TopicProgress (unique per user+topic)
+    - form map keyed by form_id -> the user's LATEST FormProgress, first-seen
+      under ``-start_time`` so it matches the old per-item
+      ``.order_by("-start_time").first()`` semantics exactly. (The educator
+      interface picks the latest *completed* attempt instead via
+      ``F("completed_time").desc(nulls_last=True)``; that is a deliberately
+      different behaviour, not adopted here.)
+
+    ``select_related("form")`` so ``FormProgress.passed()`` reads
+    ``form.quiz_pass_percentage`` / ``form.strategy`` without a per-quiz query.
+    """
+    topic_ids = [i.id for i in viewable_items if isinstance(i, Topic)]
+    form_ids = [i.id for i in viewable_items if isinstance(i, Form)]
+
+    topic_map: dict[uuid.UUID, TopicProgress] = {}
+    if topic_ids:
+        for tp in TopicProgress.objects.filter(user=user, topic_id__in=topic_ids):
+            topic_map[tp.topic_id] = tp
+
+    form_map: dict[uuid.UUID, FormProgress] = {}
+    if form_ids:
+        for fp in (
+            FormProgress.objects.filter(user=user, form_id__in=form_ids)
+            .select_related("form")
+            .order_by("-start_time")
+        ):
+            if fp.form_id not in form_map:
+                form_map[fp.form_id] = fp
+
+    return topic_map, form_map
+
+
 def get_course_index(
     user: User, course: Course, current_index: int | None = None
 ) -> list[dict]:
@@ -231,6 +270,17 @@ def get_course_index(
     if user.is_authenticated and config.DEADLINES_ACTIVE:
         deadlines_map = get_course_deadlines(user, course)
 
+    # Bulk-fetch per-item progress once (two queries) instead of one per item.
+    # Only needed when registered: unregistered users get forced-BLOCKED rows
+    # and get_content_status is never called. get_is_registered already implies
+    # an authenticated user.
+    topic_progress_map: dict[uuid.UUID, TopicProgress] = {}
+    form_progress_map: dict[uuid.UUID, FormProgress] = {}
+    if is_registered:
+        topic_progress_map, form_progress_map = _fetch_player_progress_maps(
+            user, course.viewable_items()
+        )
+
     children = []
     next_status = READY  # First item starts as READY
     global_index = (
@@ -245,6 +295,8 @@ def get_course_index(
             global_index,
             next_status,
             is_registered,
+            topic_progress_map,
+            form_progress_map,
             deadlines_map=deadlines_map,
             current_index=current_index,
         )
@@ -307,6 +359,8 @@ def create_child_dict_with_flattened_index(
     start_index: int,
     next_status: str,
     is_registered: bool,
+    topic_progress_map: dict[uuid.UUID, TopicProgress],
+    form_progress_map: dict[uuid.UUID, FormProgress],
     deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]]
     | None = None,
     current_index: int | None = None,
@@ -340,7 +394,11 @@ def create_child_dict_with_flattened_index(
                 continue
             if is_registered:
                 child_status, part_next_status = get_content_status(
-                    part_child, user, part_next_status
+                    part_child,
+                    user,
+                    part_next_status,
+                    topic_progress_map,
+                    form_progress_map,
                 )
                 child_url = reverse(
                     "student_interface:view_course_item",
@@ -415,7 +473,9 @@ def create_child_dict_with_flattened_index(
         # Regular content item (Topic, Form, etc.)
         items_added = 1
         if is_registered:
-            status, next_status = get_content_status(content_item, user, next_status)
+            status, next_status = get_content_status(
+                content_item, user, next_status, topic_progress_map, form_progress_map
+            )
             url = reverse(
                 "student_interface:view_course_item",
                 kwargs={"course_slug": course.slug, "index": start_index + 1},

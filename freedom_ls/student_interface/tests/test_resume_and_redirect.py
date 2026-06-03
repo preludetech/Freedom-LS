@@ -2,8 +2,11 @@
 
 import pytest
 
+from django.db import connection
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
@@ -13,13 +16,18 @@ from freedom_ls.content_engine.factories import (
     FormPageFactory,
     TopicFactory,
 )
+from freedom_ls.content_engine.models import FormStrategy
 from freedom_ls.student_interface.utils import (
     get_course_index,
     get_item_part,
     get_resume_index,
 )
 from freedom_ls.student_management.factories import UserCourseRegistrationFactory
-from freedom_ls.student_progress.models import CourseProgress, FormProgress
+from freedom_ls.student_progress.models import (
+    CourseProgress,
+    FormProgress,
+    TopicProgress,
+)
 
 
 @pytest.fixture
@@ -362,12 +370,15 @@ def test_player_page_query_count_is_bounded(
     """Pin the player page's query budget so regressions stay visible.
 
     The player chrome assembles the outline, breadcrumb part lookup, progress,
-    and per-item status. ``view_course_item`` resolves ``viewable_items`` once
-    and threads it into the chrome helper, and ``Course.children`` prefetches
-    the generic-FK ``child``, so the page must not re-traverse the course or
-    issue a per-item ``child`` lookup. The ceiling is comfortably above the
-    current count (~47 for this 4-item fixture) but well below what a
-    reintroduced full traversal or a child N+1 would cost.
+    and per-item status. The budget is independent of item count because the
+    page (a) walks the course tree once -- ``Course.children`` /
+    ``CoursePart.children`` memoize per instance, so the repeated chrome
+    traversals share one resolution -- and (b) bulk-fetches all topic/form
+    progress into maps via ``_fetch_player_progress_maps`` instead of one query
+    per item. The ceiling sits just above the current count (~33 for this
+    4-item fixture) but well below what a reintroduced full traversal or a
+    per-item progress N+1 would cost. See
+    ``test_player_page_query_count_does_not_grow_with_items``.
     """
     client = Client()
     client.force_login(enrolled_user)
@@ -375,6 +386,154 @@ def test_player_page_query_count_is_bounded(
         "student_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 1},
     )
-    with django_assert_max_num_queries(55):
+    with django_assert_max_num_queries(38):
         response = client.get(url)
     assert response.status_code == 200
+
+
+@pytest.fixture
+def big_course(mock_site_context):
+    """Course with a 10-topic part plus 3 top-level forms (13 viewable items).
+
+    Used to prove the player's query budget does not grow per item: a per-item
+    progress N+1 or a re-traversal would blow past the same ceiling the tiny
+    4-item fixture lives under.
+    """
+    course = CourseFactory(title="Big Course", slug="big-course")
+    part = CoursePartFactory(title="Big Chapter", slug="big-chapter")
+    course.items.create(child=part, order=0)
+    for n in range(10):
+        topic = TopicFactory(title=f"BT {n}", slug=f"bt-{n}", content="x")
+        part.items.create(child=topic, order=n)
+    for n in range(3):
+        form = FormFactory(title=f"BF {n}", slug=f"bf-{n}")
+        course.items.create(child=form, order=n + 1)
+    return course
+
+
+@pytest.mark.django_db
+def test_player_page_query_count_does_not_grow_with_items(
+    big_course, django_assert_max_num_queries
+):
+    """A 13-item course stays under the same ceiling as the 4-item fixture.
+
+    With a per-item progress N+1 (or per-caller re-traversal) the extra topics
+    would each add a query and overshoot 38; bulk fetching + memoized children
+    keep it flat.
+    """
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=big_course)
+    client = Client()
+    client.force_login(user)
+    url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": "big-course", "index": 1},
+    )
+    with django_assert_max_num_queries(38):
+        response = client.get(url)
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_get_course_index_status_semantics_preserved(mock_site_context):
+    """Bulk-fetched progress yields the same per-item statuses + next_status flow.
+
+    Covers every status value and the next_status propagation (an untouched item
+    after a READY one becomes BLOCKED; completed/failed/in-progress items are
+    independent of next_status).
+    """
+    course = CourseFactory(title="Status Course", slug="status-course")
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course)
+    now = timezone.now()
+
+    topic_complete = TopicFactory(title="T complete", slug="t-complete", content="x")
+    topic_ready = TopicFactory(title="T ready", slug="t-ready", content="x")
+    topic_blocked = TopicFactory(title="T blocked", slug="t-blocked", content="x")
+    topic_in_progress = TopicFactory(title="T wip", slug="t-wip", content="x")
+    quiz_passed = FormFactory(
+        title="Q passed",
+        slug="q-passed",
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=80,
+    )
+    quiz_failed = FormFactory(
+        title="Q failed",
+        slug="q-failed",
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=80,
+    )
+    form_done = FormFactory(title="F done", slug="f-done")
+    form_untouched = FormFactory(title="F untouched", slug="f-untouched")
+
+    ordered = [
+        topic_complete,
+        topic_ready,
+        topic_blocked,
+        topic_in_progress,
+        quiz_passed,
+        quiz_failed,
+        form_done,
+        form_untouched,
+    ]
+    for order, item in enumerate(ordered):
+        course.items.create(child=item, order=order)
+
+    TopicProgress.objects.create(user=user, topic=topic_complete, complete_time=now)
+    TopicProgress.objects.create(user=user, topic=topic_in_progress)
+    FormProgress.objects.create(
+        user=user,
+        form=quiz_passed,
+        completed_time=now,
+        scores={"score": 8, "max_score": 10},
+    )
+    FormProgress.objects.create(
+        user=user,
+        form=quiz_failed,
+        completed_time=now,
+        scores={"score": 5, "max_score": 10},
+    )
+    FormProgress.objects.create(user=user, form=form_done, completed_time=now)
+
+    children = get_course_index(user=user, course=course)
+    statuses = [c["status"] for c in children]
+    assert statuses == [
+        "COMPLETE",
+        "READY",
+        "BLOCKED",
+        "IN_PROGRESS",
+        "COMPLETE",
+        "FAILED",
+        "COMPLETE",
+        "READY",
+    ]
+
+
+@pytest.mark.django_db
+def test_children_memoized_second_call_issues_no_queries(course_structure):
+    """Course.children() caches per instance: a warmed call hits the DB zero times."""
+    course = course_structure["course"]
+    first = course.children()
+    with CaptureQueriesContext(connection) as ctx:
+        second = course.children()
+    assert len(ctx.captured_queries) == 0
+    assert [type(c) for c in second] == [type(c) for c in first]
+
+
+@pytest.mark.django_db
+def test_get_course_index_unregistered_user_skips_progress_queries(mock_site_context):
+    """An authenticated-but-unregistered user reads no progress rows (all BLOCKED)."""
+    course = CourseFactory(title="Closed Course", slug="closed-course")
+    topic = TopicFactory(title="Locked", slug="locked", content="x")
+    form = FormFactory(title="Locked form", slug="locked-form")
+    course.items.create(child=topic, order=0)
+    course.items.create(child=form, order=1)
+    user = UserFactory()  # not registered for the course
+
+    with CaptureQueriesContext(connection) as ctx:
+        children = get_course_index(user=user, course=course)
+
+    assert [c["status"] for c in children] == ["BLOCKED", "BLOCKED"]
+    sql = " ".join(q["sql"].lower() for q in ctx.captured_queries)
+    assert "student_progress_topicprogress" not in sql
+    assert "student_progress_formprogress" not in sql

@@ -209,11 +209,26 @@ class Course(MarkdownContent, TitledContent):
         validate_course_icon_fields(self.icon, self.icon_fallback)
 
     def children(self):
-        """Return ordered list of child content items."""
-        # prefetch_related batches the generic-FK ``child`` resolution into one
-        # query per content type instead of one per item (this accessor is
-        # walked repeatedly per request by the course-index / player chrome).
-        return [item.child for item in self.items.prefetch_related("child")]
+        """Return ordered list of child content items.
+
+        Memoized per instance: the player chrome walks this tree several times
+        per request (viewable_items, course index, breadcrumb part lookup,
+        status), all on the same Course instance from get_object_or_404, so
+        caching keeps it to one items query plus one query per child content
+        type for the whole request. The cache lives on the instance, so a new
+        request (new instance) re-fetches. prefetch_related batches the
+        generic-FK ``child`` resolution into one query per content type instead
+        of one per item.
+
+        Request-scoped contract: mutating ``items`` after ``children()`` has
+        been called and re-reading on the same instance returns stale data; no
+        current path does this.
+        """
+        if not hasattr(self, "_children_cache"):
+            self._children_cache = [
+                item.child for item in self.items.prefetch_related("child")
+            ]
+        return self._children_cache
 
     def children_flat(self) -> list:
         """Get a flattened list of all content items in the course.
@@ -255,9 +270,18 @@ class CoursePart(TitledContent):
         unique_together = ["site", "slug"]
 
     def children(self):
-        """Return ordered list of child content items."""
-        # See Course.children: batch the generic-FK ``child`` resolution.
-        return [item.child for item in self.items.prefetch_related("child")]
+        """Return ordered list of child content items.
+
+        Memoized per instance, like Course.children: the player chrome walks
+        each part's children several times per request on the same instance, so
+        caching keeps it to one items query plus one query per child content
+        type. See Course.children for the request-scoped staleness contract.
+        """
+        if not hasattr(self, "_children_cache"):
+            self._children_cache = [
+                item.child for item in self.items.prefetch_related("child")
+            ]
+        return self._children_cache
 
     def __str__(self):
         return self.title
