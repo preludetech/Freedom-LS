@@ -158,13 +158,21 @@ document.addEventListener("alpine:init", () => {
             open: false,
             _triggerEl: null,
             _focusTrap: null,
+            _trapEl: null,
 
             _openDialog(triggerEl) {
                 this._triggerEl = triggerEl || null;
                 this.open = true;
                 this.$nextTick(() => {
+                    // Scope focus to the dialog panel, not the whole component.
+                    // examRunnerForm wraps the entire runner, so trapping on
+                    // $el would span every runner control; the panel ref keeps
+                    // the trap inside the open dialog. Falls back to $el for any
+                    // dialog without the ref.
+                    const panel = this.$refs.dialogPanel || this.$el;
+                    this._trapEl = panel;
                     const focusable = Array.from(
-                        this.$el.querySelectorAll(
+                        panel.querySelectorAll(
                             'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
                         )
                     );
@@ -181,15 +189,19 @@ document.addEventListener("alpine:init", () => {
                             first.focus();
                         }
                     };
-                    this.$el.addEventListener("keydown", this._focusTrap);
+                    panel.addEventListener("keydown", this._focusTrap);
                 });
             },
 
             _closeDialog() {
                 this.open = false;
                 if (this._focusTrap) {
-                    this.$el.removeEventListener("keydown", this._focusTrap);
+                    (this._trapEl || this.$el).removeEventListener(
+                        "keydown",
+                        this._focusTrap
+                    );
                     this._focusTrap = null;
+                    this._trapEl = null;
                 }
                 if (this._triggerEl) {
                     this._triggerEl.focus();
@@ -316,6 +328,17 @@ document.addEventListener("alpine:init", () => {
         },
 
         openSubmitDialog(triggerEl) {
+            // Enforce required answers before opening the submit dialog, matching
+            // the intermediate-page "Next" buttons (real type=submit, which the
+            // browser validates). Validating here — while the form is still
+            // visible — surfaces the browser's validation UI on the offending
+            // field, instead of after the modal backdrop has covered it.
+            // reportValidity() only blocks on fields marked `required`, so
+            // optional/survey questions are unaffected.
+            const form = this.$refs.pageForm;
+            if (form && typeof form.reportValidity === "function" && !form.reportValidity()) {
+                return;
+            }
             this._openDialog(triggerEl);
         },
         closeSubmitDialog() {

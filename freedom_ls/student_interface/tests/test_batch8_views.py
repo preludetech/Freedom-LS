@@ -708,3 +708,97 @@ def test_count_form_questions_returns_zero_for_form_with_no_questions(
 
     form = FormFactory()
     assert count_form_questions(form) == 0
+
+
+# ---------------------------------------------------------------------------
+# Runner page rendering (QA report bug fixes)
+# ---------------------------------------------------------------------------
+
+
+def _start_runner(client, user, form):
+    """Register the user, force-login, and GET the runner fill page (following
+    the form_start redirect). Returns the rendered fill-page response."""
+    course = _make_course_with_form(form)
+    _register(user, course)
+    client.force_login(user)
+    start_url = reverse(
+        "student_interface:form_start",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    return client.get(start_url, follow=True)
+
+
+@pytest.mark.django_db
+def test_runner_page_loads_content_engine_alpine_components(mock_site_context, client):
+    """The runner must load content_engine's Alpine components.
+
+    Regression (QA report bug 1): the runner base only loaded
+    student_interface's Alpine components, so contentLightbox/onEscape were
+    undefined — a markdown image in a question logged console errors and its
+    lightbox covered the runner, blocking submission. The runner must include
+    content_engine/js/alpine-components.js (like the normal course pages do).
+    """
+    user = UserFactory()
+    form = _make_quiz_form()
+
+    response = _start_runner(client, user, form)
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "content_engine/js/alpine-components.js" in content
+
+
+@pytest.mark.django_db
+def test_runner_sr_only_heading_labels_pages_not_questions(mock_site_context, client):
+    """The sr-only runner heading announces the page, not "Question".
+
+    Regression (QA report bug 3): the heading rendered "<title> — Question
+    {page} of {total}", mislabelling pages as questions. The numbers are page
+    numbers, so the literal word must be "Page".
+    """
+    user = UserFactory()
+    form = _make_quiz_form()
+
+    response = _start_runner(client, user, form)
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "— Page 1 of" in content
+    assert "— Question 1 of" not in content
+
+
+# ---------------------------------------------------------------------------
+# form_fill_page POST with no incomplete attempt
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_form_fill_page_post_with_no_incomplete_attempt_redirects(
+    mock_site_context, client
+):
+    """POST to form_fill_page with no incomplete attempt redirects, not 500.
+
+    get_latest_incomplete() returns None when there is no incomplete attempt
+    (e.g. a submit-on-exit attempt was finalised by the stale-attempt safety
+    net, or the page was reached without starting). The POST branch must not
+    dereference None — it sends the learner back to the form start screen.
+    """
+    user = UserFactory()
+    form = _make_quiz_form()
+    course = _make_course_with_form(form)
+    _register(user, course)
+    client.force_login(user)
+
+    # No FormProgress created — POST straight to the fill page.
+    page_url = reverse(
+        "student_interface:form_fill_page",
+        kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
+    )
+    response = client.post(page_url)
+
+    assert response.status_code == 302
+    expected_redirect = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    assert response["Location"] == expected_redirect

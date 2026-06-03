@@ -196,7 +196,9 @@ class FormProgress(CourseItemProgress):
         """
         if not form.submit_on_exit:
             return None
-        incomplete = cast(FormProgress | None, cls.get_latest_incomplete(user, form))
+        # cast: get_latest_incomplete is untyped (.first() resolves to Any),
+        # so without this mypy flags a no-any-return on the return below.
+        incomplete = cast("FormProgress | None", cls.get_latest_incomplete(user, form))
         if incomplete is None:
             return None
         incomplete.complete()

@@ -184,9 +184,10 @@ examRunnerForm scope (no intermediate x-data between them).
                         <c-icon name="close" class="size-5" />
                     </button>
 
-                    {% comment %}Exit dialog panel{% endcomment %}
+                    {% comment %}Exit dialog panel — x-ref scopes the focus trap to this panel{% endcomment %}
                     <div x-show="open"
                          x-cloak
+                         x-ref="dialogPanel"
                          class="fixed inset-0 z-50 overflow-y-auto"
                          role="dialog"
                          aria-modal="true"
@@ -322,7 +323,7 @@ examRunnerForm scope (no intermediate x-data between them).
                 <div x-data="examRunner">
 
                     {% comment %}SR-only h1: orients screen readers on page load (research §6.7){% endcomment %}
-                    <h1 class="sr-only">{{ form.title }} — Question {{ current_page_num }} of {{ total_pages }}</h1>
+                    <h1 class="sr-only">{{ form.title }} — Page {{ current_page_num }} of {{ total_pages }}</h1>
 
                     {% comment %}aria-live region: announces page progress to screen readers (research §5.6){% endcomment %}
                     <div class="sr-only" aria-live="polite" aria-atomic="true">
@@ -434,10 +435,12 @@ examRunnerForm scope (no intermediate x-data between them).
                 </div>
             </div>
 
-            {% comment %}Submit dialog — only rendered on final page, within examRunnerForm scope{% endcomment %}
+            {% comment %}Submit dialog — only rendered on final page, within examRunnerForm scope.
+            x-ref scopes the focus trap to this panel (examRunnerForm wraps the whole runner).{% endcomment %}
             {% if not has_next_page %}
                 <div x-show="open"
                      x-cloak
+                     x-ref="dialogPanel"
                      class="fixed inset-0 z-50 overflow-y-auto"
                      role="dialog"
                      aria-modal="true"

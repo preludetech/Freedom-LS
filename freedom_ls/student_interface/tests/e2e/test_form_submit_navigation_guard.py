@@ -73,6 +73,10 @@ def test_submit_disarms_the_beforeunload_leave_prompt(
         }"""
     )
 
+    # Answer the required question first — the final-page Next validates required
+    # answers before opening the submit dialog (parity with intermediate pages).
+    logged_in_page.get_by_text("Alpha", exact=True).click()
+
     logged_in_page.get_by_role("button", name="Next").click()
     logged_in_page.get_by_role("button", name="Submit", exact=True).click()
 

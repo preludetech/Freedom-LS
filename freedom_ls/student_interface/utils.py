@@ -627,13 +627,19 @@ def count_form_questions(form: Form) -> int:
     return FormQuestion.objects.filter(form_page__form=form).count()
 
 
-def get_form_for_index(course: Course, index: int) -> Form:
+def get_form_for_index(
+    course: Course, index: int, viewable_items: list | None = None
+) -> Form:
     """Return the Form at the given 1-based index in a course's viewable items.
 
     Raises Http404 if the index is out of range or the item at that index is not a Form.
     Centralises the repeated index-validation guard from the form views.
+
+    Pass ``viewable_items`` to reuse an already-fetched list (``viewable_items()``
+    is not cached) — callers that also need the list themselves avoid a second query.
     """
-    viewable_items = course.viewable_items()
+    if viewable_items is None:
+        viewable_items = course.viewable_items()
     if index < 1 or index > len(viewable_items):
         raise Http404("No course item at this index.")
     item = viewable_items[index - 1]

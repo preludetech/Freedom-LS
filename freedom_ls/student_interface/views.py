@@ -536,6 +536,16 @@ def form_fill_page(request, course_slug, index, page_number):
     )
 
     if request.method == "POST":
+        # No incomplete attempt to save into (e.g. it was finalised by a
+        # submit-on-exit safety net, or the page was reached without starting).
+        # Send the learner back to the form start screen rather than 500.
+        if form_progress is None:
+            return redirect(
+                "student_interface:view_course_item",
+                course_slug=course_slug,
+                index=index,
+            )
+
         # Process each question's answer
         form_progress.save_answers(questions, request.POST)
 
@@ -647,8 +657,10 @@ def form_fill_page(request, course_slug, index, page_number):
 @login_required
 def course_form_complete(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
-    form = get_form_for_index(course, index)
+    # Fetch viewable_items once and reuse it (it is not cached); the view also
+    # needs the list length below for is_last_item.
     viewable_items = course.viewable_items()
+    form = get_form_for_index(course, index, viewable_items=viewable_items)
 
     # Get the most recent completed form progress
     form_progress = (
