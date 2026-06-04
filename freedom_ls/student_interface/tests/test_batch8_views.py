@@ -434,6 +434,43 @@ def test_view_form_context_includes_question_count_and_page_count(
     assert response.context["page_count"] == 2
 
 
+@pytest.mark.django_db
+def test_view_form_start_screen_title_in_tab_but_not_duplicated(
+    mock_site_context, client
+):
+    """The form start screen names the form in the browser <title> only once.
+
+    The start screen renders its own in-content title (eyebrow + <h1>), so the
+    shared header `page_title` block is intentionally omitted to avoid a
+    duplicate visible heading. The `item_head_title` block must remain, however,
+    so the browser tab still names the form rather than starting with " — ".
+    """
+    user = UserFactory()
+    form = FormFactory(title="Distinctive Form Title")
+    course = _make_course_with_form(form)
+    _register(user, course)
+
+    client.force_login(user)
+    url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    content = response.content.decode()
+
+    # Browser tab title names the form (item_head_title block).
+    head_title = content.split("<title>")[1].split("</title>")[0]
+    assert "Distinctive Form Title" in head_title
+    assert not head_title.lstrip().startswith("—")
+
+    # The shared header title wrapper is present but does not duplicate the
+    # in-content heading.
+    page_title_wrapper = content.split('id="page-title"')[1].split("</hgroup>")[0]
+    assert "Distinctive Form Title" not in page_title_wrapper
+
+
 # ---------------------------------------------------------------------------
 # §4c — runner context: no-store header, total_question_count, submit_and_exit_url
 # ---------------------------------------------------------------------------
@@ -676,7 +713,11 @@ def test_course_form_complete_no_percentage_for_non_quiz(mock_site_context, clie
     response = client.get(url)
 
     assert response.status_code == 200
-    assert "percentage" not in response.context
+    # The quiz score ring (which surfaces a percentage) is only rendered for
+    # QUIZ forms. The surrounding course chrome exposes its own course-progress
+    # `percentage`, so assert on the rendered quiz element rather than the
+    # aggregated template context.
+    assert b'data-testid="quiz-percentage"' not in response.content
 
 
 # ---------------------------------------------------------------------------

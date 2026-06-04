@@ -2,8 +2,6 @@
 
 {% block item_head_title %}{{ form.title }}{% endblock %}
 
-{% block page_title %}{% include "partials/page_title.html" with page_title=form.title page_subtitle=form.subtitle %}{% endblock page_title %}
-
 {% block content %}
     <c-page flush="true">
         <div class="space-y-8" x-data="coursePlayer">
