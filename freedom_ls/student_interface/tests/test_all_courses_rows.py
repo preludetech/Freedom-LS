@@ -87,28 +87,6 @@ def test_all_courses_not_registered_row_links_to_course_detail(
 
 
 @pytest.mark.django_db
-def test_all_courses_not_registered_row_has_no_modal_trigger(
-    mock_site_context, courses
-):
-    """A not-registered course row contains no modal markup."""
-    user = UserFactory()
-    client = _logged_in_client(user)
-
-    response = client.get(reverse("student_interface:courses"))
-    assert response.status_code == 200
-
-    body = response.content.decode()
-    detail_url = reverse(
-        "student_interface:course_detail",
-        kwargs={"course_slug": courses[0].slug},
-    )
-    # The row links to the detail page via a real anchor...
-    assert f'href="{detail_url}"' in body
-    # ...and no modal component is rendered (the c-modal root carries x-data="modal").
-    assert 'x-data="modal"' not in body
-
-
-@pytest.mark.django_db
 def test_all_courses_not_registered_row_has_no_progress_bar(mock_site_context, courses):
     """A not-registered course row does not render a progress bar."""
     user = UserFactory()

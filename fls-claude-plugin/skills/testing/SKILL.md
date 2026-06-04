@@ -1,5 +1,5 @@
 ---
-name: unit-tests
+name: testing
 description: Write pytest tests. Use when implementing features, fixing bugs, or when the user mentions testing, TDD, or pytest
 allowed-tools: Read, Grep, Glob
 ---
@@ -58,6 +58,21 @@ def test_email_missing_at_fails():
 ```
 
 If you find yourself asserting call counts on internal helpers, reading private attributes, or matching exact SQL — stop. Test the output.
+
+### Don't assert the absence of arbitrary things
+
+A negative-existence assertion (`assert not hasattr(obj, "x")`, `assert "x" not in context`) only means something when `x` is a thing the code could *realistically* produce **and** its absence is the observable contract. Asserting the absence of a name the code was never asked to produce passes for any name you invent — it tests nothing.
+
+```python
+# BAD — proves nothing; passes for any made-up name
+assert not hasattr(course, "preview_start_url")
+assert not hasattr(course, "squirrels")  # ...exactly as meaningful
+
+# GOOD — assert the positive behaviour the code now exhibits
+assert course.detail_url == reverse("student_interface:course_detail", args=[course.slug])
+```
+
+This bites most often during a refactor that *removes* an internal attribute. Don't write a test to "prove it's gone" — the deleted internal was never part of the contract, and the attribute is absent by construction. Assert the new observable behaviour instead, and delete any leftover absence-check during the REFACTOR step.
 
 ### Don't write tautological tests
 
@@ -194,6 +209,7 @@ Playwright is slow; prefer pytest. Reach for Playwright only when testing intera
 | Test name describes the function, not the behaviour | Couples to internals; breaks on rename | Name after subject/condition/expected outcome |
 | Mocks an internal helper or ORM call | Brittle; hides real bugs | Mock at system boundaries only |
 | Test has no assertion (or only `status_code == 200`) | False confidence | Assert on the behaviour the code actually produces |
+| Asserts the absence of an attribute/key the code never sets (`assert not hasattr(obj, "x")`) | Passes for any invented name; tests nothing; couples to removed internals | Assert the positive observable behaviour instead; delete the check during REFACTOR |
 | More than 2 mocks in one test | Unit has too many dependencies | Refactor the code; don't pile on mocks |
 | Test catches and swallows the exception | Hides failures | Let it propagate, or use `pytest.raises()` |
 | Commented-out test | Dead test hiding a real failure | Delete it or fix it — never both |

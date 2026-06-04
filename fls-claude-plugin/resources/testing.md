@@ -282,6 +282,7 @@ Every test must justify its existence. A test has value when it catches real bug
 - **Trivial CRUD with no logic** — a model with only auto-generated fields and no custom methods rarely needs its own test. If `MyModelFactory()` succeeds, you already know the model works.
 - **Implementation details** — don't assert the exact SQL query, the number of times a method was called, or internal state that could change during refactoring. Test observable behaviour, not how it's achieved.
 - **Duplicate coverage** — if one test already proves a code path works, don't write another that proves the same thing with slightly different data unless the variation exercises a genuinely different branch.
+- **The absence of arbitrary things** — `assert not hasattr(obj, "x")` or `assert "x" not in context` proves nothing when `x` is a name the code never produces; it passes for any name you invent (`assert not hasattr(obj, "squirrels")`). If a refactor removed something, assert the replacement behaviour, not the disappearance of the old internal.
 
 ### Qualities of a good test
 
@@ -312,6 +313,7 @@ Rule of thumb: **if you delete the production code and your test still computes 
 ### Red flags in tests
 
 - A test with no meaningful assertions (or only `assert response.status_code == 200` when the view does complex work)
+- A negative-existence assertion (`assert not hasattr(...)`, `assert key not in context`) where the named thing was never part of the contract — equivalent to asserting `not hasattr(obj, "squirrels")`
 - A test that creates 10 objects but only uses 2
 - Multiple tests that are copy-pasted with one field changed — use `@pytest.mark.parametrize`
 - A test that mocks so much that it's no longer testing real behaviour
@@ -359,7 +361,7 @@ Avoid repetition:
 
 1. **RED** - Write failing test (verify it fails)
 2. **GREEN** - Write minimal code to pass
-3. **REFACTOR** - Improve design (tests still pass)
+3. **REFACTOR** - Improve design (tests still pass) **and remove useless things** — delete assertions or whole tests that no longer prove anything, e.g. a check tied to internals you just removed, or an absence-of-arbitrary-thing assertion. Refactoring is not only about production code; the test you just wrote also gets cleaned up here.
 4. **REPEAT** - Next test
 
 IMPORTANT: Do not forget the refactor step. All tests should be clean and DRY!

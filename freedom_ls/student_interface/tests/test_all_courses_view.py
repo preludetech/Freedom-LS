@@ -91,29 +91,6 @@ def test_all_courses_not_registered_has_not_registered_status(
 
 
 @pytest.mark.django_db
-def test_all_courses_not_registered_has_no_preview_annotations(
-    mock_site_context, courses
-):
-    """An unregistered course does not carry the old preview context attributes.
-
-    The dead ``_annotate_preview_context`` helper has been removed; the not-registered
-    row now links directly to the course_detail page via the course slug only.
-    """
-    user = UserFactory()
-    client = _logged_in_client(user)
-
-    response = client.get(reverse("student_interface:courses"))
-    assert response.status_code == 200
-
-    all_courses_list = list(response.context["all_courses"])
-    course = next(c for c in all_courses_list if c.id == courses[0].id)
-    assert course.listing_status == CourseListingStatus.NOT_REGISTERED
-    # No stale preview annotations from the removed _annotate_preview_context
-    assert not hasattr(course, "preview_is_registered")
-    assert not hasattr(course, "preview_start_url")
-
-
-@pytest.mark.django_db
 def test_all_courses_registered_zero_percent_has_registered_status(
     mock_site_context, courses
 ):
