@@ -148,6 +148,42 @@ def test_form_submit_and_exit_with_no_incomplete_attempt_still_redirects(
 
 
 @pytest.mark.django_db
+def test_form_submit_and_exit_does_not_finalise_save_on_exit_form(
+    mock_site_context, client
+):
+    """A direct POST must not force-complete a save-on-exit form's attempt.
+
+    The exit dialog only renders this POST for submit-on-exit forms, but the
+    endpoint is reachable directly. Save-on-exit forms promise the attempt is
+    saved (resumable), not scored, so the attempt stays incomplete and the
+    learner is sent back to the form start screen.
+    """
+    user = UserFactory()
+    form = FormFactory(submit_on_exit=False)
+    course = _make_course_with_form(form)
+    _register(user, course)
+    incomplete = FormProgressFactory(user=user, form=form)
+    assert incomplete.completed_time is None
+
+    client.force_login(user)
+    url = reverse(
+        "student_interface:form_submit_and_exit",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.post(url)
+
+    incomplete.refresh_from_db()
+    assert incomplete.completed_time is None
+
+    assert response.status_code == 302
+    expected_redirect = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    assert response["Location"] == expected_redirect
+
+
+@pytest.mark.django_db
 def test_form_submit_and_exit_requires_login(mock_site_context, client):
     """Unauthenticated POST to form_submit_and_exit redirects to login."""
     form = FormFactory()

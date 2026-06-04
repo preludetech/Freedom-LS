@@ -782,6 +782,17 @@ def form_submit_and_exit(request, course_slug: str, index: int):
     course = get_object_or_404(Course, slug=course_slug)
     form = get_form_for_index(course, index)
 
+    # The exit dialog only renders this POST for submit-on-exit forms, but the
+    # endpoint is reachable directly. Save-on-exit forms promise the attempt is
+    # saved (resumable), not scored, so never finalise one here — send the
+    # learner back to the form start screen instead.
+    if not form.submit_on_exit:
+        return redirect(
+            "student_interface:view_course_item",
+            course_slug=course_slug,
+            index=index,
+        )
+
     form_progress = FormProgress.get_latest_incomplete(user=request.user, form=form)
     if form_progress is not None:
         form_progress.complete()  # idempotent
