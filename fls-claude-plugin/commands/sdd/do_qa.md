@@ -206,7 +206,9 @@ For each page:
   `"status": "fail"` and a `"failure_reason"` describing the error, URL, and screenshot filename).
 - Jump directly to Step 12 (Generate a report) — the worker reads the scratch file and will record
   the smoke failure prominently, along with the diff-scoping classification from Step 2.
-- Then proceed to Steps 13–14 (cleanup and todo update) as normal, adding a failing-test `add:` entry.
+- Then proceed to Step 13 (cleanup), then Steps 15 and 16 (todo update and scratch teardown) as
+  normal, adding a smoke-failure `add:` entry in Step 15. Step 14 (triage) has no failing *tests* to
+  process on a smoke abort and is skipped.
 
 **On smoke success:** continue to Step 7.
 
@@ -530,9 +532,11 @@ mechanic the following arguments (build the exact `add:` list from the `qa_scrat
 the `qa_report.md`, and the Step 14 triage outcomes before spawning):
 
 - `<todo-path>`: the `todo.md` in the spec directory (same directory as `qa_report.md`)
-- `tick:"Run \`/do_qa\` to execute the QA plan (missing test data will be created automatically via the \`fls:qa-data-helper\` agent)"`
-- For each **FIXED** bug from Step 14:
-  `add:"QA|info|Bug auto-fixed: <short title> (commit: <hash>)"`.
+- `tick:"Run \`/do_qa\` to execute the QA plan (missing test data will be created automatically via the \`qa-data-helper\` agent)"`
+- **FIXED** bugs from Step 14 are recorded **only** in `qa_report.md`'s `## Bug status` section
+  (with commit hash). They are fully resolved within this run, so do **NOT** add a `todo.md` item
+  for them — an unchecked checklist item with no actionable follow-up (and a non-`user`/`cmd`
+  marker) would jam a later `/sdd:next`.
 - For each **UNRESOLVED** bug from Step 14 (including red-lane bugs):
   `add:"QA|user + cmd|Fix QA bug: <short title from the report> (TDD — failing test first, then fix)"`.
 - For each test that was skipped because of missing data, include one
