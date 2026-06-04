@@ -23,17 +23,19 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 4. Plan
 
 - [x] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
-- [ ] (user) Review both plans and edit where needed
+- [x] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
 
-- [ ] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
-- [ ] (user) Address any concerns raised in the plan
+- [x] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
+- [x] (user) Resolve plan security concern: @playwright/mcp version pinning vs @latest (Task A, Finding 1) — keep @latest + mandatory per-run capture check
+- [x] (user) Resolve plan security concern: .claude/fls/scripts/ wildcard allow-list scope — per-script vs wildcard (Task D, Finding 4) — wildcard + documented trust boundary
+- [x] (user) Address any concerns raised in the plan
 
 ## 6. Plan structure review
 
-- [ ] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
-- [ ] (user) Address any structure concerns raised in the plan
+- [x] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
+- [x] (user) Address any structure concerns raised in the plan
 
 ## 7. Implementation
 

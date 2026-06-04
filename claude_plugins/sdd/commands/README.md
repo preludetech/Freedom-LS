@@ -75,8 +75,27 @@ Run `/do_qa` to execute the QA plan.
 ### Reacting to the QA report
 
 - If tests were skipped because of missing data or fixtures, create the needed test data (the `fls-dev:qa-data-helper` agent is designed for this).
-- If bugs were detected, fix them using TDD — write a failing test that reproduces the bug, then implement the fix. *(A dedicated bugfix command is still TODO.)*
+- If bugs were detected, `/do_qa` now includes a triage → TDD fix → re-verify loop (SC#9): clear
+  functional regressions that are unit-testable, single-app, and not security-adjacent are
+  auto-fixed by the `fls-dev:qa-bugfixer` agent using TDD (failing test → fix → full suite → commit →
+  re-verify the Playwright flow). Bugs that do not meet the triage criteria are left `UNRESOLVED`
+  with a human todo added automatically. Check the `## Bug status` section of `qa_report.md` for
+  the outcome of each bug: `FIXED (commit: <hash>)` or `UNRESOLVED`.
 - If QA fixes change code significantly, re-run `/security-review`.
+
+### Deployed wrapper script trust boundary
+
+The `.claude/settings.json` allow-list uses wildcard entries `Bash(.claude/ds/scripts/*.sh:*)` and
+`Bash(.claude/fls-dev/scripts/*.sh:*)` so that QA helper scripts (`find_available_port.sh`,
+`kill_runserver.sh`, `qa_cleanup.sh`, `qa_collect_screenshots.sh`, `qa_scratch_teardown.sh`, etc.)
+run prompt-free during a QA session.
+
+**Adding any script under `.claude/ds/scripts/` or `.claude/fls-dev/scripts/` is equivalent to
+adding it to the allow-list.** That script will be granted prompt-free execution with arbitrary
+arguments in every QA session, with no requirement to re-review the allow-list explicitly. Any new
+script placed there must therefore be reviewed with the same care as a new allow-list entry:
+confirm it validates its arguments, does not write outside the project, and does not execute its
+arguments as shell code.
 
 ## Step 7: Refresh the app map
 
@@ -133,9 +152,3 @@ Run `/update_claude_plugin_fls_content`. The command runs a single `git diff mai
 ## The `todo.md` checklist
 
 `/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above. Each SDD command ticks off its own box (and adds follow-up tasks where relevant) by invoking the protected helper at `claude_plugins/sdd/commands/protected/update_todo.md` as its final step. You don't run this helper yourself — the other commands call it for you.
-
----
-
-## TODO
-
-- Command for reacting to QA-reported bugs.
