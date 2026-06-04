@@ -21,7 +21,7 @@ SPEC_DIR="$(realpath "$1")"
 # Validate the spec dir is inside the project (security: the script is
 # allow-listed with arbitrary arguments, so an unvalidated path such as
 # ../../somewhere could move screenshots outside the project).
-if [[ "$SPEC_DIR" != "${CLAUDE_PROJECT_DIR}"* ]]; then
+if [[ "$SPEC_DIR" != "${CLAUDE_PROJECT_DIR}/"* ]]; then
   echo "Error: spec-dir must be inside CLAUDE_PROJECT_DIR" >&2
   exit 1
 fi
