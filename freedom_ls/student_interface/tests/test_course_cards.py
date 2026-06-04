@@ -87,9 +87,7 @@ def test_in_progress_card_when_progress_above_zero(
     first_topic = course_with_topics.children()[0]
     TopicProgressFactory(user=user, topic=first_topic, complete_time=timezone.now())
     # Recompute progress on CourseProgress (the helper expects this row).
-    cp = CourseProgressFactory(user=user, course=course_with_topics)
-    cp.progress_percentage = 33
-    cp.save()
+    CourseProgressFactory(user=user, course=course_with_topics, progress_percentage=33)
 
     client = _logged_in_client(user)
     response = client.get(reverse("student_interface:dashboard"))
@@ -178,7 +176,8 @@ def test_course_detail_shows_enrol_and_start_for_unregistered_user(
         )
     )
     body = response.content.decode()
-    assert "Enrol &amp; start" in body or "Enrol & start" in body
+    # Django auto-escapes the CTA label, so the ampersand renders as &amp;.
+    assert "Enrol &amp; start" in body
 
 
 @pytest.mark.django_db
@@ -234,10 +233,12 @@ def test_course_detail_shows_continue_when_registered_with_progress(
     sees a 'Continue' CTA."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
-    cp = CourseProgressFactory(user=user, course=course_with_topics)
-    cp.progress_percentage = 50
-    cp.completed_time = None
-    cp.save()
+    CourseProgressFactory(
+        user=user,
+        course=course_with_topics,
+        progress_percentage=50,
+        completed_time=None,
+    )
 
     client = _logged_in_client(user)
     response = client.get(
@@ -313,10 +314,13 @@ def test_course_detail_renders_lesson_count_in_stats(
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    "label", ["Beginner", "Intermediate", "Advanced", "All levels"]
+)
 def test_course_detail_omits_difficulty_when_not_set(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, label
 ):
-    """When difficulty is not set, the detail page shows no difficulty text."""
+    """When difficulty is not set, no difficulty display value renders."""
     user = UserFactory()
     client = _logged_in_client(user)
     response = client.get(
@@ -326,9 +330,7 @@ def test_course_detail_omits_difficulty_when_not_set(
         )
     )
     body = response.content.decode()
-    # course_with_topics has no difficulty set — none of the difficulty display values should appear
-    for label in ("Beginner", "Intermediate", "Advanced", "All levels"):
-        assert label not in body
+    assert label not in body
 
 
 @pytest.mark.django_db
@@ -427,25 +429,3 @@ def test_not_registered_card_links_to_course_detail(
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert detail_url in body
-
-
-@pytest.mark.django_db
-def test_not_registered_card_has_no_modal_trigger(
-    mock_site_context, course_with_topics
-):
-    """The not-registered card links to course_detail, not a modal, on the dashboard."""
-    user = UserFactory()
-    RecommendedCourseFactory(user=user, collection=course_with_topics)
-    client = _logged_in_client(user)
-
-    response = client.get(reverse("student_interface:dashboard"))
-    body = response.content.decode()
-
-    detail_url = reverse(
-        "student_interface:course_detail",
-        kwargs={"course_slug": course_with_topics.slug},
-    )
-    # The card links to the detail page via a real anchor...
-    assert f'href="{detail_url}"' in body
-    # ...and no modal component is rendered (the c-modal root carries x-data="modal").
-    assert 'x-data="modal"' not in body

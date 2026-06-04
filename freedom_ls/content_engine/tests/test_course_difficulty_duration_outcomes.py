@@ -9,7 +9,9 @@ from datetime import timedelta
 import pytest
 
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.management.commands.content_save import save_course
 from freedom_ls.content_engine.models import Course, DifficultyLevel
+from freedom_ls.content_engine.validate import parse_single_file
 
 # ---------------------------------------------------------------------------
 # A1 - Model field tests
@@ -148,9 +150,6 @@ def test_content_save_round_trip_difficulty_dumps_as_string(
     mock_site_context, make_temp_file
 ):
     """save_with_uuid accepts difficulty as a bare string value, not an enum object."""
-    from freedom_ls.content_engine.management.commands.content_save import save_course
-    from freedom_ls.content_engine.validate import parse_single_file
-
     content = """---
 content_type: COURSE
 title: Course With Difficulty
@@ -175,9 +174,6 @@ def test_content_save_round_trip_estimated_duration_dumps_as_timedelta(
     mock_site_context, make_temp_file
 ):
     """save_with_uuid accepts estimated_duration as a timedelta (from HH:MM:SS YAML string)."""
-    from freedom_ls.content_engine.management.commands.content_save import save_course
-    from freedom_ls.content_engine.validate import parse_single_file
-
     content = """---
 content_type: COURSE
 title: Course With Duration
@@ -202,9 +198,6 @@ def test_content_save_round_trip_learning_outcomes_saves_as_list(
     mock_site_context, make_temp_file
 ):
     """save_with_uuid accepts learning_outcomes as a list of strings."""
-    from freedom_ls.content_engine.management.commands.content_save import save_course
-    from freedom_ls.content_engine.validate import parse_single_file
-
     content = """---
 content_type: COURSE
 title: Course With Outcomes
@@ -232,9 +225,6 @@ def test_content_save_round_trip_course_without_new_fields_saves_cleanly(
     mock_site_context, make_temp_file
 ):
     """Existing courses without the new fields save cleanly (no errors, no placeholders)."""
-    from freedom_ls.content_engine.management.commands.content_save import save_course
-    from freedom_ls.content_engine.validate import parse_single_file
-
     content = """---
 content_type: COURSE
 title: Old Style Course
