@@ -1,5 +1,11 @@
 {% load course_icon_tags %}
-<c-vars accent_slot_key="" icon="" icon_fallback="" title="" clickable="" class="" />
+
+<c-vars accent_slot_key=""
+        icon=""
+        icon_fallback=""
+        title=""
+        clickable=""
+        class="" />
 
 {% comment %}
 Horizontal [icon][details] row skeleton for the all-courses page.
@@ -31,16 +37,20 @@ the stretched link.
     {% comment %}Left: full-height accent hero panel, flush to the card edge with no
     surrounding padding so the icon reads as a prominent hero image rather than an
     inline icon. `overflow-hidden` on the article clips the panel to the card radius.{% endcomment %}
-    <div class="course-accent-{{ accent_slot_key }} flex-shrink-0 self-stretch flex items-center justify-center w-20"
+    <div class="course-accent-{{ accent_slot_key }} flex-shrink-0 self-stretch flex items-center justify-center w-25"
          aria-hidden="true">
         {% course_icon icon icon_fallback css_class="size-9" aria_label=title %}
     </div>
 
     {% comment %}Right: details column — course-card-body provides token-backed padding.{% endcomment %}
     <div class="course-card-body flex-1 min-w-0 space-y-1">
-        {% if eyebrow %}{{ eyebrow }}{% endif %}
+        {% if eyebrow %}
+            {{ eyebrow }}
+        {% endif %}
         {{ slot }}
-        {% if footer %}{{ footer }}{% endif %}
+        {% if footer %}
+            {{ footer }}
+        {% endif %}
     </div>
 
 </article>
