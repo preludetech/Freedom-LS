@@ -63,6 +63,15 @@
     --fls-course-accent-4-from: #D8451A;  --fls-course-accent-4-to: #FB9514;   --fls-course-accent-4-icon: #14366E;  /* orange           → navy icon   */
     --fls-course-accent-5-from: #2A2A40;  --fls-course-accent-5-to: #14141F;   --fls-course-accent-5-icon: #F5B14C;  /* black            → amber icon  */
 
+    /* Course-accent overlay — a subtle white grid layered over every accent
+     * gradient (course cards + detail hero) for the "Modern Altitude" texture.
+     * Composited above the gradient by the .course-accent-N contract in
+     * tailwind.components.css. One knob for the whole theme: tune the line
+     * opacity or the 2.5rem cell size here. */
+    --fls-course-accent-pattern:
+        repeating-linear-gradient(to right,  rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 2.5rem),
+        repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 2.5rem);
+
     /* Shape — radii match design-system/radii.html. */
     --fls-radius-sm: 0.375rem;  /* 6px  — chips, badges */
     --fls-radius-md: 0.5rem;    /* 8px  — buttons, inputs */

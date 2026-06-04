@@ -82,7 +82,13 @@
      * Themes rebrand cards by overriding the `-from`/`-to` gradient stops and
      * the `-icon` glyph colour; the `-gradient`/`-soft` composites follow
      * automatically. `-icon` is the foreground colour of the hero glyph and is
-     * specified per slot so it stays legible on that slot's gradient. */
+     * specified per slot so it stays legible on that slot's gradient.
+     *
+     * Optional overlay (default `none`): a theme may add a texture *above* the
+     * gradient by setting `--fls-course-accent-pattern` (applies to every slot)
+     * or `--fls-course-accent-N-pattern` (single slot). The value is a
+     * background-image layer — e.g. a `repeating-linear-gradient` grid — and is
+     * composited by the `.course-accent-N` rules in `tailwind.components.css`. */
     --fls-course-accent-1-from: #4F46E5;  --fls-course-accent-1-to: #2563EB;   --fls-course-accent-1-icon: #FFFFFF;  /* indigo → blue */
     --fls-course-accent-2-from: #7C3AED;  --fls-course-accent-2-to: #C026D3;   --fls-course-accent-2-icon: #FFFFFF;  /* violet → fuchsia */
     --fls-course-accent-3-from: #0D9488;  --fls-course-accent-3-to: #0891B2;   --fls-course-accent-3-icon: #FFFFFF;  /* teal → cyan */

@@ -295,12 +295,17 @@
     /* Course-card accent tiles — vibrant gradients drawn from the dedicated
      * `--fls-course-accent-*` series (separate from the UI role tokens). The
      * slot number is interpolated into the class name from the per-course
-     * hash; these are hand-authored rules (always emitted), so no safelist. */
-    .course-accent-1 { background-image: var(--fls-course-accent-1); color: var(--fls-course-accent-1-icon); }
-    .course-accent-2 { background-image: var(--fls-course-accent-2); color: var(--fls-course-accent-2-icon); }
-    .course-accent-3 { background-image: var(--fls-course-accent-3); color: var(--fls-course-accent-3-icon); }
-    .course-accent-4 { background-image: var(--fls-course-accent-4); color: var(--fls-course-accent-4-icon); }
-    .course-accent-5 { background-image: var(--fls-course-accent-5); color: var(--fls-course-accent-5-icon); }
+     * hash; these are hand-authored rules (always emitted), so no safelist.
+     *
+     * An optional overlay is layered *above* the gradient: themes set
+     * `--fls-course-accent-pattern` once for a uniform texture across all slots,
+     * or `--fls-course-accent-N-pattern` to override a single slot. Both default
+     * to `none`, so themes that set neither render the plain gradient. */
+    .course-accent-1 { background-image: var(--fls-course-accent-1-pattern, var(--fls-course-accent-pattern, none)), var(--fls-course-accent-1); color: var(--fls-course-accent-1-icon); }
+    .course-accent-2 { background-image: var(--fls-course-accent-2-pattern, var(--fls-course-accent-pattern, none)), var(--fls-course-accent-2); color: var(--fls-course-accent-2-icon); }
+    .course-accent-3 { background-image: var(--fls-course-accent-3-pattern, var(--fls-course-accent-pattern, none)), var(--fls-course-accent-3); color: var(--fls-course-accent-3-icon); }
+    .course-accent-4 { background-image: var(--fls-course-accent-4-pattern, var(--fls-course-accent-pattern, none)), var(--fls-course-accent-4); color: var(--fls-course-accent-4-icon); }
+    .course-accent-5 { background-image: var(--fls-course-accent-5-pattern, var(--fls-course-accent-pattern, none)), var(--fls-course-accent-5); color: var(--fls-course-accent-5-icon); }
 
     /* In-progress bar tinted to match its card accent: soft track + solid fill. */
     .course-progress-1 { background-color: var(--fls-course-accent-1-soft); }
