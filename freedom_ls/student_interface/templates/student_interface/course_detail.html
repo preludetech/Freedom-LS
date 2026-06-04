@@ -33,8 +33,8 @@
     {% comment %}Trim c-page's default top padding (py-8 lg:py-12) — the breadcrumbs
     sit just under the site header and directly above the full-bleed hero, so the
     standard well rhythm leaves an oversized white band here.{% endcomment %}
-    <c-page class="pt-4 lg:pt-6">
-        <div class="space-y-6">
+    <c-page class="pt-2 lg:pt-2">
+        <div class="space-y-2">
 
             {% comment %}Breadcrumbs (spec §6.1). Shared c-breadcrumbs component with plain
             full-page anchors (no hx_target) — the panel framework's HTMX target
@@ -105,7 +105,7 @@
             <div class="grid lg:grid-cols-3 gap-6 lg:gap-8">
 
                 {% comment %}Sign-up panel (spec §6.4) — order-first on mobile so CTA is near the top{% endcomment %}
-                <aside class="order-first lg:order-last lg:col-span-1">
+                <aside class="order-first lg:order-last lg:col-span-1 pt-6">
                     <div class="signup-panel p-6 rounded-xl border border-border lg:sticky lg:top-6 space-y-4">
                         <div>
                             <p class="font-semibold text-base">
@@ -140,7 +140,7 @@
                 </aside>
 
                 {% comment %}Main content column (spec §6.3){% endcomment %}
-                <div class="lg:col-span-2 space-y-8">
+                <div class="lg:col-span-2 space-y-8 pt-6">
 
                     {% comment %}About this course — omit when content is empty{% endcomment %}
                     {% with content=course.rendered_content %}
