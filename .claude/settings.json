@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "_comment_qa_scripts": "Any script placed in .claude/ds/scripts/ or .claude/fls-dev/scripts/ is thereby granted prompt-free QA execution with arbitrary arguments via the Bash(.claude/<plugin>/scripts/*.sh:*) wildcards, and must be reviewed as security-sensitive — equivalent to adding an allow-list entry.",
     "allow": [
       "Read",
       "Glob",
@@ -45,7 +46,9 @@
       "Bash(git branch *)",
       "Bash(git remote *)",
       "Bash(.claude/ds/scripts/*.sh:*)",
-      "Bash(.claude/fls-dev/scripts/*.sh:*)"
+      "Bash(.claude/fls-dev/scripts/*.sh:*)",
+      "Bash(uv run python manage.py runserver *)",
+      "Bash(uv run --with pillow python * compress_screenshots.py *)"
     ],
     "deny": [
       "Write(config/settings_prod.py)",
