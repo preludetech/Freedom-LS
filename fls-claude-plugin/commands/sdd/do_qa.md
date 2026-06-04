@@ -127,8 +127,17 @@ Classify the changed files using this table:
 - `ADMIN_ONLY` → desktop only (Step 7); skip Steps 8 and 9.
 - `BACKEND_ONLY` → single-viewport smoke pass only (Step 7 abbreviated to smoke-level checks); skip Steps 8 and 9.
 
-**This gate MUST be explicit and reported.** Record the classification and the list of changed files
-that triggered it (keep a running note in working memory or a scratch file), so `qa_report.md` states:
+**This gate MUST be explicit and reported.** Record the classification outcome to the scratch file at
+`.sdd-work/qa_scratch.json`. Append a record of the form:
+
+```json
+{"type": "scoping", "class": "<FULL|ADMIN_ONLY|BACKEND_ONLY>", "changed_files": [...], "skipped": "<what was not run, or 'nothing'>"}
+```
+
+**Discipline (SC#5):** write the classification data only — never raw snapshot or screenshot
+contents — into this file or back into context. Write **file paths**, not file contents.
+
+The report (Step 12) will read this record and state:
 - Which class fired.
 - What was therefore NOT run (e.g. "Mobile and tablet passes skipped — ADMIN_ONLY classification").
 
@@ -190,17 +199,23 @@ For each page:
 
 **On smoke failure (any page returns 500, 404, or shows a traceback / critical missing element):**
 - **Abort the remaining matrix immediately.** Do not proceed to Steps 7–9.
-- Jump directly to Step 12 (Generate a report).
-- Write a report that records:
-  - Which page failed the smoke gate and why (exact error, URL, screenshot).
-  - That the full matrix was NOT run because of the smoke failure.
-  - The diff-scoping classification from Step 2.
+- Record the failure in `.sdd-work/qa_scratch.json` (using the smoke_gate record shape below, with
+  `"status": "fail"` and a `"failure_reason"` describing the error, URL, and screenshot filename).
+- Jump directly to Step 12 (Generate a report) — the worker reads the scratch file and will record
+  the smoke failure prominently, along with the diff-scoping classification from Step 2.
 - Then proceed to Steps 13–14 (cleanup and todo update) as normal, adding a failing-test `add:` entry.
 
 **On smoke success:** continue to Step 7.
 
-Record the smoke gate outcome (pass/fail + which pages were loaded) alongside the diff-scoping
-classification from Step 2, so the report (Step 12) can include both.
+Record the smoke gate outcome to `.sdd-work/qa_scratch.json`. Append a record of the form:
+
+```json
+{"type": "smoke_gate", "status": "<pass|fail>", "pages_checked": [...], "failure_reason": "<or null>"}
+```
+
+The report (Step 12) reads this record from the scratch file — do not hold the outcome only in
+working memory. **Discipline (SC#5):** write the outcome metadata only — never raw snapshot
+contents or screenshot bytes — into the scratch file or back into context.
 
 ---
 
@@ -233,6 +248,24 @@ If you are unable to run a test due to missing or incorrect data, follow Rule 2:
 `fls:qa-data-helper` rather than creating the data yourself or skipping the test. **This spawn is
 also a solo call.**
 
+**Scratch list — append one record per test to `.sdd-work/qa_scratch.json`:**
+
+After completing each test, append a structured record:
+
+```json
+{"type": "test", "test_id": "<e.g. 1.1>", "viewport": "desktop", "status": "<pass|fail|skip>", "screenshot_path": "<spec-dir>/screenshots/<filename>.png or null>", "notes": "<brief observation or failure description>"}
+```
+
+**Discipline (SC#5):** write the screenshot **file path** only — never raw screenshot bytes, snapshot
+HTML, or page content — into this file or back into context. The scratch file accumulates all test
+records across Steps 7–9 and is read by the report worker (Step 12) and the todo mechanic (Step 14)
+by path, so accuracy here matters.
+
+**Browser-driving stays at depth 0 on the session model.** The exploratory visual judgement
+(reading snapshots, spotting layout issues, deciding pass/fail) is the core value of this step and
+MUST NOT be tiered down to a subagent. Only the follow-on mechanical chores (compress, report,
+todo) are tiered.
+
 Skip this step (or run only abbreviated smoke-level checks) if `CLASS = BACKEND_ONLY` (Step 2).
 
 ---
@@ -254,6 +287,9 @@ You do NOT need to re-run every test from Step 7. Focus on:
 
 Name mobile screenshots with the pattern: `mobile_<test-id>_<short-description>.png`.
 
+**Scratch list:** append one record per test to `.sdd-work/qa_scratch.json` using the same shape as
+Step 7, with `"viewport": "mobile"`. Write screenshot file paths only — never raw bytes or content.
+
 ---
 
 ## Step 9: Tablet testing
@@ -272,6 +308,9 @@ As with mobile testing, you do NOT need to re-run every test. Focus on:
 - Forms and modals — do they render at a reasonable width?
 
 Name tablet screenshots with the pattern: `tablet_<test-id>_<short-description>.png`.
+
+**Scratch list:** append one record per test to `.sdd-work/qa_scratch.json` using the same shape as
+Step 7, with `"viewport": "tablet"`. Write screenshot file paths only — never raw bytes or content.
 
 ---
 
@@ -307,38 +346,70 @@ After this step, `<spec-dir>/screenshots/` should contain all screenshots from t
 
 ## Step 11: Compress screenshots
 
-Compress all screenshots to reduce file sizes:
+Spawn a **solo `fls:sdd-mechanic`** (Haiku) to run the compression. This is a **solo** `Agent` call
+(Rule 3e) — do not batch it with any other call in the same turn.
+
+The mechanic must run the exact command:
 
 `uv run --with pillow python ${CLAUDE_PLUGIN_ROOT}/scripts/compress_screenshots.py`
+
+Note: `compress_screenshots.py` is unchanged and already scans `spec_dd/**` for PNGs, so it operates
+on the screenshots moved into `<spec-dir>/screenshots/` by Step 10 correctly.
+
+The mechanic returns its `status:` footer. If it returns `status: failed`, record the failure in the
+report (Step 12) but continue — compression failure is not a hard stop.
 
 ---
 
 ## Step 12: Generate a report
 
-Create a new file called `qa_report.md` in the same directory as the test plan file.
+Spawn a **single solo `fls:sdd-worker`** (Sonnet) to render the report. This is a **solo** `Agent`
+call (Rule 3e) — do not batch it with any other call in the same turn.
 
-The report MUST include:
+Pass the worker:
+- The **path** to `.sdd-work/qa_scratch.json` — the worker reads this file by path. **NEVER dump
+  the file's contents into the spawn prompt** — pass the path only (SC#5).
+- The **path** to the spec directory where `qa_report.md` must be written.
 
-**Methodology section:**
-- The diff-scoping classification from Step 2 (e.g. `CLASS = FULL`) and the changed files that
-  triggered it.
+The worker must render `qa_report.md` in the spec directory. The report MUST include:
+
+**Methodology / screenshot note (Decision C-1):**
+- A note confirming that screenshots were moved from `${CLAUDE_PROJECT_DIR}/qa-screenshots/` into
+  `<spec-dir>/screenshots/` by the collect step (Step 10), and that all referenced screenshots
+  exist beside the report.
+
+**Diff-scoping section (SC#2):**
+- The diff-scoping classification read from the `"type": "scoping"` record in the scratch file
+  (e.g. `CLASS = FULL`) and the changed files that triggered it.
 - What was therefore NOT run (e.g. "Mobile and tablet passes skipped — ADMIN_ONLY classification").
   If everything was run, say so explicitly.
-- The smoke gate outcome from Step 6 (pass/fail, which pages were loaded). If the smoke gate failed
-  and aborted the run, state this prominently.
-- A note that screenshots were moved from `${CLAUDE_PROJECT_DIR}/qa-screenshots/` into
-  `<spec-dir>/screenshots/` by the collect step.
 
-**For each error:**
-- Give it a title.
-- Include relevant screenshots using markdown image syntax: `![](screenshots/<filename>.png)`
-- Mention the test that failed.
-- Say what the expected behavior was, and what the actual behavior was.
+**Smoke gate section (SC#3):**
+- The smoke gate outcome read from the `"type": "smoke_gate"` record in the scratch file
+  (pass/fail, which pages were loaded). If the smoke gate failed and aborted the run, state this
+  prominently.
+
+**Per-error section:**
+- For each `"status": "fail"` test record in the scratch file:
+  - Give the error a title.
+  - Include relevant screenshots using markdown image syntax: `![](screenshots/<filename>.png)`
+    (filenames read from the `screenshot_path` fields in the scratch records).
+  - State which test failed (test_id + viewport).
+  - State the expected behaviour and the actual behaviour (from the `notes` field).
+
+**FIXED / UNRESOLVED status section (placeholder for Phase 3):**
+- Include a section headed `## Bug status` listing each failing test with a placeholder status of
+  `UNRESOLVED`. This section is filled in by the Phase 3 fix loop (a later batch will extend this);
+  render the section now so the structure is in place.
 
 **General notes:**
 - If anything was not tested for any reason, or if there were any difficulties, explain.
 - If anything unrelated to the current tests or tangential to the functionality under test seemed
   out of place, include it in the report.
+
+The worker writes `qa_report.md` in a single `Write` call and ends its output file with a `status:`
+footer. If the worker returns `status: failed` or `status: blocked`, record the reason here and
+continue to cleanup (Step 13) and todo update (Step 14).
 
 ---
 
@@ -352,11 +423,24 @@ Kill the development server you started:
 
 ## Step 14: Update the todo list
 
-Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+Spawn a **solo `fls:sdd-mechanic`** (Haiku) to apply the todo ticks and additions. This is a
+**solo** `Agent` call (Rule 3e) — do not batch it with any other call in the same turn.
+
+The mechanic must read the protected helper file at
+`fls-claude-plugin/commands/sdd/protected/update_todo.md` and follow its steps literally. Pass the
+mechanic the following arguments (build the exact `add:` list from the `qa_scratch.json` records
+and the `qa_report.md` before spawning):
 
 - `<todo-path>`: the `todo.md` in the spec directory (same directory as `qa_report.md`)
-- `tick:"Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)"`
-- For each failing test recorded in `qa_report.md`, pass one `add:"QA|user + cmd|Fix QA bug: <short title from the report> (TDD — failing test first, then fix)"`.
-- For each test that was skipped because of missing data, pass one `add:"QA|cmd|Use the `fls:qa-data-helper` agent to create missing data for <short description>, then re-run `/do_qa`"`.
-- If the smoke gate failed (Step 6), pass one `add:"QA|user|Fix smoke gate failure: <short description of the failure> before re-running `/do_qa`"`.
+- `tick:"Run \`/do_qa\` to execute the QA plan (missing test data will be created automatically via the \`fls:qa-data-helper\` agent)"`
+- For each failing test in the scratch file / report, include one
+  `add:"QA|user + cmd|Fix QA bug: <short title from the report> (TDD — failing test first, then fix)"`.
+- For each test that was skipped because of missing data, include one
+  `add:"QA|cmd|Use the \`fls:qa-data-helper\` agent to create missing data for <short description>, then re-run \`/do_qa\`"`.
+- If the smoke gate failed (Step 6 / scratch file), include one
+  `add:"QA|user|Fix smoke gate failure: <short description of the failure> before re-running \`/do_qa\`"`.
 - If no bugs were found, no tests were skipped, and the smoke gate passed, omit `add:`.
+
+Keep the exact `tick:` and `add:` argument shapes above. A later batch (Phase 3) will extend the
+`add:` set to cover FIXED/UNRESOLVED bug outcomes from the auto-fix loop — do not change the
+existing arguments now.
