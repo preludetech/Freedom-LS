@@ -44,9 +44,12 @@
             {% comment %}Hero (spec §6.2): accent gradient bg + large semi-transparent course icon.
             Uses existing course-accent-<key> classes from tailwind.components.css.{% endcomment %}
             <section class="course-accent-{{ course.accent_slot_key }} relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden py-6 sm:py-8 lg:py-10">
-                {% comment %}Spotlight: a radial highlight on the right over the accent
-                gradient, so the hero reads as a lit beam rather than a flat linear fade.{% endcomment %}
-                <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_28rem_at_80%_35%,rgba(255,255,255,0.32)_0%,rgba(255,255,255,0.10)_35%,transparent_70%)]"
+                {% comment %}Spotlight: a solid accent "to" base with a "from"-coloured radial
+                overlay that's transparent at the centre, so the "to" colour glows through the
+                spotlight at 80%/35% and fades into the "from" colour around it. The theme's
+                course-accent pattern (var --fls-course-accent-overlay; "none" when unset) is
+                layered on top so the texture survives the opaque base.{% endcomment %}
+                <div class="absolute inset-0 pointer-events-none bg-(--fls-course-accent-to) [background-image:var(--fls-course-accent-overlay),radial-gradient(circle_28rem_at_80%_35%,transparent_0%,transparent_35%,var(--fls-course-accent-from)_70%)]"
                      aria-hidden="true">
                 </div>
                 {% comment %}Semi-transparent icon anchored bottom-right of the full-bleed section{% endcomment %}
