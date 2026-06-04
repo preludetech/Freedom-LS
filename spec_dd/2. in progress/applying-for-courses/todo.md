@@ -23,17 +23,19 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 4. Plan
 
 - [x] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
-- [ ] (user) Review both plans and edit where needed
+- [x] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
 
-- [ ] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
-- [ ] (user) Address any concerns raised in the plan
+- [x] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
+- [x] (user) Address any concerns raised in the plan
 
 ## 6. Plan structure review
 
-- [ ] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
-- [ ] (user) Address any structure concerns raised in the plan
+- [x] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
+- [x] (user) Resolve structure concern: content_engine → course_access load-time validation edge (Task A.7) — resolved via `COURSE_ACCESS_CONFIG_VALIDATOR` settings hook (no edge, no cycle)
+- [x] (user) Resolve structure concern: course_applications → role_based_permissions / student_management reviewer edges (Task B.3) — Option 1: use `assign_object_role` (reuse role machinery, like cohorts); grant on submit to site staff holding the reviewer role (v1 fallback, no `student_management` edge), leave `# TODO` for per-course reviewer scoping; regenerate `docs/app_structure.md` via `/app_map` after implementation
+- [x] (user) Resolve structure concern: student_interface → course_applications dashboard edge (Task B.5) — **edge eliminated, not accepted.** Added a `get_dashboard_contributions(*, user)` seam to the `CourseAccessBackend` protocol (default `[]`); the dashboard renders contributions generically via `render_to_string` of a backend-supplied `template_name`, so `student_interface` gains **no** `course_applications` import. Per user decision, also pulled all application logic into the plugin: `application_gated`, the Apply CTA, content gating, and the dashboard panel now live in a `course_applications`-owned `ApplicationCourseAccessBackend(DefaultCourseAccessBackend)` (new Task B.6); the core default backend is `free`/registered only. New graph: `course_applications → course_access` (only new edge, acyclic); `student_interface → course_access` only. Shipped `COURSE_ACCESS_BACKEND` defaults to the applications backend. Regenerate `docs/app_structure.md` via `/app_map` after implementation.
 
 ## 7. Implementation
 
