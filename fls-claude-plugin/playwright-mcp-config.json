@@ -1,0 +1,6 @@
+{
+  "browser": { "isolated": true },
+  "imageResponses": "omit",
+  "snapshot": { "mode": "incremental" },
+  "capabilities": ["core", "testing"]
+}

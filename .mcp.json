@@ -3,9 +3,12 @@
     "playwright": {
       "type": "stdio",
       "command": "npx",
-      "args": [
-        "@playwright/mcp@latest"
-      ],
+      "args": ["@playwright/mcp@latest",
+        "--config", "${CLAUDE_PROJECT_DIR}/fls-claude-plugin/playwright-mcp-config.json",
+        "--output-dir", "${CLAUDE_PROJECT_DIR}/qa-screenshots",
+        "--headless", "--isolated",
+        "--image-responses", "omit",
+        "--caps", "core,testing"],
       "env": {}
     }
   }

@@ -51,4 +51,6 @@ bandit.sarif
 
 # SDD fan-out scratch directory (intermediate worker outputs; cleaned on success)
 .sdd-work/
+# Playwright MCP screenshot output dir (moved into spec dir after each QA run)
+qa-screenshots/
 .claude/scheduled_tasks.lock
