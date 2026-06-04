@@ -181,6 +181,7 @@ def course_detail(request, course_slug):
     # "Lessons" counts content items only — assessments (Form children) are
     # surfaced separately via ``includes_assessments``, so exclude them here.
     lesson_count = sum(1 for c in viewable if not isinstance(c, Form))
+    lesson_count_label = f"{lesson_count} lesson{'' if lesson_count == 1 else 's'}"
     includes_assessments = any(isinstance(c, Form) for c in viewable)
     return render(
         request,
@@ -193,6 +194,7 @@ def course_detail(request, course_slug):
             "cta_label": cta_label,
             "breadcrumbs": breadcrumbs,
             "lesson_count": lesson_count,
+            "lesson_count_label": lesson_count_label,
             "includes_assessments": includes_assessments,
         },
     )
