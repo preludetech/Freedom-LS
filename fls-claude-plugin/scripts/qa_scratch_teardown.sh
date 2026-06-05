@@ -15,7 +15,12 @@ set -euo pipefail
 
 : "${CLAUDE_PROJECT_DIR:?CLAUDE_PROJECT_DIR must be set}"
 
-SCRATCH_DIR="${CLAUDE_PROJECT_DIR}/.sdd-work"
+# Resolve the project root with realpath so the boundary prefix check compares
+# like-for-like with the realpath-resolved file paths below. Without this, a
+# symlinked component in CLAUDE_PROJECT_DIR would make the check falsely reject a
+# legitimate in-.sdd-work file.
+PROJECT_ROOT="$(realpath "$CLAUDE_PROJECT_DIR")"
+SCRATCH_DIR="${PROJECT_ROOT}/.sdd-work"
 
 if [ "${#}" -eq 0 ]; then
   echo "Error: at least one file path argument is required" >&2

@@ -1,3 +1,15 @@
 {
-  "mcpServers": {}
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest",
+        "--config", "${CLAUDE_PLUGIN_ROOT}/playwright-mcp-config.json",
+        "--output-dir", "${CLAUDE_PROJECT_DIR}/qa-screenshots",
+        "--headless", "--isolated",
+        "--image-responses", "omit",
+        "--caps", "core,testing"],
+      "env": {}
+    }
+  }
 }

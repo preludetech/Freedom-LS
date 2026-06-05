@@ -1,9 +1,9 @@
 ---
 description: Execute a frontend QA test plan using Playwright MCP
-allowed-tools: Read, Write, Glob, Bash, Agent, mcp__playwright*
+allowed-tools: Read, Write, Glob, Bash, Agent, mcp__plugin_fls_playwright*
 ---
 
-Act like a human QA expert. Execute the given test plan. This command runs at **depth 0**, so its `fls:qa-data-helper` delegation and the Step 7 desktop-testing exploration spawn are legal. See the `claude-code-authoring` skill for the model behind this.
+Act like a human QA expert. Execute the given test plan.
 
 ---
 
@@ -233,16 +233,30 @@ tester would.
 
 Set the browser to a desktop resolution of 1920x1080.
 
-Take screenshots of relevant functionality. Name screenshots with this pattern:
-`desktop_<test-id>_<short-description>.png` (e.g. `desktop_1.1_cohort_list.png`).
+Take screenshots of relevant functionality.
 
-**Per-run capture check (mandatory — see Task A in the implementation plan):** Early in this step,
-do a one-shot `browser_take_screenshot` and confirm a file actually appears in the capture buffer
-while **no image bytes return** in the tool response. If image bytes are returned (i.e.
-`--image-responses omit` appears broken in the resolved `@latest`), or if no file is written at all,
-stop and report the issue — do not trust the rest of the run until this is resolved. If `--output-dir`
-appears broken in the resolved version, discover where the server actually wrote the files and record
-that path; the collect step (Step 10) will need to collect from there.
+**Capturing screenshots — do NOT pass a custom `filename`.** In the resolved `@playwright/mcp`
+(`@latest`), `browser_take_screenshot` only honours `--output-dir` for its **default** filename; a
+**custom `filename` is written relative to the server's working directory, not `--output-dir`**
+(verified against 0.0.75). A custom name would therefore silently miss
+`${CLAUDE_PROJECT_DIR}/qa-screenshots/` and break the collect step (Step 10). So:
+
+- Call `browser_take_screenshot` **without** a `filename` argument. The server writes a default-named
+  file (`page-<timestamp>.png`) into `${CLAUDE_PROJECT_DIR}/qa-screenshots/`.
+- Read the saved path from the tool response (the `![](…/page-<timestamp>.png)` link) and record that
+  **basename** in the scratch record's `screenshot_path` (see below). The descriptive meaning of each
+  shot lives in `test_id` + `notes`, and the report (Step 12) titles each image from those — the
+  on-disk filename being a timestamp is fine.
+
+**Per-run capture check (mandatory):** The Playwright MCP server is pinned to `@latest`, so its
+behaviour can change between runs — this one-shot check is the tripwire that catches a regression
+before it corrupts the run. Early in this step, do a one-shot (no-`filename`) `browser_take_screenshot`
+and confirm a default-named file actually lands in `${CLAUDE_PROJECT_DIR}/qa-screenshots/` while **no
+image bytes return** in the tool response. If image bytes are returned (i.e. `--image-responses omit`
+appears broken in the resolved `@latest`), or if no file is written at all, stop and report the issue
+— do not trust the rest of the run until this is resolved. If the file lands somewhere other than
+`qa-screenshots/`, discover the actual write location and record that path; the collect step (Step 10)
+will need to collect from there.
 
 If anything unrelated to the current feature under test seems out of place or broken, spawn **one
 `fls:sdd-worker`** to explore it (non-interactive; it returns a structured `status`/`reason`). This
@@ -258,7 +272,7 @@ also a solo call.**
 After completing each test, append a structured record:
 
 ```json
-{"type": "test", "test_id": "<e.g. 1.1>", "viewport": "desktop", "status": "<pass|fail|skip>", "screenshot_path": "<spec-dir>/screenshots/<filename>.png or null>", "notes": "<brief observation or failure description>"}
+{"type": "test", "test_id": "<e.g. 1.1>", "viewport": "desktop", "status": "<pass|fail|skip>", "screenshot_path": "<spec-dir>/screenshots/<server-default-basename>.png (the page-<timestamp>.png name the server actually wrote, which the collect step moves into <spec-dir>/screenshots/) or null", "notes": "<brief observation or failure description>"}
 ```
 
 **Discipline (SC#5):** write the screenshot **file path** only — never raw screenshot bytes, snapshot
@@ -290,7 +304,9 @@ You do NOT need to re-run every test from Step 7. Focus on:
 - Touch-target sizing — are buttons and links large enough?
 - Any test from Step 7 that involves tables, forms, or multi-column layouts
 
-Name mobile screenshots with the pattern: `mobile_<test-id>_<short-description>.png`.
+Capture screenshots the same way as Step 7 — **without** a custom `filename` (the server default-names
+them into `${CLAUDE_PROJECT_DIR}/qa-screenshots/`); the `"viewport": "mobile"` field and `notes` carry
+the meaning.
 
 **Scratch list:** append one record per test to `.sdd-work/qa_scratch.json` using the same shape as
 Step 7, with `"viewport": "mobile"`. Write screenshot file paths only — never raw bytes or content.
@@ -312,7 +328,9 @@ As with mobile testing, you do NOT need to re-run every test. Focus on:
 - Sidebars and panels — are they still usable or do they crowd the main content?
 - Forms and modals — do they render at a reasonable width?
 
-Name tablet screenshots with the pattern: `tablet_<test-id>_<short-description>.png`.
+Capture screenshots the same way as Step 7 — **without** a custom `filename` (the server default-names
+them into `${CLAUDE_PROJECT_DIR}/qa-screenshots/`); the `"viewport": "tablet"` field and `notes` carry
+the meaning.
 
 **Scratch list:** append one record per test to `.sdd-work/qa_scratch.json` using the same shape as
 Step 7, with `"viewport": "tablet"`. Write screenshot file paths only — never raw bytes or content.
@@ -396,9 +414,11 @@ The worker must render `qa_report.md` in the spec directory. The report MUST inc
 
 **Per-error section:**
 - For each `"status": "fail"` test record in the scratch file:
-  - Give the error a title.
-  - Include relevant screenshots using markdown image syntax: `![](screenshots/<filename>.png)`
-    (filenames read from the `screenshot_path` fields in the scratch records).
+  - Give the error a descriptive title built from the record's `test_id` + `notes` (the on-disk
+    screenshot filenames are server-assigned timestamps like `page-<timestamp>.png`, so the human
+    meaning comes from `test_id`/`notes`, not the filename).
+  - Include relevant screenshots using markdown image syntax: `![](screenshots/<basename>.png)`
+    (basenames read from the `screenshot_path` fields in the scratch records).
   - State which test failed (test_id + viewport).
   - State the expected behaviour and the actual behaviour (from the `notes` field).
 

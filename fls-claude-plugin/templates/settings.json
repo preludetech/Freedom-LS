@@ -12,7 +12,7 @@
       "Bash(uv run git commit:*)",
       "Bash(find:*)",
       "Bash(uv run pytest:*)",
-      "mcp__playwright__*",
+      "mcp__plugin_fls_playwright__*",
       "mcp__ide__getDiagnostics",
       "Bash(ls:*)",
       "Bash(npm run tailwind_build)",
