@@ -412,22 +412,31 @@ The worker must render `qa_report.md` in the spec directory. The report MUST inc
   (pass/fail, which pages were loaded). If the smoke gate failed and aborted the run, state this
   prominently.
 
+**Group failing records by root cause first.** Multiple failing test records often share a single
+underlying defect — e.g. the same broken function observed across desktop, mobile, and tablet, or
+across two related tests. Before writing the sections below, group the `"status": "fail"` records
+into **distinct bugs**, where one bug = one root cause. Each bug carries a list of **manifestations**
+(the `test_id` + `viewport` of every failing record it explains). Do NOT emit one bug per failing
+record when they share a cause — that inflates one defect into many and (in Step 14) files redundant
+human todos for a single fix.
+
 **Per-error section:**
-- For each `"status": "fail"` test record in the scratch file:
-  - Give the error a descriptive title built from the record's `test_id` + `notes` (the on-disk
-    screenshot filenames are server-assigned timestamps like `page-<timestamp>.png`, so the human
-    meaning comes from `test_id`/`notes`, not the filename).
+- For each **distinct bug** (root cause) — not each raw failing record:
+  - Give it a descriptive title built from the shared `test_id`(s) + `notes` (the on-disk screenshot
+    filenames are server-assigned timestamps like `page-<timestamp>.png`, so the human meaning comes
+    from `test_id`/`notes`, not the filename).
+  - List its **manifestations**: every `test_id` + `viewport` that exhibits it.
   - Include relevant screenshots using markdown image syntax: `![](screenshots/<basename>.png)`
-    (basenames read from the `screenshot_path` fields in the scratch records).
-  - State which test failed (test_id + viewport).
+    (basenames read from the `screenshot_path` fields of the grouped records).
   - State the expected behaviour and the actual behaviour (from the `notes` field).
 
 **FIXED / UNRESOLVED status section:**
-- Include a section headed `## Bug status` listing each failing test. At report-render time (before
-  the fix loop runs), set every bug's status to `UNRESOLVED`. Step 14 (triage and fix) will update
-  this section: bugs that were successfully auto-fixed are marked `FIXED (commit: <hash>)`; bugs
-  that remain unresolved stay `UNRESOLVED`.
-- Each entry must include: bug title, test_id, viewport, and status.
+- Include a section headed `## Bug status` listing **one row per distinct bug** (root cause), NOT one
+  row per failing test record. At report-render time (before the fix loop runs), set every bug's
+  status to `UNRESOLVED`. Step 14 (triage and fix) will update this section: bugs that were
+  successfully auto-fixed are marked `FIXED (commit: <hash>)`; bugs that remain unresolved stay
+  `UNRESOLVED`.
+- Each entry must include: bug title, its manifestations (test_ids + viewports), and status.
 
 **General notes:**
 - If anything was not tested for any reason, or if there were any difficulties, explain.
@@ -435,7 +444,10 @@ The worker must render `qa_report.md` in the spec directory. The report MUST inc
   out of place, include it in the report.
 
 The worker writes `qa_report.md` in a single `Write` call and ends its output file with a `status:`
-footer. If the worker returns `status: failed` or `status: blocked`, record the reason here and
+footer. **The footer's `reason:` describes the report rendering (e.g. "report rendered, N bugs
+documented, screenshots verified") — it must NOT assert a final FIXED/UNRESOLVED verdict, because the
+fix loop (Step 14) has not run yet at render time. Step 14 updates the footer once verdicts are
+final.** If the worker returns `status: failed` or `status: blocked`, record the reason here and
 continue to cleanup (Step 13), triage (Step 14), and todo update (Step 15).
 
 ---
@@ -456,8 +468,14 @@ and todo can reflect the final FIXED/UNRESOLVED verdicts.
 
 ### Triage gate
 
-For each failing test recorded in `.sdd-work/qa_scratch.json`, decide whether it qualifies for
-the **green lane (auto-fix)** or the **red lane (human todo only)**.
+**First, group the failing records by root cause** into distinct bugs (the same grouping the report
+worker used in Step 12 — one bug = one root cause, carrying every `test_id` + `viewport` it explains).
+Triage and fix operate on **distinct bugs, not raw failing records**: a single defect seen across
+three viewports is ONE bug, fixed once. Spawn the fixer at most once per distinct bug, and when a fix
+succeeds, mark ALL of that bug's manifestations FIXED.
+
+For each **distinct bug**, decide whether it qualifies for the **green lane (auto-fix)** or the
+**red lane (human todo only)**.
 
 **Green lane — auto-fix is permitted ONLY when ALL of the following hold:**
 
@@ -501,7 +519,8 @@ Wait for the fixer to return its one-line summary:
 If the fixer returns `status=ok`:
 
 - **Trust the fixer's pytest pass for the regression layer.** Do NOT re-run what pytest already
-  covered — the pre-commit hook confirmed it.
+  covered — the fixer ran the full `uv run pytest` suite (its Step 5) and it passed. (Note: the
+  pre-commit hook runs `ruff`/`mypy`, not pytest, so the fixer's own suite run is the proof.)
 - **Re-drive only the specific Playwright flow that originally failed** using the MCP browser
   tools (the same test from Steps 7–9 that produced the failing scratch record).
 - **If the fix touched shared code** (i.e. the modified files are used by more than one view or
@@ -532,10 +551,17 @@ If the fixer returns `status=failed` or `status=blocked`, OR if re-verification 
 
 ### Update qa_report.md Bug status section
 
-After processing all bugs, update the `## Bug status` section in `qa_report.md`:
+After processing all bugs, update the `## Bug status` section in `qa_report.md` (one row per distinct
+bug — the same grouping the report used, NOT one row per failing record):
 
 - FIXED bugs: `**FIXED** (commit: <hash>) — <bug title>`
 - UNRESOLVED bugs: `**UNRESOLVED** — <bug title> (reason: <short>)`
+
+Then **update the trailing `status:` footer line** of `qa_report.md` so its `reason:` reflects the
+final verdicts — e.g. `reason: N bugs — X fixed, Y unresolved; report rendered, screenshots verified`.
+The footer was written by the report worker before the fix loop ran, so without this update its
+`reason:` is stale and will contradict the table (e.g. claim bugs are "UNRESOLVED" that are now
+marked FIXED).
 
 Edit `qa_report.md` directly using the `Edit` tool; do not re-render the whole report.
 
