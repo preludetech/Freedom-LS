@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "_comment_qa_scripts": "Any script placed in .claude/fls/scripts/ is thereby granted prompt-free QA execution with arbitrary arguments via the Bash(.claude/fls/scripts/* *) wildcard, and must be reviewed as security-sensitive — equivalent to adding an allow-list entry.",
     "allow": [
       "Read",
       "Glob",
@@ -10,7 +11,7 @@
       "Bash(find:*)",
       "Bash(uv run pytest:*)",
       "Bash(uv run git commit:*)",
-      "mcp__playwright__*",
+      "mcp__plugin_fls_playwright__*",
       "mcp__ide__getDiagnostics",
       "Bash(tail:*)",
       "Bash(git add:*)",
@@ -21,14 +22,15 @@
       "Bash(gh pr:*)",
       "Bash(ls:*)",
       "Bash(npm run tailwind_build:*)",
-      "mcp__plugin_fls_playwright__*",
       "Skill(fls:*)",
       "WebFetch",
       "WebSearch",
       "Bash(grep *)",
-      "Bash(.claude/fls/scripts/fetch_pr_comments.sh *)",
-      "Bash(.claude/fls/scripts/kill_runserver.sh:*)",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(.claude/fls/scripts/* *)",
+      "Bash(.claude/fls/scripts/*)",
+      "Bash(uv run python manage.py runserver *)",
+      "Bash(uv run --with pillow python * compress_screenshots.py*)"
     ],
     "deny": [
       "Read(.env)",
