@@ -1,1 +1,0 @@
-A recent merge/rebase introduced some conflicts that introduced visual bugs in the frontend. Use playwright mcp to explore the frontend from the perspective of a student. Identify all bugs. We'll need to fix those. If you see anything else that is untidy or out of place, fix that too.
