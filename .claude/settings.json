@@ -26,8 +26,6 @@
       "WebFetch",
       "WebSearch",
       "Bash(grep *)",
-      "Bash(.claude/fls/scripts/fetch_pr_comments.sh *)",
-      "Bash(.claude/fls/scripts/kill_runserver.sh:*)",
       "Bash(git rm *)",
       "Bash(.claude/fls/scripts/* *)",
       "Bash(.claude/fls/scripts/*)",
