@@ -48,7 +48,7 @@
       "Bash(.claude/ds/scripts/*.sh:*)",
       "Bash(.claude/fls-dev/scripts/*.sh:*)",
       "Bash(uv run python manage.py runserver *)",
-      "Bash(uv run --with pillow python * compress_screenshots.py *)"
+      "Bash(uv run --with pillow python * compress_screenshots.py*)"
     ],
     "deny": [
       "Write(config/settings_prod.py)",
