@@ -9,6 +9,12 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 PROJECT_ROOT="$SCRIPT_DIR/../../.."
 PLUGIN_DIR="$PROJECT_ROOT/$PLUGINS_ROOT/claude_plugins/fls-dev"
 
+# CLAUDE_PROJECT_DIR is not reliably exported into the Bash tool environment, but
+# the canonical script requires it. Derive it from this wrapper's known location
+# (the project root is three levels up from .claude/<plugin>/scripts/) when unset.
+: "${CLAUDE_PROJECT_DIR:=$(readlink -f "$PROJECT_ROOT")}"
+export CLAUDE_PROJECT_DIR
+
 # === Base setup ===
 "$PLUGIN_DIR/scripts/qa_collect_screenshots.sh" "$@"
 
