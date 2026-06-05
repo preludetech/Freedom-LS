@@ -1,6 +1,6 @@
 ---
 description: Execute a frontend QA test plan using Playwright MCP
-allowed-tools: Read, Write, Glob, Bash, Agent, mcp__plugin_fls_playwright*
+allowed-tools: Read, Write, Edit, Glob, Bash, Agent, mcp__plugin_fls_playwright*
 ---
 
 Act like a human QA expert. Execute the given test plan.
@@ -21,8 +21,8 @@ Act like a human QA expert. Execute the given test plan.
 10. [Collect screenshots into the spec dir](#step-10-collect-screenshots-into-the-spec-dir)
 11. [Compress screenshots](#step-11-compress-screenshots)
 12. [Generate a report](#step-12-generate-a-report)
-13. [Clean up the dev server](#step-13-clean-up-the-dev-server)
-14. [Triage and fix bugs](#step-14-triage-and-fix-bugs) ← Phase 3
+13. [Triage and fix bugs](#step-13-triage-and-fix-bugs) ← Phase 3
+14. [Clean up the dev server](#step-14-clean-up-the-dev-server)
 15. [Update the todo list](#step-15-update-the-todo-list)
 16. [Scratch teardown](#step-16-scratch-teardown)
 
@@ -83,7 +83,7 @@ tool call in the same turn.
 
 **3e. Any `Agent` spawn is always a solo call.** This applies to all agents: `fls:qa-data-helper`,
 `fls:sdd-worker`, `fls:sdd-mechanic`, and `fls:qa-bugfixer`. Never batch an `Agent` call with
-a `Bash` or Playwright call in the same turn. The `fls:qa-bugfixer` spawn (Step 14) is a
+a `Bash` or Playwright call in the same turn. The `fls:qa-bugfixer` spawn (Step 13) is a
 **solo** `Agent` call — CRITICAL Rule 3.
 
 ---
@@ -97,7 +97,7 @@ current directory). Use the stable project-relative wrapper path:
 
 `.claude/fls/scripts/qa_cleanup.sh`
 
-No pre-emptive server kill is needed here: Step 3 always selects an unused port, and Step 13 kills
+No pre-emptive server kill is needed here: Step 3 always selects an unused port, and Step 14 kills
 the server this run started. A stale server left by a crashed earlier run is harmless — it just
 occupies a port Step 3 will skip.
 
@@ -206,9 +206,9 @@ For each page:
   `"status": "fail"` and a `"failure_reason"` describing the error, URL, and screenshot filename).
 - Jump directly to Step 12 (Generate a report) — the worker reads the scratch file and will record
   the smoke failure prominently, along with the diff-scoping classification from Step 2.
-- Then proceed to Step 13 (cleanup), then Steps 15 and 16 (todo update and scratch teardown) as
-  normal, adding a smoke-failure `add:` entry in Step 15. Step 14 (triage) has no failing *tests* to
-  process on a smoke abort and is skipped.
+- Step 13 (triage) has no failing *tests* to process on a smoke abort and is skipped. Then proceed
+  to Step 14 (cleanup), then Steps 15 and 16 (todo update and scratch teardown) as normal, adding a
+  smoke-failure `add:` entry in Step 15.
 
 **On smoke success:** continue to Step 7.
 
@@ -277,7 +277,7 @@ After completing each test, append a structured record:
 
 **Discipline (SC#5):** write the screenshot **file path** only — never raw screenshot bytes, snapshot
 HTML, or page content — into this file or back into context. The scratch file accumulates all test
-records across Steps 7–9 and is read by the report worker (Step 12) and the todo mechanic (Step 14)
+records across Steps 7–9 and is read by the report worker (Step 12) and the todo mechanic (Step 15)
 by path, so accuracy here matters.
 
 **Browser-driving stays at depth 0 on the session model.** The exploratory visual judgement
@@ -417,7 +417,7 @@ underlying defect — e.g. the same broken function observed across desktop, mob
 across two related tests. Before writing the sections below, group the `"status": "fail"` records
 into **distinct bugs**, where one bug = one root cause. Each bug carries a list of **manifestations**
 (the `test_id` + `viewport` of every failing record it explains). Do NOT emit one bug per failing
-record when they share a cause — that inflates one defect into many and (in Step 14) files redundant
+record when they share a cause — that inflates one defect into many and (in Step 13) files redundant
 human todos for a single fix.
 
 **Per-error section:**
@@ -433,7 +433,7 @@ human todos for a single fix.
 **FIXED / UNRESOLVED status section:**
 - Include a section headed `## Bug status` listing **one row per distinct bug** (root cause), NOT one
   row per failing test record. At report-render time (before the fix loop runs), set every bug's
-  status to `UNRESOLVED`. Step 14 (triage and fix) will update this section: bugs that were
+  status to `UNRESOLVED`. Step 13 (triage and fix) will update this section: bugs that were
   successfully auto-fixed are marked `FIXED (commit: <hash>)`; bugs that remain unresolved stay
   `UNRESOLVED`.
 - Each entry must include: bug title, its manifestations (test_ids + viewports), and status.
@@ -446,25 +446,18 @@ human todos for a single fix.
 The worker writes `qa_report.md` in a single `Write` call and ends its output file with a `status:`
 footer. **The footer's `reason:` describes the report rendering (e.g. "report rendered, N bugs
 documented, screenshots verified") — it must NOT assert a final FIXED/UNRESOLVED verdict, because the
-fix loop (Step 14) has not run yet at render time. Step 14 updates the footer once verdicts are
+fix loop (Step 13) has not run yet at render time. Step 13 updates the footer once verdicts are
 final.** If the worker returns `status: failed` or `status: blocked`, record the reason here and
-continue to cleanup (Step 13), triage (Step 14), and todo update (Step 15).
+continue to triage (Step 13), cleanup (Step 14), and todo update (Step 15).
 
 ---
 
-## Step 13: Clean up the dev server
-
-Kill the development server you started:
-
-`.claude/fls/scripts/kill_runserver.sh $PORT`
-
----
-
-## Step 14: Triage and fix bugs
+## Step 13: Triage and fix bugs
 
 This step runs the Phase 3 auto-fix loop for each failing test found in the scratch file. It runs
-**after the report is rendered** (Step 12) and **before the todo update** (Step 15), so the report
-and todo can reflect the final FIXED/UNRESOLVED verdicts.
+**after the report is rendered** (Step 12) and **before the dev-server cleanup** (Step 14), so the
+re-verify sub-step below can drive the still-running server. The report and todo are updated with the
+final FIXED/UNRESOLVED verdicts.
 
 ### Triage gate
 
@@ -522,7 +515,10 @@ If the fixer returns `status=ok`:
   covered — the fixer ran the full `uv run pytest` suite (its Step 5) and it passed. (Note: the
   pre-commit hook runs `ruff`/`mypy`, not pytest, so the fixer's own suite run is the proof.)
 - **Re-drive only the specific Playwright flow that originally failed** using the MCP browser
-  tools (the same test from Steps 7–9 that produced the failing scratch record).
+  tools (the same test from Steps 7–9 that produced the failing scratch record). The dev server
+  from Step 3 is still running and Django auto-reloads after the fixer's commit, so it now serves
+  the fixed code — re-navigate fresh (don't reuse a stale tab); if the first response still looks
+  like the pre-fix code, give the reload a moment and retry once.
 - **If the fix touched shared code** (i.e. the modified files are used by more than one view or
   app), also run 2–3 adjacent spot-checks: navigate to related pages and check for obvious regressions.
 - If re-verification passes → mark the bug **FIXED** with the commit hash.
@@ -567,6 +563,17 @@ Edit `qa_report.md` directly using the `Edit` tool; do not re-render the whole r
 
 ---
 
+## Step 14: Clean up the dev server
+
+Kill the development server you started:
+
+`.claude/fls/scripts/kill_runserver.sh $PORT`
+
+The server is killed **after** the triage/fix/re-verify loop (Step 13) so that re-verification can
+drive the live, auto-reloaded server.
+
+---
+
 ## Step 15: Update the todo list
 
 Spawn a **solo `fls:sdd-mechanic`** (Haiku) to apply the todo ticks and additions. This is a
@@ -575,15 +582,15 @@ Spawn a **solo `fls:sdd-mechanic`** (Haiku) to apply the todo ticks and addition
 The mechanic must read the protected helper file at
 `fls-claude-plugin/commands/sdd/protected/update_todo.md` and follow its steps literally. Pass the
 mechanic the following arguments (build the exact `add:` list from the `qa_scratch.json` records,
-the `qa_report.md`, and the Step 14 triage outcomes before spawning):
+the `qa_report.md`, and the Step 13 triage outcomes before spawning):
 
 - `<todo-path>`: the `todo.md` in the spec directory (same directory as `qa_report.md`)
 - `tick:"Run \`/do_qa\` to execute the QA plan (missing test data will be created automatically via the \`qa-data-helper\` agent)"`
-- **FIXED** bugs from Step 14 are recorded **only** in `qa_report.md`'s `## Bug status` section
+- **FIXED** bugs from Step 13 are recorded **only** in `qa_report.md`'s `## Bug status` section
   (with commit hash). They are fully resolved within this run, so do **NOT** add a `todo.md` item
   for them — an unchecked checklist item with no actionable follow-up (and a non-`user`/`cmd`
   marker) would jam a later `/sdd:next`.
-- For each **UNRESOLVED** bug from Step 14 (including red-lane bugs):
+- For each **UNRESOLVED** bug from Step 13 (including red-lane bugs):
   `add:"QA|user + cmd|Fix QA bug: <short title from the report> (TDD — failing test first, then fix)"`.
 - For each test that was skipped because of missing data, include one
   `add:"QA|cmd|Use the \`fls:qa-data-helper\` agent to create missing data for <short description>, then re-run \`/do_qa\`"`.
@@ -602,7 +609,7 @@ Call the teardown script with the **explicit, known file paths** — this is a *
 `.claude/fls/scripts/qa_scratch_teardown.sh .sdd-work/qa_scratch.json <bugfix-report-1> <bugfix-report-2> ...`
 
 Where `<bugfix-report-N>` is the path to each `bugfix_<slug>.md` file the fixer wrote during
-Step 14 (read the slugs from the fixer's return lines). If no bugfixer was spawned, omit the
+Step 13 (read the slugs from the fixer's return lines). If no bugfixer was spawned, omit the
 bugfix paths.
 
 **Never glob-delete and never wipe the entire `.sdd-work/` directory.** That directory is shared

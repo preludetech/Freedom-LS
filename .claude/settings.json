@@ -32,11 +32,7 @@
       "Bash(.claude/fls/scripts/* *)",
       "Bash(.claude/fls/scripts/*)",
       "Bash(uv run python manage.py runserver *)",
-      "Bash(uv run --with pillow python * compress_screenshots.py *)",
-      "Bash(.claude/fls/scripts/find_available_port.sh*)",
-      "Bash(.claude/fls/scripts/qa_cleanup.sh*)",
-      "Bash(.claude/fls/scripts/qa_collect_screenshots.sh*)",
-      "Bash(.claude/fls/scripts/qa_scratch_teardown.sh*)"
+      "Bash(uv run --with pillow python * compress_screenshots.py*)"
     ],
     "deny": [
       "Read(.env)",
