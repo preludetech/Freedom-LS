@@ -261,14 +261,16 @@ This is **bold** text
                 return path
 
         markdown_text = (
-            '<c-picture src="images/cat.png" alt="A cat" number="2" title="A cat" />'
+            '<c-picture src="images/cat.png" alt="A cat" number="2" '
+            'title="Propeller diagram" />'
         )
         result = render_markdown(
             markdown_text, mock_request, context={"content_instance": FakeInstance()}
         )
 
         assert "Figure 2" in result
-        assert "A cat" in result
+        # Distinct from alt="A cat" so this proves the title rendered in chrome.
+        assert "Propeller diagram" in result
 
     @override_settings(MARKDOWN_TEMPLATE_RENDER_ON=False)
     def test_c_picture_description_attr_survives_sanitising(self, mock_request):

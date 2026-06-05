@@ -75,7 +75,7 @@ use it for annotations, context, or detailed captions.
                         autofocus
                         aria-label="Close image"
                         @click="close"
-                        class="text-white/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-white rounded-md p-1">
+                        class="spotlight-close text-white/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-white rounded-md p-1">
                     <c-icon name="close" class="size-6" />
                 </button>
 
@@ -91,7 +91,7 @@ use it for annotations, context, or detailed captions.
 
                 {# bottom-left: title + description, fixed light text on scrim. #}
                 {% if title or description %}
-                    <div class="text-white/90">
+                    <div class="spotlight-caption text-white/90">
                         {% if title %}<p class="font-semibold text-sm">{{ title }}</p>{% endif %}
                         {% if description %}<p id="{{ desc_id }}" class="text-sm text-white/70 mt-1">{{ description }}</p>{% endif %}
                     </div>

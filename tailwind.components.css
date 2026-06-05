@@ -394,7 +394,7 @@
         margin: 0;
     }
 
-    .spotlight-dialog > button[aria-label="Close image"] {
+    .spotlight-close {
         /* Positioned absolutely to top-right so it doesn't push the card. */
         position: absolute;
         top: 1rem;
@@ -416,8 +416,10 @@
         flex-shrink: 1;
     }
 
-    /* Bottom caption block: align left. */
-    .spotlight-dialog > div:last-child {
+    /* Bottom caption block: align left. Class hook (not div:last-child) so it
+     * only targets the real caption block — when both title and description are
+     * empty the block isn't rendered and nothing else picks up these rules. */
+    .spotlight-caption {
         align-self: flex-start;
         max-width: 56rem;
         width: 100%;

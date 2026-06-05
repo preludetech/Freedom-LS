@@ -535,7 +535,7 @@ options:
 
 
 def test_markdown_translate_shorthand_with_title_emits_title_attr():
-    """markdown_translate converts ![[file|text]] to c-picture with title= (not caption=)."""
+    """markdown_translate converts ![[file|text]] to c-picture with a title attr, no caption."""
     result = markdown_translate("![[graph.png | Example of a graph]]")
     assert 'title="Example of a graph"' in result
     assert "caption=" not in result
