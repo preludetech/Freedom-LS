@@ -7,3 +7,4 @@
 - [reference_sequential_item_unlock.md](reference_sequential_item_unlock.md) — Player items unlock sequentially; complete items 1..N-1 to make item N reachable (image/lightbox + form/quiz QA)
 - [reference_demo_content_loader.md](reference_demo_content_loader.md) — Use `content_save <dir> <site>` to (re)load demo course content after markdown edits; idempotent via frontmatter UUID
 - [reference_educator_cmodal_trigger.md](reference_educator_cmodal_trigger.md) — Give a QA educator a reachable c-modal trigger (cohort Delete confirmation / Create Cohort modal-form); perms + qa_create_educator_modal_target command
+- [reference_form_question_types_command.md](reference_form_question_types_command.md) — qa_create_form_question_types command: QUIZ form with all 4 question types on a dedicated course for demodev@email.com
