@@ -15,7 +15,7 @@
             <c-player-nav class="flex items-center justify-between pt-4 border-t border-border gap-3">
                 <div>
                     {% if previous_url %}
-                        <c-button href="{{ previous_url }}" variant="secondary" icon_left="previous">
+                        <c-button href="{{ previous_url }}" variant="secondary" icon_left="previous" class="px-4 py-1.5 text-sm">
                             Previous
                         </c-button>
                     {% endif %}
@@ -25,29 +25,31 @@
                     <form method="post">
                         {% csrf_token %}
                         {% if is_last_item %}
-                            <c-button type="submit" name="mark_complete" icon_left="check">
+                            <c-button type="submit" name="mark_complete" icon_left="check" class="px-4 py-1.5 text-sm">
                                 Finish Course
                             </c-button>
                         {% else %}
-                            <c-button type="submit" name="mark_complete" icon_right="next">
+                            <c-button type="submit" name="mark_complete" icon_right="next" class="px-4 py-1.5 text-sm">
                                 Next
                             </c-button>
                         {% endif %}
                     </form>
                 {% elif next_url %}
-                    <c-button href="{{ next_url }}" icon_right="next">
+                    <c-button href="{{ next_url }}" icon_right="next" class="px-4 py-1.5 text-sm">
                         Next
                     </c-button>
                 {% elif is_last_item %}
                     {% if is_course_complete %}
                         <c-button href="{% url 'student_interface:view_course_item' course_slug=course.slug index=1 %}"
                                   variant="secondary"
-                                  icon_left="home">
+                                  icon_left="home"
+                                  class="px-4 py-1.5 text-sm">
                             Home
                         </c-button>
                     {% else %}
                         <c-button href="{% url 'student_interface:view_course_item' course_slug=course.slug index=1 %}"
-                                  icon_left="check">
+                                  icon_left="check"
+                                  class="px-4 py-1.5 text-sm">
                             Finish Course
                         </c-button>
                     {% endif %}
