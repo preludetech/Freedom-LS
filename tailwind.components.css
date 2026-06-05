@@ -334,6 +334,106 @@
     .course-progress-5::-webkit-progress-value { background-color: var(--fls-course-accent-5-to); }
     .course-progress-5::-moz-progress-bar      { background-color: var(--fls-course-accent-5-to); }
 
+    /* Modal scrim — one look for every modal surface. Two hooks because the scrim
+     * is rendered two ways: a real overlay <div> (Alpine modals) vs the ::backdrop
+     * pseudo of a native <dialog>, whose own box stays bg-transparent. Carries
+     * only the scrim look; positioning / transitions stay on each element. */
+    .modal-backdrop,                 /* overlay <div>: Alpine modals  */
+    .modal-backdrop-host::backdrop { /* native <dialog>: its ::backdrop */
+        @apply bg-black/50 backdrop-blur-sm;
+    }
+
+    /* Spotlight dialog — full-viewport native <dialog> that centres an image
+     * card on a dark, blurred scrim. The dialog itself is bg-transparent and
+     * fills the viewport so backdrop clicks land on the dialog element (enabling
+     * the click-target close guard). Chrome text uses fixed light colours because
+     * it sits on the theme-neutral scrim, not on a themed surface. */
+    .spotlight-dialog {
+        /* Full-viewport flex layout: top row (heading + close button),
+         * centred card, bottom caption block. */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        padding: 1.5rem;
+        gap: 1rem;
+        box-sizing: border-box;
+
+        /* Enter/leave transitions — mirrors the side-panel pattern.
+         * overlay + display use allow-discrete so the dialog stays in the top
+         * layer through the full leave animation. */
+        opacity: 0;
+        scale: 0.95;
+        transition:
+            opacity 200ms ease,
+            scale 200ms ease,
+            overlay 200ms ease allow-discrete,
+            display 200ms ease allow-discrete;
+    }
+
+    .spotlight-dialog[open] {
+        opacity: 1;
+        scale: 1;
+    }
+
+    @starting-style {
+        .spotlight-dialog[open] {
+            opacity: 0;
+            scale: 0.95;
+        }
+    }
+
+    /* Heading: align left within the flex column. The template's utility
+     * classes (text-base, sm:text-lg) override the @layer base h2 defaults. */
+    .spotlight-dialog > h2 {
+        align-self: flex-start;
+        margin: 0;
+    }
+
+    .spotlight-dialog > button[aria-label="Close image"] {
+        /* Positioned absolutely to top-right so it doesn't push the card. */
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        /* Comfortable touch target (~44px). */
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Spotlight card — centres the image, caps height for small screens. */
+    .spotlight-card {
+        max-width: 56rem;
+        width: 100%;
+        max-height: 70dvh;
+        overflow-y: auto;
+        flex-shrink: 1;
+    }
+
+    /* Bottom caption block: align left. */
+    .spotlight-dialog > div:last-child {
+        align-self: flex-start;
+        max-width: 56rem;
+        width: 100%;
+    }
+
+    /* Reduced motion: keep fade, drop scale animation. */
+    @media (prefers-reduced-motion: reduce) {
+        .spotlight-dialog {
+            transition:
+                opacity 200ms ease,
+                overlay 200ms ease allow-discrete,
+                display 200ms ease allow-discrete;
+            scale: 1;
+        }
+    }
+
     /* HTMX request state utilities for loading indicators */
     .htmx-request .htmx-hide-on-request {
         display: none;

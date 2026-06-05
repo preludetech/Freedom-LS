@@ -1,19 +1,30 @@
-<c-vars src alt caption="" number="" />
+<c-vars src alt title="" description="" number="" />
 
 {% load content_tags %}
+{% load base_tags %}
 {% comment %}
-Picture component with an accessible lightbox.
+Picture component with an accessible spotlight modal.
 
 Attributes:
-  src      File path looked up via get_file_by_path.
-  alt      Alt text describing the image for non-sighted users.
-  caption  Optional visible caption (figcaption + lightbox heading).
-  number   Optional figure number -> "Figure N" prefix in the caption.
+  src          File path looked up via get_file_by_path.
+  alt          Alt text describing the image for non-sighted users.
+               Must not duplicate the visible title — it describes the
+               image to screen-reader users who cannot see it.
+               Decorative images should use alt="".
+  title        Optional visible title shown in the thumbnail figcaption
+               and as the spotlight heading + bottom caption.
+  description  Optional longer description shown only in the spotlight
+               below the title. Not shown in the thumbnail.
+  number       Optional figure number → "Figure N" prefix in the title.
 
-Authoring note: `alt` describes the image for screen-reader users; the
-figcaption is the visible caption. Don't duplicate them. Decorative images
-should use alt="".
+Authoring note: `alt` describes the image for screen-reader users;
+`title` is the visible caption. Don't duplicate them.
+`description` adds a paragraph of explanatory text in the spotlight —
+use it for annotations, context, or detailed captions.
 {% endcomment %}
+
+{% unique_id "spotlight-title" as heading_id %}
+{% unique_id "spotlight-desc" as desc_id %}
 
 {% with file_obj=src|get_file_by_path:content_instance %}
 
@@ -27,15 +38,15 @@ should use alt="".
                 <c-slot name="footer">
                     <div class="flex items-center justify-between gap-4">
                         <span class="text-muted text-sm">
-                            {% if number %}<span class="font-semibold">Figure {{ number }}</span>{% if caption %}: {% endif %}{% endif %}{{ caption }}
+                            {% if number %}<span class="font-semibold">Figure {{ number }}</span>{% if title %}: {% endif %}{% endif %}{{ title }}
                         </span>
-                        {# Real button so the lightbox trigger is keyboard-accessible. #}
+                        {# Real button so the spotlight trigger is keyboard-accessible. #}
                         <c-button type="button"
                                   variant="secondary"
                                   size="small"
                                   icon_left="fullscreen"
                                   x-ref="trigger"
-                                  @click="show"
+                                  @click="open"
                                   class="shrink-0">
                             Open image
                         </c-button>
@@ -43,40 +54,50 @@ should use alt="".
                 </c-slot>
             </c-media-card>
 
-            <div x-show="open"
-                 x-cloak
-                 x-transition.opacity
-                 role="dialog"
-                 aria-modal="true"
-                 aria-label="{{ caption|default:alt }}"
-                 @keydown.escape.window="onEscape"
-                 @keydown.tab.prevent="onTab"
-                 @click="close"
-                 class="fixed inset-0 flex justify-center items-center z-50 backdrop-blur-lg motion-reduce:transition-none">
+            {# Native modal dialog — showModal() provides focus-trap, Escape, #}
+            {# inert background and focus-restore to the trigger for free.     #}
+            <dialog x-ref="dialog"
+                    class="modal-backdrop-host spotlight-dialog bg-transparent p-0 m-0 border-0 max-w-none max-h-none w-full h-full"
+                    @click="onBackdropClick"
+                    {% if title %}aria-labelledby="{{ heading_id }}"{% else %}aria-label="{{ alt }}"{% endif %}>
 
-                <button x-ref="closeBtn"
-                        type="button"
+                {# top-left: figure number + title. Chrome text sits on the dark #}
+                {# scrim so a fixed light colour (text-white) is used — NOT a    #}
+                {# theme token like text-on-surface.                             #}
+                {% if title %}
+                    <h2 id="{{ heading_id }}" class="text-white font-semibold text-base sm:text-lg leading-snug">
+                        {% if number %}Figure {{ number }} — {% endif %}{{ title }}
+                    </h2>
+                {% endif %}
+
+                {# top-right: close button — same treatment as c-modal close. #}
+                <button type="button"
+                        autofocus
                         aria-label="Close image"
-                        class="absolute top-0 right-0 bg-surface opacity-50 hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                        @click="close">
-                    <c-icon name="close" class="size-12 text-on-surface" />
+                        @click="close"
+                        class="text-white/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-white rounded-md p-1">
+                    <c-icon name="close" class="size-6" />
                 </button>
 
-                {% if caption %}
-                    <div class="absolute top-0">
-                        <p class="text-center text-4xl pt-6">
-                            {{ caption }}
-                        </p>
+                {# centre: spotlight card — does NOT close on click (card is a #}
+                {# descendant of the dialog; only a click on the dialog element #}
+                {# itself closes, per the backdrop-click guard in the controller). #}
+                <div class="spotlight-card bg-surface rounded-lg shadow-xl overflow-hidden">
+                    <img src="{{ file_obj.file.url }}"
+                         alt="{{ alt }}"
+                         {% if description %}aria-describedby="{{ desc_id }}"{% endif %}
+                         class="w-full object-contain" />
+                </div>
+
+                {# bottom-left: title + description, fixed light text on scrim. #}
+                {% if title or description %}
+                    <div class="text-white/90">
+                        {% if title %}<p class="font-semibold text-sm">{{ title }}</p>{% endif %}
+                        {% if description %}<p id="{{ desc_id }}" class="text-sm text-white/70 mt-1">{{ description }}</p>{% endif %}
                     </div>
                 {% endif %}
 
-                <div class="relative w-7xl max-h-screen p-6 overflow-auto rounded-sm bg-surface">
-                    <img src="{{ file_obj.file.url }}"
-                         alt="{{ alt }}"
-                         class="w-full max-h-screen object-contain" />
-                </div>
-
-            </div>
+            </dialog>
         </div>
 
     {% else %}

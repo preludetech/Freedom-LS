@@ -5,9 +5,9 @@
  * All Alpine components must be registered via Alpine.data().
  * Load this script BEFORE the Alpine CSP script.
  *
- * Components here back the cotton content widgets rendered inside markdown
- * (e.g. equations and lightboxes). Later tasks add `equation` and
- * `contentLightbox` registrations into the alpine:init block below.
+ * Components here back the cotton content widgets rendered inside markdown:
+ * - `equation`        — client-side KaTeX typesetting (cotton/equation.html)
+ * - `contentLightbox` — native <dialog> spotlight (cotton/picture.html)
  */
 
 document.addEventListener("alpine:init", () => {
@@ -42,37 +42,21 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // Content lightbox component (cotton/picture.html).
-    //
-    // Focus-managing modal for image thumbnails. On open it remembers the
-    // triggering element and moves focus to the close button; on close it
-    // restores focus to the trigger (so keyboard users return to where they
-    // were). Escape closes. This lives in content_engine (not base) so the
-    // content widgets own their interactive behaviour.
+    // Content lightbox — native <dialog> spotlight (cotton/picture.html).
+    // showModal() provides focus-trap, Escape, inert background and focus-restore
+    // to the trigger; we only add open() and a backdrop-click-to-close guard.
     Alpine.data("contentLightbox", () => ({
-        open: false,
-        _trigger: null,
-        show() {
-            // Capture the trigger explicitly (the x-ref), not document
-            // .activeElement: some browsers don't focus a <button> on mouse
-            // click, which would lose the restore target on close.
-            this._trigger = this.$refs.trigger || document.activeElement;
-            this.open = true;
-            this.$nextTick(() => {
-                if (this.$refs.closeBtn) this.$refs.closeBtn.focus();
-            });
+        open() {
+            this.$refs.dialog.showModal();
         },
         close() {
-            this.open = false;
-            if (this._trigger) this._trigger.focus();
+            this.$refs.dialog.close();
         },
-        onEscape() {
-            if (this.open) this.close();
-        },
-        // The dialog's only focusable target is the close button, so keep
-        // focus on it (a minimal focus trap honouring aria-modal="true").
-        onTab() {
-            if (this.open && this.$refs.closeBtn) this.$refs.closeBtn.focus();
+        onBackdropClick(event) {
+            // The full-viewport dialog reports event.target === the dialog only
+            // when the surrounding scrim is clicked; the card/image are
+            // descendants and are correctly ignored. Mirrors sidePanel.
+            if (event.target === this.$refs.dialog) this.close();
         },
     }));
 });

@@ -44,7 +44,7 @@
             {% endcomment %}
             <dialog x-ref="panelDialog"
                     data-variant="{% block sidebar_presentation %}bottom-sheet{% endblock sidebar_presentation %}"
-                    class="side-panel-dialog border-0 p-0 m-0 max-w-none max-h-none bg-transparent text-inherit backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+                    class="side-panel-dialog modal-backdrop-host border-0 p-0 m-0 max-w-none max-h-none bg-transparent text-inherit"
                     aria-label="{% block sidebar_heading_aria %}Navigation{% endblock sidebar_heading_aria %}">
                 <div class="side-panel-body bg-sidepanel h-full overflow-y-auto overscroll-contain">
                     {% comment %}
