@@ -6,6 +6,7 @@ import yaml
 from freedom_ls.content_engine.factories import FormFactory
 from freedom_ls.content_engine.management.commands.content_save import (
     PreservingDumper,
+    markdown_translate,
     save_form_content,
     save_form_page,
     save_form_question,
@@ -30,7 +31,7 @@ def test_preserving_dumper_uses_literal_style_for_html_content():
         "<c-picture  \n"
         '   src="../images/graph1.drawio.svg"\n'
         '   alt="Graph example"\n'
-        '   caption="Example of a graph"\n'
+        '   title="Example of a graph"\n'
         "   />\n"
         "  Blah blah"
     )
@@ -380,7 +381,7 @@ content: |
   <c-picture
      src="../images/graph1.drawio.svg"
      alt="Graph example"
-     caption="Example of a graph"
+     title="Example of a graph"
      />
   Blah blah
 """
@@ -474,7 +475,7 @@ content: |
   <c-picture
      src="../images/graph1.drawio.svg"
      alt="Graph example"
-     caption="Example of a graph"
+     title="Example of a graph"
      />
   Blah blah
 uuid: 9c4265c5-9178-47b8-9a9d-074e69e34a40
@@ -531,3 +532,25 @@ options:
     assert 'src="../images/graph1.drawio.svg"' in result, (
         f"HTML attributes should be preserved literally.\nGot:\n{result!r}"
     )
+
+
+def test_markdown_translate_shorthand_with_title_emits_title_attr():
+    """markdown_translate converts ![[file|text]] to c-picture with title= (not caption=)."""
+    result = markdown_translate("![[graph.png | Example of a graph]]")
+    assert 'title="Example of a graph"' in result
+    assert "caption=" not in result
+    assert '<c-picture src="graph.png"' in result
+
+
+def test_markdown_translate_shorthand_without_title_emits_no_title_attr():
+    """markdown_translate converts ![[file]] to c-picture without a title attribute."""
+    result = markdown_translate("![[graph.png]]")
+    assert "caption=" not in result
+    assert "title=" not in result
+    assert '<c-picture src="graph.png"' in result
+
+
+def test_markdown_translate_strips_whitespace_around_title():
+    """markdown_translate trims whitespace from the title slot."""
+    result = markdown_translate("![[graph.png |  Some title  ]]")
+    assert 'title="Some title"' in result

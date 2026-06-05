@@ -304,24 +304,24 @@ def save_with_uuid(
 
 def markdown_translate(markdown_content):
     # look for markdown pictures
-    # Eg with caption: `![[Chewy tubes.jpg | Chewy Tubes]]`
-    # Eg without caption: `![[Chewy tubes.jpg]]`
+    # Eg with title: `![[Chewy tubes.jpg | Chewy Tubes]]`
+    # Eg without title: `![[Chewy tubes.jpg]]`
     # replace them with c-picture cotton components
 
-    # Pattern with caption: ![[filename | caption]]
-    pattern_with_caption = r"!\[\[([^|\]]+)\s*\|\s*([^\]]+)\]\]"
+    # Pattern with title: ![[filename | title]]
+    pattern_with_title = r"!\[\[([^|\]]+)\s*\|\s*([^\]]+)\]\]"
     markdown_content = re.sub(
-        pattern_with_caption,
+        pattern_with_title,
         lambda m: (
-            f'<c-picture src="{m.group(1).strip()}" caption="{m.group(2).strip()}"></c-picture>'
+            f'<c-picture src="{m.group(1).strip()}" title="{m.group(2).strip()}"></c-picture>'
         ),
         markdown_content,
     )
 
-    # Pattern without caption: ![[filename]]
-    pattern_without_caption = r"!\[\[([^\]]+)\]\]"
+    # Pattern without title: ![[filename]]
+    pattern_without_title = r"!\[\[([^\]]+)\]\]"
     markdown_content = re.sub(
-        pattern_without_caption,
+        pattern_without_title,
         lambda m: f'<c-picture src="{m.group(1).strip()}"></c-picture>',
         markdown_content,
     )

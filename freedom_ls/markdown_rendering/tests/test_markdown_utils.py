@@ -250,10 +250,10 @@ This is **bold** text
         assert "<button" in result
         assert 'type="button"' in result
         assert "contentLightbox" in result
-        assert 'role="dialog"' in result
+        assert "<dialog" in result
 
     def test_c_picture_number_renders_figure_prefix(self, mock_request, site):
-        """A number attribute renders a 'Figure N' caption prefix."""
+        """A number and title attribute survive sanitising and render a 'Figure N' prefix."""
         self._make_image_file(site)
 
         class FakeInstance:
@@ -261,13 +261,31 @@ This is **bold** text
                 return path
 
         markdown_text = (
-            '<c-picture src="images/cat.png" alt="A cat" number="2" caption="A cat" />'
+            '<c-picture src="images/cat.png" alt="A cat" number="2" title="A cat" />'
         )
         result = render_markdown(
             markdown_text, mock_request, context={"content_instance": FakeInstance()}
         )
 
         assert "Figure 2" in result
+        assert "A cat" in result
+
+    @override_settings(MARKDOWN_TEMPLATE_RENDER_ON=False)
+    def test_c_picture_description_attr_survives_sanitising(self, mock_request):
+        """title and description attributes on c-picture survive the markdown sanitiser.
+
+        Uses MARKDOWN_TEMPLATE_RENDER_ON=False to inspect the sanitised output
+        before cotton template rendering — this is the layer that must pass
+        the attributes through unchanged.
+        """
+        markdown_text = (
+            '<c-picture src="images/cat.png" alt="A cat"'
+            ' title="Fluffy cat" description="A fluffy tabby cat sitting on a mat." />'
+        )
+        result = render_markdown(markdown_text, mock_request)
+
+        assert 'title="Fluffy cat"' in result
+        assert 'description="A fluffy tabby cat sitting on a mat."' in result
 
     def test_c_picture_missing_file_shows_error_fallback(self, mock_request, site):
         """An unresolved src renders the 'Image not found' fallback, not a crash."""

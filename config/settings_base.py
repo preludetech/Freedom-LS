@@ -288,7 +288,7 @@ LEGAL_DOCS_MANIFEST_PATH: str | None = None
 
 MARKDOWN_ALLOWED_TAGS = {
     "c-youtube": {"video_id", "video_title", "caption"},
-    "c-picture": {"src", "alt", "caption", "number"},
+    "c-picture": {"src", "alt", "title", "description", "number"},
     "c-callout": {"level", "title"},
     "c-content-link": {"path"},
     "c-pdf-embed": {"src", "caption", "height"},
