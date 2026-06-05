@@ -36,7 +36,10 @@ def start_form(page: Page):
     """Click the start form button."""
     start_button = page.locator("[data-testid='start-form-button']")
     start_button.click()
-    page.wait_for_load_state("networkidle")
+    # "Start Form" is hx-boosted: it swaps the fill-form page in via htmx and
+    # pushes the new fill_form URL. Wait on that URL change rather than
+    # networkidle, which can race the async swap.
+    page.wait_for_url("**/fill_form/**")
 
 
 def answer_multiple_choice_question(page: Page, question, option_filter):
@@ -439,7 +442,9 @@ def test_form_resumption(
 
     # Click "Continue Form"
     continue_button.click()
-    logged_in_page.wait_for_load_state("networkidle")
+    # "Continue Form" is hx-boosted; wait for the pushed fill_form URL rather
+    # than networkidle, which can race the async swap.
+    logged_in_page.wait_for_url("**/fill_form/**")
 
     # Verify we're redirected to page 2 (current progress)
     page_indicator = logged_in_page.locator("text=Page 2 of 2")

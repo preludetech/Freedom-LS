@@ -1,0 +1,33 @@
+<c-vars class="" />
+
+{% comment %}
+Course-player navigation wrapper. Boosts the Previous/Next/mark-complete/form
+controls slotted inside so a click swaps only the player content column
+(#interface-main) plus, out-of-band, the sidebar outline (#course-toc-region) —
+the page chrome and CSS/JS are never repainted, giving an SPA feel instead of a
+full-page flash.
+
+hx-boost auto-pushes the URL (so back/forward and bookmarking keep working
+because the controls keep their href) and updates the document <title> from the
+response. The HTMX attributes are inherited by every descendant anchor/form, so
+this is the single source of truth for the boost config — slot the raw controls
+inside and they all behave consistently.
+
+Only wrap the navigation controls, never the markdown content: content links
+must stay un-boosted (they may point off-site).
+
+Usage:
+  <c-player-nav class="flex items-center justify-between pt-4 border-t border-border gap-3">
+      <c-button href="{{ previous_url }}">Previous</c-button>
+      ...
+  </c-player-nav>
+{% endcomment %}
+
+<div class="{{ class }}"
+     hx-boost="true"
+     hx-target="#interface-main"
+     hx-select="#interface-main"
+     hx-swap="outerHTML show:window:top"
+     hx-select-oob="#course-toc-region">
+    {{ slot }}
+</div>

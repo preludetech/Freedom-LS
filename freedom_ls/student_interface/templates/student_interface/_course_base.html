@@ -62,10 +62,19 @@ docked outline panel carries its own progress, so the header stays uncluttered.
     highlight is present in the first paint and there is no second request /
     highlight race. course_index already carries is_current / contains_current.
     {% endcomment %}
-    {% include "student_interface/partials/course_toc_header.html" %}
+    {% comment %}
+    Wrapper id is the OOB swap target for HTMX course-player navigation: the
+    boosted Previous/Next controls pull a fresh #course-toc-region from the
+    response so the current-item highlight and progress update without a full
+    page reload. It sits inside the <dialog> / sidePanel x-data ancestor, so the
+    panel's open / scroll / Alpine state survives the swap.
+    {% endcomment %}
+    <div id="course-toc-region">
+        {% include "student_interface/partials/course_toc_header.html" %}
 
-    {% with children=course_index %}
-        {% include "student_interface/partials/course_minimal_toc.html#course-children" %}
+        {% with children=course_index %}
+            {% include "student_interface/partials/course_minimal_toc.html#course-children" %}
 
-    {% endwith %}
+        {% endwith %}
+    </div>
 {% endblock sidebar_content %}

@@ -12,7 +12,7 @@
                 {{ topic.rendered_content }}
             </c-markdown-container>
 
-            <div class="flex items-center justify-between pt-4 border-t border-border gap-3">
+            <c-player-nav class="flex items-center justify-between pt-4 border-t border-border gap-3">
                 <div>
                     {% if previous_url %}
                         <c-button href="{{ previous_url }}" variant="secondary" icon_left="previous">
@@ -52,7 +52,7 @@
                         </c-button>
                     {% endif %}
                 {% endif %}
-            </div>
+            </c-player-nav>
         </div>
     </c-page>
 {% endblock %}
