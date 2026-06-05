@@ -2,9 +2,9 @@
 
 {% comment %}
 Image grid — a LAYOUT WRAPPER only. The slot holds c-picture children (or the
-![[file|caption]] shorthand, which content_save rewrites to c-picture). Each
-child keeps its own keyboard-accessible lightbox, so the grid reuses the
-picture lightbox with zero new modal code.
+![[file|title]] shorthand, which content_save rewrites to c-picture with a
+title= attribute). Each child keeps its own title and keyboard-accessible
+lightbox, so the grid reuses the picture lightbox with zero new modal code.
 
 `columns` maps through a FIXED whitelist (2/3/4); any other value falls back
 to the default 3-column layout. Author input never becomes raw CSS.
