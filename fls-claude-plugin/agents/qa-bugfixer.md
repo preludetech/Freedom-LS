@@ -95,16 +95,26 @@ suite does not pass after your fix.
 
 ### Step 6 — Commit
 
-Commit via:
+**Stage only the files you created or modified for this fix** — the production file(s) you changed in
+Step 3 and the test file from Step 1 (the exact paths from your scratch notes). The working tree may
+contain unrelated changes from other agents — e.g. test data, fixtures, or management commands written
+by `fls:qa-data-helper` during the same QA run — and those must NOT end up in your commit.
 
 ```
-uv run git commit
+uv run git add <production-file> <test-file>      # explicit paths only — the ones you recorded
+uv run git commit -m "<message>"
 ```
 
 Follow `CLAUDE.md` conventions:
+- **NEVER use `git commit -a`, `git add -A`, `git add .`, or `git add <dir>`.** Every one of those
+  sweeps in unrelated working-tree changes from other agents. Stage each file you touched by its
+  explicit path, nothing else.
 - Commit message describes the bug fixed and the TDD approach taken.
-- Use `uv run git commit` (pre-commit hooks run `ruff check`, `mypy`, and `pytest` as the gate).
-- `--no-verify` is denied — do not attempt to bypass hooks. A successful commit IS the regression proof.
+- `--no-verify` is denied — do not attempt to bypass hooks.
+- The pre-commit hooks run `ruff` and `mypy` (plus whitespace/secret checks) — **they do NOT run
+  pytest**. Your Step 5 full-suite `uv run pytest` run is the regression proof, not the commit hook.
+  If a pre-commit hook auto-fixes a file (e.g. trailing whitespace) and aborts the commit, re-stage
+  the same explicit paths and run the commit again.
 - Never delete TODO or `@claude` comments.
 - Type hints are required on all new or modified functions (no `Any`).
 
