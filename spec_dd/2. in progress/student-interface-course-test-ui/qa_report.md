@@ -1,237 +1,212 @@
 # QA Report: Student interface — course test/exam UI
 
-**Date:** 2026-06-02
-**Tester:** Playwright MCP (manual walk-through), DemoDev site, default theme
-**Build under test:** branch `student-interface-course-test-ui`
-**Forms exercised (DemoDev demo content):**
-
-| Form | Strategy | `submit_on_exit` | Course item URL |
-|------|----------|------------------|-----------------|
-| End course Quiz | QUIZ (pass 50%, `show_incorrect=False`) | False | `/courses/functionality-demo-show-end-with-quiz/4/` |
-| Mid course Quiz | QUIZ (pass 80%, `show_incorrect=True`) | **True** | `/courses/functionality-demo-show-end-with-quiz/2/` |
-| Course Feedback Survey | CATEGORY_VALUE_SUM (all 4 question types) | False | `/courses/functionality-demo-show-end-with-topic/3/` |
-
-Demo content was reloaded (`content_save ./demo_content DemoDev`) before testing so the new
-question types and `submit_on_exit` flag were live.
+**Date:** 2026-06-04
+**Branch:** `student-interface-course-test-ui`
+**Site:** DemoDev (dev settings force `FORCE_SITE_NAME = "DemoDev"`)
+**Tester:** Automated QA (Playwright MCP), logged in as `demodev@email.com`
+**Test plan:** `3. frontend_qa.md`
+**Viewports:** Desktop 1920×1080, Mobile 375×812, Tablet 768×1024
 
 ---
 
 ## Summary
 
-The re-skinned test/exam flow works well overall: the start, runner, and results screens render
-correctly in the default theme across desktop (1920×1080), mobile (375×812), and tablet (768×1024);
-PRG navigation, save-on-exit, submit-on-exit, the server-side stale-attempt safety net, the
-beforeunload warning, all four question types, and both quiz and survey result screens all behave as
-specified.
+The re-skinned test/exam flow (start screen → runner → results), the `submit_on_exit`
+behaviour, and accessibility all work as specified. The runner layout, answered-count honesty,
+PRG navigation, submit dialog (with focus management, Escape, and double-submit guard),
+save-on-exit and submit-on-exit dialogs, the server-side safety net, the `beforeunload`
+courtesy warning, both result screens, all four question types, keyboard operability, and
+default-theme styling were all verified and pass.
 
-**Three bugs and one spec/implementation discrepancy were found:**
-
-1. **[HIGH] Runner doesn't load `content_engine` Alpine components → broken image lightbox blocks
-   quiz submission** (and logs console errors). Affects any form whose content contains a markdown
-   image — including both demo quizzes.
-2. **[MEDIUM · a11y] Submit dialog focus management broken** — focus does not move into the dialog on
-   open and the focus trap spans the whole runner, so Tab/Shift+Tab escapes the open modal.
-3. **[LOW · a11y] sr-only runner heading mislabels pages as "Question"** — announces "Question 1 of 2"
-   when there are 6 questions across 2 pages.
-4. **[Discrepancy] Answered count is a live tally, but the spec & QA plan call for "persisted answers
-   only".** This is a deliberate, tested change (commit `edcf21d`) — needs a decision: update the
-   spec/QA plan, or revert.
+**Two issues were found**, described below: one functional bug (a 500 when entering the
+runner for an already-completed form) and one spec-conformance deviation (the previous-attempts
+summary lists every attempt rather than best/most-recent). A couple of tangential observations
+are also noted.
 
 ---
 
-## Bug 1 — [HIGH] Runner omits `content_engine/js/alpine-components.js`; markdown images break and block submission
+## Bug 1 — 500 `AttributeError` when entering the runner for an already-completed form
 
-**Tests affected:** §2 (No console errors / no Alpine CSP errors), §4 (Submit lands on results),
-overall runner usability for image-containing forms.
+**Severity:** Medium (server error; reachable by URL by any logged-in, registered learner)
+**Test affected:** Surfaced while setting up Test 8 (navigating to a completed form's
+`fill_form` URL). Not a step the test plan explicitly walks, but it is a crash on a GET an
+authenticated user can trigger.
 
-**Expected:** A form/question whose markdown contains an image renders cleanly in the runner with no
-console errors, and the image lightbox (open/close) works — exactly as it does on normal course pages.
+**Steps to reproduce:**
+1. As a learner who has **already completed** a form, navigate directly to that form's runner
+   URL, e.g. `GET /courses/functionality-demo-show-end-with-topic/3/fill_form/1`.
+2. The page returns **HTTP 500**.
 
-**Actual:**
-- On every runner page that renders a markdown image, the console logs **`Uncaught Error: Undefined
-  variable: contentLightbox`** on load, and **`Uncaught Error: Undefined variable: onEscape`** whenever
-  Escape is pressed.
-- More seriously: once the runner re-renders (e.g. **opening the "Ready to submit?" dialog** on the
-  final page, or pressing Escape), the image lightbox panel — which can no longer be hidden by its
-  (now-undefined) Alpine component — renders **full-screen and covers the entire runner**, sitting on
-  top of the submit dialog. The **Submit** and **Go back and review** buttons become un-clickable
-  (`document.elementFromPoint` at the Submit button's centre returns the lightbox `<img>`). A learner
-  taking a quiz that contains an image **cannot submit it through the normal UI.**
+**Expected:** The runner should not 500 when there is no incomplete attempt. It should redirect
+the learner back to the form start screen (or results), exactly as the POST branch of the same
+view already does.
 
-**Root cause:** `student_interface/_course_base.html` loads both
-`student_interface/js/alpine-components.js` **and** `content_engine/js/alpine-components.js` (the latter
-registers the `contentLightbox` component used by `cotton/picture.html`). The new runner base
-`student_interface/_exam_runner_base.html` extends `_base.html` and loads only the `student_interface`
-one, so `contentLightbox`/`onEscape` are undefined in the runner.
+**Actual:** `AttributeError: 'NoneType' object has no attribute 'existing_answers_dict'`
 
-**Repro:** Start *End course Quiz* or *Mid course Quiz* → answer through to the last page → click
-**Next** to open the submit dialog → the graph image expands full-screen and a real click on **Submit**
-is intercepted by the image. (Submission only succeeded in this QA run by dispatching the click via JS.)
+```
+File "freedom_ls/student_interface/views.py", line 578, in form_fill_page
+    existing_answers = form_progress.existing_answers_dict(questions)
+AttributeError: 'NoneType' object has no attribute 'existing_answers_dict'
+```
 
-**Scope note:** The *Course Feedback Survey* (no image) submits normally with a real click and logs no
-errors — confirming the problem is isolated to forms with markdown images and to the missing script
-include.
+**Root cause (confirmed in code):** In `form_fill_page` (`views.py`), `form_progress =
+FormProgress.get_latest_incomplete(...)` returns `None` when there is no incomplete attempt
+(e.g. the form is completed). The **POST** branch already guards this case and redirects to the
+start screen (`views.py:542-547`, with the comment *"Send the learner back to the form start
+screen rather than 500."*). The **GET** path has **no equivalent guard** and dereferences
+`form_progress` at `views.py:578`, crashing.
 
-![Broken lightbox overlay covering the runner / submit dialog](screenshots/desktop_2.2_lightbox_overlay_bug.png)
-
----
-
-## Bug 2 — [MEDIUM · accessibility] Submit dialog focus is not moved into the dialog and the focus trap is not scoped to it
-
-**Test affected:** §4 — "Dialog accessibility: focus moves into the dialog … Tab is trapped inside
-while open."
-
-**Expected:** When the "Ready to submit?" dialog opens, focus moves into the dialog and Tab/Shift+Tab
-stay within the dialog's controls.
-
-**Actual:**
-- On open, focus stays on the **Next** trigger button (outside the dialog); it is not moved to a dialog
-  control.
-- The focus trap is scoped to the **whole runner** (19 focusable elements), not the dialog (3
-  controls). Shift+Tab from the dialog's first control moves focus to **Next** — i.e. out of the modal,
-  to controls behind it. Forward-tabbing past the last dialog control wraps to the runner's Exit "X",
-  not back into the dialog.
-- `role="dialog"` and `aria-modal="true"` are present ✓. **Escape closes the dialog and returns focus
-  to Next ✓.**
-
-**Root cause:** `makeConfirmDialog._openDialog` focuses/traps within `this.$el`. Commit `edcf21d`
-generalised `examSubmitDialog` → `examRunnerForm`, which now wraps the **entire runner body** (so the
-top bar, every question, and the dialog all share one `$el`). The dialog's focus logic therefore
-queries focusables across the whole runner instead of the dialog panel.
-
-(The save-on-exit and submit-on-exit "Leave the test?" dialogs use `examExitDialog`, whose `$el` is the
-small exit-control wrapper, so they are not affected by this scoping bug.)
+**Suggested fix:** Apply the same `if form_progress is None: redirect(... view_course_item ...)`
+guard on the GET path (before line 578) that the POST path already uses.
 
 ---
 
-## Bug 3 — [LOW · accessibility] sr-only runner heading labels pages as "Question"
+## Bug 2 — Previous-attempts summary lists *every* attempt instead of best/most-recent
 
-**Test affected:** §2 (accessible labelling).
+**Severity:** Low (spec/plan conformance; cosmetic, grows unbounded over time)
+**Test affected:** Test 1 (start screen — previous-attempts summary)
 
-**Expected:** The screen-reader-only `<h1>` should describe the current page, e.g. "End course Quiz —
-Page 1 of 2".
+![](screenshots/mobile_1.1_start_screen.png)
 
-**Actual:** `course_form_page.html:326` renders
-`{{ form.title }} — Question {{ current_page_num }} of {{ total_pages }}`, so the sr-only heading
-announces **"End course Quiz — Question 1 of 2"** even though the form has **6 questions across 2
-pages**. The variables are page numbers; the literal word should be "Page", not "Question".
+**Expected:** Per the plan, the start-screen previous-attempts summary should be a *compact*
+panel showing the **best / most-recent score** for a quiz (plan §173-174, §298; spec §86, §207).
+The deferred history page + "View all" link were explicitly removed precisely so the start
+screen stays lightweight.
 
----
+**Actual:** The summary renders **one row per completed attempt** with no limit. After a few
+re-attempts during QA the panel showed 4 rows (`0% (0/6)`, `50% (3/6)`, `50% (3/6)`,
+`0% (0/6)`), and it will keep growing as attempts accumulate.
 
-## Discrepancy — Answered count is a live tally, spec/QA plan say "persisted only"
+**Root cause (confirmed in code):** `view_form` builds `completed_form_progress =
+FormProgress.objects.filter(...).order_by("-completed_time")` with **no slice/limit**
+(`views.py:449-451`), and `partials/exam_previous_attempts.html` loops over the whole queryset.
+The partial's own header comment says *"Shows best / most-recent score for QUIZ"*, so the
+template intent and the implementation disagree.
 
-**Test affected:** §2 "Answered count honesty" — *"Type into page-2 fields without advancing — the
-count does not increase (only persisted answers count)."*
-
-**Observed:** Selecting/typing answers on the current page updates the top-bar count **immediately**,
-before saving (e.g. selecting all of page 1 takes "0 of 6" → "3 of 6"; selecting a page-2 answer
-without advancing takes "3 of 6" → "4 of 6"). The count = persisted answers on other pages + live
-answers on the current page.
-
-**Spec/plan say otherwise:** spec `1. spec.md` lines 113 & 239 require an answered count that "reflects
-**persisted** answers only", and QA plan §2 explicitly expects the count **not** to increase from
-unsaved current-page edits.
-
-**This is intentional and tested:** commit `edcf21d` ("Fix runner answered count: tally answers filled
-in on the current page") deliberately introduced the live tally — the previous persisted-only count
-showed "0 Answered" in the submit modal even after answering every question. It ships with E2E + unit
-tests.
-
-**Not filed as a code bug.** This needs a decision: either update the spec (lines 113/239) and QA plan
-§2 to document the live-tally behaviour, or revert to persisted-only if that was a hard requirement.
-The live tally is the more honest UX (the submit modal showing "6 Answered" matches what the learner
-sees), so updating the docs is the likely resolution.
+**Note:** the spec wording *"(best / most-recent scores where applicable)"* is slightly
+ambiguous, but the plan is explicit. There is correctly **no "View all" link** and no disabled
+placeholder. If "show all completed attempts" is in fact the desired behaviour, the spec/plan
+and the partial's comment should be updated to match; otherwise the queryset should be limited.
 
 ---
 
-## What passed (by QA-plan section)
+## Tangential observations (not failures)
 
-- **§1 Start screen** — normal app chrome (global header + course TOC); title/subtitle/intro render;
-  meta grid shows exactly two truthful cells (Questions, Pages) with no "estimated time"/"unlimited
-  tries"; previous-attempts summary shows for forms with completed attempts (best/recent score) with
-  **no "View all" link** and no placeholder; CTA correctly shows **Start Form** (no progress),
-  **Continue Form** (incomplete save-on-exit attempt), and **Try Again** (failed quiz).
-  ![Start screen](screenshots/desktop_1.1_start_screen_quiz.png)
-  ![Previous attempts + Try Again](screenshots/desktop_1.2_start_previous_attempts_try_again.png)
+### A. Dev database had unapplied migrations at QA start
+On first load, `/` returned a 500: `column freedom_ls_content_engine_course.learning_outcomes
+does not exist`. Two content_engine migrations
+(`0010_course_difficulty_course_estimated_duration_and_more` and `0011_merge_20260604_1314`)
+were pending. Running `manage.py migrate` resolved it and QA proceeded normally. This is a local
+dev-DB state issue, not a code defect, but worth flagging so the migration set is applied before
+review. (The early `500 @ /` console error in later snapshots is this same stale request.)
 
-- **§2 Runner layout & a11y** — no course sidebar / global header; top bar has Exit "X" (left), title
-  (centre), "N of M answered" (right, never "saved"); progress strip shows "Page X of Y" with a fill
-  bar whose width matches the page fraction (50% on page 1 of 2) using the **secondary** token; page
-  dots are links for accessible pages and non-clickable for locked pages; each question is a
-  `<fieldset>`/legend; multiple-choice = radios, checkboxes = checkboxes; selecting a tile highlights
-  it via the checked input; **arrow keys** move within a radio group and **Space** toggles checkboxes;
-  a two-option multiple-choice renders like any other (no bespoke True/False UI). *(Console errors —
-  see Bug 1.)*
-  ![Runner layout](screenshots/desktop_2.1_runner_layout.png)
-
-- **§3 Navigation (PRG)** — **Next** saves then advances (answers persist on Back); **Previous** is a
-  plain GET link that does **not** save in-progress edits (unsaved change discarded on return); locked
-  pages can't be reached via dots; runner GETs send **`Cache-Control: no-store`**.
-
-- **§4 Final-page submit dialog** — clicking Next on the last page opens "Ready to submit?" (does not
-  submit immediately); body explains scoring is final; shows only **Answered / Total questions** (no
-  "flagged"); **Go back and review** dismisses; **Submit** finalises and lands on results; **Escape**
-  closes and returns focus to Next. *(Focus-in / Tab-trap — see Bug 2.)*
-  ![Submit dialog](screenshots/desktop_4.1_submit_dialog.png)
-
-- **§5a Save-on-exit (X)** — exit dialog "Leave the test? — Your progress is saved, you can resume
-  later" with **Keep going** / **Leave and save**; confirming returns to the form start with the
-  attempt still incomplete; re-entering offers **Continue Form** and resumes at the correct page.
-  ![Save-on-exit dialog](screenshots/desktop_5.1_save_on_exit_dialog.png)
-
-- **§5b Submit-on-exit (X)** — exit dialog warns "Leaving now will submit your answers and score your
-  attempt"; **Leave and submit** finalises and shows results. **Server-side safety net:** abandoning a
-  saved attempt via raw browser navigation (no X) and returning to the start screen shows the stale
-  attempt **completed** (no lingering "Continue"; finalised attempt in the previous-attempts summary);
-  starting again creates a new attempt.
-  ![Submit-on-exit dialog](screenshots/desktop_5.2_submit_on_exit_dialog.png)
-
-- **§5c beforeunload** — a generic browser "leave site?" prompt appears on raw navigation/reload from
-  the runner; it calls no Django endpoint. (Deliberate in-runner navigation — Next/Previous/exit links
-  — does **not** trigger it.)
-
-- **§6a QUIZ results** — normal chrome; pass/fail banner ("Quiz passed!" / "Quiz not passed"); SVG
-  **score ring** rendering the percentage with a token-driven colour (`text-success` green on pass,
-  `text-border` track; error/red on fail) over a `currentColor` arc; honest stats ("5 / 6 correct",
-  "0 / 6 correct"); with `quiz_show_incorrect=True` the **"Review incorrect answers"** list shows each
-  question's *Your answer* vs *Correct answer*; **no** per-topic breakdown and **no** per-question
-  "Here's the idea"; Continue / Retry navigation works.
-  ![Quiz pass result](screenshots/desktop_6.1_quiz_results_pass.png)
-  ![Quiz fail + incorrect review](screenshots/desktop_6.3_quiz_fail_incorrect_review.png)
-
-- **§6b CATEGORY_VALUE_SUM results** — clear **"marking is in progress"** state with no fabricated
-  score; existing category-display block preserved ("Satisfaction 5/7", "Recommendation 5/5").
-  ![Survey result](screenshots/desktop_6.2_survey_results.png)
-
-- **§7 Theming** — all three screens render correctly in the default theme; progress fill uses the
-  secondary token; **no Phosphor / Google-fonts CDN links** (only existing htmx/Alpine/chart.js deps);
-  icons are inline SVG via `c-icon`. *(First-class build not available — first-class palette spot-check
-  skipped.)*
-
-- **§8 Question-type coverage** — `multiple_choice` (radio), `checkboxes` (checkbox, multi-select),
-  `short_text` (`<input type="text">`), `long_text` (`<textarea>`) all render as native, labelled
-  controls inside fieldsets, are keyboard-operable, and persist through navigation into scoring/results.
-  ![All four question types](screenshots/desktop_8.1_question_types.png)
-
-- **Responsive (mobile 375×812 & tablet 768×1024)** — start screen (two-cell meta grid, attempts list,
-  CTA), runner (top bar, progress strip + dots, full-width option tiles, sticky full-width Next),
-  dialogs, and results all adapt cleanly with good touch targets and no overflow. The course TOC
-  becomes a drawer on small screens.
-  ![Mobile runner](screenshots/mobile_2.1_runner.png)
-  ![Mobile results](screenshots/mobile_6.1_results.png)
-  ![Tablet runner](screenshots/tablet_2.1_runner.png)
+### B. Submit-on-exit dialog copy vs. discarded current-page edits
+On a `submit_on_exit = True` form, the exit dialog says *"Leaving now will submit your answers
+and score your attempt."* The "Leave and submit" button posts a **separate CSRF-only form** to
+`form_submit_and_exit`, so the **current page's unsaved edits are discarded** — only previously
+saved pages are scored. This is **by design** (plan §340, §356: *"unsaved edits on this page
+aren't kept"*, and matches the server-side safety net which also can't capture unsaved edits).
+Flagging only because the word "your answers" could read as "including what I just typed on this
+page." No action required unless the copy is to be tightened.
 
 ---
 
-## Notes / tangential observations
+## What was tested and passed
 
-- On mobile, the start/results screens (which keep the normal `_course_base.html` chrome) open with the
-  course **TOC drawer expanded by default**, covering the content until dismissed. This is inherited
-  course-player behaviour, not specific to this feature — flagged only for awareness.
-- The Django Debug Toolbar handle (`DJDT`) overlaps some content in screenshots; it is a dev-only
-  overlay and not part of the app.
-- Could not be tested: visual confirmation of the **double-submit guard** disabling the Submit button —
-  submission navigates away immediately, so the reactive `disabled` state couldn't be observed in the
-  browser. The guard is implemented via the `submitting` flag + `x-bind:disabled` (recent commit
-  `6f875e9` also addressed a stuck-disabled regression here); worth a dedicated check after Bug 1 is
-  fixed (which currently forces JS submission on image forms).
+All checks below verified in the **default theme**.
+
+### Test 1 — Start screen (normal chrome)
+- Global header + course chrome present (not the sidebar-less runner). ✓
+- Title, intro markdown render. ✓
+- Meta grid shows exactly two truthful cells (questions + pages); no "estimated time"/"unlimited tries". ✓
+- Previous-attempts summary shown; **no "View all" link**, no disabled placeholder. ✓ (but see Bug 2 re: row count)
+- CTA correct per state: **Start** (no progress), **Continue** (incomplete save-on-exit attempt), **Try Again** (failed quiz). ✓
+
+![](screenshots/desktop_1.1_start_screen.png)
+
+### Test 2 — Runner layout & accessibility
+- No course sidebar/TOC and no global header — runner owns the viewport with its own top bar, progress strip, body, footer. ✓
+- Top bar: exit "X" (left), title (centre), honest "N of M answered" (right) — does **not** say "saved". ✓
+- Progress strip "Page X of Y" with a fill bar matching the page fraction. ✓
+- Page dots: current/visited pages are links; not-yet-reached pages are non-clickable ("Page 2 (not yet accessible)"). ✓
+- Questions are `<fieldset>` with `<legend>`; multiple-choice = radios, checkboxes = checkboxes (label tiles); selection highlight is driven by the checked input. ✓
+- Keyboard: arrow keys move radio selection; Space toggles checkboxes. ✓
+- Markdown-image lightbox opens (confirms `content_engine`/`alpine-components.js` loads in the runner — the previously-fixed QA bug). ✓
+- No console errors, no Alpine CSP "blocked inline expression" errors. ✓
+- *Two-option multiple-choice:* no 2-option question exists in demo data, so this was verified by code inspection — the template (`course_form_page.html`) only branches on the four types and renders all `multiple_choice` as radio tiles regardless of option count; there is **no** bespoke True/False renderer. (See "Test gaps".)
+
+![](screenshots/desktop_2.1_runner_layout.png)
+![](screenshots/desktop_2.2_image_lightbox.png)
+
+### Answered-count honesty
+- After answering page 1 and advancing, page-2 top-bar count reflects the **persisted** page-1 answers. ✓
+- Selecting/typing on the current page increases the count **live** without advancing; the "Ready to submit?" modal shows the same tally. ✓
+
+### Test 3 — Navigation (PRG)
+- **Next** saves the current page then advances; saved answers persist (verified via Back). ✓
+- **Previous** is a plain GET link and does **not** save in-progress edits (unsaved edit discarded on return). ✓
+- Locked page dots cannot be clicked to skip ahead. ✓
+- Runner GET responds with `Cache-Control: no-store`. ✓
+
+### Test 4 — Final-page submit dialog
+- Dialog "Ready to submit?" opens (does not submit immediately); body explains scoring + immutability. ✓
+- Shows only answered / total counts — **no "flagged"**. ✓
+- "Go back and review" dismisses and keeps the learner on the page. ✓
+- "Submit" finalises and lands on the results page. ✓
+- Double-submit guard: Submit is `x-bind:disabled="submitting"` (disables on first click). ✓
+- Accessibility: `role="dialog"`, focus moves into the dialog, **Escape** closes it and returns focus to the Next button. ✓
+
+![](screenshots/desktop_4.1_submit_dialog.png)
+
+### Test 5 — Exit behaviour (the X control)
+- **5a Save-on-exit** (`submit_on_exit=False`): exit dialog warns progress is saved and resumable; confirming returns to the start screen with the attempt still incomplete; re-entering offers **Continue** and resumes at the correct page. ✓
+- **5b Submit-on-exit** (`submit_on_exit=True`): exit dialog warns leaving will submit and score; "Leave and submit" finalises and shows results. ✓
+- **5b Server-side safety net:** answered one page then left via raw browser navigation (no X); returning to the start screen shows the attempt **completed** (no lingering "Continue"; finalised attempt at 50% (3/6) — page 1 saved, page 2 unanswered). ✓
+- **5c beforeunload:** raw navigation triggers the generic browser "leave site?" prompt; the handler only calls `e.preventDefault()` and **never calls a Django endpoint** (confirmed in `alpine-components.js` and verified live — the prompt fired during navigation). ✓
+
+![](screenshots/desktop_5a.1_save_on_exit_dialog.png)
+![](screenshots/desktop_5b.1_submit_on_exit_dialog.png)
+
+### Test 6 — Results screens (normal chrome)
+- **6a QUIZ:** normal chrome; pass/fail banner; SVG score ring rendering the percentage; ring colour from a token (`text-success` over `text-border` track); `quiz_show_incorrect` review lists the learner's wrong answers with the correct options; **no** per-topic breakdown and **no** "Here's the idea" explanations; back/retry navigation works. ✓ (verified both a passing 100% result and a failing 50% result with the incorrect-answers review)
+- **6b CATEGORY_VALUE_SUM:** clear "marking is in progress" state with no fabricated score; existing category-sum display preserved (Satisfaction 3/7, Recommendation 5/5). ✓
+
+![](screenshots/desktop_6.1_quiz_result_pass.png)
+![](screenshots/desktop_6.3_quiz_fail_incorrect_review.png)
+![](screenshots/desktop_6.2_survey_result.png)
+
+### Test 7 — Theming sanity
+- All three screens render correctly in the default theme; no raw/unstyled elements, no broken layout. ✓
+- Progress fill uses the secondary token (grey in default). ✓
+- **No Phosphor / Google-fonts CDN links**; icons are inline SVG via `c-icon`. ✓ (The only external scripts are pre-existing app-wide CDNs — htmx, Alpine, Chart.js — out of scope for this feature.)
+- First-class build: not available in this environment, so the first-class palette spot-check was **not** run. (See "Test gaps".)
+
+### Test 8 — Question-type coverage
+- `multiple_choice` (radios), `checkboxes`, `short_text` (`<input type="text">`), `long_text` (`<textarea>`) all render, are keyboard-operable, correctly labelled (visible legend + `sr-only` label tying each text input to its question), and persist through Next/submit into scoring/results. ✓
+
+![](screenshots/desktop_8.1_survey_question_types.png)
+
+### Responsive (mobile 375×812 / tablet 768×1024)
+- **Mobile:** runner top bar fits (X / title / count); page dots + fill bar render; question tiles and Submit stack full-width; start screen, course-outline drawer, submit modal, and results all render without overflow or overlap; touch targets are large (full-width tiles/buttons). ✓
+- **Tablet:** runner uses a clean centred content column; start screen shows a 2-column meta grid; the course outline collapses to a drawer toggle (same as mobile); submit modal and results render at sensible widths. ✓
+
+![](screenshots/mobile_2.1_runner_layout.png)
+![](screenshots/mobile_4.1_submit_dialog.png)
+![](screenshots/mobile_6.1_quiz_result.png)
+![](screenshots/tablet_2.1_runner_layout.png)
+![](screenshots/tablet_1.1_start_screen.png)
+
+---
+
+## Test gaps / things not executed
+
+1. **Two-option multiple-choice (Test 2):** no 2-option `multiple_choice` question exists in the
+   demo content, so the "renders like any other MC, no bespoke True/False UI" check was verified
+   by **code inspection** rather than in the browser. The template has no True/False branch — all
+   `multiple_choice` render identically as radio tiles regardless of option count — so a 2-option
+   question would necessarily render as standard radios. (Not blocked by data that
+   `qa-data-helper` would normally create; this is a content/question-definition gap, and the
+   code-level guarantee is strong.)
+2. **First-class theme spot-check (Test 7):** no first-class build was available in this
+   environment, so only the default theme was verified. The default theme is the one that "must
+   work" per the plan; first-class is "if available".
