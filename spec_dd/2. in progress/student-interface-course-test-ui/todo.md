@@ -57,6 +57,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user + cmd) Reconcile answered-count discrepancy: live tally vs spec/QA "persisted answers only" (spec §113/§239, QA §2) — decide to update the docs or revert (TDD if code changes)
 - [x] (user + cmd) Fix QA bug: GET `form_fill_page` 500s (`AttributeError`) when entering the runner for an already-completed form — add the `None` guard the POST branch already has (`views.py:578`) (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: previous-attempts summary lists every attempt instead of best/most-recent (`views.py:449-451` queryset unbounded; spec §86/plan §173-298) (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: quiz incorrect-answers review renders empty "Your answer"/"Correct answer" for text (`short_text`/`long_text`) questions — typed response not shown and text Qs scored incorrect (`course_form_complete.html` ~72-98) (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: demo content not extended with `checkboxes`/`short_text`/`long_text` question types (plan §7 only partially done; demo_content has only `multiple_choice`) (TDD — failing test first, then fix)
 
 ## 10. Pull request
 
