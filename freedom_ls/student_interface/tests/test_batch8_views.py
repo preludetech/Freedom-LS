@@ -879,3 +879,90 @@ def test_form_fill_page_post_with_no_incomplete_attempt_redirects(
         kwargs={"course_slug": course.slug, "index": 1},
     )
     assert response["Location"] == expected_redirect
+
+
+@pytest.mark.django_db
+def test_form_fill_page_get_with_no_incomplete_attempt_redirects(
+    mock_site_context, client
+):
+    """GET to form_fill_page with no incomplete attempt redirects, not 500.
+
+    get_latest_incomplete() returns None when there is no incomplete attempt
+    (e.g. the form is already completed). The GET branch must guard this case
+    exactly as the POST branch does, rather than dereferencing None and raising
+    AttributeError ('NoneType' object has no attribute 'existing_answers_dict').
+    """
+    user = UserFactory()
+    form = _make_quiz_form()
+    course = _make_course_with_form(form)
+    _register(user, course)
+    client.force_login(user)
+
+    # A completed attempt exists, so there is no incomplete attempt to resume.
+    FormProgressFactory(
+        user=user,
+        form=form,
+        completed_time=timezone.now(),
+        scores={"score": 2, "max_score": 2},
+    )
+
+    page_url = reverse(
+        "student_interface:form_fill_page",
+        kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
+    )
+    response = client.get(page_url)
+
+    assert response.status_code == 302
+    expected_redirect = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    assert response["Location"] == expected_redirect
+
+
+# ---------------------------------------------------------------------------
+# Bug 2 — previous-attempts summary shows only the most-recent attempt
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_view_form_previous_attempts_limited_to_most_recent(mock_site_context, client):
+    """The start-screen previous-attempts summary shows only the most-recent
+    completed attempt, not every attempt (spec §86, plan §174/§298)."""
+    user = UserFactory()
+    form = _make_quiz_form()
+    course = _make_course_with_form(form)
+    _register(user, course)
+    client.force_login(user)
+
+    now = timezone.now()
+    older = FormProgressFactory(
+        user=user,
+        form=form,
+        completed_time=now - timezone.timedelta(hours=2),
+        scores={"score": 0, "max_score": 2},
+    )
+    middle = FormProgressFactory(
+        user=user,
+        form=form,
+        completed_time=now - timezone.timedelta(hours=1),
+        scores={"score": 1, "max_score": 2},
+    )
+    most_recent = FormProgressFactory(
+        user=user,
+        form=form,
+        completed_time=now,
+        scores={"score": 2, "max_score": 2},
+    )
+
+    url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    completed = list(response.context["completed_form_progress"])
+    assert completed == [most_recent]
+    assert older not in completed
+    assert middle not in completed

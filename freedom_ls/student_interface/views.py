@@ -31,7 +31,6 @@ from freedom_ls.student_progress.models import (
 from .utils import (
     IN_PROGRESS,
     READY,
-    CourseListingStatus,
     count_form_questions,
     form_start_page_buttons,
     get_all_courses,
@@ -445,10 +444,12 @@ def view_form(
     if incomplete_form_progress:
         page_number = incomplete_form_progress.get_current_page_number()
 
-    # Get all completed form submissions for this user and form
+    # Get the most-recent completed submission for this user and form. The start
+    # screen shows a compact summary of the latest attempt only (spec §86, plan
+    # §174/§298); the button logic also only needs the latest via .first().
     completed_form_progress = FormProgress.objects.filter(
         user=request.user, form=form, completed_time__isnull=False
-    ).order_by("-completed_time")
+    ).order_by("-completed_time")[:1]
 
     # Determine which buttons to show
     buttons = form_start_page_buttons(
@@ -573,6 +574,17 @@ def form_fill_page(request, course_slug, index, page_number):
         if page_number > 1
         else None
     )
+
+    # No incomplete attempt to resume (e.g. the form is already completed, or it
+    # was finalised by a submit-on-exit safety net). Send the learner back to the
+    # form start screen rather than dereferencing None and 500ing, mirroring the
+    # POST branch above.
+    if form_progress is None:
+        return redirect(
+            "student_interface:view_course_item",
+            course_slug=course_slug,
+            index=index,
+        )
 
     # Build a dictionary of existing answers keyed by question ID
     existing_answers = form_progress.existing_answers_dict(questions)

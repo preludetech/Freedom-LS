@@ -55,6 +55,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user + cmd) Fix QA bug: submit dialog focus not moved into dialog and focus trap spans whole runner instead of the dialog (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: sr-only runner heading says "Question N of M" using page numbers; should say "Page" (`course_form_page.html:326`) (TDD — failing test first, then fix)
 - [x] (user + cmd) Reconcile answered-count discrepancy: live tally vs spec/QA "persisted answers only" (spec §113/§239, QA §2) — decide to update the docs or revert (TDD if code changes)
+- [x] (user + cmd) Fix QA bug: GET `form_fill_page` 500s (`AttributeError`) when entering the runner for an already-completed form — add the `None` guard the POST branch already has (`views.py:578`) (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: previous-attempts summary lists every attempt instead of best/most-recent (`views.py:449-451` queryset unbounded; spec §86/plan §173-298) (TDD — failing test first, then fix)
 
 ## 10. Pull request
 

@@ -1,7 +1,8 @@
 {% comment %}
 Exam previous attempts partial — start screen.
-Shows best / most-recent score for QUIZ; completion dates for CATEGORY_VALUE_SUM.
-Context vars: completed_form_progress (queryset), form (Form model instance).
+Shows the most-recent score for QUIZ; completion date for CATEGORY_VALUE_SUM.
+Context vars: completed_form_progress (queryset, limited to the latest attempt),
+form (Form model instance).
 No "View all" link.
 {% endcomment %}
 {% if completed_form_progress %}
