@@ -95,3 +95,6 @@ FORCE_SITE_NAME = "DemoDev"
 
 
 REQUIRE_TERMS_ACCEPTANCE = True
+
+HEADER_LOGO_STATIC_PATH = "images/first_class_logo.png"
+FAVICON_STATIC_PATH = "images/first_class_logo.png"

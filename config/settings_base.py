@@ -343,6 +343,10 @@ ADDITIONAL_REGISTRATION_FORMS: list[str] = []
 
 # HEADLESS_TOKEN_STRATEGY = default = allauth.headless.tokens.sessions.SessionTokenStrategy
 
+# Header / favicon branding (static paths resolved via {% static %})
+HEADER_LOGO_STATIC_PATH: str | None = None  # e.g., "images/logo.png"
+FAVICON_STATIC_PATH: str | None = None  # e.g., "images/favicon.ico"
+
 # Email template settings
 EMAIL_LOGO_STATIC_PATH = None  # e.g., "images/logo.png"
 EMAIL_FONT_FAMILY = "Arial, Helvetica, sans-serif"

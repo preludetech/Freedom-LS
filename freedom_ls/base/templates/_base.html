@@ -18,6 +18,10 @@
             {% endblock head_title %}
         </title>
 
+        {% if favicon_static_path %}
+            <link rel="icon" href="{% static favicon_static_path %}" />
+        {% endif %}
+
         <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
         <script src="{% static 'base/js/htmx-config.js' %}"></script>
         <script defer

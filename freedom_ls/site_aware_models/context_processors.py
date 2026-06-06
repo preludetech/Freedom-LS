@@ -21,4 +21,6 @@ def site_config(request):
         "site_name": site_name,
         "site_title": config.get("SITE_TITLE", site_name),
         "site_header": config.get("SITE_HEADER", site_name),
+        "header_logo_static_path": settings.HEADER_LOGO_STATIC_PATH,
+        "favicon_static_path": settings.FAVICON_STATIC_PATH,
     }
