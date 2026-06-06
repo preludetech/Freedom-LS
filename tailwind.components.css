@@ -271,7 +271,7 @@
     .header {
         @apply bg-header text-on-header sticky top-0 z-30 shadow-md
                transition-shadow duration-200 motion-reduce:transition-none
-               p-3 sm:p-4 sm:px-6 flex justify-between items-center
+               py-3 sm:py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center
     }
 
     .header[data-scrolled="true"] {
