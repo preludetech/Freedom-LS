@@ -1,35 +1,5 @@
 {% load course_storage_keys %}
 
-{% partialdef status-icon %}
-    {% if child.status == "BLOCKED" %}
-        <span class="text-sm text-muted/50">
-            <c-icon name="locked" class="size-4" aria_label="Locked" />
-        </span>
-    {% elif child.status == "READY" %}
-        <a href="{{ child.url }}"
-           class="text-primary hover:text-primary no-underline">
-            <c-icon name="in_progress" class="size-4" aria_label="Not started" />
-        </a>
-    {% elif child.status == "IN_PROGRESS" %}
-        <a href="{{ child.url }}"
-           class="text-primary hover:text-primary no-underline">
-            <c-icon name="in_progress" class="size-4" aria_label="In progress" />
-        </a>
-    {% elif child.status == "COMPLETE" %}
-        <a href="{{ child.url }}"
-           class="text-success hover:text-success no-underline">
-            <c-icon name="complete" class="size-4" aria_label="Completed" />
-        </a>
-    {% elif child.status == "FAILED" %}
-        <a href="{{ child.url }}"
-           class="text-error hover:text-error no-underline">
-            <c-icon name="retry" class="size-4" aria_label="Needs retry" />
-        </a>
-    {% else %}
-        <span class="text-sm text-error">Unknown status "{{ child.status }}"</span>
-    {% endif %}
-{% endpartialdef %}
-
 {% partialdef deadline-badges %}
     {% if child.deadlines %}
         {% for dl in child.deadlines %}
@@ -50,13 +20,17 @@
 {% endpartialdef %}
 
 {% partialdef content-icon %}
-    {% if child.type == "TOPIC" %}
-        <c-icon name="topic" class="size-4" />
-    {% elif child.type == "FORM" %}
-        <c-icon name="form" class="size-4" />
-    {% elif child.type == "COURSE_PART" %}
-        <c-icon name="course_part" class="size-4" />
-    {% endif %}
+    {% comment %} Type icon, coloured by status; status also announced via sr-only text. {% endcomment %}
+    <span class="shrink-0 {% if child.status == "BLOCKED" %}text-muted/50{% elif child.status == "COMPLETE" %}text-success{% elif child.status == "FAILED" %}text-error{% elif child.status == "READY" or child.status == "IN_PROGRESS" %}text-primary{% else %}text-muted{% endif %}">
+        {% if child.type == "TOPIC" %}
+            <c-icon name="topic" class="size-4" />
+        {% elif child.type == "FORM" %}
+            <c-icon name="form" class="size-4" />
+        {% elif child.type == "COURSE_PART" %}
+            <c-icon name="course_part" class="size-4" />
+        {% endif %}
+        <span class="sr-only">{% if child.status == "BLOCKED" %}Locked{% elif child.status == "READY" %}Not started{% elif child.status == "IN_PROGRESS" %}In progress{% elif child.status == "COMPLETE" %}Completed{% elif child.status == "FAILED" %}Needs retry{% endif %}</span>
+    </span>
 {% endpartialdef %}
 
 {% partialdef content-title %}
@@ -83,32 +57,10 @@
             {% endif %}
         </span>
     </span>
-    {% if is_expandable %}
-        <button x-on:click="toggleExpanded"
-                x-bind:aria-expanded="expanded"
-                class="flex items-center gap-2 text-left hover:text-primary transition-colors cursor-pointer flex-1 min-w-0">
-            {% comment %} Decorative chevron: state is conveyed by aria-expanded, so
-            it is hidden from AT to keep the button's accessible name to the title. {% endcomment %}
-            <span class="text-muted shrink-0 {{ text_size }}" aria-hidden="true">
-                <span x-show="expanded" x-cloak>
-                    <c-icon name="collapse" class="size-4" />
-                </span>
-                <span data-toggle-icon>
-                    <c-icon name="expand" class="size-4" />
-                </span>
-            </span>
-            <span class="flex-1 min-w-0 truncate {{ text_size }}">
-                {% partial content-title %}
-            </span>
-        </button>
-    {% else %}
-        <span class="text-muted shrink-0 {{ text_size }}">
-            {% partial content-icon %}
-        </span>
-        <span class="flex-1 min-w-0 truncate {{ text_size }}">
-            {% partial content-title %}
-        </span>
-    {% endif %}
+    {% partial content-icon %}
+    <span class="flex-1 min-w-0 truncate {{ text_size }}">
+        {% partial content-title %}
+    </span>
 {% endpartialdef %}
 
 {% partialdef course-children %}
@@ -123,40 +75,54 @@
                         data-storage-key="{{ part_storage_key }}"
                         {% if child.contains_current %}data-contains-current="true"{% endif %}
                         class="py-1.5">
-                        <div class="flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-2 flex-1 min-w-0">
-                                {% with parent_counter=forloop.counter is_expandable=True text_size="text-sm" counter_width="w-5" %}
+                        {% comment %} Whole row toggles expand/collapse; chevron sits at the
+                        right end where the status icon used to be. {% endcomment %}
+                        <button x-on:click="toggleExpanded"
+                                x-bind:aria-expanded="expanded"
+                                class="flex items-center justify-between gap-2 w-full text-left hover:text-primary transition-colors cursor-pointer">
+                            <span class="flex items-center gap-2 flex-1 min-w-0">
+                                {% with parent_counter=forloop.counter text_size="text-sm" counter_width="w-5" %}
                                     {% partial content-row-inner %}
                                 {% endwith %}
-                            </div>
-                            <div class="flex items-center gap-2 shrink-0">
+                            </span>
+                            <span class="flex items-center gap-2 shrink-0">
                                 {% partial deadline-badges %}
-                                {% partial status-icon %}
-                            </div>
-                        </div>
+                                {% comment %} Decorative chevron: state is conveyed by
+                                aria-expanded, so it is hidden from AT. {% endcomment %}
+                                <span class="text-muted shrink-0 text-sm" aria-hidden="true">
+                                    <span x-show="expanded" x-cloak>
+                                        <c-icon name="collapse" class="size-4" />
+                                    </span>
+                                    <span data-toggle-icon>
+                                        <c-icon name="expand" class="size-4" />
+                                    </span>
+                                </span>
+                            </span>
+                        </button>
                         {% comment %} Nested children of course part. {% endcomment %}
                         <ul x-show="expanded"
                             x-collapse
                             x-cloak
-                            class="list-none ml-6 mt-1 space-y-1 border-l-2 border-border pl-3">
+                            class="list-none ml-6 mt-1 space-y-1">
                             {% if child.children %}
                                 {% for part_child in child.children %}
                                     <li class="flex items-center justify-between gap-2 text-sm{% if part_child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
                                         <div class="flex items-center gap-1 flex-1 min-w-0">
-                                            {% with child=part_child parent_counter=forloop.parentloop.counter child_counter=forloop.counter is_expandable=False text_size="text-xs" counter_width="w-8" %}
+                                            {% with child=part_child parent_counter=forloop.parentloop.counter child_counter=forloop.counter text_size="text-xs" counter_width="w-8" %}
                                                 {% partial content-row-inner %}
                                             {% endwith %}
                                         </div>
                                         <div class="flex items-center gap-2 shrink-0">
                                             {% with child=part_child %}
                                                 {% partial deadline-badges %}
-                                                {% partial status-icon %}
                                             {% endwith %}
                                         </div>
                                     </li>
                                 {% endfor %}
                             {% else %}
-                                <li class="text-xs text-muted/50 italic list-none">No items in this part</li>
+                                <li class="text-xs text-muted/50 italic list-none">
+                                    No items in this part
+                                </li>
                             {% endif %}
                         </ul>
                     </li>
@@ -164,13 +130,12 @@
                     {% comment %} Regular content item (Topic, Form, Course). {% endcomment %}
                     <li class="flex items-center justify-between gap-2 py-1.5{% if child.is_current %} bg-primary/10 -mx-1 px-1 rounded{% endif %}">
                         <div class="flex items-center gap-2 flex-1 min-w-0">
-                            {% with parent_counter=forloop.counter is_expandable=False text_size="text-sm" counter_width="w-5" %}
+                            {% with parent_counter=forloop.counter text_size="text-sm" counter_width="w-5" %}
                                 {% partial content-row-inner %}
                             {% endwith %}
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
                             {% partial deadline-badges %}
-                            {% partial status-icon %}
                         </div>
                     </li>
                 {% endif %}
