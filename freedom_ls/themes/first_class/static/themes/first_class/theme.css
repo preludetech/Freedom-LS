@@ -177,6 +177,37 @@
     }
 }
 
+/* Course-outline numbering — first_class renders the TOC counters in the
+ * brand mono face for a "code" feel. Top-level items get a zero-padded,
+ * dot-less index (01, 02, 03 …) generated with a CSS counter; child items
+ * keep the server-rendered `parent.child` form (e.g. 3.1) unchanged. The
+ * shared template carries inert `.toc-counter*` hooks, so this treatment is
+ * scoped to first_class and the default theme keeps `1.` / `1.1`. These are
+ * plain CSS rules (not wrapped in an `@layer`) so Tailwind emits them
+ * verbatim rather than tree-shaking them as candidate utilities. */
+nav[aria-label="Course outline"] {
+    counter-reset: toc-top;
+}
+
+/* Every top-level outline row advances the counter. Nested rows live in an
+ * inner <ul>, so this `> ul > li` selector skips them. */
+nav[aria-label="Course outline"] > ul > li {
+    counter-increment: toc-top;
+}
+
+nav[aria-label="Course outline"] .toc-counter {
+    font-family: var(--font-mono);
+}
+
+/* Swap the server-rendered top-level index for the zero-padded counter. */
+.toc-counter-top .toc-counter-value {
+    display: none;
+}
+
+.toc-counter-top::before {
+    content: counter(toc-top, decimal-leading-zero);
+}
+
 /* Heading-weight override — the brand uses `font-semibold` (not the
  * default contract's `font-bold`) for h2-h4, with `tracking-tight` on the
  * largest two headings. Body, mono, and the responsive size scale stay

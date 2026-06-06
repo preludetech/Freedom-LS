@@ -74,12 +74,14 @@
 {% endpartialdef %}
 
 {% partialdef content-row-inner %}
-    <span class="text-muted/50 {{ text_size }} {{ counter_width }} shrink-0">
-        {% if child_counter %}
-            {{ parent_counter }}.{{ child_counter }}
-        {% else %}
-            {{ parent_counter }}.
-        {% endif %}
+    <span class="text-muted/50 {{ text_size }} {{ counter_width }} shrink-0 toc-counter {% if child_counter %}toc-counter-child{% else %}toc-counter-top{% endif %}">
+        <span class="toc-counter-value">
+            {% if child_counter %}
+                {{ parent_counter }}.{{ child_counter }}
+            {% else %}
+                {{ parent_counter }}.
+            {% endif %}
+        </span>
     </span>
     {% if is_expandable %}
         <button x-on:click="toggleExpanded"
