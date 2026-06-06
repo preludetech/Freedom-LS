@@ -38,19 +38,23 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 7. Implementation
 
 - [x] (cmd) Run `/implement_plan` to execute the implementation plan
-- [ ] (user) Spot-check the changes
+- [x] (user) Spot-check the changes
 
 ## 8. Code security review
 
-- [ ] (cmd) Run `/security-review` on the pending changes
-- [ ] (user) Address any issues raised
+- [x] (cmd) Run `/security-review` on the pending changes
+- [x] (user) Address any issues raised
 
 ## 9. QA
 
-- [ ] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)
+- [x] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: closed spotlight `<dialog>`s blanket the page and intercept clicks/taps — gate `display:flex` on `[open]` (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: page behind scrolls while the spotlight is open — add a background scroll-lock (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: long spotlight descriptions don't scroll inside the card and can clip the heading unreachably (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: demo content doubles "Figure 2: Figure 2:" — drop the redundant title prefix where `number="2"` is set (TDD — failing test first, then fix)
 
 ## 10. Pull request
 
