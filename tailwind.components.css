@@ -350,11 +350,23 @@
      * it sits on the theme-neutral scrim, not on a themed surface. */
     .spotlight-dialog {
         /* Full-viewport flex layout: top row (heading + close button),
-         * centred card, bottom caption block. */
-        display: flex;
+         * centred card, bottom caption block.
+         *
+         * `display` is intentionally NOT set here — it is gated on [open]
+         * below so closed dialogs keep the UA `dialog:not([open])
+         * {display:none}` and stay inert. Setting display:flex on the base
+         * rule made closed dialogs blanket the viewport and swallow pointer
+         * events over the page beneath (and stopped the enter/leave display
+         * transition from toggling). Mirrors `.side-panel-dialog`. */
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        /* `safe center` centres the column when it fits, but falls back to
+         * flex-start on overflow so the top heading never scrolls above the
+         * viewport unreachably. Paired with overflow-y:auto so an overflowing
+         * column (e.g. a long description on a short viewport) scrolls inside
+         * the dialog instead of clipping its chrome. */
+        justify-content: safe center;
+        overflow-y: auto;
         position: fixed;
         inset: 0;
         width: 100%;
@@ -376,6 +388,7 @@
     }
 
     .spotlight-dialog[open] {
+        display: flex;
         opacity: 1;
         scale: 1;
     }

@@ -51,10 +51,10 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: closed spotlight `<dialog>`s blanket the page and intercept clicks/taps — gate `display:flex` on `[open]` (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: page behind scrolls while the spotlight is open — add a background scroll-lock (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: long spotlight descriptions don't scroll inside the card and can clip the heading unreachably (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: demo content doubles "Figure 2: Figure 2:" — drop the redundant title prefix where `number="2"` is set (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: closed spotlight `<dialog>`s blanket the page and intercept clicks/taps — gate `display:flex` on `[open]` (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: page behind scrolls while the spotlight is open — add a background scroll-lock (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: long spotlight descriptions don't scroll inside the card and can clip the heading unreachably (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: demo content doubles "Figure 2: Figure 2:" — drop the redundant title prefix where `number="2"` is set (TDD — failing test first, then fix)
 
 ## 10. Pull request
 

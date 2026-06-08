@@ -44,12 +44,22 @@ document.addEventListener("alpine:init", () => {
 
     // Content lightbox — native <dialog> spotlight (cotton/picture.html).
     // showModal() provides focus-trap, Escape, inert background and focus-restore
-    // to the trigger; we only add open() and a backdrop-click-to-close guard.
+    // to the trigger; we add open(), a backdrop-click-to-close guard, and a
+    // background scroll-lock (showModal() makes the background inert but does
+    // NOT stop it scrolling).
     Alpine.data("contentLightbox", () => ({
+        init() {
+            // Unlock on *every* close route — close button, Escape, scrim — by
+            // listening to the dialog's native "close" event rather than only
+            // our close() method (Escape never calls close()).
+            this.$refs.dialog.addEventListener("close", () => this._unlockScroll());
+        },
         open() {
+            this._lockScroll();
             this.$refs.dialog.showModal();
         },
         close() {
+            // Scroll is unlocked by the "close" event listener wired in init().
             this.$refs.dialog.close();
         },
         onBackdropClick(event) {
@@ -57,6 +67,15 @@ document.addEventListener("alpine:init", () => {
             // when the surrounding scrim is clicked; the card/image are
             // descendants and are correctly ignored. Mirrors sidePanel.
             if (event.target === this.$refs.dialog) this.close();
+        },
+        _lockScroll() {
+            // Stash the inline value so we restore exactly what was there (which
+            // may be ""), not a hard-coded default.
+            this._prevOverflow = document.documentElement.style.overflow;
+            document.documentElement.style.overflow = "hidden";
+        },
+        _unlockScroll() {
+            document.documentElement.style.overflow = this._prevOverflow ?? "";
         },
     }));
 });
