@@ -199,6 +199,11 @@
                hover:bg-error-hover focus:ring-error
     }
 
+    /* Small button size — overrides .btn padding (must come after .btn) */
+    .btn-sm {
+        @apply px-4 py-1.5 text-sm
+    }
+
     .surface {
         @apply border border-border rounded-md py-4 px-4 sm:py-6 sm:px-8
     }

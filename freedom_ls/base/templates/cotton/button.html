@@ -9,6 +9,7 @@
     disabled=""
     dropdown=""
     class=""
+    size=""
     icon_left=""
     icon_right=""
     loading=""
@@ -31,7 +32,6 @@ class="{{ computed_class }}"
 </{% if href %}a{% else %}button{% endif %}>
 {% endwith %}
 {% else %}
-{% with computed_class="btn btn-"|add:variant|add:" "|add:class %}
 <{% if href %}a href="{{ href }}"{% else %}button{% endif %}
 {% if form %} form="{{ form }}"{% endif %}
 {% if id %} id="{{ id }}"{% endif %}
@@ -39,7 +39,7 @@ class="{{ computed_class }}"
 {% if value %} value="{{ value }}"{% endif %}
 {% if not href and type %} type="{{ type }}"{% endif %}
 {% if disabled %} disabled{% endif %}
-class="{{ computed_class }}"
+class="btn btn-{{ variant }}{% if size == 'small' %} btn-sm{% endif %} {{ class }}"
 {{ attrs }}
 >
 {% if loading %}
@@ -49,7 +49,6 @@ class="{{ computed_class }}"
 {% if icon_left %}<c-icon :name="icon_left" class="size-5 mr-2" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="size-5 ml-2" />{% endif %}
 {% endif %}
 </{% if href %}a{% else %}button{% endif %}>
-{% endwith %}
 {% endif %}
 
 {% comment %}
@@ -72,6 +71,9 @@ Usage Examples:
 
   <!-- Additional classes -->
   <c-button class="w-full">Full width button</c-button>
+
+  <!-- Small size -->
+  <c-button size="small">Small button</c-button>
 
   <!-- Dropdown menu style -->
   <c-button dropdown="true">Dropdown menu item</c-button>

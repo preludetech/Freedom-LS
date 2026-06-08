@@ -30,13 +30,15 @@ should use alt="".
                             {% if number %}<span class="font-semibold">Figure {{ number }}</span>{% if caption %}: {% endif %}{% endif %}{{ caption }}
                         </span>
                         {# Real button so the lightbox trigger is keyboard-accessible. #}
-                        <button type="button"
-                                x-ref="trigger"
-                                @click="show"
-                                class="btn btn-secondary shrink-0 inline-flex items-center gap-1.5 px-3 py-1 text-sm">
-                            <c-icon name="fullscreen" class="size-4" />
+                        <c-button type="button"
+                                  variant="secondary"
+                                  size="small"
+                                  icon_left="fullscreen"
+                                  x-ref="trigger"
+                                  @click="show"
+                                  class="shrink-0">
                             Open image
-                        </button>
+                        </c-button>
                     </div>
                 </c-slot>
             </c-media-card>
