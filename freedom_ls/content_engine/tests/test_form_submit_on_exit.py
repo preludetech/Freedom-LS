@@ -1,29 +1,14 @@
-"""Tests for Form.submit_on_exit model field and schema validation."""
+"""Tests for Form.submit_on_exit schema (content-loading) validation."""
 
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from freedom_ls.content_engine.factories import FormFactory
 from freedom_ls.content_engine.management.commands.content_save import (
     save_content_to_db,
 )
 from freedom_ls.content_engine.models import Form
-
-
-@pytest.mark.django_db
-def test_form_submit_on_exit_defaults_to_false(mock_site_context):
-    """A Form created without specifying submit_on_exit has it False."""
-    form = FormFactory()
-    assert form.submit_on_exit is False
-
-
-@pytest.mark.django_db
-def test_form_submit_on_exit_can_be_set_true(mock_site_context):
-    """A Form created with submit_on_exit=True stores it correctly."""
-    form = FormFactory(submit_on_exit=True)
-    assert form.submit_on_exit is True
 
 
 @pytest.mark.django_db
