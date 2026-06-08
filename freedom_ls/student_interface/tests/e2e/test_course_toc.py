@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -213,15 +215,17 @@ def test_back_button_closes_mobile_bottom_sheet(
 @pytest.mark.playwright
 # transaction=True so the Playwright browser (separate connection) sees committed data
 @pytest.mark.django_db(transaction=True)
-def test_course_part_toggle_accessible_name_is_just_the_title(
+def test_course_part_toggle_does_not_announce_chevron_state(
     live_server,
     logged_in_page: Page,
 ):
-    """The part-toggle's accessible name is the part title only.
+    """The part-toggle does not fold the chevron's icon name into its name.
 
-    The decorative expand/collapse chevron must not fold its icon name into the
-    button's accessible name (state is conveyed by ``aria-expanded``), so a
-    screen reader announces "Chapter One", not "expand Chapter One".
+    The whole part row is the toggle button, so its accessible name carries the
+    part title (plus the decorative outline counter and an ``sr-only`` status
+    word). What it must *not* carry is the expand/collapse chevron's icon name —
+    state is conveyed by ``aria-expanded`` and the chevron is ``aria-hidden`` —
+    so a screen reader never announces "expand Chapter One".
     """
     course = CourseFactory(title="Test Course", slug="test-course")
     landing_topic = TopicFactory(
@@ -253,7 +257,11 @@ def test_course_part_toggle_accessible_name_is_just_the_title(
     logged_in_page.goto(item_url)
 
     outline = logged_in_page.get_by_role("navigation", name="Course outline")
-    # exact=True fails if the chevron's icon name ("expand"/"collapse") leaks
-    # into the accessible name.
-    toggle = outline.get_by_role("button", name="Chapter One", exact=True)
+    # The part row is the toggle button; its accessible name contains the title.
+    toggle = outline.get_by_role("button", name="Chapter One")
     expect(toggle).to_be_visible()
+    # The chevron's icon name ("expand"/"collapse") must not leak into any
+    # outline button's accessible name.
+    expect(
+        outline.get_by_role("button", name=re.compile("expand|collapse", re.IGNORECASE))
+    ).to_have_count(0)
