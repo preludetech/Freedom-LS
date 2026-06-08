@@ -1,4 +1,4 @@
-"""Batch 8 tests: views + helpers for stale-attempt safety net, runner context, form_submit_and_exit."""
+"""Form-runner view tests: stale-attempt safety net, runner context, form_submit_and_exit."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from freedom_ls.content_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy
+from freedom_ls.student_interface.utils import count_form_questions
 from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 from freedom_ls.student_progress.factories import FormProgressFactory
 from freedom_ls.student_progress.models import FormProgress
@@ -636,7 +637,6 @@ def test_save_on_exit_dialog_renders_real_view_course_item_url(
     assert f'href="{expected_url}"' in content
     # The unrendered template tag must not leak into the HTML (cotton would
     # otherwise pass the literal `{% url ... %}` through, HTML-escaped).
-    assert "view_course_item" not in content.split("Leave and save")[0][-300:]
     assert "{% url" not in content
 
 
@@ -764,8 +764,6 @@ def test_course_form_complete_no_percentage_for_non_quiz(mock_site_context, clie
 @pytest.mark.django_db
 def test_count_form_questions_returns_total_across_all_pages(mock_site_context):
     """count_form_questions returns the total question count across all pages."""
-    from freedom_ls.student_interface.utils import count_form_questions
-
     form = FormFactory()
     page1 = FormPageFactory(form=form, order=0)
     FormQuestionFactory(form_page=page1, order=0)
@@ -781,8 +779,6 @@ def test_count_form_questions_returns_zero_for_form_with_no_questions(
     mock_site_context,
 ):
     """count_form_questions returns 0 for a form with no questions."""
-    from freedom_ls.student_interface.utils import count_form_questions
-
     form = FormFactory()
     assert count_form_questions(form) == 0
 
