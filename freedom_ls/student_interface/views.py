@@ -444,12 +444,12 @@ def view_form(
     if incomplete_form_progress:
         page_number = incomplete_form_progress.get_current_page_number()
 
-    # Get the most-recent completed submission for this user and form. The start
-    # screen shows a compact summary of the latest attempt only (spec §86, plan
-    # §174/§298); the button logic also only needs the latest via .first().
+    # Get the most-recent completed submissions for this user and form. The start
+    # screen shows a compact summary of the 5 latest attempts; the button logic
+    # only needs the latest via .first() (the queryset is ordered newest-first).
     completed_form_progress = FormProgress.objects.filter(
         user=request.user, form=form, completed_time__isnull=False
-    ).order_by("-completed_time")[:1]
+    ).order_by("-completed_time")[:5]
 
     # Determine which buttons to show
     buttons = form_start_page_buttons(

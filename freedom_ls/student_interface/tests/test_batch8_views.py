@@ -921,14 +921,16 @@ def test_form_fill_page_get_with_no_incomplete_attempt_redirects(
 
 
 # ---------------------------------------------------------------------------
-# Bug 2 — previous-attempts summary shows only the most-recent attempt
+# previous-attempts summary shows up to the 5 latest attempts, newest first
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
-def test_view_form_previous_attempts_limited_to_most_recent(mock_site_context, client):
-    """The start-screen previous-attempts summary shows only the most-recent
-    completed attempt, not every attempt (spec §86, plan §174/§298)."""
+def test_view_form_previous_attempts_shows_multiple_newest_first(
+    mock_site_context, client
+):
+    """The start-screen previous-attempts summary shows every completed attempt
+    (more than one), ordered newest-first, when there are 5 or fewer."""
     user = UserFactory()
     form = _make_quiz_form()
     course = _make_course_with_form(form)
@@ -963,6 +965,38 @@ def test_view_form_previous_attempts_limited_to_most_recent(mock_site_context, c
 
     assert response.status_code == 200
     completed = list(response.context["completed_form_progress"])
-    assert completed == [most_recent]
-    assert older not in completed
-    assert middle not in completed
+    assert completed == [most_recent, middle, older]
+
+
+@pytest.mark.django_db
+def test_view_form_previous_attempts_capped_at_five(mock_site_context, client):
+    """When more than 5 attempts exist, only the 5 latest are shown."""
+    user = UserFactory()
+    form = _make_quiz_form()
+    course = _make_course_with_form(form)
+    _register(user, course)
+    client.force_login(user)
+
+    now = timezone.now()
+    attempts = [
+        FormProgressFactory(
+            user=user,
+            form=form,
+            completed_time=now - timezone.timedelta(hours=offset),
+            scores={"score": 1, "max_score": 2},
+        )
+        for offset in range(7)
+    ]
+    # attempts[0] is newest (offset 0); attempts[6] is oldest.
+
+    url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    completed = list(response.context["completed_form_progress"])
+    assert completed == attempts[:5]
+    assert attempts[5] not in completed
+    assert attempts[6] not in completed
