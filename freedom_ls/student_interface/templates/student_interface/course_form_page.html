@@ -86,7 +86,7 @@ anchors to the scroll container and focusing it on selection makes the page jump
 {% endpartialdef %}
 
 {% partialdef form-question %}
-    <fieldset class="surface space-y-3">
+    <fieldset class="space-y-3 border-0 p-0">
         <legend class="font-semibold text-on-surface w-full float-left px-0 flex flex-wrap items-baseline gap-x-1">
             <span data-testid="question-number-{{ question.question_number }}">{{ question.question_number }}.</span>
             {{ question.rendered_question }}
@@ -117,7 +117,7 @@ anchors to the scroll container and focusing it on selection makes the page jump
 {% endpartialdef %}
 
 {% partialdef form-content %}
-    <c-markdown-container class="surface max-w-none">
+    <c-markdown-container class="max-w-none">
         {{ child.rendered_content }}
     </c-markdown-container>
 {% endpartialdef form-content %}
