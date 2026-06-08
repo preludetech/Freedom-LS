@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from django.urls import reverse
@@ -838,6 +840,23 @@ def test_runner_sr_only_heading_labels_pages_not_questions(mock_site_context, cl
     content = response.content.decode()
     assert "— Page 1 of" in content
     assert "— Question 1 of" not in content
+
+
+@pytest.mark.django_db
+def test_final_page_submit_button_is_a_real_form_submit(mock_site_context, client):
+    """No-JS fallback: the final-page primary button must be a real submit
+    targeting the page form, so the attempt can be submitted (and server-side
+    completed/scored) without JavaScript. With JS, x-on:click.prevent opens the
+    review dialog instead, but the markup must degrade gracefully.
+    """
+    user = UserFactory()
+    form = _make_quiz_form()  # single page → the runner GET lands on the final page
+
+    response = _start_runner(client, user, form)
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert re.search(r'type="submit"\s+form="runner-page-form"', content)
 
 
 # ---------------------------------------------------------------------------

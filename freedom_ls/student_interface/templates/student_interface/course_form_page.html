@@ -419,13 +419,18 @@ examRunnerForm scope (no intermediate x-data between them).
                             </button>
                         {% else %}
                             {% comment %}
-                            Final page: opens the submit dialog.
-                            x-on:click="openSubmitDialog($el)" — CSP-safe registered method.
-                            The examRunnerForm scope wraps both this button and the dialog panel.
+                            Final page. Real type="submit" targeting the page form so the
+                            attempt can be submitted (and server-side completed/scored) even
+                            without JS — mirroring the intermediate Next buttons.
+                            With JS, x-on:click.prevent suppresses the native submit and opens
+                            the review/submit dialog instead (CSP-safe modifier + registered
+                            method). The examRunnerForm scope wraps both this button and the
+                            dialog panel.
                             {% endcomment %}
-                            <button type="button"
+                            <button type="submit"
+                                    form="runner-page-form"
                                     class="btn btn-primary w-full sm:w-auto flex items-center justify-center gap-2"
-                                    x-on:click="openSubmitDialog($el)">
+                                    x-on:click.prevent="openSubmitDialog($el)">
                                 Next
                                 <c-icon name="next" class="size-5" />
                             </button>
