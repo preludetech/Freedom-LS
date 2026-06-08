@@ -74,9 +74,7 @@ use it for annotations, context, or detailed captions.
                 {% if title %}
                     <h2 id="{{ heading_id }}"
                         class="absolute inset-x-0 top-0 w-full m-0 py-4 pl-6 pr-18 bg-black/40 backdrop-blur-xl font-semibold text-base sm:text-lg leading-snug">
-                        {% if number %}
-                            <span class="block text-accent">Figure {{ number }}</span>
-                        {% endif %}
+                        <span class="block text-accent">{% if number %}Figure {{ number }}{% else %}Figure:{% endif %}</span>
                         <span class="text-white">{{ title }}</span>
                     </h2>
                 {% endif %}
@@ -103,9 +101,9 @@ use it for annotations, context, or detailed captions.
                 {# bottom: full-width panel pinned to the viewport edge with its #}
                 {# own stronger blur (backdrop-blur-xl vs the scrim's            #}
                 {# backdrop-blur-sm). Title in accent, description in fixed light #}
-                {# text — both sit on the scrim. Rendered only when there's       #}
-                {# something to show, so nothing else picks up these utilities.   #}
-                {% if title or description %}
+                {# text — both sit on the scrim. Rendered only when there's a     #}
+                {# description, so nothing else picks up these utilities.         #}
+                {% if description %}
                     <div class="absolute inset-x-0 bottom-0 w-full py-4 px-6 bg-black/40 backdrop-blur-xl">
                         {% if title %}
                             <p class="font-semibold text-accent">
