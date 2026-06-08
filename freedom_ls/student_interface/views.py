@@ -431,8 +431,8 @@ def view_form(
 ):
     """Show the front page of the form"""
 
-    # §4a — stale-attempt safety net: finalise any stale incomplete attempt
-    # for submit-on-exit forms before reading progress state. No-op for save-on-exit.
+    # Finalise any stale incomplete attempt for submit-on-exit forms before reading
+    # progress state. No-op for save-on-exit forms.
     FormProgress.finalise_stale_incomplete(request.user, form)
 
     # Try to get existing incomplete form progress (don't create if it doesn't exist)
@@ -469,7 +469,6 @@ def view_form(
         "buttons": buttons,
         "next_url": next_url,
         **(player_context or {}),
-        # §4b — start screen context: truthful, derivable facts
         "question_count": count_form_questions(form),
         "page_count": form.pages.count(),
     }
@@ -484,8 +483,8 @@ def form_start(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
     form = get_form_for_index(course, index)
 
-    # §4a — stale-attempt safety net: finalise any stale incomplete attempt
-    # for submit-on-exit forms before get_or_create_incomplete runs.
+    # Finalise any stale incomplete attempt for submit-on-exit forms before
+    # get_or_create_incomplete runs. No-op for save-on-exit forms.
     FormProgress.finalise_stale_incomplete(request.user, form)
 
     # Create a FormProgress instance if it doesn't yet exist
@@ -613,10 +612,9 @@ def form_fill_page(request, course_slug, index, page_number):
             }
         )
 
-    # §4c — runner context: honest answered count (persisted answers only).
-    # answered_count is the no-JS fallback; answered_other_pages is the base the
-    # client adds the live current-page tally to (questions on this page are
-    # excluded so the in-browser count is not double-counted).
+    # answered_count is the no-JS fallback (persisted answers only); answered_other_pages
+    # is the base the client adds the live current-page tally to. Questions on this page
+    # are excluded so the in-browser count is not double-counted.
     answered_count = form_progress.answers.count() if form_progress else 0
     current_page_question_ids = {q.id for q in questions}
     answered_other_pages = (
@@ -652,7 +650,6 @@ def form_fill_page(request, course_slug, index, page_number):
         # Player chrome (outline panel + breadcrumb) so the fill page keeps the
         # same orientation as the rest of the player.
         **_player_chrome_context(request.user, course, form, index),
-        # §4c additions
         "answered_count": answered_count,
         "answered_other_pages": answered_other_pages,
         "total_question_count": total_question_count,
@@ -661,7 +658,7 @@ def form_fill_page(request, course_slug, index, page_number):
     }
 
     response = render(request, "student_interface/course_form_page.html", context)
-    # §4c — set Cache-Control: no-store on GET runner responses
+    # Runner pages must re-fetch on back-nav so the answered count is never stale.
     response["Cache-Control"] = "no-store"
     return response
 
@@ -694,7 +691,6 @@ def course_form_complete(request, course_slug, index):
         with contextlib.suppress(ValueError):
             is_failed_quiz = not form_progress.passed()
 
-    # §4e — percentage for QUIZ results: guarded with suppress(ValueError)
     # Only set for QUIZ forms; non-quiz forms do not have a numeric percentage.
     percentage = None
     if form_progress and form.strategy == FormStrategy.QUIZ:

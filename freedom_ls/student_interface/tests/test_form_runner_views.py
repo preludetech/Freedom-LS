@@ -73,7 +73,7 @@ def _make_two_page_form(*, submit_on_exit=False):
 
 
 # ---------------------------------------------------------------------------
-# §4d — form_submit_and_exit
+# form_submit_and_exit
 # ---------------------------------------------------------------------------
 
 
@@ -202,7 +202,7 @@ def test_form_submit_and_exit_requires_login(mock_site_context, client):
 
 
 # ---------------------------------------------------------------------------
-# §4c — answered_count reflects only persisted answers
+# answered_count reflects only persisted answers
 # ---------------------------------------------------------------------------
 
 
@@ -333,7 +333,7 @@ def test_answered_other_pages_excludes_current_page_questions(
 
 
 # ---------------------------------------------------------------------------
-# §4a — stale-attempt safety net: returning to submit-on-exit form finalises stale attempt
+# stale-attempt safety net: returning to submit-on-exit form finalises stale attempt
 # ---------------------------------------------------------------------------
 
 
@@ -442,7 +442,7 @@ def test_view_form_save_on_exit_does_not_finalise_incomplete(mock_site_context, 
 
 
 # ---------------------------------------------------------------------------
-# §4b — view_form context (start screen)
+# view_form context (start screen)
 # ---------------------------------------------------------------------------
 
 
@@ -511,7 +511,7 @@ def test_view_form_start_screen_title_in_tab_but_not_duplicated(
 
 
 # ---------------------------------------------------------------------------
-# §4c — runner context: no-store header, total_question_count, submit_and_exit_url
+# runner context: no-store header, total_question_count, submit_and_exit_url
 # ---------------------------------------------------------------------------
 
 
@@ -669,7 +669,7 @@ def test_form_fill_page_context_includes_submit_on_exit(mock_site_context, clien
 
 
 # ---------------------------------------------------------------------------
-# §4e — course_form_complete context: percentage for QUIZ
+# course_form_complete context: percentage for QUIZ
 # ---------------------------------------------------------------------------
 
 

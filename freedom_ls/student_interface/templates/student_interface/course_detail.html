@@ -36,12 +36,12 @@
     <c-page class="pt-2 lg:pt-2">
         <div class="space-y-2">
 
-            {% comment %}Breadcrumbs (spec §6.1). Shared c-breadcrumbs component with plain
+            {% comment %}Breadcrumbs. Shared c-breadcrumbs component with plain
             full-page anchors (no hx_target) — the panel framework's HTMX target
             #main-content does not exist on this standalone page.{% endcomment %}
             <c-breadcrumbs :crumbs="breadcrumbs" />
 
-            {% comment %}Hero (spec §6.2): accent gradient bg + large semi-transparent course icon.
+            {% comment %}Hero: accent gradient bg + large semi-transparent course icon.
             Uses existing course-accent-<key> classes from tailwind.components.css.{% endcomment %}
             <section class="course-accent-{{ course.accent_slot_key }} relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden py-6 sm:py-8 lg:py-10">
                 {% comment %}Spotlight: a solid accent "to" base with a "from"-coloured radial
@@ -110,7 +110,7 @@
             then main content. On lg the panel is in the right column.{% endcomment %}
             <div class="grid lg:grid-cols-3 gap-6 lg:gap-8">
 
-                {% comment %}Sign-up panel (spec §6.4) — order-first on mobile so CTA is near the top{% endcomment %}
+                {% comment %}Sign-up panel — order-first on mobile so CTA is near the top{% endcomment %}
                 <aside class="order-first lg:order-last lg:col-span-1 pt-6">
                     <div class="signup-panel p-6 rounded-xl border border-border lg:sticky lg:top-6 space-y-4">
                         <div>
@@ -145,7 +145,7 @@
                     </div>
                 </aside>
 
-                {% comment %}Main content column (spec §6.3){% endcomment %}
+                {% comment %}Main content column{% endcomment %}
                 <div class="lg:col-span-2 space-y-8 pt-6">
 
                     {% comment %}About this course — omit when content is empty{% endcomment %}

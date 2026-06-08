@@ -125,11 +125,11 @@
 
             {% comment %}
             TODO: Display category-based scores once marking is complete.
-            The block below preserves the existing category display logic.
-            Do not delete — see spec §8 and plan §8.
+            Do not delete the block below: it renders each category's quiz score
+            (score out of max_score) and is the only place that display lives. It is
+            kept in place ready for when marked results become available.
             {% endcomment %}
             {% if show_scores and scores %}
-                {% comment %}Category-based scoring display{% endcomment %}
                 {% for category, category_data in scores.items %}
                     <div class="mb-6 p-6 bg-white border border-border rounded-lg">
                         <div class="mb-4">

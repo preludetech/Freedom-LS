@@ -284,7 +284,7 @@ examRunnerForm scope (no intermediate x-data between them).
             {% comment %}Progress strip{% endcomment %}
             <div class="bg-white border-b border-border px-4 py-2 space-y-2">
 
-                {% comment %}Progress bar: track bg-border rounded-pill, fill bg-secondary (research §5){% endcomment %}
+                {% comment %}Progress bar{% endcomment %}
                 <div class="flex items-center gap-3">
                     <span class="text-xs text-muted whitespace-nowrap"
                           data-testid="page-indicator">
@@ -320,15 +320,15 @@ examRunnerForm scope (no intermediate x-data between them).
                 {% endcomment %}
                 <div x-data="examRunner">
 
-                    {% comment %}SR-only h1: orients screen readers on page load (research §6.7){% endcomment %}
+                    {% comment %}SR-only h1: orients screen readers on page load{% endcomment %}
                     <h1 class="sr-only">{{ form.title }} — Page {{ current_page_num }} of {{ total_pages }}</h1>
 
-                    {% comment %}aria-live region: announces page progress to screen readers (research §5.6){% endcomment %}
+                    {% comment %}aria-live region: announces page progress to screen readers{% endcomment %}
                     <div class="sr-only" aria-live="polite" aria-atomic="true">
                         Page {{ current_page_num }} of {{ total_pages }}
                     </div>
 
-                    {% comment %}Visible page heading — data-runner-page-heading + tabindex="-1" for focus management (research §5.5){% endcomment %}
+                    {% comment %}Visible page heading — data-runner-page-heading + tabindex="-1" for focus management{% endcomment %}
                     {% if form_page.title %}
                         <div>
                             <h2 class="text-xl font-semibold text-on-surface font-display focus:outline-none"
@@ -390,7 +390,7 @@ examRunnerForm scope (no intermediate x-data between them).
 
                 <div class="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 max-w-2xl mx-auto">
 
-                    {% comment %}Previous: plain GET link — does NOT save answers (research §1){% endcomment %}
+                    {% comment %}Previous: plain GET link — does NOT save answers{% endcomment %}
                     {% if previous_page_url %}
                         <a href="{{ previous_page_url }}"
                            class="btn btn-ghost w-full sm:w-auto flex items-center justify-center gap-2">
