@@ -2,6 +2,7 @@
 
 {% load content_tags %}
 {% load base_tags %}
+
 {% comment %}
 Picture component with an accessible spotlight modal.
 
@@ -38,7 +39,13 @@ use it for annotations, context, or detailed captions.
                 <c-slot name="footer">
                     <div class="flex items-center justify-between gap-4">
                         <span class="text-muted text-sm">
-                            {% if number %}<span class="font-semibold">Figure {{ number }}</span>{% if title %}: {% endif %}{% endif %}{{ title }}
+                            {% if number %}
+                                <span class="font-semibold">Figure {{ number }}</span>
+                                {% if title %}
+                                    :
+                                {% endif %}
+                            {% endif %}
+                            {{ title }}
                         </span>
                         {# Real button so the spotlight trigger is keyboard-accessible. #}
                         <c-button type="button"
@@ -61,12 +68,16 @@ use it for annotations, context, or detailed captions.
                     @click="onBackdropClick"
                     {% if title %}aria-labelledby="{{ heading_id }}"{% else %}aria-label="{{ alt }}"{% endif %}>
 
-                {# top-left: figure number + title. Chrome text sits on the dark #}
-                {# scrim so a fixed light colour (text-white) is used — NOT a    #}
+                {# top-left: figure number (accent) over title (white). Chrome    #}
+                {# text sits on the dark scrim so fixed colours are used — NOT a  #}
                 {# theme token like text-on-surface.                             #}
                 {% if title %}
-                    <h2 id="{{ heading_id }}" class="text-white font-semibold text-base sm:text-lg leading-snug">
-                        {% if number %}Figure {{ number }} — {% endif %}{{ title }}
+                    <h2 id="{{ heading_id }}"
+                        class="spotlight-title font-semibold text-base sm:text-lg leading-snug">
+                        {% if number %}
+                            <span class="block text-accent">Figure {{ number }}</span>
+                        {% endif %}
+                        <span class="text-white">{{ title }}</span>
                     </h2>
                 {% endif %}
 
@@ -89,11 +100,21 @@ use it for annotations, context, or detailed captions.
                          class="w-full object-contain" />
                 </div>
 
-                {# bottom-left: title + description, fixed light text on scrim. #}
+                {# bottom: full-width panel pinned to the viewport edge with its #}
+                {# own stronger blur (see .spotlight-panel). Title in accent,     #}
+                {# description in fixed light text — both sit on the scrim.       #}
                 {% if title or description %}
-                    <div class="spotlight-caption text-white/90">
-                        {% if title %}<p class="font-semibold text-sm">{{ title }}</p>{% endif %}
-                        {% if description %}<p id="{{ desc_id }}" class="text-sm text-white/70 mt-1">{{ description }}</p>{% endif %}
+                    <div class="spotlight-panel">
+                        {% if title %}
+                            <p class="font-semibold text-accent">
+                                {{ title }}
+                            </p>
+                        {% endif %}
+                        {% if description %}
+                            <p id="{{ desc_id }}" class="text-white mt-1">
+                                {{ description }}
+                            </p>
+                        {% endif %}
                     </div>
                 {% endif %}
 

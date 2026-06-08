@@ -400,11 +400,22 @@
         }
     }
 
-    /* Heading: align left within the flex column. The template's utility
-     * classes (text-base, sm:text-lg) override the @layer base h2 defaults. */
-    .spotlight-dialog > h2 {
-        align-self: flex-start;
+    /* Heading panel — full-width bar pinned to the top edge of the viewport,
+     * mirroring .spotlight-panel at the bottom: same tint + stronger blur
+     * (backdrop-blur-xl vs the scrim's backdrop-blur-sm) so the figure number
+     * and title stay legible over a busy image. Right padding leaves room for
+     * the close button (.spotlight-close, top-right) so a long title wraps
+     * before colliding with it. The template's utility classes (text-base,
+     * sm:text-lg) override the @layer base h2 defaults. */
+    .spotlight-title {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        padding: 1rem 4.5rem 1rem 1.5rem;
         margin: 0;
+        @apply bg-black/40 backdrop-blur-xl;
     }
 
     .spotlight-close {
@@ -429,13 +440,21 @@
         flex-shrink: 1;
     }
 
-    /* Bottom caption block: align left. Class hook (not div:last-child) so it
-     * only targets the real caption block — when both title and description are
+    /* Bottom caption panel — a full-width bar pinned to the bottom edge of the
+     * viewport with its OWN, stronger blur so it reads as a distinct surface
+     * sitting over the page scrim (scrim is backdrop-blur-sm; this is
+     * backdrop-blur-xl). Absolutely positioned so it escapes the dialog's
+     * 1.5rem padding and spans edge-to-edge. Class hook (not div:last-child) so
+     * it only targets the real panel — when both title and description are
      * empty the block isn't rendered and nothing else picks up these rules. */
-    .spotlight-caption {
-        align-self: flex-start;
-        max-width: 56rem;
+    .spotlight-panel {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
         width: 100%;
+        padding: 1rem 1.5rem;
+        @apply bg-black/40 backdrop-blur-xl;
     }
 
     /* Reduced motion: keep fade, drop scale animation. */
