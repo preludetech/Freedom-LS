@@ -346,6 +346,12 @@ ADDITIONAL_REGISTRATION_FORMS: list[str] = []
 # Header / favicon branding (static paths resolved via {% static %})
 HEADER_LOGO_STATIC_PATH: str | None = None  # e.g., "images/logo.png"
 FAVICON_STATIC_PATH: str | None = None  # e.g., "images/favicon.ico"
+HEADER_TITLE: str | None = (
+    None  # overrides the header-bar title; falls back to site name
+)
+HEADER_TITLE_STYLE: str | None = (
+    None  # inline CSS for the title, e.g. "font-style: italic;"
+)
 
 # Email template settings
 EMAIL_LOGO_STATIC_PATH = None  # e.g., "images/logo.png"

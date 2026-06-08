@@ -30,3 +30,30 @@ def test_site_config_branding_paths_default_to_none(mock_site_context):
 
     assert context["header_logo_static_path"] is None
     assert context["favicon_static_path"] is None
+
+
+@pytest.mark.django_db
+def test_site_config_header_title_override(mock_site_context):
+    """HEADER_TITLE overrides the header title and its inline style is exposed."""
+    request = RequestFactory().get("/")
+
+    with override_settings(
+        HEADER_TITLE="FirstClass",
+        HEADER_TITLE_STYLE="font-style: italic;",
+    ):
+        context = site_config(request)
+
+    assert context["header_title"] == "FirstClass"
+    assert context["header_title_style"] == "font-style: italic;"
+
+
+@pytest.mark.django_db
+def test_site_config_header_title_falls_back_to_site_name(mock_site_context):
+    """Without HEADER_TITLE, header_title falls back to the site name."""
+    request = RequestFactory().get("/")
+
+    with override_settings(HEADER_TITLE=None, HEADER_TITLE_STYLE=None):
+        context = site_config(request)
+
+    assert context["header_title"] == context["site_title"] == "TestSite"
+    assert context["header_title_style"] is None

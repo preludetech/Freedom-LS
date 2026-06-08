@@ -98,3 +98,5 @@ REQUIRE_TERMS_ACCEPTANCE = True
 
 HEADER_LOGO_STATIC_PATH = "images/first_class_logo.png"
 FAVICON_STATIC_PATH = "images/first_class_logo.png"
+HEADER_TITLE = "FirstClass"
+HEADER_TITLE_STYLE = "font-style: italic;"

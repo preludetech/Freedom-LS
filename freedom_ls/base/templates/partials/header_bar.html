@@ -6,11 +6,12 @@
        class="flex items-center gap-2 sm:gap-3 flex-shrink min-w-0 no-underline">
         {% if header_logo_static_path %}
             <img src="{% static header_logo_static_path %}"
-                 alt="{{ site_title }}"
+                 alt="{{ header_title }}"
                  class="h-8 w-auto flex-shrink-0" />
         {% endif %}
-        <h1 class="{% if header_logo_static_path %}hidden sm:block {% endif %}text-lg sm:text-xl lg:text-2xl font-bold text-on-header truncate">
-            {{ site_title }}
+        <h1 class="{% if header_logo_static_path %}hidden sm:block {% endif %}text-lg sm:text-xl lg:text-2xl font-bold text-on-header truncate"
+            {% if header_title_style %}style="{{ header_title_style }}"{% endif %}>
+            {{ header_title }}
         </h1>
     </a>
 

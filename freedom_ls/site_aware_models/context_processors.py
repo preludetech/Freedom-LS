@@ -17,10 +17,14 @@ def site_config(request):
     site_conf = getattr(settings, "site_conf", {})
     config = site_conf.get(site_name, {})
 
+    site_title = config.get("SITE_TITLE", site_name)
+
     return {
         "site_name": site_name,
-        "site_title": config.get("SITE_TITLE", site_name),
+        "site_title": site_title,
         "site_header": config.get("SITE_HEADER", site_name),
         "header_logo_static_path": settings.HEADER_LOGO_STATIC_PATH,
         "favicon_static_path": settings.FAVICON_STATIC_PATH,
+        "header_title": settings.HEADER_TITLE or site_title,
+        "header_title_style": settings.HEADER_TITLE_STYLE,
     }
