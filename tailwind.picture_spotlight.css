@@ -1,0 +1,81 @@
+/* Spotlight <dialog> animation for the image spotlight (cotton/picture.html).
+ *
+ * This styling is single-use — one <dialog> in cotton/picture.html — so it
+ * lives here rather than in tailwind.components.css (which is reserved for
+ * reusable primitives like .btn / .surface). Only the rules with no clean
+ * Tailwind-utility equivalent are kept here: the closed-dialog display gating,
+ * the @starting-style entry baseline, the allow-discrete overlay/display
+ * transitions, and the reduced-motion override. The chrome (title bar, close
+ * button, card, caption panel) is plain utilities on the markup itself.
+ *
+ * The dialog is a full-viewport native <dialog> that centres an image card on a
+ * dark, blurred scrim (the scrim itself comes from .modal-backdrop-host in
+ * tailwind.components.css). The dialog is bg-transparent and fills the viewport
+ * so backdrop clicks land on the dialog element (enabling the click-target
+ * close guard). Chrome text uses fixed light colours because it sits on the
+ * theme-neutral scrim, not on a themed surface. Mirrors .side-panel-dialog. */
+
+@layer components {
+    .spotlight-dialog {
+        /* Full-viewport flex layout: top row (heading + close button),
+         * centred card, bottom caption block.
+         *
+         * `display` is intentionally NOT set here — it is gated on [open]
+         * below so closed dialogs keep the UA `dialog:not([open])
+         * {display:none}` and stay inert. Setting display:flex on the base
+         * rule made closed dialogs blanket the viewport and swallow pointer
+         * events over the page beneath (and stopped the enter/leave display
+         * transition from toggling). Mirrors `.side-panel-dialog`. */
+        flex-direction: column;
+        align-items: center;
+        /* `safe center` centres the column when it fits, but falls back to
+         * flex-start on overflow so the top heading never scrolls above the
+         * viewport unreachably. Paired with overflow-y:auto so an overflowing
+         * column (e.g. a long description on a short viewport) scrolls inside
+         * the dialog instead of clipping its chrome. */
+        justify-content: safe center;
+        overflow-y: auto;
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        padding: 1.5rem;
+        gap: 1rem;
+        box-sizing: border-box;
+
+        /* Enter/leave transitions — mirrors the side-panel pattern.
+         * overlay + display use allow-discrete so the dialog stays in the top
+         * layer through the full leave animation. */
+        opacity: 0;
+        scale: 0.95;
+        transition:
+            opacity 200ms ease,
+            scale 200ms ease,
+            overlay 200ms ease allow-discrete,
+            display 200ms ease allow-discrete;
+    }
+
+    .spotlight-dialog[open] {
+        display: flex;
+        opacity: 1;
+        scale: 1;
+    }
+
+    @starting-style {
+        .spotlight-dialog[open] {
+            opacity: 0;
+            scale: 0.95;
+        }
+    }
+
+    /* Reduced motion: keep fade, drop scale animation. */
+    @media (prefers-reduced-motion: reduce) {
+        .spotlight-dialog {
+            transition:
+                opacity 200ms ease,
+                overlay 200ms ease allow-discrete,
+                display 200ms ease allow-discrete;
+            scale: 1;
+        }
+    }
+}

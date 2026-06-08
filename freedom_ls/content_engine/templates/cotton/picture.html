@@ -73,7 +73,7 @@ use it for annotations, context, or detailed captions.
                 {# theme token like text-on-surface.                             #}
                 {% if title %}
                     <h2 id="{{ heading_id }}"
-                        class="spotlight-title font-semibold text-base sm:text-lg leading-snug">
+                        class="absolute inset-x-0 top-0 w-full m-0 py-4 pl-6 pr-18 bg-black/40 backdrop-blur-xl font-semibold text-base sm:text-lg leading-snug">
                         {% if number %}
                             <span class="block text-accent">Figure {{ number }}</span>
                         {% endif %}
@@ -86,14 +86,14 @@ use it for annotations, context, or detailed captions.
                         autofocus
                         aria-label="Close image"
                         @click="close"
-                        class="spotlight-close text-white/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-white rounded-md p-1">
+                        class="absolute top-4 right-4 min-w-11 min-h-11 flex items-center justify-center text-white/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-white rounded-md p-1">
                     <c-icon name="close" class="size-6" />
                 </button>
 
                 {# centre: spotlight card — does NOT close on click (card is a #}
                 {# descendant of the dialog; only a click on the dialog element #}
                 {# itself closes, per the backdrop-click guard in the controller). #}
-                <div class="spotlight-card bg-surface rounded-lg shadow-xl overflow-hidden">
+                <div class="max-w-4xl w-full max-h-[70dvh] shrink bg-surface rounded-lg shadow-xl overflow-hidden">
                     <img src="{{ file_obj.file.url }}"
                          alt="{{ alt }}"
                          {% if description %}aria-describedby="{{ desc_id }}"{% endif %}
@@ -101,10 +101,12 @@ use it for annotations, context, or detailed captions.
                 </div>
 
                 {# bottom: full-width panel pinned to the viewport edge with its #}
-                {# own stronger blur (see .spotlight-panel). Title in accent,     #}
-                {# description in fixed light text — both sit on the scrim.       #}
+                {# own stronger blur (backdrop-blur-xl vs the scrim's            #}
+                {# backdrop-blur-sm). Title in accent, description in fixed light #}
+                {# text — both sit on the scrim. Rendered only when there's       #}
+                {# something to show, so nothing else picks up these utilities.   #}
                 {% if title or description %}
-                    <div class="spotlight-panel">
+                    <div class="absolute inset-x-0 bottom-0 w-full py-4 px-6 bg-black/40 backdrop-blur-xl">
                         {% if title %}
                             <p class="font-semibold text-accent">
                                 {{ title }}
