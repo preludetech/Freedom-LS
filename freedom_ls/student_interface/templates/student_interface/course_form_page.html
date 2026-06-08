@@ -108,9 +108,7 @@ anchors to the scroll container and focusing it on selection makes the page jump
             {% elif question.type == "long_text" %}
                 {% partial form-input-long-text %}
             {% else %}
-                <div class="p-3 bg-error/10 border border-error text-error rounded-md">
-                    ERROR! UNHANDLED FORM TYPE {{ question.type }}
-                </div>
+                <c-callout level="error">ERROR! UNHANDLED FORM TYPE {{ question.type }}</c-callout>
             {% endif %}
         </div>
     </fieldset>
