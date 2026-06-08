@@ -1,33 +1,7 @@
 import pytest
 from playwright.sync_api import Page, expect
 
-from conftest import reverse_url
-from freedom_ls.content_engine.factories import (
-    ContentCollectionItemFactory,
-    CourseFactory,
-    FormFactory,
-    FormPageFactory,
-    FormQuestionFactory,
-    QuestionOptionFactory,
-)
-
-
-def _single_required_question_form(course_title: str, course_slug: str):
-    """A course whose first item is a one-page form with one required question."""
-    course = CourseFactory(title=course_title, slug=course_slug)
-    form = FormFactory(title=f"{course_title} Form")
-    form_page = FormPageFactory(form=form, order=0, title="Only Page")
-    question = FormQuestionFactory(
-        form_page=form_page,
-        type="multiple_choice",
-        question="Pick one",
-        required=True,
-        order=0,
-    )
-    QuestionOptionFactory(question=question, text="Alpha", order=0)
-    QuestionOptionFactory(question=question, text="Beta", order=1)
-    ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
-    return course
+from conftest import course_with_single_question_form, reverse_url
 
 
 @pytest.mark.playwright
@@ -45,8 +19,8 @@ def test_final_page_submit_dialog_blocked_until_required_answered(
     openSubmitDialog therefore runs reportValidity() first: with a required
     question unanswered the submit dialog stays closed; once answered it opens.
     """
-    course = _single_required_question_form(
-        "Required Validation Course", "required-validation-course"
+    course = course_with_single_question_form(
+        "Required Validation Course", "required-validation-course", required=True
     )
     start_url = reverse_url(
         live_server,

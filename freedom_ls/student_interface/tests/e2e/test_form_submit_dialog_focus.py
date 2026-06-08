@@ -1,15 +1,7 @@
 import pytest
 from playwright.sync_api import Page, expect
 
-from conftest import reverse_url
-from freedom_ls.content_engine.factories import (
-    ContentCollectionItemFactory,
-    CourseFactory,
-    FormFactory,
-    FormPageFactory,
-    FormQuestionFactory,
-    QuestionOptionFactory,
-)
+from conftest import course_with_single_question_form, reverse_url
 
 # Returns whether the document's active element is inside the submit dialog
 # panel (identified by its aria-labelledby). Used to assert focus is moved into
@@ -18,20 +10,6 @@ _FOCUS_IN_SUBMIT_DIALOG = """() => {
     const panel = document.querySelector('[aria-labelledby="submit-dialog-title"]');
     return panel.contains(document.activeElement);
 }"""
-
-
-def _single_question_form(course_title: str, course_slug: str):
-    """A course whose first item is a one-page, one-question form."""
-    course = CourseFactory(title=course_title, slug=course_slug)
-    form = FormFactory(title=f"{course_title} Form")
-    form_page = FormPageFactory(form=form, order=0, title="Only Page")
-    question = FormQuestionFactory(
-        form_page=form_page, type="multiple_choice", question="Pick one", order=0
-    )
-    QuestionOptionFactory(question=question, text="Alpha", order=0)
-    QuestionOptionFactory(question=question, text="Beta", order=1)
-    ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
-    return course
 
 
 @pytest.mark.playwright
@@ -50,7 +28,7 @@ def test_submit_dialog_moves_focus_in_and_traps_tab_within_the_dialog(
     controls behind it. The trap must be scoped to the dialog panel: focus moves
     in on open, and Tab/Shift+Tab cycle only the dialog's own controls.
     """
-    course = _single_question_form("Focus Trap Course", "focus-trap-course")
+    course = course_with_single_question_form("Focus Trap Course", "focus-trap-course")
     start_url = reverse_url(
         live_server,
         "student_interface:form_start",

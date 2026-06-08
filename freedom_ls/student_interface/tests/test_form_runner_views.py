@@ -9,10 +9,9 @@ import pytest
 from django.urls import reverse
 from django.utils import timezone
 
+from conftest import course_with_form, register_user_for_course
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
-    ContentCollectionItemFactory,
-    CourseFactory,
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
@@ -20,24 +19,12 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import FormStrategy
 from freedom_ls.student_interface.utils import count_form_questions
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 from freedom_ls.student_progress.factories import FormProgressFactory
 from freedom_ls.student_progress.models import FormProgress
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _make_course_with_form(form, *, title="Test Course"):
-    """Create a course containing a single form as its only item."""
-    course = CourseFactory(title=title)
-    ContentCollectionItemFactory(collection_object=course, child_object=form)
-    return course
-
-
-def _register(user, course):
-    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
 
 
 def _make_quiz_form(*, submit_on_exit=False):
@@ -84,8 +71,8 @@ def test_form_submit_and_exit_post_completes_attempt_and_redirects(
     """POST to form_submit_and_exit completes an incomplete attempt and redirects to results."""
     user = UserFactory()
     form = FormFactory(submit_on_exit=True)
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
     incomplete = FormProgressFactory(user=user, form=form)
     assert incomplete.completed_time is None
 
@@ -112,8 +99,8 @@ def test_form_submit_and_exit_get_returns_405(mock_site_context, client):
     """GET to form_submit_and_exit is rejected with 405."""
     user = UserFactory()
     form = FormFactory()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     client.force_login(user)
     url = reverse(
@@ -131,8 +118,8 @@ def test_form_submit_and_exit_with_no_incomplete_attempt_still_redirects(
     """POST to form_submit_and_exit when there is no incomplete attempt still redirects to results."""
     user = UserFactory()
     form = FormFactory(submit_on_exit=True)
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
     # No incomplete attempt
 
     client.force_login(user)
@@ -163,8 +150,8 @@ def test_form_submit_and_exit_does_not_finalise_save_on_exit_form(
     """
     user = UserFactory()
     form = FormFactory(submit_on_exit=False)
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
     incomplete = FormProgressFactory(user=user, form=form)
     assert incomplete.completed_time is None
 
@@ -190,7 +177,7 @@ def test_form_submit_and_exit_does_not_finalise_save_on_exit_form(
 def test_form_submit_and_exit_requires_login(mock_site_context, client):
     """Unauthenticated POST to form_submit_and_exit redirects to login."""
     form = FormFactory()
-    course = _make_course_with_form(form)
+    course = course_with_form(form)
 
     url = reverse(
         "student_interface:form_submit_and_exit",
@@ -217,8 +204,8 @@ def test_answered_count_reflects_only_persisted_answers_after_page_advance(
     """
     user = UserFactory()
     form, _pages, questions = _make_two_page_form()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     client.force_login(user)
 
@@ -262,8 +249,8 @@ def test_answered_count_does_not_include_unsaved_page_edits(mock_site_context, c
     """
     user = UserFactory()
     form, _pages, _questions = _make_two_page_form()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     client.force_login(user)
 
@@ -302,8 +289,8 @@ def test_answered_other_pages_excludes_current_page_questions(
     """
     user = UserFactory()
     form, _pages, questions = _make_two_page_form()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     client.force_login(user)
     client.get(
@@ -347,8 +334,8 @@ def test_view_form_finalises_stale_incomplete_for_submit_on_exit(
     """
     user = UserFactory()
     form = FormFactory(submit_on_exit=True)
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     # Create a stale incomplete attempt
     incomplete = FormProgressFactory(user=user, form=form)
@@ -385,8 +372,8 @@ def test_form_start_finalises_stale_incomplete_for_submit_on_exit(
     form = FormFactory(submit_on_exit=True, strategy=FormStrategy.CATEGORY_VALUE_SUM)
     page = FormPageFactory(form=form, order=0)
     FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     # Create a stale incomplete attempt
     stale = FormProgressFactory(user=user, form=form)
@@ -419,8 +406,8 @@ def test_view_form_save_on_exit_does_not_finalise_incomplete(mock_site_context, 
     """
     user = UserFactory()
     form = FormFactory(submit_on_exit=False)
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     incomplete = FormProgressFactory(user=user, form=form)
 
@@ -458,8 +445,8 @@ def test_view_form_context_includes_question_count_and_page_count(
     FormQuestionFactory(form_page=page1, order=1)
     page2 = FormPageFactory(form=form, order=1)
     FormQuestionFactory(form_page=page2, order=0)
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     client.force_login(user)
     url = reverse(
@@ -486,8 +473,8 @@ def test_view_form_start_screen_title_in_tab_but_not_duplicated(
     """
     user = UserFactory()
     form = FormFactory(title="Distinctive Form Title")
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     client.force_login(user)
     url = reverse(
@@ -520,8 +507,8 @@ def test_form_fill_page_sets_cache_control_no_store(mock_site_context, client):
     """GET to form_fill_page includes Cache-Control: no-store header."""
     user = UserFactory()
     form, _pages, _questions = _make_two_page_form()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     client.force_login(user)
     # Start the form first so a FormProgress exists
@@ -549,8 +536,8 @@ def test_form_fill_page_context_includes_total_question_count(
     """form_fill_page context includes total_question_count."""
     user = UserFactory()
     form, _pages, _questions = _make_two_page_form()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     client.force_login(user)
     client.get(
@@ -575,8 +562,8 @@ def test_form_fill_page_context_includes_submit_and_exit_url(mock_site_context, 
     """form_fill_page context includes submit_and_exit_url."""
     user = UserFactory()
     form, _pages, _questions = _make_two_page_form()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     client.force_login(user)
     client.get(
@@ -612,8 +599,8 @@ def test_save_on_exit_dialog_renders_real_view_course_item_url(
     """
     user = UserFactory()
     form, _pages, _questions = _make_two_page_form(submit_on_exit=False)
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     client.force_login(user)
     client.get(
@@ -647,8 +634,8 @@ def test_form_fill_page_context_includes_submit_on_exit(mock_site_context, clien
     """form_fill_page context includes form.submit_on_exit."""
     user = UserFactory()
     form, _pages, _questions = _make_two_page_form(submit_on_exit=True)
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     client.force_login(user)
     client.get(
@@ -678,8 +665,8 @@ def test_course_form_complete_includes_percentage_for_quiz(mock_site_context, cl
     """course_form_complete context includes percentage for QUIZ forms."""
     user = UserFactory()
     form = _make_quiz_form()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     # Create a completed form progress with a known score
     FormProgressFactory(
@@ -707,8 +694,8 @@ def test_course_form_complete_percentage_reflects_partial_score(
     """course_form_complete percentage is proportional to the score."""
     user = UserFactory()
     form = _make_quiz_form()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     FormProgressFactory(
         user=user,
@@ -733,8 +720,8 @@ def test_course_form_complete_no_percentage_for_non_quiz(mock_site_context, clie
     """course_form_complete does not include percentage for non-QUIZ forms."""
     user = UserFactory()
     form = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
 
     FormProgressFactory(
         user=user,
@@ -793,8 +780,8 @@ def test_count_form_questions_returns_zero_for_form_with_no_questions(
 def _start_runner(client, user, form):
     """Register the user, force-login, and GET the runner fill page (following
     the form_start redirect). Returns the rendered fill-page response."""
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
     client.force_login(user)
     start_url = reverse(
         "student_interface:form_start",
@@ -877,8 +864,8 @@ def test_form_fill_page_post_with_no_incomplete_attempt_redirects(
     """
     user = UserFactory()
     form = _make_quiz_form()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
     client.force_login(user)
 
     # No FormProgress created — POST straight to the fill page.
@@ -909,8 +896,8 @@ def test_form_fill_page_get_with_no_incomplete_attempt_redirects(
     """
     user = UserFactory()
     form = _make_quiz_form()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
     client.force_login(user)
 
     # A completed attempt exists, so there is no incomplete attempt to resume.
@@ -948,8 +935,8 @@ def test_view_form_previous_attempts_shows_multiple_newest_first(
     (more than one), ordered newest-first, when there are 5 or fewer."""
     user = UserFactory()
     form = _make_quiz_form()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
     client.force_login(user)
 
     now = timezone.now()
@@ -988,8 +975,8 @@ def test_view_form_previous_attempts_capped_at_five(mock_site_context, client):
     """When more than 5 attempts exist, only the 5 latest are shown."""
     user = UserFactory()
     form = _make_quiz_form()
-    course = _make_course_with_form(form)
-    _register(user, course)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
     client.force_login(user)
 
     now = timezone.now()

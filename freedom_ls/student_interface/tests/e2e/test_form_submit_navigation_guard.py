@@ -1,15 +1,7 @@
 import pytest
 from playwright.sync_api import Page, expect
 
-from conftest import reverse_url
-from freedom_ls.content_engine.factories import (
-    ContentCollectionItemFactory,
-    CourseFactory,
-    FormFactory,
-    FormPageFactory,
-    FormQuestionFactory,
-    QuestionOptionFactory,
-)
+from conftest import course_with_single_question_form, reverse_url
 
 # Dispatches a cancelable beforeunload and reports whether the runner's guard
 # called preventDefault on it (i.e. whether the browser would show the native
@@ -19,20 +11,6 @@ _BEFOREUNLOAD_PREVENTED = """() => {
     window.dispatchEvent(e);
     return e.defaultPrevented;
 }"""
-
-
-def _single_question_form(course_title: str, course_slug: str):
-    """A course whose first item is a one-page, one-question form."""
-    course = CourseFactory(title=course_title, slug=course_slug)
-    form = FormFactory(title=f"{course_title} Form")
-    form_page = FormPageFactory(form=form, order=0, title="Only Page")
-    question = FormQuestionFactory(
-        form_page=form_page, type="multiple_choice", question="Pick one", order=0
-    )
-    QuestionOptionFactory(question=question, text="Alpha", order=0)
-    QuestionOptionFactory(question=question, text="Beta", order=1)
-    ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
-    return course
 
 
 @pytest.mark.playwright
@@ -51,7 +29,9 @@ def test_submit_disarms_the_beforeunload_leave_prompt(
     with no way out but a reload. Deliberate navigation (Submit) must disarm the
     guard so no prompt — and therefore no trap — can occur.
     """
-    course = _single_question_form("Submit Guard Course", "submit-guard-course")
+    course = course_with_single_question_form(
+        "Submit Guard Course", "submit-guard-course"
+    )
     start_url = reverse_url(
         live_server,
         "student_interface:form_start",
@@ -96,7 +76,9 @@ def test_submit_navigates_to_form_completion(
     # Accept any beforeunload that may still surface so navigation proceeds.
     logged_in_page.on("dialog", lambda dialog: dialog.accept())
 
-    course = _single_question_form("Submit Flow Course", "submit-flow-course")
+    course = course_with_single_question_form(
+        "Submit Flow Course", "submit-flow-course"
+    )
     start_url = reverse_url(
         live_server,
         "student_interface:form_start",

@@ -1,18 +1,12 @@
 import pytest
 from playwright.sync_api import Page
 
-from conftest import reverse_url
-from freedom_ls.accounts.factories import UserFactory
+from conftest import course_with_form, register_user_for_course, reverse_url
 from freedom_ls.content_engine.factories import (
-    ContentCollectionItemFactory,
-    CourseFactory,
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
     QuestionOptionFactory,
-)
-from freedom_ls.student_management.factories import (
-    UserCourseRegistrationFactory,
 )
 
 # ============================================================================
@@ -202,26 +196,6 @@ def _create_quiz_form(
     return form
 
 
-def _create_course_with_form(form, title="Test Course", slug=None):
-    """Create a course containing a form."""
-    if slug is None:
-        slug = form.slug + "-course"
-
-    course = CourseFactory(title=title, slug=slug)
-    ContentCollectionItemFactory(
-        collection_object=course,
-        child_object=form,
-    )
-    return course
-
-
-def _register_user_for_course(course):
-    """Create a user registered for a course."""
-    user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
-    return user
-
-
 # ============================================================================
 # COMPLEX FIXTURES (not simple wrappers)
 # ============================================================================
@@ -300,8 +274,8 @@ def test_view_form_landing_page(
     complete_form_with_questions,
 ):
     """Test that the form landing page displays correctly before starting."""
-    course = _create_course_with_form(complete_form_with_questions)
-    _register_user_for_course(course)
+    course = course_with_form(complete_form_with_questions)
+    register_user_for_course(course)
 
     navigate_to_form(logged_in_page, live_server, course.slug)
 
@@ -330,8 +304,8 @@ def test_start_and_fill_form_complete_workflow(
     complete_form_with_questions,
 ):
     """Test complete workflow from start to submission."""
-    course = _create_course_with_form(complete_form_with_questions)
-    _register_user_for_course(course)
+    course = course_with_form(complete_form_with_questions)
+    register_user_for_course(course)
 
     navigate_to_form(logged_in_page, live_server, course.slug)
     start_form(logged_in_page)
@@ -420,8 +394,8 @@ def test_form_resumption(
     complete_form_with_questions,
 ):
     """Test that users can resume incomplete forms."""
-    course = _create_course_with_form(complete_form_with_questions)
-    _register_user_for_course(course)
+    course = course_with_form(complete_form_with_questions)
+    register_user_for_course(course)
 
     form_url = navigate_to_form(logged_in_page, live_server, course.slug)
     start_form(logged_in_page)
@@ -505,8 +479,8 @@ def test_quiz_completion_shows_scores(
 ):
     """Test that when a student completes a quiz, they see their score and percentage."""
     quiz_form = _create_quiz_form(quiz_show_incorrect=True)
-    quiz_course = _create_course_with_form(quiz_form, title="Math Course")
-    _register_user_for_course(quiz_course)
+    quiz_course = course_with_form(quiz_form, title="Math Course")
+    register_user_for_course(quiz_course)
 
     navigate_to_form(logged_in_page, live_server, quiz_course.slug)
     start_form(logged_in_page)
@@ -535,8 +509,8 @@ def test_quiz_shows_incorrect_answers_when_enabled(
 ):
     """Test that incorrect answers are shown when quiz_show_incorrect is True."""
     quiz_form = _create_quiz_form(quiz_show_incorrect=True)
-    quiz_course = _create_course_with_form(quiz_form, title="Math Course")
-    _register_user_for_course(quiz_course)
+    quiz_course = course_with_form(quiz_form, title="Math Course")
+    register_user_for_course(quiz_course)
 
     navigate_to_form(logged_in_page, live_server, quiz_course.slug)
     start_form(logged_in_page)
@@ -609,8 +583,8 @@ def test_quiz_does_not_show_incorrect_when_disabled(
         quiz_show_incorrect=False,
         num_pages=1,
     )
-    quiz_course = _create_course_with_form(quiz_form, title="Private Quiz Course")
-    _register_user_for_course(quiz_course)
+    quiz_course = course_with_form(quiz_form, title="Private Quiz Course")
+    register_user_for_course(quiz_course)
 
     navigate_to_form(logged_in_page, live_server, quiz_course.slug)
     start_form(logged_in_page)
@@ -653,8 +627,8 @@ def test_completed_quiz_shows_scores_on_landing_page(
 ):
     """Test that completed quiz scores are shown on the quiz landing page."""
     quiz_form = _create_quiz_form(quiz_show_incorrect=True)
-    quiz_course = _create_course_with_form(quiz_form, title="Math Course")
-    _register_user_for_course(quiz_course)
+    quiz_course = course_with_form(quiz_form, title="Math Course")
+    register_user_for_course(quiz_course)
 
     quiz_url = navigate_to_form(logged_in_page, live_server, quiz_course.slug)
     start_form(logged_in_page)
