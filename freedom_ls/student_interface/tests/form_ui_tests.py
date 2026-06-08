@@ -69,9 +69,13 @@ def submit_form(page: Page):
 
     The final page now shows a 'Next' button that opens a submit dialog,
     followed by a 'Submit' button inside the dialog.
+
+    The final-page Next button is a real type="submit" (so it works without
+    JS); with JS present, x-on:click.prevent suppresses the native submit and
+    opens the review dialog instead.
     """
     # Open the submit dialog (final-page Next button)
-    next_button = page.locator("button[type='button']:has-text('Next')")
+    next_button = page.locator("button[type='submit']:has-text('Next')")
     next_button.click()
     # Wait for the dialog to appear
     page.wait_for_selector("[role='dialog']:visible", timeout=5000)
