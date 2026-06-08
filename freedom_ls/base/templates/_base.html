@@ -23,7 +23,15 @@
         {% endif %}
 
         <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
-        <script src="{% static 'base/js/htmx-config.js' %}"></script>
+        {% comment %}
+        Loaded globally (not scoped to _base_interface) on purpose: it registers a
+        document-level htmx:beforeSwap listener that guards #interface-main swaps.
+        With hx-boost, htmx does not run <script> tags in a swapped-in <head>, so
+        the listener must already be present from the current full page load no
+        matter which page you navigated from. It is a no-op on pages without
+        #interface-main (the listener early-returns).
+        {% endcomment %}
+        <script src="{% static 'base/js/interface-swap-fallback.js' %}"></script>
         <script defer
                 src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.15.8/dist/cdn.min.js"></script>
         <script defer src="{% static 'base/js/alpine-components.js' %}"></script>
