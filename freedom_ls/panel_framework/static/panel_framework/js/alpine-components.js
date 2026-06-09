@@ -20,6 +20,34 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
+    // List-view table auto-refresh (panel_framework/partials/list_refresh.html).
+    // Re-fetches the list table when a create action's HX-Trigger event fires.
+    Alpine.data("listRefresh", () => ({
+        _handlers: [],
+        init() {
+            const url = this.$el.dataset.refreshUrl;
+            const target = this.$el.dataset.refreshTarget;
+            const events = (this.$el.dataset.refreshEvents || "")
+                .split(/\s+/)
+                .filter(Boolean);
+            events.forEach((eventName) => {
+                const handler = () => {
+                    htmx.ajax("GET", url, {
+                        target: "#" + target,
+                        swap: "outerHTML",
+                    });
+                };
+                document.body.addEventListener(eventName, handler);
+                this._handlers.push([eventName, handler]);
+            });
+        },
+        destroy() {
+            this._handlers.forEach(([eventName, handler]) => {
+                document.body.removeEventListener(eventName, handler);
+            });
+        },
+    }));
+
     // Tab container component (panel_framework/partials/tab_container.html)
     Alpine.data("tabContainer", () => ({
         activeTab: "",
