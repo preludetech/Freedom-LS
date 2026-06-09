@@ -1,0 +1,11 @@
+{% comment %}
+Registers body listeners that re-fetch the list table when a create action
+fires its created-event (HX-Trigger). Lives outside #data-table-container so
+it survives the table's outerHTML swap.
+{% endcomment %}
+<div x-data="listRefresh"
+     data-refresh-events="{{ refresh_events }}"
+     data-refresh-url="{{ refresh_url }}"
+     data-refresh-target="{{ refresh_target }}">
+    {{ actions_html|safe }}
+</div>
