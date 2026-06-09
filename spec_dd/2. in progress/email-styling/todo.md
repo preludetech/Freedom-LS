@@ -5,8 +5,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 1. Idea
 
 - [x] (user) Write the idea file in this directory
-- [ ] (cmd) Optionally run `/improve_idea` to research and refine the idea
-- [ ] (user) Review the refined idea and edit as needed
+- [x] (cmd) Optionally run `/improve_idea` to research and refine the idea
+- [x] (user) Review the refined idea and edit as needed
 
 ## 2. Spec
 
