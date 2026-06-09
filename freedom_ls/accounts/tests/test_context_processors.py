@@ -19,4 +19,4 @@ def test_email_settings_values_match_django_settings(mock_site_context, settings
     assert context["email_color_on_primary"] == settings.EMAIL_COLOR_ON_PRIMARY
     assert context["email_color_border"] == settings.EMAIL_COLOR_BORDER
     assert context["email_font_family"] == settings.EMAIL_FONT_FAMILY
-    assert context["email_logo_static_path"] == settings.EMAIL_LOGO_STATIC_PATH
+    assert context["email_button_radius"] == settings.EMAIL_BUTTON_RADIUS

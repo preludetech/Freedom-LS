@@ -5,5 +5,5 @@
 {% include "emails/includes/sign_off.txt" %}
 
 ---
-{{ current_site.name }} | {{ current_site.domain }}
+{{ email_label|default:current_site.name }} | {{ current_site.domain }}
 {% endautoescape %}

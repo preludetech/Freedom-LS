@@ -31,7 +31,7 @@
           <tr>
             <td class="email-footer">
               {% include "emails/includes/footer_links.html" %}
-              <p style="margin: 8px 0 0 0;">&copy; {% now "Y" %} {{ current_site.name }} | {{ current_site.domain }}</p>
+              <p style="margin: 8px 0 0 0;">&copy; {% now "Y" %} {{ email_label|default:current_site.name }} | {{ current_site.domain }}</p>
             </td>
           </tr>
         </table>

@@ -1,10 +1,10 @@
-{% load static %}
 <tr>
   <td style="background-color: {{ email_color_primary }}; padding: 24px; text-align: center;">
-    {% if email_logo_static_path %}
-    <img src="{% static email_logo_static_path %}" alt="{{ current_site.name }}" style="max-height: 48px; width: auto;" />
+    {% if email_logo_url %}
+    <img src="{{ email_logo_url }}" alt="{{ email_label|default:current_site.name }}" width="180"
+         style="max-height: 48px; height: auto; display: block; border: 0; margin: 0 auto;" />
     {% else %}
-    <h1 style="margin: 0; color: {{ email_color_on_primary }}; font-size: 24px; font-weight: bold;">{{ current_site.name }}</h1>
+    <h1 style="margin: 0; color: {{ email_color_on_primary }}; font-size: 24px; font-weight: bold;">{{ email_label|default:current_site.name }}</h1>
     {% endif %}
   </td>
 </tr>

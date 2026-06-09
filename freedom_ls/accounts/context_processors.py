@@ -34,5 +34,4 @@ def email_settings(request: HttpRequest) -> dict[str, str | None]:
         "email_color_border": settings.EMAIL_COLOR_BORDER,
         "email_font_family": settings.EMAIL_FONT_FAMILY,
         "email_button_radius": settings.EMAIL_BUTTON_RADIUS,
-        "email_logo_static_path": settings.EMAIL_LOGO_STATIC_PATH,
     }

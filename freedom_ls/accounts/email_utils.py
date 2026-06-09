@@ -65,13 +65,18 @@ def _expand_vars(raw: str, token_map: dict[str, str]) -> str:
         key = full_prop.lstrip("-")  # e.g. "color-primary"
         if key not in token_map:
             raise ColorResolveError(f"Unknown CSS variable {full_prop!r} in {raw!r}")
+        # Re-encountering a key already expanded means its replacement (directly
+        # or transitively) re-introduced it — a genuine reference cycle. The
+        # same variable legitimately used in several sibling positions is not a
+        # cycle, so all of its occurrences are substituted in one pass below.
         if key in seen:
             raise ColorResolveError(
                 f"Cyclic CSS variable reference involving {full_prop!r}"
             )
         seen.add(key)
         replacement = token_map[key]
-        current = current[: match.start()] + replacement + current[match.end() :]
+        occurrence = re.compile(r"var\(\s*" + re.escape(full_prop) + r"\s*\)")
+        current = occurrence.sub(replacement, current)
     # Exceeded depth — treat as a cycle
     raise ColorResolveError(
         f"Exceeded maximum var() substitution depth resolving {raw!r}"
@@ -318,6 +323,17 @@ def extract_button_radius(token_map: dict[str, str], fallback: str = "6px") -> s
         stacklevel=2,
     )
     return fallback
+
+
+def resolved_email_logo_path() -> str | None:
+    """Return the static path to use for the email logo.
+
+    Checks EMAIL_LOGO_STATIC_PATH first, then falls back to HEADER_LOGO_STATIC_PATH.
+    Returns None if neither is set.
+    """
+    from django.conf import settings
+
+    return settings.EMAIL_LOGO_STATIC_PATH or settings.HEADER_LOGO_STATIC_PATH or None
 
 
 def resolve_color_token(token_map: dict[str, str], token: str, fallback: str) -> str:
