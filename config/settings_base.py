@@ -20,7 +20,10 @@ from django.utils.csp import (
     CSP,
 )
 
-from freedom_ls.accounts.email_utils import parse_tailwind_colors
+from freedom_ls.accounts.email_utils import (
+    parse_tailwind_tokens,
+    resolve_color_token,
+)
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR, configure_theme
 from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
 
@@ -364,14 +367,14 @@ ACCOUNT_EMAIL_NOTIFICATIONS = True
 # because it is part of the email-template contract; only the lookup key
 # changes (`foreground` → `on-surface`, matching the renamed role token).
 _theme_css = RESOLVED_THEME_DIR / "static" / "themes" / FLS_THEME / "theme.css"
-_tw_colors = parse_tailwind_colors(str(_theme_css))
-EMAIL_COLOR_PRIMARY = _tw_colors.get("primary", "#2B6CB0")
-EMAIL_COLOR_FOREGROUND = _tw_colors.get("on-surface", "#1A2332")
-EMAIL_COLOR_MUTED = _tw_colors.get("muted", "#4A5568")
-EMAIL_COLOR_SURFACE = _tw_colors.get("surface", "#FFFFFF")
-EMAIL_COLOR_SURFACE_2 = _tw_colors.get("surface-2", "#F3F4F6")
-EMAIL_COLOR_ON_PRIMARY = _tw_colors.get("on-primary", "#FFFFFF")
-EMAIL_COLOR_BORDER = _tw_colors.get("border", "#D1D5DB")
+_tw_tokens = parse_tailwind_tokens(str(_theme_css))
+EMAIL_COLOR_PRIMARY = resolve_color_token(_tw_tokens, "primary", "#2B6CB0")
+EMAIL_COLOR_FOREGROUND = resolve_color_token(_tw_tokens, "on-surface", "#1A2332")
+EMAIL_COLOR_MUTED = resolve_color_token(_tw_tokens, "muted", "#4A5568")
+EMAIL_COLOR_SURFACE = resolve_color_token(_tw_tokens, "surface", "#FFFFFF")
+EMAIL_COLOR_SURFACE_2 = resolve_color_token(_tw_tokens, "surface-2", "#F3F4F6")
+EMAIL_COLOR_ON_PRIMARY = resolve_color_token(_tw_tokens, "on-primary", "#FFFFFF")
+EMAIL_COLOR_BORDER = resolve_color_token(_tw_tokens, "border", "#D1D5DB")
 
 LOGIN_REDIRECT_URL = "/"
 
