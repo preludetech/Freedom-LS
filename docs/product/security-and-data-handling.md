@@ -122,7 +122,7 @@ TLS is termination at the Caddy reverse proxy (or Cloudflare edge) using certifi
 
 ### Consent audit trail
 
-The `LegalConsent` model records every terms/privacy acceptance as an append-only row (no delete/change permissions in admin). Each record captures: document type, document version, git blob hash, timestamp, IP address, and consent method. The legal document content is read from the git blob at HEAD at signup time, making the recorded hash tamper-evident. The full detail of this mechanism is owned by [authentication](./authentication.md).
+Every terms/privacy acceptance is recorded as an append-only `LegalConsent` row tying the consent to the exact git blob hash of the document version accepted, which makes the record tamper-evident. This is the closest thing FLS has to a personal-data processing record. The full field list and append-only guarantees are owned by [authentication](./authentication.md) — see it for detail.
 
 ### Incident response (not yet built)
 
