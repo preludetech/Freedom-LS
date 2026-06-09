@@ -7,7 +7,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.html import escape
 
-from freedom_ls.panel_framework.actions import PanelAction
+from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
 from freedom_ls.panel_framework.panels import Panel
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.panel_framework.tabs import Tab
@@ -372,22 +372,48 @@ def _render_list_view_content(
     request: HttpRequest, list_config: type[ListViewConfig], base_url: str
 ) -> str:
     """Render a list view with its actions."""
+    table_id = "data-table-container"  # ListViewConfig.render uses DataTable's default
+    # Targeted table refresh (e.g. event-driven re-fetch): return only the table,
+    # mirroring DataTablePanel.render — short-circuit BEFORE any actions work,
+    # avoids duplicating the create button/modal.
+    if request.headers.get("HX-Target") == table_id:
+        return list_config.render(request, base_url=base_url)
+
     list_actions = [
         action
         for action in list_config.get_actions(request)
         if action.has_permission(request)
     ]
-    actions_html = ""
-    if list_actions:
-        rendered_actions = [
-            action.render(request, None, base_url) for action in list_actions
-        ]
+    if not list_actions:
+        return list_config.render(request, base_url=base_url)
+
+    rendered_actions = [
+        action.render(request, None, base_url) for action in list_actions
+    ]
+    created_events = [
+        action.get_created_event_name()
+        for action in list_actions
+        if isinstance(action, CreateInstanceAction)
+    ]
+    actions_html = render_to_string(
+        "panel_framework/partials/instance_actions.html",
+        {"actions": rendered_actions},
+        request=request,
+    )
+    table_html = list_config.render(request, base_url=base_url)
+    if created_events:
         actions_html = render_to_string(
-            "panel_framework/partials/instance_actions.html",
-            {"actions": rendered_actions},
+            "panel_framework/partials/list_refresh.html",
+            {
+                "actions_html": actions_html,
+                # Space-separated event names — simple identifiers, no JSON
+                # escaping needed in the data-* attribute.
+                "refresh_events": " ".join(created_events),
+                "refresh_url": base_url,
+                "refresh_target": table_id,
+            },
             request=request,
         )
-    table_html = list_config.render(request, base_url=base_url)
     return actions_html + table_html
 
 
