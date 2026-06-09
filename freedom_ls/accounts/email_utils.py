@@ -189,6 +189,137 @@ def resolve_css_color(raw: str, token_map: dict[str, str]) -> str:
         ) from exc
 
 
+_CSS_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "system-ui",
+        "ui-sans-serif",
+        "ui-monospace",
+        "-apple-system",
+    }
+)
+
+_WEB_SAFE_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        "arial",
+        "helvetica",
+        "helvetica neue",
+        "verdana",
+        "georgia",
+        "times new roman",
+        "courier new",
+        "trebuchet ms",
+        "tahoma",
+    }
+)
+
+_GENERIC_FAMILIES: frozenset[str] = frozenset({"sans-serif", "serif", "monospace"})
+
+
+def _is_css_keyword(name: str) -> bool:
+    """Return True if the name is a CSS keyword (system font or ui-* variant)."""
+    lower = name.lower()
+    if lower in _CSS_KEYWORDS:
+        return True
+    # Drop any ui-* keyword not in the explicit set
+    return bool(lower.startswith("ui-"))
+
+
+def email_safe_font_stack(raw_font_sans: str) -> str:
+    """Filter a CSS font-family stack to email-safe names only.
+
+    Drops CSS system-font keywords (system-ui, ui-sans-serif, ui-monospace,
+    -apple-system, and any other ui-* keywords) and custom font names not on
+    the web-safe allowlist. Always preserves or appends a generic family
+    (sans-serif, serif, or monospace). Multi-word names are re-quoted.
+
+    Emits a UserWarning when only a generic family remains but at least one
+    custom (non-keyword, non-allowlisted) name was stripped.
+    """
+    # Normalise line continuations / extra whitespace within the value
+    normalised = " ".join(raw_font_sans.split())
+
+    parts = _split_top_level_commas(normalised)
+
+    kept: list[str] = []
+    had_custom = False
+    trailing_generic: str | None = None
+
+    for part in parts:
+        # Strip surrounding whitespace and quotes for classification
+        stripped = part.strip()
+        unquoted = stripped.strip('"').strip("'").strip()
+        lower = unquoted.lower()
+
+        if lower in _GENERIC_FAMILIES:
+            trailing_generic = lower
+            continue
+
+        if _is_css_keyword(unquoted):
+            continue
+
+        if lower in _WEB_SAFE_ALLOWLIST:
+            # Re-quote multi-word names
+            if " " in unquoted:
+                kept.append(f'"{unquoted}"')
+            else:
+                kept.append(unquoted)
+        else:
+            # Custom font — not email-safe; note that it was present
+            had_custom = True
+
+    # Determine the generic to append/keep
+    generic = trailing_generic or "sans-serif"
+
+    result_parts = [*kept, generic]
+    result = ", ".join(result_parts)
+
+    if had_custom and not kept:
+        warnings.warn(
+            f"Font stack {raw_font_sans!r} contains only custom fonts not in the "
+            f"email-safe allowlist; falling back to {generic!r} only.",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    return result
+
+
+def extract_font_family(
+    token_map: dict[str, str], fallback: str = "Arial, Helvetica, sans-serif"
+) -> str:
+    """Extract an email-safe font-family stack from the theme token map.
+
+    Returns ``email_safe_font_stack(token_map["fls-font-sans"])`` when the
+    token is present. If it is absent, emits a UserWarning and returns
+    *fallback* unchanged.
+    """
+    if "fls-font-sans" in token_map:
+        return email_safe_font_stack(token_map["fls-font-sans"])
+    warnings.warn(
+        "Theme token --fls-font-sans not found; using fallback font family.",
+        UserWarning,
+        stacklevel=2,
+    )
+    return fallback
+
+
+def extract_button_radius(token_map: dict[str, str], fallback: str = "6px") -> str:
+    """Extract the button border-radius value from the theme token map.
+
+    Returns the raw value of ``--fls-radius-md`` as-is (e.g. ``'0.375rem'``,
+    ``'0.5rem'``, ``'6px'``). If the token is absent, emits a UserWarning and
+    returns *fallback*.
+    """
+    if "fls-radius-md" in token_map:
+        return token_map["fls-radius-md"]
+    warnings.warn(
+        "Theme token --fls-radius-md not found; using fallback button radius.",
+        UserWarning,
+        stacklevel=2,
+    )
+    return fallback
+
+
 def resolve_color_token(token_map: dict[str, str], token: str, fallback: str) -> str:
     """Resolve ``color-<token>`` from the token map to a #rrggbb hex string.
 
