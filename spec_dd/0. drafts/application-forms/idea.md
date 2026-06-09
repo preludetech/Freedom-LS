@@ -1,17 +1,20 @@
 # Application Forms for Application-Gated Courses
 
-Builds directly on top of **`applying-for-courses`** (`spec_dd/2. in progress/applying-for-courses`),
+Builds on top of **`applying-for-courses`** (`spec_dd/2. in progress/applying-for-courses`),
 which ships the course-access backend, the `application_gated` access type, and a
-bare **Apply** button that creates a reviewable `CourseApplication` with **no form**.
+bare **Apply** button that creates a standalone `CourseApplication` with **no form**. The
+review/approval workflow (state machine, reviewer permissions, review UI) is a separate
+follow-up, `application-review-ui` — this spec also leans on it for the FSM (see the dependency
+note under "Seams already in place").
 
 This follow-up adds the **application form**: an authored, multi-step questionnaire
 (text, choice, checkbox, and file-upload questions) that an applicant fills in before
 their application reaches a reviewer. The form is **content** — authored in
 yaml/markdown and loaded through the same content pipeline as every other content type.
 
-Nothing here changes the access backend or the review/approval workflow; it only puts
-a form *in front of* the existing submission. The base spec deliberately leaves every
-seam these models need (see "Seams already in place" below).
+It only puts a form *in front of* the existing submission; the access backend is untouched, and
+the review workflow it feeds is `application-review-ui`'s. Every seam these models need is left in
+place by the predecessor specs (see "Seams already in place" below).
 
 ---
 
@@ -175,9 +178,11 @@ Per `research_multistep_ux.md` (DB-backed draft, one URL per step, GOV.UK check-
   path is a reviewer `request_changes` → `changes_requested`, which re-enables Change links
   and surfaces the reviewer's required message + a per-step indication of what to fix.
 
-Once the form exists, the base spec's `submit` transition gains its
+Once the form exists, the **review spec's** `submit` transition gains its
 "validates required answers across all steps" behaviour, and `request_changes` /
-`resubmit` become meaningful (there is now something for the applicant to correct).
+`resubmit` become meaningful (there is now something for the applicant to correct). **The
+state machine these reference comes from `application-review-ui`, not the base spec** — see the
+dependency note under "Seams already in place" below.
 
 ### 4. File uploads
 
@@ -200,24 +205,34 @@ Once the form exists, the base spec's `submit` transition gains its
 
 ### 5. Review UI additions
 
-The base spec's single-application review screen shows applicant identity, state actions,
-internal notes, and the transition log. This adds the **answers + inline document previews**
-(signed/permission-checked serve on click) to the main area of that screen.
+The **`application-review-ui` spec's** single-application review screen shows applicant identity,
+state actions, internal notes, and the transition log. This adds the **answers + inline document
+previews** (signed/permission-checked serve on click) to the main area of that screen. (Whichever of
+the two follow-ups lands second renders the answers/documents in that screen; until then they are
+viewable on whatever review surface the review spec has shipped.)
 
 ---
 
-## Seams already in place (from `applying-for-courses`)
+## Seams already in place
 
-The base spec was written so this work is purely additive:
+This work is purely additive, but its seams now come from **two** predecessor specs:
 
-- `CourseApplication` exists with the full `django-fsm-2` state machine; this adds the
-  `config` FK and answer/file children.
-- `ApplicationFile.scan_status` and the `application_state_changed` signal are already
-  documented as seams.
-- The access backend's "Apply now" CTA already routes to an application-entry view; this
-  work changes that view to create a draft + redirect to step 1 instead of submitting
-  directly.
+- From `applying-for-courses` (base): `CourseApplication` exists as a standalone model (user,
+  course, timestamps); this adds the `config` FK and answer/file children. The access backend's
+  "Apply now" CTA already routes to an application-entry view; this work changes that view to create
+  a draft + redirect to step 1 instead of `get_or_create` + redirect to status.
+- From `application-review-ui` (review): the `django-fsm-2` **state machine** — `submit`,
+  `request_changes`, `resubmit`, etc. — and the `application_state_changed` signal. The base spec
+  ships **no** state machine, so this work's `submit` validation, lock-on-submit, and
+  request-changes re-edit path all hang off the review spec's FSM.
+- `ApplicationFile.scan_status` is a new seam introduced here.
 - `get_application_config(*, course)` is introduced here as the single course→config lookup.
+
+> **Ordering dependency (new):** because the state machine moved out of the base spec, this spec
+> depends on `application-review-ui` for the FSM. If `application-forms` lands **first**, it must
+> introduce a minimal `draft`/`submitted` state itself (and `application-review-ui` then extends it
+> with the reviewer transitions); if it lands second, it reuses the review spec's FSM unchanged.
+> Confirm at this spec's planning time.
 
 ## Dependencies / settings new to this work
 
