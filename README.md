@@ -85,9 +85,11 @@ We are using the Django site framework to allow multi-tenant functionality. If y
 
 ## Email validation
 
-Users need to validate their email addresses before logging into the platform. We are using a fake file based email backend in development.
+Users need to validate their email addresses before logging into the platform. In development, email is captured by Mailpit, which runs as part of the `dev_db` docker composition (`cd dev_db && docker compose up`).
 
-Emails are saved in gitignore/emails. You can find all the validation links there.
+Once the composition is running, open `http://localhost:8025` to read captured mail, including validation and confirmation links. The inbox provides HTML, plain-text, and raw views.
+
+If you have a leftover `emails/` directory inside `gitignore/` from earlier runs of this project, it is no longer used and can be safely deleted.
 
 # Project layout
 
