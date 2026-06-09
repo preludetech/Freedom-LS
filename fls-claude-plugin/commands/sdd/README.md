@@ -11,7 +11,8 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 5. **Code security review** → review the code diff for security issues.
 6. **QA** → run the QA plan.
 7. **Refresh the app map** → if structure changed, re-run `/app_map`.
-8. **Ship** → PR, address feedback, finish worktree.
+8. **Document** → run `/update_product_docs` to update `docs/product/` for the shipped feature.
+9. **Ship** → PR, address feedback, finish worktree.
 
 > `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** sets up an isolated worktree for the work. Run it once, then do everything else inside the worktree.
 
@@ -80,7 +81,11 @@ If `/plan_structure_review` surfaced any structure concerns that were accepted (
 
 If no structural change happened, skip this step.
 
-## Step 8: Ship it
+## Step 8: Update product docs
+
+Run `/update_product_docs` to refresh the product documentation under `docs/product/` for the feature that just shipped. The command reads the spec and plan to identify which docs are affected, fans out one worker per affected doc to draft the updates, applies the edits, and — for features with visible UI — starts a dev server to capture and compress screenshots via Playwright MCP. It ticks its own todo box and cleans up scratch files on completion.
+
+## Step 9: Ship it
 
 1. Open a pull request.
 2. Run `/address_pr_review` to work through review feedback.
