@@ -5,8 +5,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 1. Idea
 
 - [x] (user) Write the idea file in this directory
-- [ ] (cmd) Optionally run `/improve_idea` to research and refine the idea
-- [ ] (user) Review the refined idea and edit as needed
+- [x] (cmd) Optionally run `/improve_idea` to research and refine the idea
+- [x] (user) Review the refined idea and edit as needed
 
 ## 2. Spec
 
@@ -23,7 +23,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 4. Plan
 
 - [x] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
-- [ ] (user) Review both plans and edit where needed
+- [x] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
 
@@ -47,7 +47,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)
+- [x] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
