@@ -5,6 +5,8 @@ from django.db.models import Q, QuerySet
 from django.http import HttpRequest
 from django.template.loader import render_to_string
 
+DEFAULT_TABLE_ID = "data-table-container"
+
 
 class DataTable:
     """Abstract class used for rendering data tables"""
@@ -65,7 +67,7 @@ class DataTable:
         request: HttpRequest,
         filters: dict | None = None,
         base_url: str = "",
-        table_id: str = "data-table-container",
+        table_id: str = DEFAULT_TABLE_ID,
     ) -> str:
         columns = cls._prepare_columns()
         sort_by = request.GET.get("sort", "")

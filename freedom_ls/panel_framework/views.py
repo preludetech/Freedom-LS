@@ -9,7 +9,7 @@ from django.utils.html import escape
 
 from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
 from freedom_ls.panel_framework.panels import Panel
-from freedom_ls.panel_framework.tables import DataTable
+from freedom_ls.panel_framework.tables import DEFAULT_TABLE_ID, DataTable
 from freedom_ls.panel_framework.tabs import Tab
 
 
@@ -372,7 +372,7 @@ def _render_list_view_content(
     request: HttpRequest, list_config: type[ListViewConfig], base_url: str
 ) -> str:
     """Render a list view with its actions."""
-    table_id = "data-table-container"  # ListViewConfig.render uses DataTable's default
+    table_id = DEFAULT_TABLE_ID
     # Targeted table refresh (e.g. event-driven re-fetch): return only the table,
     # mirroring DataTablePanel.render — short-circuit BEFORE any actions work,
     # avoids duplicating the create button/modal.

@@ -6,7 +6,7 @@ from django.db.models import Model
 from django.http import HttpRequest
 from django.template.loader import render_to_string
 
-from freedom_ls.panel_framework.tables import DataTable
+from freedom_ls.panel_framework.tables import DEFAULT_TABLE_ID, DataTable
 
 if TYPE_CHECKING:
     from freedom_ls.panel_framework.actions import PanelAction
@@ -58,7 +58,7 @@ class DataTablePanel(Panel):
     def get_content(
         self, request: HttpRequest, base_url: str = "", panel_name: str = ""
     ) -> str:
-        table_id = f"table-{panel_name}" if panel_name else "data-table-container"
+        table_id = f"table-{panel_name}" if panel_name else DEFAULT_TABLE_ID
         return self.data_table.render(
             request,
             filters=self.get_filters(),
@@ -69,7 +69,7 @@ class DataTablePanel(Panel):
     def render(
         self, request: HttpRequest, base_url: str = "", panel_name: str = ""
     ) -> str:
-        table_id = f"table-{panel_name}" if panel_name else "data-table-container"
+        table_id = f"table-{panel_name}" if panel_name else DEFAULT_TABLE_ID
         if request.headers.get("HX-Target") == table_id:
             return self.get_content(request, base_url=base_url, panel_name=panel_name)
         return super().render(request, base_url=base_url, panel_name=panel_name)
