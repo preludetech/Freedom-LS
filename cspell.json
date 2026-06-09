@@ -4,12 +4,14 @@
   "words": [
     "allauth",
     "djlint",
+    "Mailpit",
     "Outfit",
     "Saleor",
     "STATICFILES",
     "staticfiles",
     "themable",
-    "venv"
+    "venv",
+    "worktrees"
   ],
   "ignorePaths": [
     ".venv",
