@@ -8,3 +8,4 @@
 - [reference_demo_content_loader.md](reference_demo_content_loader.md) — Use `content_save <dir> <site>` to (re)load demo course content after markdown edits; idempotent via frontmatter UUID
 - [reference_educator_cmodal_trigger.md](reference_educator_cmodal_trigger.md) — Give a QA educator a reachable c-modal trigger (cohort Delete confirmation / Create Cohort modal-form); perms + qa_create_educator_modal_target command
 - [reference_form_question_types_command.md](reference_form_question_types_command.md) — qa_create_form_question_types command: QUIZ form with all 4 question types on a dedicated course for demodev@email.com
+- [reference_rich_dashboard_student_command.md](reference_rich_dashboard_student_command.md) — qa_create_rich_dashboard_student: demodev_s1 with all 3 dashboard sections + real scored/passing quiz attempt + completed course
