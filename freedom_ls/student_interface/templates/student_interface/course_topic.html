@@ -5,7 +5,7 @@
 {% block page_title %}{% include "partials/page_title.html" with page_title=topic.title page_subtitle=topic.subtitle %}{% endblock page_title %}
 
 {% block content %}
-    <c-page flush="true">
+    <c-page flush="true" class="pt-2 lg:pt-4">
         <div class="space-y-8" x-data="coursePlayer">
 
             <c-markdown-container>
