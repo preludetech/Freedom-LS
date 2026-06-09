@@ -87,7 +87,7 @@ Run `/do_qa` to execute the QA plan.
 
 The `.claude/settings.json` allow-list uses wildcard entries `Bash(.claude/ds/scripts/*.sh:*)` and
 `Bash(.claude/fls-dev/scripts/*.sh:*)` so that QA helper scripts (`find_available_port.sh`,
-`kill_runserver.sh`, `qa_cleanup.sh`, `qa_collect_screenshots.sh`, `qa_scratch_teardown.sh`, etc.)
+`kill_runserver.sh`, `qa_cleanup.sh`, `qa_collect_screenshots.sh`, `delete_sdd_work_files.sh`, etc.)
 run prompt-free during a QA session.
 
 **Adding any script under `.claude/ds/scripts/` or `.claude/fls-dev/scripts/` is equivalent to

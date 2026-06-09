@@ -1,6 +1,6 @@
 #!/bin/bash
-# qa_scratch_teardown.sh — Remove specific QA scratch files produced by a single run.
-# Usage: ./qa_scratch_teardown.sh <file1> [<file2> ...]
+# delete_sdd_work_files.sh — Remove specific scratch files from the shared .sdd-work/ dir.
+# Usage: ./delete_sdd_work_files.sh <file1> [<file2> ...]
 #
 # Takes an explicit list of file paths as arguments. For each path:
 #   - Resolves it with realpath.
@@ -8,8 +8,8 @@
 #   - Removes it with rm -f.
 #
 # NEVER accepts directories, globs, or a bare invocation with no arguments.
-# The .sdd-work/ directory itself is SHARED with other SDD commands and is
-# never wiped wholesale — only the specific named files are removed.
+# The .sdd-work/ directory is SHARED across all SDD commands and is never wiped
+# wholesale — only the specific named files passed as arguments are removed.
 
 set -euo pipefail
 

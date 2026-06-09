@@ -85,7 +85,7 @@ The test **must now pass**. If it still fails, return `status: failed · reason:
 ### Step 5 — Run the full suite
 
 ```
-uv run pytest
+uv run pytest -x
 ```
 
 All tests must pass. If any test outside your new test fails, investigate: either your fix broke

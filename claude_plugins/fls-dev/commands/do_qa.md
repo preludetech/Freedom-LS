@@ -606,7 +606,7 @@ After the report and todo have consumed everything, delete the scratch files thi
 
 Call the teardown script with the **explicit, known file paths** — this is a **solo** Bash call:
 
-`.claude/ds/scripts/qa_scratch_teardown.sh .sdd-work/qa_scratch.json <bugfix-report-1> <bugfix-report-2> ...`
+`.claude/fls-dev/scripts/delete_sdd_work_files.sh .sdd-work/qa_scratch.json <bugfix-report-1> <bugfix-report-2> ...`
 
 Where `<bugfix-report-N>` is the path to each `bugfix_<slug>.md` file the fixer wrote during
 Step 13 (read the slugs from the fixer's return lines). If no bugfixer was spawned, omit the
