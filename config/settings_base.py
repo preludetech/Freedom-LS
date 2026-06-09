@@ -21,6 +21,8 @@ from django.utils.csp import (
 )
 
 from freedom_ls.accounts.email_utils import (
+    extract_button_radius,
+    extract_font_family,
     parse_tailwind_tokens,
     resolve_color_token,
 )
@@ -358,7 +360,6 @@ HEADER_TITLE_STYLE: str | None = (
 
 # Email template settings
 EMAIL_LOGO_STATIC_PATH = None  # e.g., "images/logo.png"
-EMAIL_FONT_FAMILY = "Arial, Helvetica, sans-serif"
 ACCOUNT_EMAIL_NOTIFICATIONS = True
 
 
@@ -375,6 +376,11 @@ EMAIL_COLOR_SURFACE = resolve_color_token(_tw_tokens, "surface", "#FFFFFF")
 EMAIL_COLOR_SURFACE_2 = resolve_color_token(_tw_tokens, "surface-2", "#F3F4F6")
 EMAIL_COLOR_ON_PRIMARY = resolve_color_token(_tw_tokens, "on-primary", "#FFFFFF")
 EMAIL_COLOR_BORDER = resolve_color_token(_tw_tokens, "border", "#D1D5DB")
+
+EMAIL_FONT_FAMILY = extract_font_family(
+    _tw_tokens, fallback="Arial, Helvetica, sans-serif"
+)
+EMAIL_BUTTON_RADIUS = extract_button_radius(_tw_tokens, fallback="6px")
 
 LOGIN_REDIRECT_URL = "/"
 

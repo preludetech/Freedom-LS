@@ -8,7 +8,7 @@
     body { margin: 0; padding: 0; background-color: {{ email_color_surface_2 }}; }
     .email-body { font-family: {{ email_font_family }}; color: {{ email_color_foreground }}; font-size: 16px; line-height: 1.5; }
     .email-content { background-color: {{ email_color_surface }}; padding: 32px 24px; }
-    .email-button { display: inline-block; background-color: {{ email_color_primary }}; color: {{ email_color_on_primary }}; text-decoration: none; padding: 12px 32px; border-radius: 6px; font-weight: bold; font-size: 16px; }
+    .email-button { display: inline-block; background-color: {{ email_color_primary }}; color: {{ email_color_on_primary }}; text-decoration: none; padding: 12px 32px; border-radius: {{ email_button_radius }}; font-weight: bold; font-size: 16px; }
     .email-footer { color: {{ email_color_muted }}; font-size: 13px; line-height: 1.5; text-align: center; padding: 24px; }
     .email-footer a { color: {{ email_color_muted }}; text-decoration: underline; }
     a { color: {{ email_color_primary }}; }

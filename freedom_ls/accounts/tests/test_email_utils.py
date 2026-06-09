@@ -5,6 +5,9 @@ import pytest
 
 from freedom_ls.accounts.email_utils import (
     ColorResolveError,
+    email_safe_font_stack,
+    extract_button_radius,
+    extract_font_family,
     parse_tailwind_colors,
     parse_tailwind_tokens,
     resolve_color_token,
@@ -348,3 +351,138 @@ def test_first_class_theme_email_colors_resolve_to_expected_hex():
     assert resolve_color_token(token_map, "surface-2", "#000000") == "#edf2f7"
     assert resolve_color_token(token_map, "on-primary", "#000000") == "#ffffff"
     assert resolve_color_token(token_map, "border", "#000000") == "#e2e8f0"
+
+
+# ---------------------------------------------------------------------------
+# email_safe_font_stack — Task 2.2
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        # Mixed stack: keywords + custom + allowlisted + generic
+        # ui-sans-serif, system-ui, -apple-system dropped; Segoe UI, Roboto, Noto Sans dropped;
+        # "Helvetica Neue" and Arial kept; sans-serif kept as generic.
+        (
+            'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
+            '"Helvetica Neue", Arial, sans-serif',
+        ),
+        # Custom-only: DM Sans is not on the allowlist, system-ui is a keyword;
+        # only sans-serif generic remains (+ warning emitted separately).
+        ('"DM Sans", system-ui, sans-serif', "sans-serif"),
+        # Single allowlisted name with generic
+        ("Arial, sans-serif", "Arial, sans-serif"),
+        # Multi-word allowlisted name is re-quoted
+        ("Helvetica Neue, sans-serif", '"Helvetica Neue", sans-serif'),
+        # Already-quoted multi-word allowlisted name preserved
+        ('"Helvetica Neue", sans-serif', '"Helvetica Neue", sans-serif'),
+        # No generic present: one is appended
+        ("Arial, Helvetica", "Arial, Helvetica, sans-serif"),
+        # All keywords, no generics: sans-serif appended
+        ("system-ui, ui-sans-serif, -apple-system", "sans-serif"),
+        # Serif generic kept
+        ("Georgia, serif", "Georgia, serif"),
+        # Monospace generic kept
+        ('"Courier New", monospace', '"Courier New", monospace'),
+        # Other ui-* keywords dropped
+        ("ui-monospace, monospace", "monospace"),
+        # Case-insensitive allowlist match
+        ("ARIAL, sans-serif", "ARIAL, sans-serif"),
+        # Tahoma is on the allowlist
+        ("Tahoma, sans-serif", "Tahoma, sans-serif"),
+        # Trebuchet MS is on the allowlist; multi-word gets quoted
+        ("Trebuchet MS, sans-serif", '"Trebuchet MS", sans-serif'),
+        # Verdana is on the allowlist
+        ("Verdana, sans-serif", "Verdana, sans-serif"),
+        # Times New Roman is on the allowlist; multi-word gets quoted
+        ("Times New Roman, serif", '"Times New Roman", serif'),
+    ],
+)
+def test_email_safe_font_stack_returns_expected_stack(raw: str, expected: str) -> None:
+    """email_safe_font_stack filters the CSS font stack to email-safe names."""
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        result = email_safe_font_stack(raw)
+    assert result == expected
+
+
+def test_email_safe_font_stack_custom_only_emits_warning() -> None:
+    """A stack reduced to only the generic emits a UserWarning about custom fonts."""
+    with pytest.warns(UserWarning, match="email-safe allowlist"):
+        email_safe_font_stack('"DM Sans", system-ui, sans-serif')
+
+
+def test_email_safe_font_stack_default_theme_produces_documented_stack() -> None:
+    """default theme fls-font-sans produces the documented email font stack."""
+    token_map = _make_token_map("default")
+    raw = token_map["fls-font-sans"]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        result = email_safe_font_stack(raw)
+    assert result == '"Helvetica Neue", Arial, sans-serif'
+
+
+def test_email_safe_font_stack_first_class_theme_produces_documented_stack() -> None:
+    """first_class theme fls-font-sans produces the documented email font stack (+ warning)."""
+    token_map = _make_token_map("first_class")
+    raw = token_map["fls-font-sans"]
+    with pytest.warns(UserWarning, match="email-safe allowlist"):
+        result = email_safe_font_stack(raw)
+    assert result == "sans-serif"
+
+
+# ---------------------------------------------------------------------------
+# extract_font_family — Task 2.2 (settings-level derivation)
+# ---------------------------------------------------------------------------
+
+
+def test_extract_font_family_missing_token_returns_fallback_and_warns() -> None:
+    """When fls-font-sans is absent, the fallback is returned and a UserWarning is emitted."""
+    token_map: dict[str, str] = {}
+    with pytest.warns(UserWarning, match="--fls-font-sans not found"):
+        result = extract_font_family(token_map, fallback="Arial, Helvetica, sans-serif")
+    assert result == "Arial, Helvetica, sans-serif"
+
+
+def test_extract_font_family_present_token_delegates_to_email_safe_font_stack() -> None:
+    """When fls-font-sans is present, the email-safe stack is returned."""
+    token_map = {"fls-font-sans": "Arial, sans-serif"}
+    result = extract_font_family(token_map, fallback="fallback-value")
+    assert result == "Arial, sans-serif"
+
+
+# ---------------------------------------------------------------------------
+# extract_button_radius — Task 2.3
+# ---------------------------------------------------------------------------
+
+
+def test_extract_button_radius_present_token_returns_value() -> None:
+    """When fls-radius-md is in the token map, its value is returned as-is."""
+    token_map = {"fls-radius-md": "0.5rem"}
+    result = extract_button_radius(token_map, fallback="6px")
+    assert result == "0.5rem"
+
+
+def test_extract_button_radius_missing_token_returns_fallback_and_warns() -> None:
+    """When fls-radius-md is absent, the fallback is returned and a UserWarning is emitted."""
+    token_map: dict[str, str] = {}
+    with pytest.warns(UserWarning, match="--fls-radius-md not found"):
+        result = extract_button_radius(token_map, fallback="6px")
+    assert result == "6px"
+
+
+def test_extract_button_radius_default_theme_yields_expected_value() -> None:
+    """default theme fls-radius-md resolves to '0.375rem'."""
+    token_map = _make_token_map("default")
+    result = extract_button_radius(token_map, fallback="6px")
+    assert result == "0.375rem"
+
+
+def test_extract_button_radius_first_class_theme_yields_expected_value() -> None:
+    """first_class theme fls-radius-md resolves to '0.5rem'."""
+    token_map = _make_token_map("first_class")
+    result = extract_button_radius(token_map, fallback="6px")
+    assert result == "0.5rem"
