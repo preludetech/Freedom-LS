@@ -31,6 +31,7 @@ dependencies = [
     "pyjwt>=2.12.0",
     "sqlparse>=0.5.4",
     "urllib3>=2.6.3",
+    "coloraide>=8.8.1",
 ]
 
 [project.optional-dependencies]
