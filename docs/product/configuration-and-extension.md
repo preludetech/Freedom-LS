@@ -3,4 +3,88 @@
 _Last updated: 2026-06-09_
 
 ## Summary
-<!-- Filled in Phase 2 -->
+
+- Branding (logo, favicon, header title, email fonts/logo) is controlled by settings constants — no template editing required for basic customisation.
+- A three-tier theming system lets downstream projects override CSS tokens, slot content within components, or shadow entire template files, in order of increasing depth.
+- Two bundled themes ship with FLS (`default`, `first_class`); the active theme is selected by the `FLS_THEME` setting at Tailwind build time and runtime.
+- The icon set is pluggable via `FREEDOM_LS_ICON_SET`; the only currently implemented set is `heroicons`.
+- FLS is designed to be installed into a host Django project; downstream apps, templates, and cotton components take priority over FLS defaults, and additional cotton components can be registered as markdown widgets.
+
+## Branding Settings
+
+The following settings in `config/settings_base.py` control visual and email branding. All are optional overrides; FLS ships with defaults.
+
+| Setting | Effect |
+|---|---|
+| `HEADER_LOGO_STATIC_PATH` | Logo displayed in the navigation bar |
+| `FAVICON_STATIC_PATH` | Browser tab favicon |
+| `HEADER_TITLE` | Text displayed in the navigation bar alongside or instead of the logo |
+| `HEADER_TITLE_STYLE` | Inline CSS applied to the header title text |
+| `EMAIL_LOGO_STATIC_PATH` | Logo embedded in outbound email templates |
+| `EMAIL_FONT_FAMILY` | Font family used in outbound email templates |
+
+These settings require no template changes; they are referenced directly by FLS templates.
+
+## Three-Tier Theming
+
+FLS supports three levels of theme customisation. Each tier is independent; they can be combined.
+
+### Tier 1 — CSS Custom Properties (Tokens)
+
+Override colour palette, shape (border-radius), and typography tokens by editing `theme.css` in the active theme directory. No template changes are required. This is sufficient for most branding adjustments (brand colours, fonts, rounded vs. sharp corners).
+
+### Tier 2 — Cotton Slots and Mergeable Classes
+
+Course card and course-row components expose named cotton slots (`eyebrow`, `footer`) that downstream templates can fill without forking the component. They also accept a mergeable `class` attribute for layout overrides. This level changes content or layout within a component while leaving the component's logic untouched.
+
+### Tier 3 — Whole-File Template Shadowing
+
+Any FLS leaf template can be replaced entirely by placing a file at the same relative path inside the downstream project's theme template directory. Django's template loader gives downstream project templates priority over FLS defaults. Use this tier when Tier 1 and Tier 2 are insufficient.
+
+## Bundled Themes
+
+Two themes ship with FLS:
+
+- **`default`** — the standard FLS visual style.
+- **`first_class`** — an alternative visual style.
+
+Theme files live in `freedom_ls/themes/default/` and `freedom_ls/themes/first_class/`. The active theme is selected by `FLS_THEME`. This setting is read at **Tailwind build time** (to determine which theme's CSS to compile) and at runtime (for template resolution). The Tailwind build must be re-run whenever `FLS_THEME` changes.
+
+## Pluggable Icon Set
+
+FLS uses a semantic icon name system: component templates reference icon names such as `lock`, `check`, `arrow-right` rather than library-specific glyph names. These semantic names are mapped to the active icon library's identifiers in `freedom_ls/icons/mappings.py`.
+
+The active icon set is configured via `FREEDOM_LS_ICON_SET`. The only currently implemented set is `heroicons`. Adding a new icon set requires providing a mapping from FLS's semantic names to the new library's identifiers.
+
+## Custom-App Extension Model
+
+FLS is designed to be installed into an existing Django project using `git submodule add` and `uv add`. The host project retains control:
+
+- **INSTALLED_APPS priority.** Apps listed after FLS apps in `INSTALLED_APPS` can override FLS behaviour through Django's standard app-override mechanisms.
+- **Template priority.** The host project's template directories are searched before FLS template directories. Any FLS template can be replaced by providing a file at the same path in the host project.
+- **Cotton component registration.** Downstream projects can register additional cotton component tags by adding entries to `MARKDOWN_ALLOWED_TAGS` in settings. Registered tags become available as markdown widgets in content authored for that installation.
+
+This model means FLS is not a black-box package; the host project has full override capability at every layer.
+
+## Per-Site Signup Policy and Additional Registration Forms
+
+Each site in a multi-site FLS installation can have its own `SiteSignupPolicy`, which controls:
+
+- Whether public signups are allowed (`allow_signups`).
+- Whether users must provide their full name at registration (`require_name`).
+- Whether terms acceptance is required (`require_terms_acceptance`).
+- A list of additional registration form classes (`additional_registration_forms` — a JSONField of dotted-path form class strings).
+
+Additional registration forms are presented to users after the standard signup step. The `RegistrationCompletionMiddleware` intercepts authenticated users with incomplete additional forms and redirects them to the completion view before they can access other parts of the site.
+
+For the full isolation model that underpins per-site configuration, see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
+
+## Other Configuration Flags
+
+| Setting | Effect |
+|---|---|
+| `ALLOW_SIGN_UPS` | Global signup toggle (site-level `SiteSignupPolicy` takes precedence when set) |
+| `REQUIRE_TERMS_ACCEPTANCE` | Global default for terms acceptance requirement |
+| `REQUIRE_NAME` | Global default for requiring name at registration |
+| `DEADLINES_ACTIVE` | Enables or disables the deadline UI features site-wide |
+| `TRUSTED_PROXY_IP_HEADER` | Header to trust for client IP when running behind a reverse proxy (relevant to deployment configuration; not documented in the public how-to guides) |
