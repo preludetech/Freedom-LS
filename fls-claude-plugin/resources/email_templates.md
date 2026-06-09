@@ -105,14 +105,15 @@ Changing `--color-primary`, `--color-foreground`, or `--color-muted` in `tailwin
 
 ## Previewing Emails in Development
 
-Dev settings (`config/settings_dev.py`) use the file-based email backend:
+Dev settings (`config/settings_dev.py`) send mail to Mailpit's SMTP listener:
 
 ```python
-EMAIL_BACKEND = "django.core.mail.backends.filebased.EmailBackend"
-EMAIL_FILE_PATH = "gitignore/emails"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "localhost"
+EMAIL_PORT = 1025
 ```
 
-Trigger any email flow (signup, password reset, etc.) and check the generated files in `gitignore/emails/`.
+Start Mailpit via the `dev_db` composition (`cd dev_db && docker compose up`), trigger an email flow (signup, password reset, etc.), then open `http://localhost:8025` to view it.
 
 ## Adding a New Email Type
 

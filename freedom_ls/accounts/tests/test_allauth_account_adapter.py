@@ -1,5 +1,6 @@
 """Tests for AccountAdapter."""
 
+import email.policy
 from unittest.mock import patch
 
 import pytest
@@ -107,3 +108,23 @@ def test_send_mail_uses_8bit_transfer_encoding(long_url_email) -> None:
     _, parts = long_url_email
     encodings = [part["Content-Transfer-Encoding"] for part in parts]
     assert all(encoding == "8bit" for encoding in encodings)
+
+
+@pytest.mark.django_db
+def test_send_mail_message_accepts_policy_kwarg(mock_site_context) -> None:
+    """Django's SMTP backend calls message(policy=...); the 8bit patch must forward it."""
+    user = UserFactory()
+    adapter = AccountAdapter()
+    context = {
+        "password_reset_url": "http://testsite/account/password/reset/key/x/",  # pragma: allowlist secret
+        "user": user,
+    }
+
+    request = RequestFactory().get("/")
+    with request_context(request):
+        adapter.send_mail("account/email/password_reset_key", user.email, context)
+
+    sent = mail.outbox[0]
+    mime = sent.message(policy=email.policy.SMTP)
+    parts = _body_parts(mime)
+    assert all(part["Content-Transfer-Encoding"] == "8bit" for part in parts)

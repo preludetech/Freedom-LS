@@ -10,6 +10,11 @@ services:
       - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
     ports:
       - "6543:5432"
+  mailpit:
+    image: axllent/mailpit:v1.30.1
+    ports:
+      - "1025:1025"
+      - "8025:8025"
   # adminer:
   #   image: adminer
   #   restart: always

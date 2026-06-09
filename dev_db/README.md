@@ -37,3 +37,7 @@ python manage.py [any command that interacts with the database]
 ```
 
 This just works.
+
+## Email (Mailpit)
+
+The composition also runs a Mailpit service. Once the composition is up, the Mailpit web inbox is available at `http://localhost:8025`. See the root `README.md` for full details on dev email setup.

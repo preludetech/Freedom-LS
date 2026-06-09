@@ -54,9 +54,12 @@ HEADLESS_SERVE_SPECIFICATION = True
 
 ###
 # EMAIL
+# Development email is captured by Mailpit (see dev_db/docker-compose.yaml).
+# Browse the inbox at http://localhost:8025
 
-EMAIL_BACKEND = "django.core.mail.backends.filebased.EmailBackend"
-EMAIL_FILE_PATH = "gitignore/emails"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "localhost"
+EMAIL_PORT = 1025
 
 
 #####

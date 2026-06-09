@@ -1,3 +1,4 @@
+import email.policy
 from email.mime.base import MIMEBase
 
 from allauth.account.adapter import DefaultAccountAdapter
@@ -22,8 +23,10 @@ def _set_8bit_encoding(msg: EmailMessage) -> None:
     """
     original_message = msg.message
 
-    def patched_message() -> MIMEBase:
-        mime_msg: MIMEBase = original_message()
+    def patched_message(
+        *, policy: email.policy.Policy = email.policy.default
+    ) -> MIMEBase:
+        mime_msg: MIMEBase = original_message(policy=policy)
         for part in mime_msg.walk():
             if part.get_content_type() in ("text/plain", "text/html"):
                 decoded_payload = part.get_payload(decode=True)
