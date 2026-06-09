@@ -9,7 +9,9 @@ from django.contrib.sites.models import Site
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import EmailMessage
 from django.http import HttpRequest
+from django.templatetags.static import static
 
+from freedom_ls.accounts.email_utils import resolved_email_logo_path
 from freedom_ls.site_aware_models.models import get_cached_site
 
 from .models import SiteSignupPolicy, User
@@ -45,13 +47,27 @@ def _set_8bit_encoding(msg: EmailMessage) -> None:
 
 class AccountAdapter(DefaultAccountAdapter):
     def send_mail(self, template_prefix: str, email: str, context: dict) -> None:
-        # Mirrors DefaultAccountAdapter.send_mail() but adds 8bit encoding.
+        # Mirrors DefaultAccountAdapter.send_mail() but adds 8bit encoding and
+        # injects email_logo_url / email_label for branded email templates.
         # If upgrading allauth, verify this stays in sync with the parent.
         request = allauth_context.request
+        current_site = get_current_site(request)
+
+        logo_path = resolved_email_logo_path()
+        protocol = getattr(settings, "ACCOUNT_DEFAULT_HTTP_PROTOCOL", "https")
+        email_logo_url: str | None = (
+            f"{protocol}://{current_site.domain}{static(logo_path)}"
+            if logo_path
+            else None
+        )
+        email_label: str = settings.HEADER_TITLE or current_site.name
+
         ctx = {
             "request": request,
             "email": email,
-            "current_site": get_current_site(request),
+            "current_site": current_site,
+            "email_logo_url": email_logo_url,
+            "email_label": email_label,
         }
         ctx.update(context)
         msg = self.render_mail(template_prefix, email, ctx)

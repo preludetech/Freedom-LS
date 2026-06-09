@@ -250,6 +250,16 @@ def test_resolve_css_color_mix_returns_intermediate_hex():
     assert result != "#0000ff"
 
 
+def test_resolve_css_color_same_var_used_twice_is_not_a_cycle():
+    """The same var() in two sibling positions resolves; it is not a cycle."""
+    import re
+
+    token_map = {"color-primary": "#2B6CB0"}
+    raw = "color-mix(in oklch, var(--color-primary), var(--color-primary) 12%)"
+    result = resolve_css_color(raw, token_map)
+    assert re.match(r"^#[0-9a-f]{6}$", result)
+
+
 def test_resolve_css_color_mix_with_var_references():
     """color-mix resolves var() references within its arguments."""
     import re

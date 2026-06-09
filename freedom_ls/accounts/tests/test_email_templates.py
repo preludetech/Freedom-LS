@@ -18,7 +18,7 @@ EMAIL_SETTINGS_CONTEXT: dict[str, str | None] = {
     "email_color_muted": settings.EMAIL_COLOR_MUTED,
     "email_font_family": settings.EMAIL_FONT_FAMILY,
     "email_button_radius": settings.EMAIL_BUTTON_RADIUS,
-    "email_logo_static_path": settings.EMAIL_LOGO_STATIC_PATH,
+    "email_label": "TestSite",
 }
 
 # Security context for notification emails
@@ -475,31 +475,300 @@ class TestAllauthNotificationEmails:
 
 
 # ---------------------------------------------------------------------------
-# 4. Header logo test
+# 4. Header logo / label tests
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
 class TestHeaderLogo:
-    """Tests for logo vs text rendering in the email header."""
+    """Tests for logo vs text rendering in the email header, driven by email_logo_url."""
 
-    def test_header_shows_img_when_logo_path_is_set(
+    def test_header_shows_img_with_absolute_src_when_logo_url_is_set(
         self, base_context: dict[str, object]
     ) -> None:
-        """When email_logo_static_path is set, header should contain an img tag."""
-        context = {**base_context, "email_logo_static_path": "images/logo.png"}
+        """When email_logo_url is an absolute URL, rendered HTML contains <img src> with that URL."""
+        logo_url = "https://example.com/static/images/logo.png"
+        context = {**base_context, "email_logo_url": logo_url}
         html = render_to_string("emails/base_email.html", context)
         assert "<img" in html
+        assert logo_url in html
 
-    def test_header_shows_site_name_when_no_logo(
+    def test_header_img_src_is_absolute_url_not_bare_static_path(
         self, base_context: dict[str, object]
     ) -> None:
-        """When email_logo_static_path is None, header should show site name as text."""
-        context = {**base_context, "email_logo_static_path": None}
+        """The img src must be a fully-qualified URL, never a bare /static/ path."""
+        logo_url = "https://example.com/static/images/logo.png"
+        context = {**base_context, "email_logo_url": logo_url}
+        html = render_to_string("emails/base_email.html", context)
+        # The absolute URL should appear in the src attribute
+        assert 'src="https://example.com/static/images/logo.png"' in html
+
+    def test_header_img_alt_equals_email_label(
+        self, base_context: dict[str, object]
+    ) -> None:
+        """When email_logo_url is set, the img alt attribute should equal email_label."""
+        logo_url = "https://example.com/static/images/logo.png"
+        context = {**base_context, "email_logo_url": logo_url, "email_label": "MyBrand"}
+        html = render_to_string("emails/base_email.html", context)
+        assert 'alt="MyBrand"' in html
+
+    def test_header_shows_h1_text_label_when_logo_url_is_none(
+        self, base_context: dict[str, object]
+    ) -> None:
+        """When email_logo_url is None, header shows the email_label in an h1 and no img."""
+        context = {**base_context, "email_logo_url": None, "email_label": "MyBrand"}
+        html = render_to_string("emails/base_email.html", context)
+        assert "<h1" in html
+        assert "MyBrand" in html
+        assert "<img" not in html
+
+    def test_header_shows_no_img_when_email_logo_url_absent(
+        self, base_context: dict[str, object]
+    ) -> None:
+        """Without email_logo_url in context at all, no img tag appears."""
+        # base_context has no email_logo_url key
+        context = {k: v for k, v in base_context.items() if k != "email_logo_url"}
+        html = render_to_string("emails/base_email.html", context)
+        assert "<img" not in html
+
+    def test_header_text_fallback_uses_current_site_name_when_no_email_label(
+        self, base_context: dict[str, object]
+    ) -> None:
+        """Back-compat: without email_label in context, the site name from current_site is shown."""
+        context = {k: v for k, v in base_context.items() if k != "email_label"}
+        context["email_logo_url"] = None
         html = render_to_string("emails/base_email.html", context)
         assert "TestSite" in html
-        # The h1 tag should be present for text-based header
-        assert "<h1" in html
+
+    def test_plain_text_contains_email_label_and_no_static_url(
+        self, base_context: dict[str, object]
+    ) -> None:
+        """Plain-text base template contains email_label and no /static/ URL."""
+        context = {**base_context, "email_label": "BrandName"}
+        txt = render_to_string("emails/base_email.txt", context)
+        assert "BrandName" in txt
+        assert "/static/" not in txt
+
+    def test_plain_text_falls_back_to_site_name_without_email_label(
+        self, base_context: dict[str, object]
+    ) -> None:
+        """Back-compat: plain text shows current_site.name when email_label not in context."""
+        context = {k: v for k, v in base_context.items() if k != "email_label"}
+        txt = render_to_string("emails/base_email.txt", context)
+        assert "TestSite" in txt
+
+
+# ---------------------------------------------------------------------------
+# 4b. Adapter-level tests for send_mail context composition
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestAdapterSendMailContext:
+    """Tests that AccountAdapter.send_mail injects email_logo_url and email_label."""
+
+    def test_send_mail_injects_absolute_logo_url_when_logo_path_set(
+        self, mock_site_context, settings
+    ) -> None:
+        """send_mail should compose an absolute http(s)://domain/static/path URL for email_logo_url."""
+        from unittest.mock import MagicMock, patch
+
+        from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
+
+        settings.EMAIL_LOGO_STATIC_PATH = "images/test_logo.png"
+        settings.HEADER_LOGO_STATIC_PATH = None
+        settings.HEADER_TITLE = ""
+        settings.ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
+
+        captured: dict = {}
+
+        adapter = AccountAdapter(request=None)
+
+        with (
+            patch.object(adapter, "render_mail") as mock_render_mail,
+            patch(
+                "freedom_ls.accounts.allauth_account_adapter.allauth_context"
+            ) as mock_ctx,
+            patch(
+                "freedom_ls.accounts.allauth_account_adapter.get_current_site",
+                return_value=mock_site_context,
+            ),
+        ):
+            mock_ctx.request = None
+
+            def capture_ctx(template_prefix, email, ctx):
+                captured.update(ctx)
+                m = MagicMock()
+                m.send = MagicMock()
+                return m
+
+            mock_render_mail.side_effect = capture_ctx
+
+            adapter.send_mail("account/email/login_code", "user@example.com", {})
+
+        assert "email_logo_url" in captured
+        logo_url = captured["email_logo_url"]
+        assert logo_url is not None
+        # Must be absolute: starts with http:// or https://
+        assert logo_url.startswith("http://") or logo_url.startswith("https://")
+        # Must contain the static path
+        assert "images/test_logo.png" in logo_url
+
+    def test_send_mail_logo_url_is_none_when_no_logo_paths_set(
+        self, mock_site_context, settings
+    ) -> None:
+        """send_mail sets email_logo_url to None when no logo path is configured."""
+        from unittest.mock import MagicMock, patch
+
+        from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
+
+        settings.EMAIL_LOGO_STATIC_PATH = None
+        settings.HEADER_LOGO_STATIC_PATH = None
+        settings.HEADER_TITLE = ""
+
+        captured: dict = {}
+        adapter = AccountAdapter(request=None)
+
+        with (
+            patch.object(adapter, "render_mail") as mock_render_mail,
+            patch(
+                "freedom_ls.accounts.allauth_account_adapter.allauth_context"
+            ) as mock_ctx,
+            patch(
+                "freedom_ls.accounts.allauth_account_adapter.get_current_site",
+                return_value=mock_site_context,
+            ),
+        ):
+            mock_ctx.request = None
+
+            def capture_ctx(template_prefix, email, ctx):
+                captured.update(ctx)
+                m = MagicMock()
+                m.send = MagicMock()
+                return m
+
+            mock_render_mail.side_effect = capture_ctx
+            adapter.send_mail("account/email/login_code", "user@example.com", {})
+
+        assert captured.get("email_logo_url") is None
+
+    def test_send_mail_email_label_uses_header_title_when_set(
+        self, mock_site_context, settings
+    ) -> None:
+        """send_mail sets email_label to HEADER_TITLE when it is configured."""
+        from unittest.mock import MagicMock, patch
+
+        from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
+
+        settings.HEADER_TITLE = "MyProduct"
+        settings.EMAIL_LOGO_STATIC_PATH = None
+        settings.HEADER_LOGO_STATIC_PATH = None
+
+        captured: dict = {}
+        adapter = AccountAdapter(request=None)
+
+        with (
+            patch.object(adapter, "render_mail") as mock_render_mail,
+            patch(
+                "freedom_ls.accounts.allauth_account_adapter.allauth_context"
+            ) as mock_ctx,
+            patch(
+                "freedom_ls.accounts.allauth_account_adapter.get_current_site",
+                return_value=mock_site_context,
+            ),
+        ):
+            mock_ctx.request = None
+
+            def capture_ctx(template_prefix, email, ctx):
+                captured.update(ctx)
+                m = MagicMock()
+                m.send = MagicMock()
+                return m
+
+            mock_render_mail.side_effect = capture_ctx
+            adapter.send_mail("account/email/login_code", "user@example.com", {})
+
+        assert captured.get("email_label") == "MyProduct"
+
+    def test_send_mail_email_label_falls_back_to_site_name_when_no_header_title(
+        self, mock_site_context, settings
+    ) -> None:
+        """send_mail falls back to current_site.name for email_label when HEADER_TITLE is empty."""
+        from unittest.mock import MagicMock, patch
+
+        from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
+
+        settings.HEADER_TITLE = ""
+        settings.EMAIL_LOGO_STATIC_PATH = None
+        settings.HEADER_LOGO_STATIC_PATH = None
+
+        captured: dict = {}
+        adapter = AccountAdapter(request=None)
+
+        with (
+            patch.object(adapter, "render_mail") as mock_render_mail,
+            patch(
+                "freedom_ls.accounts.allauth_account_adapter.allauth_context"
+            ) as mock_ctx,
+            patch(
+                "freedom_ls.accounts.allauth_account_adapter.get_current_site",
+                return_value=mock_site_context,
+            ),
+        ):
+            mock_ctx.request = None
+
+            def capture_ctx(template_prefix, email, ctx):
+                captured.update(ctx)
+                m = MagicMock()
+                m.send = MagicMock()
+                return m
+
+            mock_render_mail.side_effect = capture_ctx
+            adapter.send_mail("account/email/login_code", "user@example.com", {})
+
+        # Should fall back to site name (mock_site_context creates "TestSite")
+        assert captured.get("email_label") == "TestSite"
+
+    def test_send_mail_uses_header_logo_path_when_email_logo_path_unset(
+        self, mock_site_context, settings
+    ) -> None:
+        """send_mail falls back to HEADER_LOGO_STATIC_PATH when EMAIL_LOGO_STATIC_PATH is None."""
+        from unittest.mock import MagicMock, patch
+
+        from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
+
+        settings.EMAIL_LOGO_STATIC_PATH = None
+        settings.HEADER_LOGO_STATIC_PATH = "images/header_logo.png"
+        settings.HEADER_TITLE = ""
+        settings.ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
+
+        captured: dict = {}
+        adapter = AccountAdapter(request=None)
+
+        with (
+            patch.object(adapter, "render_mail") as mock_render_mail,
+            patch(
+                "freedom_ls.accounts.allauth_account_adapter.allauth_context"
+            ) as mock_ctx,
+            patch(
+                "freedom_ls.accounts.allauth_account_adapter.get_current_site",
+                return_value=mock_site_context,
+            ),
+        ):
+            mock_ctx.request = None
+
+            def capture_ctx(template_prefix, email, ctx):
+                captured.update(ctx)
+                m = MagicMock()
+                m.send = MagicMock()
+                return m
+
+            mock_render_mail.side_effect = capture_ctx
+            adapter.send_mail("account/email/login_code", "user@example.com", {})
+
+        logo_url = captured.get("email_logo_url")
+        assert logo_url is not None
+        assert "images/header_logo.png" in logo_url
 
 
 # ---------------------------------------------------------------------------
