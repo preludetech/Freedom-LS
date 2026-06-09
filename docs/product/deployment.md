@@ -110,5 +110,5 @@ Sector-specific requirements (financial institutions, government entities) may i
 
 The following guides in this repository document earlier deployment approaches that are **superseded** by the Ansible + Docker Compose + Caddy architecture described in this document and in the deployment playbook. They are retained for historical reference but should not be followed for new deployments:
 
-- [DOCKER_DEPLOY.md](../how tos/DOCKER_DEPLOY.md) — Docker Compose deployment using nginx as the reverse proxy. **Superseded.** The current architecture uses Caddy.
-- [Caprover deploy.md](../how tos/Caprover deploy.md) — CapRover-based deployment. **Superseded.** CapRover runs as root, has no RBAC, provides no audit trail, and is incompatible with ISO 27001 requirements.
+- [DOCKER_DEPLOY.md](../how%20tos/DOCKER_DEPLOY.md) — Docker Compose deployment using nginx as the reverse proxy. **Superseded.** The current architecture uses Caddy.
+- [Caprover deploy.md](../how%20tos/Caprover%20deploy.md) — CapRover-based deployment. **Superseded.** CapRover runs as root, has no RBAC, provides no audit trail, and is incompatible with ISO 27001 requirements.
