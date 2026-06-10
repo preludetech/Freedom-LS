@@ -108,13 +108,18 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
 
-## 10. Pull request
+## 10. Product documentation
+
+- [ ] (cmd) Run `/update_product_docs` to update docs/product/ for this feature
+- [ ] (user) Review the updated documentation
+
+## 11. Pull request
 
 - [ ] (user) Open a pull request
 - [ ] (cmd) Run `/address_pr_review` as review feedback comes in
 - [ ] (user) Merge the PR once approved
 
-## 11. Cleanup
+## 12. Cleanup
 
 - [ ] (cmd) Run `/finish_worktree` to clean up the worktree
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved
