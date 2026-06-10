@@ -93,26 +93,64 @@ ACCOUNT_ADAPTER = "accounts.allauth_account_adapter.AccountAdapter"
 
 ### Tailwind set up
 
-copy `package-lock.json` and `package.json` and `tailwind.input.css` into your own project root.
+Copy `package-lock.json` and `package.json` into your own project root, then create a `tailwind.input.css` file at the project root using the template below. Replace `<path-to-freedom_ls>` with the actual path to the FLS package relative to your project root (e.g. `./submodules/Freedom-LS/freedom_ls` if you added FLS as a submodule under `submodules/`), and replace `<theme_slug>` with the slug of your active theme (use `default` to start):
 
-run `npm i`
+```css
+@import "tailwindcss";
 
-Add this to your gitignore:
+@source "<path-to-freedom_ls>/**/templates/**/*.html";
+@source "./themes/<theme_slug>/templates/**/*.html";
+
+@import "<path-to-freedom_ls>/themes/default/static/themes/default/theme.css";
+@import "<path-to-freedom_ls>/tailwind.components.css";
+@import "./themes/<theme_slug>/static/themes/<theme_slug>/theme.css";
+
+@theme { /* downstream project-level overrides, optional */ }
+```
+
+The cascade order is intentional: the default theme's tokens come first as the always-on baseline, then FLS component classes (which depend on those tokens), then your active theme's overrides — so your theme wins on every token and component class it touches.
+
+Run `npm i` to install dependencies, then `npm run tailwind_build` to compile.
+
+Add this to your `.gitignore`:
 
 ```
 node_modules/
 static/vendor/
 ```
 
-Run `npm run tailwind_watch`
+> **`@source` and `.gitignore`:** Tailwind's `@source` glob honours `.gitignore`. If FLS lives under a path excluded by an ancestor `.gitignore` (such as `.venv/` or `node_modules/`), the glob silently skips its templates and you will get missing utility classes at runtime. See `docs/how tos/theme-fls.md` for the symlink or copy workaround.
 
-You can now edit `tailwind.input.css` to make it do what you want.
+#### FLS_THEME setting
+
+FreedomLS reads the active theme from an environment variable. In your `settings.py`, add:
+
+```python
+import os
+from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR, configure_theme
+
+FLS_THEME = os.environ.get("FLS_THEME", "default")
+FLS_THEMES_DIRS = [BASE_DIR / "themes", FREEDOM_LS_PACKAGE_DIR / "themes"]
+
+RESOLVED_THEME_DIR = configure_theme(
+    theme_slug=FLS_THEME,
+    themes_dirs=FLS_THEMES_DIRS,
+    templates=TEMPLATES,
+    staticfiles_dirs=STATICFILES_DIRS,
+)
+```
+
+`configure_theme` prepends the active theme's `templates/` directory (if it has one) to Django's template search path and its `static/` directory to `STATICFILES_DIRS`. An unknown theme slug raises `ImproperlyConfigured` at startup naming the slug and the directories searched — it fails loud so misconfiguration is caught early.
+
+For the default theme, set `FLS_THEME=default` (or omit the env var — `"default"` is the fallback). Your project's `themes/` directory at `BASE_DIR` is searched before the FLS package directory, so placing a `themes/default/` folder there shadows the built-in default.
+
+For theming beyond the default, see `docs/how tos/theme-fls.md`.
 
 #### Deploy / CI note
 
-`npm run tailwind_build` must run as part of your deploy pipeline (CI step, image build, or predeploy hook) — not just locally. It generates `tailwind.active_theme.css` at the project root and compiles `static/vendor/tailwind.output.css`; both are gitignored, so nothing useful ships from git alone.
+`npm run tailwind_build` must run as part of your deploy pipeline (CI step, image build, or predeploy hook) — not just locally. The build step first runs `manage.py write_active_theme_css` (which regenerates `tailwind.active_theme.css` as a one-line `@import` pointing at the resolved active theme), then compiles `tailwind.input.css` to `static/vendor/tailwind.output.css`. Both generated files are gitignored, so nothing useful ships from git alone.
 
-The `FLS_THEME` env var (default `default`) selects which theme's tokens are baked into the bundle and is read at **build time** by `scripts/write-active-theme.mjs`. Set it before you run `tailwind_build` — setting it only at runtime will not affect the compiled CSS. Node and npm must be available in the build environment.
+Set `FLS_THEME` before running `tailwind_build` — setting it only at runtime will not affect the compiled CSS. Node and npm must be available in the build environment.
 
 
 ### Conftest:
