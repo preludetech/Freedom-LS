@@ -60,7 +60,7 @@ The following data categories are site-scoped and therefore isolated between ten
 
 - **`SiteGroup`** (a site-aware version of Django's `Group` model) is defined in `freedom_ls/accounts/models.py` but is commented out. Group-based permissions across sites are not currently available; see [roadmap](./roadmap.md).
 - **Management commands** run without a request context. `SiteAwareManager` does not apply the site filter in this context; commands must filter by site explicitly or operate on all sites.
-- **`Cohort` admin** currently uses `GuardedModelAdmin` rather than `SiteAwareModelAdmin`. A `@claude` TODO in `freedom_ls/student_management/admin.py` (line 44) notes this needs fixing.
+- **`Cohort` admin** currently uses `GuardedModelAdmin` rather than `SiteAwareModelAdmin`. A `@claude` TODO on the `CohortAdmin` class in `freedom_ls/student_management/admin.py` notes this needs fixing.
 
 ## Compliance: Tenant Data-Separation Guarantee
 

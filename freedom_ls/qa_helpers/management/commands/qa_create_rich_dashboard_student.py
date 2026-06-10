@@ -166,6 +166,36 @@ def _attempt_form(
     return fp
 
 
+def _canonical_course_percentage(user: User, course: Course, site: Site) -> int:
+    """Compute the course percentage the same way the running app does.
+
+    Mirrors update_course_progress_on_completion: count the user's completed
+    topics and forms among the course's viewable items and feed them to the
+    canonical calculator, so seeded percentages match runtime behaviour rather
+    than a naive completed/total ratio.
+    """
+    viewable = course.viewable_items()
+    completed_topic_ids = set(
+        TopicProgress.objects.filter(
+            user=user,
+            topic__in=[i for i in viewable if isinstance(i, Topic)],
+            site=site,
+            complete_time__isnull=False,
+        ).values_list("topic_id", flat=True)
+    )
+    completed_form_ids = set(
+        FormProgress.objects.filter(
+            user=user,
+            form__in=[i for i in viewable if isinstance(i, Form)],
+            site=site,
+            completed_time__isnull=False,
+        ).values_list("form_id", flat=True)
+    )
+    return calculate_course_progress_percentage(
+        course, completed_topic_ids, completed_form_ids
+    )
+
+
 def _set_course_progress(
     user: User,
     course: Course,
@@ -223,13 +253,13 @@ def command(site_name: str) -> None:
         elif isinstance(item, Form):
             _attempt_form(student, item, site, all_correct=True, leave_one_wrong=False)
             completed_count += 1
-    pct = round((completed_count / len(items)) * 100) if items else 0
+    pct = _canonical_course_percentage(student, in_progress_course, site)
     _set_course_progress(
         student, in_progress_course, site, percentage=pct, completed=False
     )
     click.secho(
         f"In progress: {in_progress_course.slug} "
-        f"({completed_count}/{len(items)} = {pct}%)",
+        f"({completed_count}/{len(items)} items = {pct}%)",
         fg="green",
     )
 
@@ -254,29 +284,7 @@ def command(site_name: str) -> None:
                 quiz_form = item
                 quiz_progress = fp
 
-    completed_topic_ids = set(
-        TopicProgress.objects.filter(
-            user=student,
-            topic__in=[
-                i for i in completed_course.viewable_items() if isinstance(i, Topic)
-            ],
-            site=site,
-            complete_time__isnull=False,
-        ).values_list("topic_id", flat=True)
-    )
-    completed_form_ids = set(
-        FormProgress.objects.filter(
-            user=student,
-            form__in=[
-                i for i in completed_course.viewable_items() if isinstance(i, Form)
-            ],
-            site=site,
-            completed_time__isnull=False,
-        ).values_list("form_id", flat=True)
-    )
-    final_pct = calculate_course_progress_percentage(
-        completed_course, completed_topic_ids, completed_form_ids
-    )
+    final_pct = _canonical_course_percentage(student, completed_course, site)
     _set_course_progress(
         student, completed_course, site, percentage=final_pct, completed=True
     )
