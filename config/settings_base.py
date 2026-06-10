@@ -368,6 +368,9 @@ ACCOUNT_EMAIL_NOTIFICATIONS = True
 # because it is part of the email-template contract; only the lookup key
 # changes (`foreground` → `on-surface`, matching the renamed role token).
 _theme_css = RESOLVED_THEME_DIR / "static" / "themes" / FLS_THEME / "theme.css"
+# Exposed as a setting so the system check can locate the same file without
+# duplicating the path-building logic.
+EMAIL_THEME_CSS_PATH = str(_theme_css)
 _tw_tokens = parse_tailwind_tokens(str(_theme_css))
 EMAIL_COLOR_PRIMARY = resolve_color_token(_tw_tokens, "primary", "#2B6CB0")
 EMAIL_COLOR_FOREGROUND = resolve_color_token(_tw_tokens, "on-surface", "#1A2332")

@@ -6,6 +6,68 @@ from typing import Any
 
 from django.core.checks import Tags, Warning, register
 
+# Seven email colour tokens and their fallback hex values (must stay in sync
+# with settings_base.py and the resolve_color_token call sites there).
+_EMAIL_COLOUR_TOKENS: tuple[tuple[str, str], ...] = (
+    ("primary", "#2B6CB0"),
+    ("on-surface", "#1A2332"),
+    ("muted", "#4A5568"),
+    ("surface", "#FFFFFF"),
+    ("surface-2", "#F3F4F6"),
+    ("on-primary", "#FFFFFF"),
+    ("border", "#D1D5DB"),
+)
+
+
+@register(Tags.compatibility)
+def check_email_colour_tokens(app_configs: Any, **kwargs: Any) -> list[Warning]:
+    """Warn for any email colour token that is missing or cannot be resolved to hex.
+
+    Re-resolves the seven email colour tokens from the active theme's theme.css,
+    reusing the email_utils helpers. Returns a Warning for each token that is
+    absent or produces an unresolvable value. Degrades gracefully when
+    theme.css is missing — the check never raises.
+    """
+    from django.conf import settings
+
+    from .email_utils import ColorResolveError, parse_tailwind_tokens, resolve_css_color
+
+    warnings: list[Warning] = []
+
+    css_path: str = getattr(settings, "EMAIL_THEME_CSS_PATH", "")
+
+    try:
+        token_map = parse_tailwind_tokens(css_path)
+    except FileNotFoundError:
+        # Theme CSS not yet generated (e.g. fresh checkout before
+        # write_active_theme_css has run). Stay silent rather than crashing.
+        return warnings
+
+    for token, _fallback in _EMAIL_COLOUR_TOKENS:
+        raw = token_map.get(f"color-{token}")
+        if raw is None:
+            warnings.append(
+                Warning(
+                    f"Email colour token --color-{token} is missing from "
+                    f"{css_path!r}. The hardcoded fallback {_fallback!r} will be used.",
+                    id="freedom_ls_accounts.W002",
+                )
+            )
+            continue
+        try:
+            resolve_css_color(raw, token_map)
+        except (ColorResolveError, ValueError) as exc:
+            warnings.append(
+                Warning(
+                    f"Email colour token --color-{token}={raw!r} could not be "
+                    f"resolved to a hex colour ({exc}). The hardcoded fallback "
+                    f"{_fallback!r} will be used.",
+                    id="freedom_ls_accounts.W002",
+                )
+            )
+
+    return warnings
+
 
 @register(Tags.security)
 def check_legal_docs_present_when_required(
