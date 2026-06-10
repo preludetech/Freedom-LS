@@ -178,6 +178,17 @@ Loaded globally for reactive components.
 4. Make focused changes
 5. Don't refactor unnecessarily
 
+## Theme Overrides
+
+Themes are sparse: a theme only ships the files it needs to change. Everything else falls through to the app default.
+
+A theme shadows a template by placing a file at the matching loader path inside its `templates/` directory:
+
+- **Cotton components.** Cotton resolves *every* component — generic or app-owned — to `<COTTON_DIR>/<name>.html` (the `cotton/` namespace is flat; there is no app prefix). So whether the original lives in `freedom_ls/base/templates/cotton/<name>.html` or `freedom_ls/<app_name>/templates/cotton/<name>.html`, the theme shadows it at the *same* path: `themes/<slug>/templates/cotton/<name>.html`.
+- **Page templates and partials.** These keep their app namespace. A page at `freedom_ls/<app_name>/templates/<app_name>/<page>.html` is shadowed by `themes/<slug>/templates/<app_name>/<page>.html`; a partial at `freedom_ls/<app_name>/templates/partials/<name>.html` by `themes/<slug>/templates/partials/<name>.html`.
+
+Django's template loader sees the active theme's `templates/` directory first (prepended by `configure_theme()` in `freedom_ls/base/theming.py`), so the theme file wins whenever it exists. When it does not exist, the loader falls through to the app default automatically.
+
 ## Key Rules
 
 1. **Don't check `tailwind.components.css` first** - Use component classes
