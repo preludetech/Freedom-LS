@@ -9,6 +9,20 @@ _VAR_RE = re.compile(r"var\(\s*(--[\w-]+)\s*\)")
 # Maximum substitution depth for var() resolution, to guard against deep chains.
 _MAX_VAR_DEPTH = 50
 
+# The seven email colour roles and their opaque hex fallbacks. Single source of
+# truth shared by the settings resolution and the system check, so the two can
+# never drift apart. The Python setting names (e.g. EMAIL_COLOR_FOREGROUND) keep
+# the email-template contract; only the token lookup key differs per role.
+EMAIL_COLOR_TOKENS: tuple[tuple[str, str], ...] = (
+    ("primary", "#2B6CB0"),
+    ("on-surface", "#1A2332"),
+    ("muted", "#4A5568"),
+    ("surface", "#FFFFFF"),
+    ("surface-2", "#F3F4F6"),
+    ("on-primary", "#FFFFFF"),
+    ("border", "#D1D5DB"),
+)
+
 
 class ColorResolveError(Exception):
     """Raised when a raw CSS colour cannot be resolved to hex."""
@@ -100,6 +114,21 @@ def _split_top_level_commas(s: str) -> list[str]:
     return parts
 
 
+def _srgb_hex(color: Color) -> str:
+    """Serialise a coloraide Color to an opaque 6-digit ``#rrggbb`` string.
+
+    Email clients do not reliably support 8-digit ``#rrggbbaa`` hex, so a
+    semi-transparent result is treated as a resolution failure (the caller
+    warns and uses an opaque hex fallback) rather than emitted into email CSS.
+    """
+    result = color.convert("srgb").to_string(hex=True)
+    if len(result) != 7:
+        raise ColorResolveError(
+            f"Resolved colour {result!r} is not an opaque #rrggbb value"
+        )
+    return result
+
+
 def _resolve_color_mix(value: str, token_map: dict[str, str]) -> str:
     """Resolve a color-mix(in <space>, A [p1%], B [p2%]) expression to #rrggbb.
 
@@ -141,9 +170,10 @@ def _resolve_color_mix(value: str, token_map: dict[str, str]) -> str:
     a_str, a_pct = _parse_color_arg(a_part)
     b_str, b_pct = _parse_color_arg(b_part)
 
-    # Recursively resolve each colour operand (handles var() and nested color-mix)
-    a_resolved = resolve_css_color(_expand_vars(a_str, token_map), token_map)
-    b_resolved = resolve_css_color(_expand_vars(b_str, token_map), token_map)
+    # Recursively resolve each colour operand (handles var() and nested
+    # color-mix); resolve_css_color expands var() references itself.
+    a_resolved = resolve_css_color(a_str, token_map)
+    b_resolved = resolve_css_color(b_str, token_map)
 
     # Compute coloraide's mix weight (B's weight in the blend).
     # CSS color-mix rule: if only one percentage p is given, A gets p and B
@@ -158,14 +188,12 @@ def _resolve_color_mix(value: str, token_map: dict[str, str]) -> str:
         b_weight = 0.5
 
     try:
-        mixed = Color(a_resolved).mix(
-            b_resolved, space=space, weight=b_weight, powerless=True
-        )
-        return mixed.convert("srgb").to_string(hex=True)
+        mixed = Color(a_resolved).mix(b_resolved, b_weight, space=space, powerless=True)
     except (ValueError, TypeError, AttributeError) as exc:
         raise ColorResolveError(
             f"color-mix conversion failed for {value!r}: {exc}"
         ) from exc
+    return _srgb_hex(mixed)
 
 
 def resolve_css_color(raw: str, token_map: dict[str, str]) -> str:
@@ -176,22 +204,18 @@ def resolve_css_color(raw: str, token_map: dict[str, str]) -> str:
 
     Raises ColorResolveError on any parse, cycle, or conversion failure.
     """
-    try:
-        resolved = _expand_vars(raw.strip(), token_map)
-    except ColorResolveError:
-        raise
-
-    resolved = resolved.strip()
+    resolved = _expand_vars(raw.strip(), token_map).strip()
 
     if resolved.startswith("color-mix("):
         return _resolve_color_mix(resolved, token_map)
 
     try:
-        return Color(resolved).convert("srgb").to_string(hex=True)
+        color = Color(resolved)
     except (ValueError, TypeError, AttributeError) as exc:
         raise ColorResolveError(
             f"Cannot convert {resolved!r} (from {raw!r}) to hex: {exc}"
         ) from exc
+    return _srgb_hex(color)
 
 
 _CSS_KEYWORDS: frozenset[str] = frozenset(

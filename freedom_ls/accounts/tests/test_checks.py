@@ -83,11 +83,10 @@ def test_missing_theme_css_file_does_not_raise(tmp_path) -> None:
     absent_path = str(tmp_path / "nonexistent" / "theme.css")
 
     with override_settings(EMAIL_THEME_CSS_PATH=absent_path):
-        # Must not raise; the check degrades to returning an empty list (or a
-        # single informative Warning).
+        # Must not raise; the check degrades to staying silent.
         result = check_email_colour_tokens(app_configs=None)
 
-    assert isinstance(result, list)
+    assert result == []
 
 
 def test_multiple_bad_tokens_each_produce_a_warning(make_temp_file) -> None:

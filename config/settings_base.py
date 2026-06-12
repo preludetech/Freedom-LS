@@ -21,6 +21,7 @@ from django.utils.csp import (
 )
 
 from freedom_ls.accounts.email_utils import (
+    EMAIL_COLOR_TOKENS,
     extract_button_radius,
     extract_font_family,
     parse_tailwind_tokens,
@@ -372,13 +373,30 @@ _theme_css = RESOLVED_THEME_DIR / "static" / "themes" / FLS_THEME / "theme.css"
 # duplicating the path-building logic.
 EMAIL_THEME_CSS_PATH = str(_theme_css)
 _tw_tokens = parse_tailwind_tokens(str(_theme_css))
-EMAIL_COLOR_PRIMARY = resolve_color_token(_tw_tokens, "primary", "#2B6CB0")
-EMAIL_COLOR_FOREGROUND = resolve_color_token(_tw_tokens, "on-surface", "#1A2332")
-EMAIL_COLOR_MUTED = resolve_color_token(_tw_tokens, "muted", "#4A5568")
-EMAIL_COLOR_SURFACE = resolve_color_token(_tw_tokens, "surface", "#FFFFFF")
-EMAIL_COLOR_SURFACE_2 = resolve_color_token(_tw_tokens, "surface-2", "#F3F4F6")
-EMAIL_COLOR_ON_PRIMARY = resolve_color_token(_tw_tokens, "on-primary", "#FFFFFF")
-EMAIL_COLOR_BORDER = resolve_color_token(_tw_tokens, "border", "#D1D5DB")
+# Fallbacks come from the shared EMAIL_COLOR_TOKENS source of truth so they
+# cannot drift from the system check that re-resolves the same roles.
+_email_color_fallbacks = dict(EMAIL_COLOR_TOKENS)
+EMAIL_COLOR_PRIMARY = resolve_color_token(
+    _tw_tokens, "primary", _email_color_fallbacks["primary"]
+)
+EMAIL_COLOR_FOREGROUND = resolve_color_token(
+    _tw_tokens, "on-surface", _email_color_fallbacks["on-surface"]
+)
+EMAIL_COLOR_MUTED = resolve_color_token(
+    _tw_tokens, "muted", _email_color_fallbacks["muted"]
+)
+EMAIL_COLOR_SURFACE = resolve_color_token(
+    _tw_tokens, "surface", _email_color_fallbacks["surface"]
+)
+EMAIL_COLOR_SURFACE_2 = resolve_color_token(
+    _tw_tokens, "surface-2", _email_color_fallbacks["surface-2"]
+)
+EMAIL_COLOR_ON_PRIMARY = resolve_color_token(
+    _tw_tokens, "on-primary", _email_color_fallbacks["on-primary"]
+)
+EMAIL_COLOR_BORDER = resolve_color_token(
+    _tw_tokens, "border", _email_color_fallbacks["border"]
+)
 
 EMAIL_FONT_FAMILY = extract_font_family(
     _tw_tokens, fallback="Arial, Helvetica, sans-serif"
