@@ -6,18 +6,6 @@ from typing import Any
 
 from django.core.checks import Tags, Warning, register
 
-# Seven email colour tokens and their fallback hex values (must stay in sync
-# with settings_base.py and the resolve_color_token call sites there).
-_EMAIL_COLOUR_TOKENS: tuple[tuple[str, str], ...] = (
-    ("primary", "#2B6CB0"),
-    ("on-surface", "#1A2332"),
-    ("muted", "#4A5568"),
-    ("surface", "#FFFFFF"),
-    ("surface-2", "#F3F4F6"),
-    ("on-primary", "#FFFFFF"),
-    ("border", "#D1D5DB"),
-)
-
 
 @register(Tags.compatibility)
 def check_email_colour_tokens(app_configs: Any, **kwargs: Any) -> list[Warning]:
@@ -30,7 +18,12 @@ def check_email_colour_tokens(app_configs: Any, **kwargs: Any) -> list[Warning]:
     """
     from django.conf import settings
 
-    from .email_utils import ColorResolveError, parse_tailwind_tokens, resolve_css_color
+    from .email_utils import (
+        EMAIL_COLOR_TOKENS,
+        ColorResolveError,
+        parse_tailwind_tokens,
+        resolve_css_color,
+    )
 
     warnings: list[Warning] = []
 
@@ -43,7 +36,7 @@ def check_email_colour_tokens(app_configs: Any, **kwargs: Any) -> list[Warning]:
         # write_active_theme_css has run). Stay silent rather than crashing.
         return warnings
 
-    for token, _fallback in _EMAIL_COLOUR_TOKENS:
+    for token, _fallback in EMAIL_COLOR_TOKENS:
         raw = token_map.get(f"color-{token}")
         if raw is None:
             warnings.append(
