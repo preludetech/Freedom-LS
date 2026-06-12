@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
+from django.apps import AppConfig
 from django.core.checks import Tags, Warning, register
 
 
 @register(Tags.compatibility)
-def check_email_colour_tokens(app_configs: Any, **kwargs: Any) -> list[Warning]:
+def check_email_colour_tokens(
+    app_configs: Sequence[AppConfig] | None, **kwargs: object
+) -> list[Warning]:
     """Warn for any email colour token that is missing or cannot be resolved to hex.
 
     Re-resolves the seven email colour tokens from the active theme's theme.css,
