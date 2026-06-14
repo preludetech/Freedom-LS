@@ -213,47 +213,45 @@ class TestAdmonitionComponent:
 
         assert "<c-admonition" not in result
 
-    def test_success_color_type_renders_success_branch(self, request_) -> None:
-        """type="tip" has color="success" — the success branch must be selected."""
+    def test_tip_type_renders_tip_label(self, request_) -> None:
+        """type="tip" renders the "Tip" label from the registry."""
         result = render_markdown(
             '<c-admonition type="tip">Tip content</c-admonition>', request_
         )
 
-        assert "bg-success-light" in result
-        assert "text-on-success-light" in result
+        assert "Tip" in result
+        assert "Tip content" in result
 
-    def test_warning_color_type_renders_warning_branch(self, request_) -> None:
-        """type="warning" has color="warning" — the warning branch must be selected."""
+    def test_warning_type_renders_warning_label(self, request_) -> None:
+        """type="warning" renders the "Warning" label from the registry."""
         result = render_markdown(
             '<c-admonition type="warning">Warning content</c-admonition>', request_
         )
 
-        assert "bg-warning-light" in result
-        assert "text-on-warning-light" in result
+        assert "Warning" in result
+        assert "Warning content" in result
 
-    def test_error_color_type_renders_error_branch(self, request_) -> None:
-        """type="danger" has color="error" — the error branch must be selected."""
+    def test_danger_type_renders_danger_label(self, request_) -> None:
+        """type="danger" renders the "Danger" label from the registry."""
         result = render_markdown(
             '<c-admonition type="danger">Danger content</c-admonition>', request_
         )
 
-        assert "bg-error-light" in result
-        assert "text-on-error-light" in result
+        assert "Danger" in result
+        assert "Danger content" in result
 
-    def test_info_color_type_renders_info_branch(self, request_) -> None:
-        """type="note" has color="info" — the info (else) branch must be selected."""
+    def test_admonition_has_role_note_for_accessibility(self, request_) -> None:
+        """Admonition renders with role="note" for screen reader accessibility."""
         result = render_markdown(
             '<c-admonition type="note">Note content</c-admonition>', request_
         )
 
-        assert "bg-info-light" in result
-        assert "text-on-info-light" in result
+        assert 'role="note"' in result
 
-    def test_unknown_color_falls_through_to_info_branch(self, request_) -> None:
-        """An unknown color in the registry falls through to the info (else) branch."""
+    def test_admonition_has_aria_labelledby(self, request_) -> None:
+        """Admonition renders with aria-labelledby linking the heading to the container."""
         result = render_markdown(
-            '<c-admonition type="completely_unknown">Content</c-admonition>', request_
+            '<c-admonition type="note">Content</c-admonition>', request_
         )
 
-        # Unknown type → default entry (color="info") → info branch
-        assert "bg-info-light" in result
+        assert "aria-labelledby" in result

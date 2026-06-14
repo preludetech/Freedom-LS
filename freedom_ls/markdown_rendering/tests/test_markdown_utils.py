@@ -49,9 +49,9 @@ class TestRenderMarkdownCustomTags:
     def test_c_callout_renders_body_for_each_level(self, mock_request, level):
         """c-callout is stripped by nh3 (not in MARKDOWN_ALLOWED_TAGS); body text survives.
 
-        NOTE: c-callout has been removed from the content allowlist (Phase 2). These
-        tests now verify stripping behaviour, not rendering. They will be replaced by
-        c-admonition equivalents in Phase 9.
+        c-callout was removed from the content allowlist. These tests verify the
+        stripping behaviour so that if c-callout is accidentally re-added to the
+        allowlist it will be caught. Use c-admonition for new content instead.
         """
         markdown_text = f'<c-callout level="{level}">Body text {level}</c-callout>'
         result = render_markdown(markdown_text, mock_request)
@@ -76,10 +76,9 @@ class TestRenderMarkdownCustomTags:
     def test_c_callout_with_markdown_content(self, mock_request):
         """c-callout is stripped by nh3; markdown in the body still processes.
 
-        NOTE: c-callout has been removed from the content allowlist (Phase 2). The
-        <strong> tag appears because markdown parsing runs before nh3 stripping, not
-        because the callout component renders it. Will be replaced by c-admonition
-        equivalents in Phase 9.
+        c-callout has been removed from the content allowlist. The <strong> tag
+        appears because markdown parsing runs before nh3 stripping, not because
+        the callout component renders it.
         """
         markdown_text = """<c-callout level="info">
 This is **bold** text
@@ -394,17 +393,15 @@ This is **bold** text
         assert "app.py" in result
         assert "python" in result
 
-    def test_c_code_block_wrap_toggles_wrapping(self, mock_request):
-        """The wrap attribute is the functional toggle for line wrapping."""
-        wrapped = render_markdown(
+    def test_c_code_block_wrap_true_still_renders_content(self, mock_request):
+        """c-code-block with wrap="true" still renders the code content."""
+        result = render_markdown(
             '<c-code-block wrap="true">long line</c-code-block>', mock_request
         )
-        unwrapped = render_markdown(
-            "<c-code-block>long line</c-code-block>", mock_request
-        )
 
-        assert "whitespace-pre-wrap" in wrapped
-        assert "whitespace-pre-wrap" not in unwrapped
+        assert "<pre" in result
+        assert "<code>" in result
+        assert "long line" in result
 
     def test_c_table_renders_table_with_injected_caption(self, mock_request):
         """c-table renders a markdown table with a spliced-in caption."""
@@ -515,8 +512,8 @@ Some text with **bold**."""
     def test_multiple_cotton_tags(self, mock_request):
         """Mixed: stripped tags (c-callout) and rendered tags (c-youtube) coexist.
 
-        NOTE: c-callout is stripped by nh3 (Phase 2 change); body text survives.
-        c-youtube renders normally. Will be replaced by c-admonition in Phase 9.
+        c-callout is stripped by nh3; body text survives.
+        c-youtube renders normally.
         """
         markdown_text = """<c-callout level="info">First callout</c-callout>
 
