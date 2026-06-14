@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-06-15_
 
 ## Summary
 
@@ -68,7 +68,9 @@ The following cotton components are available inside Markdown content:
 |---|---|
 | `c-youtube` | Embed a YouTube video by ID |
 | `c-picture` | Responsive image with optional lightbox |
-| `c-callout` | Highlighted callout box (info/warning/etc.) |
+| `c-admonition` | Typed callout box (`type`: note/tip/important/warning/danger/key_takeaways/checklist; optional `title`) |
+| `c-flashcard` | Two-sided flip card with `front` and `back` named slots |
+| `c-accordion` | Collapsible disclosure widget (`title`; optional `open` to start expanded) |
 | `c-content-link` | Internal link to another content item |
 | `c-pdf-embed` | Inline PDF viewer |
 | `c-file-download` | Downloadable file link |

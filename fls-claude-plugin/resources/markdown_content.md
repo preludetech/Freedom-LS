@@ -26,15 +26,24 @@ html = topic.rendered_content()
 
 **Location:** `freedom_ls/content_engine/templates/cotton/`
 
-Available: `callout.html`, `youtube.html`, `picture.html`, `content-link.html`
+Available: `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`, `picture.html`, `content-link.html`, and more.
 
 **Usage:**
 ```markdown
-<c-callout level="info" title="Note">Content here</c-callout>
+<c-admonition type="note" title="Optional heading">Content here</c-admonition>
+<c-admonition type="warning">Watch out!</c-admonition>
+<c-flashcard>
+  <c-slot name="front">What is the question?</c-slot>
+  <c-slot name="back">This is the answer.</c-slot>
+</c-flashcard>
+<c-accordion title="Optional detail">Hidden until expanded.</c-accordion>
+<c-accordion title="Open by default" open>Starts expanded.</c-accordion>
 <c-youtube video_id="abc123"></c-youtube>
 <c-picture src="images/file.svg" alt="Alt text"></c-picture>
 <c-content-link path="other.md">link</c-content-link>
 ```
+
+`c-admonition` `type` values: `note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`. Unknown types fall back to `note`.
 
 ## Adding New Components
 
@@ -46,6 +55,26 @@ Available: `callout.html`, `youtube.html`, `picture.html`, `content-link.html`
    }
    ```
 3. Use in markdown: `<c-name attr1="value"></c-name>`
+
+The current allowlist (from `config/settings_base.py`) is:
+```python
+MARKDOWN_ALLOWED_TAGS = {
+    "c-youtube": {"video_id", "video_title", "caption"},
+    "c-picture": {"src", "alt", "title", "description", "number"},
+    "c-content-link": {"path"},
+    "c-pdf-embed": {"src", "caption", "height"},
+    "c-file-download": {"src", "text"},
+    "c-pull-quote": {"attribution", "cite", "source"},
+    "c-equation": {"label"},
+    "c-image-grid": {"columns"},
+    "c-table": {"caption"},
+    "c-code-block": {"title", "language", "wrap"},
+    "c-admonition": {"type", "title"},
+    "c-flashcard": set(),
+    "c-accordion": {"title", "open"},
+    "c-slot": {"name"},
+}
+```
 
 ## Notes
 

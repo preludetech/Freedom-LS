@@ -72,7 +72,10 @@ AUTHENTICATION_BACKENDS = (
 MARKDOWN_ALLOWED_TAGS = {
     "c-youtube": {"video_id", "video_title"},
     "c-picture": {"src", "alt", "caption"},
-    "c-callout": {"level", "title"},
+    "c-admonition": {"type", "title"},
+    "c-flashcard": set(),
+    "c-accordion": {"title", "open"},
+    "c-slot": {"name"},
     "c-content-link": {"path"},
 }
 
