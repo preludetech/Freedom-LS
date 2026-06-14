@@ -10,30 +10,31 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 2. Spec
 
-- [ ] (cmd) Run `/spec_from_idea` to generate the spec
-- [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/spec_review` to sanity-check the spec
-- [ ] (user) Address any issues raised by the review
+- [x] (cmd) Run `/spec_from_idea` to generate the spec
+- [x] (user) Review the spec carefully and edit where needed
+- [x] (cmd) Run `/spec_review` to sanity-check the spec
+- [x] (user) Address any issues raised by the review
 
 ## 3. Threat model
 
-- [ ] (cmd) Run `/threat-model` against the spec
-- [ ] (user) Update the spec to close any security gaps surfaced
+- [x] (cmd) Run `/threat-model` against the spec
+- [x] (user) Update the spec to close any security gaps surfaced
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
-- [ ] (user) Review both plans and edit where needed
+- [x] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
+- [x] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
 
-- [ ] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
-- [ ] (user) Address any concerns raised in the plan
+- [x] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
+- [x] (user) Address any concerns raised in the plan
 
 ## 6. Plan structure review
 
-- [ ] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
-- [ ] (user) Address any structure concerns raised in the plan
+- [x] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
+- [x] (user) Address any structure concerns raised in the plan
+- [x] (user) Resolve structure concern: new icons edges (student_interface --> icons, content_engine --> icons)
 
 ## 7. Implementation
 
@@ -65,5 +66,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 12. Cleanup
 
+- [ ] (cmd) Run `/app_map` to regenerate `docs/app_structure.md` with the new `icons` edges (`student_interface --> icons`, `content_engine --> icons`) and the now-documented `content_engine --> base` edge
+- [ ] (user) Review and commit the updated dependency diagram
 - [ ] (cmd) Run `/finish_worktree` to clean up the worktree
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved
