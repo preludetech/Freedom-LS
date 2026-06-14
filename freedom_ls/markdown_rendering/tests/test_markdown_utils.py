@@ -47,25 +47,40 @@ class TestRenderMarkdownCustomTags:
 
     @pytest.mark.parametrize("level", ["info", "warning", "error", "success"])
     def test_c_callout_renders_body_for_each_level(self, mock_request, level):
-        """The c-callout cotton tag is processed (replaced by HTML) at every level."""
+        """c-callout is stripped by nh3 (not in MARKDOWN_ALLOWED_TAGS); body text survives.
+
+        NOTE: c-callout has been removed from the content allowlist (Phase 2). These
+        tests now verify stripping behaviour, not rendering. They will be replaced by
+        c-admonition equivalents in Phase 9.
+        """
         markdown_text = f'<c-callout level="{level}">Body text {level}</c-callout>'
         result = render_markdown(markdown_text, mock_request)
 
-        assert "<c-callout" not in result  # cotton tag was rendered, not literal
+        assert "<c-callout" not in result  # tag stripped by nh3, not rendered by cotton
         assert f"Body text {level}" in result
 
     def test_c_callout_with_title(self, mock_request):
-        """Test that c-callout with title attribute works."""
+        """c-callout is no longer in MARKDOWN_ALLOWED_TAGS so it is stripped by nh3.
+
+        The tag and all its attributes (including title) are removed; only the
+        body text content remains in the output.
+        """
         markdown_text = '<c-callout level="info" title="Note">Content here</c-callout>'
         result = render_markdown(markdown_text, mock_request)
 
         assert "<c-callout" not in result
-        assert "Note" in result
+        # title attribute stripped along with the tag; body text preserved
+        assert "Note" not in result
         assert "Content here" in result
-        assert "<svg" in result  # Icon rendered as inline SVG
 
     def test_c_callout_with_markdown_content(self, mock_request):
-        """Test that markdown inside c-callout is processed."""
+        """c-callout is stripped by nh3; markdown in the body still processes.
+
+        NOTE: c-callout has been removed from the content allowlist (Phase 2). The
+        <strong> tag appears because markdown parsing runs before nh3 stripping, not
+        because the callout component renders it. Will be replaced by c-admonition
+        equivalents in Phase 9.
+        """
         markdown_text = """<c-callout level="info">
 This is **bold** text
 </c-callout>"""
@@ -447,7 +462,11 @@ Some text with **bold**."""
         assert "<strong>bold</strong>" in result
 
     def test_multiple_cotton_tags(self, mock_request):
-        """Test that multiple cotton tags in one document work."""
+        """Mixed: stripped tags (c-callout) and rendered tags (c-youtube) coexist.
+
+        NOTE: c-callout is stripped by nh3 (Phase 2 change); body text survives.
+        c-youtube renders normally. Will be replaced by c-admonition in Phase 9.
+        """
         markdown_text = """<c-callout level="info">First callout</c-callout>
 
 <c-youtube video_id="test"></c-youtube>
@@ -455,7 +474,7 @@ Some text with **bold**."""
 <c-callout level="warning">Second callout</c-callout>"""
         result = render_markdown(markdown_text, mock_request)
 
-        assert "<c-callout" not in result  # both callouts processed
+        assert "<c-callout" not in result  # stripped by nh3, not rendered
         assert "First callout" in result
         assert "Second callout" in result
         assert "youtube.com/embed/test" in result

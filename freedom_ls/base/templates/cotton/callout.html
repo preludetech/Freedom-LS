@@ -1,6 +1,5 @@
 <c-vars level="info" title="" />
 
-{% load content_tags %}
 {% comment %}
 Callout component for displaying informational alerts and notices.
 Supports levels: info, warning, error, success
@@ -14,7 +13,7 @@ Supports levels: info, warning, error, success
     </h4>
     {% endif %}
     <div class="{{ text }} px-4 space-y-4 pt-2">
-        {% markdown slot %}
+        {{ slot }}
     </div>
 </div>
 {% endpartialdef %}

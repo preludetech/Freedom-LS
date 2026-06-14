@@ -287,7 +287,6 @@ LEGAL_DOCS_MANIFEST_PATH: str | None = None
 MARKDOWN_ALLOWED_TAGS = {
     "c-youtube": {"video_id", "video_title", "caption"},
     "c-picture": {"src", "alt", "title", "description", "number"},
-    "c-callout": {"level", "title"},
     "c-content-link": {"path"},
     "c-pdf-embed": {"src", "caption", "height"},
     "c-file-download": {"src", "text"},
@@ -296,6 +295,21 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-image-grid": {"columns"},
     "c-table": {"caption"},
     "c-code-block": {"title", "language", "wrap"},
+    "c-admonition": {"type", "title"},
+    "c-flashcard": set(),
+    "c-accordion": {"title", "open"},
+    "c-slot": {"name"},
+}
+
+ADMONITION_TYPES = {
+    "note": {"label": "Note", "icon": "info", "color": "info"},
+    "tip": {"label": "Tip", "icon": "star", "color": "success"},
+    "important": {"label": "Important", "icon": "warning", "color": "warning"},
+    "warning": {"label": "Warning", "icon": "warning", "color": "warning"},
+    "danger": {"label": "Danger", "icon": "error", "color": "error"},
+    "key_takeaways": {"label": "Key Takeaways", "icon": "notes", "color": "info"},
+    "checklist": {"label": "Checklist", "icon": "check", "color": "success"},
+    "default": {"label": "Note", "icon": "info", "color": "info"},
 }
 
 MARKDOWN_TEMPLATE_RENDER_ON = True
