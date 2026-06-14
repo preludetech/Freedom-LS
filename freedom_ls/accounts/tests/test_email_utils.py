@@ -8,7 +8,6 @@ from freedom_ls.accounts.email_utils import (
     email_safe_font_stack,
     extract_button_radius,
     extract_font_family,
-    parse_tailwind_colors,
     parse_tailwind_tokens,
     resolve_color_token,
     resolve_css_color,
@@ -84,95 +83,22 @@ def test_parse_tailwind_tokens_does_not_include_non_custom_properties(make_temp_
     assert "background" not in result
 
 
-# ---------------------------------------------------------------------------
-# parse_tailwind_colors — Task 1.1 (back-compat wrapper)
-# ---------------------------------------------------------------------------
-
-
-def test_parse_tailwind_colors_from_css_file(make_temp_file):
-    """Test parsing --color-* custom properties from a CSS file."""
+def test_parse_tailwind_tokens_collapses_multiline_value_whitespace(make_temp_file):
+    """A value wrapped across lines collapses to a single-spaced string."""
     css_content = """
 @theme {
-    --color-primary: #2B6CB0;
-    --color-foreground: #1A2332;
-    --color-muted: #4A5568;
+    --fls-font-sans: ui-sans-serif,
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
 }
 """
     css_file = make_temp_file(".css", css_content)
-    result = parse_tailwind_colors(str(css_file))
+    result = parse_tailwind_tokens(str(css_file))
 
-    assert result == {
-        "primary": "#2B6CB0",
-        "foreground": "#1A2332",
-        "muted": "#4A5568",
-    }
-
-
-def test_parse_tailwind_colors_missing_file_raises():
-    """Test that a missing file raises FileNotFoundError."""
-    with pytest.raises(FileNotFoundError, match="CSS file not found"):
-        parse_tailwind_colors("/nonexistent/path/to/file.css")
-
-
-def test_parse_tailwind_colors_only_captures_color_properties(make_temp_file):
-    """Test that only --color-* properties are parsed, not other custom properties."""
-    css_content = """
-@theme {
-    --color-primary: #2B6CB0;
-    --fls-font-sans: Arial, sans-serif;
-    --fls-radius-md: 0.375rem;
-    --color-success: #38A169;
-}
-"""
-    css_file = make_temp_file(".css", css_content)
-    result = parse_tailwind_colors(str(css_file))
-
-    assert result == {
-        "primary": "#2B6CB0",
-        "success": "#38A169",
-    }
-    assert "fls-font-sans" not in result
-    assert "fls-radius-md" not in result
-
-
-def test_parse_tailwind_colors_handles_hyphenated_names(make_temp_file):
-    """Test that hyphenated color names like primary-bold are parsed correctly."""
-    css_content = """
-@theme {
-    --color-primary: #2B6CB0;
-    --color-primary-bold: #1A4B8C;
-    --color-success-bold: #276749;
-}
-"""
-    css_file = make_temp_file(".css", css_content)
-    result = parse_tailwind_colors(str(css_file))
-
-    assert result == {
-        "primary": "#2B6CB0",
-        "primary-bold": "#1A4B8C",
-        "success-bold": "#276749",
-    }
-
-
-def test_parse_tailwind_colors_now_captures_non_hex_values(make_temp_file):
-    """Non-hex color values (rgb, named) are now captured as raw strings."""
-    css_content = """
-@theme {
-    --color-primary: #2B6CB0;
-    --color-text: rgb(0, 0, 0);
-    --color-bg: white;
-    --color-accent: #FF5733;
-}
-"""
-    css_file = make_temp_file(".css", css_content)
-    result = parse_tailwind_colors(str(css_file))
-
-    assert result == {
-        "primary": "#2B6CB0",
-        "text": "rgb(0, 0, 0)",
-        "bg": "white",
-        "accent": "#FF5733",
-    }
+    assert result["fls-font-sans"] == (
+        'ui-sans-serif, "Helvetica Neue", Arial, sans-serif'
+    )
 
 
 # ---------------------------------------------------------------------------

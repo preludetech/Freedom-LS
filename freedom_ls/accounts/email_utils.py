@@ -54,25 +54,10 @@ def parse_tailwind_tokens(css_file_path: str) -> dict[str, str]:
 
     content = path.read_text()
     pattern = re.compile(r"--([\w-]+)\s*:\s*([^;]+);")
-    return {name: value.strip() for name, value in pattern.findall(content)}
-
-
-def parse_tailwind_colors(css_file_path: str) -> dict[str, str]:
-    """Parse --color-* custom properties from a CSS file.
-
-    Returns a dict like ``{"primary": "#2B6CB0", "on-surface": "#1A2332", ...}``.
-    All color values are captured as raw strings (hex, rgb, hsl, oklch, etc.).
-
-    This is a thin back-compat filter over ``parse_tailwind_tokens``.
-    Raises FileNotFoundError if the file does not exist.
-    """
-    all_tokens = parse_tailwind_tokens(css_file_path)
-    prefix = "color-"
-    return {
-        name[len(prefix) :]: value
-        for name, value in all_tokens.items()
-        if name.startswith(prefix)
-    }
+    # Collapse internal whitespace so a multi-line declaration (a value wrapped
+    # across lines keeps its newlines + indentation under `[^;]+`) reduces to a
+    # single-spaced string coloraide can parse, rather than failing to resolve.
+    return {name: " ".join(value.split()) for name, value in pattern.findall(content)}
 
 
 def _expand_vars(raw: str, token_map: dict[str, str]) -> str:
@@ -191,6 +176,12 @@ def _resolve_color_mix(value: str, token_map: dict[str, str]) -> str:
     # sum to 100 (so `A 20%, B 60%` is treated as 25/75). If only one p is given,
     # A gets p and B gets 100-p. If neither, 50/50. coloraide mix(b, weight=w)
     # takes B's weight.
+    #
+    # Intentional simplification: when both percentages are given and sum to less
+    # than 100%, the CSS spec turns the shortfall into transparency. We renormalise
+    # to full opacity instead — an opaque result is required anyway (a translucent
+    # mix is rejected by _srgb_hex), and the theme tokens only ever use the
+    # single-percentage form (`var(--primary), white 12%`), never two percentages.
     if a_pct is not None and b_pct is not None:
         total = a_pct + b_pct
         if total == 0:
