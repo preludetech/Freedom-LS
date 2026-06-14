@@ -54,12 +54,18 @@ class AccountAdapter(DefaultAccountAdapter):
         current_site = get_current_site(request)
 
         logo_path = resolved_email_logo_path()
-        protocol = getattr(settings, "ACCOUNT_DEFAULT_HTTP_PROTOCOL", "https")
-        email_logo_url: str | None = (
-            f"{protocol}://{current_site.domain}{static(logo_path)}"
-            if logo_path
-            else None
-        )
+        email_logo_url: str | None = None
+        if logo_path:
+            static_url = static(logo_path)
+            if request is not None:
+                # Reuse the request-based absolute URI (same as allauth's action
+                # links) so the logo resolves wherever the email was triggered.
+                email_logo_url = request.build_absolute_uri(static_url)
+            else:
+                # No request (e.g. mail sent outside a web request): fall back to
+                # the canonical Site domain + configured protocol.
+                protocol = getattr(settings, "ACCOUNT_DEFAULT_HTTP_PROTOCOL", "https")
+                email_logo_url = f"{protocol}://{current_site.domain}{static_url}"
         email_label: str = settings.HEADER_TITLE or current_site.name
 
         ctx = {

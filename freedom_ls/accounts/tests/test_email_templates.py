@@ -84,6 +84,22 @@ class TestBaseEmailTemplate:
         html = render_to_string("emails/base_email.html", base_context)
         assert len(html.encode("utf-8")) < MAX_EMAIL_SIZE_BYTES
 
+    def test_base_email_declares_font_family(
+        self, base_context: dict[str, object]
+    ) -> None:
+        """The rendered (premailer-inlined) email must carry a font-family.
+
+        Regression for the autoescape bug: quoted family names like
+        "Helvetica Neue" were escaped to &quot; inside the <style> block,
+        which cssutils could not parse, so premailer silently dropped the
+        whole font-family property and the body fell back to the client's
+        default serif.
+        """
+        html = render_to_string("emails/base_email.html", base_context)
+        assert "font-family" in html
+        # A representative family from the configured stack should survive.
+        assert "Helvetica Neue" in html or "Arial" in html
+
 
 # ---------------------------------------------------------------------------
 # 2. Notification template rendering tests

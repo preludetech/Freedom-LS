@@ -47,10 +47,12 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)
+- [x] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
+- [x] (user + cmd) Fix QA bug: Email logo image does not load in dev (https/no-port URL) (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Emails declare no font-family — body falls back to serif (TDD — failing test first, then fix)
 
 ## 10. Pull request
 

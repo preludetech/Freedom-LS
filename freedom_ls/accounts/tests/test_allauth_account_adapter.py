@@ -1,7 +1,7 @@
 """Tests for AccountAdapter."""
 
 import email.policy
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from allauth.core.context import request_context
@@ -108,6 +108,50 @@ def test_send_mail_uses_8bit_transfer_encoding(long_url_email) -> None:
     _, parts = long_url_email
     encodings = [part["Content-Transfer-Encoding"] for part in parts]
     assert all(encoding == "8bit" for encoding in encodings)
+
+
+@pytest.mark.django_db
+def test_send_mail_logo_url_uses_request_absolute_uri(
+    mock_site_context, settings
+) -> None:
+    """With a request in context, the logo URL is built from the request host.
+
+    Regression for the broken-logo bug: the logo was built from the Site domain
+    + ACCOUNT_DEFAULT_HTTP_PROTOCOL (e.g. https://127.0.0.1/static/...), which is
+    unreachable in dev, while the action links use the request-based absolute URI.
+    The logo must use the same request-based builder so it resolves.
+    """
+    from django.templatetags.static import static
+
+    settings.EMAIL_LOGO_STATIC_PATH = "images/test_logo.png"
+    settings.HEADER_LOGO_STATIC_PATH = None
+
+    captured: dict = {}
+    adapter = AccountAdapter()
+
+    # RequestFactory's default host is "testserver" (allowed in tests). The
+    # point is that the logo uses the request host, not the bare Site domain.
+    request = RequestFactory().get("/")
+
+    def capture_ctx(template_prefix, email, ctx):
+        captured.update(ctx)
+        m = MagicMock()
+        m.send = MagicMock()
+        return m
+
+    with (
+        patch.object(adapter, "render_mail", side_effect=capture_ctx),
+        patch(
+            "freedom_ls.accounts.allauth_account_adapter.get_current_site",
+            return_value=mock_site_context,
+        ),
+        request_context(request),
+    ):
+        adapter.send_mail("account/email/login_code", "user@example.com", {})
+
+    logo_url = captured["email_logo_url"]
+    assert logo_url == request.build_absolute_uri(static("images/test_logo.png"))
+    assert logo_url == "http://testserver" + static("images/test_logo.png")
 
 
 @pytest.mark.django_db
