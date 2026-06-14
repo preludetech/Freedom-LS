@@ -425,6 +425,72 @@
         @apply text-xs font-semibold uppercase tracking-wide text-muted mb-2;
     }
 
+    /* ── Accordion widget (cotton/accordion.html) ────────────────────────
+     *
+     * CSS-only open/close animation using grid-template-rows. The native
+     * <details> element manages open/closed state; CSS responds to the
+     * browser-set [open] attribute with no JavaScript needed.
+     *
+     * .accordion          — the <details> host; border and background.
+     * .accordion-summary  — the <summary> row with title and chevron.
+     * .accordion-body     — grid wrapper that animates the row height
+     *                       between 0 (closed) and auto (open).
+     * .accordion-body-inner — inner padding wrapper; must not be on the
+     *                         animated element or the padding clips during
+     *                         the reveal transition.
+     * .accordion-chevron  — rotates 180° when the disclosure is open.
+     *
+     * All transitions are gated behind prefers-reduced-motion so the
+     * state change still applies instantly when motion is reduced.
+     *
+     * The [open] selector targets the native attribute set by the browser
+     * on <details>, making the native element the single source of truth.
+     */
+
+    .accordion-summary::-webkit-details-marker,
+    .accordion-summary::marker {
+        /* Remove the default browser-provided triangle so the custom
+         * chevron icon is the only disclosure indicator. */
+        display: none;
+    }
+
+    .accordion-body {
+        display: grid;
+        grid-template-rows: 0fr;
+        overflow: hidden;
+    }
+
+    .accordion[open] .accordion-body {
+        grid-template-rows: 1fr;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .accordion-body {
+            transition: grid-template-rows 0.25s ease;
+        }
+    }
+
+    /* grid child needs min-height: 0 to collapse inside a 0fr row */
+    .accordion-body-inner {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .accordion-chevron {
+        display: inline-flex;
+        transition: none;
+    }
+
+    .accordion[open] .accordion-chevron {
+        transform: rotate(180deg);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .accordion-chevron {
+            transition: transform 0.25s ease;
+        }
+    }
+
     /* HTMX request state utilities for loading indicators */
     .htmx-request .htmx-hide-on-request {
         display: none;

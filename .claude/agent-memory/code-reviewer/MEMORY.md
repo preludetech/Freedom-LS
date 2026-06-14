@@ -38,7 +38,7 @@
 - Empty states with text-muted color
 - Deadline styling: danger/10 or warning/20 backgrounds with left border
 - Overdue cells: danger/15 for hard deadlines, warning/15 for soft overdue
-- Icons: Use `<c-icon name="semantic_name" />` cotton component (registry in `freedom_ls/base/icons.py`)
+- Icons: Use `<c-icon name="semantic_name" />` cotton component (registry: `freedom_ls/icons/semantic_names.py` for allowed names + `freedom_ls/icons/mappings.py` for heroicon mapping; note: NOT `freedom_ls/base/icons.py`)
 - Icon internals: `icon_name` filter in `icon_tags.py` + `{% heroicon_* %}` tags in `cotton/icon.html`
 - All icons are informative by default (role="img", aria-label set to semantic name)
 - IMPORTANT: `aria_label=""` does NOT make an icon decorative — backend falls back to the semantic slug. See icon_aria_gotcha.md. Wrap in `aria-hidden="true"` span for decorative.

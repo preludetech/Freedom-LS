@@ -1,0 +1,44 @@
+<c-vars title="" open="" />
+
+{% load content_tags %}
+
+{% comment %}
+Accordion component — a native <details>/<summary> disclosure widget.
+
+Attributes:
+  title  Visible heading shown in the summary bar (required in practice).
+  open   When truthy, the accordion starts in the expanded state. Omit or
+         leave blank for the default closed state.
+
+Animation:
+  The open/close transition uses a CSS grid-template-rows trick driven by the
+  details[open] attribute selector. No JavaScript is needed — the browser
+  toggles the open attribute natively, and CSS responds to it. The transition
+  is gated behind @media (prefers-reduced-motion: no-preference) so users who
+  prefer reduced motion see an instant reveal with no animation.
+
+Chevron:
+  A CSS rotate driven by the details[open] selector flips the chevron icon
+  when the disclosure opens. The rotation transition is also gated behind
+  prefers-reduced-motion.
+
+Editorial note:
+  Accordions are for elective depth — supplementary detail, optional context,
+  or reference material that not every reader needs. Do not hide content that
+  is required reading, forms part of assessed material, or that every learner
+  needs to see. Required content must always be visible without interaction.
+{% endcomment %}
+
+<details{% if open %} open{% endif %} class="accordion my-6 border border-border rounded-lg bg-surface">
+    <summary class="accordion-summary flex items-center justify-between px-4 py-3 cursor-pointer select-none list-none font-semibold text-on-surface">
+        <span>{{ title }}</span>
+        <span class="accordion-chevron" aria-hidden="true">
+            <c-icon name="dropdown" class="size-5 text-muted" />
+        </span>
+    </summary>
+    <div class="accordion-body">
+        <div class="accordion-body-inner px-4 pb-4 space-y-4">
+            {% markdown slot %}
+        </div>
+    </div>
+</details>

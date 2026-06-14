@@ -625,6 +625,61 @@ Some text with **bold**."""
         assert "<caption>Comparison</caption>" in result
 
 
+@pytest.mark.django_db
+class TestCAccordion:
+    """Tests for the c-accordion cotton component."""
+
+    def test_c_accordion_renders_details_and_summary(self, mock_request):
+        """c-accordion renders a <details> element with a <summary> carrying the title."""
+        markdown_text = '<c-accordion title="My Section">Body text</c-accordion>'
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<c-accordion" not in result  # cotton tag was rendered
+        assert "<details" in result
+        assert "<summary" in result
+        assert "My Section" in result
+
+    def test_c_accordion_without_open_attribute_is_closed(self, mock_request):
+        """When open is not set, the <details> element has no open attribute."""
+        markdown_text = '<c-accordion title="Closed">content</c-accordion>'
+        result = render_markdown(markdown_text, mock_request)
+
+        # The details element must not have the open attribute when not requested.
+        # Checking that `<details open` does not appear (details is closed by default).
+        assert "<details open" not in result
+        assert "<details" in result
+
+    def test_c_accordion_with_open_attribute_renders_open_state(self, mock_request):
+        """When open is set, the <details> element has the open attribute."""
+        markdown_text = (
+            '<c-accordion title="Open Section" open="true">content</c-accordion>'
+        )
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<details" in result
+        # The native open attribute must be present so the disclosure starts expanded.
+        assert "<details open" in result or "details open" in result
+
+    def test_c_accordion_body_markdown_is_rendered(self, mock_request):
+        """Body content inside c-accordion has markdown processed (bold → strong)."""
+        markdown_text = '<c-accordion title="Details">**bold text**</c-accordion>'
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<strong>bold text</strong>" in result
+
+    def test_c_accordion_title_in_summary_element(self, mock_request):
+        """The title attribute appears inside the <summary> element."""
+        markdown_text = '<c-accordion title="Section Title">body</c-accordion>'
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<summary" in result
+        # Title must be within the summary (not just anywhere in the output).
+        summary_start = result.index("<summary")
+        summary_end = result.index("</summary>", summary_start)
+        summary_content = result[summary_start:summary_end]
+        assert "Section Title" in summary_content
+
+
 class TestInjectTableCaption:
     """Unit tests for the inject_table_caption filter."""
 
