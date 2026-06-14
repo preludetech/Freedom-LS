@@ -1,0 +1,55 @@
+<c-vars type="default" title="" />
+
+{% load content_tags %}
+{% load base_tags %}
+
+{% comment %}
+Admonition component for displaying typed callout boxes in content.
+
+Attributes:
+  type   One of the registered ADMONITION_TYPES keys (note, tip, important,
+         warning, danger, key_takeaways, checklist). Unknown types fall back
+         to "default" silently.
+  title  Optional visible heading that overrides the registry label.
+
+Accessibility:
+  - Container has role="note" and aria-labelledby pointing to the label element.
+  - Icon is wrapped in aria-hidden="true" — the label element carries meaning.
+{% endcomment %}
+
+{% admonition_config type as cfg %}
+{% unique_id "admonition-label" as label_id %}
+{% admonition_icon cfg as icon_svg %}
+
+{% partialdef admonition_box %}
+<div role="note"
+     aria-labelledby="{{ label_id }}"
+     class="my-6 p-4 {{ bg }} rounded-lg">
+    <div class="flex items-center gap-2 font-semibold {{ text }} mb-2">
+        <span aria-hidden="true">{{ icon_svg }}</span>
+        <span id="{{ label_id }}">{% if title %}{{ title }}{% else %}{{ cfg.label }}{% endif %}</span>
+    </div>
+    <div class="{{ text }} px-2 space-y-4">
+        {% markdown slot %}
+    </div>
+</div>
+{% endpartialdef %}
+
+{% if cfg.color == "success" %}
+    {% with bg="bg-success-light" text="text-on-success-light" %}
+        {% partial admonition_box %}
+    {% endwith %}
+{% elif cfg.color == "warning" %}
+    {% with bg="bg-warning-light" text="text-on-warning-light" %}
+        {% partial admonition_box %}
+    {% endwith %}
+{% elif cfg.color == "error" %}
+    {% with bg="bg-error-light" text="text-on-error-light" %}
+        {% partial admonition_box %}
+    {% endwith %}
+{% else %}
+    {# Covers "info" and any unknown color — tolerant default #}
+    {% with bg="bg-info-light" text="text-on-info-light" %}
+        {% partial admonition_box %}
+    {% endwith %}
+{% endif %}
