@@ -53,7 +53,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
 - [x] (user + cmd) Fix QA bug: Email logo image does not load in dev (https/no-port URL) (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: Emails declare no font-family — body falls back to serif (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: CTA button radius hardcoded 6px, not driven by email_button_radius theme token (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: CTA button radius hardcoded 6px, not driven by email_button_radius theme token (TDD — failing test first, then fix)
 
 ## 10. Pull request
 
@@ -63,5 +63,5 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 11. Cleanup
 
-- [ ] (cmd) Run `/finish_worktree` to clean up the worktree
+- [x] (cmd) Run `/finish_worktree` to clean up the worktree
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved

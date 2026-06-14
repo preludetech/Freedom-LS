@@ -30,7 +30,8 @@
       "Bash(.claude/fls/scripts/kill_runserver.sh:*)",
       "Bash(git rm *)",
       "Bash(git grep *)",
-      "Bash(.claude/fls/scripts/dev_db_delete.sh:*)"
+      "Bash(.claude/fls/scripts/dev_db_delete.sh:*)",
+      "Bash(git ls-files *)"
     ],
     "deny": [
       "Read(.env)",
