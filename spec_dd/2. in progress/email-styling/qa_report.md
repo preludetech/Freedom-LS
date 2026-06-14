@@ -1,162 +1,133 @@
 # QA Report — Theme & site branding in emails
 
+**Feature:** email-styling (theme & site branding in transactional emails)
 **Date:** 2026-06-14
-**Branch:** `email-styling`
-**Method:** Real emails triggered through the dev server, inspected in Mailpit
-(raw HTML source via the Mailpit API + rendered preview via Playwright MCP).
-**Active theme:** `default` (`FLS_THEME` defaults to `"default"`; dev settings do
-not override it). The plain-text label is `FirstClass` (`HEADER_TITLE`), the logo
-resolves to `images/first_class_logo.png`.
+**Branch:** `email-styling` (confirmed via `debug-branch-badge`)
+**Environment:** dev server on port 8492, Mailpit at `http://localhost:8025`, `DemoDev` site
+**Tooling:** Playwright MCP (desktop 1920×1080, mobile 375×812, tablet 768×1024); email HTML/text inspected via the Mailpit API.
 
-## Result summary
+## Summary
+
+**No bugs found.** All executable tests passed. The core bug fix — logo `src` being a
+fully-qualified `http://.../static/...` URL rather than a bare `/static/...` URL — is confirmed
+working, along with theme colours, email-safe fonts, button radius, the text-label fallback,
+and the email-logo override precedence.
+
+One test (Test 3, login-by-code email) was **skipped** because the feature is not enabled in
+this environment — see "Tests not executed" below. This is per the test plan's own instruction
+and is **not** a defect or a missing-data gap.
 
 | Test | Description | Result |
 |------|-------------|--------|
-| 1 | Email-verification email (signup) | ✅ PASS |
-| 2 | Password-reset email | ✅ PASS |
-| 3 | Login-code email | ⏭️ SKIPPED — page not enabled (404), per test-plan instruction |
+| 1 | Email verification (signup) | ✅ PASS |
+| 2 | Password reset email | ✅ PASS |
+| 3 | Login-code email | ⏭️ SKIPPED (feature disabled — `/accounts/login/code/` returns 404, per plan) |
 | 4 | Plain-text part | ✅ PASS |
 | 5 | Text-label fallback (no logo) | ✅ PASS |
-| 6 | Email-logo override precedence | ✅ PASS |
-
-**No bugs were found.** The core bug fix (absolute logo URL) is confirmed working,
-and every branding expectation in the plan held.
+| 6 | Email logo override precedence | ✅ PASS |
+| — | Mobile (375px) rendering | ✅ PASS |
+| — | Tablet (768px) rendering | ✅ PASS |
 
 ---
 
-## Test 1 — Email verification email (signup) ✅
+## Test 1 — Email verification email (signup flow) — PASS
 
-Registered a fresh account (`qa_verify_fresh01@email.com`) at `/accounts/signup/`,
-which sent **"[Demo] Confirm your email address"**.
+Registered a fresh account (`qa_verify_20260614a@email.com`) via `/accounts/signup/`; the
+"Confirm your email address" email landed in Mailpit.
 
-Verified against the raw HTML source:
+![](screenshots/desktop_1.1_verification_email.png)
 
-- **Logo image loads** — the FirstClass winged logo renders at the top (not a
-  broken-image icon).
-- **Fully-qualified `src`** — the core bug fix:
-  `src="http://127.0.0.1:8320/static/images/first_class_logo.png"` (begins with
-  `http://`, not a bare `/static/...`).
-- **Alt text is `FirstClass`** (`alt="FirstClass"`), the resolved label =
-  `HEADER_TITLE`, not `DemoDev`.
-- **Theme colours** — header band `#2b6cb0`, button `#2b6cb0`, body text
-  `#1a2332`, footer/secondary `#4a5568`, surfaces `#fff`/`#ffffff`, page bg
-  `#f3f4f6`.
-- **No modern colour syntax** — searching the source for `oklch`, `oklab`,
-  `color-mix`, `var(`, `hsl(`, `rgb(` returns **nothing**; every colour is hex.
-- **Button radius** — `border-radius: 0.375rem`, the correct value for the active
-  `default` theme. (The plan notes `first_class → 0.5rem`; that theme is not
-  active here, so `0.375rem` is expected.)
+All expectations met:
+- **Logo loads from an absolute URL** — `src="http://127.0.0.1:8492/static/images/first_class_logo.png"`. No bare `/static/...` references anywhere. Logo URL returns `200 image/png`.
+- **Alt text reads `FirstClass`** (the resolved label = `HEADER_TITLE`), not `DemoDev`. The string `DemoDev` does not appear anywhere in the HTML.
+- **Theme colours applied** — header band/button/links use the theme primary `#2b6cb0`; body text uses theme foreground (`#1a2332` / `#4a5568`).
+- **No modern colour syntax** — searching the source for `oklch`, `oklab`, `color-mix`, `var(`, `hsl(`, `rgb(` returns zero matches. Every colour is `#rrggbb` hex (`#1a2332`, `#2b6cb0`, `#4a5568`, `#f3f4f6`, `#ffffff`).
+- **CTA button radius** — `border-radius: 0.375rem` (default-theme value; the plan lists this as acceptable).
 - **Email-safe font** — `font-family: "Helvetica Neue", Arial, sans-serif`.
-- **Sign-off / footer** — "The FirstClass Team" and "© 2026 FirstClass | 127.0.0.1".
 
-![](screenshots/desktop_1_verification_email_rendered.png)
+> Note (not a defect): a first attempt with `qa_verify_1@email.com` produced allauth's
+> "Account already exists" email instead of a confirmation, because that address was left over
+> from a prior run. Using a genuinely fresh address produced the expected confirmation email.
+> This is correct allauth enumeration-protection behaviour.
 
----
+## Test 2 — Password reset email — PASS
 
-## Test 2 — Password reset email ✅
+Triggered a reset for `demodev_s1@email.com` via `/accounts/password/reset/`.
 
-Triggered a reset for `demodev_s1@email.com` at `/accounts/password/reset/`,
-which sent **"[Demo] Reset your password"**.
+![](screenshots/desktop_2.1_password_reset_email.png)
 
-- Same branding as Test 1: absolute logo URL
-  (`http://127.0.0.1:8320/static/images/first_class_logo.png`), `alt="FirstClass"`,
-  theme colours, `border-radius: 0.375rem`, email-safe font, **no modern colour
-  syntax**.
-- **"Reset Password"** button is present and styled with the theme primary colour
-  (`background-color: #2b6cb0`, white text).
-- Sign-off reads **"The FirstClass Team"**; footer shows the site domain
-  (`© 2026 FirstClass | 127.0.0.1`).
+- Same branding as Test 1: absolute-URL logo, alt `FirstClass`, theme colours/font, `border-radius: 0.375rem`, no modern colour syntax.
+- "**Reset Password**" button present and styled with the theme primary colour (`#2b6cb0`).
+- Sign-off reads "**The FirstClass Team**"; footer shows the site domain (`© 2026 FirstClass | 127.0.0.1`).
 
-![](screenshots/desktop_2_password_reset_email.png)
+## Test 3 — Login-code email — SKIPPED (feature disabled)
 
----
+`http://127.0.0.1:8492/accounts/login/code/` returns **HTTP 404**. The test plan explicitly
+states "If it 404s, skip this test." Login-by-code is not enabled in this environment, so the
+test is not applicable. No test data could change this (it is a disabled URL/feature, not
+missing data), so `fls:qa-data-helper` was not invoked for it.
 
-## Test 3 — Login-code email ⏭️ SKIPPED
+## Test 4 — Plain-text part — PASS
 
-`/accounts/login/code/` returns **HTTP 404** — login-by-code is not enabled on
-this build. The test plan explicitly says "If it 404s, skip this test", so this
-is a legitimate skip, not a data gap.
-
----
-
-## Test 4 — Plain-text part ✅
-
-Inspected the **Text** part of the password-reset email.
-
-- Site identity / sign-off uses the label **`FirstClass`**
-  ("We received a request to reset your password for your account at FirstClass",
-  "The FirstClass Team").
-- **No image references** and **no `/static/...` URLs** in the text part (the only
-  link is the reset action URL, which is expected).
+Inspected the `text/plain` part of the Test 1 verification email:
+- Sign-off uses the label "**The FirstClass Team**".
+- **No image references** and **no `/static/...` URLs** in the text part.
 - Footer line shows the site domain: `FirstClass | 127.0.0.1`.
 
----
+## Test 5 — Text-label fallback (no logo) — PASS
 
-## Test 5 — Text-label fallback (no logo configured) ✅
+Temporarily set `HEADER_LOGO_STATIC_PATH = None` (leaving `EMAIL_LOGO_STATIC_PATH` unset) in
+`config/settings_dev.py`, let `runserver` autoreload, and re-triggered a reset email.
 
-Temporarily set `HEADER_LOGO_STATIC_PATH = None` in `config/settings_dev.py`
-(`EMAIL_LOGO_STATIC_PATH` left unset), restarted `runserver`, and triggered a
-password-reset email.
+![](screenshots/desktop_5.1_text_label_fallback.png)
 
-- **No `<img>` logo** in the source.
-- Instead, a **text heading** showing the label in the header band:
-  `<h1 style="margin: 0; color: #ffffff; ...">FirstClass</h1>` (white text on the
-  `#2b6cb0` band).
-- Everything else (colours, radius `0.375rem`, font, button) still themed.
+- **No `<img>` logo** in the HTML (0 img tags); instead a **text heading "FirstClass"** rendered in the themed header band.
+- All other branding (header band colour, button, font, footer) still applied.
+- `config/settings_dev.py` was restored afterwards (verified: `git diff` clean).
 
-`config/settings_dev.py` was restored afterwards.
+## Test 6 — Email logo override precedence — PASS
 
-![](screenshots/desktop_5_text_label_fallback.png)
+Temporarily set `EMAIL_LOGO_STATIC_PATH = "admin/img/icon-yes.svg"` (a different existing
+static image) alongside the restored `HEADER_LOGO_STATIC_PATH`, and re-triggered an email.
 
----
+![](screenshots/desktop_6.1_email_logo_override.png)
 
-## Test 6 — Email logo override precedence ✅
-
-Set `EMAIL_LOGO_STATIC_PATH = "ninja/favicon.png"` (a different existing static
-image) while `HEADER_LOGO_STATIC_PATH` remained `images/first_class_logo.png`,
-restarted `runserver`, and triggered an email.
-
-- The email's logo `src` was
-  `http://127.0.0.1:8320/static/ninja/favicon.png` — i.e. the explicit
-  **`EMAIL_LOGO_STATIC_PATH` wins** over `HEADER_LOGO_STATIC_PATH`, as expected.
-- Note: for this image the `<img>` omitted an explicit `width` and used
-  `width: auto; height: 48px` (the height is pinned and width scales) — graceful
-  handling when the configured image's aspect ratio differs; not a defect.
-
-`config/settings_dev.py` was restored afterwards (confirmed clean via
-`git diff`).
-
-![](screenshots/desktop_6_email_logo_override.png)
+- The email shows the **`EMAIL_LOGO_STATIC_PATH`** image (`http://127.0.0.1:8492/static/admin/img/icon-yes.svg`, the green check) — the explicit email setting wins over `HEADER_LOGO_STATIC_PATH`. `first_class_logo` does not appear in the HTML.
+- `config/settings_dev.py` was restored afterwards (verified: `git diff` clean).
 
 ---
 
-## Supplementary — responsive rendering (mobile / tablet)
+## Responsive rendering
 
-The emails are fixed `max-width: 600px; width: 100%` table layouts, so true
-rendering depends on the mail client. As a supplementary check, the password-reset
-email was rendered in the Mailpit preview at mobile (375×812) and tablet
-(768×1024) viewports:
+The "frontend" under test is the rendered HTML email. The branded reset email was viewed at
+mobile and tablet widths via Mailpit's raw HTML body view.
 
-- **Mobile (375px):** content fills the viewport fluidly, no horizontal overflow;
-  the long reset URL wraps within the container.
-- **Tablet (768px):** the 600px content table centres with the page background
-  filling the remainder; button and logo render correctly.
+**Mobile (375×812):** No horizontal overflow (`scrollWidth == clientWidth == 375`). Logo,
+header band, button, and copy all render readably; the CTA button is a comfortable touch target.
 
-![](screenshots/mobile_2_password_reset_email.png)
-![](screenshots/tablet_2_password_reset_email.png)
+![](screenshots/mobile_2.1_password_reset_email.png)
+
+**Tablet (768×1024):** No horizontal overflow. The email stays in its centred max-width
+container with branding intact.
+
+![](screenshots/tablet_2.1_password_reset_email.png)
 
 ---
 
-## Notes / observations
+## Tests not executed / difficulties
 
-- During Test 5/6 the dev server auto-reloads on each `settings_dev.py` edit. One
-  password-reset submission landed mid-reload and produced a transient browser
-  error (no email sent); retrying after the reload completed worked. This is a
-  dev-server timing artifact, **not** an application bug.
-- An earlier signup attempt with `qa_verify_1@email.com` returned an
-  **"[Demo] Account already exists"** email instead of a confirmation (the address
-  already existed in the dev DB from a prior run). Using a genuinely fresh address
-  produced the expected confirmation email. Worth noting only as a testing
-  gotcha — the account-exists email is correct behaviour.
-- `config/settings_dev.py` was edited and restored twice during Tests 5 and 6;
-  `git diff config/settings_dev.py` is empty at the end of the run.
+- **Test 3 (login-code email)** — skipped because `/accounts/login/code/` returns 404 (feature
+  disabled). The test plan instructs skipping in this case. Not a defect; not a missing-data
+  gap.
+- **QA student creation** — the standard `qa_create_course_player_student DemoDev` command
+  failed (`Course 'functionality-demo-course-parts' not found on site 'DemoDev'`) because
+  DemoDev has no demo course. The email tests only need a user account, so the
+  `fls:qa-data-helper` agent provisioned `demodev_s1@email.com` directly (active + verified) via
+  `qa_create_password_reset_student`. This is an environment data note, not a defect in the
+  feature under test.
+
+## Observations unrelated to the feature
+
+- The dev server log repeatedly emits `Rejected site domain '127.0.0.1:8003' as a legal-docs
+  directory name; falling back to _default only`. This is unrelated to email branding (it
+  concerns legal-docs directory naming for a site domain) but is noted here for visibility.
