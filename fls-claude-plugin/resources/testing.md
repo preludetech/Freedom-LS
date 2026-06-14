@@ -414,6 +414,8 @@ When testing validation logic: Test the happy and unhappy path. Don't just test 
 
 Never test that a hardcoded configuration value is what it is meant to be. Eg never say `assert config.hardcoded_value == [whatever]` or `assert "something" in config.hardcoded_value`
 
+This also covers the subtler version where you read live configuration and run it **through** the code under test, then assert the **derived** result against a hardcoded expected — eg loading a real theme `.css` and asserting `resolve_color(load_theme("first_class")) == "#283593"`, or `email_safe_font_stack(theme["font-sans"]) == "sans-serif"`. Configuration exists precisely so it can change; a test like that breaks the day someone re-skins a theme or edits a setting, even though the code is still correct, and it duplicates the behaviour your controlled-input tests already cover. Test the function with an explicit input instead (`assert resolve_color({"color-primary": "#283593"}) == "#283593"`). If you genuinely need to know that the *real* shipped config still resolves, assert that via a system check / smoke test that the resolution succeeds (no exception) — not by pinning the exact values.
+
 Never test trivial model instance creation. Eg never test that default values are as they should be, or that passed in values are saved unless the model is meant to do something unusual. Assume Django's model implementation works, don't waste time testing it.
 
 Never test trivial Admin panel functionality. Assume Django's Admin interface just works, don't write tests that assert that the admin shows up exactly as it was configured because it will always do that. If you have done something unusual in the admin then test that.

@@ -181,7 +181,7 @@ For anything with a validation rule, test that invalid input is **rejected**, no
 - Keep tests fast. A unit test taking >100ms is probably hitting real I/O.
 - Coverage is a signal, not a goal. High coverage with weak assertions is worse than moderate coverage with strong ones.
 - Don't assert on styling (CSS classes, colours, font sizes) — only on functionality.
-- Don't assert hardcoded config values (`assert settings.TIMEOUT == 30`) — you're testing the config file, not behaviour.
+- Don't assert hardcoded config values (`assert settings.TIMEOUT == 30`) — you're testing the config file, not behaviour. This includes the subtler variant: feeding **live** configuration (a settings value, a theme `.css`, any file that exists to be edited) *through* the code under test and asserting the **derived** result against a hardcoded expected (`assert resolve_color(load_theme("first_class")) == "#283593"`). Configuration is meant to change — such a test breaks the moment someone re-skins a theme or edits a setting, while testing nothing the controlled-input tests don't already cover. Instead, test the function with an **explicit input** (`assert resolve_color({"color-primary": "#283593"}) == "#283593"`), and let a system check or smoke test guard that the *real* config still resolves without error.
 
 ### Testing HTMX views
 
@@ -215,5 +215,6 @@ Playwright is slow; prefer pytest. Reach for Playwright only when testing intera
 | Commented-out test | Dead test hiding a real failure | Delete it or fix it — never both |
 | Multiple assertions on unrelated behaviours | "and" test; unclear failure signal | Split into separate tests |
 | Patches `request.user` to skip auth | Bypasses real permission code | Use `client.force_login(user)` |
+| Asserts a hardcoded value derived from live config (a settings value, a theme `.css`) | Breaks when config legitimately changes; duplicates the controlled-input tests | Test the function with explicit inputs; guard real config with a system check |
 
 For the longer list of red flags, see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.

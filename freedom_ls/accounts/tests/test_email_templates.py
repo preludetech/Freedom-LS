@@ -4,22 +4,35 @@ Tests that all email templates render correctly with appropriate context,
 contain expected content, and meet size constraints.
 """
 
-from dataclasses import asdict
-
 import pytest
 
 from django.template.loader import render_to_string
 
-from freedom_ls.accounts.email_utils import get_email_theme
 from freedom_ls.accounts.factories import UserFactory
 
-_theme = get_email_theme()
+# Fixed sentinel theme values, one per EmailTheme field. These stand in for what
+# AccountAdapter.send_mail injects via asdict(get_email_theme()); using fixed
+# values (rather than reading the live theme) keeps these template tests from
+# breaking whenever a theme is re-skinned. color_primary and color_header are
+# deliberately distinct, and font_family keeps a quoted multi-word name so the
+# premailer autoescape regression test stays meaningful.
+EMAIL_THEME_CONTEXT: dict[str, str] = {
+    "color_primary": "#abc123",
+    "color_on_primary": "#ffffff",
+    "color_foreground": "#111111",
+    "color_muted": "#666666",
+    "color_surface": "#fefefe",
+    "color_surface_2": "#eeeeee",
+    "color_border": "#cccccc",
+    "color_header": "#abc124",
+    "color_on_header": "#222222",
+    "font_family": '"Helvetica Neue", Arial, sans-serif',
+    "button_radius": "0.375rem",
+}
 
-# Base context shared by all email templates. The theme fields (color_primary,
-# font_family, button_radius, ...) mirror what AccountAdapter.send_mail injects
-# via asdict(get_email_theme()); email_label is the adapter's branding label.
+# Base context shared by all email templates; email_label is the branding label.
 EMAIL_SETTINGS_CONTEXT: dict[str, str | None] = {
-    **asdict(_theme),
+    **EMAIL_THEME_CONTEXT,
     "email_label": "TestSite",
 }
 
@@ -62,10 +75,15 @@ class TestBaseEmailTemplate:
     def test_base_email_contains_brand_colors(
         self, base_context: dict[str, object]
     ) -> None:
-        """Base email should include the primary brand color and the header color."""
+        """Base email header should carry the theme's header background and text colors.
+
+        (color_primary is inlined only onto buttons/links, which the bare base
+        template has none of — premailer strips the unused rule — so the
+        reliably-rendered brand colors here are the header pair.)
+        """
         html = render_to_string("emails/base_email.html", base_context)
-        assert _theme.color_primary in html
-        assert _theme.color_header in html
+        assert EMAIL_THEME_CONTEXT["color_header"] in html
+        assert EMAIL_THEME_CONTEXT["color_on_header"] in html
 
     def test_base_email_contains_site_name(
         self, base_context: dict[str, object]

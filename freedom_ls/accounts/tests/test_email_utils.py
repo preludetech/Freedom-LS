@@ -255,45 +255,6 @@ def test_resolve_color_token_valid_hex_returns_resolved_hex():
 
 
 # ---------------------------------------------------------------------------
-# Back-compat oracle — Task 1.3
-# Real theme files resolve to known hex values
-# ---------------------------------------------------------------------------
-
-_THEMES_BASE = Path(__file__).resolve().parents[3] / "freedom_ls" / "themes"
-
-
-def _make_token_map(theme_name: str) -> dict[str, str]:
-    css_path = (
-        _THEMES_BASE / theme_name / "static" / "themes" / theme_name / "theme.css"
-    )
-    return parse_tailwind_tokens(str(css_path))
-
-
-def test_default_theme_email_colors_resolve_to_expected_hex():
-    """default theme: seven email colour tokens resolve to their known hex values."""
-    token_map = _make_token_map("default")
-    assert resolve_color_token(token_map, "primary") == "#2b6cb0"
-    assert resolve_color_token(token_map, "on-surface") == "#1a2332"
-    assert resolve_color_token(token_map, "muted") == "#4a5568"
-    assert resolve_color_token(token_map, "surface") == "#ffffff"
-    assert resolve_color_token(token_map, "surface-2") == "#f3f4f6"
-    assert resolve_color_token(token_map, "on-primary") == "#ffffff"
-    assert resolve_color_token(token_map, "border") == "#d1d5db"
-
-
-def test_first_class_theme_email_colors_resolve_to_expected_hex():
-    """first_class theme: seven email colour tokens resolve to their known hex values."""
-    token_map = _make_token_map("first_class")
-    assert resolve_color_token(token_map, "primary") == "#283593"
-    assert resolve_color_token(token_map, "on-surface") == "#1a1a2e"
-    assert resolve_color_token(token_map, "muted") == "#718096"
-    assert resolve_color_token(token_map, "surface") == "#f8f9fc"
-    assert resolve_color_token(token_map, "surface-2") == "#edf2f7"
-    assert resolve_color_token(token_map, "on-primary") == "#ffffff"
-    assert resolve_color_token(token_map, "border") == "#e2e8f0"
-
-
-# ---------------------------------------------------------------------------
 # email_safe_font_stack — Task 2.2
 # ---------------------------------------------------------------------------
 
@@ -341,8 +302,6 @@ def test_first_class_theme_email_colors_resolve_to_expected_hex():
 )
 def test_email_safe_font_stack_returns_expected_stack(raw: str, expected: str) -> None:
     """email_safe_font_stack filters the CSS font stack to email-safe names."""
-    import warnings
-
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         result = email_safe_font_stack(raw)
@@ -353,25 +312,6 @@ def test_email_safe_font_stack_custom_only_emits_warning() -> None:
     """A stack reduced to only the generic emits a UserWarning about custom fonts."""
     with pytest.warns(UserWarning, match="email-safe allowlist"):
         email_safe_font_stack('"DM Sans", system-ui, sans-serif')
-
-
-def test_email_safe_font_stack_default_theme_produces_documented_stack() -> None:
-    """default theme fls-font-sans produces the documented email font stack."""
-    token_map = _make_token_map("default")
-    raw = token_map["fls-font-sans"]
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", UserWarning)
-        result = email_safe_font_stack(raw)
-    assert result == '"Helvetica Neue", Arial, sans-serif'
-
-
-def test_email_safe_font_stack_first_class_theme_produces_documented_stack() -> None:
-    """first_class theme fls-font-sans produces the documented email font stack (+ warning)."""
-    token_map = _make_token_map("first_class")
-    raw = token_map["fls-font-sans"]
-    with pytest.warns(UserWarning, match="email-safe allowlist"):
-        result = email_safe_font_stack(raw)
-    assert result == "sans-serif"
 
 
 # ---------------------------------------------------------------------------
@@ -448,40 +388,6 @@ def test_extract_button_radius_rejects_non_length_and_raises(raw: str) -> None:
         extract_button_radius(token_map)
 
 
-def test_extract_button_radius_default_theme_yields_expected_value() -> None:
-    """default theme fls-radius-md resolves to '0.375rem'."""
-    token_map = _make_token_map("default")
-    result = extract_button_radius(token_map)
-    assert result == "0.375rem"
-
-
-def test_extract_button_radius_first_class_theme_yields_expected_value() -> None:
-    """first_class theme fls-radius-md resolves to '0.5rem'."""
-    token_map = _make_token_map("first_class")
-    result = extract_button_radius(token_map)
-    assert result == "0.5rem"
-
-
-# ---------------------------------------------------------------------------
-# Header role tokens
-# ---------------------------------------------------------------------------
-
-
-def test_default_theme_header_tokens_resolve_to_primary() -> None:
-    """default theme: header aliases primary, on-header aliases on-primary."""
-    token_map = _make_token_map("default")
-    assert resolve_color_token(token_map, "header") == "#2b6cb0"
-    assert resolve_color_token(token_map, "on-header") == "#ffffff"
-
-
-def test_first_class_theme_header_is_white_with_dark_on_header() -> None:
-    """first_class theme: header is white, on-header is the dark on-surface colour."""
-    token_map = _make_token_map("first_class")
-    assert resolve_color_token(token_map, "header") == "#ffffff"
-    # on-header -> var(--color-on-surface); just assert it is not white.
-    assert resolve_color_token(token_map, "on-header") != "#ffffff"
-
-
 # ---------------------------------------------------------------------------
 # image_dimensions / email_logo_dimensions
 # ---------------------------------------------------------------------------
@@ -532,38 +438,79 @@ def test_email_logo_dimensions_returns_none_for_unfound_static() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_get_email_theme_resolves_active_default_theme() -> None:
-    """Under the (test default) theme, header mirrors primary and on-header is white."""
-    get_email_theme.cache_clear()
-    try:
-        theme = get_email_theme()
-    finally:
-        get_email_theme.cache_clear()
-    assert theme.color_primary == "#2b6cb0"
-    assert theme.color_header == "#2b6cb0"
-    assert theme.color_on_header == "#ffffff"
-    assert theme.color_foreground == "#1a2332"
+# A complete, self-contained theme written with sentinel values, so these tests
+# exercise get_email_theme's parse/merge/resolve logic without coupling to what
+# the real shipped themes happen to be configured with.
+_SENTINEL_DEFAULT_CSS = """
+@theme {
+    --color-primary: #abc123;
+    --color-on-primary: #ffffff;
+    --color-on-surface: #111111;
+    --color-muted: #666666;
+    --color-surface: #fefefe;
+    --color-surface-2: #eeeeee;
+    --color-border: #cccccc;
+    --color-header: #abc124;
+    --color-on-header: #222222;
+    --fls-font-sans: "DM Sans", Arial, sans-serif;
+    --fls-radius-md: 0.5rem;
+}
+"""
 
 
 def test_get_email_theme_falls_back_to_default_theme_when_active_css_missing(
     tmp_path,
 ) -> None:
-    """A missing *active* theme.css falls through to the default theme's values."""
-    absent = str(tmp_path / "nope" / "theme.css")
+    """A missing *active* theme.css resolves entirely from the default theme."""
+    default_css = tmp_path / "default.css"
+    default_css.write_text(_SENTINEL_DEFAULT_CSS)
+    absent_active = str(tmp_path / "nope" / "theme.css")
     get_email_theme.cache_clear()
     try:
-        with patch(
-            "freedom_ls.accounts.email_utils.active_theme_css_path",
-            return_value=absent,
+        with (
+            patch(
+                "freedom_ls.accounts.email_utils.default_theme_css_path",
+                return_value=str(default_css),
+            ),
+            patch(
+                "freedom_ls.accounts.email_utils.active_theme_css_path",
+                return_value=absent_active,
+            ),
         ):
             theme = get_email_theme()
     finally:
         get_email_theme.cache_clear()
-    # Resolved from the real default theme.css (not a hardcoded copy), so the
-    # values are the default theme's, lowercased by the colour resolver.
-    assert theme.color_primary == "#2b6cb0"
-    assert theme.color_header == "#2b6cb0"
-    assert theme.button_radius == "0.375rem"
+    assert theme.color_primary == "#abc123"
+    assert theme.color_header == "#abc124"
+    assert theme.button_radius == "0.5rem"
+    # "DM Sans" is not email-safe and is dropped; Arial survives.
+    assert theme.font_family == "Arial, sans-serif"
+
+
+def test_get_email_theme_overlays_active_theme_over_default(tmp_path) -> None:
+    """Tokens in the active theme override the default; absent ones fall through."""
+    default_css = tmp_path / "default.css"
+    default_css.write_text(_SENTINEL_DEFAULT_CSS)
+    active_css = tmp_path / "active.css"
+    active_css.write_text("@theme { --color-primary: #def456; }")
+    get_email_theme.cache_clear()
+    try:
+        with (
+            patch(
+                "freedom_ls.accounts.email_utils.default_theme_css_path",
+                return_value=str(default_css),
+            ),
+            patch(
+                "freedom_ls.accounts.email_utils.active_theme_css_path",
+                return_value=str(active_css),
+            ),
+        ):
+            theme = get_email_theme()
+    finally:
+        get_email_theme.cache_clear()
+    # Active overrides primary; header (absent from active) stays the default.
+    assert theme.color_primary == "#def456"
+    assert theme.color_header == "#abc124"
 
 
 def test_get_email_theme_raises_when_default_theme_css_missing(tmp_path) -> None:

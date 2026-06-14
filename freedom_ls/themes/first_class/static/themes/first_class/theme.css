@@ -81,7 +81,7 @@
     /* Type — DM Sans body, Outfit display, IBM Plex Mono for code. The
      * `--font-mono` Tailwind alias is set once in the default theme; this
      * file only redeclares the `--fls-font-mono` value. */
-    --fls-font-sans: "DM Sans", system-ui, sans-serif;
+    --fls-font-sans: "DM Sans", system-ui, Arial, sans-serif;
     --fls-font-display: "Outfit", system-ui, sans-serif;
     --fls-font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
 }
