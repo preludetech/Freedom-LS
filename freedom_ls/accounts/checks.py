@@ -6,63 +6,58 @@ from collections.abc import Sequence
 from typing import Any
 
 from django.apps import AppConfig
-from django.core.checks import Tags, Warning, register
+from django.core.checks import Error, Tags, Warning, register
 
 
 @register(Tags.compatibility)
 def check_email_colour_tokens(
     app_configs: Sequence[AppConfig] | None, **kwargs: object
-) -> list[Warning]:
-    """Warn for any email colour token that is missing or cannot be resolved to hex.
+) -> list[Error]:
+    """Error for any email theme token that cannot be resolved from the theme.
 
-    Re-resolves the email colour tokens (EMAIL_COLOR_TOKENS) from the active
-    theme's theme.css, reusing the email_utils helpers. Returns a Warning for each token that is
-    absent or produces an unresolvable value. Degrades gracefully when
-    theme.css is missing — the check never raises.
+    Builds the same merged token map ``get_email_theme`` uses — the default
+    theme as a baseline with the active theme layered on top — and resolves
+    every email token (colours, font, button radius), reusing the email_utils
+    helpers. There is no hardcoded fallback, so an unresolvable token is an
+    Error: it surfaces at deploy/startup before any email send raises. A token
+    merely absent from the active theme is fine (the default theme supplies it).
+    Stays silent if the default theme.css cannot be read yet (e.g. a fresh
+    checkout) rather than crashing the check.
     """
     from .email_utils import (
-        EMAIL_COLOR_TOKENS,
-        ColorResolveError,
-        email_theme_css_path,
+        EMAIL_COLOR_ROLES,
+        EmailThemeError,
+        active_theme_css_path,
+        default_theme_css_path,
+        extract_button_radius,
+        extract_font_family,
         parse_tailwind_tokens,
-        resolve_css_color,
+        resolve_color_token,
     )
 
-    warnings: list[Warning] = []
-
-    css_path = email_theme_css_path()
-
     try:
-        token_map = parse_tailwind_tokens(css_path)
+        default_map = parse_tailwind_tokens(default_theme_css_path())
     except FileNotFoundError:
-        # Theme CSS not yet generated (e.g. fresh checkout before
-        # write_active_theme_css has run). Stay silent rather than crashing.
-        return warnings
+        return []
+    try:
+        active_map = parse_tailwind_tokens(active_theme_css_path())
+    except FileNotFoundError:
+        active_map = {}
+    token_map = {**default_map, **active_map}
 
-    for token, _fallback in EMAIL_COLOR_TOKENS:
-        raw = token_map.get(f"color-{token}")
-        if raw is None:
-            warnings.append(
-                Warning(
-                    f"Email colour token --color-{token} is missing from "
-                    f"{css_path!r}. The hardcoded fallback {_fallback!r} will be used.",
-                    id="freedom_ls_accounts.W002",
-                )
-            )
-            continue
+    errors: list[Error] = []
+    for role, _field in EMAIL_COLOR_ROLES:
         try:
-            resolve_css_color(raw, token_map)
-        except (ColorResolveError, ValueError) as exc:
-            warnings.append(
-                Warning(
-                    f"Email colour token --color-{token}={raw!r} could not be "
-                    f"resolved to a hex colour ({exc}). The hardcoded fallback "
-                    f"{_fallback!r} will be used.",
-                    id="freedom_ls_accounts.W002",
-                )
-            )
+            resolve_color_token(token_map, role)
+        except EmailThemeError as exc:
+            errors.append(Error(str(exc), id="freedom_ls_accounts.E002"))
+    for extractor in (extract_font_family, extract_button_radius):
+        try:
+            extractor(token_map)
+        except EmailThemeError as exc:
+            errors.append(Error(str(exc), id="freedom_ls_accounts.E002"))
 
-    return warnings
+    return errors
 
 
 @register(Tags.security)

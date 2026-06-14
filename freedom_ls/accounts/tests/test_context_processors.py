@@ -1,26 +1,44 @@
+from dataclasses import asdict
+from unittest.mock import MagicMock, patch
+
 import pytest
 
-from django.test import RequestFactory
-
-from freedom_ls.accounts.context_processors import email_settings
+from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 from freedom_ls.accounts.email_utils import get_email_theme
 
 
 @pytest.mark.django_db
-def test_email_settings_values_match_resolved_theme(mock_site_context):
-    """Context processor values mirror the resolved email theme."""
-    request = RequestFactory().get("/")
-    context = email_settings(request)
-    theme = get_email_theme()
+def test_send_mail_injects_resolved_theme_values(mock_site_context):
+    """AccountAdapter.send_mail injects the resolved email theme into the context.
 
-    assert context["email_color_primary"] == theme.color_primary
-    assert context["email_color_foreground"] == theme.color_foreground
-    assert context["email_color_muted"] == theme.color_muted
-    assert context["email_color_surface"] == theme.color_surface
-    assert context["email_color_surface_2"] == theme.color_surface_2
-    assert context["email_color_on_primary"] == theme.color_on_primary
-    assert context["email_color_border"] == theme.color_border
-    assert context["email_color_header"] == theme.color_header
-    assert context["email_color_on_header"] == theme.color_on_header
-    assert context["email_font_family"] == theme.font_family
-    assert context["email_button_radius"] == theme.button_radius
+    The theme values are built only when an email is sent (no longer via a
+    global context processor), so this verifies they reach the email context
+    and match get_email_theme().
+    """
+    adapter = AccountAdapter(request=None)
+    captured: dict = {}
+
+    with (
+        patch.object(adapter, "render_mail") as mock_render_mail,
+        patch(
+            "freedom_ls.accounts.allauth_account_adapter.allauth_context"
+        ) as mock_ctx,
+        patch(
+            "freedom_ls.accounts.allauth_account_adapter.get_current_site",
+            return_value=mock_site_context,
+        ),
+    ):
+        mock_ctx.request = None
+
+        def capture_ctx(template_prefix, email, ctx):
+            captured.update(ctx)
+            m = MagicMock()
+            m.send = MagicMock()
+            return m
+
+        mock_render_mail.side_effect = capture_ctx
+        adapter.send_mail("account/email/login_code", "user@example.com", {})
+
+    theme = get_email_theme()
+    for field, value in asdict(theme).items():
+        assert captured[field] == value

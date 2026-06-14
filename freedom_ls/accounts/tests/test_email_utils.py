@@ -7,6 +7,7 @@ import pytest
 from freedom_ls.accounts.email_utils import (
     EMAIL_LOGO_DISPLAY_HEIGHT,
     ColorResolveError,
+    EmailThemeError,
     email_logo_dimensions,
     email_safe_font_stack,
     extract_button_radius,
@@ -225,47 +226,32 @@ def test_resolve_css_color_mix_both_percentages_zero_raises():
 # ---------------------------------------------------------------------------
 
 
-def test_resolve_color_token_missing_token_warns_and_returns_fallback():
-    """Missing --color-<token> emits UserWarning and returns the fallback."""
+def test_resolve_color_token_missing_token_raises():
+    """A missing --color-<token> raises ColorResolveError (no silent fallback)."""
     token_map: dict[str, str] = {}
-    with pytest.warns(UserWarning, match="--color-primary not found"):
-        result = resolve_color_token(token_map, "primary", "#2B6CB0")
-    assert result == "#2B6CB0"
+    with pytest.raises(ColorResolveError, match="--color-primary not found"):
+        resolve_color_token(token_map, "primary")
 
 
-def test_resolve_color_token_unparseable_value_warns_and_returns_fallback():
-    """An unparseable raw value emits UserWarning and returns the fallback."""
+def test_resolve_color_token_unparseable_value_raises():
+    """An unparseable raw value raises ColorResolveError."""
     token_map = {"color-primary": "not-a-real-color-value!!##"}
-    with pytest.warns(UserWarning, match="could not be resolved"):
-        result = resolve_color_token(token_map, "primary", "#2B6CB0")
-    assert result == "#2B6CB0"
+    with pytest.raises(ColorResolveError):
+        resolve_color_token(token_map, "primary")
 
 
-def test_resolve_color_token_cyclic_var_warns_and_returns_fallback():
-    """A cyclic var() chain emits UserWarning and returns the fallback."""
-    token_map = {
-        "color-primary": "var(--color-primary)",
-    }
-    with pytest.warns(UserWarning, match="--color-primary"):
-        result = resolve_color_token(token_map, "primary", "#2B6CB0")
-    assert result == "#2B6CB0"
+def test_resolve_color_token_cyclic_var_raises():
+    """A cyclic var() chain raises ColorResolveError rather than looping."""
+    token_map = {"color-primary": "var(--color-primary)"}
+    with pytest.raises(ColorResolveError, match="--color-primary"):
+        resolve_color_token(token_map, "primary")
 
 
 def test_resolve_color_token_valid_hex_returns_resolved_hex():
     """A valid hex token returns the resolved #rrggbb string."""
     token_map = {"color-primary": "#2B6CB0"}
-    result = resolve_color_token(token_map, "primary", "#000000")
+    result = resolve_color_token(token_map, "primary")
     assert result == "#2b6cb0"
-
-
-def test_resolve_color_token_never_raises():
-    """resolve_color_token never raises, even on bad input."""
-    token_map = {"color-primary": "var(--color-a)", "color-a": "var(--color-primary)"}
-    # Should not raise
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", UserWarning)
-        result = resolve_color_token(token_map, "primary", "#123456")
-    assert result == "#123456"
 
 
 # ---------------------------------------------------------------------------
@@ -286,25 +272,25 @@ def _make_token_map(theme_name: str) -> dict[str, str]:
 def test_default_theme_email_colors_resolve_to_expected_hex():
     """default theme: seven email colour tokens resolve to their known hex values."""
     token_map = _make_token_map("default")
-    assert resolve_color_token(token_map, "primary", "#000000") == "#2b6cb0"
-    assert resolve_color_token(token_map, "on-surface", "#000000") == "#1a2332"
-    assert resolve_color_token(token_map, "muted", "#000000") == "#4a5568"
-    assert resolve_color_token(token_map, "surface", "#000000") == "#ffffff"
-    assert resolve_color_token(token_map, "surface-2", "#000000") == "#f3f4f6"
-    assert resolve_color_token(token_map, "on-primary", "#000000") == "#ffffff"
-    assert resolve_color_token(token_map, "border", "#000000") == "#d1d5db"
+    assert resolve_color_token(token_map, "primary") == "#2b6cb0"
+    assert resolve_color_token(token_map, "on-surface") == "#1a2332"
+    assert resolve_color_token(token_map, "muted") == "#4a5568"
+    assert resolve_color_token(token_map, "surface") == "#ffffff"
+    assert resolve_color_token(token_map, "surface-2") == "#f3f4f6"
+    assert resolve_color_token(token_map, "on-primary") == "#ffffff"
+    assert resolve_color_token(token_map, "border") == "#d1d5db"
 
 
 def test_first_class_theme_email_colors_resolve_to_expected_hex():
     """first_class theme: seven email colour tokens resolve to their known hex values."""
     token_map = _make_token_map("first_class")
-    assert resolve_color_token(token_map, "primary", "#000000") == "#283593"
-    assert resolve_color_token(token_map, "on-surface", "#000000") == "#1a1a2e"
-    assert resolve_color_token(token_map, "muted", "#000000") == "#718096"
-    assert resolve_color_token(token_map, "surface", "#000000") == "#f8f9fc"
-    assert resolve_color_token(token_map, "surface-2", "#000000") == "#edf2f7"
-    assert resolve_color_token(token_map, "on-primary", "#000000") == "#ffffff"
-    assert resolve_color_token(token_map, "border", "#000000") == "#e2e8f0"
+    assert resolve_color_token(token_map, "primary") == "#283593"
+    assert resolve_color_token(token_map, "on-surface") == "#1a1a2e"
+    assert resolve_color_token(token_map, "muted") == "#718096"
+    assert resolve_color_token(token_map, "surface") == "#f8f9fc"
+    assert resolve_color_token(token_map, "surface-2") == "#edf2f7"
+    assert resolve_color_token(token_map, "on-primary") == "#ffffff"
+    assert resolve_color_token(token_map, "border") == "#e2e8f0"
 
 
 # ---------------------------------------------------------------------------
@@ -393,18 +379,17 @@ def test_email_safe_font_stack_first_class_theme_produces_documented_stack() -> 
 # ---------------------------------------------------------------------------
 
 
-def test_extract_font_family_missing_token_returns_fallback_and_warns() -> None:
-    """When fls-font-sans is absent, the fallback is returned and a UserWarning is emitted."""
+def test_extract_font_family_missing_token_raises() -> None:
+    """When fls-font-sans is absent, EmailThemeError is raised (no silent fallback)."""
     token_map: dict[str, str] = {}
-    with pytest.warns(UserWarning, match="--fls-font-sans not found"):
-        result = extract_font_family(token_map, fallback="Arial, Helvetica, sans-serif")
-    assert result == "Arial, Helvetica, sans-serif"
+    with pytest.raises(EmailThemeError, match="--fls-font-sans not found"):
+        extract_font_family(token_map)
 
 
 def test_extract_font_family_present_token_delegates_to_email_safe_font_stack() -> None:
     """When fls-font-sans is present, the email-safe stack is returned."""
     token_map = {"fls-font-sans": "Arial, sans-serif"}
-    result = extract_font_family(token_map, fallback="fallback-value")
+    result = extract_font_family(token_map)
     assert result == "Arial, sans-serif"
 
 
@@ -416,16 +401,15 @@ def test_extract_font_family_present_token_delegates_to_email_safe_font_stack() 
 def test_extract_button_radius_present_token_returns_value() -> None:
     """When fls-radius-md is in the token map, its value is returned as-is."""
     token_map = {"fls-radius-md": "0.5rem"}
-    result = extract_button_radius(token_map, fallback="6px")
+    result = extract_button_radius(token_map)
     assert result == "0.5rem"
 
 
-def test_extract_button_radius_missing_token_returns_fallback_and_warns() -> None:
-    """When fls-radius-md is absent, the fallback is returned and a UserWarning is emitted."""
+def test_extract_button_radius_missing_token_raises() -> None:
+    """When fls-radius-md is absent, EmailThemeError is raised (no silent fallback)."""
     token_map: dict[str, str] = {}
-    with pytest.warns(UserWarning, match="--fls-radius-md not found"):
-        result = extract_button_radius(token_map, fallback="6px")
-    assert result == "6px"
+    with pytest.raises(EmailThemeError, match="--fls-radius-md not found"):
+        extract_button_radius(token_map)
 
 
 @pytest.mark.parametrize(
@@ -442,7 +426,7 @@ def test_extract_button_radius_missing_token_returns_fallback_and_warns() -> Non
 def test_extract_button_radius_accepts_length_literals(raw: str) -> None:
     """Bare CSS length literals are returned (stripped)."""
     token_map = {"fls-radius-md": raw}
-    result = extract_button_radius(token_map, fallback="6px")
+    result = extract_button_radius(token_map)
     assert result == raw.strip()
 
 
@@ -457,25 +441,24 @@ def test_extract_button_radius_accepts_length_literals(raw: str) -> None:
         "",
     ],
 )
-def test_extract_button_radius_rejects_non_length_and_warns(raw: str) -> None:
-    """A value that is not a plain length warns and falls back (no CSS injection)."""
+def test_extract_button_radius_rejects_non_length_and_raises(raw: str) -> None:
+    """A value that is not a plain length raises (no CSS injection, no fallback)."""
     token_map = {"fls-radius-md": raw}
-    with pytest.warns(UserWarning, match="is not a CSS length"):
-        result = extract_button_radius(token_map, fallback="6px")
-    assert result == "6px"
+    with pytest.raises(EmailThemeError, match="is not a CSS length"):
+        extract_button_radius(token_map)
 
 
 def test_extract_button_radius_default_theme_yields_expected_value() -> None:
     """default theme fls-radius-md resolves to '0.375rem'."""
     token_map = _make_token_map("default")
-    result = extract_button_radius(token_map, fallback="6px")
+    result = extract_button_radius(token_map)
     assert result == "0.375rem"
 
 
 def test_extract_button_radius_first_class_theme_yields_expected_value() -> None:
     """first_class theme fls-radius-md resolves to '0.5rem'."""
     token_map = _make_token_map("first_class")
-    result = extract_button_radius(token_map, fallback="6px")
+    result = extract_button_radius(token_map)
     assert result == "0.5rem"
 
 
@@ -487,16 +470,16 @@ def test_extract_button_radius_first_class_theme_yields_expected_value() -> None
 def test_default_theme_header_tokens_resolve_to_primary() -> None:
     """default theme: header aliases primary, on-header aliases on-primary."""
     token_map = _make_token_map("default")
-    assert resolve_color_token(token_map, "header", "#000000") == "#2b6cb0"
-    assert resolve_color_token(token_map, "on-header", "#000000") == "#ffffff"
+    assert resolve_color_token(token_map, "header") == "#2b6cb0"
+    assert resolve_color_token(token_map, "on-header") == "#ffffff"
 
 
 def test_first_class_theme_header_is_white_with_dark_on_header() -> None:
     """first_class theme: header is white, on-header is the dark on-surface colour."""
     token_map = _make_token_map("first_class")
-    assert resolve_color_token(token_map, "header", "#000000") == "#ffffff"
+    assert resolve_color_token(token_map, "header") == "#ffffff"
     # on-header -> var(--color-on-surface); just assert it is not white.
-    assert resolve_color_token(token_map, "on-header", "#000000") != "#ffffff"
+    assert resolve_color_token(token_map, "on-header") != "#ffffff"
 
 
 # ---------------------------------------------------------------------------
@@ -562,23 +545,39 @@ def test_get_email_theme_resolves_active_default_theme() -> None:
     assert theme.color_foreground == "#1a2332"
 
 
-def test_get_email_theme_falls_back_when_css_missing(tmp_path) -> None:
-    """A missing theme.css degrades to the hardcoded fallbacks instead of raising."""
+def test_get_email_theme_falls_back_to_default_theme_when_active_css_missing(
+    tmp_path,
+) -> None:
+    """A missing *active* theme.css falls through to the default theme's values."""
+    absent = str(tmp_path / "nope" / "theme.css")
+    get_email_theme.cache_clear()
+    try:
+        with patch(
+            "freedom_ls.accounts.email_utils.active_theme_css_path",
+            return_value=absent,
+        ):
+            theme = get_email_theme()
+    finally:
+        get_email_theme.cache_clear()
+    # Resolved from the real default theme.css (not a hardcoded copy), so the
+    # values are the default theme's, lowercased by the colour resolver.
+    assert theme.color_primary == "#2b6cb0"
+    assert theme.color_header == "#2b6cb0"
+    assert theme.button_radius == "0.375rem"
+
+
+def test_get_email_theme_raises_when_default_theme_css_missing(tmp_path) -> None:
+    """A missing *default* theme.css fails loud rather than rendering wrong colours."""
     absent = str(tmp_path / "nope" / "theme.css")
     get_email_theme.cache_clear()
     try:
         with (
             patch(
-                "freedom_ls.accounts.email_utils.email_theme_css_path",
+                "freedom_ls.accounts.email_utils.default_theme_css_path",
                 return_value=absent,
             ),
-            warnings.catch_warnings(),
+            pytest.raises(FileNotFoundError),
         ):
-            warnings.simplefilter("ignore")
-            theme = get_email_theme()
+            get_email_theme()
     finally:
         get_email_theme.cache_clear()
-    # Fallbacks come from EMAIL_COLOR_TOKENS (verbatim, uppercase hex).
-    assert theme.color_primary == "#2B6CB0"
-    assert theme.color_header == "#2B6CB0"
-    assert theme.button_radius == "6px"

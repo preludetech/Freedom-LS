@@ -175,7 +175,6 @@ TEMPLATES = [
                 "freedom_ls.site_aware_models.context_processors.site_config",
                 "freedom_ls.accounts.context_processors.signup_policy",
                 "django.template.context_processors.csp",
-                "freedom_ls.accounts.context_processors.email_settings",
             ],
             "builtins": [
                 "django_cotton.templatetags.cotton",

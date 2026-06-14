@@ -24,31 +24,36 @@ _MAX_VAR_DEPTH = 50
 # colours are validated to #rrggbb and the font stack is allowlist-constrained.
 _LENGTH_RE = re.compile(r"^(0|\d*\.?\d+(px|rem|em|%))$")
 
-# The email colour roles and their opaque hex fallbacks. Single source of truth
-# shared by the get_email_theme resolver and the check_email_colour_tokens system
-# check, so the two can never drift apart. The role keys here are the token
-# lookup keys; the EmailTheme field a role maps to is noted where they differ
-# (the on-surface role backs the `color_foreground` field).
+# Slug of the theme that ships with FLS and provides the baseline token values.
+# get_email_theme parses this theme's theme.css as the single source of default
+# colours/font/radius, then layers the active theme on top — so there are no
+# hardcoded values here to drift from the default theme.
+DEFAULT_THEME_SLUG = "default"
 
-# @claude: Why are there default theme values here? There is already a default theme, we should keep it DRY. If the default theme priomary color changes then we dont want to have to copy paste it everywhere it's used. Just use the theme values. If they are not defined then there should be an erros, not a silent failure that results in things being blue. Default values should be defined once and then they pass through to where they are used. FIX
-EMAIL_COLOR_TOKENS: tuple[tuple[str, str], ...] = (
-    ("primary", "#2B6CB0"),
-    ("on-surface", "#1A2332"),
-    ("muted", "#4A5568"),
-    ("surface", "#FFFFFF"),
-    ("surface-2", "#F3F4F6"),
-    ("on-primary", "#FFFFFF"),
-    ("border", "#D1D5DB"),
-    # The header band has its own role token so a theme can paint it
-    # independently of `primary` (e.g. first_class uses a white header). The
-    # fallbacks mirror primary/on-primary so a theme without the token renders
-    # the band exactly as it did before this role existed.
-    ("header", "#2B6CB0"),
-    ("on-header", "#FFFFFF"),
+# The email colour roles resolved from the theme, each mapped to the EmailTheme
+# field it backs. The role key is looked up as `--color-<role>` in the merged
+# token map; the field is the EmailTheme attribute (the two differ only for
+# `on-surface`, which backs `color_foreground`). The header band has its own
+# role so a theme can paint it independently of `primary` (e.g. first_class uses
+# a white header); the default theme aliases it to `primary`/`on-primary`.
+EMAIL_COLOR_ROLES: tuple[tuple[str, str], ...] = (
+    ("primary", "color_primary"),
+    ("on-primary", "color_on_primary"),
+    ("on-surface", "color_foreground"),
+    ("muted", "color_muted"),
+    ("surface", "color_surface"),
+    ("surface-2", "color_surface_2"),
+    ("border", "color_border"),
+    ("header", "color_header"),
+    ("on-header", "color_on_header"),
 )
 
 
-class ColorResolveError(Exception):
+class EmailThemeError(Exception):
+    """Raised when an email theme token cannot be resolved from the theme."""
+
+
+class ColorResolveError(EmailThemeError):
     """Raised when a raw CSS colour cannot be resolved to hex."""
 
 
@@ -78,9 +83,32 @@ def parse_tailwind_tokens(css_file_path: str) -> dict[str, str]:
 
 
 def _expand_vars(raw: str, token_map: dict[str, str]) -> str:
-    """Substitute all var(--x) references from token_map.
+    """Substitute every ``var(--x)`` reference in ``raw`` with its token value.
 
-    Raises ColorResolveError on an unknown variable or a reference cycle.
+    Each iteration finds the first remaining ``var(--x)``, looks ``x`` up in
+    ``token_map``, and replaces *all* occurrences of that exact variable in one
+    pass. Repeating resolves nested references, where one token's value is
+    itself a ``var()``.
+
+    Example — a nested chain ``brand -> accent -> hex``::
+
+        raw = "var(--brand)"
+        token_map = {"brand": "var(--accent)", "accent": "#F59E0B"}
+
+        # pass 1: expand --brand   -> "var(--accent)"
+        # pass 2: expand --accent  -> "#F59E0B"
+        # pass 3: no var() left    -> returned "#F59E0B"
+
+    ``seen`` tracks which keys have already been expanded so a true cycle
+    terminates instead of looping forever. A key encountered a second time means
+    its own expansion (directly or transitively) reintroduced it — e.g.
+    ``a -> var(--b)``, ``b -> var(--a)`` — and raises. ``seen`` is keyed per
+    variable, not per occurrence: the *same* variable used in several sibling
+    positions, like ``var(--color-primary), var(--color-primary) 12%``, is
+    replaced together in that key's single pass, so it is never a cycle.
+
+    Raises ColorResolveError on an unknown variable, a reference cycle, or a
+    chain deeper than ``_MAX_VAR_DEPTH``.
     """
     seen: set[str] = set()
     current = raw
@@ -224,7 +252,19 @@ def resolve_css_color(raw: str, token_map: dict[str, str]) -> str:
     """Resolve a raw CSS color value to a 6-digit #rrggbb hex string.
 
     Handles hex (3/4/6/8-digit), rgb/rgba, hsl/hsla, oklch, oklab, lch, lab,
-    named colors, var() references, and color-mix() expressions.
+    named colors, var() references, and color-mix() expressions. var() is
+    expanded first (see _expand_vars), then a color-mix() wrapper is resolved by
+    blending its operands; anything else is parsed directly. An 8-digit hex has
+    its alpha dropped to srgb, and a non-opaque result is rejected.
+
+    Examples::
+
+        resolve_css_color("#2B6CB0", {})  # -> "#2b6cb0"
+        resolve_css_color("rgb(43, 108, 176)", {})  # -> "#2b6cb0"
+        resolve_css_color("var(--brand)", {"brand": "white"})  # -> "#ffffff"
+        resolve_css_color(
+            "color-mix(in oklch, #ff0000 30%, #0000ff)", {}
+        )  # -> a blended #rrggbb
 
     Raises ColorResolveError on any parse, cycle, or conversion failure.
     """
@@ -343,50 +383,36 @@ def email_safe_font_stack(raw_font_sans: str) -> str:
     return result
 
 
-def extract_font_family(
-    token_map: dict[str, str], fallback: str = "Arial, Helvetica, sans-serif"
-) -> str:
+def extract_font_family(token_map: dict[str, str]) -> str:
     """Extract an email-safe font-family stack from the theme token map.
 
-    Returns ``email_safe_font_stack(token_map["fls-font-sans"])`` when the
-    token is present. If it is absent, emits a UserWarning and returns
-    *fallback* unchanged.
+    Returns ``email_safe_font_stack(token_map["fls-font-sans"])``. Raises
+    EmailThemeError when ``--fls-font-sans`` is absent: the default theme always
+    defines it, so absence even from the merged map is a misconfiguration.
     """
-    if "fls-font-sans" in token_map:
-        return email_safe_font_stack(token_map["fls-font-sans"])
-    warnings.warn(
-        "Theme token --fls-font-sans not found; using fallback font family.",
-        UserWarning,
-        stacklevel=2,
-    )
-    return fallback
+    raw = token_map.get("fls-font-sans")
+    if raw is None:
+        raise EmailThemeError("Theme token --fls-font-sans not found")
+    return email_safe_font_stack(raw)
 
 
-def extract_button_radius(token_map: dict[str, str], fallback: str = "6px") -> str:
+def extract_button_radius(token_map: dict[str, str]) -> str:
     """Extract the button border-radius value from the theme token map.
 
     Returns the value of ``--fls-radius-md`` (e.g. ``'0.375rem'``, ``'0.5rem'``,
-    ``'6px'``) when it is present and a bare CSS length literal. If the token is
-    absent, or its value is not a plain length, emits a UserWarning and returns
-    *fallback*.
+    ``'6px'``) when it is a bare CSS length literal. Raises EmailThemeError when
+    the token is absent or its value is not a plain length (a non-length value
+    could inject CSS into the email <style> block).
     """
     raw = token_map.get("fls-radius-md")
     if raw is None:
-        warnings.warn(
-            "Theme token --fls-radius-md not found; using fallback button radius.",
-            UserWarning,
-            stacklevel=2,
+        raise EmailThemeError("Theme token --fls-radius-md not found")
+    raw = raw.strip()
+    if not _LENGTH_RE.match(raw):
+        raise EmailThemeError(
+            f"Theme token --fls-radius-md={raw!r} is not a CSS length"
         )
-        return fallback
-    if not _LENGTH_RE.match(raw.strip()):
-        warnings.warn(
-            f"Theme token --fls-radius-md={raw!r} is not a CSS length; "
-            f"using fallback button radius {fallback!r}.",
-            UserWarning,
-            stacklevel=2,
-        )
-        return fallback
-    return raw.strip()
+    return raw
 
 
 def resolved_email_logo_path() -> str | None:
@@ -400,38 +426,47 @@ def resolved_email_logo_path() -> str | None:
     return settings.EMAIL_LOGO_STATIC_PATH or settings.HEADER_LOGO_STATIC_PATH or None
 
 
-def resolve_color_token(token_map: dict[str, str], token: str, fallback: str) -> str:
+def resolve_color_token(token_map: dict[str, str], token: str) -> str:
     """Resolve ``color-<token>`` from the token map to a #rrggbb hex string.
 
-    If the token is missing, or if the raw value cannot be resolved, a
-    UserWarning is emitted and the fallback is returned. Never raises.
+    Raises ColorResolveError if the token is absent from the map or its raw
+    value cannot be resolved. There is no fallback: get_email_theme merges the
+    default theme under the active theme, so the default theme is the single
+    source of default values and a token unresolvable even there is a genuine
+    misconfiguration that should fail loud rather than render a wrong colour.
     """
     raw = token_map.get(f"color-{token}")
     if raw is None:
-        warnings.warn(
-            f"Email colour token --color-{token} not found; using fallback {fallback}.",
-            UserWarning,
-            stacklevel=2,
-        )
-        return fallback
+        raise ColorResolveError(f"Email colour token --color-{token} not found")
     try:
         return resolve_css_color(raw, token_map)
     except (ColorResolveError, ValueError) as exc:
-        warnings.warn(
-            f"Email colour token --color-{token}={raw!r} could not be resolved "
-            f"({exc}); using fallback {fallback}.",
-            UserWarning,
-            stacklevel=2,
-        )
-        return fallback
+        raise ColorResolveError(
+            f"Email colour token --color-{token}={raw!r} could not be resolved: {exc}"
+        ) from exc
 
 
-def email_theme_css_path() -> str:
+def default_theme_css_path() -> str:
+    """Return the filesystem path to the *default* theme's ``theme.css``.
+
+    The default theme ships with FLS and is the single source of default email
+    token values. Resolved through ``FLS_THEMES_DIRS`` so a downstream project
+    that shadows ``default/`` is honoured.
+    """
+    from django.conf import settings
+
+    from freedom_ls.base.theming import resolve_theme_dir
+
+    resolved = resolve_theme_dir(DEFAULT_THEME_SLUG, settings.FLS_THEMES_DIRS)
+    return str(resolved / "static" / "themes" / DEFAULT_THEME_SLUG / "theme.css")
+
+
+def active_theme_css_path() -> str:
     """Return the filesystem path to the active theme's ``theme.css``.
 
     Built from the genuine settings (``RESOLVED_THEME_DIR`` and ``FLS_THEME``)
-    rather than stored as a setting itself — it is a derived path, needed only
-    when email styling is resolved or the system check runs.
+    rather than stored as a setting itself — it is a derived path. Pairs with
+    ``default_theme_css_path``; ``get_email_theme`` merges the two.
     """
     from django.conf import settings
 
@@ -469,35 +504,30 @@ class EmailTheme:
 def get_email_theme() -> EmailTheme:
     """Resolve the active theme's email colours, font, and button radius.
 
-    Lazily derived from the theme's ``theme.css`` and cached for the process
-    lifetime (so a future bulk send resolves it once). Tests that override the
-    theme must call ``get_email_theme.cache_clear()``. Degrades to the hardcoded
-    fallbacks when the theme CSS is absent rather than raising.
-    """
-    try:
-        token_map = parse_tailwind_tokens(email_theme_css_path())
-    except FileNotFoundError:
-        token_map = {}
+    The default theme's ``theme.css`` provides the baseline token values; the
+    active theme's tokens are layered on top (active wins per-token), so any
+    token the active theme omits falls through to the default. Lazily derived
+    and cached for the process lifetime (so a future bulk send resolves it
+    once). Tests that override the theme must call ``get_email_theme.cache_clear()``.
 
-    fallbacks = dict(EMAIL_COLOR_TOKENS)
+    Raises EmailThemeError (incl. ColorResolveError) if a required token cannot
+    be resolved even from the default theme — a genuine misconfiguration that
+    fails loud rather than silently rendering a wrong colour.
+    """
+    default_map = parse_tailwind_tokens(default_theme_css_path())
+    try:
+        active_map = parse_tailwind_tokens(active_theme_css_path())
+    except FileNotFoundError:
+        # A sparse/Tier-1 active theme may ship no theme.css of its own; the
+        # default baseline below still supplies every token.
+        active_map = {}
+    token_map = {**default_map, **active_map}
+
+    colors = {
+        field: resolve_color_token(token_map, role) for role, field in EMAIL_COLOR_ROLES
+    }
     return EmailTheme(
-        color_primary=resolve_color_token(token_map, "primary", fallbacks["primary"]),
-        color_on_primary=resolve_color_token(
-            token_map, "on-primary", fallbacks["on-primary"]
-        ),
-        color_foreground=resolve_color_token(
-            token_map, "on-surface", fallbacks["on-surface"]
-        ),
-        color_muted=resolve_color_token(token_map, "muted", fallbacks["muted"]),
-        color_surface=resolve_color_token(token_map, "surface", fallbacks["surface"]),
-        color_surface_2=resolve_color_token(
-            token_map, "surface-2", fallbacks["surface-2"]
-        ),
-        color_border=resolve_color_token(token_map, "border", fallbacks["border"]),
-        color_header=resolve_color_token(token_map, "header", fallbacks["header"]),
-        color_on_header=resolve_color_token(
-            token_map, "on-header", fallbacks["on-header"]
-        ),
+        **colors,
         font_family=extract_font_family(token_map),
         button_radius=extract_button_radius(token_map),
     )

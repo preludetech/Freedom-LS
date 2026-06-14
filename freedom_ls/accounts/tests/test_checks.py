@@ -8,19 +8,25 @@ from freedom_ls.accounts.checks import check_email_colour_tokens
 
 # ---------------------------------------------------------------------------
 # check_email_colour_tokens
+#
+# The check builds the same merged token map get_email_theme uses — the default
+# theme as a baseline with the active theme layered on top. The default theme is
+# real (not patched); _patch_css_path overrides only the *active* theme, so a
+# token absent from the active theme is supplied by the default and is not an
+# error. An unresolvable token (present but bad, in either theme) is an Error.
 # ---------------------------------------------------------------------------
 
 
 def _patch_css_path(path: str):
-    """Patch the resolver so the check reads the given theme.css path."""
+    """Patch the resolver so the check reads the given *active* theme.css path."""
     return patch(
-        "freedom_ls.accounts.email_utils.email_theme_css_path",
+        "freedom_ls.accounts.email_utils.active_theme_css_path",
         return_value=str(path),
     )
 
 
-def test_all_valid_tokens_produce_no_warnings(make_temp_file) -> None:
-    """All email colour tokens present and valid → empty warning list."""
+def test_all_valid_tokens_produce_no_errors(make_temp_file) -> None:
+    """All email colour tokens present and valid → empty error list."""
     css_content = """
 @theme {
     --color-primary: #2B6CB0;
@@ -42,8 +48,8 @@ def test_all_valid_tokens_produce_no_warnings(make_temp_file) -> None:
     assert result == []
 
 
-def test_unconvertible_token_value_yields_warning(make_temp_file) -> None:
-    """A token whose raw value cannot be converted to hex yields a Warning naming it."""
+def test_unconvertible_token_value_yields_error(make_temp_file) -> None:
+    """A token whose raw value cannot be converted to hex yields an Error naming it."""
     css_content = """
 @theme {
     --color-primary: not-a-colour;
@@ -63,12 +69,12 @@ def test_unconvertible_token_value_yields_warning(make_temp_file) -> None:
         result = check_email_colour_tokens(app_configs=None)
 
     assert len(result) == 1
-    assert result[0].id == "freedom_ls_accounts.W002"
+    assert result[0].id == "freedom_ls_accounts.E002"
     assert "primary" in result[0].msg
 
 
-def test_missing_token_yields_warning(make_temp_file) -> None:
-    """A CSS file missing one of the expected tokens yields a Warning for that token."""
+def test_token_missing_from_active_theme_falls_back_to_default(make_temp_file) -> None:
+    """A token absent from the active theme is supplied by the default — no error."""
     css_content = """
 @theme {
     --color-on-surface: #1A2332;
@@ -81,30 +87,27 @@ def test_missing_token_yields_warning(make_temp_file) -> None:
     --color-on-header: #FFFFFF;
 }
 """
-    # --color-primary is absent
+    # --color-primary is absent from the active theme but present in the default.
     css_file = make_temp_file(".css", css_content)
 
     with _patch_css_path(css_file):
         result = check_email_colour_tokens(app_configs=None)
 
-    assert len(result) == 1
-    assert result[0].id == "freedom_ls_accounts.W002"
-    assert "primary" in result[0].msg
+    assert result == []
 
 
-def test_missing_theme_css_file_does_not_raise(tmp_path) -> None:
-    """A missing theme.css causes the check to degrade gracefully without raising."""
+def test_missing_active_theme_css_file_falls_back_to_default(tmp_path) -> None:
+    """A missing active theme.css resolves entirely from the default — no error, no raise."""
     absent_path = str(tmp_path / "nonexistent" / "theme.css")
 
     with _patch_css_path(absent_path):
-        # Must not raise; the check degrades to staying silent.
         result = check_email_colour_tokens(app_configs=None)
 
     assert result == []
 
 
-def test_multiple_bad_tokens_each_produce_a_warning(make_temp_file) -> None:
-    """Each unconvertible token produces a separate Warning with the token name."""
+def test_multiple_bad_tokens_each_produce_an_error(make_temp_file) -> None:
+    """Each unconvertible token produces a separate Error with the token name."""
     css_content = """
 @theme {
     --color-primary: not-a-colour;
@@ -124,8 +127,8 @@ def test_multiple_bad_tokens_each_produce_a_warning(make_temp_file) -> None:
         result = check_email_colour_tokens(app_configs=None)
 
     assert len(result) == 2
-    assert all(w.id == "freedom_ls_accounts.W002" for w in result)
-    messages = {w.msg for w in result}
+    assert all(e.id == "freedom_ls_accounts.E002" for e in result)
+    messages = {e.msg for e in result}
     assert any("primary" in msg for msg in messages)
     assert any("on-surface" in msg for msg in messages)
 

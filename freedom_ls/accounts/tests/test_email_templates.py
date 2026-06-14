@@ -4,6 +4,8 @@ Tests that all email templates render correctly with appropriate context,
 contain expected content, and meet size constraints.
 """
 
+from dataclasses import asdict
+
 import pytest
 
 from django.template.loader import render_to_string
@@ -13,15 +15,11 @@ from freedom_ls.accounts.factories import UserFactory
 
 _theme = get_email_theme()
 
-# Base context shared by all email templates
+# Base context shared by all email templates. The theme fields (color_primary,
+# font_family, button_radius, ...) mirror what AccountAdapter.send_mail injects
+# via asdict(get_email_theme()); email_label is the adapter's branding label.
 EMAIL_SETTINGS_CONTEXT: dict[str, str | None] = {
-    "email_color_primary": _theme.color_primary,
-    "email_color_foreground": _theme.color_foreground,
-    "email_color_muted": _theme.color_muted,
-    "email_color_header": _theme.color_header,
-    "email_color_on_header": _theme.color_on_header,
-    "email_font_family": _theme.font_family,
-    "email_button_radius": _theme.button_radius,
+    **asdict(_theme),
     "email_label": "TestSite",
 }
 
@@ -768,7 +766,7 @@ class TestCtaButtonRadius:
         CTA_TEMPLATES,
         ids=[t[0] for t in CTA_TEMPLATES],
     )
-    def test_cta_uses_email_button_radius_not_hardcoded(
+    def test_cta_uses_button_radius_not_hardcoded(
         self,
         base_context: dict[str, object],
         template_name: str,
@@ -779,7 +777,7 @@ class TestCtaButtonRadius:
         context = {
             **base_context,
             "user": user,
-            "email_button_radius": "13px",  # distinctive sentinel
+            "button_radius": "13px",  # distinctive sentinel
             **extra_context,
         }
         html = render_to_string(f"account/email/{template_name}_message.html", context)

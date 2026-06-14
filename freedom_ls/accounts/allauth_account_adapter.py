@@ -1,4 +1,5 @@
 import email.policy
+from dataclasses import asdict
 from email.mime.base import MIMEBase
 
 from allauth.account.adapter import DefaultAccountAdapter
@@ -13,6 +14,7 @@ from django.templatetags.static import static
 
 from freedom_ls.accounts.email_utils import (
     email_logo_dimensions,
+    get_email_theme,
     resolved_email_logo_path,
 )
 from freedom_ls.site_aware_models.models import get_cached_site
@@ -95,6 +97,11 @@ class AccountAdapter(DefaultAccountAdapter):
         if logo_dimensions is not None:
             email_logo_width, email_logo_height = logo_dimensions
 
+        # The resolved, email-safe theme values (colours, font, button radius).
+        # Built here so the work happens only when an email is actually sent,
+        # not on every web request. asdict() keys match the email-template
+        # contract (color_primary, font_family, button_radius, ...).
+        # @claude this function is getting very long. Can you break it down?
         ctx = {
             "request": request,
             "email": email,
@@ -103,6 +110,7 @@ class AccountAdapter(DefaultAccountAdapter):
             "email_label": email_label,
             "email_logo_width": email_logo_width,
             "email_logo_height": email_logo_height,
+            **asdict(get_email_theme()),
         }
         ctx.update(context)
         msg = self.render_mail(template_prefix, email, ctx)
