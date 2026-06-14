@@ -17,6 +17,9 @@ def signup_policy(request: HttpRequest) -> dict[str, bool]:
 
 
 def email_settings(request: HttpRequest) -> dict[str, str | None]:
+    # @claude this seems heavy handed:
+    # 1. Why do we need to rename every theme token to "email_$theme_token"? Why the misdirection? Why not just call it what it is?
+    # 2. injecting this context into literally every view seems inefficient. Why do this? What are the alternatives
     """Expose the resolved email theme values to all templates.
 
     Registered globally in TEMPLATES because Django's email rendering uses the

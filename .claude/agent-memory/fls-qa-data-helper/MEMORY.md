@@ -9,3 +9,4 @@
 - [reference_educator_cmodal_trigger.md](reference_educator_cmodal_trigger.md) — Give a QA educator a reachable c-modal trigger (cohort Delete confirmation / Create Cohort modal-form); perms + qa_create_educator_modal_target command
 - [reference_form_question_types_command.md](reference_form_question_types_command.md) — qa_create_form_question_types command: QUIZ form with all 4 question types on a dedicated course for demodev@email.com
 - [reference_rich_dashboard_student_command.md](reference_rich_dashboard_student_command.md) — qa_create_rich_dashboard_student: demodev_s1 with all 3 dashboard sections + real scored/passing quiz attempt + completed course
+- [reference_password_reset_student_command.md](reference_password_reset_student_command.md) — qa_create_password_reset_student command; demodev_s1@email.com is a SHARED fixture (also enrolled by course-player command)

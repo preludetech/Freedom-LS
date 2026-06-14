@@ -356,13 +356,6 @@ HEADER_TITLE_STYLE: str | None = (
 EMAIL_LOGO_STATIC_PATH = None  # e.g., "images/logo.png"
 ACCOUNT_EMAIL_NOTIFICATIONS = True
 
-
-# Email colours, font, and button radius are derived from the active theme's
-# `theme.css` lazily and cached by `freedom_ls.accounts.email_utils.get_email_theme`
-# (exposed to templates via the `email_settings` context processor). They are
-# derivations, not configuration, so they no longer live here; only the genuine
-# settings the derivation reads (FLS_THEME / RESOLVED_THEME_DIR) remain.
-
 LOGIN_REDIRECT_URL = "/"
 
 # Webhook event types

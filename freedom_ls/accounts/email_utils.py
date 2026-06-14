@@ -29,6 +29,8 @@ _LENGTH_RE = re.compile(r"^(0|\d*\.?\d+(px|rem|em|%))$")
 # check, so the two can never drift apart. The role keys here are the token
 # lookup keys; the EmailTheme field a role maps to is noted where they differ
 # (the on-surface role backs the `color_foreground` field).
+
+# @claude: Why are there default theme values here? There is already a default theme, we should keep it DRY. If the default theme priomary color changes then we dont want to have to copy paste it everywhere it's used. Just use the theme values. If they are not defined then there should be an erros, not a silent failure that results in things being blue. Default values should be defined once and then they pass through to where they are used. FIX
 EMAIL_COLOR_TOKENS: tuple[tuple[str, str], ...] = (
     ("primary", "#2B6CB0"),
     ("on-surface", "#1A2332"),
