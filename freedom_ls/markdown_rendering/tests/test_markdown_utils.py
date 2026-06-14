@@ -393,15 +393,17 @@ This is **bold** text
         assert "app.py" in result
         assert "python" in result
 
-    def test_c_code_block_wrap_true_still_renders_content(self, mock_request):
-        """c-code-block with wrap="true" still renders the code content."""
-        result = render_markdown(
+    def test_c_code_block_wrap_toggles_wrapping(self, mock_request):
+        """The wrap attribute is the functional toggle for line wrapping."""
+        wrapped = render_markdown(
             '<c-code-block wrap="true">long line</c-code-block>', mock_request
         )
+        unwrapped = render_markdown(
+            "<c-code-block>long line</c-code-block>", mock_request
+        )
 
-        assert "<pre" in result
-        assert "<code>" in result
-        assert "long line" in result
+        assert "whitespace-pre-wrap" in wrapped
+        assert "whitespace-pre-wrap" not in unwrapped
 
     def test_c_table_renders_table_with_injected_caption(self, mock_request):
         """c-table renders a markdown table with a spliced-in caption."""
