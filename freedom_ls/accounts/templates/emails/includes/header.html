@@ -1,10 +1,15 @@
 <tr>
-  <td style="background-color: {{ email_color_primary }}; padding: 24px; text-align: center;">
+  <td style="background-color: {{ email_color_header }}; padding: 24px; text-align: center;">
     {% if email_logo_url %}
-    <img src="{{ email_logo_url }}" alt="{{ email_label|default:current_site.name }}" width="180"
-         style="max-height: 48px; height: auto; display: block; border: 0; margin: 0 auto;" />
+    {% if email_logo_width and email_logo_height %}
+    <img src="{{ email_logo_url }}" alt="{{ email_label|default:current_site.name }}" width="{{ email_logo_width }}" height="{{ email_logo_height }}"
+         style="width: {{ email_logo_width }}px; height: {{ email_logo_height }}px; max-width: 100%; display: block; border: 0; margin: 0 auto;" />
     {% else %}
-    <h1 style="margin: 0; color: {{ email_color_on_primary }}; font-size: 24px; font-weight: bold;">{{ email_label|default:current_site.name }}</h1>
+    <img src="{{ email_logo_url }}" alt="{{ email_label|default:current_site.name }}" height="48"
+         style="height: 48px; width: auto; max-width: 100%; display: block; border: 0; margin: 0 auto;" />
+    {% endif %}
+    {% else %}
+    <h1 style="margin: 0; color: {{ email_color_on_header }}; font-size: 24px; font-weight: bold;">{{ email_label|default:current_site.name }}</h1>
     {% endif %}
   </td>
 </tr>

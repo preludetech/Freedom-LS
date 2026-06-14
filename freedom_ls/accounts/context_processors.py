@@ -1,7 +1,8 @@
 from allauth.account.adapter import get_adapter
 
-from django.conf import settings
 from django.http import HttpRequest
+
+from .email_utils import get_email_theme
 
 
 def signup_policy(request: HttpRequest) -> dict[str, bool]:
@@ -16,22 +17,26 @@ def signup_policy(request: HttpRequest) -> dict[str, bool]:
 
 
 def email_settings(request: HttpRequest) -> dict[str, str | None]:
-    """Expose email template settings to all templates.
+    """Expose the resolved email theme values to all templates.
 
     Registered globally in TEMPLATES because Django's email rendering uses the
     same template engine and context processors as regular views. There is no
     email-only context processor hook, so global registration is the simplest
     way to ensure these values are available when allauth renders email templates.
-    The overhead is negligible (a few getattr calls on settings per request).
+    The values are derived once and cached by ``get_email_theme`` so the
+    per-request overhead is negligible.
     """
+    theme = get_email_theme()
     return {
-        "email_color_primary": settings.EMAIL_COLOR_PRIMARY,
-        "email_color_foreground": settings.EMAIL_COLOR_FOREGROUND,
-        "email_color_muted": settings.EMAIL_COLOR_MUTED,
-        "email_color_surface": settings.EMAIL_COLOR_SURFACE,
-        "email_color_surface_2": settings.EMAIL_COLOR_SURFACE_2,
-        "email_color_on_primary": settings.EMAIL_COLOR_ON_PRIMARY,
-        "email_color_border": settings.EMAIL_COLOR_BORDER,
-        "email_font_family": settings.EMAIL_FONT_FAMILY,
-        "email_button_radius": settings.EMAIL_BUTTON_RADIUS,
+        "email_color_primary": theme.color_primary,
+        "email_color_foreground": theme.color_foreground,
+        "email_color_muted": theme.color_muted,
+        "email_color_surface": theme.color_surface,
+        "email_color_surface_2": theme.color_surface_2,
+        "email_color_on_primary": theme.color_on_primary,
+        "email_color_border": theme.color_border,
+        "email_color_header": theme.color_header,
+        "email_color_on_header": theme.color_on_header,
+        "email_font_family": theme.font_family,
+        "email_button_radius": theme.button_radius,
     }

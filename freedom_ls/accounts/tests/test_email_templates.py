@@ -6,18 +6,22 @@ contain expected content, and meet size constraints.
 
 import pytest
 
-from django.conf import settings
 from django.template.loader import render_to_string
 
+from freedom_ls.accounts.email_utils import get_email_theme
 from freedom_ls.accounts.factories import UserFactory
+
+_theme = get_email_theme()
 
 # Base context shared by all email templates
 EMAIL_SETTINGS_CONTEXT: dict[str, str | None] = {
-    "email_color_primary": settings.EMAIL_COLOR_PRIMARY,
-    "email_color_foreground": settings.EMAIL_COLOR_FOREGROUND,
-    "email_color_muted": settings.EMAIL_COLOR_MUTED,
-    "email_font_family": settings.EMAIL_FONT_FAMILY,
-    "email_button_radius": settings.EMAIL_BUTTON_RADIUS,
+    "email_color_primary": _theme.color_primary,
+    "email_color_foreground": _theme.color_foreground,
+    "email_color_muted": _theme.color_muted,
+    "email_color_header": _theme.color_header,
+    "email_color_on_header": _theme.color_on_header,
+    "email_font_family": _theme.font_family,
+    "email_button_radius": _theme.button_radius,
     "email_label": "TestSite",
 }
 
@@ -60,9 +64,10 @@ class TestBaseEmailTemplate:
     def test_base_email_contains_brand_colors(
         self, base_context: dict[str, object]
     ) -> None:
-        """Base email should include the primary brand color."""
+        """Base email should include the primary brand color and the header color."""
         html = render_to_string("emails/base_email.html", base_context)
-        assert settings.EMAIL_COLOR_PRIMARY in html
+        assert _theme.color_primary in html
+        assert _theme.color_header in html
 
     def test_base_email_contains_site_name(
         self, base_context: dict[str, object]
@@ -573,6 +578,37 @@ class TestHeaderLogo:
         txt = render_to_string("emails/base_email.txt", context)
         assert "TestSite" in txt
 
+    def test_logo_img_uses_computed_width_and_height_when_provided(
+        self, base_context: dict[str, object]
+    ) -> None:
+        """Given logo dimensions, the img carries matching width/height and no max-height."""
+        context = {
+            **base_context,
+            "email_logo_url": "https://example.com/static/images/logo.png",
+            "email_logo_width": 99,
+            "email_logo_height": 48,
+        }
+        html = render_to_string("emails/base_email.html", context)
+        assert 'width="99"' in html
+        assert 'height="48"' in html
+        # The stretch-prone max-height constraint must be gone.
+        assert "max-height" not in html
+
+    def test_logo_img_falls_back_to_height_only_without_dimensions(
+        self, base_context: dict[str, object]
+    ) -> None:
+        """Without computed dimensions, the img is constrained by height with width auto."""
+        context = {
+            **base_context,
+            "email_logo_url": "https://example.com/static/images/logo.png",
+            "email_logo_width": None,
+            "email_logo_height": None,
+        }
+        html = render_to_string("emails/base_email.html", context)
+        assert "<img" in html
+        assert 'height="48"' in html
+        assert "width: auto" in html
+
 
 # ---------------------------------------------------------------------------
 # 4b. Adapter-level tests for send_mail context composition
@@ -696,6 +732,107 @@ class TestAdapterSendMailContext:
 # ---------------------------------------------------------------------------
 # 5. Greeting personalization test
 # ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestCtaButtonRadius:
+    """CTA buttons must use the theme-driven radius, not a hardcoded value."""
+
+    CTA_TEMPLATES: list[tuple[str, dict[str, str]]] = [
+        (
+            "email_confirmation",
+            {"activate_url": "https://testsite/confirm", "key": "k"},
+        ),
+        (
+            "password_reset_key",
+            {
+                "password_reset_url": "https://testsite/reset",  # pragma: allowlist secret
+            },
+        ),
+        (
+            "account_already_exists",
+            {
+                "email": "e@example.com",
+                "password_reset_url": "https://testsite/reset",  # pragma: allowlist secret
+                "signup_url": "https://testsite/signup",
+            },
+        ),
+        (
+            "unknown_account",
+            {"email": "e@example.com", "signup_url": "https://testsite/signup"},
+        ),
+    ]
+
+    @pytest.mark.parametrize(
+        ("template_name", "extra_context"),
+        CTA_TEMPLATES,
+        ids=[t[0] for t in CTA_TEMPLATES],
+    )
+    def test_cta_uses_email_button_radius_not_hardcoded(
+        self,
+        base_context: dict[str, object],
+        template_name: str,
+        extra_context: dict[str, str],
+    ) -> None:
+        """The CTA button carries the resolved radius and never a hardcoded 6px."""
+        user = UserFactory(first_name="Alice", last_name="Smith")
+        context = {
+            **base_context,
+            "user": user,
+            "email_button_radius": "13px",  # distinctive sentinel
+            **extra_context,
+        }
+        html = render_to_string(f"account/email/{template_name}_message.html", context)
+        assert "border-radius: 13px" in html
+        assert "border-radius: 6px" not in html
+
+
+@pytest.mark.django_db
+class TestBodyBrandLabel:
+    """Message bodies should refer to the brand label, not the raw site name."""
+
+    @pytest.mark.parametrize(
+        ("template_name", "extra_context"),
+        [
+            (
+                "password_reset_key",
+                {
+                    "password_reset_url": "https://testsite/reset/k",  # pragma: allowlist secret
+                },
+            ),
+            (
+                "account_already_exists",
+                {
+                    "email": "e@example.com",
+                    "password_reset_url": "https://testsite/reset",  # pragma: allowlist secret
+                    "signup_url": "https://testsite/signup",
+                },
+            ),
+            (
+                "unknown_account",
+                {"email": "e@example.com", "signup_url": "https://testsite/signup"},
+            ),
+        ],
+    )
+    def test_body_uses_email_label_over_site_name(
+        self,
+        base_context: dict[str, object],
+        template_name: str,
+        extra_context: dict[str, str],
+    ) -> None:
+        """The body shows email_label (brand) even when it differs from the site name."""
+        user = UserFactory(first_name="Alice", last_name="Smith")
+        context = {
+            **base_context,
+            "user": user,
+            "email_label": "BrandCo",
+            **extra_context,
+        }
+        html = render_to_string(f"account/email/{template_name}_message.html", context)
+        # mock_site_context name is "TestSite"; the body must use the brand label.
+        assert "BrandCo" in html
+        assert "exists on TestSite" not in html
+        assert "account at TestSite" not in html
 
 
 @pytest.mark.django_db

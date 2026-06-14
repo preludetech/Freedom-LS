@@ -1,8 +1,16 @@
+import functools
 import re
+import struct
 import warnings
+from dataclasses import dataclass
 from pathlib import Path
+from typing import BinaryIO
 
 from coloraide import Color
+
+# Display height (px) the email header logo is scaled to. The width is derived
+# from the logo's real aspect ratio so the image is never stretched.
+EMAIL_LOGO_DISPLAY_HEIGHT = 48
 
 _VAR_RE = re.compile(r"var\(\s*(--[\w-]+)\s*\)")
 
@@ -16,10 +24,11 @@ _MAX_VAR_DEPTH = 50
 # colours are validated to #rrggbb and the font stack is allowlist-constrained.
 _LENGTH_RE = re.compile(r"^(0|\d*\.?\d+(px|rem|em|%))$")
 
-# The seven email colour roles and their opaque hex fallbacks. Single source of
-# truth shared by the settings resolution and the system check, so the two can
-# never drift apart. The Python setting names (e.g. EMAIL_COLOR_FOREGROUND) keep
-# the email-template contract; only the token lookup key differs per role.
+# The email colour roles and their opaque hex fallbacks. Single source of truth
+# shared by the get_email_theme resolver and the check_email_colour_tokens system
+# check, so the two can never drift apart. The role keys here are the token
+# lookup keys; the EmailTheme field a role maps to is noted where they differ
+# (the on-surface role backs the `color_foreground` field).
 EMAIL_COLOR_TOKENS: tuple[tuple[str, str], ...] = (
     ("primary", "#2B6CB0"),
     ("on-surface", "#1A2332"),
@@ -28,6 +37,12 @@ EMAIL_COLOR_TOKENS: tuple[tuple[str, str], ...] = (
     ("surface-2", "#F3F4F6"),
     ("on-primary", "#FFFFFF"),
     ("border", "#D1D5DB"),
+    # The header band has its own role token so a theme can paint it
+    # independently of `primary` (e.g. first_class uses a white header). The
+    # fallbacks mirror primary/on-primary so a theme without the token renders
+    # the band exactly as it did before this role existed.
+    ("header", "#2B6CB0"),
+    ("on-header", "#FFFFFF"),
 )
 
 
@@ -407,3 +422,161 @@ def resolve_color_token(token_map: dict[str, str], token: str, fallback: str) ->
             stacklevel=2,
         )
         return fallback
+
+
+def email_theme_css_path() -> str:
+    """Return the filesystem path to the active theme's ``theme.css``.
+
+    Built from the genuine settings (``RESOLVED_THEME_DIR`` and ``FLS_THEME``)
+    rather than stored as a setting itself — it is a derived path, needed only
+    when email styling is resolved or the system check runs.
+    """
+    from django.conf import settings
+
+    return str(
+        Path(settings.RESOLVED_THEME_DIR)
+        / "static"
+        / "themes"
+        / settings.FLS_THEME
+        / "theme.css"
+    )
+
+
+@dataclass(frozen=True)
+class EmailTheme:
+    """Resolved, email-safe theme values consumed by the email templates.
+
+    The Python field names form the email-template contract; the colour role a
+    field maps to is noted where the two differ (``foreground`` ← ``on-surface``).
+    """
+
+    color_primary: str
+    color_on_primary: str
+    color_foreground: str  # role: on-surface
+    color_muted: str
+    color_surface: str
+    color_surface_2: str
+    color_border: str
+    color_header: str
+    color_on_header: str
+    font_family: str
+    button_radius: str
+
+
+@functools.cache
+def get_email_theme() -> EmailTheme:
+    """Resolve the active theme's email colours, font, and button radius.
+
+    Lazily derived from the theme's ``theme.css`` and cached for the process
+    lifetime (so a future bulk send resolves it once). Tests that override the
+    theme must call ``get_email_theme.cache_clear()``. Degrades to the hardcoded
+    fallbacks when the theme CSS is absent rather than raising.
+    """
+    try:
+        token_map = parse_tailwind_tokens(email_theme_css_path())
+    except FileNotFoundError:
+        token_map = {}
+
+    fallbacks = dict(EMAIL_COLOR_TOKENS)
+    return EmailTheme(
+        color_primary=resolve_color_token(token_map, "primary", fallbacks["primary"]),
+        color_on_primary=resolve_color_token(
+            token_map, "on-primary", fallbacks["on-primary"]
+        ),
+        color_foreground=resolve_color_token(
+            token_map, "on-surface", fallbacks["on-surface"]
+        ),
+        color_muted=resolve_color_token(token_map, "muted", fallbacks["muted"]),
+        color_surface=resolve_color_token(token_map, "surface", fallbacks["surface"]),
+        color_surface_2=resolve_color_token(
+            token_map, "surface-2", fallbacks["surface-2"]
+        ),
+        color_border=resolve_color_token(token_map, "border", fallbacks["border"]),
+        color_header=resolve_color_token(token_map, "header", fallbacks["header"]),
+        color_on_header=resolve_color_token(
+            token_map, "on-header", fallbacks["on-header"]
+        ),
+        font_family=extract_font_family(token_map),
+        button_radius=extract_button_radius(token_map),
+    )
+
+
+def image_dimensions(path: str) -> tuple[int, int] | None:
+    """Return the intrinsic ``(width, height)`` in pixels of an image file.
+
+    Parses the header of PNG, GIF, and JPEG files using only the stdlib. Returns
+    None for an unreadable file or an unrecognised/unsupported format.
+    """
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(26)
+            if len(head) >= 24 and head[:8] == b"\x89PNG\r\n\x1a\n":
+                # IHDR width/height are the two big-endian uint32 at offset 16.
+                width, height = struct.unpack(">II", head[16:24])
+                return int(width), int(height)
+            if len(head) >= 10 and head[:6] in (b"GIF87a", b"GIF89a"):
+                # Logical screen width/height: little-endian uint16 at offset 6.
+                width, height = struct.unpack("<HH", head[6:10])
+                return int(width), int(height)
+            if len(head) >= 2 and head[:2] == b"\xff\xd8":
+                return _jpeg_dimensions(fh)
+    except OSError:
+        return None
+    return None
+
+
+def _jpeg_dimensions(fh: BinaryIO) -> tuple[int, int] | None:
+    """Read ``(width, height)`` from a JPEG's first SOF marker, or None."""
+    fh.seek(2)
+    while True:
+        byte = fh.read(1)
+        if not byte:
+            return None
+        if byte != b"\xff":
+            continue
+        marker = fh.read(1)
+        while marker == b"\xff":  # skip fill bytes
+            marker = fh.read(1)
+        if not marker:
+            return None
+        # SOF0..SOF15 carry the frame dimensions; C4/C8/CC are not SOF markers.
+        if marker[0] in {*range(0xC0, 0xD0)} - {0xC4, 0xC8, 0xCC}:
+            fh.read(3)  # segment length (2) + sample precision (1)
+            data = fh.read(4)
+            if len(data) < 4:
+                return None
+            height, width = struct.unpack(">HH", data)
+            return int(width), int(height)
+        seg_len = fh.read(2)
+        if len(seg_len) < 2:
+            return None
+        fh.seek(struct.unpack(">H", seg_len)[0] - 2, 1)
+
+
+@functools.cache
+def email_logo_dimensions(logo_static_path: str) -> tuple[int, int] | None:
+    """Return the ``(width, height)`` to render the email logo at, or None.
+
+    Locates the source static file, reads its intrinsic size, and scales it to
+    ``EMAIL_LOGO_DISPLAY_HEIGHT`` so the aspect ratio is preserved. Returns None
+    when the file cannot be located or its dimensions cannot be read (the
+    template then falls back to a height-only constraint). Cached for the
+    process lifetime; tests overriding the logo must call ``.cache_clear()``.
+    """
+    from django.contrib.staticfiles import finders
+
+    absolute_path = finders.find(logo_static_path)
+    if absolute_path is None:
+        return None
+
+    intrinsic = image_dimensions(absolute_path)
+    if intrinsic is None:
+        return None
+
+    intrinsic_width, intrinsic_height = intrinsic
+    if intrinsic_height <= 0 or intrinsic_width <= 0:
+        return None
+
+    height = EMAIL_LOGO_DISPLAY_HEIGHT
+    width = round(intrinsic_width * height / intrinsic_height)
+    return width, height

@@ -15,23 +15,22 @@ def check_email_colour_tokens(
 ) -> list[Warning]:
     """Warn for any email colour token that is missing or cannot be resolved to hex.
 
-    Re-resolves the seven email colour tokens from the active theme's theme.css,
-    reusing the email_utils helpers. Returns a Warning for each token that is
+    Re-resolves the email colour tokens (EMAIL_COLOR_TOKENS) from the active
+    theme's theme.css, reusing the email_utils helpers. Returns a Warning for each token that is
     absent or produces an unresolvable value. Degrades gracefully when
     theme.css is missing — the check never raises.
     """
-    from django.conf import settings
-
     from .email_utils import (
         EMAIL_COLOR_TOKENS,
         ColorResolveError,
+        email_theme_css_path,
         parse_tailwind_tokens,
         resolve_css_color,
     )
 
     warnings: list[Warning] = []
 
-    css_path: str = getattr(settings, "EMAIL_THEME_CSS_PATH", "")
+    css_path = email_theme_css_path()
 
     try:
         token_map = parse_tailwind_tokens(css_path)

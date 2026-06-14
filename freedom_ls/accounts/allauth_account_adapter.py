@@ -11,7 +11,10 @@ from django.core.mail import EmailMessage
 from django.http import HttpRequest
 from django.templatetags.static import static
 
-from freedom_ls.accounts.email_utils import resolved_email_logo_path
+from freedom_ls.accounts.email_utils import (
+    email_logo_dimensions,
+    resolved_email_logo_path,
+)
 from freedom_ls.site_aware_models.models import get_cached_site
 
 from .models import SiteSignupPolicy, User
@@ -79,12 +82,27 @@ class AccountAdapter(DefaultAccountAdapter):
                 email_logo_url = f"{protocol}://{current_site.domain}{static_url}"
         email_label: str = settings.HEADER_TITLE or current_site.name
 
+        # Size the logo from its real dimensions so its aspect ratio is never
+        # stretched. None when the file can't be measured — the template then
+        # falls back to a height-only constraint.
+        logo_dimensions = (
+            email_logo_dimensions(logo_path)
+            if email_logo_url is not None and logo_path is not None
+            else None
+        )
+        email_logo_width: int | None = None
+        email_logo_height: int | None = None
+        if logo_dimensions is not None:
+            email_logo_width, email_logo_height = logo_dimensions
+
         ctx = {
             "request": request,
             "email": email,
             "current_site": current_site,
             "email_logo_url": email_logo_url,
             "email_label": email_label,
+            "email_logo_width": email_logo_width,
+            "email_logo_height": email_logo_height,
         }
         ctx.update(context)
         msg = self.render_mail(template_prefix, email, ctx)

@@ -53,6 +53,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
 - [x] (user + cmd) Fix QA bug: Email logo image does not load in dev (https/no-port URL) (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: Emails declare no font-family — body falls back to serif (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: CTA button radius hardcoded 6px, not driven by email_button_radius theme token (TDD — failing test first, then fix)
 
 ## 10. Pull request
 

@@ -20,13 +20,6 @@ from django.utils.csp import (
     CSP,
 )
 
-from freedom_ls.accounts.email_utils import (
-    EMAIL_COLOR_TOKENS,
-    extract_button_radius,
-    extract_font_family,
-    parse_tailwind_tokens,
-    resolve_color_token,
-)
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR, configure_theme
 from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
 
@@ -364,44 +357,11 @@ EMAIL_LOGO_STATIC_PATH = None  # e.g., "images/logo.png"
 ACCOUNT_EMAIL_NOTIFICATIONS = True
 
 
-# Tokens are now sourced from the active theme's `theme.css`, not the (legacy)
-# repo-root components file. `EMAIL_COLOR_FOREGROUND` keeps its Python name
-# because it is part of the email-template contract; only the lookup key
-# changes (`foreground` → `on-surface`, matching the renamed role token).
-_theme_css = RESOLVED_THEME_DIR / "static" / "themes" / FLS_THEME / "theme.css"
-# Exposed as a setting so the system check can locate the same file without
-# duplicating the path-building logic.
-EMAIL_THEME_CSS_PATH = str(_theme_css)
-_tw_tokens = parse_tailwind_tokens(str(_theme_css))
-# Fallbacks come from the shared EMAIL_COLOR_TOKENS source of truth so they
-# cannot drift from the system check that re-resolves the same roles.
-_email_color_fallbacks = dict(EMAIL_COLOR_TOKENS)
-EMAIL_COLOR_PRIMARY = resolve_color_token(
-    _tw_tokens, "primary", _email_color_fallbacks["primary"]
-)
-EMAIL_COLOR_FOREGROUND = resolve_color_token(
-    _tw_tokens, "on-surface", _email_color_fallbacks["on-surface"]
-)
-EMAIL_COLOR_MUTED = resolve_color_token(
-    _tw_tokens, "muted", _email_color_fallbacks["muted"]
-)
-EMAIL_COLOR_SURFACE = resolve_color_token(
-    _tw_tokens, "surface", _email_color_fallbacks["surface"]
-)
-EMAIL_COLOR_SURFACE_2 = resolve_color_token(
-    _tw_tokens, "surface-2", _email_color_fallbacks["surface-2"]
-)
-EMAIL_COLOR_ON_PRIMARY = resolve_color_token(
-    _tw_tokens, "on-primary", _email_color_fallbacks["on-primary"]
-)
-EMAIL_COLOR_BORDER = resolve_color_token(
-    _tw_tokens, "border", _email_color_fallbacks["border"]
-)
-
-EMAIL_FONT_FAMILY = extract_font_family(
-    _tw_tokens, fallback="Arial, Helvetica, sans-serif"
-)
-EMAIL_BUTTON_RADIUS = extract_button_radius(_tw_tokens, fallback="6px")
+# Email colours, font, and button radius are derived from the active theme's
+# `theme.css` lazily and cached by `freedom_ls.accounts.email_utils.get_email_theme`
+# (exposed to templates via the `email_settings` context processor). They are
+# derivations, not configuration, so they no longer live here; only the genuine
+# settings the derivation reads (FLS_THEME / RESOLVED_THEME_DIR) remain.
 
 LOGIN_REDIRECT_URL = "/"
 

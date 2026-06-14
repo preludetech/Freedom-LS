@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from django.test import override_settings
+from unittest.mock import patch
 
 from freedom_ls.accounts.checks import check_email_colour_tokens
 
@@ -11,8 +11,16 @@ from freedom_ls.accounts.checks import check_email_colour_tokens
 # ---------------------------------------------------------------------------
 
 
-def test_all_seven_valid_tokens_produce_no_warnings(make_temp_file) -> None:
-    """All seven email colour tokens present and valid → empty warning list."""
+def _patch_css_path(path: str):
+    """Patch the resolver so the check reads the given theme.css path."""
+    return patch(
+        "freedom_ls.accounts.email_utils.email_theme_css_path",
+        return_value=str(path),
+    )
+
+
+def test_all_valid_tokens_produce_no_warnings(make_temp_file) -> None:
+    """All email colour tokens present and valid → empty warning list."""
     css_content = """
 @theme {
     --color-primary: #2B6CB0;
@@ -22,11 +30,13 @@ def test_all_seven_valid_tokens_produce_no_warnings(make_temp_file) -> None:
     --color-surface-2: #F3F4F6;
     --color-on-primary: #FFFFFF;
     --color-border: #D1D5DB;
+    --color-header: #2B6CB0;
+    --color-on-header: #FFFFFF;
 }
 """
     css_file = make_temp_file(".css", css_content)
 
-    with override_settings(EMAIL_THEME_CSS_PATH=str(css_file)):
+    with _patch_css_path(css_file):
         result = check_email_colour_tokens(app_configs=None)
 
     assert result == []
@@ -43,11 +53,13 @@ def test_unconvertible_token_value_yields_warning(make_temp_file) -> None:
     --color-surface-2: #F3F4F6;
     --color-on-primary: #FFFFFF;
     --color-border: #D1D5DB;
+    --color-header: #2B6CB0;
+    --color-on-header: #FFFFFF;
 }
 """
     css_file = make_temp_file(".css", css_content)
 
-    with override_settings(EMAIL_THEME_CSS_PATH=str(css_file)):
+    with _patch_css_path(css_file):
         result = check_email_colour_tokens(app_configs=None)
 
     assert len(result) == 1
@@ -56,7 +68,7 @@ def test_unconvertible_token_value_yields_warning(make_temp_file) -> None:
 
 
 def test_missing_token_yields_warning(make_temp_file) -> None:
-    """A CSS file missing one of the seven expected tokens yields a Warning for that token."""
+    """A CSS file missing one of the expected tokens yields a Warning for that token."""
     css_content = """
 @theme {
     --color-on-surface: #1A2332;
@@ -65,12 +77,14 @@ def test_missing_token_yields_warning(make_temp_file) -> None:
     --color-surface-2: #F3F4F6;
     --color-on-primary: #FFFFFF;
     --color-border: #D1D5DB;
+    --color-header: #2B6CB0;
+    --color-on-header: #FFFFFF;
 }
 """
     # --color-primary is absent
     css_file = make_temp_file(".css", css_content)
 
-    with override_settings(EMAIL_THEME_CSS_PATH=str(css_file)):
+    with _patch_css_path(css_file):
         result = check_email_colour_tokens(app_configs=None)
 
     assert len(result) == 1
@@ -82,7 +96,7 @@ def test_missing_theme_css_file_does_not_raise(tmp_path) -> None:
     """A missing theme.css causes the check to degrade gracefully without raising."""
     absent_path = str(tmp_path / "nonexistent" / "theme.css")
 
-    with override_settings(EMAIL_THEME_CSS_PATH=absent_path):
+    with _patch_css_path(absent_path):
         # Must not raise; the check degrades to staying silent.
         result = check_email_colour_tokens(app_configs=None)
 
@@ -100,11 +114,13 @@ def test_multiple_bad_tokens_each_produce_a_warning(make_temp_file) -> None:
     --color-surface-2: #F3F4F6;
     --color-on-primary: #FFFFFF;
     --color-border: #D1D5DB;
+    --color-header: #2B6CB0;
+    --color-on-header: #FFFFFF;
 }
 """
     css_file = make_temp_file(".css", css_content)
 
-    with override_settings(EMAIL_THEME_CSS_PATH=str(css_file)):
+    with _patch_css_path(css_file):
         result = check_email_colour_tokens(app_configs=None)
 
     assert len(result) == 2

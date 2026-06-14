@@ -1,7 +1,7 @@
 {% extends "emails/base_email.txt" %}
 
 {% block content %}
-An account with the email address {{ email }} already exists on {{ current_site.name }}.
+An account with the email address {{ email }} already exists on {{ email_label|default:current_site.name }}.
 
 If you forgot your password, you can reset it.
 

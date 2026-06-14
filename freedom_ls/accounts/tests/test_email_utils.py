@@ -1,13 +1,18 @@
 import warnings
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from freedom_ls.accounts.email_utils import (
+    EMAIL_LOGO_DISPLAY_HEIGHT,
     ColorResolveError,
+    email_logo_dimensions,
     email_safe_font_stack,
     extract_button_radius,
     extract_font_family,
+    get_email_theme,
+    image_dimensions,
     parse_tailwind_tokens,
     resolve_color_token,
     resolve_css_color,
@@ -472,3 +477,108 @@ def test_extract_button_radius_first_class_theme_yields_expected_value() -> None
     token_map = _make_token_map("first_class")
     result = extract_button_radius(token_map, fallback="6px")
     assert result == "0.5rem"
+
+
+# ---------------------------------------------------------------------------
+# Header role tokens
+# ---------------------------------------------------------------------------
+
+
+def test_default_theme_header_tokens_resolve_to_primary() -> None:
+    """default theme: header aliases primary, on-header aliases on-primary."""
+    token_map = _make_token_map("default")
+    assert resolve_color_token(token_map, "header", "#000000") == "#2b6cb0"
+    assert resolve_color_token(token_map, "on-header", "#000000") == "#ffffff"
+
+
+def test_first_class_theme_header_is_white_with_dark_on_header() -> None:
+    """first_class theme: header is white, on-header is the dark on-surface colour."""
+    token_map = _make_token_map("first_class")
+    assert resolve_color_token(token_map, "header", "#000000") == "#ffffff"
+    # on-header -> var(--color-on-surface); just assert it is not white.
+    assert resolve_color_token(token_map, "on-header", "#000000") != "#ffffff"
+
+
+# ---------------------------------------------------------------------------
+# image_dimensions / email_logo_dimensions
+# ---------------------------------------------------------------------------
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_LOGO_STATIC_PATH = "images/first_class_logo.png"
+_LOGO_FILE = _REPO_ROOT / "static" / "images" / "first_class_logo.png"
+
+
+def test_image_dimensions_reads_png_intrinsic_size() -> None:
+    """The bundled PNG logo reports its real 512x248 pixel size."""
+    assert image_dimensions(str(_LOGO_FILE)) == (512, 248)
+
+
+def test_image_dimensions_returns_none_for_non_image(make_temp_file) -> None:
+    """A non-image file yields None rather than raising."""
+    not_an_image = make_temp_file(".css", "--color-primary: #2B6CB0;")
+    assert image_dimensions(str(not_an_image)) is None
+
+
+def test_image_dimensions_returns_none_for_missing_file(tmp_path) -> None:
+    """A path that does not exist yields None."""
+    assert image_dimensions(str(tmp_path / "nope.png")) is None
+
+
+def test_email_logo_dimensions_scales_to_display_height() -> None:
+    """The logo is scaled to the fixed display height with width preserving ratio."""
+    email_logo_dimensions.cache_clear()
+    try:
+        result = email_logo_dimensions(_LOGO_STATIC_PATH)
+    finally:
+        email_logo_dimensions.cache_clear()
+    # 512x248 scaled to height 48 -> width round(512*48/248) = 99.
+    assert result == (99, EMAIL_LOGO_DISPLAY_HEIGHT)
+
+
+def test_email_logo_dimensions_returns_none_for_unfound_static() -> None:
+    """An unresolvable static path yields None (template falls back to height-only)."""
+    email_logo_dimensions.cache_clear()
+    try:
+        assert email_logo_dimensions("images/does_not_exist_logo.png") is None
+    finally:
+        email_logo_dimensions.cache_clear()
+
+
+# ---------------------------------------------------------------------------
+# get_email_theme
+# ---------------------------------------------------------------------------
+
+
+def test_get_email_theme_resolves_active_default_theme() -> None:
+    """Under the (test default) theme, header mirrors primary and on-header is white."""
+    get_email_theme.cache_clear()
+    try:
+        theme = get_email_theme()
+    finally:
+        get_email_theme.cache_clear()
+    assert theme.color_primary == "#2b6cb0"
+    assert theme.color_header == "#2b6cb0"
+    assert theme.color_on_header == "#ffffff"
+    assert theme.color_foreground == "#1a2332"
+
+
+def test_get_email_theme_falls_back_when_css_missing(tmp_path) -> None:
+    """A missing theme.css degrades to the hardcoded fallbacks instead of raising."""
+    absent = str(tmp_path / "nope" / "theme.css")
+    get_email_theme.cache_clear()
+    try:
+        with (
+            patch(
+                "freedom_ls.accounts.email_utils.email_theme_css_path",
+                return_value=absent,
+            ),
+            warnings.catch_warnings(),
+        ):
+            warnings.simplefilter("ignore")
+            theme = get_email_theme()
+    finally:
+        get_email_theme.cache_clear()
+    # Fallbacks come from EMAIL_COLOR_TOKENS (verbatim, uppercase hex).
+    assert theme.color_primary == "#2B6CB0"
+    assert theme.color_header == "#2B6CB0"
+    assert theme.button_radius == "6px"
