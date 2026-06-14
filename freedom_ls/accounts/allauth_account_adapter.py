@@ -57,7 +57,11 @@ class AccountAdapter(DefaultAccountAdapter):
         email_logo_url: str | None = None
         if logo_path:
             static_url = static(logo_path)
-            if request is not None:
+            if static_url.startswith(("http://", "https://")):
+                # STATIC_URL is already absolute (e.g. a CDN); use it verbatim
+                # rather than prefixing it with another scheme/host.
+                email_logo_url = static_url
+            elif request is not None:
                 # Reuse the request-based absolute URI (same as allauth's action
                 # links) so the logo resolves wherever the email was triggered.
                 email_logo_url = request.build_absolute_uri(static_url)

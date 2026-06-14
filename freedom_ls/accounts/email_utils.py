@@ -41,6 +41,10 @@ def parse_tailwind_tokens(css_file_path: str) -> dict[str, str]:
     ``--``, e.g. ``{"color-primary": "#2B6CB0", "fls-radius-md": "0.375rem"}``.
     All values are returned as-is (raw strings) — no filtering or conversion.
 
+    Matches every ``--<name>`` declaration in the file; if a token is declared
+    more than once (e.g. a dark-mode re-declaration) the last occurrence wins.
+    The email tokens are assumed to be defined exactly once in the active theme.
+
     Raises FileNotFoundError if the file does not exist.
     """
     path = Path(css_file_path)

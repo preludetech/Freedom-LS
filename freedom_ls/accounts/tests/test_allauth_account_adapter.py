@@ -155,6 +155,47 @@ def test_send_mail_logo_url_uses_request_absolute_uri(
 
 
 @pytest.mark.django_db
+def test_send_mail_logo_url_uses_absolute_static_url_verbatim(
+    mock_site_context, settings
+) -> None:
+    """When STATIC_URL is already absolute (a CDN), the logo URL is used as-is.
+
+    The Site-domain fallback must not prefix an already-qualified CDN URL, which
+    would produce a malformed https://domain/https://cdn.../logo.png.
+    """
+    settings.EMAIL_LOGO_STATIC_PATH = "images/test_logo.png"
+    settings.HEADER_LOGO_STATIC_PATH = None
+    settings.STATIC_URL = "https://cdn.example.com/static/"
+
+    captured: dict = {}
+    adapter = AccountAdapter(request=None)
+
+    def capture_ctx(template_prefix, email, ctx):
+        captured.update(ctx)
+        m = MagicMock()
+        m.send = MagicMock()
+        return m
+
+    with (
+        patch.object(adapter, "render_mail", side_effect=capture_ctx),
+        patch(
+            "freedom_ls.accounts.allauth_account_adapter.allauth_context"
+        ) as mock_ctx,
+        patch(
+            "freedom_ls.accounts.allauth_account_adapter.get_current_site",
+            return_value=mock_site_context,
+        ),
+    ):
+        mock_ctx.request = None
+        adapter.send_mail("account/email/login_code", "user@example.com", {})
+
+    assert (
+        captured["email_logo_url"]
+        == "https://cdn.example.com/static/images/test_logo.png"
+    )
+
+
+@pytest.mark.django_db
 def test_send_mail_message_accepts_policy_kwarg(mock_site_context) -> None:
     """Django's SMTP backend calls message(policy=...); the 8bit patch must forward it."""
     user = UserFactory()
