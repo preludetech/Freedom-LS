@@ -196,6 +196,50 @@ def test_send_mail_logo_url_uses_absolute_static_url_verbatim(
 
 
 @pytest.mark.django_db
+def test_send_mail_logo_url_is_none_when_static_lookup_fails(
+    mock_site_context, settings
+) -> None:
+    """A missing/uncollected logo asset must degrade to None, not break sending.
+
+    Under ManifestStaticFilesStorage (used in production), static() raises
+    ValueError when the asset is absent from the manifest. The branded logo is a
+    best-effort enhancement, so a lookup failure must fall back to the text label
+    rather than abort the whole transactional email.
+    """
+    settings.EMAIL_LOGO_STATIC_PATH = "images/missing_logo.png"
+    settings.HEADER_LOGO_STATIC_PATH = None
+
+    captured: dict = {}
+    adapter = AccountAdapter(request=None)
+
+    def capture_ctx(template_prefix, email, ctx):
+        captured.update(ctx)
+        m = MagicMock()
+        m.send = MagicMock()
+        return m
+
+    with (
+        patch.object(adapter, "render_mail", side_effect=capture_ctx),
+        patch(
+            "freedom_ls.accounts.allauth_account_adapter.allauth_context"
+        ) as mock_ctx,
+        patch(
+            "freedom_ls.accounts.allauth_account_adapter.get_current_site",
+            return_value=mock_site_context,
+        ),
+        patch(
+            "freedom_ls.accounts.allauth_account_adapter.static",
+            side_effect=ValueError("Missing staticfiles manifest entry"),
+        ),
+    ):
+        mock_ctx.request = None
+        # Must not raise.
+        adapter.send_mail("account/email/login_code", "user@example.com", {})
+
+    assert captured["email_logo_url"] is None
+
+
+@pytest.mark.django_db
 def test_send_mail_message_accepts_policy_kwarg(mock_site_context) -> None:
     """Django's SMTP backend calls message(policy=...); the 8bit patch must forward it."""
     user = UserFactory()

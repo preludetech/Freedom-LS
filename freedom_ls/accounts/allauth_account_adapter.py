@@ -55,8 +55,15 @@ class AccountAdapter(DefaultAccountAdapter):
 
         logo_path = resolved_email_logo_path()
         email_logo_url: str | None = None
-        if logo_path:
-            static_url = static(logo_path)
+        # static() raises ValueError under ManifestStaticFilesStorage when the
+        # asset is absent from the manifest. The branded logo is best-effort, so
+        # a lookup failure degrades to the text label rather than aborting the
+        # whole transactional email.
+        try:
+            static_url = static(logo_path) if logo_path else None
+        except ValueError:
+            static_url = None
+        if static_url is not None:
             if static_url.startswith(("http://", "https://")):
                 # STATIC_URL is already absolute (e.g. a CDN); use it verbatim
                 # rather than prefixing it with another scheme/host.
