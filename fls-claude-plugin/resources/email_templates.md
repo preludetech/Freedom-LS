@@ -43,29 +43,29 @@ To override, create a file at the same path in your project's templates director
 
 ## Context Variables
 
-| Variable | Source (`EmailTheme` field) | Description |
+All of the variables below are injected per-message by `AccountAdapter.send_mail`
+in `freedom_ls/accounts/allauth_account_adapter.py` — they are built only when an
+email is sent, not on every web request.
+
+The theme values come from `asdict(get_email_theme())` (see *How Brand Colors
+Work*); their template names match the `EmailTheme` fields, and they are always
+present:
+
+| Variable | `EmailTheme` field / role | Description |
 |---|---|---|
-| `email_color_primary` | `color_primary` | Button background, link color |
-| `email_color_foreground` | `color_foreground` (role `on-surface`) | Body text color |
-| `email_color_muted` | `color_muted` | Footer text, secondary text, security info |
-| `email_color_surface` | `color_surface` | Email/card background |
-| `email_color_surface_2` | `color_surface_2` | Secondary surface (e.g. security info block) |
-| `email_color_on_primary` | `color_on_primary` | Text/logo color on the primary background |
-| `email_color_border` | `color_border` | Divider and border color |
-| `email_color_header` | `color_header` | Header band background (own role; defaults to primary) |
-| `email_color_on_header` | `color_on_header` | Header text-label colour (own role; defaults to on-primary) |
-| `email_font_family` | `font_family` | Email-safe font stack derived from the theme |
-| `email_button_radius` | `button_radius` | CTA button corner radius (from `--fls-radius-md`) |
-| `current_site` | Django Sites framework | Site name and domain for footer |
-| `user` | `AccountAdapter.send_notification_mail()` | User object, injected for notification emails |
+| `color_primary` | `color_primary` | Button background, link color |
+| `color_foreground` | `color_foreground` (role `on-surface`) | Body text color |
+| `color_muted` | `color_muted` | Footer text, secondary text, security info |
+| `color_surface` | `color_surface` | Email/card background |
+| `color_surface_2` | `color_surface_2` | Secondary surface (e.g. security info block) |
+| `color_on_primary` | `color_on_primary` | Text/logo color on the primary background |
+| `color_border` | `color_border` | Divider and border color |
+| `color_header` | `color_header` | Header band background (own role; defaults to primary) |
+| `color_on_header` | `color_on_header` | Header text-label colour (own role; defaults to on-primary) |
+| `font_family` | `font_family` | Email-safe font stack derived from the theme |
+| `button_radius` | `button_radius` | CTA button corner radius (from `--fls-radius-md`) |
 
-The colour, font, and radius variables above are injected globally by the
-`email_settings` context processor in
-`freedom_ls/accounts/context_processors.py`, which reads them from the cached
-`get_email_theme()` resolver (see *How Brand Colors Work*).
-
-Further variables are injected per-message by `AccountAdapter.send_mail`
-(they are **not** in the context processor, so templates reference them with a
+The branding/site variables below may be `None` (templates reference them with a
 `|default:` fallback or an `{% if %}` guard):
 
 | Variable | Source | Description |
@@ -73,6 +73,8 @@ Further variables are injected per-message by `AccountAdapter.send_mail`
 | `email_logo_url` | `send_mail` (absolute URL from `EMAIL_LOGO_STATIC_PATH` or `HEADER_LOGO_STATIC_PATH`) | Fully-qualified `https://domain/static/…` logo URL, or `None` to fall back to a text label |
 | `email_label` | `send_mail` (`HEADER_TITLE` or `current_site.name`) | Brand label used in message bodies, the header text fallback, and the logo `alt` text |
 | `email_logo_width` / `email_logo_height` | `send_mail` (`email_logo_dimensions`) | Logo's real pixel size scaled to a 48px display height (aspect-ratio safe); `None` when the file can't be measured, so the header falls back to a height-only constraint |
+| `current_site` | Django Sites framework | Site name and domain for footer |
+| `user` | `AccountAdapter.send_notification_mail()` | User object, injected for notification emails |
 
 ## Allauth Email Types
 
@@ -108,7 +110,7 @@ are:
 
 The theme selection that drives the derivation (`FLS_THEME`, `RESOLVED_THEME_DIR`)
 also lives in settings; the path to the active theme's `theme.css` is derived
-from them by `email_theme_css_path()`.
+from them by `active_theme_css_path()` (paired with `default_theme_css_path()`).
 
 ## How CSS Inlining Works
 
@@ -117,10 +119,13 @@ The `base_email.html` template wraps its entire content in `{% premailer %}...{%
 ## How Brand Colors Work
 
 `get_email_theme()` in `freedom_ls/accounts/email_utils.py` reads CSS custom
-properties from the active theme's `theme.css` the first time an email is
-rendered, and caches the resolved `EmailTheme` for the process lifetime (so a
-future bulk send resolves it once). `parse_tailwind_tokens` captures every
-`--<name>` token as a raw string; `resolve_color_token` then resolves each
+properties the first time an email is rendered, and caches the resolved
+`EmailTheme` for the process lifetime (so a future bulk send resolves it once).
+The **default theme's `theme.css` is the single source of default token values**:
+it is parsed as a baseline, then the active theme's tokens are layered on top
+(active wins per-token), so any token the active theme omits falls through to the
+default — there are no hardcoded colour values. `parse_tailwind_tokens` captures
+every `--<name>` token as a raw string; `resolve_color_token` then resolves each
 colour role to an opaque `#rrggbb` value via `resolve_css_color` (backed by
 `coloraide`), which understands hex, `rgb()`, `hsl()`, `oklch()`, `oklab()`,
 `lch()`, `lab()`, named colours, `var()` references, and `color-mix()`:
@@ -131,13 +136,16 @@ theme.color_primary                 # e.g. "#2b6cb0"
 theme.color_header                  # header band (own role; white under first_class)
 ```
 
-If a token is missing or cannot be resolved to an opaque hex, the resolver emits
-a `UserWarning` and uses the hardcoded fallback; a missing `theme.css` degrades
-to all-fallbacks rather than raising. The colour roles and their fallbacks live
-in a single source of truth, `EMAIL_COLOR_TOKENS`, shared by the resolver and the
-`check_email_colour_tokens` system check (so the two cannot drift). Changing a
-token in the active theme's `theme.css` updates email colours on the next server
-restart. Tests that override the theme must call `get_email_theme.cache_clear()`.
+If a required token cannot be resolved even from the default theme, the resolver
+**fails loud** — `resolve_color_token`/`extract_font_family`/`extract_button_radius`
+raise `EmailThemeError` (or `ColorResolveError`) rather than silently rendering a
+wrong colour. The colour roles live in a single source of truth,
+`EMAIL_COLOR_ROLES`, shared by the resolver and the `check_email_colour_tokens`
+system check, which re-resolves the same merged token map and reports any
+unresolvable token as an **Error** at deploy/startup (before a send can raise).
+Changing a token in the active theme's `theme.css` updates email colours on the
+next server restart. Tests that override the theme must call
+`get_email_theme.cache_clear()`.
 
 ## Previewing Emails in Development
 
@@ -165,8 +173,8 @@ Extend the base template and use the `content` and `cta` blocks:
 {% block cta %}
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
   <tr>
-    <td style="background-color: {{ email_color_primary }}; border-radius: {{ email_button_radius }};">
-      <a href="{{ action_url }}" style="display: inline-block; padding: 12px 32px; color: {{ email_color_on_primary }}; text-decoration: none; font-weight: bold; font-size: 16px;">Take Action</a>
+    <td style="background-color: {{ color_primary }}; border-radius: {{ button_radius }};">
+      <a href="{{ action_url }}" style="display: inline-block; padding: 12px 32px; color: {{ color_on_primary }}; text-decoration: none; font-weight: bold; font-size: 16px;">Take Action</a>
     </td>
   </tr>
 </table>
