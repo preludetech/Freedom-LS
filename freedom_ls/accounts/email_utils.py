@@ -9,6 +9,12 @@ _VAR_RE = re.compile(r"var\(\s*(--[\w-]+)\s*\)")
 # Maximum substitution depth for var() resolution, to guard against deep chains.
 _MAX_VAR_DEPTH = 50
 
+# A bare CSS length literal (e.g. 6px, 0.375rem, 0). The button radius is
+# interpolated into an email <style> block; constraining it to a length keeps a
+# malformed theme value from injecting CSS, mirroring how colours are validated
+# to #rrggbb and the font stack is allowlist-constrained.
+_LENGTH_RE = re.compile(r"^\d*\.?\d+(px|rem|em|%)?$")
+
 # The seven email colour roles and their opaque hex fallbacks. Single source of
 # truth shared by the settings resolution and the system check, so the two can
 # never drift apart. The Python setting names (e.g. EMAIL_COLOR_FOREGROUND) keep
@@ -263,6 +269,12 @@ def email_safe_font_stack(raw_font_sans: str) -> str:
 
     Emits a UserWarning when only a generic family remains but at least one
     custom (non-keyword, non-allowlisted) name was stripped.
+
+    The result is rendered with ``|safe`` in base_email.html (so the quotes
+    around multi-word names survive premailer's CSS parsing). That is only
+    safe because every emitted name comes from the fixed allowlist or the
+    fixed generic families — keep this output allowlist-constrained, never
+    pass arbitrary token text through.
     """
     # Normalise line continuations / extra whitespace within the value
     normalised = " ".join(raw_font_sans.split())
@@ -335,18 +347,28 @@ def extract_font_family(
 def extract_button_radius(token_map: dict[str, str], fallback: str = "6px") -> str:
     """Extract the button border-radius value from the theme token map.
 
-    Returns the raw value of ``--fls-radius-md`` as-is (e.g. ``'0.375rem'``,
-    ``'0.5rem'``, ``'6px'``). If the token is absent, emits a UserWarning and
-    returns *fallback*.
+    Returns the value of ``--fls-radius-md`` (e.g. ``'0.375rem'``, ``'0.5rem'``,
+    ``'6px'``) when it is present and a bare CSS length literal. If the token is
+    absent, or its value is not a plain length, emits a UserWarning and returns
+    *fallback*.
     """
-    if "fls-radius-md" in token_map:
-        return token_map["fls-radius-md"]
-    warnings.warn(
-        "Theme token --fls-radius-md not found; using fallback button radius.",
-        UserWarning,
-        stacklevel=2,
-    )
-    return fallback
+    raw = token_map.get("fls-radius-md")
+    if raw is None:
+        warnings.warn(
+            "Theme token --fls-radius-md not found; using fallback button radius.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return fallback
+    if not _LENGTH_RE.match(raw.strip()):
+        warnings.warn(
+            f"Theme token --fls-radius-md={raw!r} is not a CSS length; "
+            f"using fallback button radius {fallback!r}.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return fallback
+    return raw.strip()
 
 
 def resolved_email_logo_path() -> str | None:

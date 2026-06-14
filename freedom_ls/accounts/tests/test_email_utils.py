@@ -484,6 +484,42 @@ def test_extract_button_radius_missing_token_returns_fallback_and_warns() -> Non
     assert result == "6px"
 
 
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "6px",
+        "0.375rem",
+        "0.5em",
+        "0",
+        "50%",
+        "  8px  ",
+    ],
+)
+def test_extract_button_radius_accepts_length_literals(raw: str) -> None:
+    """Bare CSS length literals are returned (stripped)."""
+    token_map = {"fls-radius-md": raw}
+    result = extract_button_radius(token_map, fallback="6px")
+    assert result == raw.strip()
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "0} body{display:none",
+        "6px; color: red",
+        "calc(1rem + 2px)",
+        "red",
+        "",
+    ],
+)
+def test_extract_button_radius_rejects_non_length_and_warns(raw: str) -> None:
+    """A value that is not a plain length warns and falls back (no CSS injection)."""
+    token_map = {"fls-radius-md": raw}
+    with pytest.warns(UserWarning, match="is not a CSS length"):
+        result = extract_button_radius(token_map, fallback="6px")
+    assert result == "6px"
+
+
 def test_extract_button_radius_default_theme_yields_expected_value() -> None:
     """default theme fls-radius-md resolves to '0.375rem'."""
     token_map = _make_token_map("default")

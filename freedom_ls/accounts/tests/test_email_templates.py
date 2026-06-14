@@ -583,21 +583,19 @@ class TestHeaderLogo:
 class TestAdapterSendMailContext:
     """Tests that AccountAdapter.send_mail injects email_logo_url and email_label."""
 
-    def test_send_mail_injects_absolute_logo_url_when_logo_path_set(
-        self, mock_site_context, settings
-    ) -> None:
-        """send_mail should compose an absolute http(s)://domain/static/path URL for email_logo_url."""
+    @staticmethod
+    def _capture_send_mail_context(mock_site_context) -> dict:
+        """Run AccountAdapter.send_mail with no request and return the rendered context.
+
+        render_mail is patched to capture the context dict the adapter composes,
+        get_current_site returns the test Site, and the allauth request context
+        is forced to None (mail sent outside a web request).
+        """
         from unittest.mock import MagicMock, patch
 
         from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 
-        settings.EMAIL_LOGO_STATIC_PATH = "images/test_logo.png"
-        settings.HEADER_LOGO_STATIC_PATH = None
-        settings.HEADER_TITLE = ""
-        settings.ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
-
         captured: dict = {}
-
         adapter = AccountAdapter(request=None)
 
         with (
@@ -619,8 +617,20 @@ class TestAdapterSendMailContext:
                 return m
 
             mock_render_mail.side_effect = capture_ctx
-
             adapter.send_mail("account/email/login_code", "user@example.com", {})
+
+        return captured
+
+    def test_send_mail_injects_absolute_logo_url_when_logo_path_set(
+        self, mock_site_context, settings
+    ) -> None:
+        """send_mail should compose an absolute http(s)://domain/static/path URL for email_logo_url."""
+        settings.EMAIL_LOGO_STATIC_PATH = "images/test_logo.png"
+        settings.HEADER_LOGO_STATIC_PATH = None
+        settings.HEADER_TITLE = ""
+        settings.ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
+
+        captured = self._capture_send_mail_context(mock_site_context)
 
         assert "email_logo_url" in captured
         logo_url = captured["email_logo_url"]
@@ -634,37 +644,11 @@ class TestAdapterSendMailContext:
         self, mock_site_context, settings
     ) -> None:
         """send_mail sets email_logo_url to None when no logo path is configured."""
-        from unittest.mock import MagicMock, patch
-
-        from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
-
         settings.EMAIL_LOGO_STATIC_PATH = None
         settings.HEADER_LOGO_STATIC_PATH = None
         settings.HEADER_TITLE = ""
 
-        captured: dict = {}
-        adapter = AccountAdapter(request=None)
-
-        with (
-            patch.object(adapter, "render_mail") as mock_render_mail,
-            patch(
-                "freedom_ls.accounts.allauth_account_adapter.allauth_context"
-            ) as mock_ctx,
-            patch(
-                "freedom_ls.accounts.allauth_account_adapter.get_current_site",
-                return_value=mock_site_context,
-            ),
-        ):
-            mock_ctx.request = None
-
-            def capture_ctx(template_prefix, email, ctx):
-                captured.update(ctx)
-                m = MagicMock()
-                m.send = MagicMock()
-                return m
-
-            mock_render_mail.side_effect = capture_ctx
-            adapter.send_mail("account/email/login_code", "user@example.com", {})
+        captured = self._capture_send_mail_context(mock_site_context)
 
         assert captured.get("email_logo_url") is None
 
@@ -672,37 +656,11 @@ class TestAdapterSendMailContext:
         self, mock_site_context, settings
     ) -> None:
         """send_mail sets email_label to HEADER_TITLE when it is configured."""
-        from unittest.mock import MagicMock, patch
-
-        from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
-
         settings.HEADER_TITLE = "MyProduct"
         settings.EMAIL_LOGO_STATIC_PATH = None
         settings.HEADER_LOGO_STATIC_PATH = None
 
-        captured: dict = {}
-        adapter = AccountAdapter(request=None)
-
-        with (
-            patch.object(adapter, "render_mail") as mock_render_mail,
-            patch(
-                "freedom_ls.accounts.allauth_account_adapter.allauth_context"
-            ) as mock_ctx,
-            patch(
-                "freedom_ls.accounts.allauth_account_adapter.get_current_site",
-                return_value=mock_site_context,
-            ),
-        ):
-            mock_ctx.request = None
-
-            def capture_ctx(template_prefix, email, ctx):
-                captured.update(ctx)
-                m = MagicMock()
-                m.send = MagicMock()
-                return m
-
-            mock_render_mail.side_effect = capture_ctx
-            adapter.send_mail("account/email/login_code", "user@example.com", {})
+        captured = self._capture_send_mail_context(mock_site_context)
 
         assert captured.get("email_label") == "MyProduct"
 
@@ -710,37 +668,11 @@ class TestAdapterSendMailContext:
         self, mock_site_context, settings
     ) -> None:
         """send_mail falls back to current_site.name for email_label when HEADER_TITLE is empty."""
-        from unittest.mock import MagicMock, patch
-
-        from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
-
         settings.HEADER_TITLE = ""
         settings.EMAIL_LOGO_STATIC_PATH = None
         settings.HEADER_LOGO_STATIC_PATH = None
 
-        captured: dict = {}
-        adapter = AccountAdapter(request=None)
-
-        with (
-            patch.object(adapter, "render_mail") as mock_render_mail,
-            patch(
-                "freedom_ls.accounts.allauth_account_adapter.allauth_context"
-            ) as mock_ctx,
-            patch(
-                "freedom_ls.accounts.allauth_account_adapter.get_current_site",
-                return_value=mock_site_context,
-            ),
-        ):
-            mock_ctx.request = None
-
-            def capture_ctx(template_prefix, email, ctx):
-                captured.update(ctx)
-                m = MagicMock()
-                m.send = MagicMock()
-                return m
-
-            mock_render_mail.side_effect = capture_ctx
-            adapter.send_mail("account/email/login_code", "user@example.com", {})
+        captured = self._capture_send_mail_context(mock_site_context)
 
         # Should fall back to site name (mock_site_context creates "TestSite")
         assert captured.get("email_label") == "TestSite"
@@ -749,38 +681,12 @@ class TestAdapterSendMailContext:
         self, mock_site_context, settings
     ) -> None:
         """send_mail falls back to HEADER_LOGO_STATIC_PATH when EMAIL_LOGO_STATIC_PATH is None."""
-        from unittest.mock import MagicMock, patch
-
-        from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
-
         settings.EMAIL_LOGO_STATIC_PATH = None
         settings.HEADER_LOGO_STATIC_PATH = "images/header_logo.png"
         settings.HEADER_TITLE = ""
         settings.ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
 
-        captured: dict = {}
-        adapter = AccountAdapter(request=None)
-
-        with (
-            patch.object(adapter, "render_mail") as mock_render_mail,
-            patch(
-                "freedom_ls.accounts.allauth_account_adapter.allauth_context"
-            ) as mock_ctx,
-            patch(
-                "freedom_ls.accounts.allauth_account_adapter.get_current_site",
-                return_value=mock_site_context,
-            ),
-        ):
-            mock_ctx.request = None
-
-            def capture_ctx(template_prefix, email, ctx):
-                captured.update(ctx)
-                m = MagicMock()
-                m.send = MagicMock()
-                return m
-
-            mock_render_mail.side_effect = capture_ctx
-            adapter.send_mail("account/email/login_code", "user@example.com", {})
+        captured = self._capture_send_mail_context(mock_site_context)
 
         logo_url = captured.get("email_logo_url")
         assert logo_url is not None
