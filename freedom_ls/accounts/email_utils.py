@@ -9,11 +9,12 @@ _VAR_RE = re.compile(r"var\(\s*(--[\w-]+)\s*\)")
 # Maximum substitution depth for var() resolution, to guard against deep chains.
 _MAX_VAR_DEPTH = 50
 
-# A bare CSS length literal (e.g. 6px, 0.375rem, 0). The button radius is
-# interpolated into an email <style> block; constraining it to a length keeps a
-# malformed theme value from injecting CSS, mirroring how colours are validated
-# to #rrggbb and the font stack is allowlist-constrained.
-_LENGTH_RE = re.compile(r"^\d*\.?\d+(px|rem|em|%)?$")
+# A CSS length literal: a bare `0`, or a number with a unit (e.g. 6px,
+# 0.375rem, 50%). A unitless non-zero number is invalid CSS, so it is rejected.
+# The button radius is interpolated into an email <style> block; constraining it
+# to a length keeps a malformed theme value from injecting CSS, mirroring how
+# colours are validated to #rrggbb and the font stack is allowlist-constrained.
+_LENGTH_RE = re.compile(r"^(0|\d*\.?\d+(px|rem|em|%))$")
 
 # The seven email colour roles and their opaque hex fallbacks. Single source of
 # truth shared by the settings resolution and the system check, so the two can
@@ -186,10 +187,15 @@ def _resolve_color_mix(value: str, token_map: dict[str, str]) -> str:
     b_resolved = resolve_css_color(b_str, token_map)
 
     # Compute coloraide's mix weight (B's weight in the blend).
-    # CSS color-mix rule: if only one percentage p is given, A gets p and B
-    # gets 100-p. If neither, 50/50. coloraide mix(b, weight=w) takes B's weight.
+    # CSS color-mix rule: if both percentages are given they are normalised to
+    # sum to 100 (so `A 20%, B 60%` is treated as 25/75). If only one p is given,
+    # A gets p and B gets 100-p. If neither, 50/50. coloraide mix(b, weight=w)
+    # takes B's weight.
     if a_pct is not None and b_pct is not None:
-        b_weight = b_pct / 100.0
+        total = a_pct + b_pct
+        if total == 0:
+            raise ColorResolveError(f"color-mix percentages sum to zero in {value!r}")
+        b_weight = b_pct / total
     elif a_pct is not None:
         b_weight = (100.0 - a_pct) / 100.0
     elif b_pct is not None:

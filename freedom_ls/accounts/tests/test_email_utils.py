@@ -276,6 +276,19 @@ def test_resolve_css_color_mix_with_var_references():
     assert result != "#ffffff"
 
 
+def test_resolve_css_color_mix_both_percentages_are_normalised():
+    """Two percentages that don't sum to 100 are normalised (20/60 == 25/75)."""
+    unnormalised = resolve_css_color("color-mix(in srgb, #000000 20%, #ffffff 60%)", {})
+    normalised = resolve_css_color("color-mix(in srgb, #000000 25%, #ffffff 75%)", {})
+    assert unnormalised == normalised
+
+
+def test_resolve_css_color_mix_both_percentages_zero_raises():
+    """Two zero percentages have no valid normalisation and raise."""
+    with pytest.raises(ColorResolveError):
+        resolve_css_color("color-mix(in srgb, #000000 0%, #ffffff 0%)", {})
+
+
 # ---------------------------------------------------------------------------
 # resolve_color_token — Task 1.3
 # ---------------------------------------------------------------------------
@@ -509,6 +522,7 @@ def test_extract_button_radius_accepts_length_literals(raw: str) -> None:
         "6px; color: red",
         "calc(1rem + 2px)",
         "red",
+        "6",
         "",
     ],
 )
