@@ -343,6 +343,88 @@
         @apply bg-black/50 backdrop-blur-sm;
     }
 
+    /* ── Flashcard widget (cotton/flashcard.html) ────────────────────────
+     *
+     * Static 3-D layout rules for the two-sided flip card. Dynamic rotation
+     * is applied via Alpine's x-bind:style (frontStyle / backStyle) so these
+     * rules handle only the fixed geometry and the back-face hide.
+     *
+     * CSS transition is gated behind prefers-reduced-motion so the flip still
+     * applies instantly when the user prefers reduced motion — only the
+     * animated interpolation is dropped, not the state change itself.
+     *
+     * .flashcard-scene   — perspective container; sets card dimensions.
+     * .flashcard-trigger — full-surface button overlay (≥44×44px); sits above
+     *                      both faces so a single click anywhere flips the card.
+     * .flashcard-stack   — CSS-grid single-cell stack; both faces share one
+     *                      grid area so the card is sized to the larger face.
+     * .flashcard-face    — individual face; backface-visibility:hidden means
+     *                      each face disappears when rotated past 90°.
+     * .flashcard-face-content — inner wrapper with padding/prose styling.
+     * .flashcard-face-label  — small "Front" / "Back" label in the corner.
+     */
+
+    .flashcard-scene {
+        perspective: 800px;
+        min-height: 44px;
+    }
+
+    .flashcard-trigger {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        min-width: 44px;
+        min-height: 44px;
+        z-index: 10;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    /* Single-cell grid stack — both faces occupy the same grid area so the
+     * card container is sized to whichever face is taller. */
+    .flashcard-stack {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr;
+        transform-style: preserve-3d;
+    }
+
+    .flashcard-face {
+        grid-column: 1;
+        grid-row: 1;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        @apply rounded-lg border border-border bg-surface shadow-sm;
+    }
+
+    /* Animate the rotation only when reduced-motion is not preferred. */
+    @media (prefers-reduced-motion: no-preference) {
+        .flashcard-face {
+            transition: transform 0.5s ease;
+        }
+    }
+
+    .flashcard-back {
+        /* Back starts rotated 180° so it faces away; Alpine's backStyle()
+           rotates it to 0° when flipped. The front starts at 0° by default. */
+        transform: rotateY(180deg);
+    }
+
+    .flashcard-face-content {
+        @apply p-6 space-y-3;
+    }
+
+    .flashcard-trigger:focus-visible {
+        @apply outline-none ring-2 ring-primary ring-offset-2 rounded-lg;
+    }
+
+    .flashcard-face-label {
+        @apply text-xs font-semibold uppercase tracking-wide text-muted mb-2;
+    }
+
     /* HTMX request state utilities for loading indicators */
     .htmx-request .htmx-hide-on-request {
         display: none;

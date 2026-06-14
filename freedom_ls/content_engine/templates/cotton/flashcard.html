@@ -1,0 +1,77 @@
+{% load content_tags %}
+
+{% comment %}
+Flashcard component — a two-sided flip card for question/answer content.
+
+Named slots:
+  front  The question / prompt face (markdown rendered).
+  back   The answer / reveal face (markdown rendered).
+
+Alpine component:
+  `flashcard` (registered in alpine-components.js) manages flipped state,
+  face transforms, and exposes flip() for the trigger button.
+
+Accessibility:
+  A real <button type="button"> covers the card surface (≥44×44px) so the
+  flip is keyboard-accessible. aria-pressed tracks which face is showing so
+  assistive technology knows the toggle state. Each face's aria-hidden is
+  toggled from `flipped` so screen readers only announce the visible face.
+  The hidden face also gets `inert` (via x-bind:inert), which removes the
+  entire subtree from the tab order, pointer events, and AT interaction.
+  `inert` is the only reliable way to suppress focus on descendant links or
+  buttons that are visually hidden by the 3-D rotation — tabindex="-1" on a
+  wrapper div does not propagate to its children.
+
+CSS:
+  Static 3D geometry lives in hand-authored .flashcard-* rules in
+  tailwind.components.css — not dynamically-assembled Tailwind classes, which
+  would be purged. Dynamic rotation is applied via x-bind:style returning a
+  style object (frontStyle / backStyle) for the same reason.
+  The CSS transition is gated behind @media (prefers-reduced-motion: no-preference)
+  so the flip still applies instantly when motion is reduced; only the animation
+  is dropped, not the state change.
+{% endcomment %}
+
+<div x-data="flashcard" class="my-6">
+    <div class="relative flashcard-scene">
+        {# Full-surface flip trigger. Positioned above both faces (z-index in
+           .flashcard-trigger) so any click anywhere on the card flips it. #}
+        <button type="button"
+                class="flashcard-trigger"
+                x-on:click="flip()"
+                x-bind:aria-pressed="flipped"
+                aria-label="Flip card">
+            <span class="sr-only">Flip card</span>
+        </button>
+
+        {# CSS-grid single-cell stack: both faces share one grid area so the
+           card container is sized to the larger face, not whichever renders
+           first. perspective is set on .flashcard-scene (parent). #}
+        <div class="flashcard-stack">
+
+            {# inert removes the hidden face's subtree from tab order, pointer
+               events, and AT — tabindex="-1" on a wrapper div does not
+               propagate to descendant focusable elements, so inert is needed. #}
+            <div class="flashcard-face flashcard-front"
+                 x-bind:inert="flipped"
+                 x-bind:aria-hidden="flipped"
+                 x-bind:style="frontStyle()">
+                <div class="flashcard-face-content">
+                    <div class="flashcard-face-label" aria-hidden="true">Front</div>
+                    {% markdown front %}
+                </div>
+            </div>
+
+            <div class="flashcard-face flashcard-back"
+                 x-bind:inert="!flipped"
+                 x-bind:aria-hidden="!flipped"
+                 x-bind:style="backStyle()">
+                <div class="flashcard-face-content">
+                    <div class="flashcard-face-label" aria-hidden="true">Back</div>
+                    {% markdown back %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

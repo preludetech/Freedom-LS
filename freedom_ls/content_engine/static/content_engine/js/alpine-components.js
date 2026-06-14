@@ -8,6 +8,7 @@
  * Components here back the cotton content widgets rendered inside markdown:
  * - `equation`        — client-side KaTeX typesetting (cotton/equation.html)
  * - `contentLightbox` — native <dialog> spotlight (cotton/picture.html)
+ * - `flashcard`       — two-sided flip card (cotton/flashcard.html)
  */
 
 document.addEventListener("alpine:init", () => {
@@ -40,6 +41,25 @@ document.addEventListener("alpine:init", () => {
                 // Leave the raw LaTeX source visible as the fallback.
             }
         },
+    }));
+
+    // Flashcard component (cotton/flashcard.html).
+    //
+    // Manages the flip state for the two-sided card widget. `flipped` tracks
+    // which face is showing; `flip()` toggles it. `frontStyle()` and
+    // `backStyle()` return style objects (not class strings) so the 3-D
+    // rotation transforms are applied via x-bind:style, bypassing Tailwind
+    // purging entirely.
+    //
+    // The CSS transition between faces is gated behind
+    // @media (prefers-reduced-motion: no-preference) in tailwind.components.css
+    // so the state change (flip) always happens; only the animation is dropped
+    // for users who prefer reduced motion.
+    Alpine.data("flashcard", () => ({
+        flipped: false,
+        flip() { this.flipped = !this.flipped; },
+        frontStyle() { return { transform: this.flipped ? "rotateY(180deg)" : "rotateY(0deg)" }; },
+        backStyle()  { return { transform: this.flipped ? "rotateY(0deg)" : "rotateY(180deg)" }; },
     }));
 
     // Content lightbox — native <dialog> spotlight (cotton/picture.html).

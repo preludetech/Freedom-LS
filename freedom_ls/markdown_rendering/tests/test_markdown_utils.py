@@ -234,6 +234,57 @@ This is **bold** text
         assert "onclick" not in result
         assert "alert(1)" not in result
 
+    def test_c_flashcard_front_slot_renders_markdown(self, mock_request):
+        """c-flashcard renders the front slot with markdown processing."""
+        markdown_text = (
+            "<c-flashcard>"
+            '<c-slot name="front">**bold front**</c-slot>'
+            '<c-slot name="back">back content</c-slot>'
+            "</c-flashcard>"
+        )
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<c-flashcard" not in result  # cotton tag was rendered
+        assert "<strong>bold front</strong>" in result
+
+    def test_c_flashcard_back_slot_renders_markdown(self, mock_request):
+        """c-flashcard renders the back slot with markdown processing."""
+        markdown_text = (
+            "<c-flashcard>"
+            '<c-slot name="front">front content</c-slot>'
+            '<c-slot name="back">**bold back**</c-slot>'
+            "</c-flashcard>"
+        )
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<strong>bold back</strong>" in result
+
+    def test_c_flashcard_has_accessible_button_with_aria_pressed(self, mock_request):
+        """c-flashcard output contains a button element with aria-pressed attribute."""
+        markdown_text = (
+            "<c-flashcard>"
+            '<c-slot name="front">Question</c-slot>'
+            '<c-slot name="back">Answer</c-slot>'
+            "</c-flashcard>"
+        )
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<button" in result
+        assert 'type="button"' in result
+        assert "aria-pressed" in result
+
+    def test_c_flashcard_uses_alpine_flashcard_component(self, mock_request):
+        """c-flashcard output uses the Alpine flashcard x-data registration."""
+        markdown_text = (
+            "<c-flashcard>"
+            '<c-slot name="front">Q</c-slot>'
+            '<c-slot name="back">A</c-slot>'
+            "</c-flashcard>"
+        )
+        result = render_markdown(markdown_text, mock_request)
+
+        assert 'x-data="flashcard"' in result
+
     def _make_image_file(self, site, file_path="images/cat.png"):
         """Create a site-scoped File row so c-picture can resolve it."""
         from freedom_ls.content_engine.models import File
