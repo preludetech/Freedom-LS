@@ -38,7 +38,7 @@ def _stub_iconify(monkeypatch: pytest.MonkeyPatch, datasets: dict[str, dict[str,
         return datasets[set_name]
 
     monkeypatch.setattr(
-        "freedom_ls.student_interface.course_icon.load_iconify_data",
+        "freedom_ls.icons.render.load_iconify_data",
         fake_loader,
     )
     monkeypatch.setattr(
