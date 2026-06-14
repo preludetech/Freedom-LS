@@ -5,6 +5,16 @@ from freedom_ls.base.git_utils import branch_to_db_name, get_current_branch
 
 from .settings_base import *  # noqa: F403
 
+ADMONITION_TYPES = {
+    **ADMONITION_TYPES,  # noqa: F405
+    "regulation": {
+        "label": "Regulation",
+        "icon": "scale",
+        "icon_fallback": "heroicons:scale",
+        "color": "warning",
+    },
+}
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
