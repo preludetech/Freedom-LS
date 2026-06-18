@@ -82,7 +82,7 @@ The following cotton components are available inside Markdown content:
 
 Downstream projects can register additional cotton component tags by adding them to `MARKDOWN_ALLOWED_TAGS` in settings, making them available as markdown widgets in that project's content.
 
-The available `type` values for `c-admonition` (built-in: `note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`) are driven by the deploy-time `ADMONITION_TYPES` settings registry, which downstream projects can extend with domain-specific types; see [Configuration and Extension](./configuration-and-extension.md) for details.
+The admonition box types available to authors are configurable per deployment and can be extended by downstream projects; see [Configuration and Extension](./configuration-and-extension.md).
 
 ## File Assets
 

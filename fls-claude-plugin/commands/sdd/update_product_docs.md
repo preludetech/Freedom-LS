@@ -5,6 +5,18 @@ allowed-tools: Read, Glob, Write, Edit, Bash, Agent, mcp__playwright*
 
 Update the product documentation under `docs/product/` to reflect the feature that was just implemented. This command runs at **depth 0** and fans work out to sub-agents.
 
+## Purpose and audience
+
+`docs/product/` is high-level **product documentation**, not developer or API reference. Its readers evaluate, operate, or integrate FLS — technical decision-makers, downstream integrators, and operators — and need to know *what the product does and what can be configured*, not how it is implemented.
+
+Write to that audience and at that altitude:
+
+- Describe capabilities and configuration surfaces in prose. Name a setting when it is the configuration entry point; do not document its internal schema.
+- A typical feature update is **a few sentences** in the relevant doc, matching the length and depth of the surrounding sections in the file you are editing.
+- **Do not** dump code blocks, settings dictionaries, or registry contents; enumerate every field/attribute/option in a table; explain internal mechanics, resolution order, fallbacks, or class/function names; or restate at length anything covered elsewhere — link instead.
+
+When in doubt, write less and link to the authoritative detail (the code, the spec, or another doc).
+
 ## Fan-out recipe (shared)
 
 This command runs at **depth 0** and fans work out to sub-agents.
@@ -43,6 +55,7 @@ Accuracy rules that every worker must follow (bake these into each prompt):
 - Facts only. Base every statement on the spec, the plan, and code that exists. Do not guess, infer optimistically, or be creative.
 - State absence plainly. Where a capability is absent, manual, or half-built, say so.
 - No duplication. The canonical statement of a fact lives in exactly one doc body; other docs link to it.
+- Right altitude. Product docs are high-level feature/configuration info for evaluators, operators, and integrators — not API reference. Match the length and depth of the existing sections in the target doc (typically a few sentences). No code dumps, no full option tables, no internal mechanics. See "Purpose and audience" above.
 - Plain Markdown only — no cotton components, no custom widgets.
 
 ## Step 3: Synthesise — apply edits to the real docs
