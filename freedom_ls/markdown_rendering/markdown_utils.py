@@ -14,7 +14,16 @@ _cotton_compiler = CottonCompiler()
 def render_markdown(markdown_text, request, context=None):
     context = context or {}
 
-    md = markdown.Markdown(extensions=["fenced_code", "mdx_headdown", "tables"])
+    md = markdown.Markdown(
+        extensions=[
+            "fenced_code",
+            "mdx_headdown",
+            "tables",
+            # Renders GitHub-style `- [ ]` / `- [x]` task lists as read-only
+            # (disabled) checkbox inputs. Powers the `checklist` admonition.
+            "pymdownx.tasklist",
+        ]
+    )
     md.parser.blockprocessors.deregister("code")  # Disable indented code blocks
 
     for key in settings.MARKDOWN_ALLOWED_TAGS:
@@ -32,6 +41,15 @@ def render_markdown(markdown_text, request, context=None):
     attributes = deepcopy(nh3.ALLOWED_ATTRIBUTES)
     for k, v in allowed_attribute_tags.items():
         attributes[k] = v
+
+    # Permit the read-only checkbox markup emitted by pymdownx.tasklist. The
+    # checkboxes are always rendered `disabled`, so they carry no interactive
+    # capability; allowing the tag through lets `- [ ]` task lists survive
+    # sanitising. The `class` hooks let the frontend style the list.
+    allowed_tags.add("input")
+    attributes["input"] = {"type", "checked", "disabled", "class"}
+    attributes["li"] = {"class"}
+    attributes["ul"] = {"class"}
 
     rendered_content = nh3.clean(
         rendered_content, tags=allowed_tags, attributes=attributes

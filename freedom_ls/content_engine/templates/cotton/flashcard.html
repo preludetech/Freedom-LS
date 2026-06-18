@@ -34,8 +34,10 @@ CSS:
 
 <div x-data="flashcard" class="my-6">
     <div class="relative flashcard-scene">
-        {# Full-surface flip trigger. Positioned above both faces (z-index in
-           .flashcard-trigger) so any click anywhere on the card flips it. #}
+        {% comment %}
+        Full-surface flip trigger. Positioned above both faces (z-index in
+        .flashcard-trigger) so any click anywhere on the card flips it.
+        {% endcomment %}
         <button type="button"
                 class="flashcard-trigger"
                 x-on:click="flip()"
@@ -44,14 +46,18 @@ CSS:
             <span class="sr-only">Flip card</span>
         </button>
 
-        {# CSS-grid single-cell stack: both faces share one grid area so the
-           card container is sized to the larger face, not whichever renders
-           first. perspective is set on .flashcard-scene (parent). #}
+        {% comment %}
+        CSS-grid single-cell stack: both faces share one grid area so the
+        card container is sized to the larger face, not whichever renders
+        first. perspective is set on .flashcard-scene (parent).
+        {% endcomment %}
         <div class="flashcard-stack">
 
-            {# inert removes the hidden face's subtree from tab order, pointer
-               events, and AT — tabindex="-1" on a wrapper div does not
-               propagate to descendant focusable elements, so inert is needed. #}
+            {% comment %}
+            inert removes the hidden face's subtree from tab order, pointer
+            events, and AT — tabindex="-1" on a wrapper div does not
+            propagate to descendant focusable elements, so inert is needed.
+            {% endcomment %}
             <div class="flashcard-face flashcard-front"
                  x-bind:inert="flipped"
                  x-bind:aria-hidden="flipped"

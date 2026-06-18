@@ -284,6 +284,25 @@ This is **bold** text
 
         assert 'x-data="flashcard"' in result
 
+    def test_c_flashcard_template_comments_do_not_leak(self, mock_request):
+        """Authoring comments in flashcard.html must not render as visible text.
+
+        Multi-line ``{# … #}`` comments are not stripped by the template engine
+        (that syntax is single-line only), so they leaked into the page. The
+        component must use ``{% comment %}`` blocks instead.
+        """
+        markdown_text = (
+            "<c-flashcard>"
+            '<c-slot name="front">Question</c-slot>'
+            '<c-slot name="back">Answer</c-slot>'
+            "</c-flashcard>"
+        )
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "{#" not in result
+        assert "Full-surface flip trigger" not in result
+        assert "single-cell stack" not in result
+
     def _make_image_file(self, site, file_path="images/cat.png"):
         """Create a site-scoped File row so c-picture can resolve it."""
         from freedom_ls.content_engine.models import File
@@ -659,6 +678,20 @@ class TestCAccordion:
         # The native open attribute must be present so the disclosure starts expanded.
         assert "<details open" in result or "details open" in result
 
+    def test_c_accordion_with_bare_open_attribute_renders_open_state(
+        self, mock_request
+    ):
+        """A bare ``open`` attribute (no value) starts the accordion expanded.
+
+        This is the documented authoring syntax (``<c-accordion title="…" open>``).
+        The sanitiser rewrites the bare boolean into ``open=""``, so the component
+        must treat the presence of the attribute as open (native <details> semantics).
+        """
+        markdown_text = '<c-accordion title="Open Section" open>content</c-accordion>'
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<details open" in result
+
     def test_c_accordion_body_markdown_is_rendered(self, mock_request):
         """Body content inside c-accordion has markdown processed (bold → strong)."""
         markdown_text = '<c-accordion title="Details">**bold text**</c-accordion>'
@@ -677,6 +710,56 @@ class TestCAccordion:
         summary_end = result.index("</summary>", summary_start)
         summary_content = result[summary_start:summary_end]
         assert "Section Title" in summary_content
+
+
+@pytest.mark.django_db
+class TestTaskList:
+    """GitHub-style ``- [ ]`` task lists render as read-only checkbox inputs."""
+
+    def test_unchecked_item_renders_disabled_checkbox(self, mock_request):
+        result = render_markdown("- [ ] Pre-flight inspection", mock_request)
+
+        assert "<input" in result
+        assert 'type="checkbox"' in result
+        # Read-only: the checkbox is disabled, never interactive.
+        assert "disabled" in result
+
+    def test_checked_item_renders_checked_checkbox(self, mock_request):
+        result = render_markdown("- [x] Completed step", mock_request)
+
+        assert 'type="checkbox"' in result
+        assert "checked" in result
+
+    def test_plain_list_has_no_checkbox(self, mock_request):
+        """A normal bullet list is unaffected — no checkbox input is emitted."""
+        result = render_markdown("- just a bullet", mock_request)
+
+        assert "<input" not in result
+        assert "just a bullet" in result
+
+    def test_input_event_handler_attributes_are_stripped(self, mock_request):
+        """Allowing <input> for task lists must not let event handlers through."""
+        payload = "<input type='text' " + "on" + "focus='x' autofocus>"
+        result = render_markdown(payload, mock_request)
+
+        assert "focus" not in result
+        assert "autofocus" not in result
+
+    def test_checklist_admonition_renders_checkboxes(self, mock_request):
+        """The checklist admonition body renders task items as checkbox inputs."""
+        markdown_text = (
+            '<c-admonition type="checklist">\n'
+            "- [ ] Back up your data\n"
+            "- [x] Confirm the target environment\n"
+            "</c-admonition>"
+        )
+        result = render_markdown(markdown_text, mock_request)
+
+        assert 'type="checkbox"' in result
+        assert "checked" in result
+        # No literal markdown brackets leak through.
+        assert "[ ]" not in result
+        assert "[x]" not in result
 
 
 class TestInjectTableCaption:

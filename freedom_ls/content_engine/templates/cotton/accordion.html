@@ -1,4 +1,4 @@
-<c-vars title="" open="" />
+<c-vars title="" open="__unset__" />
 
 {% load content_tags %}
 
@@ -7,8 +7,11 @@ Accordion component — a native <details>/<summary> disclosure widget.
 
 Attributes:
   title  Visible heading shown in the summary bar (required in practice).
-  open   When truthy, the accordion starts in the expanded state. Omit or
-         leave blank for the default closed state.
+  open   When present, the accordion starts in the expanded state (native
+         <details open> semantics). Omit for the default closed state. The
+         markdown sanitiser collapses a bare `open` to `open=""`, so the
+         default sentinel below lets the template distinguish "attribute
+         present" (any value, including empty) from "attribute absent".
 
 Animation:
   The open/close transition uses a CSS grid-template-rows trick driven by the
@@ -29,7 +32,7 @@ Editorial note:
   needs to see. Required content must always be visible without interaction.
 {% endcomment %}
 
-<details{% if open %} open{% endif %} class="accordion my-6 border border-border rounded-lg bg-surface">
+<details{% if open != "__unset__" %} open{% endif %} class="accordion my-6 border border-border rounded-lg bg-surface">
     <summary class="accordion-summary flex items-center justify-between px-4 py-3 cursor-pointer select-none list-none font-semibold text-on-surface">
         <span>{{ title }}</span>
         <span class="accordion-chevron" aria-hidden="true">

@@ -32,6 +32,7 @@ dependencies = [
     "sqlparse>=0.5.4",
     "urllib3>=2.6.3",
     "coloraide>=8.8.1",
+    "pymdown-extensions>=10.21.3",
 ]
 
 [project.optional-dependencies]

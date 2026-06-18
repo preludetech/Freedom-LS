@@ -491,6 +491,23 @@
         }
     }
 
+    /* ── Task lists (markdown `- [ ]` / `- [x]`, pymdownx.tasklist) ───────
+     *
+     * Read-only checkbox lists used by the `checklist` admonition. The
+     * checkboxes are always rendered `disabled`. Drop the list bullet so the
+     * checkbox is the only marker, and align it with the item text.
+     */
+    .task-list {
+        list-style: none;
+        padding-left: 0;
+    }
+
+    .task-list-item {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+    }
+
     /* HTMX request state utilities for loading indicators */
     .htmx-request .htmx-hide-on-request {
         display: none;
