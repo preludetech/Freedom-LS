@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-06-15_
+_Last updated: 2026-06-18_
 
 ## Summary
 
@@ -81,6 +81,8 @@ The following cotton components are available inside Markdown content:
 | `c-code-block` | Syntax-highlighted code block |
 
 Downstream projects can register additional cotton component tags by adding them to `MARKDOWN_ALLOWED_TAGS` in settings, making them available as markdown widgets in that project's content.
+
+The available `type` values for `c-admonition` (built-in: `note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`) are driven by the deploy-time `ADMONITION_TYPES` settings registry, which downstream projects can extend with domain-specific types; see [Configuration and Extension](./configuration-and-extension.md) for details.
 
 ## File Assets
 
