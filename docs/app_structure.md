@@ -28,10 +28,12 @@ flowchart TB
     student_progress
     webhooks
     xapi_learning_record_store
+    accounts --> base
     accounts --> markdown_rendering
     accounts --> site_aware_models
     accounts --> webhooks
     app_authentication --> site_aware_models
+    content_engine --> icons
     content_engine --> markdown_rendering
     content_engine --> site_aware_models
     educator_interface --> accounts
@@ -47,6 +49,7 @@ flowchart TB
     role_based_permissions --> site_aware_models
     student_interface --> accounts
     student_interface --> content_engine
+    student_interface --> icons
     student_interface --> student_management
     student_interface --> student_progress
     student_interface --> webhooks
@@ -61,6 +64,7 @@ flowchart TB
     webhooks --> base
     webhooks --> site_aware_models
     xapi_learning_record_store --> site_aware_models
+    markdown_rendering -.-> content_engine
     role_based_permissions -.-> student_management
     site_aware_models -.-> accounts
     webhooks -.-> accounts
@@ -70,18 +74,18 @@ flowchart TB
 
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
-| accounts | markdown_rendering, site_aware_models, webhooks | — |
+| accounts | base, markdown_rendering, site_aware_models, webhooks | — |
 | app_authentication | site_aware_models | — |
 | base | — | — |
-| content_engine | markdown_rendering, site_aware_models | — |
+| content_engine | icons, markdown_rendering, site_aware_models | — |
 | educator_interface | accounts, content_engine, panel_framework, student_management, student_progress | — |
 | icons | — | — |
-| markdown_rendering | — | — |
+| markdown_rendering | — | content_engine |
 | panel_framework | — | — |
 | qa_helpers | accounts, content_engine, student_management, student_progress | — |
 | role_based_permissions | accounts, site_aware_models | student_management |
 | site_aware_models | — | accounts |
-| student_interface | accounts, content_engine, student_management, student_progress, webhooks | — |
+| student_interface | accounts, content_engine, icons, student_management, student_progress, webhooks | — |
 | student_management | accounts, content_engine, site_aware_models, webhooks | — |
 | student_progress | accounts, content_engine, site_aware_models, student_management | — |
 | webhooks | base, site_aware_models | accounts |
