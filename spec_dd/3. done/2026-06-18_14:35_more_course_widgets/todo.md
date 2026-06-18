@@ -71,5 +71,5 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 - [ ] (cmd) Run `/app_map` to regenerate `docs/app_structure.md` with the new `icons` edges (`student_interface --> icons`, `content_engine --> icons`) and the now-documented `content_engine --> base` edge
 - [ ] (user) Review and commit the updated dependency diagram
-- [ ] (cmd) Run `/finish_worktree` to clean up the worktree
+- [x] (cmd) Run `/finish_worktree` to clean up the worktree
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved
