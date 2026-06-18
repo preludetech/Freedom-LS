@@ -60,6 +60,8 @@ The active icon set is configured via `FREEDOM_LS_ICON_SET`. The only currently 
 
 Course content can include typed "admonition" boxes — labelled, coloured callout panels such as *Note*, *Tip*, *Warning*, and *Key Takeaways*. The set of available types is configurable per deployment via the `ADMONITION_TYPES` setting: a downstream project can add its own types — each with a label, a status colour, and an icon — or override the built-ins, with no template edits, database changes, or migrations. An unrecognised type falls back to a default style rather than failing.
 
+For example, an aviation course might want special admonition types for regulations, a parent support course could have a "try this with your child" admonition, etc.
+
 For authoring the admonition widget in content, see [content editing workflow](./content-editing-workflow.md).
 
 ## Custom-App Extension Model
