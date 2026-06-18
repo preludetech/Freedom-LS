@@ -298,6 +298,7 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-admonition": {"type", "title"},
     "c-flashcard": set(),
     "c-accordion": {"title", "open"},
+    "c-card": {"src", "alt", "title", "size"},
     "c-slot": {"name"},
 }
 

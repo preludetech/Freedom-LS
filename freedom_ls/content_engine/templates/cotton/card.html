@@ -1,0 +1,59 @@
+<c-vars src="" alt="" title="" size="medium" />
+
+{% load content_tags %}
+
+{% comment %}
+Card component — a static content container with an optional header image,
+an optional title, and a markdown body.
+
+Attributes:
+  src    Optional. File path of a header image, looked up via get_file_by_path
+         (the same path resolution c-picture uses). Omit for a card with no
+         image. A header image is illustrative chrome — there is no lightbox;
+         use c-picture for a zoomable figure.
+  alt    Alt text describing the header image for non-sighted users. Use
+         alt="" for a purely decorative image. Only relevant when src is set.
+  title  Optional visible heading rendered above the body.
+  size   small | medium (default) | large. Sets the card's max width and the
+         header image height. Cards are centred and deliberately narrower than
+         the content column so they read as a self-contained panel. An unknown
+         size falls back to medium.
+
+The body is the default slot, rendered as markdown. The header image is
+cropped to a fixed height with object-cover so cards of the same size line up
+regardless of the source image's aspect ratio.
+{% endcomment %}
+
+{% partialdef card_box %}
+<div class="my-6 mx-auto border border-border rounded-xl overflow-hidden bg-surface {{ max_w }}">
+    {% if src %}
+        {% with file_obj=src|get_file_by_path:content_instance %}
+            {% if file_obj %}
+                <img src="{{ file_obj.file.url }}"
+                     alt="{{ alt }}"
+                     class="w-full {{ img_h }} object-cover"
+                     loading="lazy" />
+            {% else %}
+                <div class="p-4 bg-error/10 border-b border-error/20">
+                    <p class="text-error">Image not found: {{ src }}</p>
+                </div>
+            {% endif %}
+        {% endwith %}
+    {% endif %}
+    <div class="px-5 py-4 space-y-3 text-on-surface">
+        {% if title %}
+            <h3 class="font-semibold text-on-surface">{{ title }}</h3>
+        {% endif %}
+        {% markdown slot %}
+    </div>
+</div>
+{% endpartialdef %}
+
+{% if size == "small" %}
+    {% with max_w="max-w-xs" img_h="h-32" %}{% partial card_box %}{% endwith %}
+{% elif size == "large" %}
+    {% with max_w="max-w-2xl" img_h="h-64" %}{% partial card_box %}{% endwith %}
+{% else %}
+    {# medium — the default, and the tolerant fallback for an unknown size #}
+    {% with max_w="max-w-md" img_h="h-44" %}{% partial card_box %}{% endwith %}
+{% endif %}

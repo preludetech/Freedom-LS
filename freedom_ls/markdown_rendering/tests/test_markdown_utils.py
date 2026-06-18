@@ -713,6 +713,113 @@ class TestCAccordion:
 
 
 @pytest.mark.django_db
+class TestCCard:
+    """Tests for the c-card cotton component."""
+
+    def _make_image_file(self, site, file_path="images/header.png"):
+        """Create a site-scoped File row so c-card can resolve a header image."""
+        from freedom_ls.content_engine.models import File
+
+        return File.objects.create(
+            site=site,
+            file=file_path,
+            file_path=file_path,
+            original_filename="header.png",
+            file_type=File.FileType.IMAGE,
+        )
+
+    def test_c_card_renders_and_consumes_tag(self, mock_request):
+        """c-card is rendered to its container markup, not left as a literal tag."""
+        markdown_text = "<c-card>Body text</c-card>"
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<c-card" not in result  # cotton tag was rendered
+        assert "Body text" in result
+
+    def test_c_card_body_markdown_is_rendered(self, mock_request):
+        """Body content inside c-card has markdown processed (bold → strong)."""
+        markdown_text = "<c-card>**bold text**</c-card>"
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<strong>bold text</strong>" in result
+
+    def test_c_card_title_renders_in_heading(self, mock_request):
+        """The title attribute renders inside an <h3> heading."""
+        markdown_text = '<c-card title="Card Title">body</c-card>'
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<h3" in result
+        h3_start = result.index("<h3")
+        h3_end = result.index("</h3>", h3_start)
+        assert "Card Title" in result[h3_start:h3_end]
+
+    def test_c_card_without_title_has_no_heading(self, mock_request):
+        """A card with no title omits the heading entirely."""
+        markdown_text = "<c-card>just a body</c-card>"
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<h3" not in result
+        assert "just a body" in result
+
+    def test_c_card_with_image_renders_img_with_file_url(self, mock_request, site):
+        """A valid src resolves to a File and renders an <img> with its URL."""
+        self._make_image_file(site)
+
+        class FakeInstance:
+            def calculate_path_from_root(self, path):
+                return path
+
+        markdown_text = '<c-card src="images/header.png" alt="A header">body</c-card>'
+        result = render_markdown(
+            markdown_text, mock_request, context={"content_instance": FakeInstance()}
+        )
+
+        assert "<img" in result
+        assert "images/header.png" in result
+        assert 'alt="A header"' in result
+
+    def test_c_card_missing_file_shows_error_fallback(self, mock_request, site):
+        """An unresolved src renders the 'Image not found' fallback, not a crash."""
+
+        class FakeInstance:
+            def calculate_path_from_root(self, path):
+                return path
+
+        markdown_text = '<c-card src="nope.png" alt="x">body</c-card>'
+        result = render_markdown(
+            markdown_text, mock_request, context={"content_instance": FakeInstance()}
+        )
+
+        assert "Image not found" in result
+        assert "<img" not in result
+
+    def test_c_card_without_src_renders_no_image(self, mock_request):
+        """A card with no src renders no image and no fallback."""
+        markdown_text = '<c-card title="No image">body</c-card>'
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<img" not in result
+        assert "Image not found" not in result
+
+    def test_c_card_unknown_size_renders_body_gracefully(self, mock_request):
+        """An unknown size falls back to the default rather than erroring."""
+        markdown_text = '<c-card size="enormous">body content</c-card>'
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<c-card" not in result
+        assert "body content" in result
+
+    @override_settings(MARKDOWN_TEMPLATE_RENDER_ON=False)
+    def test_c_card_disallowed_attribute_is_stripped(self, mock_request):
+        """Attributes outside the c-card whitelist are stripped by the sanitiser."""
+        markdown_text = '<c-card title="ok" onclick="evil()">body</c-card>'
+        result = render_markdown(markdown_text, mock_request)
+
+        assert 'title="ok"' in result
+        assert "onclick" not in result
+
+
+@pytest.mark.django_db
 class TestTaskList:
     """GitHub-style ``- [ ]`` task lists render as read-only checkbox inputs."""
 
