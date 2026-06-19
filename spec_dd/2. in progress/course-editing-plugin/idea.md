@@ -57,15 +57,26 @@ to ship it.
 Contents:
 
 - **Reference skills** (passive, always-available, reusable inside subagents):
-  - *content types & file layout* — per-type frontmatter, directory structure,
-    numbering.
-  - *widget reference* — every `c-*` widget with attributes and examples.
-  - *conventions & UUID rules* — numbering, file naming, UUID rules, escaping.
-  - *markdown conversion* — how and when to map Markdown onto FLS structure.
+  - `content-types` — per-type frontmatter, directory structure, numbering.
+  - `widget-reference` — every `c-*` widget with attributes and examples.
+  - `conventions` — numbering, file naming, UUID rules, escaping.
+  - `markdown-conversion` — how and when to map Markdown onto FLS structure.
 - **A conversion command** (e.g. `/fls-content:convert-markdown`) backed by the
-  conversion skill (and, for large inputs, a conversion subagent). A command,
-  not a skill, because it is an explicit multi-step action taking a file/dir
-  argument and benefiting from fan-out.
+  conversion skill. A command, not a skill, because it is an explicit multi-step
+  action taking a file/dir argument and benefiting from fan-out. It **fans out one
+  subagent per file** — each subagent converts a single source file (loading the
+  conversion skill), so a directory of many files converts in parallel and each
+  conversion stays in its own focused context. The command itself orchestrates:
+  enumerate the input files, spawn a worker per file, then collect the results
+  and the per-file review notes into one `_conversion_review.md`.
+- **A bundled, trimmed-down validator.** A trimmed copy of FLS's `validate.py` +
+  `schema.py` ships inside the plugin so authors get the full Pydantic
+  `extra="forbid"` schema validation **offline, without the FLS source** — same
+  required-field, unknown-field, and type checks `content_validate` runs. The
+  Django-dependent bits (e.g. icon validation) are stubbed out. It is a
+  structural pre-flight check; the authoritative pass is still `content_save` on
+  an FLS host (which also assigns UUIDs and resolves cross-references). Because
+  this is a copy of FLS code, it **must be kept in sync** — see below.
 
 ### Conversion behaviour
 
@@ -102,32 +113,38 @@ content types, conventions), the plugin must be updated to match. This is wired
 into the **SDD workflow itself** as a lightweight, built-in check rather than a
 separate doc-generation pipeline or an external manual checklist:
 
-- A new SDD step / `todo.md` item: run an `/update_author_plugin` command near
-  the "update product docs" stage.
+- A new SDD step / `todo.md` item: run an `/update_claude_plugin_fls_content`
+  command near the "update product docs" stage. The command name is explicit
+  about which plugin it syncs (`update_claude_plugin_<plugin_name>`), so it is
+  unambiguous if more author-facing plugins are added later.
 - The command first runs a cheap detection heuristic (`git diff main` against
-  authoring-relevant paths: `content_engine/schema.py`, `templates/cotton/*.html`,
-  `MARKDOWN_ALLOWED_TAGS` in `settings_base.py`, `content_save`/`content_validate`,
-  `demo_content/`). No match → tick the box and exit (zero tokens, no LLM).
+  authoring-relevant paths: `content_engine/schema.py`, `content_engine/validate.py`,
+  `templates/cotton/*.html`, `MARKDOWN_ALLOWED_TAGS` in `settings_base.py`,
+  `content_save`/`content_validate`, `demo_content/`). No match → tick the box and
+  exit (zero tokens, no LLM).
 - On a match → fan out one worker to draft the scoped plugin edits from the
   changed source files, apply them (touching only affected sections), and tick
-  the box.
+  the box. This covers **both** targets:
+  - the author-facing reference skills (kept shallow — see below), and
+  - **the bundled validator** — when `schema.py` or `validate.py` change, the
+    command re-syncs the trimmed copy in the plugin (re-applying the same stubs
+    for the Django-dependent parts) so it never drifts from the real schema.
+
+**Keep the updates at the right level.** The plugin's audience is course authors,
+not FLS developers. Updates must stay shallow and task-oriented: the syntax and
+attributes an author needs, when to use a widget, what to avoid — *not* a
+deep-dive into how the feature is implemented, the rendering pipeline internals,
+schema class hierarchy, or settings plumbing. The `/update_claude_plugin_fls_content`
+command (and its worker brief) must be written to resist Claude's habit of
+dumping exhaustive documentation: match the existing plugin's depth and voice,
+add only what an author would actually type or paste, and prefer one good example
+over a full reference essay. The same restraint applies when the plugin is first
+built.
 
 The source of truth for these updates is the FLS code itself (schema, cotton
-templates, settings), with `demo_content/` as living convention examples.
-
-## Open questions for the spec phase
-
-- **Standalone validator (undecided — settle in the spec):** `validate.py` +
-  `schema.py` have almost no Django dependency, so a trimmed copy could be bundled
-  in the plugin to give authors full Pydantic `extra="forbid"` validation offline
-  (icon validation stubbed out). This strengthens the "no FLS source" story but
-  adds code that must be kept in sync (the SDD sync check would cover it). The
-  alternative is documentation-only: teach the rules and direct authors to run
-  `content_validate`/`content_save` on an FLS host for the authoritative pass.
-- Exact skill split and naming (the research proposes `content-types`,
-  `widget-reference`, `conventions`, `markdown-conversion`).
-- Whether the conversion command needs its own subagent or can run inline for the
-  expected input sizes.
+templates, settings), with `demo_content/` as living convention examples — but
+the output is the author-facing distillation of those, never a copy of their
+detail.
 
 ## Notes / discrepancies surfaced by research
 
