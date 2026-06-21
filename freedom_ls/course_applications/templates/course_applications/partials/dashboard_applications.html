@@ -1,0 +1,29 @@
+{% comment %}
+Dashboard panel: in-flight course applications for the current learner.
+Contributed by ApplicationCourseAccessBackend.get_dashboard_contributions().
+student_interface renders this generically via render_to_string — it never
+reads context keys and never imports course_applications.
+
+Brand colours for state badges: Ocean = in-progress/submitted (spec §plan).
+{% endcomment %}
+<section class="space-y-3">
+    <h2 class="text-lg font-semibold">Your applications</h2>
+
+    <ul class="space-y-2">
+        {% for app in applications %}
+            <li class="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3">
+                <div class="flex items-center gap-3">
+                    {% comment %}Ocean badge for in-progress/submitted state.{% endcomment %}
+                    <span class="text-ocean" aria-hidden="true">
+                        <c-icon name="in_progress" class="size-4" />
+                    </span>
+                    <a href="{% url 'course_applications:status' pk=app.pk %}"
+                       class="font-medium hover:underline">
+                        {{ app.course.title }}
+                    </a>
+                </div>
+                <span class="text-sm text-muted">Pending review</span>
+            </li>
+        {% endfor %}
+    </ul>
+</section>

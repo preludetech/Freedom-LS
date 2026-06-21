@@ -1,0 +1,31 @@
+{% extends "_base.html" %}
+
+{% block head_title %}Application — {{ application.course.title }}{% endblock %}
+
+{% block content %}
+    <c-page width="narrow">
+        <div class="space-y-6">
+            <h1>Your application</h1>
+
+            <p>
+                Your application for <strong>{{ application.course.title }}</strong> has been
+                received and is currently pending review.
+            </p>
+
+            <p class="text-muted">
+                A reviewer will assess your application. You will be notified once a decision
+                has been made. No action is required from you at this time.
+            </p>
+
+            {% comment %}
+            NOTE (review spec): dynamic state rendering goes here — state badge,
+            reviewer message, and withdraw action (get_available_user_state_transitions)
+            will be added by the application-review-ui spec.
+            {% endcomment %}
+
+            <c-button href="{% url 'student_interface:dashboard' %}">
+                Back to dashboard
+            </c-button>
+        </div>
+    </c-page>
+{% endblock content %}

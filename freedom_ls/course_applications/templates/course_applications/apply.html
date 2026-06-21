@@ -1,0 +1,28 @@
+{% extends "_base.html" %}
+
+{% block head_title %}Apply — {{ course.title }}{% endblock %}
+
+{% block content %}
+    <c-page width="narrow">
+        <div class="space-y-6">
+            <h1>Apply to {{ course.title }}</h1>
+
+            <p class="text-muted">
+                You are about to submit an application for <strong>{{ course.title }}</strong>.
+                A reviewer will consider your application and you will be notified of the outcome.
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="flex gap-4">
+                    <c-button type="submit">
+                        Submit application
+                    </c-button>
+                    <c-button href="{% url 'student_interface:course_detail' course_slug=course.slug %}" variant="secondary">
+                        Cancel
+                    </c-button>
+                </div>
+            </form>
+        </div>
+    </c-page>
+{% endblock content %}

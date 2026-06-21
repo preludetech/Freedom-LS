@@ -108,6 +108,7 @@ INSTALLED_APPS = [
     #########
     # COURSE ACCESS
     "freedom_ls.course_access",
+    "freedom_ls.course_applications",
     #########
     # STUDENT INTERFACE
     "freedom_ls.student_interface",
@@ -403,11 +404,13 @@ TASKS = {
     },
 }
 
-# Free-only core default backend. This is the no-applications fallback used before the
-# course_applications app exists. Once course_applications is added, the shipped default
-# becomes "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend".
-# A future batch flips this string to the applications backend.
-COURSE_ACCESS_BACKEND = "freedom_ls.course_access.backends.DefaultCourseAccessBackend"
+# Ships with applications enabled. The free-only core default backend
+# ("freedom_ls.course_access.backends.DefaultCourseAccessBackend") is the no-applications
+# fallback. This is a project settings string in `config`, NOT a course_access import — so
+# course_access still never depends on course_applications.
+COURSE_ACCESS_BACKEND = (
+    "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend"
+)
 
 # content_engine resolves this at content-load to validate/normalize Course.access_config.
 # Unset → access_config is stored verbatim (still opaque). course_access registers the
