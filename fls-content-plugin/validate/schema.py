@@ -1,0 +1,293 @@
+# Bundled from freedom_ls/content_engine/schema.py — re-sync via /update_claude_plugin_fls_content
+# Patches applied:
+#   1. Course._validate_icon_fields: body replaced with `return self` to drop the deferred
+#      Django/icon import (from django.core.exceptions and from freedom_ls...icon_validation).
+#      Keep the method present so the model shape is unchanged.
+"""
+Schema for yaml structures like this:
+"""
+
+from datetime import timedelta
+from enum import StrEnum
+from pathlib import Path
+from typing import Any, ClassVar
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class ContentType(StrEnum):
+    """Content type enumeration."""
+
+    TOPIC = "TOPIC"
+    ACTIVITY = "ACTIVITY"
+    FORM = "FORM"
+    COURSE = "COURSE"
+    COURSE_PART = "COURSE_PART"
+    FORM_PAGE = "FORM_PAGE"
+    FORM_QUESTION = "FORM_QUESTION"
+    FORM_CONTENT = "FORM_CONTENT"
+
+
+class QuestionType(StrEnum):
+    """Question type enumeration."""
+
+    MULTIPLE_CHOICE = "multiple_choice"
+    CHECKBOXES = "checkboxes"
+    SHORT_TEXT = "short_text"
+    LONG_TEXT = "long_text"
+
+
+class FormStrategy(StrEnum):
+    """Form strategy enumeration."""
+
+    CATEGORY_VALUE_SUM = "CATEGORY_VALUE_SUM"
+    QUIZ = "QUIZ"
+
+
+class DifficultyLevel(StrEnum):
+    """Course difficulty level enumeration (mirrors models.DifficultyLevel)."""
+
+    BEGINNER = "beginner"
+    INTERMEDIATE = "intermediate"
+    ADVANCED = "advanced"
+    ALL_LEVELS = "all_levels"
+
+
+class BaseBaseContentModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    meta: dict[str, Any] | None = Field(
+        None, description="Optional metadata as key-value pairs"
+    )
+    tags: list[str] | None = Field(None, description="Optional list of tags")
+    content_type: ContentType = Field(..., description="Type of content")
+    file_path: Path = Field(..., description="Path to the content file")
+    uuid: str | None = Field(None, description="Optional unique identifier")
+
+    _registry: ClassVar[dict[ContentType, type["BaseBaseContentModel"]]] = {}
+
+    def __init_subclass__(cls, content_type: ContentType | None = None, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if content_type is not None:
+            BaseBaseContentModel._registry[content_type] = cls
+
+
+class BaseContentModel(BaseBaseContentModel):
+    title: str = Field(..., description="Title of the content item")
+    subtitle: str | None = Field(None, description="Optional subtitle")
+    description: str | None = Field(None, description="Optional description")
+
+    category: str | None = Field(
+        None, description="Optional category for this activity"
+    )
+    image: str | None = Field(None, description="Optional category for this activity")
+
+
+class MarkdownContentModel(BaseModel):
+    content: str | None = Field(None, description="Markdown content body")
+
+
+class Topic(BaseContentModel, MarkdownContentModel, content_type=ContentType.TOPIC):
+    pass
+
+
+class Activity(
+    BaseContentModel, MarkdownContentModel, content_type=ContentType.ACTIVITY
+):
+    level: int | None = Field(None, description="level 1 is easiest, 2 is harder, etc")
+
+
+class Child(BaseModel):
+    """A child content reference with optional overrides."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: Path = Field(..., description="Path to the child content file")
+    overrides: dict[str, Any] | None = Field(
+        None, description="Optional overrides as key-value pairs"
+    )
+
+
+class Course(BaseContentModel, content_type=ContentType.COURSE):
+    """
+    You can think of this as a folder. It contains an ordered list of child content.
+    """
+
+    model_config = ConfigDict(extra="forbid", use_enum_values=True)
+
+    children: list[Child] = Field(
+        default_factory=list,
+        description="List of child content references with optional overrides",
+    )
+
+    content: str | None = Field(None, description="Markdown content body")
+
+    icon: str | None = Field(
+        None,
+        description=(
+            "Semantic icon name from SEMANTIC_ICON_NAMES, or a literal glyph "
+            "name (e.g. 'drone') resolved against the active icon set."
+        ),
+    )
+    icon_fallback: str | None = Field(
+        None,
+        description=(
+            "Optional explicit '<iconset>:<name>' reference (e.g. "
+            "'phosphor:drone') used only when 'icon' fails to resolve in the "
+            "active icon set."
+        ),
+    )
+
+    learning_outcomes: list[str] = Field(
+        default_factory=list,
+        description="Ordered 'what you'll learn' outcomes",
+    )
+    difficulty: DifficultyLevel | None = Field(
+        None,
+        description="Course difficulty level",
+    )
+    estimated_duration: timedelta | None = Field(
+        None,
+        description="Estimated time to complete",
+    )
+
+    @model_validator(mode="after")
+    def _validate_icon_fields(self) -> "Course":
+        """Mirror the Django-side validation on the schema."""
+        # Patch 1: stub — the original body imports Django and freedom_ls.content_engine.icon_validation,
+        # which are unavailable in the standalone bundled validator. The icon field itself is still
+        # declared above; structural validation (type, extra="forbid") still runs. Icon-semantic
+        # validation (valid icon name against the active icon set) requires the FLS host and is
+        # intentionally skipped here. Re-apply this stub on every D4 re-sync.
+        return self
+
+
+class CoursePart(BaseContentModel, content_type=ContentType.COURSE_PART):
+    """
+    A part of a course, this could represent a chapter or a similar. It may contain multiple topics and forms.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    children: list[Child] = Field(
+        default_factory=list,
+        description="List of child content references with optional overrides",
+    )
+
+    # content: Optional[str] = Field(None, description="Markdown content body")
+
+
+class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM):
+    """
+    A form file will be in a directory containing all the different form pages. Ensure that there are form pages in the directory.
+
+    A form page is a yaml file, the first object defined will have the FORM_PAGE content type
+    """
+
+    strategy: FormStrategy = Field(..., description="Strategy for form scoring")
+    quiz_show_incorrect: bool | None = Field(
+        None,
+        description="Required if strategy is QUIZ. Should incorrect answers be shown after completion?",
+    )
+    quiz_pass_percentage: int | None = Field(
+        None,
+        description="Required if strategy is QUIZ. Percentage (0-100) required to pass the quiz",
+    )
+
+    submit_on_exit: bool = Field(
+        False,
+        description="If True, leaving the test mid-attempt finalises and scores it. Default False.",
+    )
+
+    @model_validator(mode="after")
+    def validate_quiz_fields(self):
+        """Validate that quiz fields are set correctly based on strategy."""
+        if self.strategy == FormStrategy.QUIZ:
+            # If QUIZ strategy, both fields must be provided
+            if self.quiz_show_incorrect is None:
+                raise ValueError(
+                    f"quiz_show_incorrect is required when strategy is QUIZ (in {self.file_path})"
+                )
+            if self.quiz_pass_percentage is None:
+                raise ValueError(
+                    f"quiz_pass_percentage is required when strategy is QUIZ (in {self.file_path})"
+                )
+        else:
+            # If not QUIZ strategy, these fields should not be set
+            if self.quiz_show_incorrect is not None:
+                raise ValueError(
+                    f"quiz_show_incorrect should only be set when strategy is QUIZ (in {self.file_path})"
+                )
+            if self.quiz_pass_percentage is not None:
+                raise ValueError(
+                    f"quiz_pass_percentage should only be set when strategy is QUIZ (in {self.file_path})"
+                )
+        return self
+
+
+class FormPage(BaseContentModel, content_type=ContentType.FORM_PAGE):
+    """A page within a form."""
+
+    def derive_content_type(self, data):
+        if "content" in data:
+            return ContentType.FORM_CONTENT
+        if "question" in data:
+            return ContentType.FORM_QUESTION
+
+
+class QuestionOption(BaseModel):
+    """A single option for a form question."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(..., description="Display text for the option")
+    value: int | str = Field(..., description="Value associated with this option")
+    uuid: str | None = Field(None, description="Unique identifier for the option")
+
+    correct: bool | None = Field(
+        None, description="Used in Quizzes: Is this the correct answer?"
+    )
+
+
+class FormContent(BaseBaseContentModel, content_type=ContentType.FORM_CONTENT):
+    content: str = Field(..., description="Text")
+
+
+class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION):
+    """
+    A question in a form page.
+
+    example:
+    ```
+    question: Can your child tolerate looking at and being near a variety of foods?
+    type: multiple_choice
+    required: True
+    category: SEE - Visual Tolerance
+    options:
+        - text: Refuses to look at or be near unfamiliar foods
+          value: 1
+        - text: Will look at but shows distress with unfamiliar foods nearby
+          value: 2
+        - text: Tolerates looking at various foods but won't interact
+          value: 3
+        - text: Comfortable with various foods visually, some interaction
+          value: 4
+        - text: No visual food aversions; curious about all foods
+          value: 5
+    ```
+    """
+
+    question: str = Field(..., description="The question text")
+    type: QuestionType = Field(
+        ...,
+        description="Question type (multiple_choice, checkboxes, short_text, long_text)",
+    )
+    required: bool = Field(True, description="Whether the question is required")
+    category: str | None = Field(None, description="Question category")
+    options: list[QuestionOption] | None = Field(
+        None, description="Options for multiple choice questions"
+    )
+
+
+# SCHEMAS is automatically built via __init_subclass__
+SCHEMAS = BaseContentModel._registry
