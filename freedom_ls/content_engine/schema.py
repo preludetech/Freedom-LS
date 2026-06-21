@@ -145,6 +145,15 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
         None,
         description="Estimated time to complete",
     )
+    # Any is correct here: access_config is an opaque, backend-owned JSON blob whose
+    # keys are unknown to the schema layer — mirrors the existing `meta: dict[str, Any]`.
+    access_config: dict[str, Any] | None = Field(
+        None,
+        description=(
+            "Opaque per-course access configuration passed verbatim to the active "
+            "course-access backend. The schema layer does not interpret its keys."
+        ),
+    )
 
     @model_validator(mode="after")
     def _validate_icon_fields(self) -> "Course":

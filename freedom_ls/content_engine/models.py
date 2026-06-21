@@ -162,6 +162,20 @@ class Course(MarkdownContent, TitledContent):
     CONTENT_TYPE = SchemaContentTypes.COURSE
 
     category = models.CharField(max_length=200, blank=True, default="")
+    # BACKEND-PRIVATE: no view, template, or utility may read or branch on access_config
+    # directly. All access decisions are made exclusively by the active course-access backend
+    # (settings.COURSE_ACCESS_BACKEND). Callers use the backend's CourseAccessDecision fields
+    # (can_self_register, can_access_content, cta_label, cta_url) — never this raw config.
+    # See spec §4.1/§10 and docs/app_structure.md.
+    access_config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=_(
+            "Opaque per-course access configuration. Interpreted ONLY by the active "
+            "course-access backend (settings.COURSE_ACCESS_BACKEND); core never reads or "
+            "branches on its contents. The default backend stores {'access_type': ...}."
+        ),
+    )
     icon = models.CharField(
         max_length=64,
         blank=True,
