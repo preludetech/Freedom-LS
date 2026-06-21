@@ -74,6 +74,7 @@ from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Page, expect
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 
 _PAGE_FIXTURE_NAMES = {"page", "logged_in_page"}
 
@@ -142,18 +143,20 @@ def _login_via_ui(page: Page, live_server, email: str, password: str) -> None:
     expect(page).not_to_have_url(login_url)
 
 
-@pytest.fixture
-def logged_in_page(
-    page: Page, live_server, db, live_server_site, mock_site_context
-) -> Page:
-    """Yield a Playwright ``Page`` logged in as a fresh, verified student.
+# Synthetic credential shared by the logged-in fixtures; never persisted.
+_LOGGED_IN_PASSWORD = "testpass"  # noqa: S105  # pragma: allowlist secret
 
-    Uses semantic locators (``get_by_label``, ``get_by_role``) per the
-    Playwright skill. See module docstring for why this is function-scoped
-    rather than backed by a session-scoped ``storage_state`` fixture.
+
+@pytest.fixture
+def logged_in_user(db, live_server_site, mock_site_context) -> User:
+    """A fresh, email-verified student user — the one ``logged_in_page`` signs in.
+
+    Exposed as its own fixture so a test can register this exact user for the
+    course it browses. Content surfaces gate on registration
+    (``decision.can_access_content``), so an E2E test that navigates to course
+    item content must register *this* user, not an unrelated one.
     """
-    password = "testpass"  # noqa: S105 — synthetic test credential, never persisted  # pragma: allowlist secret
-    user = UserFactory(password=password)
+    user: User = UserFactory(password=_LOGGED_IN_PASSWORD)
 
     # allauth refuses to authenticate users whose email is not verified
     # when ACCOUNT_EMAIL_VERIFICATION == "mandatory" (set in settings_base).
@@ -162,6 +165,16 @@ def logged_in_page(
         email=user.email,
         defaults={"verified": True, "primary": True},
     )
+    return user
 
-    _login_via_ui(page, live_server, str(user.email), password)
+
+@pytest.fixture
+def logged_in_page(page: Page, live_server, logged_in_user: User) -> Page:
+    """Yield a Playwright ``Page`` logged in as ``logged_in_user``.
+
+    Uses semantic locators (``get_by_label``, ``get_by_role``) per the
+    Playwright skill. See module docstring for why this is function-scoped
+    rather than backed by a session-scoped ``storage_state`` fixture.
+    """
+    _login_via_ui(page, live_server, str(logged_in_user.email), _LOGGED_IN_PASSWORD)
     return page

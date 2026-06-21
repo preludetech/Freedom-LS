@@ -18,10 +18,12 @@ from freedom_ls.course_access.backends import (
     DashboardContribution,
     DefaultCourseAccessBackend,
 )
+from freedom_ls.student_management.utils import is_registered_for_course
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
+    from freedom_ls.course_applications.models import CourseApplication
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +88,9 @@ class ApplicationCourseAccessBackend(DefaultCourseAccessBackend):
     def get_access(self, *, user: User, course: Course) -> CourseAccessDecision:
         """Return a CourseAccessDecision for this user + course.
 
-        Registered → Continue/content (inherited from parent).
+        Registered → Continue/content (inherited from parent). A learner enrolled
+        into a gated course by an admin or via a cohort therefore reaches content:
+        admin/cohort enrolment deliberately bypasses the gate (spec §3).
         Free, not registered → Start/self-register (inherited from parent).
         Application-gated, not registered → Apply now / apply URL.
         Invalid config → safe no-action decision (inherited from parent).
@@ -101,10 +105,15 @@ class ApplicationCourseAccessBackend(DefaultCourseAccessBackend):
                 can_access_content=False,
             )
 
-        # Delegate to parent for registered learners and free-course handling.
+        # Delegate to parent for free-course handling AND for any registered
+        # learner — including one enrolled into a gated course by admin/cohort,
+        # who must reach content (registered → Continue/content). Only an
+        # unregistered learner on a gated course falls through to "Apply now".
         # Parent's get_access also calls validate_course_config, but that's
         # a cheap call and keeps the delegation simple.
-        if config["access_type"] != APPLICATION_GATED:
+        if config["access_type"] != APPLICATION_GATED or is_registered_for_course(
+            user, course
+        ):
             return super().get_access(user=user, course=course)
 
         # application_gated branch
@@ -130,7 +139,7 @@ class ApplicationCourseAccessBackend(DefaultCourseAccessBackend):
         from freedom_ls.course_applications.queries import get_active_applications
 
         # Materialise once to avoid a second DB hit when the template iterates.
-        apps: list = list(get_active_applications(user))
+        apps: list[CourseApplication] = list(get_active_applications(user))
         if not apps:
             return []
 

@@ -11,17 +11,20 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from conftest import reverse_url
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
     FileFactory,
     TopicFactory,
 )
+from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 
 
 def _build_picture_page(
     live_server,
     *,
+    user: User,
     title: str,
     description: str = "",
     alt: str = "A demo image",
@@ -33,6 +36,9 @@ def _build_picture_page(
     ``file_path`` matches what ``Topic.calculate_path_from_root`` resolves for a
     topic with an empty ``file_path`` (``images/pic.svg``), so the picture
     resolves instead of rendering the "Image not found" fallback.
+
+    ``user`` is registered for the course: item content gates on registration
+    (``decision.can_access_content``), so the browsing user must be enrolled.
     """
     FileFactory(file_path="images/pic.svg")
     picture = (
@@ -47,6 +53,7 @@ def _build_picture_page(
         content=f"{picture}\n\n{content_after}",
     )
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
+    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
     # str() because the shared reverse_url helper is untyped (returns Any).
     return str(
         reverse_url(
@@ -63,6 +70,7 @@ def _build_picture_page(
 def test_closed_spotlight_is_inert_and_trigger_is_clickable(
     live_server,
     logged_in_page: Page,
+    logged_in_user: User,
 ):
     """A closed spotlight <dialog> must be hidden so it cannot swallow clicks.
 
@@ -71,7 +79,9 @@ def test_closed_spotlight_is_inert_and_trigger_is_clickable(
     stayed laid out full-viewport and intercepted pointer events over the page.
     """
     page = logged_in_page
-    url = _build_picture_page(live_server, title="Lone tree at dawn")
+    url = _build_picture_page(
+        live_server, user=logged_in_user, title="Lone tree at dawn"
+    )
     page.goto(url)
 
     spotlight = page.get_by_role("dialog", name="Lone tree at dawn")
@@ -89,6 +99,7 @@ def test_closed_spotlight_is_inert_and_trigger_is_clickable(
 def test_background_does_not_scroll_while_spotlight_open(
     live_server,
     logged_in_page: Page,
+    logged_in_user: User,
 ):
     """The page behind the spotlight must not scroll while it is open.
 
@@ -101,7 +112,10 @@ def test_background_does_not_scroll_while_spotlight_open(
         for i in range(15)
     )
     url = _build_picture_page(
-        live_server, title="Scroll lock image", content_after=filler
+        live_server,
+        user=logged_in_user,
+        title="Scroll lock image",
+        content_after=filler,
     )
     page.set_viewport_size({"width": 1024, "height": 600})
     page.goto(url)
@@ -131,6 +145,7 @@ def test_background_does_not_scroll_while_spotlight_open(
 def test_long_description_keeps_spotlight_heading_reachable(
     live_server,
     logged_in_page: Page,
+    logged_in_user: User,
 ):
     """A long description must not clip the heading above the viewport.
 
@@ -140,7 +155,10 @@ def test_long_description_keeps_spotlight_heading_reachable(
     page = logged_in_page
     long_desc = "This is a very long spotlight description. " * 60
     url = _build_picture_page(
-        live_server, title="Detailed schematic", description=long_desc
+        live_server,
+        user=logged_in_user,
+        title="Detailed schematic",
+        description=long_desc,
     )
     page.set_viewport_size({"width": 375, "height": 360})
     page.goto(url)

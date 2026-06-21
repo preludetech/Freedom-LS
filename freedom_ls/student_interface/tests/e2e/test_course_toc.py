@@ -4,6 +4,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from conftest import reverse_url
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
@@ -13,6 +14,7 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.student_interface.templatetags.course_storage_keys import (
     course_part_storage_key,
 )
+from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 
 
 @pytest.mark.playwright
@@ -21,6 +23,7 @@ from freedom_ls.student_interface.templatetags.course_storage_keys import (
 def test_toc_course_part_expands_and_collapses_on_course_detail_page(
     live_server,
     logged_in_page: Page,
+    logged_in_user: User,
 ):
     """Clicking a course-part toggle on a course detail page reveals the part's children.
 
@@ -28,6 +31,9 @@ def test_toc_course_part_expands_and_collapses_on_course_detail_page(
     the retired course start page, so on detail pages clicking the toggle did nothing.
     """
     course = CourseFactory(title="Test Course", slug="test-course")
+    UserCourseRegistrationFactory(
+        user=logged_in_user, collection=course, is_active=True
+    )
     landing_topic = TopicFactory(
         title="Landing Topic",
         slug="landing-topic",
@@ -82,9 +88,13 @@ def test_toc_course_part_expands_and_collapses_on_course_detail_page(
 def test_toc_course_part_expand_state_persists_across_navigation(
     live_server,
     logged_in_page: Page,
+    logged_in_user: User,
 ):
     """Expanding a course part writes to localStorage and persists across navigation."""
     course = CourseFactory(title="Test Course", slug="test-course")
+    UserCourseRegistrationFactory(
+        user=logged_in_user, collection=course, is_active=True
+    )
     landing_topic = TopicFactory(
         title="Landing Topic",
         slug="landing-topic",
@@ -158,6 +168,7 @@ def test_toc_course_part_expand_state_persists_across_navigation(
 def test_back_button_closes_mobile_bottom_sheet(
     live_server,
     logged_in_page: Page,
+    logged_in_user: User,
 ):
     """Pressing Back with the mobile outline bottom sheet open closes the sheet.
 
@@ -166,6 +177,9 @@ def test_back_button_closes_mobile_bottom_sheet(
     learner on the same page — it must NOT perform a normal navigation away.
     """
     course = CourseFactory(title="Test Course", slug="test-course")
+    UserCourseRegistrationFactory(
+        user=logged_in_user, collection=course, is_active=True
+    )
     landing_topic = TopicFactory(
         title="Landing Topic",
         slug="landing-topic",
@@ -218,6 +232,7 @@ def test_back_button_closes_mobile_bottom_sheet(
 def test_course_part_toggle_does_not_announce_chevron_state(
     live_server,
     logged_in_page: Page,
+    logged_in_user: User,
 ):
     """The part-toggle does not fold the chevron's icon name into its name.
 
@@ -228,6 +243,9 @@ def test_course_part_toggle_does_not_announce_chevron_state(
     so a screen reader never announces "expand Chapter One".
     """
     course = CourseFactory(title="Test Course", slug="test-course")
+    UserCourseRegistrationFactory(
+        user=logged_in_user, collection=course, is_active=True
+    )
     landing_topic = TopicFactory(
         title="Landing Topic",
         slug="landing-topic",

@@ -16,6 +16,8 @@ flowchart TB
     app_authentication
     base
     content_engine
+    course_access
+    course_applications
     educator_interface
     icons
     markdown_rendering
@@ -36,6 +38,14 @@ flowchart TB
     content_engine --> icons
     content_engine --> markdown_rendering
     content_engine --> site_aware_models
+    course_access --> accounts
+    course_access --> content_engine
+    course_access --> student_management
+    course_applications --> accounts
+    course_applications --> content_engine
+    course_applications --> course_access
+    course_applications --> site_aware_models
+    course_applications --> student_management
     educator_interface --> accounts
     educator_interface --> content_engine
     educator_interface --> panel_framework
@@ -49,6 +59,7 @@ flowchart TB
     role_based_permissions --> site_aware_models
     student_interface --> accounts
     student_interface --> content_engine
+    student_interface --> course_access
     student_interface --> icons
     student_interface --> student_management
     student_interface --> student_progress
@@ -67,6 +78,7 @@ flowchart TB
     markdown_rendering -.-> content_engine
     role_based_permissions -.-> student_management
     site_aware_models -.-> accounts
+    student_interface -.-> course_applications
     webhooks -.-> accounts
 ```
 
@@ -78,6 +90,8 @@ flowchart TB
 | app_authentication | site_aware_models | — |
 | base | — | — |
 | content_engine | icons, markdown_rendering, site_aware_models | — |
+| course_access | accounts, content_engine, student_management | — |
+| course_applications | accounts, content_engine, course_access, site_aware_models, student_management | — |
 | educator_interface | accounts, content_engine, panel_framework, student_management, student_progress | — |
 | icons | — | — |
 | markdown_rendering | — | content_engine |
@@ -85,7 +99,7 @@ flowchart TB
 | qa_helpers | accounts, content_engine, student_management, student_progress | — |
 | role_based_permissions | accounts, site_aware_models | student_management |
 | site_aware_models | — | accounts |
-| student_interface | accounts, content_engine, icons, student_management, student_progress, webhooks | — |
+| student_interface | accounts, content_engine, course_access, icons, student_management, student_progress, webhooks | course_applications |
 | student_management | accounts, content_engine, site_aware_models, webhooks | — |
 | student_progress | accounts, content_engine, site_aware_models, student_management | — |
 | webhooks | base, site_aware_models | accounts |

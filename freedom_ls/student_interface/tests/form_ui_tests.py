@@ -271,11 +271,12 @@ def complete_form_with_questions(mock_site_context):
 def test_view_form_landing_page(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
     complete_form_with_questions,
 ):
     """Test that the form landing page displays correctly before starting."""
     course = course_with_form(complete_form_with_questions)
-    register_user_for_course(course)
+    register_user_for_course(course, logged_in_user)
 
     navigate_to_form(logged_in_page, live_server, course.slug)
 
@@ -301,11 +302,12 @@ def test_view_form_landing_page(
 def test_start_and_fill_form_complete_workflow(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
     complete_form_with_questions,
 ):
     """Test complete workflow from start to submission."""
     course = course_with_form(complete_form_with_questions)
-    register_user_for_course(course)
+    register_user_for_course(course, logged_in_user)
 
     navigate_to_form(logged_in_page, live_server, course.slug)
     start_form(logged_in_page)
@@ -391,11 +393,12 @@ def test_start_and_fill_form_complete_workflow(
 def test_form_resumption(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
     complete_form_with_questions,
 ):
     """Test that users can resume incomplete forms."""
     course = course_with_form(complete_form_with_questions)
-    register_user_for_course(course)
+    register_user_for_course(course, logged_in_user)
 
     form_url = navigate_to_form(logged_in_page, live_server, course.slug)
     start_form(logged_in_page)
@@ -475,12 +478,13 @@ def test_form_resumption(
 def test_quiz_completion_shows_scores(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
     mock_site_context,
 ):
     """Test that when a student completes a quiz, they see their score and percentage."""
     quiz_form = _create_quiz_form(quiz_show_incorrect=True)
     quiz_course = course_with_form(quiz_form, title="Math Course")
-    register_user_for_course(quiz_course)
+    register_user_for_course(quiz_course, logged_in_user)
 
     navigate_to_form(logged_in_page, live_server, quiz_course.slug)
     start_form(logged_in_page)
@@ -505,12 +509,13 @@ def test_quiz_completion_shows_scores(
 def test_quiz_shows_incorrect_answers_when_enabled(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
     mock_site_context,
 ):
     """Test that incorrect answers are shown when quiz_show_incorrect is True."""
     quiz_form = _create_quiz_form(quiz_show_incorrect=True)
     quiz_course = course_with_form(quiz_form, title="Math Course")
-    register_user_for_course(quiz_course)
+    register_user_for_course(quiz_course, logged_in_user)
 
     navigate_to_form(logged_in_page, live_server, quiz_course.slug)
     start_form(logged_in_page)
@@ -574,6 +579,7 @@ def test_quiz_shows_incorrect_answers_when_enabled(
 def test_quiz_does_not_show_incorrect_when_disabled(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
     mock_site_context,
 ):
     """Test that incorrect answers are NOT shown when quiz_show_incorrect is False."""
@@ -584,7 +590,7 @@ def test_quiz_does_not_show_incorrect_when_disabled(
         num_pages=1,
     )
     quiz_course = course_with_form(quiz_form, title="Private Quiz Course")
-    register_user_for_course(quiz_course)
+    register_user_for_course(quiz_course, logged_in_user)
 
     navigate_to_form(logged_in_page, live_server, quiz_course.slug)
     start_form(logged_in_page)
@@ -623,12 +629,13 @@ def test_quiz_does_not_show_incorrect_when_disabled(
 def test_completed_quiz_shows_scores_on_landing_page(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
     mock_site_context,
 ):
     """Test that completed quiz scores are shown on the quiz landing page."""
     quiz_form = _create_quiz_form(quiz_show_incorrect=True)
     quiz_course = course_with_form(quiz_form, title="Math Course")
-    register_user_for_course(quiz_course)
+    register_user_for_course(quiz_course, logged_in_user)
 
     quiz_url = navigate_to_form(logged_in_page, live_server, quiz_course.slug)
     start_form(logged_in_page)

@@ -167,6 +167,33 @@ class TestGetAccess:
 
         assert decision.can_access_content is False
 
+    def test_registered_learner_on_gated_course_gets_content(self, mock_site_context):
+        """A learner enrolled into a gated course (admin/cohort) bypasses the gate.
+
+        Spec §3: admin/cohort enrolment deliberately bypasses the application
+        gate, so a registered learner reaches content (Continue/can_access_content)
+        rather than being told to "Apply now".
+        """
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+        from freedom_ls.student_management.factories import (
+            UserCourseRegistrationFactory,
+        )
+
+        user = UserFactory()
+        course = CourseFactory()
+        course.access_config = {"access_type": "application_gated"}
+        course.save()
+        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+
+        backend = ApplicationCourseAccessBackend()
+        decision = backend.get_access(user=user, course=course)
+
+        assert decision.cta_label == "Continue"
+        assert decision.can_access_content is True
+        assert decision.can_self_register is False
+
     def test_free_course_returns_start_cta(self, mock_site_context):
         """get_access for free course returns 'Start' CTA (inherited from parent)."""
         from freedom_ls.course_applications.backends import (
