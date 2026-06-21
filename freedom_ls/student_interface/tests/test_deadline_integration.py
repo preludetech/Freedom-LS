@@ -43,7 +43,7 @@ def test_course_index_includes_deadline_data(mock_site_context):
         deadline=deadline_dt,
     )
 
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
 
     assert len(children) == 1
     assert "deadlines" in children[0]
@@ -69,7 +69,7 @@ def test_expired_hard_deadline_locks_incomplete_item(mock_site_context):
         is_hard_deadline=True,
     )
 
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
 
     assert children[0]["status"] == BLOCKED
     assert children[0]["url"] is None
@@ -93,7 +93,7 @@ def test_soft_deadline_does_not_lock(mock_site_context):
         is_hard_deadline=False,
     )
 
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
 
     # First item should be READY, not BLOCKED
     assert children[0]["status"] != BLOCKED
@@ -109,7 +109,7 @@ def test_no_deadlines_no_deadline_key(mock_site_context):
 
     _setup_cohort_registration(user, course)
 
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
 
     assert children[0]["deadlines"] == []
 
@@ -167,7 +167,7 @@ def test_get_course_index_skips_deadlines_when_inactive(mock_site_context):
         is_hard_deadline=True,
     )
 
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
 
     assert children[0]["deadlines"] == []
     assert children[0]["status"] != BLOCKED

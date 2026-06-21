@@ -21,6 +21,27 @@ def _disable_force_site_name(settings):
     settings.FORCE_SITE_NAME = None
 
 
+@pytest.fixture(autouse=True)
+def _clear_course_access_backend_cache():
+    """Reset the cached course-access backend before and after each test.
+
+    get_course_access_backend() is @functools.cache'd for the process lifetime.
+    Without this fixture, tests using override_settings(COURSE_ACCESS_BACKEND=...)
+    can leave a stale cached instance that bleeds into subsequent tests, making
+    order-dependent failures. Clearing before+after each test ensures every test
+    resolves the backend from settings.COURSE_ACCESS_BACKEND fresh.
+
+    Tests that use override_settings must also call cache_clear() themselves if
+    they need the override active for the duration of their own body — see loader.py
+    for details.
+    """
+    from freedom_ls.course_access.loader import get_course_access_backend
+
+    get_course_access_backend.cache_clear()
+    yield
+    get_course_access_backend.cache_clear()
+
+
 def reverse_url(
     live_server, viewname, urlconf=None, args=None, kwargs=None, current_app=None
 ):

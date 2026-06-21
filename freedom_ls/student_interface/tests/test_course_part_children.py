@@ -46,7 +46,7 @@ def test_course_part_children_have_status_and_url(mock_site_context):
     UserCourseRegistrationFactory(user=user, collection=course)
 
     # Get the course index
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
 
     # Find the course part in the children
     course_part_dict = children[0]
@@ -88,7 +88,7 @@ def test_course_part_status_based_on_children(mock_site_context):
     UserCourseRegistrationFactory(user=user, collection=course)
 
     # Get the course index
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
     course_part_dict = children[0]
 
     # CoursePart should have READY status if first child is READY
@@ -121,7 +121,7 @@ def test_course_part_row_url_resolves_to_first_viewable_child_index(mock_site_co
     for topic in (p1a, p1b, p2a):
         TopicProgressFactory(user=user, topic=topic, complete_time=now)
 
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
 
     # Independent oracle: viewable order is [p1a, p1b, p2a] -> indices [1, 2, 3].
     viewable_order = course.viewable_items()
@@ -169,7 +169,7 @@ def test_consecutive_viewable_items_have_dense_indices(mock_site_context):
     for topic in (p1a, p1b, p2a, direct):
         TopicProgressFactory(user=user, topic=topic, complete_time=now)
 
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
 
     # Flatten viewable rows in URL-order: each part's children, then direct items.
     flat_rows = []
@@ -206,7 +206,7 @@ def test_course_part_url_resumes_at_in_progress_child(mock_site_context):
     TopicProgressFactory(user=user, topic=first, complete_time=timezone.now())
     TopicProgressFactory(user=user, topic=second, complete_time=None)
 
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
     part_dict = children[0]
 
     second_index = course.viewable_items().index(second) + 1
@@ -235,7 +235,7 @@ def test_course_part_url_skips_completed_first_child_to_first_ready(mock_site_co
     # Complete first item; second item has no progress (becomes READY).
     TopicProgressFactory(user=user, topic=first, complete_time=timezone.now())
 
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
     part_dict = children[0]
 
     second_index = course.viewable_items().index(second) + 1
@@ -257,6 +257,6 @@ def test_empty_course_part_row_has_no_url(mock_site_context):
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course)
 
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
 
     assert children[0]["url"] is None

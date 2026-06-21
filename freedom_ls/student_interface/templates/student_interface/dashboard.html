@@ -18,6 +18,16 @@
                 </h1>
             </div>
 
+            {% comment %}
+            Backend-contributed dashboard panels (e.g. in-flight applications from
+            ApplicationCourseAccessBackend). Each panel is rendered generically via
+            render_to_string in the view — the template names and context keys are
+            backend-owned. |safe is correct: panel is trusted template output, not user input.
+            {% endcomment %}
+            {% for panel in dashboard_panels %}
+                {{ panel|safe }}
+            {% endfor %}
+
             <div>
                 {% include "student_interface/partials/course_list.html" %}
             </div>

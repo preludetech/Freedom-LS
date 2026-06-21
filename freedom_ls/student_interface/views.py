@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -16,6 +17,7 @@ from freedom_ls.content_engine.models import (
     FormStrategy,
     Topic,
 )
+from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.student_management.config import config
 from freedom_ls.student_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.student_management.models import (
@@ -47,15 +49,20 @@ from .utils import (
 )
 
 
-def _annotate_next_up(course: Course, user) -> None:
+def _annotate_next_up(course: Course, user, *, can_access_content: bool) -> None:
     """Pick the first IN_PROGRESS child (then READY) and stamp it on the course.
 
     Walks at most two levels of ``get_course_index`` (top-level children plus
     their direct children — which matches the depth ``get_course_index``
     itself produces). Sets empty strings when nothing is actionable so the
     template never renders ``Next up:`` with a blank tail.
+
+    ``can_access_content`` is passed through from the dashboard's per-course
+    backend decision so that get_course_index is not called with a stale value.
     """
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(
+        user=user, course=course, can_access_content=can_access_content
+    )
     flat = []
     for c in children:
         flat.append(c)
@@ -118,13 +125,20 @@ def _detail_cta_label(course: Course, user, *, is_registered: bool) -> str:
 @login_required
 def dashboard(request):
     """Authenticated dashboard listing the learner's courses."""
+    backend = get_course_access_backend()
     registered_courses = get_current_courses(request.user)
     completed_courses = get_completed_courses(request.user)
     recommended_courses = get_recommended_courses(request.user)
 
     for course in registered_courses:
         setattr(course, "is_registered", True)  # noqa: B010
-        _annotate_next_up(course, request.user)
+        # Registered learners can always access content for the default backend.
+        # Pass can_access_content from the backend decision so a future backend
+        # (e.g. subscription-gated) could revoke access without a separate check.
+        course_decision = backend.get_access(user=request.user, course=course)
+        _annotate_next_up(
+            course, request.user, can_access_content=course_decision.can_access_content
+        )
     for rec in recommended_courses:
         # Recommendations are by definition not yet registered, so they get
         # the not-registered card (single link to detail page).
@@ -133,8 +147,11 @@ def dashboard(request):
     registered_ids = {c.id for c in get_course_registrations(request.user)}
     recommended_ids = {rec.collection_id for rec in recommended_courses}
 
+    visible_courses = backend.filter_visible(
+        user=request.user, courses=get_all_courses()
+    )
     available_courses: list[Course] = []
-    for course in get_all_courses():
+    for course in visible_courses:
         if course.id in registered_ids or course.id in recommended_ids:
             continue
         setattr(course, "is_registered", False)  # noqa: B010
@@ -142,11 +159,21 @@ def dashboard(request):
         if len(available_courses) == 3:
             break
 
+    # Dashboard contributions from the active backend (e.g. the applications panel).
+    # Each contribution is rendered generically; the view never reads context keys and
+    # never imports course_applications — the contributing backend owns the partial.
+    contributions = backend.get_dashboard_contributions(user=request.user)
+    dashboard_panels = [
+        render_to_string(c.template_name, c.context, request=request)
+        for c in contributions
+    ]
+
     context = {
         "registered_courses": registered_courses,
         "completed_courses": completed_courses,
         "recommended_courses": recommended_courses,
         "available_courses": available_courses,
+        "dashboard_panels": dashboard_panels,
     }
     return render(request, "student_interface/dashboard.html", context)
 
@@ -154,7 +181,13 @@ def dashboard(request):
 @login_required
 def all_courses(request):
     """Flat list of all courses with correct, cheaply-derived statuses."""
-    entries = get_course_listing(request.user)
+    backend = get_course_access_backend()
+    entries = get_course_listing(
+        request.user,
+        visible_courses=backend.filter_visible(
+            user=request.user, courses=get_all_courses()
+        ),
+    )
     for entry in entries:
         course = entry.course
         setattr(course, "listing_status", entry.status)  # noqa: B010
@@ -170,12 +203,27 @@ def all_courses(request):
 def course_detail(request, course_slug):
     """Canonical course detail page — accessible on all screen sizes."""
     course = get_object_or_404(Course, slug=course_slug)
-    children = get_course_index(user=request.user, course=course)
     is_registered = get_is_registered(user=request.user, course=course)
-    start_url = _detail_start_url(
-        course, is_registered=is_registered, has_items=bool(children)
+    decision = get_course_access_backend().get_access(user=request.user, course=course)
+    children = get_course_index(
+        user=request.user, course=course, can_access_content=decision.can_access_content
     )
-    cta_label = _detail_cta_label(course, request.user, is_registered=is_registered)
+    start_url: str | None
+    cta_label: str | None
+    if is_registered:
+        # Registered learners get the richer progress-aware helpers: "Start course",
+        # "Continue", "Review course". Do NOT route registered learners through
+        # decision.cta_label — it would regress the three-state vocabulary to "Continue".
+        start_url = _detail_start_url(
+            course, is_registered=True, has_items=bool(children)
+        )
+        cta_label = _detail_cta_label(course, request.user, is_registered=True)
+    else:
+        # Not-registered: use the backend's acquisition affordance (e.g. "Start" for free
+        # courses, "Apply now" for application-gated courses). May be None for backends
+        # that provide no CTA (e.g. invalid config) — <c-button href=""> renders disabled.
+        start_url = decision.cta_url
+        cta_label = decision.cta_label
     breadcrumbs = [
         {"label": "All courses", "url": reverse("student_interface:courses")},
         {"label": course.title},
@@ -215,7 +263,11 @@ def course_home(request, course_slug):
     """
     course = get_object_or_404(Course, slug=course_slug)
 
-    if not get_is_registered(user=request.user, course=course):
+    if (
+        not get_course_access_backend()
+        .get_access(user=request.user, course=course)
+        .can_access_content
+    ):
         return redirect("student_interface:course_detail", course_slug=course_slug)
 
     index = get_resume_index(request.user, course)
@@ -228,9 +280,26 @@ def course_home(request, course_slug):
 
 @login_required
 def register_for_course(request, course_slug):
-    """Register the current user for a course."""
+    """Register the current user for a course.
+
+    This is the single server-side enforcement point for self-registration.
+    Admin/cohort registration paths are untouched by this gate.
+    """
 
     course = get_object_or_404(Course, slug=course_slug)
+
+    # Chokepoint gate: consult the active backend before allowing self-registration.
+    # If the backend does not permit self-registration (e.g. application-gated courses),
+    # redirect to the backend's CTA URL (e.g. the apply page) or to course_detail
+    # as the loop-free fallback.
+    decision = get_course_access_backend().get_access(user=request.user, course=course)
+    if not decision.can_self_register:
+        target = decision.cta_url
+        return (
+            redirect(target)
+            if target
+            else redirect("student_interface:course_detail", course_slug=course_slug)
+        )
 
     # Create the course registration directly with user
     UserCourseRegistration.objects.get_or_create(
@@ -250,6 +319,15 @@ def register_for_course(request, course_slug):
 @login_required
 def view_course_item(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
+
+    # Content-access gate: an unregistered learner (or one blocked by a gating
+    # backend) is redirected to course_detail. This closes the hole where an
+    # unregistered learner could view a free course's content by guessing the URL
+    # (the TOC hides the links as BLOCKED, but the URL was previously unguarded).
+    decision = get_course_access_backend().get_access(user=request.user, course=course)
+    if not decision.can_access_content:
+        return redirect("student_interface:course_detail", course_slug=course_slug)
+
     viewable_items = course.viewable_items()
     if index < 1 or index > len(viewable_items):
         raise Http404("No course item at this index.")
@@ -367,7 +445,12 @@ def _player_chrome_context(
                     break
 
     return {
-        "course_index": get_course_index(user=user, course=course, current_index=index),
+        # can_access_content=True: _player_chrome_context is only called after
+        # the content-access gate in view_course_item has already passed, so the
+        # learner is confirmed to have content access here.
+        "course_index": get_course_index(
+            user=user, course=course, current_index=index, can_access_content=True
+        ),
         "current_part": current_part,
         "current_part_index": current_part_index,
         "course_progress": course_progress,
@@ -773,7 +856,11 @@ def course_finish(request, course_slug):
         "course": course,
         "course_progress": course_progress,
         # Outline panel for the completion page (no single current item).
-        "course_index": get_course_index(user=request.user, course=course),
+        # can_access_content=True: course_finish is only reachable after completing
+        # a course — the learner has had content access throughout.
+        "course_index": get_course_index(
+            user=request.user, course=course, can_access_content=True
+        ),
     }
 
     return render(request, "student_interface/course_finish.html", context)

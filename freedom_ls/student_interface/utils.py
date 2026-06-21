@@ -253,15 +253,22 @@ def _fetch_player_progress_maps(
 
 
 def get_course_index(
-    user: User, course: Course, current_index: int | None = None
+    user: User,
+    course: Course,
+    current_index: int | None = None,
+    *,
+    can_access_content: bool,
 ) -> list[dict]:
     """
     Generate an index of course children with their status and metadata.
 
+    ``can_access_content`` must be supplied by the caller from
+    ``get_course_access_backend().get_access(...).can_access_content`` — the
+    backend is never called here so that it runs once per request in the view
+    layer. When False, all items are rendered as BLOCKED (no progress fetched).
+
     Returns a list of dictionaries with title, status, url, type, deadlines, and optionally children.
     """
-    is_registered = get_is_registered(user, course)
-
     # Look up deadlines
     deadlines_map: dict[
         tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]
@@ -270,12 +277,13 @@ def get_course_index(
         deadlines_map = get_course_deadlines(user, course)
 
     # Bulk-fetch per-item progress once (two queries) instead of one per item.
-    # Only needed when registered: unregistered users get forced-BLOCKED rows
-    # and get_content_status is never called. get_is_registered already implies
-    # an authenticated user.
+    # Only needed when the learner can access content: users without access get
+    # forced-BLOCKED rows and get_content_status is never called.
+    # can_access_content already implies an authenticated, registered user for
+    # the default backend.
     topic_progress_map: dict[uuid.UUID, TopicProgress] = {}
     form_progress_map: dict[uuid.UUID, FormProgress] = {}
-    if is_registered:
+    if can_access_content:
         topic_progress_map, form_progress_map = _fetch_player_progress_maps(
             user, course.viewable_items()
         )
@@ -293,7 +301,7 @@ def get_course_index(
             course,
             global_index,
             next_status,
-            is_registered,
+            can_access_content,
             topic_progress_map,
             form_progress_map,
             deadlines_map=deadlines_map,
@@ -357,7 +365,7 @@ def create_child_dict_with_flattened_index(
     course: Course,
     start_index: int,
     next_status: str,
-    is_registered: bool,
+    can_access_content: bool,
     topic_progress_map: dict[uuid.UUID, TopicProgress],
     form_progress_map: dict[uuid.UUID, FormProgress],
     deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]]
@@ -366,6 +374,9 @@ def create_child_dict_with_flattened_index(
 ) -> tuple[dict, str, int]:
     """
     Create a child dict with proper flattened indices for nested items.
+
+    ``can_access_content`` drives item status: False → all items BLOCKED (no URLs);
+    True → progress-aware status. The caller supplies this from the backend decision.
 
     When ``current_index`` (a 1-based viewable index) is supplied, the matching
     item dict is marked ``is_current=True`` and the containing CoursePart dict is
@@ -391,7 +402,7 @@ def create_child_dict_with_flattened_index(
                 # Defensive: today's data model does not nest parts; skip URL allocation
                 # for any unexpected nested CoursePart and let status logic ignore it.
                 continue
-            if is_registered:
+            if can_access_content:
                 child_status, part_next_status = get_content_status(
                     part_child,
                     user,
@@ -471,7 +482,7 @@ def create_child_dict_with_flattened_index(
     else:
         # Regular content item (Topic, Form, etc.)
         items_added = 1
-        if is_registered:
+        if can_access_content:
             status, next_status = get_content_status(
                 content_item, user, next_status, topic_progress_map, form_progress_map
             )
@@ -645,8 +656,16 @@ def get_form_for_index(
     return item
 
 
-def get_course_listing(user: RequestUser) -> list[CourseListingEntry]:
+def get_course_listing(
+    user: RequestUser,
+    visible_courses: QuerySet[Course] | None = None,
+) -> list[CourseListingEntry]:
     """Build the all-courses listing for the student interface.
+
+    ``visible_courses`` may be passed by the caller (already filtered through
+    ``backend.filter_visible``) to avoid a second queryset. When omitted, falls
+    back to ``get_all_courses()`` — callers that don't need backend filtering
+    (e.g. anonymous users) are unaffected.
 
     Returns one :class:`CourseListingEntry` per available course, pairing each
     course with the user's status and progress so the courses page can render
@@ -667,7 +686,7 @@ def get_course_listing(user: RequestUser) -> list[CourseListingEntry]:
             CourseListingEntry(course, CourseListingStatus.NOT_REGISTERED, 0)
             for course in get_all_courses()
         ]
-    courses = get_all_courses()
+    courses = visible_courses if visible_courses is not None else get_all_courses()
     registered_ids = {c.id for c in get_course_registrations(user)}
     progress_rows = {
         row["course_id"]: row

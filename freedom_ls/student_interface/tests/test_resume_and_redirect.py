@@ -121,7 +121,10 @@ def test_get_item_part_top_level_item_returns_none(course_structure):
 @pytest.mark.django_db
 def test_get_course_index_marks_current_item(course_structure, enrolled_user):
     children = get_course_index(
-        user=enrolled_user, course=course_structure["course"], current_index=2
+        user=enrolled_user,
+        course=course_structure["course"],
+        current_index=2,
+        can_access_content=True,
     )
     part_dict = children[0]
     assert part_dict["contains_current"] is True
@@ -495,7 +498,7 @@ def test_get_course_index_status_semantics_preserved(mock_site_context):
     )
     FormProgress.objects.create(user=user, form=form_done, completed_time=now)
 
-    children = get_course_index(user=user, course=course)
+    children = get_course_index(user=user, course=course, can_access_content=True)
     statuses = [c["status"] for c in children]
     assert statuses == [
         "COMPLETE",
@@ -531,7 +534,7 @@ def test_get_course_index_unregistered_user_skips_progress_queries(mock_site_con
     user = UserFactory()  # not registered for the course
 
     with CaptureQueriesContext(connection) as ctx:
-        children = get_course_index(user=user, course=course)
+        children = get_course_index(user=user, course=course, can_access_content=False)
 
     assert [c["status"] for c in children] == ["BLOCKED", "BLOCKED"]
     sql = " ".join(q["sql"].lower() for q in ctx.captured_queries)

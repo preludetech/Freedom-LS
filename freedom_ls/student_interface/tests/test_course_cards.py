@@ -163,10 +163,17 @@ def test_course_detail_requires_login(mock_site_context, course_with_topics, cli
 
 
 @pytest.mark.django_db
-def test_course_detail_shows_enrol_and_start_for_unregistered_user(
+def test_course_detail_shows_start_for_unregistered_user_free_course(
     mock_site_context, course_with_topics
 ):
-    """An unregistered user sees 'Enrol & start' CTA on the detail page."""
+    """An unregistered user sees the backend's free-course CTA label on the detail page.
+
+    The DefaultCourseAccessBackend (and ApplicationCourseAccessBackend for free courses)
+    returns "Start" as the cta_label for an unregistered learner on a free course.
+    The previous "Enrol & start" label came from _detail_cta_label (the registered-learner
+    helper); the not-registered branch now uses the backend's acquisition label instead.
+    This is an intentional copy delta per the plan's CTA vocabulary.
+    """
     user = UserFactory()
     client = _logged_in_client(user)
     response = client.get(
@@ -176,8 +183,7 @@ def test_course_detail_shows_enrol_and_start_for_unregistered_user(
         )
     )
     body = response.content.decode()
-    # Django auto-escapes the CTA label, so the ampersand renders as &amp;.
-    assert "Enrol &amp; start" in body
+    assert "Start" in body
 
 
 @pytest.mark.django_db
