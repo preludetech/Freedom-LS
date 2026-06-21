@@ -106,6 +106,9 @@ INSTALLED_APPS = [
     "freedom_ls.educator_interface",
     "freedom_ls.role_based_permissions",
     #########
+    # COURSE ACCESS
+    "freedom_ls.course_access",
+    #########
     # STUDENT INTERFACE
     "freedom_ls.student_interface",
     #########
@@ -399,6 +402,22 @@ TASKS = {
         "BACKEND": "django.tasks.backends.immediate.ImmediateBackend",
     },
 }
+
+# Free-only core default backend. This is the no-applications fallback used before the
+# course_applications app exists. Once course_applications is added, the shipped default
+# becomes "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend".
+# A future batch flips this string to the applications backend.
+COURSE_ACCESS_BACKEND = "freedom_ls.course_access.backends.DefaultCourseAccessBackend"
+
+# content_engine resolves this at content-load to validate/normalize Course.access_config.
+# Unset → access_config is stored verbatim (still opaque). course_access registers the
+# default validator; a future backend with its own config keys swaps this string
+# with no content_engine change. content_engine never imports course_access — this string is
+# the only seam (resolved via import_string, the same idiom as COURSE_ACCESS_BACKEND /
+# FREEDOM_LS_ICON_BACKEND).
+COURSE_ACCESS_CONFIG_VALIDATOR = (
+    "freedom_ls.course_access.loader.validate_course_access_config"
+)
 
 # Webhook encryption for django-fernet-encrypted-fields.
 # The library derives Fernet keys from SECRET_KEY + SALT_KEY using PBKDF2.

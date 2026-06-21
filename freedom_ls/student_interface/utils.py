@@ -149,18 +149,15 @@ def get_content_status(
 
 
 def get_is_registered(user: RequestUser, course: Course) -> bool:
-    """Check if user is registered for the course (directly or via cohort)."""
-    if not user.is_authenticated:
-        return False
-    direct = UserCourseRegistration.objects.filter(
-        user=user, collection=course, is_active=True
-    ).exists()
-    if direct:
-        return True
-    cohort = CohortCourseRegistration.objects.filter(
-        cohort__cohortmembership__user=user, collection=course, is_active=True
-    ).exists()
-    return cohort
+    """Check if user is registered for the course (directly or via cohort).
+
+    Delegates to student_management.utils.is_registered_for_course, which is the
+    shared implementation also used by course_access.backends. Kept here as a thin
+    wrapper so existing callers in student_interface don't need to change.
+    """
+    from freedom_ls.student_management.utils import is_registered_for_course
+
+    return is_registered_for_course(user, course)
 
 
 def get_course_registrations(user: RequestUser) -> list[Course]:

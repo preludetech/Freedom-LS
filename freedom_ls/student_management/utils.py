@@ -1,4 +1,15 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+
+    from freedom_ls.accounts.models import User
+    from freedom_ls.content_engine.models import Course
+
+    type RequestUser = User | AnonymousUser | AbstractBaseUser
 
 
 def calculate_course_progress_percentage(
@@ -51,3 +62,30 @@ def calculate_course_progress_percentage(
         return round((completed_items / total_items) * 100)
     else:
         return 0
+
+
+def is_registered_for_course(user: RequestUser, course: Course) -> bool:
+    """Check if user is registered for the course (directly or via cohort).
+
+    Extracted from student_interface.utils.get_is_registered so that
+    course_access.backends can call it without creating a dependency cycle
+    (student_interface → course_access would be cyclic).
+
+    student_interface.get_is_registered delegates to this function.
+    """
+    from freedom_ls.student_management.models import (
+        CohortCourseRegistration,
+        UserCourseRegistration,
+    )
+
+    if not user.is_authenticated:
+        return False
+    direct = UserCourseRegistration.objects.filter(
+        user=user, collection=course, is_active=True
+    ).exists()
+    if direct:
+        return True
+    cohort = CohortCourseRegistration.objects.filter(
+        cohort__cohortmembership__user=user, collection=course, is_active=True
+    ).exists()
+    return cohort
