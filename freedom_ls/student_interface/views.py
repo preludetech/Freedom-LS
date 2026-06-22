@@ -203,6 +203,10 @@ def all_courses(request):
 def course_detail(request, course_slug):
     """Canonical course detail page — accessible on all screen sizes."""
     course = get_object_or_404(Course, slug=course_slug)
+    # Two distinct registration signals, intentionally both fetched: is_registered
+    # drives the template (TOC partialdef) and the three-state CTA vocabulary, while
+    # decision.can_access_content drives the content gate. They diverge for an
+    # invalid-config course, so neither can be derived from the other.
     is_registered = get_is_registered(user=request.user, course=course)
     decision = get_course_access_backend().get_access(user=request.user, course=course)
     children = get_course_index(

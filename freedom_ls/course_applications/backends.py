@@ -9,7 +9,7 @@ This is the shipped default COURSE_ACCESS_BACKEND (Task 0.3).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from django.urls import reverse
 
@@ -50,40 +50,13 @@ class ApplicationCourseAccessBackend(DefaultCourseAccessBackend):
     acyclic.
     """
 
-    # Accepted access type values for this backend
-    _ALLOWED_ACCESS_TYPES = {"free", APPLICATION_GATED}
+    # Widen the accepted access-type vocabulary; the inherited
+    # validate_course_config reads this through self, so no override is needed.
+    _ALLOWED_ACCESS_TYPES = frozenset({"free", APPLICATION_GATED})
 
-    def validate_course_config(
-        self,
-        # Deliberate Any: access_config is a genuinely opaque JSON blob whose
-        # keys are backend-owned; this backend's validate_course_config is the
-        # one implementation for all callers.
-        raw: dict[str, Any],
-        *,
-        file_path: str = "",
-    ) -> dict[str, Any]:
-        """Accept access_type ∈ {free, application_gated}; absent → free.
-
-        Rejects unknown keys and unknown access_type values with file_path context.
-        Returns the normalised dict {"access_type": <value>}.
-        """
-        allowed_keys = {"access_type"}
-        extra_keys = set(raw.keys()) - allowed_keys
-        if extra_keys:
-            context = f" in {file_path!r}" if file_path else ""
-            raise ValueError(
-                f"Course access_config has unknown key(s){context}: "
-                f"{sorted(extra_keys)!r}. Allowed keys: {sorted(allowed_keys)!r}"
-            )
-
-        access_type = raw.get("access_type", "free")
-        if access_type not in self._ALLOWED_ACCESS_TYPES:
-            context = f" in {file_path!r}" if file_path else ""
-            raise ValueError(
-                f"Course access_config has invalid access_type={access_type!r}{context}. "
-                f"Valid values for this backend: {sorted(self._ALLOWED_ACCESS_TYPES)!r}."
-            )
-        return {"access_type": access_type}
+    # filter_visible is deliberately NOT overridden: gated courses stay discoverable
+    # in listings (spec "Listing visibility": default behaviour unchanged). Gating is
+    # enforced at the CTA + register_for_course chokepoint, not by hiding courses.
 
     def get_access(self, *, user: User, course: Course) -> CourseAccessDecision:
         """Return a CourseAccessDecision for this user + course.

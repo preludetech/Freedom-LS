@@ -87,8 +87,10 @@ class CourseAccessBackend:
     ) -> QuerySet[Course]:
         """Filter the queryset to courses visible to this user.
 
-        Default: return unchanged (all courses visible). Override to hide
-        application-gated courses from learners who have not applied.
+        Default: return unchanged (all courses visible). This seam exists for a
+        future backend that hides courses a learner genuinely cannot reach (e.g.
+        a subscription/paywall backend). Note application-gating does NOT use it:
+        gated courses stay discoverable and are gated at the CTA + chokepoint level.
         """
         raise NotImplementedError
 
@@ -135,16 +137,22 @@ class DefaultCourseAccessBackend(CourseAccessBackend):
     ApplicationCourseAccessBackend subclass (course_applications app, batch 3+).
     """
 
+    # Access type values this backend accepts. Subclasses (e.g. the applications
+    # backend) widen the vocabulary by overriding this attribute — the shared
+    # validate_course_config below reads it through self, so no method override.
+    _ALLOWED_ACCESS_TYPES: frozenset[str] = frozenset(CourseAccessType.values)
+
     def validate_course_config(
         self,
         raw: dict[str, Any],
         *,
         file_path: str = "",
     ) -> dict[str, Any]:
-        """Accept only access_type key; only 'free' is valid in core.
+        """Validate & normalise access_config against ``self._ALLOWED_ACCESS_TYPES``.
 
-        Returns the normalised dict {"access_type": <value>}.
-        Raises ValueError with file_path context on invalid config.
+        Accepts only the access_type key; an absent access_type defaults to 'free'.
+        Returns the normalised dict {"access_type": <value>}. Raises ValueError with
+        file_path context on an unknown key or an unrecognised access_type.
         """
         allowed_keys = {"access_type"}
         extra_keys = set(raw.keys()) - allowed_keys
@@ -155,18 +163,12 @@ class DefaultCourseAccessBackend(CourseAccessBackend):
                 f"{sorted(extra_keys)!r}. Allowed keys: {sorted(allowed_keys)!r}"
             )
 
-        # Note: the absent-key branch yields an enum member (CourseAccessType.FREE),
-        # while the present-key branch yields a plain str. Both paths are valid:
-        # the `in CourseAccessType.values` check and the returned dict both accept
-        # either form, and test_empty_config_defaults_to_free asserts the dict value
-        # equals the plain string "free". Verified correct.
-        access_type = raw.get("access_type", CourseAccessType.FREE)
-        if access_type not in CourseAccessType.values:
+        access_type = raw.get("access_type", "free")
+        if access_type not in self._ALLOWED_ACCESS_TYPES:
             context = f" in {file_path!r}" if file_path else ""
             raise ValueError(
                 f"Course access_config has invalid access_type={access_type!r}{context}. "
-                f"Valid values for this backend: {CourseAccessType.values!r}. "
-                f"(application_gated requires the ApplicationCourseAccessBackend.)"
+                f"Valid values for this backend: {sorted(self._ALLOWED_ACCESS_TYPES)!r}."
             )
         return {"access_type": access_type}
 

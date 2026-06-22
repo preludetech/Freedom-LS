@@ -35,6 +35,8 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
         return redirect("course_applications:status", pk=existing_app.pk)
 
     if request.method == "POST":
+        # get_or_create is race-safe (savepoint + IntegrityError catch + re-get), so
+        # concurrent POSTs that both pass the pre-check above still converge on one row.
         app, _ = CourseApplication.objects.get_or_create(
             user=request.user, course=course
         )
