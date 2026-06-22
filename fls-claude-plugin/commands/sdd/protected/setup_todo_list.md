@@ -113,13 +113,17 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (cmd) Run `/update_product_docs` to update docs/product/ for this feature
 - [ ] (user) Review the updated documentation
 
-## 11. Pull request
+## 11. Author plugin sync
+
+- [ ] (cmd) Run `/update_claude_plugin_fls_content` to sync the course-author plugin if authoring functionality changed
+
+## 12. Pull request
 
 - [ ] (user) Open a pull request
 - [ ] (cmd) Run `/address_pr_review` as review feedback comes in
 - [ ] (user) Merge the PR once approved
 
-## 12. Cleanup
+## 13. Cleanup
 
 - [ ] (cmd) Run `/finish_worktree` to clean up the worktree
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved

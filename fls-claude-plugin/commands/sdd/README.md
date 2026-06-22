@@ -85,7 +85,11 @@ If no structural change happened, skip this step.
 
 Run `/update_product_docs` to refresh the product documentation under `docs/product/` for the feature that just shipped. The command reads the spec and plan to identify which docs are affected, fans out one worker per affected doc to draft the updates, applies the edits, and — for features with visible UI — starts a dev server to capture and compress screenshots via Playwright MCP. It ticks its own todo box and cleans up scratch files on completion.
 
-## Step 9: Ship it
+## Step 9: Sync the course-author plugin (if authoring functionality changed)
+
+Run `/update_claude_plugin_fls_content`. The command runs a single `git diff main --name-only | grep` over authoring-relevant paths (content-engine schema, cotton templates, widget allowlist settings, management commands, demo content) — if nothing matched, it ticks its box and exits immediately at zero LLM cost. If something matched, it fans out one `fls:sdd-worker` to read only the changed authoring-relevant files, drafts scoped edits to the `fls-content` reference skills and the bundled validator, applies them (re-applying both the Django-icon stub and the standalone CLI shim when the validator source changed), and cleans up scratch files on completion.
+
+## Step 10: Ship it
 
 1. Open a pull request.
 2. Run `/address_pr_review` to work through review feedback.
