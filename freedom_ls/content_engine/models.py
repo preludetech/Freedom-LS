@@ -166,7 +166,7 @@ class Course(MarkdownContent, TitledContent):
     # directly. All access decisions are made exclusively by the active course-access backend
     # (settings.COURSE_ACCESS_BACKEND). Callers use the backend's CourseAccessDecision fields
     # (can_self_register, can_access_content, cta_label, cta_url) — never this raw config.
-    # See spec §4.1/§10 and docs/app_structure.md.
+    # See spec §4.1/§10 and docs/app_structure.md.    TODO: fix dumb comment.
     access_config = models.JSONField(
         default=dict,
         blank=True,

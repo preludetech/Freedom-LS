@@ -10,3 +10,4 @@
 - [reference_form_question_types_command.md](reference_form_question_types_command.md) — qa_create_form_question_types command: QUIZ form with all 4 question types on a dedicated course for demodev@email.com
 - [reference_rich_dashboard_student_command.md](reference_rich_dashboard_student_command.md) — qa_create_rich_dashboard_student: demodev_s1 with all 3 dashboard sections + real scored/passing quiz attempt + completed course
 - [reference_password_reset_student_command.md](reference_password_reset_student_command.md) — qa_create_password_reset_student command; demodev_s1@email.com is a SHARED fixture (also enrolled by course-player command)
+- [reference_course_access_types_command.md](reference_course_access_types_command.md) — qa_create_course_access_types: free + application_gated courses + unenrolled verified learner; children() memoization gotcha; DemoDev domain is 127.0.0.1:8000

@@ -13,6 +13,7 @@ from freedom_ls.content_engine.schema import Course as CourseSchema
 
 # ---------------------------------------------------------------------------
 # A.1 — Model field: access_config
+# TODO: fix dumb comments and tests
 # ---------------------------------------------------------------------------
 
 

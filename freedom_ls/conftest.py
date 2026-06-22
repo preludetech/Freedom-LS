@@ -23,6 +23,7 @@ def _disable_force_site_name(settings):
 
 @pytest.fixture(autouse=True)
 def _clear_course_access_backend_cache():
+    # TODO not DRY. This function is defined in many test files. Make it DRY
     """Reset the cached course-access backend before and after each test.
 
     get_course_access_backend() is @functools.cache'd for the process lifetime.
