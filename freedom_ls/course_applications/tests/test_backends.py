@@ -194,6 +194,30 @@ class TestGetAccess:
         assert decision.can_access_content is True
         assert decision.can_self_register is False
 
+    def test_application_gated_carries_application_acquisition_copy(
+        self, mock_site_context
+    ):
+        """A gated course's decision carries application-funnel copy, not the free copy.
+
+        QA Bug 1: the detail page must not claim a gated course is "Free · open" with
+        "One click. No credit card." The copy comes from the backend decision.
+        """
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        user = UserFactory()
+        course = CourseFactory()
+        course.access_config = {"access_type": "application_gated"}
+        course.save()
+
+        backend = ApplicationCourseAccessBackend()
+        decision = backend.get_access(user=user, course=course)
+
+        assert decision.enrolment_summary == "By application"
+        assert decision.acquisition_heading == "Application required"
+        assert decision.acquisition_subtext == "Apply and we'll review your request."
+
     def test_free_course_returns_start_cta(self, mock_site_context):
         """get_access for free course returns 'Start' CTA (inherited from parent)."""
         from freedom_ls.course_applications.backends import (

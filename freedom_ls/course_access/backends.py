@@ -45,6 +45,12 @@ class CourseAccessDecision:
     cta_url: str | None  # None = not actionable
     can_self_register: bool
     can_access_content: bool
+    # Acquisition-funnel copy for the course detail page, driven by the backend so
+    # the template carries no access-type-specific marketing (a gated course must
+    # not inherit the free "One click. No credit card." copy). None = omit that line.
+    enrolment_summary: str | None = None  # hero stat-card "Enrolment" value
+    acquisition_heading: str | None = None  # sign-up panel heading
+    acquisition_subtext: str | None = None  # sign-up panel subtext
 
 
 @dataclass(frozen=True)
@@ -130,6 +136,14 @@ class CourseAccessType(models.TextChoices):
     # (course_applications.backends.ApplicationCourseAccessBackend) extends this.
 
 
+# Acquisition-funnel copy for free courses, surfaced on the detail page via the
+# CourseAccessDecision. Shared by the Start (unregistered) and Continue (registered)
+# branches so the free funnel reads identically in both.
+_FREE_ENROLMENT_SUMMARY = "Free · open"
+_FREE_ACQUISITION_HEADING = "Free · open to everyone"
+_FREE_ACQUISITION_SUBTEXT = "One click. No credit card."
+
+
 class DefaultCourseAccessBackend(CourseAccessBackend):
     """Core free-only access backend.
 
@@ -198,6 +212,9 @@ class DefaultCourseAccessBackend(CourseAccessBackend):
                 ),
                 can_self_register=False,
                 can_access_content=True,
+                enrolment_summary=_FREE_ENROLMENT_SUMMARY,
+                acquisition_heading=_FREE_ACQUISITION_HEADING,
+                acquisition_subtext=_FREE_ACQUISITION_SUBTEXT,
             )
 
         # At this point, config is valid and access_type is CourseAccessType.FREE
@@ -210,6 +227,9 @@ class DefaultCourseAccessBackend(CourseAccessBackend):
             ),
             can_self_register=True,
             can_access_content=False,
+            enrolment_summary=_FREE_ENROLMENT_SUMMARY,
+            acquisition_heading=_FREE_ACQUISITION_HEADING,
+            acquisition_subtext=_FREE_ACQUISITION_SUBTEXT,
         )
 
     def filter_visible(

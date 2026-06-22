@@ -59,6 +59,24 @@ class TestCourseAccessDecision:
         assert decision.can_self_register is False
         assert decision.can_access_content is False
 
+    def test_acquisition_copy_defaults_to_none(self):
+        """The acquisition-copy fields are optional and default to None.
+
+        A backend that supplies no funnel copy (e.g. an invalid-config safe
+        decision) leaves them unset and the detail page omits those lines.
+        """
+        from freedom_ls.course_access.backends import CourseAccessDecision
+
+        decision = CourseAccessDecision(
+            cta_label=None,
+            cta_url=None,
+            can_self_register=False,
+            can_access_content=False,
+        )
+        assert decision.enrolment_summary is None
+        assert decision.acquisition_heading is None
+        assert decision.acquisition_subtext is None
+
 
 class TestDashboardContribution:
     """Task A.3 — DashboardContribution dataclass."""
@@ -181,6 +199,22 @@ class TestDefaultCourseAccessBackendGetAccess:
         assert decision.can_self_register is True
         assert decision.can_access_content is False
 
+    def test_free_course_decision_carries_free_acquisition_copy(
+        self, mock_site_context
+    ):
+        """A free course's decision carries the free funnel copy (not hardcoded in the template)."""
+        from django.contrib.auth.models import AnonymousUser
+
+        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+
+        course = CourseFactory(access_config={"access_type": "free"})
+        backend = DefaultCourseAccessBackend()
+        decision = backend.get_access(user=AnonymousUser(), course=course)
+
+        assert decision.enrolment_summary == "Free · open"
+        assert decision.acquisition_heading == "Free · open to everyone"
+        assert decision.acquisition_subtext == "One click. No credit card."
+
     def test_anonymous_user_start_url_points_to_register(self, mock_site_context):
         from django.contrib.auth.models import AnonymousUser
         from django.urls import reverse
@@ -257,6 +291,10 @@ class TestDefaultCourseAccessBackendGetAccess:
         assert decision.cta_url is None
         assert decision.can_self_register is False
         assert decision.can_access_content is False
+        # No funnel copy on a no-action decision — the detail page omits it.
+        assert decision.enrolment_summary is None
+        assert decision.acquisition_heading is None
+        assert decision.acquisition_subtext is None
 
     def test_get_dashboard_contributions_returns_empty_list(self, mock_site_context):
         from django.contrib.auth.models import AnonymousUser

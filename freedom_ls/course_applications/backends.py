@@ -101,6 +101,9 @@ class ApplicationCourseAccessBackend(DefaultCourseAccessBackend):
             ),
             can_self_register=False,
             can_access_content=False,
+            enrolment_summary="By application",
+            acquisition_heading="Application required",
+            acquisition_subtext="Apply and we'll review your request.",
         )
 
     def get_dashboard_contributions(self, *, user: User) -> list[DashboardContribution]:

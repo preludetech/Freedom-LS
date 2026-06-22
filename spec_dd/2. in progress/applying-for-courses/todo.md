@@ -53,7 +53,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: gated course detail page shows "Free · open" marketing copy alongside the "Apply now" CTA (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: gated course detail page shows "Free · open" marketing copy alongside the "Apply now" CTA (TDD — failing test first, then fix)
 
 ## 10. Pull request
 

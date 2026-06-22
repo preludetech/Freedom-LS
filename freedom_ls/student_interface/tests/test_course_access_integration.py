@@ -198,6 +198,46 @@ def test_course_detail_free_not_registered_shows_start_label(mock_site_context):
 
 
 @pytest.mark.django_db
+def test_course_detail_gated_shows_application_copy_not_free_copy(mock_site_context):
+    """QA Bug 1: the gated detail page must show application funnel copy, not the free copy.
+
+    The funnel copy (enrolment summary, sign-up heading/subtext) is driven by the
+    access backend, so a gated course must not claim to be "Free · open" / "One
+    click. No credit card." alongside its "Apply now" CTA.
+    """
+    course = _gated_course()
+    user = UserFactory()
+    client = _client(user)
+
+    url = reverse(
+        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+    body = client.get(url).content.decode()
+
+    assert "Free · open" not in body
+    assert "One click. No credit card." not in body
+    assert "By application" in body
+    assert "Application required" in body
+    assert "Apply and we&#x27;ll review your request." in body
+
+
+@pytest.mark.django_db
+def test_course_detail_free_shows_free_acquisition_copy(mock_site_context):
+    """The free detail page still shows the free funnel copy (driven by the backend)."""
+    course = _free_course()
+    user = UserFactory()
+    client = _client(user)
+
+    url = reverse(
+        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+    body = client.get(url).content.decode()
+
+    assert "Free · open" in body
+    assert "One click. No credit card." in body
+
+
+@pytest.mark.django_db
 def test_course_detail_registered_shows_start_course_label(mock_site_context):
     """course_detail for a registered learner with 0 progress shows 'Start course'."""
     course = _free_course()

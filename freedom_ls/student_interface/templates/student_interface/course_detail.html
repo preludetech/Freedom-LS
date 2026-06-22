@@ -98,9 +98,11 @@
                                     {% endwith %}
                                 {% endif %}
                             {% endwith %}
-                            {% with stat_icon="check" stat_label="Enrolment" stat_value="Free · open" %}
-                                {% partial stat-card %}
-                            {% endwith %}
+                            {% if enrolment_summary %}
+                                {% with stat_icon="check" stat_label="Enrolment" stat_value=enrolment_summary %}
+                                    {% partial stat-card %}
+                                {% endwith %}
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -113,14 +115,20 @@
                 {% comment %}Sign-up panel — order-first on mobile so CTA is near the top{% endcomment %}
                 <aside class="order-first lg:order-last lg:col-span-1 pt-6">
                     <div class="signup-panel p-6 rounded-xl border border-border lg:sticky lg:top-6 space-y-4">
-                        <div>
-                            <p class="font-semibold text-base">
-                                Free &middot; open to everyone
-                            </p>
-                            <p class="text-muted text-sm mt-1">
-                                One click. No credit card.
-                            </p>
-                        </div>
+                        {% if acquisition_heading or acquisition_subtext %}
+                            <div>
+                                {% if acquisition_heading %}
+                                    <p class="font-semibold text-base">
+                                        {{ acquisition_heading }}
+                                    </p>
+                                {% endif %}
+                                {% if acquisition_subtext %}
+                                    <p class="text-muted text-sm mt-1">
+                                        {{ acquisition_subtext }}
+                                    </p>
+                                {% endif %}
+                            </div>
+                        {% endif %}
                         <c-button href="{{ start_url }}" class="w-full">
                             {{ cta_label }}
                         </c-button>

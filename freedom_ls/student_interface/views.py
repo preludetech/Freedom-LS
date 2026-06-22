@@ -247,6 +247,12 @@ def course_detail(request, course_slug):
             "is_registered": is_registered,
             "start_url": start_url,
             "cta_label": cta_label,
+            # Acquisition-funnel copy is access-type-specific and comes from the
+            # backend decision (not the CTA-state helpers above), so it is correct
+            # for gated courses as well as free ones.
+            "enrolment_summary": decision.enrolment_summary,
+            "acquisition_heading": decision.acquisition_heading,
+            "acquisition_subtext": decision.acquisition_subtext,
             "breadcrumbs": breadcrumbs,
             "lesson_count": lesson_count,
             "lesson_count_label": lesson_count_label,
