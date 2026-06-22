@@ -382,11 +382,28 @@ if __name__ == "__main__":
     target = Path(sys.argv[1])
     try:
         validate(target)
-        print(f"✓ Validation passed for {target}")
-        sys.exit(0)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         sys.exit(1)
     except Exception as exc:
         print(f"\n❌ Unexpected error: {exc!s}", file=sys.stderr)
         sys.exit(2)
+
+    # validate() returns without raising when no content files match — otherwise
+    # indistinguishable from a real pass. Surface it so a wrong/typo'd path can't
+    # read as "validated".
+    content_files = (
+        [f for f in get_all_files(target) if f.suffix in [".md", ".yaml", ".yml"]]
+        if target.exists()
+        else []
+    )
+    if not content_files:
+        print(
+            f"\n⚠ No content files (.md, .yaml, .yml) found under {target}. "
+            "Nothing was validated — check the path.",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
+    print(f"✓ Validation passed for {target}")
+    sys.exit(0)

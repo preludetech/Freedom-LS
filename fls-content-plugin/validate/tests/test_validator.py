@@ -19,7 +19,7 @@ VALIDATE_SCRIPT = Path(__file__).parent.parent / "validate.py"
 # --no-project is required to prove Django-freedom: without it, uv discovers the
 # FLS pyproject.toml and layers deps on top of the full project environment, making
 # Django importable even in a "clean" subprocess.
-UV_CMD = [
+UV_BASE = [
     "uv",
     "run",
     "--no-project",
@@ -29,23 +29,60 @@ UV_CMD = [
     "pyyaml",
     "--with",
     "python-frontmatter",
-    "python",
-    str(VALIDATE_SCRIPT),
 ]
+UV_CMD = [*UV_BASE, "python", str(VALIDATE_SCRIPT)]
+
+# Cap subprocess runtime so a cold uv cache fetching deps can't hang the suite.
+_SUBPROCESS_TIMEOUT = 120
+
+
+def _clean_env() -> dict[str, str]:
+    """Minimal env: PATH so uv can find python, HOME for its cache, no Django settings."""
+    return {
+        "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
+        "HOME": os.environ.get("HOME", tempfile.gettempdir()),
+    }
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _require_validator_env() -> None:
+    """Skip these subprocess tests if the bundled validator's uv env can't be built.
+
+    The tests shell out to `uv run --no-project --with …`, which needs `uv` on PATH
+    and the three deps resolvable (cached or via network). `--disable-socket` only
+    covers the pytest process, not the subprocess, so on a cold cache without network
+    this would otherwise hang or fail opaquely. Probe once and skip with a clear reason.
+    """
+    try:
+        probe = subprocess.run(
+            [*UV_BASE, "python", "-c", "import pydantic, yaml, frontmatter"],
+            capture_output=True,
+            text=True,
+            env=_clean_env(),
+            timeout=_SUBPROCESS_TIMEOUT,
+        )
+    except FileNotFoundError:
+        pytest.skip("`uv` is not installed or not on PATH")
+    except subprocess.TimeoutExpired:
+        pytest.skip(
+            "Timed out building the bundled validator env "
+            "(uv could not resolve pydantic/pyyaml/python-frontmatter offline)"
+        )
+    if probe.returncode != 0:
+        pytest.skip(
+            "Bundled validator env unavailable — uv could not resolve "
+            f"pydantic/pyyaml/python-frontmatter.\nstderr: {probe.stderr.strip()}"
+        )
 
 
 def run_validator(path: Path) -> subprocess.CompletedProcess[str]:
     """Run the bundled validator against *path* in a clean environment."""
-    env = {
-        # Minimal env: PATH so uv can find python, no DJANGO_SETTINGS_MODULE.
-        "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
-        "HOME": os.environ.get("HOME", tempfile.gettempdir()),
-    }
     return subprocess.run(
         [*UV_CMD, str(path)],
         capture_output=True,
         text=True,
-        env=env,
+        env=_clean_env(),
+        timeout=_SUBPROCESS_TIMEOUT,
     )
 
 
@@ -192,6 +229,21 @@ def test_broken_sample_output_is_human_readable(tmp_path: Path) -> None:
     )
     # Should contain something human-readable about the failure.
     assert len(combined.strip()) > 0, "Validator produced no output for a broken file"
+
+
+def test_empty_directory_exits_nonzero(tmp_path: Path) -> None:
+    """A directory with no content files must not report success (was: exit 0)."""
+    empty = tmp_path / "no-content"
+    empty.mkdir()
+    # README.md is skipped by the validator's file filter, so this dir has zero
+    # content files — a typo'd path should not read as "validated".
+    (empty / "README.md").write_text("# ignored\n", encoding="utf-8")
+
+    result = run_validator(empty)
+    assert result.returncode != 0, (
+        f"Expected non-zero exit for a directory with no content files.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
 
 
 # ---------------------------------------------------------------------------
