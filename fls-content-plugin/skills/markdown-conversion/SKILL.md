@@ -29,7 +29,7 @@ The three tiers:
 After converting, validate the structure before running `content_save`:
 
 - **Non-technical authors**: run `/fls-content:validate-content` — it runs the bundled validator and reports results in plain language.
-- **Technical authors**: `uv run --with pydantic --with pyyaml --with python-frontmatter python fls-content-plugin/validate/validate.py <path>`
+- **Technical authors**: `uv run --no-project --with pydantic --with pyyaml --with python-frontmatter python fls-content-plugin/validate/validate.py <path>`
 
 This is a **structural pre-flight only** — required-field, unknown-field, and type checks. The authoritative pass (UUID assignment, icon validation, cross-reference resolution, asset upload) still happens when you run `content_save` on an FLS host. Always run `content_save` after the validator passes.
 

@@ -12,7 +12,8 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 6. **QA** → run the QA plan.
 7. **Refresh the app map** → if structure changed, re-run `/app_map`.
 8. **Document** → run `/update_product_docs` to update `docs/product/` for the shipped feature.
-9. **Ship** → PR, address feedback, finish worktree.
+9. **Sync the course-author plugin** → run `/update_claude_plugin_fls_content` to sync the `fls-content` plugin if authoring functionality changed (fast-skips otherwise).
+10. **Ship** → PR, address feedback, finish worktree.
 
 > `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** sets up an isolated worktree for the work. Run it once, then do everything else inside the worktree.
 

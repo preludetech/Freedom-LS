@@ -31,7 +31,7 @@
 
 ### Leave alone (never widgetise)
 
-- Inline formatting (`**bold**`, `*italic*`, `` `code` `)
+- Inline formatting (`**bold**`, `*italic*`, `` `code` `` )
 - Ordered and unordered lists
 - Hyperlinks `[text](url)` (unless it is a YouTube URL as above)
 - Standard fenced code blocks ` ``` ` (leave as fenced unless a title is needed — FLS renders them natively)
