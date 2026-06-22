@@ -1,10 +1,10 @@
-"""ApplicationCourseAccessBackend — the application-gating access backend (Task B.6).
+"""ApplicationCourseAccessBackend — the application-gating access backend.
 
 Subclasses DefaultCourseAccessBackend from course_access. This is the only new
 inter-app edge: course_applications → course_access. course_access never imports
 course_applications.
 
-This is the shipped default COURSE_ACCESS_BACKEND (Task 0.3).
+This is the shipped default COURSE_ACCESS_BACKEND.
 """
 
 from __future__ import annotations
@@ -55,15 +55,15 @@ class ApplicationCourseAccessBackend(DefaultCourseAccessBackend):
     _ALLOWED_ACCESS_TYPES = frozenset({"free", APPLICATION_GATED})
 
     # filter_visible is deliberately NOT overridden: gated courses stay discoverable
-    # in listings (spec "Listing visibility": default behaviour unchanged). Gating is
-    # enforced at the CTA + register_for_course chokepoint, not by hiding courses.
+    # in listings. Gating is enforced at the CTA + register_for_course chokepoint,
+    # not by hiding courses.
 
     def get_access(self, *, user: User, course: Course) -> CourseAccessDecision:
         """Return a CourseAccessDecision for this user + course.
 
         Registered → Continue/content (inherited from parent). A learner enrolled
         into a gated course by an admin or via a cohort therefore reaches content:
-        admin/cohort enrolment deliberately bypasses the gate (spec §3).
+        admin/cohort enrolment deliberately bypasses the gate.
         Free, not registered → Start/self-register (inherited from parent).
         Application-gated, not registered → Apply now / apply URL.
         Invalid config → safe no-action decision (inherited from parent).
@@ -91,8 +91,8 @@ class ApplicationCourseAccessBackend(DefaultCourseAccessBackend):
 
         # application_gated branch
         # Keep "Apply now" for both first-time and returning applicants — the
-        # apply view (B.4) redirects an in-flight applicant to their status page,
-        # so a single label satisfies the re-apply rule (spec §5.2) and the QA flow.
+        # apply view redirects an in-flight applicant to their status page, so a
+        # single label satisfies the re-apply rule and the QA flow.
         return CourseAccessDecision(
             cta_label="Apply now",
             cta_url=reverse(

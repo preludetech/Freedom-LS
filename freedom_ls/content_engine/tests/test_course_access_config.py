@@ -1,10 +1,4 @@
-"""Tests for Course.access_config field (Task A.1) and schema field (Task A.2).
-
-TDD — written before implementation.
-
-A.1: Model field round-trip.
-A.2: Pydantic schema field pass-through.
-"""
+"""Tests for the Course.access_config model field and its schema counterpart."""
 
 import pytest
 
@@ -12,8 +6,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.schema import Course as CourseSchema
 
 # ---------------------------------------------------------------------------
-# A.1 — Model field: access_config
-# TODO: fix dumb comments and tests
+# Model field: access_config
 # ---------------------------------------------------------------------------
 
 
@@ -35,7 +28,7 @@ def test_course_access_config_persists_value(mock_site_context):
 
 
 # ---------------------------------------------------------------------------
-# A.2 — Pydantic schema field: access_config
+# Pydantic schema field: access_config
 # ---------------------------------------------------------------------------
 
 

@@ -1,6 +1,4 @@
-"""Tests for load-time validation via COURSE_ACCESS_CONFIG_VALIDATOR hook (Task A.7).
-
-TDD: tests written first (red), then implementation added (green).
+"""Tests for load-time validation via the COURSE_ACCESS_CONFIG_VALIDATOR hook.
 
 These tests call save_course() directly with a mock pydantic schema item
 to verify that the hook fires and validates/normalises access_config.
@@ -16,15 +14,6 @@ from django.test import override_settings
 
 DEFAULT_BACKEND = "freedom_ls.course_access.backends.DefaultCourseAccessBackend"
 DEFAULT_VALIDATOR = "freedom_ls.course_access.loader.validate_course_access_config"
-
-
-@pytest.fixture(autouse=True)
-def _clear_backend_cache():
-    from freedom_ls.course_access.loader import get_course_access_backend
-
-    get_course_access_backend.cache_clear()
-    yield
-    get_course_access_backend.cache_clear()
 
 
 def _make_fake_item(tmp_path: Path, slug: str, access_config: dict | None = None):
@@ -53,7 +42,7 @@ def _make_fake_item(tmp_path: Path, slug: str, access_config: dict | None = None
 
 @pytest.mark.django_db
 class TestSaveCourseLoadTimeValidation:
-    """Task A.7 — save_course normalises and validates access_config via the hook."""
+    """save_course normalises and validates access_config via the hook."""
 
     @override_settings(
         COURSE_ACCESS_BACKEND=DEFAULT_BACKEND,

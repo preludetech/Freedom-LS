@@ -1,4 +1,4 @@
-"""Django system checks for the course_access app (Task A.6).
+"""Django system checks for the course_access app.
 
 Check IDs follow Django's convention: ``app_label.severity + number``.
 E = Error. Checks run automatically on runserver, migrate, test,

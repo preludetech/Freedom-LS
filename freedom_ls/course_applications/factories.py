@@ -1,4 +1,4 @@
-"""Factory for CourseApplication (Task B.1)."""
+"""Factory for CourseApplication."""
 
 from __future__ import annotations
 

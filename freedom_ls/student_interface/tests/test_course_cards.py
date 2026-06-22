@@ -169,10 +169,9 @@ def test_course_detail_shows_start_for_unregistered_user_free_course(
     """An unregistered user sees the backend's free-course CTA label on the detail page.
 
     The DefaultCourseAccessBackend (and ApplicationCourseAccessBackend for free courses)
-    returns "Start" as the cta_label for an unregistered learner on a free course.
-    The previous "Enrol & start" label came from _detail_cta_label (the registered-learner
-    helper); the not-registered branch now uses the backend's acquisition label instead.
-    This is an intentional copy delta per the plan's CTA vocabulary.
+    returns "Start" as the cta_label for an unregistered learner on a free course — the
+    not-registered branch uses the backend's acquisition label, not the registered-learner
+    "Enrol & start" helper.
     """
     user = UserFactory()
     client = _logged_in_client(user)

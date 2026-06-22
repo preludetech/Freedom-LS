@@ -1,7 +1,4 @@
-"""Tests for course_access Django system check (Task A.6).
-
-TDD: tests written first (red), then implementation added (green).
-"""
+"""Tests for the course_access Django system check."""
 
 from __future__ import annotations
 
@@ -14,18 +11,9 @@ from freedom_ls.content_engine.factories import CourseFactory
 DEFAULT_BACKEND = "freedom_ls.course_access.backends.DefaultCourseAccessBackend"
 
 
-@pytest.fixture(autouse=True)
-def _clear_backend_cache():
-    from freedom_ls.course_access.loader import get_course_access_backend
-
-    get_course_access_backend.cache_clear()
-    yield
-    get_course_access_backend.cache_clear()
-
-
 @pytest.mark.django_db
 class TestCourseAccessSystemCheck:
-    """Task A.6 — Django system check surfaces bad access_config."""
+    """The Django system check surfaces bad access_config."""
 
     @override_settings(COURSE_ACCESS_BACKEND=DEFAULT_BACKEND)
     def test_valid_config_produces_no_errors(self, mock_site_context):

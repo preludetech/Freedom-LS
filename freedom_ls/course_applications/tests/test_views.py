@@ -1,7 +1,4 @@
-"""Tests for course_applications views (Tasks B.4, B.5).
-
-TDD: failing tests written first, then implementation added.
-"""
+"""Tests for course_applications views."""
 
 from __future__ import annotations
 
@@ -15,7 +12,7 @@ from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
 
 # ---------------------------------------------------------------------------
-# Task B.4 — apply view
+# apply view
 # ---------------------------------------------------------------------------
 
 
@@ -166,13 +163,13 @@ class TestApplyViewPost:
 
 
 # ---------------------------------------------------------------------------
-# Task B.5 — application_status view
+# application_status view
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
 class TestApplicationStatusView:
-    """Task B.5 — applicant status page."""
+    """Applicant status page."""
 
     def test_owner_gets_200(self, client, mock_site_context):
         """Application owner receives a 200 status page."""

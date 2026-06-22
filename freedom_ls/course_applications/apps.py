@@ -6,5 +6,5 @@ class CourseApplicationsConfig(AppConfig):
     name = "freedom_ls.course_applications"
 
     def ready(self) -> None:
-        # No signals in this spec — application-review-ui spec adds those.
+        # No signals yet; application review will add them.
         pass

@@ -1,7 +1,4 @@
-"""Tests for course_access backends (A.3, A.5).
-
-TDD: tests written first (red), then implementation added (green).
-"""
+"""Tests for course_access backends."""
 
 from __future__ import annotations
 
@@ -18,20 +15,9 @@ from freedom_ls.student_management.factories import (
     UserCourseRegistrationFactory,
 )
 
-DEFAULT_BACKEND = "freedom_ls.course_access.backends.DefaultCourseAccessBackend"
-
-
-@pytest.fixture(autouse=True)
-def _clear_backend_cache():
-    from freedom_ls.course_access.loader import get_course_access_backend
-
-    get_course_access_backend.cache_clear()
-    yield
-    get_course_access_backend.cache_clear()
-
 
 class TestCourseAccessDecision:
-    """Task A.3 — frozen dataclass contract."""
+    """The CourseAccessDecision frozen dataclass contract."""
 
     def test_decision_is_frozen(self):
         from freedom_ls.course_access.backends import CourseAccessDecision
@@ -79,7 +65,7 @@ class TestCourseAccessDecision:
 
 
 class TestDashboardContribution:
-    """Task A.3 — DashboardContribution dataclass."""
+    """The DashboardContribution dataclass."""
 
     def test_contribution_fields(self):
         from freedom_ls.course_access.backends import DashboardContribution
@@ -100,7 +86,7 @@ class TestDashboardContribution:
 
 
 class TestCourseAccessBackend:
-    """Task A.3 — base class raises NotImplementedError."""
+    """The base class raises NotImplementedError for its abstract methods."""
 
     def test_get_access_raises(self):
         from freedom_ls.course_access.backends import CourseAccessBackend
@@ -133,7 +119,7 @@ class TestCourseAccessBackend:
 
 
 class TestDefaultCourseAccessBackendValidate:
-    """Task A.5 — validate_course_config."""
+    """DefaultCourseAccessBackend.validate_course_config."""
 
     def test_empty_config_defaults_to_free(self):
         from freedom_ls.course_access.backends import DefaultCourseAccessBackend
@@ -184,7 +170,7 @@ class TestDefaultCourseAccessBackendValidate:
 
 @pytest.mark.django_db
 class TestDefaultCourseAccessBackendGetAccess:
-    """Task A.5 — get_access."""
+    """DefaultCourseAccessBackend.get_access."""
 
     def test_anonymous_user_on_free_course_gets_start_cta(self, mock_site_context):
         from django.contrib.auth.models import AnonymousUser

@@ -1,4 +1,4 @@
-"""Tests for Task A.8 — wiring the course-access backend into student_interface.
+"""Tests for wiring the course-access backend into student_interface.
 
 Covers:
 1. Chokepoint gate in register_for_course
@@ -199,7 +199,7 @@ def test_course_detail_free_not_registered_shows_start_label(mock_site_context):
 
 @pytest.mark.django_db
 def test_course_detail_gated_shows_application_copy_not_free_copy(mock_site_context):
-    """QA Bug 1: the gated detail page must show application funnel copy, not the free copy.
+    """The gated detail page must show application funnel copy, not the free copy.
 
     The funnel copy (enrolment summary, sign-up heading/subtext) is driven by the
     access backend, so a gated course must not claim to be "Free · open" / "One

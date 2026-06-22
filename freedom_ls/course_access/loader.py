@@ -1,4 +1,4 @@
-"""Loader for the active course-access backend (Task A.4).
+"""Loader for the active course-access backend.
 
 get_course_access_backend() is cached for the process lifetime. Callers that use
 override_settings(COURSE_ACCESS_BACKEND=...) in tests MUST call

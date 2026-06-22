@@ -1,7 +1,4 @@
-"""Tests for student_management.utils.is_registered_for_course (Task A.5 extraction).
-
-TDD: tests written first (red), then implementation added (green).
-"""
+"""Tests for student_management.utils.is_registered_for_course."""
 
 from __future__ import annotations
 

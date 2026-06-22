@@ -1,7 +1,4 @@
-"""Tests for ApplicationCourseAccessBackend (Task B.6).
-
-TDD: failing tests written first, then implementation added.
-"""
+"""Tests for ApplicationCourseAccessBackend."""
 
 from __future__ import annotations
 
@@ -13,23 +10,10 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 
-APPLICATION_BACKEND = (
-    "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend"
-)
-
-
-@pytest.fixture(autouse=True)
-def _clear_backend_cache():
-    from freedom_ls.course_access.loader import get_course_access_backend
-
-    get_course_access_backend.cache_clear()
-    yield
-    get_course_access_backend.cache_clear()
-
 
 @pytest.mark.django_db
 class TestValidateCourseConfig:
-    """Task B.6 — validate_course_config on ApplicationCourseAccessBackend."""
+    """validate_course_config on ApplicationCourseAccessBackend."""
 
     def test_application_gated_is_accepted(self, mock_site_context):
         """validate_course_config accepts access_type=application_gated."""
@@ -98,7 +82,7 @@ class TestValidateCourseConfig:
 
 @pytest.mark.django_db
 class TestGetAccess:
-    """Task B.6 — get_access on ApplicationCourseAccessBackend."""
+    """get_access on ApplicationCourseAccessBackend."""
 
     def test_application_gated_course_returns_apply_now_cta(self, mock_site_context):
         """get_access for an application-gated course returns 'Apply now' CTA."""
@@ -170,9 +154,9 @@ class TestGetAccess:
     def test_registered_learner_on_gated_course_gets_content(self, mock_site_context):
         """A learner enrolled into a gated course (admin/cohort) bypasses the gate.
 
-        Spec §3: admin/cohort enrolment deliberately bypasses the application
-        gate, so a registered learner reaches content (Continue/can_access_content)
-        rather than being told to "Apply now".
+        Admin/cohort enrolment deliberately bypasses the application gate, so a
+        registered learner reaches content (Continue/can_access_content) rather
+        than being told to "Apply now".
         """
         from freedom_ls.course_applications.backends import (
             ApplicationCourseAccessBackend,
@@ -199,7 +183,7 @@ class TestGetAccess:
     ):
         """A gated course's decision carries application-funnel copy, not the free copy.
 
-        QA Bug 1: the detail page must not claim a gated course is "Free · open" with
+        The detail page must not claim a gated course is "Free · open" with
         "One click. No credit card." The copy comes from the backend decision.
         """
         from freedom_ls.course_applications.backends import (
@@ -238,7 +222,7 @@ class TestGetAccess:
 
 @pytest.mark.django_db
 class TestGetDashboardContributions:
-    """Task B.6 — get_dashboard_contributions on ApplicationCourseAccessBackend."""
+    """get_dashboard_contributions on ApplicationCourseAccessBackend."""
 
     def test_returns_one_contribution_when_learner_has_active_application(
         self, mock_site_context
@@ -306,7 +290,7 @@ class TestGetDashboardContributions:
 
 @pytest.mark.django_db
 class TestDashboardPartialRendering:
-    """Task B.6 — the dashboard_applications partial renders status links."""
+    """The dashboard_applications partial renders status links."""
 
     def test_partial_renders_status_link(self, client, mock_site_context):
         """Dashboard applications partial renders a link to the application status page."""

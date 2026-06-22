@@ -5,9 +5,6 @@ DashboardContribution) define the extension point. DefaultCourseAccessBackend is
 core "free courses only" implementation. The applications backend (ApplicationCourseAccessBackend)
 lives in course_applications.backends and subclasses DefaultCourseAccessBackend there —
 course_access never imports course_applications.
-
-Task A.3 — contract objects + base class.
-Task A.5 — DefaultCourseAccessBackend + CourseAccessType.
 """
 
 from __future__ import annotations
@@ -29,7 +26,7 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------
-# Contract objects (Task A.3)
+# Contract objects
 # ---------------------------------------------------------------------------
 
 
@@ -38,7 +35,7 @@ class CourseAccessDecision:
     """Decision returned by CourseAccessBackend.get_access().
 
     All callers read only these four fields — no caller may branch on
-    Course.access_config directly (backend-private convention, spec §4.1/§10).
+    Course.access_config directly (backend-private convention).
     """
 
     cta_label: str | None  # "Start", "Apply now", "Continue", …; None = no affordance
@@ -68,7 +65,7 @@ class DashboardContribution:
 
 
 # ---------------------------------------------------------------------------
-# Base class (Task A.3)
+# Base class
 # ---------------------------------------------------------------------------
 
 
@@ -79,9 +76,8 @@ class CourseAccessBackend:
     subscriptions, feature-unlocks).
 
     NOTE: has_feature(*, user, feature) is intentionally NOT defined here.
-    It is the additive home for feature-unlock backends (spec §4.3, §11).
-    A future feature-unlock backend will add it here. Do not implement it now;
-    do not delete this comment.
+    It is the additive home for a future feature-unlock backend, which will add
+    it here. Do not implement it now; do not delete this comment.
     """
 
     def get_access(self, *, user: User, course: Course) -> CourseAccessDecision:
@@ -126,7 +122,7 @@ class CourseAccessBackend:
 
 
 # ---------------------------------------------------------------------------
-# Core default backend (Task A.5)
+# Core default backend
 # ---------------------------------------------------------------------------
 
 
@@ -148,7 +144,7 @@ class DefaultCourseAccessBackend(CourseAccessBackend):
     """Core free-only access backend.
 
     Knows nothing about applications. All application-gated logic lives in the
-    ApplicationCourseAccessBackend subclass (course_applications app, batch 3+).
+    ApplicationCourseAccessBackend subclass (course_applications app).
     """
 
     # Access type values this backend accepts. Subclasses (e.g. the applications

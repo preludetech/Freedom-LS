@@ -1,4 +1,4 @@
-"""Query helpers for course_applications (Task B.6).
+"""Query helpers for course_applications.
 
 These helpers are consumed by the ApplicationCourseAccessBackend and this app's own
 views. student_interface must NOT import from here — it reaches the applications
@@ -20,8 +20,8 @@ def get_active_applications(user: User) -> QuerySet[CourseApplication]:
     """Return all applications for this user on the current site.
 
     Site isolation is automatic via SiteAwareManager. With no terminal states
-    yet, this returns all of the user's applications. The application-review-ui
-    spec narrows this to active states once withdraw/approve/reject exist.
+    yet, this returns all of the user's applications; it narrows to active states
+    once withdraw/approve/reject exist.
     """
     from freedom_ls.course_applications.models import CourseApplication
 

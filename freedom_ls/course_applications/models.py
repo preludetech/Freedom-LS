@@ -1,8 +1,9 @@
-"""Course application submission model (Task B.1).
+"""Course application submission model.
 
-The application-review-ui spec adds state machine, transitions, notes, signals,
-permissions, and swaps the plain unique constraint for an active-state partial index.
-The application-forms spec adds config FK and answer/file children.
+Deliberately minimal and standalone. Application review will later add a state
+machine, transitions, notes, signals, and permissions, and will swap the plain
+unique constraint for an active-state partial index. Application forms will add a
+config FK and answer/file children.
 """
 
 from __future__ import annotations
@@ -19,12 +20,12 @@ class CourseApplication(SiteAwareModel):
     Extends SiteAwareModel (UUID pk + site FK). Site isolation is automatic
     via SiteAwareManager — never filter on site_id manually.
 
-    NOTE (review spec — application-review-ui): gains `state = FSMField(protected=True)`, the
+    NOTE: when application review lands, this model gains `state = FSMField(protected=True)`, the
       submit/withdraw/pick_up/request_changes/resubmit/approve/reject transitions,
       submitted_at/decided_at/decided_by, the view_application/change_application permissions,
       ApplicationNote + ApplicationStateTransition, the application_state_changed signal, and the
       active-state PARTIAL unique index that REPLACES the plain constraint below.
-    NOTE (forms spec — application-forms): gains `config FK ApplicationConfig` + answer/file children.
+    NOTE: when application forms land, this model gains `config FK ApplicationConfig` + answer/file children.
     Do not architect these away — leave this model standalone and additive.
     """
 

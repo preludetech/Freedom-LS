@@ -1,7 +1,4 @@
-"""Tests for CourseApplication model (Task B.1).
-
-TDD: failing tests written first, then model implemented.
-"""
+"""Tests for the CourseApplication model."""
 
 from __future__ import annotations
 
@@ -16,7 +13,7 @@ from freedom_ls.course_applications.factories import CourseApplicationFactory
 
 @pytest.mark.django_db
 class TestCourseApplicationUniqueConstraint:
-    """Task B.1 — unique constraint per (site, user, course)."""
+    """Unique constraint per (site, user, course)."""
 
     def test_second_application_same_site_user_course_raises_integrity_error(
         self, mock_site_context

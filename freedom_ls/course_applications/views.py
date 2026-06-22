@@ -1,4 +1,4 @@
-"""Views for course_applications (Tasks B.4, B.5)."""
+"""Views for course_applications."""
 
 from __future__ import annotations
 
@@ -14,17 +14,18 @@ from freedom_ls.course_applications.models import CourseApplication
 
 @login_required
 def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
-    """Apply entry view (Task B.4).
+    """Apply entry view.
 
     GET: show confirmation page ("Apply to <course>?").
          If the learner already has an application, redirect to its status page.
     POST: get_or_create the application, then redirect to status page.
 
-    NOTE (review spec): the POST body will wrap get_or_create in an atomic block
-      and call app.submit() (the FSM transition) + create an ApplicationStateTransition
-      audit row when the review spec is implemented.
-    NOTE (forms spec): the POST body will resolve the ApplicationConfig, create a
-      draft application, and redirect to the multi-step form flow instead.
+    NOTE: when application review lands, the POST body will wrap get_or_create in
+      an atomic block and call app.submit() (the FSM transition) + create an
+      ApplicationStateTransition audit row.
+    NOTE: when application forms land, the POST body will resolve the
+      ApplicationConfig, create a draft application, and redirect to the
+      multi-step form flow instead.
     """
     course = get_object_or_404(Course, slug=course_slug)
 
@@ -51,13 +52,14 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
 
 @login_required
 def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
-    """Applicant status page (Task B.5).
+    """Applicant status page.
 
     Shows a static plain-language "received and pending review" confirmation.
     Only the application owner may view this page — non-owners get 404.
 
-    NOTE (review spec): dynamic state rendering (state badge, reviewer message,
-      withdraw action via get_available_user_state_transitions) goes here.
+    NOTE: when application review lands, dynamic state rendering (state badge,
+      reviewer message, withdraw action via get_available_user_state_transitions)
+      goes here.
     """
     app = get_object_or_404(CourseApplication, pk=pk, user=request.user)
     return render(
