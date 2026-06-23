@@ -24,7 +24,7 @@ Do not duplicate `alt` and `title`. The alt text should stand in for the image; 
 
 Add a `number` to prefix the title with "Figure N":
 
-<c-picture src="images/landscape.svg" alt="A blue sky over a dark horizon with a yellow sun in the upper right" title="A titled, numbered figure with a click-to-zoom lightbox" description="Clicking the image opens a full-screen lightbox where this description appears beneath the title." number="1"></c-picture>
+<c-picture src="../images/landscape.svg" alt="A blue sky over a dark horizon with a yellow sun in the upper right" title="A titled, numbered figure with a click-to-zoom lightbox" description="Clicking the image opens a full-screen lightbox where this description appears beneath the title." number="1"></c-picture>
 
 ## Annotated diagrams
 
@@ -45,9 +45,9 @@ One authoring quirk to remember: always use the closed form `<c-picture ...></c-
 
 <c-image-grid columns="2">
 
-<c-picture src="images/landscape.svg" alt="A blue sky over a dark horizon with a yellow sun" title="Landscape"></c-picture>
+<c-picture src="../images/landscape.svg" alt="A blue sky over a dark horizon with a yellow sun" title="Landscape"></c-picture>
 
-<c-picture src="images/square.svg" alt="A dark circle centred on an orange background" title="Square"></c-picture>
+<c-picture src="../images/square.svg" alt="A dark circle centred on an orange background" title="Square"></c-picture>
 
 </c-image-grid>
 
@@ -55,11 +55,11 @@ The same three images at three columns:
 
 <c-image-grid columns="3">
 
-<c-picture src="images/landscape.svg" alt="A blue sky over a dark horizon with a yellow sun" title="Landscape"></c-picture>
+<c-picture src="../images/landscape.svg" alt="A blue sky over a dark horizon with a yellow sun" title="Landscape"></c-picture>
 
 <c-picture src="images/portrait.svg" alt="A tall dark panel on a green background" title="Portrait"></c-picture>
 
-<c-picture src="images/square.svg" alt="A dark circle centred on an orange background" title="Square"></c-picture>
+<c-picture src="../images/square.svg" alt="A dark circle centred on an orange background" title="Square"></c-picture>
 
 </c-image-grid>
 
@@ -69,4 +69,4 @@ If you do not want a grid, you do not need a wrapper. Consecutive `c-picture` bl
 
 <c-picture src="images/portrait.svg" alt="A tall dark panel on a green background" title="A stacked figure, full width and centred"></c-picture>
 
-<c-picture src="images/square.svg" alt="A dark circle centred on an orange background" title="A second stacked figure directly below the first"></c-picture>
+<c-picture src="../images/square.svg" alt="A dark circle centred on an orange background" title="A second stacked figure directly below the first"></c-picture>

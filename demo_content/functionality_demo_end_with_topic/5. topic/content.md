@@ -24,13 +24,13 @@ They also support an optional `title` attribute. This displays text below the im
 
 ### Success
 
-<c-picture src="images/graph1.drawio.svg" alt="Graph" title="Nodes"></c-picture>
+<c-picture src="../images/graph1.drawio.svg" alt="Graph" title="Nodes"></c-picture>
 
 ### Missing Images
 
 If you provide a src that does not exist, the component will render an error box.
 
-<c-picture src="images/does-not-exist.jpg" alt="Missing"></c-picture>
+<c-picture src="../images/does-not-exist.jpg" alt="Missing"></c-picture>
 
 ## Cheat Sheet:
 

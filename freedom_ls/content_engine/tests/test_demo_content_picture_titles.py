@@ -11,7 +11,11 @@ import re
 from config.settings_base import BASE_DIR
 
 CONTENT_WIDGETS_MEDIA = (
-    BASE_DIR / "demo_content" / "functionality_demo_content_widgets" / "2. media.md"
+    BASE_DIR
+    / "demo_content"
+    / "functionality_demo_content_widgets"
+    / "2. media"
+    / "content.md"
 )
 
 # Captures the `number` and `title` attribute values of every <c-picture> tag.

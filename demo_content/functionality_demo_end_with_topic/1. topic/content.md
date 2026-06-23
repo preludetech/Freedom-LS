@@ -47,7 +47,7 @@ Add it to the `MARKDOWN_ALLOWED_TAGS` setting.
 To make a new component you need to:
 - make a new cotton component
 
-<c-picture src="images/graph1.drawio.svg" alt="Graph example" title="Example of a graph"></c-picture>
+<c-picture src="../images/graph1.drawio.svg" alt="Graph example" title="Example of a graph"></c-picture>
 
 
 And a video.

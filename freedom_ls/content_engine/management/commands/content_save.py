@@ -644,25 +644,40 @@ def save_content_to_db(path, site_name):
                             type("Child", (), {"path": item, "overrides": None})()
                         )
                 elif item.is_dir():
-                    # For subdirectories, look for main content files (forms, courses, or course parts)
-                    main_files = []
-                    for f in item.iterdir():
-                        if f.is_file() and f.suffix in [".md", ".yaml", ".yml"]:
-                            # Parse to check if it's a Form, Course, or CoursePart
-                            parsed = parse_single_file(f)
-                            if parsed and parsed[0].content_type in (
-                                SchemaContentType.FORM,
-                                SchemaContentType.COURSE,
-                                SchemaContentType.COURSE_PART,
-                            ):
-                                main_files.append(f)
-                                break  # Found the main file
+                    # A subdirectory is either a child collection/form
+                    # (form.md/course.md/part.yaml) or a topic directory
+                    # (content.md). Collection/form roles take priority because a
+                    # COURSE_PART directory also contains topic files.
+                    collection_file = None
+                    topic_file = None
+                    for f in sorted(item.iterdir()):
+                        if not (f.is_file() and f.suffix in [".md", ".yaml", ".yml"]):
+                            continue
+                        parsed = parse_single_file(f)
+                        if not parsed:
+                            continue
+                        content_type = parsed[0].content_type
+                        if content_type in (
+                            SchemaContentType.FORM,
+                            SchemaContentType.COURSE,
+                            SchemaContentType.COURSE_PART,
+                        ):
+                            collection_file = f
+                            break
+                        if (
+                            content_type
+                            in (
+                                SchemaContentType.TOPIC,
+                                SchemaContentType.ACTIVITY,
+                            )
+                            and topic_file is None
+                        ):
+                            topic_file = f
 
-                    if main_files:
+                    main_file = collection_file or topic_file
+                    if main_file:
                         children_list.append(
-                            type(
-                                "Child", (), {"path": main_files[0], "overrides": None}
-                            )()
+                            type("Child", (), {"path": main_file, "overrides": None})()
                         )
 
         # Create ContentCollectionItem entries for each child

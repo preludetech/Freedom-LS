@@ -16,8 +16,8 @@ All models use `extra="forbid"` — any unrecognised frontmatter key causes vali
 |---|---|---|
 | `COURSE` | `course.md` | One per course directory; optional markdown body |
 | `COURSE_PART` | `part.yaml` | One per part subdirectory; **no closing `---`** |
-| `TOPIC` | `NN. slug.md` | Numbered `.md` file; markdown body |
-| `ACTIVITY` | `NN. slug.md` | Numbered `.md` file; markdown body; has `level` field |
+| `TOPIC` | `NN. slug/content.md` | Numbered topic directory; markdown body (flat `NN. slug.md` also accepted) |
+| `ACTIVITY` | `NN. slug/content.md` | Numbered topic directory; markdown body; has `level` field |
 | `FORM` | `form.md` | Inside a numbered subdirectory; identifies the directory as a form |
 | `FORM_PAGE` | `NN. slug.yaml` | First `---`-delimited YAML section of the file |
 | `FORM_QUESTION` | (in `NN. slug.yaml`) | Subsequent sections containing a `question` key |

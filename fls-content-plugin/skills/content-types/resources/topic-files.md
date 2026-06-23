@@ -1,8 +1,34 @@
 # TOPIC and ACTIVITY Files
 
+<!-- claude todo: add: title and subtitle are automatically rendered, dont add top-level headings in the markdown text
+
+Eg:
+
+
+```[bad]
+---
+title: foo
+---
+# Foo
+```
+
+This will render as:
+
+<h1>Foo</h1>
+<h2>Foo</h2>
+
+
+ -->
+
 ## TOPIC
 
-A numbered `.md` file (e.g. `01. welcome.md`) inside a course or course-part directory.
+A numbered directory (e.g. `01. welcome/`) inside a course or course-part directory,
+containing a `content.md` with the topic's frontmatter and body. Put images used only by
+this topic in the directory's own `images/` subfolder; images shared across topics live in
+an `images/` directory higher up (see `resources/file-layout.md`).
+
+A flat numbered file (`01. welcome.md`) is still accepted, but the
+directory-with-`content.md` form is preferred.
 
 ### Frontmatter fields
 
@@ -73,7 +99,8 @@ Start with the basics...
 
 ## ACTIVITY
 
-An `.md` file (any name that is not a role file). Identical to TOPIC but with one extra optional field.
+Same on-disk shape as a TOPIC — a numbered directory with a `content.md` (a flat numbered
+`.md` file is also accepted). Identical to TOPIC but with one extra optional field.
 
 ### Additional field
 

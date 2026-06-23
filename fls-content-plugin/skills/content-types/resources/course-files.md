@@ -6,6 +6,8 @@
 
 One `course.md` file per course root directory. Its presence identifies the directory as a COURSE.
 
+A course can contain COURSE_PARTs, but they are not required. Course parts are like sections or folders that group topics and forms. A course can also contain topics and forms directly, without any parts.
+
 ### Frontmatter fields
 
 | Field | Type | Required | Notes |
@@ -61,8 +63,8 @@ When `children:` is omitted, `content_save` auto-discovers children alphabetical
 
 ```yaml
 children:
-  - path: 01. intro.md
-  - path: 02. concepts.md
+  - path: 01. intro/content.md
+  - path: 02. concepts/content.md
   - path: 03. quiz/form.md
 ```
 

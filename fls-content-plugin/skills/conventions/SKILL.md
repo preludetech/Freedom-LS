@@ -13,25 +13,26 @@ All ordered content (topics, course-part directories, form-page files) uses a nu
 ```
 01. Getting Started/      ← course-part directory
 02. Core Concepts/
-01. welcome.md            ← topic file
-02. what-to-expect.md
+01. welcome/              ← topic directory (contains content.md)
+02. what-to-expect/
 1. page.yaml              ← form-page file
 2. results.yaml
 ```
 
 Rules:
-- Use two-digit zero-padded prefix (`01.`, `02.` … `09.`, `10.`) for directories and topic files.
+- Use two-digit zero-padded prefix (`01.`, `02.` … `09.`, `10.`) for directories (topic, part, and form directories).
 - Use single-digit prefix (`1.`, `2.`) for form-page files inside a form directory.
 - Discovery order is strict alphabetical — zero-pad consistently whenever a directory will have more than 9 ordered items.
 - Slug portion is kebab-case derived from the content title; never invented.
 
 ## Role files (unnumbered)
 
-Three files are identified by **name alone** — they are never numbered:
+These files are identified by **name alone** — they are never numbered:
 
 | File | Role |
 |---|---|
 | `course.md` | Identifies the directory as a COURSE |
+| `content.md` | Identifies a numbered directory as a TOPIC / ACTIVITY |
 | `form.md` | Identifies the directory as a FORM |
 | `part.yaml` | Identifies the directory as a COURSE_PART |
 

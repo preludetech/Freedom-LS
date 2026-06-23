@@ -20,7 +20,7 @@ Cards are centred and deliberately narrower than the content column so they read
 
 The full form: an image across the top, a heading, and a markdown body beneath. This one is `size="large"` — use the large size to feature a card you want to draw the eye to.
 
-<c-card src="images/landscape.svg" alt="A blue sky over a dark horizon with a yellow sun in the upper right" title="Planning the flight" size="large">
+<c-card src="../images/landscape.svg" alt="A blue sky over a dark horizon with a yellow sun in the upper right" title="Planning the flight" size="large">
 Most of the work in a good flight happens before anything leaves the ground. Check the weather, confirm the airspace, and walk the route on a map before you walk it in the air.
 
 A card like this one pairs a visual with a short, focused passage — useful when the image sets the scene for the text.
@@ -52,6 +52,6 @@ Sometimes all you want is to lift one paragraph out of the surrounding flow and 
 
 An image and a body with no heading — let the picture carry the introduction.
 
-<c-card src="images/square.svg" alt="A solid square framed by a thin border">
+<c-card src="../images/square.svg" alt="A solid square framed by a thin border">
 When the image and the prose speak for themselves, omit the title. The header image still sits flush against the top edge of the card, and the body follows immediately beneath it.
 </c-card>
