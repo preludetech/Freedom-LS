@@ -6,12 +6,13 @@
 #   2. Added `if __name__ == "__main__":` entry point: reads a path from sys.argv, calls
 #      validate(path), prints human-readable failures on ValueError, exits non-zero on error.
 #   3. Fixed stale docstring usage line to the real uv invocation (never bare python/python3).
-#   4. _load_allowed_access_types(): resolve the valid Course access types the same way the
-#      /fls-content:format-content command resolves admonition_types — the repo's
-#      .fls-content.yaml is authoritative; when it declares no `access_types` (or is absent /
-#      malformed) a documented fallback base set is used. The vocabulary is injected into
-#      schema.ALLOWED_ACCESS_TYPES before validating; the schema module owns no vocabulary of
-#      its own. This is the only code path that reads .fls-content.yaml.
+#   4. _load_allowed_access_types(): resolve the valid Course access types from the repo's
+#      .fls-content.yaml, which always lives at the repo root (the current working directory).
+#      The file is required: a missing or malformed .fls-content.yaml is a hard error (run
+#      /fls-content:init to create it). When the file is present and parses but declares no
+#      `access_types` key, a documented shipped base set is used. The vocabulary is injected
+#      into schema.ALLOWED_ACCESS_TYPES before validating; the schema module owns no vocabulary
+#      of its own. This is the only code path that reads .fls-content.yaml.
 #      Re-apply all patches on every D4 re-sync.
 """
 validate that a bunch of markdown files matches the given schema
@@ -39,40 +40,42 @@ logger = logging.getLogger(__name__)
 # Patch 4: the repo config file declaring deployment-specific authoring vocabulary.
 _CONFIG_FILENAME = ".fls-content.yaml"
 
-# Patch 4: documented fallback access-type vocabulary, used ONLY when no .fls-content.yaml
-# declares `access_types`. The .fls-content.yaml list is authoritative; this base set mirrors
-# the FLS shipped COURSE_ACCESS_BACKEND (free + application_gated) and parallels the documented
-# admonition fallback in the /fls-content:format-content command. It is a fallback, not the
-# universal allowed set — a deployment on a different backend declares its own access_types.
-_FALLBACK_ACCESS_TYPES: frozenset[str] = frozenset({"free", "application_gated"})
+# Patch 4: documented base access-type vocabulary, used ONLY when the repo's .fls-content.yaml
+# is present and parses but declares no `access_types` key (a legacy config predating that
+# block). This base set mirrors the FLS shipped COURSE_ACCESS_BACKEND (free + application_gated).
+# It is a default for the missing-key case, not the universal allowed set — a deployment on a
+# different backend declares its own access_types.
+_SHIPPED_ACCESS_TYPES: frozenset[str] = frozenset({"free", "application_gated"})
 
 
-def _load_allowed_access_types(target: Path) -> None:
+def _load_allowed_access_types() -> None:
     """Inject the valid Course access_config access types into schema.ALLOWED_ACCESS_TYPES.
 
-    Mirrors how admonition_types are resolved (see /fls-content:format-content Step 2): walk
-    up from *target* (its parent, if it is a file) to the filesystem root and use the first
-    `.fls-content.yaml` found. That file's `access_types` list is authoritative; when it
-    declares a non-empty list, that set is used. When no config is found, the config declares
-    no `access_types`, or the config is unreadable/malformed, the documented fallback base set
-    is used. Config problems never fail validation — they fall back to the base set.
+    The repo's `.fls-content.yaml` always lives at the repo root (the current working
+    directory), so it is read directly — never searched for. The file is required: a missing
+    or unreadable/malformed config is a hard error (the author must run /fls-content:init).
+    When the file is present and parses, its `access_types` list is authoritative; when it
+    declares no `access_types` key, the documented shipped base set is used.
     """
-    allowed = _FALLBACK_ACCESS_TYPES
-    start = target if target.is_dir() else target.parent
-    for directory in (start, *start.parents):
-        config_path = directory / _CONFIG_FILENAME
-        if not config_path.is_file():
-            continue
-        try:
-            with open(config_path, encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
-        except (OSError, yaml.YAMLError):
-            break  # malformed/unreadable config — keep the fallback base set
-        access_types = data.get("access_types") if isinstance(data, dict) else None
-        if isinstance(access_types, list) and access_types:
-            allowed = frozenset(str(t) for t in access_types)
-        break  # first config file wins, whether or not it declares access_types
-    schema.ALLOWED_ACCESS_TYPES = allowed
+    config_path = Path.cwd() / _CONFIG_FILENAME
+    if not config_path.is_file():
+        raise ValueError(
+            f"\n❌ No {_CONFIG_FILENAME} found at the repo root ({Path.cwd()}).\n"
+            f"   Run /fls-content:init to create it."
+        )
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+    except (OSError, yaml.YAMLError) as e:
+        raise ValueError(
+            f"\n❌ Could not read {_CONFIG_FILENAME} at the repo root ({config_path}).\n"
+            f"   Fix the file or re-run /fls-content:init.\nError: {e!s}"
+        ) from e
+    access_types = data.get("access_types") if isinstance(data, dict) else None
+    if isinstance(access_types, list) and access_types:
+        schema.ALLOWED_ACCESS_TYPES = frozenset(str(t) for t in access_types)
+    else:
+        schema.ALLOWED_ACCESS_TYPES = _SHIPPED_ACCESS_TYPES
 
 
 def get_all_files(path):
@@ -371,8 +374,9 @@ def validate(path):
     if not path.exists():
         raise ValueError(f"\n❌ Path does not exist: {path}")
 
-    # Patch 4: pick up the repo's deployment-specific access-type vocabulary, if declared.
-    _load_allowed_access_types(path)
+    # Patch 4: pick up the repo's deployment-specific access-type vocabulary from the
+    # repo-root .fls-content.yaml (required; hard-errors if missing or malformed).
+    _load_allowed_access_types()
 
     # 2. get a list of all the file paths
     try:

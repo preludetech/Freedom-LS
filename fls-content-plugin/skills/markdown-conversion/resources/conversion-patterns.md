@@ -120,6 +120,6 @@ Each item includes the source-line reference. The file ends by reminding the aut
 
 ## 7. Admonition types from the project config
 
-When proposing a blockquote/callout → `c-admonition`, only propose a `type` that is present in `.fls-content.yaml` (or the base set as fallback). An intended type not in the active set is flagged in `_conversion_review.md`, never emitted as a silently-wrong `default`-rendering value.
+When proposing a blockquote/callout → `c-admonition`, only propose a `type` that is present in the repo-root `.fls-content.yaml`. An intended type not in the active set is flagged in `_conversion_review.md`, never emitted as a silently-wrong `default`-rendering value.
 
 For the base set and deployment-configurable admonition types, see the `fls-content:widget-reference` skill.

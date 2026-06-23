@@ -5,31 +5,28 @@ allowed-tools: Read, Write, Glob, Bash
 
 ## Steps
 
-### 1. Resolve the content root
+`.fls-content.yaml` always lives at the **repo root** — the current working directory where
+Claude runs, alongside `.claude/` and the validator's `.venv/`. This command always targets
+the repo root; it ignores any path argument.
 
-If `$ARGUMENTS` is non-empty, use it as the content root directory.
-If `$ARGUMENTS` is empty, use the current working directory.
+### 1. Check whether `.fls-content.yaml` already exists
 
-Expand to an absolute path.
-
-### 2. Check whether `.fls-content.yaml` already exists
-
-Use the `Glob` tool to check for `<content-root>/.fls-content.yaml`.
+Use the `Glob` tool to check for `.fls-content.yaml` at the repo root.
 
 **Important:** `.fls-content.yaml` is a hidden (dot-prefixed) file. Ensure the glob pattern
 matches it explicitly — pass the full literal filename, not just `*`. A false "not found"
-result here would cause Step 4 to overwrite an existing file, violating the non-destructive
+result here would cause Step 3 to overwrite an existing file, violating the non-destructive
 guarantee.
 
 ---
 
-**If the file already exists — go to Step 3.**
+**If the file already exists — go to Step 2.**
 
-**If the file is absent — go to Step 4.**
+**If the file is absent — go to Step 3.**
 
 ---
 
-### 3. File already exists — report and exit without writing
+### 2. File already exists — report and exit without writing
 
 Read the existing `.fls-content.yaml`. Parse the `admonition_types` list **and** the
 `access_types` list from the file content you just read. Compare each against its FLS base
@@ -41,7 +38,7 @@ splits from the actual file.
 - `access_types` FLS base names (the shipped `COURSE_ACCESS_BACKEND` vocabulary): `free`,
   `application_gated`. If the file has no `access_types` key at all, note that the repo
   predates this config and the validator will fall back to the FLS shipped default — suggest
-  adding an `access_types` block (see Step 4) so the valid set is explicit.
+  adding an `access_types` block (see Step 3) so the valid set is explicit.
 
 Report:
 
@@ -52,7 +49,7 @@ Report:
 
 Example report format:
 
-> `.fls-content.yaml` already exists at `<path>` — no changes made.
+> `.fls-content.yaml` already exists at the repo root — no changes made.
 >
 > Your declared `admonition_types` compared to the FLS base set:
 > - Also in FLS base set: `note`, `tip`, `warning`, `danger`, `key_takeaways`, `checklist`
@@ -66,11 +63,11 @@ Example report format:
 > This is informational only — your config is the authoritative set for this repo and may
 > intentionally differ from the FLS base set.
 
-Do **not** merge, reorder, overwrite, or delete anything. Then continue to Step 5.
+Do **not** merge, reorder, overwrite, or delete anything. Then continue to Step 4.
 
-### 4. File is absent — create it
+### 3. File is absent — create it
 
-Write the following content verbatim to `<content-root>/.fls-content.yaml`:
+Write the following content verbatim to `.fls-content.yaml` at the repo root:
 
 ```yaml
 # .fls-content.yaml — deployment-specific FLS authoring config
@@ -116,21 +113,20 @@ access_types:
 
 After writing, confirm to the author:
 
-> Created `.fls-content.yaml` at `<path>` with the FLS base admonition set and the FLS
+> Created `.fls-content.yaml` at the repo root with the FLS base admonition set and the FLS
 > shipped course `access_types` as a starting template. Edit `admonition_types` and
 > `access_types` to match your deployment's configured types — each list is the complete
 > authoritative set for this repo, not a floor. Run `/fls-content:init` again at any time; it
 > will not overwrite your customised config.
 
-### 5. Install the validator's dependencies
+### 4. Install the validator's dependencies
 
 `/fls-content:validate-content` runs a bundled Python validator that needs `pydantic`,
 `pyyaml`, and `python-frontmatter`. Install them once here, into a `.venv/` at the repo root,
 so validation never re-resolves dependencies on every run.
 
 The venv lives at the repo root — the current working directory where Claude runs, alongside
-`.claude/`. (This is independent of the content root from Step 1; in the common case they are
-the same directory.)
+`.claude/` and `.fls-content.yaml`.
 
 First confirm `uv` is available:
 
@@ -171,7 +167,7 @@ Then confirm to the author that the validator is ready and they can run
 
 ### Constraint reminder
 
-This command writes only three things: `.fls-content.yaml` in the content root when absent
-(Step 4), the validator's `.venv/` dependency environment at the repo root, and a `.venv/`
-line in the repo-root `.gitignore` (Step 5). It does **not** read, modify, rename, or delete
+This command writes only three things: `.fls-content.yaml` at the repo root when absent
+(Step 3), the validator's `.venv/` dependency environment at the repo root, and a `.venv/`
+line in the repo-root `.gitignore` (Step 4). It does **not** read, modify, rename, or delete
 any course files, images, or UUIDs.

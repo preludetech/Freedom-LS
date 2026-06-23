@@ -29,20 +29,13 @@ trailing `~` skip rules exclude them.
 Pure-YAML role files (`part.yaml`, `form.md` treated as YAML, `NN. page.yaml`) are included
 so the converter sees the full existing structure and can check their correctness.
 
-## Step 2 — Discover the `.fls-content.yaml` config
+## Step 2 — Confirm the repo-root config exists
 
-Search upward from the target path (the file's parent directory, or the directory itself) to
-find the nearest `.fls-content.yaml`. Check each directory from the target up to the
-filesystem root, stopping at the first `.fls-content.yaml` found.
-
-- **Found:** pass its absolute path to each agent so the agent reads the `admonition_types`
-  list from it directly.
-- **Not found:** pass the literal string `fallback` to each agent. The agent will use the
-  documented base admonition set and note in its return that deployment-specific types cannot
-  be confirmed.
-
-The base admonition set (for your information — the agent uses it on `fallback`):
-`note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`, `default`
+`.fls-content.yaml` always lives at the repo root (the current working directory). Confirm
+`./.fls-content.yaml` is present. If it is missing, **stop** and tell the author to run
+`/fls-content:init` first — do **not** run init yourself, and do **not** search anywhere else
+for the file. Each formatter agent reads `./.fls-content.yaml` directly, so you do not parse
+or pass it.
 
 ## Step 3 — Fan out one agent per source file
 
@@ -50,17 +43,13 @@ For each eligible source file, spawn one `fls-content:content-formatter` agent u
 `Agent` tool with `subagent_type: "fls-content:content-formatter"`. Run all agents in
 parallel (do not wait for one before starting the next).
 
-Each agent's prompt must include:
-1. The **absolute path** of the file it is responsible for.
-2. Either the **absolute path** of the resolved `.fls-content.yaml`, or the literal string
-   `fallback`.
+Each agent's prompt must include the **absolute path** of the file it is responsible for. The
+agent reads `./.fls-content.yaml` at the repo root itself — you do not pass the config.
 
 Example prompt to pass to each agent:
 ```
 Convert this file to valid FLS content structure:
   File: /path/to/my-course/01. introduction.md
-  Config: /path/to/my-course/.fls-content.yaml
-(or: Config: fallback)
 ```
 
 **Resume rule:** if you are re-running after a partial conversion, the agents are idempotent —

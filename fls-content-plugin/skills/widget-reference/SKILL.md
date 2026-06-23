@@ -52,13 +52,11 @@ c-slot:           name
 
 ## Admonition types are deployment-configurable
 
-`c-admonition`'s `type` attribute is **not a fixed list** in the plugin. The valid set for your project is declared in `.fls-content.yaml` at the content root (see `/fls-content:init`). The base set shipped with FLS is:
+`c-admonition`'s `type` attribute is **not a fixed list** in the plugin. The valid set for your project is declared in `.fls-content.yaml` at the repo root, which always exists (created by `/fls-content:init`). The base set shipped with FLS is:
 
 `note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`, `default`
 
 But this base set is fully overridable — a deployment may add, remove, or rename these types. **Do not treat the base set as exhaustive.** An unknown type falls back **silently** to the `default` style at render time with no error, so you must rely on the types declared in your project's `.fls-content.yaml`, not guess.
-
-If no `.fls-content.yaml` exists, the base set above is used as a fallback.
 
 ## HTML-escaping rule (critical for two widgets)
 

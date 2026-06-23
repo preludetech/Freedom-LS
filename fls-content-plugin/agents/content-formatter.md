@@ -40,17 +40,14 @@ Use the `Skill` tool to load each one **before doing any work**. What each gives
 
 ## Step 2 — Read the project config
 
-Your prompt will give you either:
-- A resolved path to `.fls-content.yaml` — read it and use its `admonition_types` list as
-  the **complete, authoritative** valid admonition type set for this project.
-- The literal string `fallback` — use the documented base admonition set and note in your
-  return that deployment-specific types cannot be confirmed without a `.fls-content.yaml`.
+`.fls-content.yaml` always lives at the repo root (the current working directory). Read
+`./.fls-content.yaml` directly and use its `admonition_types` list as the **complete,
+authoritative** valid admonition type set for this project. Do **not** search elsewhere for
+it — the path is fixed.
 
-Base admonition set (fallback only): `note`, `tip`, `important`, `warning`, `danger`,
-`key_takeaways`, `checklist`, `default`
-
-Do **not** search for `.fls-content.yaml` yourself — the orchestrator has already found it
-and passed you the result.
+If `./.fls-content.yaml` is missing or unreadable/malformed, return `status: blocked` with
+`needs: [".fls-content.yaml at repo root — author must run /fls-content:init"]`. (The
+orchestrator normally catches this before spawning you.)
 
 ## Step 3 — Convert the file
 

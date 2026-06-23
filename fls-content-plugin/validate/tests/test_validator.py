@@ -75,13 +75,22 @@ def _require_validator_env() -> None:
         )
 
 
-def run_validator(path: Path) -> subprocess.CompletedProcess[str]:
-    """Run the bundled validator against *path* in a clean environment."""
+def run_validator(
+    path: Path, repo_root: Path | None = None
+) -> subprocess.CompletedProcess[str]:
+    """Run the bundled validator against *path* in a clean environment.
+
+    The validator reads `.fls-content.yaml` from its working directory (the repo root),
+    never by searching. *repo_root* sets that working directory; it defaults to the
+    target's parent, which is the test repo root (``tmp_path``) for every scenario here.
+    """
+    cwd = repo_root if repo_root is not None else path.parent
     return subprocess.run(
         [*UV_CMD, str(path)],
         capture_output=True,
         text=True,
         env=_clean_env(),
+        cwd=str(cwd),
         timeout=_SUBPROCESS_TIMEOUT,
     )
 
@@ -142,6 +151,17 @@ def write_repo_config(directory: Path, access_types: list[str]) -> Path:
     body = "access_types:\n" + "".join(f"  - {t}\n" for t in access_types)
     path.write_text(body, encoding="utf-8")
     return path
+
+
+@pytest.fixture(autouse=True)
+def _repo_root_config(tmp_path: Path) -> None:
+    """Give every test a repo-root `.fls-content.yaml` (the validator requires one).
+
+    The validator reads it from its working directory, which `run_validator` sets to the
+    target's parent — i.e. ``tmp_path``. Tests that exercise specific access-type behaviour
+    overwrite or delete this file.
+    """
+    write_repo_config(tmp_path, ["free", "application_gated"])
 
 
 def test_valid_sample_tree_exits_zero(tmp_path: Path) -> None:
@@ -354,7 +374,14 @@ def test_course_no_access_config_exits_zero(tmp_path: Path) -> None:
 def test_course_shipped_access_types_exit_zero(
     tmp_path: Path, access_type: str
 ) -> None:
-    """The FLS shipped vocabulary (free, application_gated) validates by default."""
+    """A config that declares no `access_types` key falls back to the shipped vocabulary.
+
+    The FLS shipped set (free, application_gated) must validate via that fallback, even
+    though the repo config here declares no access_types of its own.
+    """
+    (tmp_path / ".fls-content.yaml").write_text(
+        "admonition_types:\n  - note\n", encoding="utf-8"
+    )
     write_course_with_access(
         tmp_path, f"access_config:\n  access_type: {access_type}\n"
     )
@@ -419,14 +446,36 @@ def test_repo_config_admits_custom_access_type(tmp_path: Path) -> None:
     )
 
 
-def test_malformed_repo_config_falls_back_gracefully(tmp_path: Path) -> None:
-    """A malformed .fls-content.yaml must not break validation — it falls back."""
+def test_malformed_repo_config_fails(tmp_path: Path) -> None:
+    """A malformed .fls-content.yaml is a hard error, not a silent fallback."""
     (tmp_path / ".fls-content.yaml").write_text(
         "access_types: [free\n  broken: : :\n", encoding="utf-8"
     )
     write_course_with_access(tmp_path, "access_config:\n  access_type: free\n")
     result = run_validator(tmp_path / "course.md")
-    assert result.returncode == 0, (
-        f"A malformed .fls-content.yaml should fall back, not fail validation.\n"
+    assert result.returncode != 0, (
+        f"A malformed .fls-content.yaml should fail validation.\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    combined = result.stdout + result.stderr
+    assert "Traceback" not in combined, (
+        f"Validator output contains a raw traceback:\n{combined}"
+    )
+
+
+def test_missing_repo_config_fails(tmp_path: Path) -> None:
+    """A missing repo-root .fls-content.yaml is a hard error pointing at /fls-content:init."""
+    (tmp_path / ".fls-content.yaml").unlink()  # remove the autouse default
+    write_course_with_access(tmp_path, "access_config:\n  access_type: free\n")
+    result = run_validator(tmp_path / "course.md")
+    assert result.returncode != 0, (
+        f"A missing .fls-content.yaml should fail validation.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    combined = result.stdout + result.stderr
+    assert "Traceback" not in combined, (
+        f"Validator output contains a raw traceback:\n{combined}"
+    )
+    assert "/fls-content:init" in combined, (
+        f"Missing-config error should tell the author to run /fls-content:init.\n{combined}"
     )

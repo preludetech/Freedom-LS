@@ -120,9 +120,10 @@ class Child(BaseModel):
 # Patch 2: the access-type vocabulary is deployment-specific (it comes from the active
 # COURSE_ACCESS_BACKEND) and is therefore NOT hard-coded here — the same way admonition_types
 # are not hard-coded in this validator. validate.py injects the set at runtime from the repo's
-# .fls-content.yaml `access_types` (authoritative), falling back to a documented base set when
-# no config is found. While it is None, _validate_access_config enforces only the structural
-# rule (no value check). validate.py always injects a set before validating.
+# .fls-content.yaml `access_types` (authoritative). That config is required and read from the
+# repo root; a missing/malformed file is a hard error, and a config with no `access_types` key
+# uses a documented shipped base set. While this is None, _validate_access_config enforces only
+# the structural rule (no value check). validate.py always injects a set before validating.
 ALLOWED_ACCESS_TYPES: frozenset[str] | None = None
 
 

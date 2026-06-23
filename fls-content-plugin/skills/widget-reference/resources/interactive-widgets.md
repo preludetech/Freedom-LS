@@ -33,7 +33,7 @@ A plain note with the default label.
 
 ### Admonition types are deployment-configurable
 
-The valid `type` values for **your project** are declared in `.fls-content.yaml` at the content root (set up with `/fls-content:init`). The FLS base set is:
+The valid `type` values for **your project** are declared in `.fls-content.yaml` at the repo root, which always exists (set up with `/fls-content:init`). The FLS base set is:
 
 `note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`, `default`
 
