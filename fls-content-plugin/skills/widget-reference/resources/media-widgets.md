@@ -1,5 +1,3 @@
-<!-- Source: config/settings_base.py (MARKDOWN_ALLOWED_TAGS), freedom_ls/content_engine/templates/cotton/youtube.html, picture.html, image-grid.html, pdf-embed.html, file-download.html, research_authoring_format.md §3 -->
-
 # Media Widgets
 
 All `c-*` tags must stay within their registered attribute sets. Any attribute outside the set is **silently stripped** by the nh3 sanitiser.

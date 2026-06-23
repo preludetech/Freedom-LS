@@ -1,5 +1,3 @@
-<!-- Source: config/settings_base.py (MARKDOWN_ALLOWED_TAGS, ADMONITION_TYPES), freedom_ls/content_engine/templates/cotton/admonition.html, flashcard.html, accordion.html, card.html, research_authoring_format.md §3 -->
-
 # Interactive Widgets
 
 All `c-*` tags must stay within their registered attribute sets. Any attribute outside the set is **silently stripped** by the nh3 sanitiser.

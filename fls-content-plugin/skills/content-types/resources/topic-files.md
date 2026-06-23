@@ -1,5 +1,3 @@
-<!-- Source: freedom_ls/content_engine/schema.py (Topic, Activity models), demo_content/, freedom_ls/markdown_rendering/markdown_utils.py (mdx_headdown) -->
-
 # TOPIC and ACTIVITY Files
 
 ## TOPIC

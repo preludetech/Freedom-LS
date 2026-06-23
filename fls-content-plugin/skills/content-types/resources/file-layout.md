@@ -1,5 +1,3 @@
-<!-- Source: demo_content/, freedom_ls/content_engine/validate.py (scanner skip rules, get_all_files), freedom_ls/content_engine/management/commands/content_save.py (child auto-discovery) -->
-
 # FLS Content Directory Layout
 
 ## Course without parts

@@ -1,5 +1,3 @@
-<!-- Source: research_markdown_conversion.md §2 (auto/propose/never table), spec §7 (conversion behaviour, heading handling, existing-widget handling, idempotency), research_authoring_format.md §6 (Obsidian syntax) -->
-
 # Conversion Patterns
 
 ## 1. Auto / Propose / Never table

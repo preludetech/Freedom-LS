@@ -6,8 +6,6 @@ allowed-tools: Read, Grep, Glob
 
 # FLS Course-Authoring Conventions
 
-<!-- Source: demo_content/, freedom_ls/content_engine/validate.py (scanner skip rules), freedom_ls/content_engine/schema.py (UUID field) -->
-
 ## Numbered items: `NN. name` prefix
 
 All ordered content (topics, course-part directories, form-page files) uses a numeric prefix:

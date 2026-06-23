@@ -1,5 +1,3 @@
-<!-- Source: config/settings_base.py (MARKDOWN_ALLOWED_TAGS), freedom_ls/content_engine/templates/cotton/content-link.html, flashcard.html, research_authoring_format.md §3 -->
-
 # `c-content-link` and `c-slot`
 
 ---

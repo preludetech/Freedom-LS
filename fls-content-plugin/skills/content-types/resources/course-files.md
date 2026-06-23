@@ -1,5 +1,3 @@
-<!-- Source: freedom_ls/content_engine/schema.py (Course, CoursePart, Child models), demo_content/functionality_demo_standard_markdown/course.md, demo_content/functionality_demo_course_parts/ -->
-
 # COURSE and COURSE_PART Files
 
 ---
@@ -84,7 +82,7 @@ One `part.yaml` file per course-part subdirectory. Its presence identifies the d
 | `title` | `str` | Yes | Part display title |
 | `subtitle` | `str` | No | Optional subtitle |
 | `description` | `str` | No | Optional description |
-| `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
+| `uuid` | `str` | No | Written by `content_save` — **omit on new files, and NEVER EDIT existing UUIDs** |
 | `children` | `list` | No | Explicit ordered child list; if omitted, auto-discovered |
 | `tags` | `list[str]` | No | Optional tag list |
 | `meta` | `dict` | No | Arbitrary metadata |

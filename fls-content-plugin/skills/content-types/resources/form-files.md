@@ -1,5 +1,3 @@
-<!-- Source: freedom_ls/content_engine/schema.py (Form, FormPage, FormQuestion, FormContent, QuestionOption models), demo_content/functionality_demo_end_with_quiz/, demo_content/functionality_demo_end_with_topic/ -->
-
 # FORM, FORM_PAGE, FORM_QUESTION, and FORM_CONTENT Files
 
 A form lives in a **numbered subdirectory** (e.g. `03. quiz/`) containing:
