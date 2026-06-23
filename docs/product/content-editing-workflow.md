@@ -75,6 +75,17 @@ When a learner views a topic, the stored Markdown text is rendered through a fou
 3. **django-cotton compilation** — `<c-tag>` component invocations in the HTML are compiled to Django template syntax.
 4. **Django template render** — the compiled template is rendered in the request context.
 
+## `fls-content` Authoring-Assistant Plugin
+
+The `fls-content` Claude Code plugin is an authoring tool for course content authors working in a content repository without access to the FLS source code. It is installed as a Claude Code plugin and provides four capabilities:
+
+- **Offline reference** via built-in skills covering the eight content types and their frontmatter, the full set of available cotton widgets (`c-*`) with their permitted attributes, file-layout and numbering conventions, UUID rules, and HTML-escaping rules.
+- **Markdown-to-FLS conversion** via `/fls-content:format-content <file-or-directory>`, which reformats messy Markdown (and existing YAML role files) into valid FLS content structure in place. Conservative by design: lossless transforms (e.g. local image syntax and YouTube URLs → the corresponding widget tags) are applied automatically; everything semantic (admonition proposals, flashcard candidates, etc.) is collected for author review in a `_conversion_review.md` file rather than applied silently. Git is the safety net — no separate backup or dry-run mode is provided.
+- **Offline structural validation** via `/fls-content:validate-content [target]`, which runs a bundled Django-free copy of the FLS schema validator and reports the same required-field, unknown-field, and type errors that `content_validate` produces — without requiring a running FLS host. This is a structural pre-flight only; `content_save` on an FLS host remains the authoritative pass (UUID assignment, icon resolution, cross-reference resolution, and asset upload still happen there).
+- **Repo scaffolding** via `/fls-content:init [target]`, which creates a `.fls-content.yaml` configuration file in the content repository when none exists. This file declares the deployment's valid admonition types so the plugin knows which `c-admonition type` values are valid for that project. The command is non-destructive: it never overwrites an existing config file. For admonition-type configuration details, see [Configuration and Extension](./configuration-and-extension.md).
+
+The plugin is kept in sync with FLS automatically via an SDD workflow step that runs whenever authoring-relevant FLS code changes (widget allowlist, content schemas, conventions).
+
 ## Content Widgets (Cotton Components)
 
 The following cotton components are available inside Markdown content:
@@ -86,6 +97,7 @@ The following cotton components are available inside Markdown content:
 | `c-admonition` | Typed callout box (`type`: note/tip/important/warning/danger/key_takeaways/checklist; optional `title`) |
 | `c-flashcard` | Two-sided flip card with `front` and `back` named slots |
 | `c-accordion` | Collapsible disclosure widget (`title`; optional `open` to start expanded) |
+| `c-card` | Self-contained content panel with an optional header image (`src`, `alt`), optional `title`, and a Markdown body. `size`: `small` \| `medium` \| `large` (default `medium`). Registered in `MARKDOWN_ALLOWED_TAGS`. |
 | `c-content-link` | Internal link to another content item |
 | `c-pdf-embed` | Inline PDF viewer |
 | `c-file-download` | Downloadable file link |

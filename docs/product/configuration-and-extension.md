@@ -60,6 +60,8 @@ The active icon set is configured via `FREEDOM_LS_ICON_SET`. The only currently 
 
 Course content can include typed "admonition" boxes — labelled, coloured callout panels such as *Note*, *Tip*, *Warning*, and *Key Takeaways*. The set of available types is configurable per deployment via the `ADMONITION_TYPES` setting: a downstream project can add its own types — each with a label, a status colour, and an icon — or override the built-ins, with no template edits, database changes, or migrations. An unrecognised type falls back to a default style rather than failing.
 
+Because an unrecognised type fails silently — rendering with the `default` style and giving the author no error — content repositories can declare the valid admonition types for that deployment in a `.fls-content.yaml` file at the content root. The FLS authoring tooling reads this file to catch invalid types at authoring and conversion time rather than at render time. See [content editing workflow](./content-editing-workflow.md) for details on that tooling.
+
 For example, an aviation course might want special admonition types for regulations, a parent support course could have a "try this with your child" admonition, etc.
 
 For authoring the admonition widget in content, see [content editing workflow](./content-editing-workflow.md).
