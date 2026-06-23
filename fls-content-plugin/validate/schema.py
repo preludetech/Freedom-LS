@@ -5,12 +5,13 @@
 #      Keep the method present so the model shape is unchanged.
 #   2. Course.access_config validation. The real schema declares access_config as an opaque
 #      field and leaves all interpretation to the active COURSE_ACCESS_BACKEND
-#      (validate_course_config). The standalone validator has no backend, so the
-#      ALLOWED_ACCESS_TYPES module global + Course._validate_access_config below replicate
-#      FreeOnlyCourseAccessBackend.validate_course_config so author-time mistakes (unknown
-#      keys, unrecognised access_type) are still caught offline. ALLOWED_ACCESS_TYPES defaults
-#      to the FLS shipped vocabulary and is overridden per-repo by validate.py from the
-#      .fls-content.yaml `access_types` list. Re-apply on every re-sync.
+#      (validate_course_config). The standalone validator has no backend, so
+#      Course._validate_access_config below catches author-time mistakes (unknown keys,
+#      unrecognised access_type) offline. The valid access-type vocabulary is
+#      DEPLOYMENT-SPECIFIC and is NOT hard-coded here — exactly like admonition_types, it is
+#      owned by the repo's .fls-content.yaml (authoritative) and injected by validate.py into
+#      ALLOWED_ACCESS_TYPES before validation. This module owns no vocabulary: when nothing has
+#      been injected (None) only the structural rule is enforced. Re-apply on every re-sync.
 """
 Schema for yaml structures like this:
 """
@@ -116,13 +117,13 @@ class Child(BaseModel):
     )
 
 
-# Patch 2: access-type vocabulary the bundled validator accepts in Course.access_config.
-# Defaults to the FLS shipped COURSE_ACCESS_BACKEND vocabulary
-# (ApplicationCourseAccessBackend: "free" + "application_gated"). validate.py overrides this
-# at runtime from the repo's .fls-content.yaml `access_types` list when present, so a
-# deployment running a different backend (e.g. free-only, or a custom subscription backend)
-# is validated against its own vocabulary.
-ALLOWED_ACCESS_TYPES: frozenset[str] = frozenset({"free", "application_gated"})
+# Patch 2: the access-type vocabulary is deployment-specific (it comes from the active
+# COURSE_ACCESS_BACKEND) and is therefore NOT hard-coded here — the same way admonition_types
+# are not hard-coded in this validator. validate.py injects the set at runtime from the repo's
+# .fls-content.yaml `access_types` (authoritative), falling back to a documented base set when
+# no config is found. While it is None, _validate_access_config enforces only the structural
+# rule (no value check). validate.py always injects a set before validating.
+ALLOWED_ACCESS_TYPES: frozenset[str] | None = None
 
 
 class Course(BaseContentModel, content_type=ContentType.COURSE):
@@ -183,12 +184,16 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
 
         The real schema leaves access_config interpretation to the active
         COURSE_ACCESS_BACKEND. The standalone validator has no backend, so this
-        replicates FreeOnlyCourseAccessBackend.validate_course_config against the
-        ALLOWED_ACCESS_TYPES module global (defaulted to the FLS shipped vocabulary,
-        overridable per-repo via .fls-content.yaml `access_types`).
+        catches author-time mistakes offline.
 
-        Absent / empty config defaults to "free" (today's behaviour). Only the
-        `access_type` key is permitted; its value must be a known access type.
+        Structural rule (always enforced): absent/empty config defaults to "free";
+        only the `access_type` key is permitted.
+
+        Value rule (enforced only when the deployment vocabulary has been injected):
+        `access_type` must be one of ALLOWED_ACCESS_TYPES. That set is owned by the
+        repo's .fls-content.yaml `access_types` and injected by validate.py — it is
+        never hard-coded here. While it is None (e.g. schema imported without
+        validate.py), the value is not checked.
         """
         raw = self.access_config
         if not raw:
@@ -203,13 +208,13 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
             )
 
         access_type = raw.get("access_type", "free")
-        if access_type not in ALLOWED_ACCESS_TYPES:
+        if ALLOWED_ACCESS_TYPES is not None and access_type not in ALLOWED_ACCESS_TYPES:
             raise ValueError(
                 f"access_config has invalid access_type={access_type!r} in "
-                f"{self.file_path}. Valid values for this deployment: "
-                f"{sorted(ALLOWED_ACCESS_TYPES)!r}. (The valid set comes from the active "
-                f"COURSE_ACCESS_BACKEND; override it per-repo in .fls-content.yaml "
-                f"access_types.)"
+                f"{self.file_path}. Valid values for this content repo: "
+                f"{sorted(ALLOWED_ACCESS_TYPES)!r}. (The valid set is declared in "
+                f".fls-content.yaml `access_types`, mirroring the deployment's "
+                f"COURSE_ACCESS_BACKEND.)"
             )
         return self
 

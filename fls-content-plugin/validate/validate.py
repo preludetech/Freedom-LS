@@ -6,11 +6,12 @@
 #   2. Added `if __name__ == "__main__":` entry point: reads a path from sys.argv, calls
 #      validate(path), prints human-readable failures on ValueError, exits non-zero on error.
 #   3. Fixed stale docstring usage line to the real uv invocation (never bare python/python3).
-#   4. _load_allowed_access_types(): discover the repo's .fls-content.yaml and apply its
-#      `access_types` list to schema.ALLOWED_ACCESS_TYPES before validating, so courses are
-#      validated against the deployment's COURSE_ACCESS_BACKEND vocabulary. Absent file /
-#      absent or malformed `access_types` → keep schema's built-in default. This is the only
-#      code path that reads .fls-content.yaml.
+#   4. _load_allowed_access_types(): resolve the valid Course access types the same way the
+#      /fls-content:format-content command resolves admonition_types — the repo's
+#      .fls-content.yaml is authoritative; when it declares no `access_types` (or is absent /
+#      malformed) a documented fallback base set is used. The vocabulary is injected into
+#      schema.ALLOWED_ACCESS_TYPES before validating; the schema module owns no vocabulary of
+#      its own. This is the only code path that reads .fls-content.yaml.
 #      Re-apply all patches on every D4 re-sync.
 """
 validate that a bunch of markdown files matches the given schema
@@ -38,18 +39,25 @@ logger = logging.getLogger(__name__)
 # Patch 4: the repo config file declaring deployment-specific authoring vocabulary.
 _CONFIG_FILENAME = ".fls-content.yaml"
 
+# Patch 4: documented fallback access-type vocabulary, used ONLY when no .fls-content.yaml
+# declares `access_types`. The .fls-content.yaml list is authoritative; this base set mirrors
+# the FLS shipped COURSE_ACCESS_BACKEND (free + application_gated) and parallels the documented
+# admonition fallback in the /fls-content:format-content command. It is a fallback, not the
+# universal allowed set — a deployment on a different backend declares its own access_types.
+_FALLBACK_ACCESS_TYPES: frozenset[str] = frozenset({"free", "application_gated"})
+
 
 def _load_allowed_access_types(target: Path) -> None:
-    """Apply the repo's `.fls-content.yaml` access_types to schema.ALLOWED_ACCESS_TYPES.
+    """Inject the valid Course access_config access types into schema.ALLOWED_ACCESS_TYPES.
 
-    Walks up from *target* (its parent, if it is a file) to the filesystem root and uses
-    the first `.fls-content.yaml` found. If that file declares a non-empty `access_types`
-    list, it becomes the set of valid Course.access_config access types for this run;
-    otherwise schema's built-in default (the FLS shipped vocabulary) is kept.
-
-    Config problems never fail validation — a missing file, unreadable file, malformed
-    YAML, or absent/empty `access_types` all fall back to the built-in default.
+    Mirrors how admonition_types are resolved (see /fls-content:format-content Step 2): walk
+    up from *target* (its parent, if it is a file) to the filesystem root and use the first
+    `.fls-content.yaml` found. That file's `access_types` list is authoritative; when it
+    declares a non-empty list, that set is used. When no config is found, the config declares
+    no `access_types`, or the config is unreadable/malformed, the documented fallback base set
+    is used. Config problems never fail validation — they fall back to the base set.
     """
+    allowed = _FALLBACK_ACCESS_TYPES
     start = target if target.is_dir() else target.parent
     for directory in (start, *start.parents):
         config_path = directory / _CONFIG_FILENAME
@@ -59,11 +67,12 @@ def _load_allowed_access_types(target: Path) -> None:
             with open(config_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
         except (OSError, yaml.YAMLError):
-            return  # malformed/unreadable config — keep the built-in default
+            break  # malformed/unreadable config — keep the fallback base set
         access_types = data.get("access_types") if isinstance(data, dict) else None
         if isinstance(access_types, list) and access_types:
-            schema.ALLOWED_ACCESS_TYPES = frozenset(str(t) for t in access_types)
-        return  # first config file wins, whether or not it declares access_types
+            allowed = frozenset(str(t) for t in access_types)
+        break  # first config file wins, whether or not it declares access_types
+    schema.ALLOWED_ACCESS_TYPES = allowed
 
 
 def get_all_files(path):

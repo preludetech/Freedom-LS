@@ -417,3 +417,16 @@ def test_repo_config_admits_custom_access_type(tmp_path: Path) -> None:
         f"A custom access_type declared in .fls-content.yaml should validate.\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
+
+
+def test_malformed_repo_config_falls_back_gracefully(tmp_path: Path) -> None:
+    """A malformed .fls-content.yaml must not break validation — it falls back."""
+    (tmp_path / ".fls-content.yaml").write_text(
+        "access_types: [free\n  broken: : :\n", encoding="utf-8"
+    )
+    write_course_with_access(tmp_path, "access_config:\n  access_type: free\n")
+    result = run_validator(tmp_path / "course.md")
+    assert result.returncode == 0, (
+        f"A malformed .fls-content.yaml should fall back, not fail validation.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
