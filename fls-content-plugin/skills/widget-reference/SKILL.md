@@ -75,11 +75,23 @@ All other widget bodies use standard markdown; escaping is automatic.
 - **`c-flashcard` slots need blank lines** inside `<c-slot>` tags so the markdown parser produces block elements (paragraphs, lists).
 - **`c-accordion` bare `open` attribute** — write `open` with no value; the sanitiser normalises it to `open=""` and the template handles it.
 
-See `resources/` for full syntax, all attributes, and copy-pasteable examples:
+See `resources/` for full syntax, all attributes, and copy-pasteable examples —
+one file per widget:
 
-- [`resources/media-widgets.md`](resources/media-widgets.md) — `c-youtube`, `c-picture`, `c-image-grid`, `c-pdf-embed`, `c-file-download`
-- [`resources/interactive-widgets.md`](resources/interactive-widgets.md) — `c-admonition`, `c-flashcard`, `c-slot`, `c-accordion`, `c-card`
-- [`resources/structured-widgets.md`](resources/structured-widgets.md) — `c-table`, `c-code-block`, `c-pull-quote`, `c-equation`
-- [`resources/content-link.md`](resources/content-link.md) — `c-content-link`
+- [`resources/c-youtube.md`](resources/c-youtube.md)
+- [`resources/c-picture.md`](resources/c-picture.md)
+- [`resources/c-image-grid.md`](resources/c-image-grid.md)
+- [`resources/c-pdf-embed.md`](resources/c-pdf-embed.md)
+- [`resources/c-file-download.md`](resources/c-file-download.md)
+- [`resources/c-admonition.md`](resources/c-admonition.md)
+- [`resources/c-flashcard.md`](resources/c-flashcard.md)
+- [`resources/c-slot.md`](resources/c-slot.md)
+- [`resources/c-accordion.md`](resources/c-accordion.md)
+- [`resources/c-card.md`](resources/c-card.md)
+- [`resources/c-table.md`](resources/c-table.md)
+- [`resources/c-code-block.md`](resources/c-code-block.md)
+- [`resources/c-pull-quote.md`](resources/c-pull-quote.md)
+- [`resources/c-equation.md`](resources/c-equation.md)
+- [`resources/c-content-link.md`](resources/c-content-link.md)
 
 HTML-escaping rule detail: see the `fls-content:conventions` skill.
