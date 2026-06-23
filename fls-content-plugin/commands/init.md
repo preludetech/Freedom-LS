@@ -99,8 +99,12 @@ After writing, confirm to the author:
 ### 5. Install the validator's dependencies
 
 `/fls-content:validate-content` runs a bundled Python validator that needs `pydantic`,
-`pyyaml`, and `python-frontmatter`. Install them once here, into a dedicated environment the
-plugin owns, so validation never re-resolves dependencies on every run.
+`pyyaml`, and `python-frontmatter`. Install them once here, into a `.venv/` at the repo root,
+so validation never re-resolves dependencies on every run.
+
+The venv lives at the repo root — the current working directory where Claude runs, alongside
+`.claude/`. Resolve that to an absolute path and call it `<repo-root>`. (This is independent
+of the content root from Step 1; in the common case they are the same directory.)
 
 First confirm `uv` is available:
 
@@ -115,16 +119,25 @@ and stop — the validator cannot be set up without it.
 If the environment already exists and is healthy, do nothing:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/validate/.venv/bin/python" -c "import pydantic, yaml, frontmatter"
+"<repo-root>/.venv/bin/python" -c "import pydantic, yaml, frontmatter"
 ```
 
 If that command succeeds, the dependencies are already installed — report that and skip the
 install. If it fails (or the environment does not exist), create it and install the deps:
 
 ```bash
-uv venv "${CLAUDE_PLUGIN_ROOT}/validate/.venv"
-uv pip install --python "${CLAUDE_PLUGIN_ROOT}/validate/.venv/bin/python" \
+uv venv "<repo-root>/.venv"
+uv pip install --python "<repo-root>/.venv/bin/python" \
   pydantic pyyaml python-frontmatter
+```
+
+Finally, make sure the venv is never committed — ensure `.venv/` is listed in the repo's
+`.gitignore` (idempotent; creates the file if absent):
+
+```bash
+if ! grep -qxF '.venv/' "<repo-root>/.gitignore" 2>/dev/null; then
+  printf '.venv/\n' >> "<repo-root>/.gitignore"
+fi
 ```
 
 Then confirm to the author that the validator is ready and they can run
@@ -132,6 +145,7 @@ Then confirm to the author that the validator is ready and they can run
 
 ### Constraint reminder
 
-This command writes only two things: `.fls-content.yaml` in the content root when absent
-(Step 4), and the validator's dependency environment under the plugin's own directory
-(Step 5). It does **not** read, modify, rename, or delete any course files, images, or UUIDs.
+This command writes only three things: `.fls-content.yaml` in the content root when absent
+(Step 4), the validator's `.venv/` dependency environment at the repo root, and a `.venv/`
+line in the repo-root `.gitignore` (Step 5). It does **not** read, modify, rename, or delete
+any course files, images, or UUIDs.
