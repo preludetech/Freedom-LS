@@ -7,6 +7,19 @@ allowed-tools: Read, Write, Edit, Bash, Glob
 
 Set up the FLS Claude Code plugin for this project.
 
+## Scope
+
+`fls:init` is **plugin-bootstrap only.** It wires the Claude Code plugin into an existing project. It does NOT scaffold Django project structure — `config/`, `pyproject.toml`, Tailwind config, a `CLAUDE.md` skeleton, or a `.claude/settings.json` from scratch. Those come from the template repo. Run `fls:init` after the project already exists.
+
+## Hard requirements — do not regress
+
+These behaviours must be preserved in every future edit to this command. Each operation is additive or create-when-absent, with one deliberate exception noted below for the `hooks` section.
+
+- **`.claude/settings.json`** — merge, don't replace. Add missing `allow`/`deny` entries, add `fls: true` to `enabledPlugins`, and merge the `SessionStart` hook. Never replace the whole file, and never touch `allow`/`deny`/`enabledPlugins` entries that already exist. **Exception:** the `hooks` section is plugin-owned — only `SessionStart` is permitted there, and any other hook events are removed by design (see Step 1 and validation check 6).
+- **`.claude/fls/config.md` and `.claude/fls/config.local.md`** — create only when absent. If either file already exists, skip that step entirely.
+- **`.gitignore`** — append missing entries only. Never remove or reorder existing lines.
+- **Wrapper scripts** (`claude.sh` at the project root; all others under `.claude/fls/scripts/`) — copy the template, substitute `__FLS_PATH__`, and mark it executable **only when the destination file does not yet exist**. If a script is already present, skip it without modification.
+
 ## Step 1: Merge recommended permissions into `.claude/settings.json`
 
 1. Read `${CLAUDE_PLUGIN_ROOT}/templates/settings.json` for recommended permissions
