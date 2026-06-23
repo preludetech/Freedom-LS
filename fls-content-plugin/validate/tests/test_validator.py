@@ -86,11 +86,6 @@ def run_validator(path: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-# ---------------------------------------------------------------------------
-# Helpers that build minimal valid content files
-# ---------------------------------------------------------------------------
-
-
 def write_valid_topic(directory: Path, name: str = "01. intro.md") -> Path:
     """Write a minimal valid TOPIC markdown file."""
     path = directory / name
@@ -127,11 +122,6 @@ def write_valid_form(directory: Path) -> Path:
     return path
 
 
-# ---------------------------------------------------------------------------
-# Test: valid sample tree exits 0
-# ---------------------------------------------------------------------------
-
-
 def test_valid_sample_tree_exits_zero(tmp_path: Path) -> None:
     """A tiny valid TOPIC + COURSE + FORM tree under tmp_path must exit 0."""
     course_dir = tmp_path / "my-course"
@@ -153,11 +143,6 @@ def test_valid_sample_tree_exits_zero(tmp_path: Path) -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# Test: COURSE file validates without raising (icon stub works headless)
-# ---------------------------------------------------------------------------
-
-
 def test_course_validates_without_django(tmp_path: Path) -> None:
     """A COURSE file must validate without Django installed (icon stub works)."""
     write_valid_course(tmp_path)
@@ -166,11 +151,6 @@ def test_course_validates_without_django(tmp_path: Path) -> None:
         f"COURSE validation raised unexpectedly (icon stub may be broken).\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
-
-
-# ---------------------------------------------------------------------------
-# Tests: broken samples exit non-zero
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -232,7 +212,7 @@ def test_broken_sample_output_is_human_readable(tmp_path: Path) -> None:
 
 
 def test_empty_directory_exits_nonzero(tmp_path: Path) -> None:
-    """A directory with no content files must not report success (was: exit 0)."""
+    """A directory with no content files must not report success."""
     empty = tmp_path / "no-content"
     empty.mkdir()
     # README.md is skipped by the validator's file filter, so this dir has zero
@@ -244,11 +224,6 @@ def test_empty_directory_exits_nonzero(tmp_path: Path) -> None:
         f"Expected non-zero exit for a directory with no content files.\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
-
-
-# ---------------------------------------------------------------------------
-# Test: golden converted-structure fixture (success criteria 3 & 6)
-# ---------------------------------------------------------------------------
 
 
 def _build_golden_tree(root: Path) -> None:
