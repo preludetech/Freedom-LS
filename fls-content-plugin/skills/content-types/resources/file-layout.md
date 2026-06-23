@@ -14,7 +14,7 @@ my-course/
   03. knowledge-check/   ← FORM directory (numbered subdirectory)
       form.md            ← FORM (required; identifies the directory as a form)
       1. page.yaml       ← FORM_PAGE (section 1) + questions/content (sections 2+)
-      2. results.yaml    ← FORM_PAGE + questions
+      2. more-questions.yaml ← FORM_PAGE + questions
 ```
 
 A topic is a numbered directory containing a `content.md`. Give the topic its own

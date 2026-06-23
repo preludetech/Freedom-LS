@@ -11,20 +11,34 @@ allowed-tools: Read, Grep, Glob
 All ordered content (topics, course-part directories, form-page files) uses a numeric prefix:
 
 ```
-01. Getting Started/          ← course-part directory (holds part.yaml)
-02. Core Concepts/
-    01. welcome/              ← topic directory (holds content.md)
+course.md
+01. Getting Started/          ← course-part directory
+    part.yaml                 ← identifies the directory as a COURSE_PART
+    01. introduction/         ← topic directory
+        content.md            ← identifies the directory as a TOPIC
+    02. setup/
         content.md
+02. Core Concepts/
+    part.yaml
+    01. welcome/              ← topic directory
+        content.md            ← identifies the directory as a TOPIC
     02. what-to-expect/
         content.md
-    03. knowledge-check/      ← form directory (holds form.md)
-        1. page.yaml          ← form-page file
-        2. results.yaml       ← another form-page file (e.g. a results page)
+    03. knowledge-check/      ← form directory
+        form.md               ← identifies the directory as a FORM
+        1. page.yaml          ← form-page file (questions)
+        2. more-questions.yaml ← another form-page file (more questions)
+03. Something/                ← Topics can be top level items, they dont need to be inside Course Parts
+    content.md
 ```
 
-Form-page files live **inside** the form directory alongside `form.md`. The names
-`page.yaml` / `results.yaml` are just illustrative — each numbered `.yaml` is one page of
-the form, named with a kebab-case slug like any other content.
+Form-page files live **inside** the form directory alongside `form.md`. Each numbered
+`.yaml` is one page of the form — a page of questions — named with a kebab-case slug like
+any other content. The names above are just illustrative.
+
+A form's results/score page is **generated automatically by FLS** after the learner
+submits — it is never an authored file, and there is no "results" content type. Every
+`.yaml` you author here is a page of questions.
 
 Rules:
 - Zero-pad every numeric prefix to the digit-width of the largest sibling in the same

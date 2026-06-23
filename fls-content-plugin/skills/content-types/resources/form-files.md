@@ -48,7 +48,10 @@ title: Course Feedback Survey
 
 ## FORM_PAGE (first section of a page YAML file)
 
-Page YAML files are named with a numeric prefix: `1. page.yaml`, `2. results.yaml`.
+Page YAML files are named with a numeric prefix: `1. page.yaml`, `2. more-questions.yaml`.
+Each one is a page of questions. The results/score page a learner sees after submitting is
+generated automatically by FLS — it is never an authored file. There is no RESULTS content
+type; only the eight documented content types exist.
 
 The **first** `---`-delimited YAML section is the FORM_PAGE.
 
