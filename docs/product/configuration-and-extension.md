@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-06-18_
+_Last updated: 2026-06-23_
 
 ## Summary
 
@@ -64,6 +64,18 @@ For example, an aviation course might want special admonition types for regulati
 
 For authoring the admonition widget in content, see [content editing workflow](./content-editing-workflow.md).
 
+## Pluggable Course Access Backend
+
+Each course carries an access configuration that controls what a learner may do — self-enrol, apply, view content — and what call-to-action they see on the course detail page and dashboard. The active backend is selected via `COURSE_ACCESS_BACKEND`.
+
+FLS ships with the application-gated backend as the default, so both free and application-gated courses work out of the box. A deployment that does not want course applications sets `COURSE_ACCESS_BACKEND` to the free-only core default backend; the apply flow, its call-to-action, and its dashboard panel are all owned by the backend plugin, so switching backends removes them entirely — there is nothing to remove from any core screen.
+
+Adding a future access model — for example a subscription or a per-course purchase — is a new backend class and a `COURSE_ACCESS_BACKEND` change, with no template, view, or migration work.
+
+Access configuration is authored per course in the content-loading pipeline. For how a learner experiences the two current access types, see [learner experience](./learner-experience.md). For authoring a course's access type, see [content editing workflow](./content-editing-workflow.md).
+
+A companion setting, `COURSE_ACCESS_CONFIG_VALIDATOR`, names the validator used to check each course's access configuration at content-load time. A custom backend that introduces its own configuration keys swaps this setting to point at its own validator; in most deployments it does not need to be set.
+
 ## Custom-App Extension Model
 
 FLS is designed to be installed into an existing Django project using `git submodule add` and `uv add`. The host project retains control:
@@ -96,3 +108,5 @@ For the full isolation model that underpins per-site configuration, see [multi-t
 | `REQUIRE_NAME` | Global default for requiring name at registration |
 | `DEADLINES_ACTIVE` | Enables or disables the deadline UI features site-wide |
 | `TRUSTED_PROXY_IP_HEADER` | Header to trust for client IP when running behind a reverse proxy (relevant to deployment configuration; not documented in the public how-to guides) |
+| `COURSE_ACCESS_BACKEND` | Selects the pluggable course-access backend (see "Pluggable Course Access Backend" above). Default is the application-gated backend; set to the free-only core default to disable the course-application flow entirely. |
+| `COURSE_ACCESS_CONFIG_VALIDATOR` | Dotted-path to the validator called at content-load time to check each course's access configuration. Swap this when using a custom backend with its own configuration keys. |

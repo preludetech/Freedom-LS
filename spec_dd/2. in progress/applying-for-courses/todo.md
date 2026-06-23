@@ -55,6 +55,10 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
 - [x] (user + cmd) Fix QA bug: gated course detail page shows "Free · open" marketing copy alongside the "Apply now" CTA (TDD — failing test first, then fix)
 
+## 9b. Product documentation
+
+- [x] (cmd) Run `/update_product_docs` to update docs/product/ for this feature
+
 ## 10. Pull request
 
 - [ ] (user) Open a pull request

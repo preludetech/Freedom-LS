@@ -1,13 +1,26 @@
 # Roadmap
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-06-23_
 
 ## Summary
 
 - This document is the canonical home for features that are planned, partially built, or not yet started. Other product docs link here rather than restating half-built status.
-- Current half-built items: RBAC role system (infrastructure exists, not wired into access control), xAPI tracking (placeholder stub only), `SiteGroup` (commented out).
+- Current half-built items: course applications (apply flow built; review/approval and authored form not yet built), RBAC role system (infrastructure exists, not wired into access control), xAPI tracking (placeholder stub only), `SiteGroup` (commented out).
 - Features not yet built: 2FA/MFA, educator-interface management actions (membership, registration, deadlines, messaging).
 - Shipped and functional features are documented in their own product docs; this document covers only what is not yet complete.
+
+## Course Applications
+
+**Status: Access type and bare apply flow built and functional; review/approval workflow and authored application form not yet built.**
+
+A course can now be configured as either free or application-gated. Learners browsing an application-gated course are shown an "Apply now" prompt; confirming it creates an application record and shows a static status page confirming the application has been received and is pending review. The pluggable backend that drives this — controlling what learners see on course cards and detail pages, and what appears on their dashboard for in-flight applications — is described in [configuration and extension](./configuration-and-extension.md). The learner-facing flow is documented in [learner experience](./learner-experience.md).
+
+Two significant pieces are not yet built:
+
+- **Application review and approval** — there is no way for anyone to review, approve, reject, request changes on, or withdraw an application. There are no reviewer roles or permissions, no audit trail, and no admin or educator review screen. The applicant status page is static; it does not update to reflect any decision.
+- **Authored application form** — applying collects no questions, answers, or file uploads. The multi-step application form — with configurable questions, per-question options, and file upload support — is deferred to a separate follow-up.
+
+The `CourseApplication` model and the seams both follow-ups attach to are in place; neither will require any rearchitecture of the current access backend or apply flow.
 
 ## Two-Factor Authentication (2FA / MFA)
 

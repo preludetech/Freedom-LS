@@ -1,11 +1,11 @@
 # Learner Experience
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-06-23_
 
 ## Summary
 
 - Learners see a personalised dashboard grouping courses into in-progress, recommended, and completed; a full course listing shows registration status at a glance.
-- Each course displays learning outcomes, difficulty, estimated duration, and a description before registration; learners self-register with a single action.
+- Each course displays learning outcomes, difficulty, estimated duration, and a description; the action available depends on the course's access type — free courses can be started immediately, while application-gated courses present an "Apply now" path instead.
 - The course player enforces sequential item unlock (BLOCKED → READY → IN_PROGRESS → COMPLETE/FAILED) and resumes automatically at the last accessed item.
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
 - Hard deadlines lock uncompleted content after expiry; soft deadlines show an overdue indicator without locking.
@@ -21,6 +21,10 @@ The student dashboard (`student_interface:dashboard`) is the entry point after l
 - **Completed** — courses for which `CourseProgress.completed_time` is set.
 
 Each course card shows the course title, category, and progress percentage.
+
+When the application-gated access type is in use, the dashboard also shows an **In-flight applications** panel listing any courses the learner has applied to but not yet been enrolled in, each linking to its application status page. This panel appears only when the active course-access backend contributes it; it is absent on installations using only free courses.
+
+![Learner dashboard with in-flight applications panel](screenshots/learner_dashboard_applications.png)
 
 ## Course Listing
 
@@ -38,9 +42,33 @@ The course detail page (`student_interface:course_detail`) shows:
 - **Description** — full course markdown description.
 - **Start / resume CTA** — if already registered, the button resumes from the last accessed item.
 
+The CTA label and destination are driven by the active course-access backend: free courses show "Start", application-gated courses show "Apply now", and already-registered learners see "Continue" (or the appropriate resume label). See [configuration and extension](./configuration-and-extension.md) for how access types are configured per course.
+
 ## Self-Registration
 
-A learner who is not yet registered for a course can register from the course detail page. The `initiate_course_access` view (`student_interface:initiate_course_access`) is the access chokepoint: it consults the active course access backend, and for a free course self-registers the learner — creating a `UserCourseRegistration` record and an initial `CourseProgress` record in a single step. No administrator action is needed for self-registration.
+A learner who is not yet registered for a free course can register from the course detail page. The `initiate_course_access` view (`student_interface:initiate_course_access`) is the access chokepoint: it consults the active course-access backend and, for a free course, self-registers the learner — creating a `UserCourseRegistration` record and an initial `CourseProgress` record in a single step. No administrator action is needed for self-registration on a free course.
+
+The chokepoint is enforced server-side: a learner cannot self-register for an application-gated course by guessing a URL. Attempting to do so routes them into the application flow instead. Administrator and cohort enrolment deliberately bypass this gate and work for any course regardless of access type.
+
+Content within a course is also gated consistently: a learner who is not entitled to a course's content is redirected to the course detail page rather than reaching item content directly.
+
+## Applying to a Course
+
+Courses configured as application-gated present an "Apply now" CTA on the course detail page; the course content is locked until the learner is enrolled.
+
+![Application-gated course detail page with "Apply now"](screenshots/learner_course_detail_gated.png)
+
+Selecting "Apply now" leads to a confirmation page ("Apply to \<course\>?"); confirming creates a `CourseApplication` record and redirects the learner to a status page (`course_applications:status`) that confirms the application has been received and is pending review.
+
+![Apply confirmation page](screenshots/learner_apply_confirm.png)
+
+![Applicant status page](screenshots/learner_application_status.png)
+
+Applying is idempotent: a learner who has already applied for a course is taken directly to their existing application's status page rather than creating a duplicate submission.
+
+The application does not collect any questions or file uploads in the current release — it records only that the learner applied. A multi-step application form is planned for a future release. There is no review or approval workflow in the current release: the status page is static and shows no dynamic state, reviewer messages, or withdraw action. Application review is planned future work; see [roadmap](./roadmap.md).
+
+Access type is configured per course through the content-loading pipeline; see [content editing workflow](./content-editing-workflow.md) for authoring details and [configuration and extension](./configuration-and-extension.md) for the backend settings.
 
 ## Course Player
 

@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-06-18_
+_Last updated: 2026-06-23_
 
 ## Summary
 
@@ -34,6 +34,21 @@ The schema (`freedom_ls/content_engine/schema.py`) defines eight content types:
 | `FORM_PAGE` | A single page within a form |
 | `FORM_QUESTION` | A question within a form page |
 | `FORM_CONTENT` | Non-question content block within a form page |
+
+## Course Access Type
+
+A course's access type is configured through the content-loading pipeline, using the same frontmatter-and-`content_save` workflow as all other course properties. There is no admin or educator toggle in the current release.
+
+To mark a course as application-gated, add an `access_config` block to its YAML frontmatter:
+
+```yaml
+access_config:
+  access_type: application_gated
+```
+
+When `access_config` is absent the course behaves as a free course — the default. Invalid configuration (an unrecognised `access_type` value or an unknown key) is rejected at content-load time with a file-located error message, consistent with the rest of content validation.
+
+Which access types a deployment supports, and how the active backend is selected, are described in [configuration and extension](./configuration-and-extension.md). The learner-facing experience for application-gated courses is described in [learner experience](./learner-experience.md).
 
 ## Validation
 
