@@ -3,6 +3,14 @@
 #   1. Course._validate_icon_fields: body replaced with `return self` to drop the deferred
 #      Django/icon import (from django.core.exceptions and from freedom_ls...icon_validation).
 #      Keep the method present so the model shape is unchanged.
+#   2. Course.access_config validation. The real schema declares access_config as an opaque
+#      field and leaves all interpretation to the active COURSE_ACCESS_BACKEND
+#      (validate_course_config). The standalone validator has no backend, so the
+#      ALLOWED_ACCESS_TYPES module global + Course._validate_access_config below replicate
+#      FreeOnlyCourseAccessBackend.validate_course_config so author-time mistakes (unknown
+#      keys, unrecognised access_type) are still caught offline. ALLOWED_ACCESS_TYPES defaults
+#      to the FLS shipped vocabulary and is overridden per-repo by validate.py from the
+#      .fls-content.yaml `access_types` list. Re-apply on every re-sync.
 """
 Schema for yaml structures like this:
 """
@@ -108,6 +116,15 @@ class Child(BaseModel):
     )
 
 
+# Patch 2: access-type vocabulary the bundled validator accepts in Course.access_config.
+# Defaults to the FLS shipped COURSE_ACCESS_BACKEND vocabulary
+# (ApplicationCourseAccessBackend: "free" + "application_gated"). validate.py overrides this
+# at runtime from the repo's .fls-content.yaml `access_types` list when present, so a
+# deployment running a different backend (e.g. free-only, or a custom subscription backend)
+# is validated against its own vocabulary.
+ALLOWED_ACCESS_TYPES: frozenset[str] = frozenset({"free", "application_gated"})
+
+
 class Course(BaseContentModel, content_type=ContentType.COURSE):
     """
     You can think of this as a folder. It contains an ordered list of child content.
@@ -150,6 +167,51 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
         None,
         description="Estimated time to complete",
     )
+    # Any is correct here: access_config is an opaque, backend-owned JSON blob whose
+    # keys are unknown to the schema layer — mirrors the existing `meta: dict[str, Any]`.
+    access_config: dict[str, Any] | None = Field(
+        None,
+        description=(
+            "Opaque per-course access configuration passed verbatim to the active "
+            "course-access backend. The schema layer does not interpret its keys."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _validate_access_config(self) -> "Course":
+        """Patch 2: catch access_config mistakes offline.
+
+        The real schema leaves access_config interpretation to the active
+        COURSE_ACCESS_BACKEND. The standalone validator has no backend, so this
+        replicates FreeOnlyCourseAccessBackend.validate_course_config against the
+        ALLOWED_ACCESS_TYPES module global (defaulted to the FLS shipped vocabulary,
+        overridable per-repo via .fls-content.yaml `access_types`).
+
+        Absent / empty config defaults to "free" (today's behaviour). Only the
+        `access_type` key is permitted; its value must be a known access type.
+        """
+        raw = self.access_config
+        if not raw:
+            return self
+
+        allowed_keys = {"access_type"}
+        extra_keys = set(raw.keys()) - allowed_keys
+        if extra_keys:
+            raise ValueError(
+                f"access_config has unknown key(s) in {self.file_path}: "
+                f"{sorted(extra_keys)!r}. Allowed keys: {sorted(allowed_keys)!r}"
+            )
+
+        access_type = raw.get("access_type", "free")
+        if access_type not in ALLOWED_ACCESS_TYPES:
+            raise ValueError(
+                f"access_config has invalid access_type={access_type!r} in "
+                f"{self.file_path}. Valid values for this deployment: "
+                f"{sorted(ALLOWED_ACCESS_TYPES)!r}. (The valid set comes from the active "
+                f"COURSE_ACCESS_BACKEND; override it per-repo in .fls-content.yaml "
+                f"access_types.)"
+            )
+        return self
 
     @model_validator(mode="after")
     def _validate_icon_fields(self) -> "Course":

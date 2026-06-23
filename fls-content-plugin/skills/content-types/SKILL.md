@@ -14,7 +14,7 @@ All models use `extra="forbid"` — any unrecognised frontmatter key causes vali
 
 | `content_type` | File | Notes |
 |---|---|---|
-| `COURSE` | `course.md` | One per course directory; optional markdown body |
+| `COURSE` | `course.md` | One per course directory; optional markdown body; optional `access_config` (free vs application-gated) |
 | `COURSE_PART` | `part.yaml` | One per part subdirectory; **no closing `---`** |
 | `TOPIC` | `NN. slug/content.md` | Numbered topic directory; markdown body (flat `NN. slug.md` also accepted) |
 | `ACTIVITY` | `NN. slug/content.md` | Numbered topic directory; markdown body; has `level` field |
@@ -29,6 +29,7 @@ All models use `extra="forbid"` — any unrecognised frontmatter key causes vali
 - **`FORM_QUESTION` and `FORM_CONTENT`** inherit a *smaller* base model — they have **no** `title`, `subtitle`, `description`, `category` (as a display field), or `image` fields.
 - **`part.yaml` has no closing `---`** — the file ends after the last YAML key. This is valid single-document YAML.
 - **TOPIC body headings**: the `title` lives in frontmatter and renders as the page H1. **Do not repeat it as a heading in the body.** Body headings start at `#` (H1 in the source), which `mdx_headdown` shifts down to render as H2 beneath the title. Nest sub-sections with `##`, `###`, … without skipping levels.
+- **COURSE access**: a course is `free` by default. Set `access_config: {access_type: application_gated}` to require an application before enrolment. Valid access types are deployment-specific (declared in `.fls-content.yaml` `access_types`) — see [`resources/course-files.md`](resources/course-files.md#course-access-configuration).
 
 ## Common base fields (most types)
 

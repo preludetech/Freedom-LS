@@ -6,7 +6,12 @@
 #   2. Added `if __name__ == "__main__":` entry point: reads a path from sys.argv, calls
 #      validate(path), prints human-readable failures on ValueError, exits non-zero on error.
 #   3. Fixed stale docstring usage line to the real uv invocation (never bare python/python3).
-#      Re-apply both patches on every D4 re-sync.
+#   4. _load_allowed_access_types(): discover the repo's .fls-content.yaml and apply its
+#      `access_types` list to schema.ALLOWED_ACCESS_TYPES before validating, so courses are
+#      validated against the deployment's COURSE_ACCESS_BACKEND vocabulary. Absent file /
+#      absent or malformed `access_types` → keep schema's built-in default. This is the only
+#      code path that reads .fls-content.yaml.
+#      Re-apply all patches on every D4 re-sync.
 """
 validate that a bunch of markdown files matches the given schema
 
@@ -21,6 +26,7 @@ import sys
 from pathlib import Path
 
 import frontmatter
+import schema  # Patch 4: module imported so access_types override can rebind ALLOWED_ACCESS_TYPES
 import yaml
 from pydantic import ValidationError
 from schema import (
@@ -28,6 +34,36 @@ from schema import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Patch 4: the repo config file declaring deployment-specific authoring vocabulary.
+_CONFIG_FILENAME = ".fls-content.yaml"
+
+
+def _load_allowed_access_types(target: Path) -> None:
+    """Apply the repo's `.fls-content.yaml` access_types to schema.ALLOWED_ACCESS_TYPES.
+
+    Walks up from *target* (its parent, if it is a file) to the filesystem root and uses
+    the first `.fls-content.yaml` found. If that file declares a non-empty `access_types`
+    list, it becomes the set of valid Course.access_config access types for this run;
+    otherwise schema's built-in default (the FLS shipped vocabulary) is kept.
+
+    Config problems never fail validation — a missing file, unreadable file, malformed
+    YAML, or absent/empty `access_types` all fall back to the built-in default.
+    """
+    start = target if target.is_dir() else target.parent
+    for directory in (start, *start.parents):
+        config_path = directory / _CONFIG_FILENAME
+        if not config_path.is_file():
+            continue
+        try:
+            with open(config_path, encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+        except (OSError, yaml.YAMLError):
+            return  # malformed/unreadable config — keep the built-in default
+        access_types = data.get("access_types") if isinstance(data, dict) else None
+        if isinstance(access_types, list) and access_types:
+            schema.ALLOWED_ACCESS_TYPES = frozenset(str(t) for t in access_types)
+        return  # first config file wins, whether or not it declares access_types
 
 
 def get_all_files(path):
@@ -325,6 +361,9 @@ def validate(path):
     # 1. Make sure the path exists
     if not path.exists():
         raise ValueError(f"\n❌ Path does not exist: {path}")
+
+    # Patch 4: pick up the repo's deployment-specific access-type vocabulary, if declared.
+    _load_allowed_access_types(path)
 
     # 2. get a list of all the file paths
     try:

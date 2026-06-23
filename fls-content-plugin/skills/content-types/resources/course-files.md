@@ -24,6 +24,7 @@ A course can contain COURSE_PARTs, but they are not required. Course parts are l
 | `estimated_duration` | `str` | No | Duration string e.g. `"1:30:00"` (HH:MM:SS) |
 | `children` | `list` | No | Explicit ordered list of child paths; if omitted, auto-discovered alphabetically |
 | `content` | `str` | No | Optional markdown intro body |
+| `access_config` | `dict` | No | How learners get access to the course. See [Course access configuration](#course-access-configuration) below. Absent → `free`. |
 | `tags` | `list[str]` | No | Optional tag list |
 | `meta` | `dict` | No | Arbitrary metadata |
 
@@ -67,6 +68,75 @@ children:
   - path: 02. concepts/content.md
   - path: 03. quiz/form.md
 ```
+
+### Course access configuration
+
+`access_config` controls how a learner gains access to the course. It is an **opaque
+configuration block** interpreted by the deployment's active course-access backend
+(`COURSE_ACCESS_BACKEND`) — the content schema itself does not interpret its keys.
+
+In practice you set a single `access_type`:
+
+| `access_type` | Meaning |
+|---|---|
+| `free` | Open to everyone; learners self-enrol with one click. This is the **default** when `access_config` is absent. |
+| `application_gated` | The learner must submit an application and be accepted before they can enrol. |
+
+**A free course (the default) — just omit `access_config`:**
+
+```yaml
+---
+content_type: COURSE
+title: Introduction to Python
+---
+```
+
+**Equivalently, free stated explicitly:**
+
+```yaml
+---
+content_type: COURSE
+title: Introduction to Python
+access_config:
+  access_type: free
+---
+```
+
+**An application-gated course:**
+
+```yaml
+---
+content_type: COURSE
+title: Advanced Mentorship Programme
+access_config:
+  access_type: application_gated
+---
+```
+
+**Which `access_type` values are valid is deployment-specific.** They come from the active
+`COURSE_ACCESS_BACKEND` and are declared, per content repo, in `.fls-content.yaml` under
+`access_types` (scaffolded by `/fls-content:init`). The FLS shipped default accepts `free`
+and `application_gated`; a free-only deployment accepts only `free`; a custom backend may
+define entirely different values.
+
+**Invalid `access_config` is rejected — at both ends:**
+
+- `/fls-content:validate-content` flags it offline against the repo's declared
+  `access_types`. An unknown key (anything other than `access_type`) or an unrecognised
+  `access_type` value fails validation, e.g.:
+
+  ```yaml
+  access_config:
+    access_type: paid        # ✗ not a valid access type for this deployment
+    price: 50                # ✗ unknown key — only `access_type` is allowed
+  ```
+
+- The FLS host re-validates at content-load through the active backend, so bad config never
+  reaches the database.
+
+Set `access_config` deliberately — it is never inferred from course content. When editing an
+existing course file, preserve any `access_config` exactly as written; do not invent, change,
+or drop it.
 
 ---
 

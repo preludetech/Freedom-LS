@@ -31,15 +31,22 @@ guarantee.
 
 ### 3. File already exists — report and exit without writing
 
-Read the existing `.fls-content.yaml`. Parse the `admonition_types` list from the file
-content you just read. Compare it against the FLS base names (`note`, `tip`, `important`,
-`warning`, `danger`, `key_takeaways`, `checklist`) and report both groups. Do **not** copy
-the example values below — compute the split from the actual file.
+Read the existing `.fls-content.yaml`. Parse the `admonition_types` list **and** the
+`access_types` list from the file content you just read. Compare each against its FLS base
+set and report both groups for each. Do **not** copy the example values below — compute the
+splits from the actual file.
+
+- `admonition_types` FLS base names: `note`, `tip`, `important`, `warning`, `danger`,
+  `key_takeaways`, `checklist`.
+- `access_types` FLS base names (the shipped `COURSE_ACCESS_BACKEND` vocabulary): `free`,
+  `application_gated`. If the file has no `access_types` key at all, note that the repo
+  predates this config and the validator will fall back to the FLS shipped default — suggest
+  adding an `access_types` block (see Step 4) so the valid set is explicit.
 
 Report:
 
 1. That the file is already present and has been left **byte-for-byte untouched**.
-2. A convenience cross-reference of the declared types against the FLS base set. Frame this
+2. A convenience cross-reference of each declared list against its FLS base set. Frame this
    as informational only — differences from the base set are expected and intentional (the
    file is the authoritative set, not the base set).
 
@@ -51,6 +58,10 @@ Example report format:
 > - Also in FLS base set: `note`, `tip`, `warning`, `danger`, `key_takeaways`, `checklist`
 > - In your config but not in the FLS base set: `regulation`
 > - In the FLS base set but not in your config: `important`
+>
+> Your declared `access_types` compared to the FLS shipped set:
+> - Also in FLS shipped set: `free`
+> - In the FLS shipped set but not in your config: `application_gated`
 >
 > This is informational only — your config is the authoritative set for this repo and may
 > intentionally differ from the FLS base set.
@@ -87,14 +98,29 @@ admonition_types:
   - key_takeaways   # summary of the main points (usually a list)
   - checklist       # things to verify or complete (reading checklist, not a task list)
   # - regulation: "SACAA regulations and law"   # Example: add deployment-specific types like this
+
+# Course access types — the valid values for a course's `access_config.access_type`
+# frontmatter (see the fls-content:content-types skill, course-files.md). Like
+# admonition_types, this is the COMPLETE, AUTHORITATIVE set for this repo, and it mirrors
+# your deployment's COURSE_ACCESS_BACKEND vocabulary. /fls-content:validate-content checks
+# each course's access_type against this list.
+#
+# The list below is the FLS shipped default (ApplicationCourseAccessBackend). Edit it to
+# match your deployment:
+#   - a free-only deployment (FreeOnlyCourseAccessBackend) keeps only `free`;
+#   - a custom backend (e.g. subscriptions) replaces these with its own values.
+access_types:
+  - free               # open to everyone; learners self-enrol
+  - application_gated  # learner submits an application before they can enrol
 ```
 
 After writing, confirm to the author:
 
-> Created `.fls-content.yaml` at `<path>` with the FLS base admonition set as a starting
-> template. Edit `admonition_types` to match your deployment's configured types — the list
-> is the complete authoritative set for this repo, not a floor. Run `/fls-content:init`
-> again at any time; it will not overwrite your customised config.
+> Created `.fls-content.yaml` at `<path>` with the FLS base admonition set and the FLS
+> shipped course `access_types` as a starting template. Edit `admonition_types` and
+> `access_types` to match your deployment's configured types — each list is the complete
+> authoritative set for this repo, not a floor. Run `/fls-content:init` again at any time; it
+> will not overwrite your customised config.
 
 ### 5. Install the validator's dependencies
 

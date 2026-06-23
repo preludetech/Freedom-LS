@@ -122,6 +122,28 @@ def write_valid_form(directory: Path) -> Path:
     return path
 
 
+def write_course_with_access(directory: Path, access_block: str) -> Path:
+    """Write a COURSE role file whose frontmatter includes the given access block.
+
+    *access_block* is raw YAML inserted into the frontmatter (e.g.
+    "access_config:\n  access_type: free\n").
+    """
+    path = directory / "course.md"
+    path.write_text(
+        f"---\ncontent_type: COURSE\ntitle: My Course\n{access_block}---\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def write_repo_config(directory: Path, access_types: list[str]) -> Path:
+    """Write a .fls-content.yaml declaring the repo's valid access_types."""
+    path = directory / ".fls-content.yaml"
+    body = "access_types:\n" + "".join(f"  - {t}\n" for t in access_types)
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
 def test_valid_sample_tree_exits_zero(tmp_path: Path) -> None:
     """A tiny valid TOPIC + COURSE + FORM tree under tmp_path must exit 0."""
     course_dir = tmp_path / "my-course"
@@ -310,4 +332,88 @@ def test_golden_structure_idempotent(tmp_path: Path) -> None:
     )
     assert result1.stdout == result2.stdout, (
         "Validator output changed between runs (not idempotent)."
+    )
+
+
+# ---------------------------------------------------------------------------
+# access_config validation
+# ---------------------------------------------------------------------------
+
+
+def test_course_no_access_config_exits_zero(tmp_path: Path) -> None:
+    """A COURSE with no access_config is valid (defaults to free)."""
+    write_course_with_access(tmp_path, "")
+    result = run_validator(tmp_path / "course.md")
+    assert result.returncode == 0, (
+        f"Course without access_config should validate.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+@pytest.mark.parametrize("access_type", ["free", "application_gated"])
+def test_course_shipped_access_types_exit_zero(
+    tmp_path: Path, access_type: str
+) -> None:
+    """The FLS shipped vocabulary (free, application_gated) validates by default."""
+    write_course_with_access(
+        tmp_path, f"access_config:\n  access_type: {access_type}\n"
+    )
+    result = run_validator(tmp_path / "course.md")
+    assert result.returncode == 0, (
+        f"access_type={access_type!r} should be valid by default.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_course_unknown_access_config_key_exits_nonzero(tmp_path: Path) -> None:
+    """An unknown key under access_config (only access_type is allowed) is rejected."""
+    write_course_with_access(
+        tmp_path, "access_config:\n  access_type: free\n  price: 50\n"
+    )
+    result = run_validator(tmp_path / "course.md")
+    assert result.returncode != 0, (
+        f"Unknown access_config key should fail validation.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    combined = result.stdout + result.stderr
+    assert "Traceback" not in combined, (
+        f"Validator output contains a raw traceback:\n{combined}"
+    )
+
+
+def test_course_invalid_access_type_exits_nonzero(tmp_path: Path) -> None:
+    """An access_type outside the deployment vocabulary is rejected."""
+    write_course_with_access(tmp_path, "access_config:\n  access_type: paid\n")
+    result = run_validator(tmp_path / "course.md")
+    assert result.returncode != 0, (
+        f"Invalid access_type should fail validation.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    combined = result.stdout + result.stderr
+    assert "Traceback" not in combined, (
+        f"Validator output contains a raw traceback:\n{combined}"
+    )
+
+
+def test_repo_config_narrows_access_types(tmp_path: Path) -> None:
+    """A .fls-content.yaml declaring only `free` rejects application_gated courses."""
+    write_repo_config(tmp_path, ["free"])
+    write_course_with_access(
+        tmp_path, "access_config:\n  access_type: application_gated\n"
+    )
+    result = run_validator(tmp_path / "course.md")
+    assert result.returncode != 0, (
+        f"application_gated should be rejected when the repo declares only `free`.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_repo_config_admits_custom_access_type(tmp_path: Path) -> None:
+    """A .fls-content.yaml declaring a custom type accepts a course using it."""
+    write_repo_config(tmp_path, ["free", "subscription"])
+    write_course_with_access(tmp_path, "access_config:\n  access_type: subscription\n")
+    result = run_validator(tmp_path / "course.md")
+    assert result.returncode == 0, (
+        f"A custom access_type declared in .fls-content.yaml should validate.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
