@@ -1,7 +1,7 @@
 """Tests for wiring the course-access backend into student_interface.
 
 Covers:
-1. Chokepoint gate in register_for_course
+1. Chokepoint gate in initiate_course_access
 2. CTA branching in course_detail
 3. Listing visibility (filter_visible)
 4. Content-access gate (view_course_item, get_course_index, course_home)
@@ -66,19 +66,19 @@ def _gated_course() -> Course:
 
 
 # ---------------------------------------------------------------------------
-# 1. Chokepoint gate — register_for_course
+# 1. Chokepoint gate — initiate_course_access
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
-def test_register_gated_course_redirects_to_apply_url(mock_site_context):
-    """POST register_for_course for a gated course redirects to the apply URL."""
+def test_initiate_access_gated_course_redirects_to_apply_url(mock_site_context):
+    """POST initiate_course_access for a gated course redirects to the apply URL."""
     course = _gated_course()
     user = UserFactory()
     client = _client(user)
 
     url = reverse(
-        "student_interface:register_for_course", kwargs={"course_slug": course.slug}
+        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
     )
     response = client.post(url)
 
@@ -90,14 +90,14 @@ def test_register_gated_course_redirects_to_apply_url(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_register_gated_course_creates_no_registration(mock_site_context):
-    """POST register_for_course for a gated course does NOT create a UserCourseRegistration."""
+def test_initiate_access_gated_course_creates_no_registration(mock_site_context):
+    """POST initiate_course_access for a gated course does NOT create a UserCourseRegistration."""
     course = _gated_course()
     user = UserFactory()
     client = _client(user)
 
     url = reverse(
-        "student_interface:register_for_course", kwargs={"course_slug": course.slug}
+        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
     )
     client.post(url)
 
@@ -107,14 +107,14 @@ def test_register_gated_course_creates_no_registration(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_register_gated_course_get_also_redirects(mock_site_context):
-    """GET register_for_course for a gated course also redirects (no self-register)."""
+def test_initiate_access_gated_course_get_also_redirects(mock_site_context):
+    """GET initiate_course_access for a gated course also redirects (no self-register)."""
     course = _gated_course()
     user = UserFactory()
     client = _client(user)
 
     url = reverse(
-        "student_interface:register_for_course", kwargs={"course_slug": course.slug}
+        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -126,14 +126,14 @@ def test_register_gated_course_get_also_redirects(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_register_free_course_creates_registration(mock_site_context):
-    """POST register_for_course for a free course creates a UserCourseRegistration."""
+def test_initiate_access_free_course_creates_registration(mock_site_context):
+    """POST initiate_course_access for a free course creates a UserCourseRegistration."""
     course = _free_course()
     user = UserFactory()
     client = _client(user)
 
     url = reverse(
-        "student_interface:register_for_course", kwargs={"course_slug": course.slug}
+        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
     )
     client.post(url)
 
@@ -193,7 +193,7 @@ def test_course_detail_free_not_registered_shows_start_label(mock_site_context):
     response = client.get(url)
 
     assert response.status_code == 200
-    # The DefaultCourseAccessBackend label for free unregistered is "Start"
+    # The FreeOnlyCourseAccessBackend label for free unregistered is "Start"
     assert "Start" in response.content.decode()
 
 
@@ -484,7 +484,7 @@ def test_dashboard_with_active_application_shows_status_link(mock_site_context):
 def test_dashboard_without_applications_shows_no_extra_panel(mock_site_context):
     """Dashboard with no active applications shows no application panel.
 
-    Uses DefaultCourseAccessBackend (which returns [] for get_dashboard_contributions)
+    Uses FreeOnlyCourseAccessBackend (which returns [] for get_dashboard_contributions)
     to isolate this test from any active applications that might exist on the site.
     The autouse _clear_course_access_backend_cache fixture clears before/after each
     test; we also clear inside the override_settings context to ensure the override
@@ -494,7 +494,7 @@ def test_dashboard_without_applications_shows_no_extra_panel(mock_site_context):
     client = _client(user)
 
     with override_settings(
-        COURSE_ACCESS_BACKEND="freedom_ls.course_access.backends.DefaultCourseAccessBackend"
+        COURSE_ACCESS_BACKEND="freedom_ls.course_access.backends.FreeOnlyCourseAccessBackend"
     ):
         get_course_access_backend.cache_clear()
         response = client.get(reverse("student_interface:dashboard"))

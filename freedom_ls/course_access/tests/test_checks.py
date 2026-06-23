@@ -8,7 +8,7 @@ from django.test import override_settings
 
 from freedom_ls.content_engine.factories import CourseFactory
 
-DEFAULT_BACKEND = "freedom_ls.course_access.backends.DefaultCourseAccessBackend"
+DEFAULT_BACKEND = "freedom_ls.course_access.backends.FreeOnlyCourseAccessBackend"
 
 
 @pytest.mark.django_db

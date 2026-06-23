@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+from typing import cast
 from uuid import UUID
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
 from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.queries import get_application_for_course
 
 
 @login_required
@@ -28,19 +31,16 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
       multi-step form flow instead.
     """
     course = get_object_or_404(Course, slug=course_slug)
+    user = cast(User, request.user)  # login_required guarantees an authenticated User
 
-    existing_app = CourseApplication.objects.filter(
-        user=request.user, course=course
-    ).first()
+    existing_app = get_application_for_course(user=user, course=course)
     if existing_app is not None:
         return redirect("course_applications:status", pk=existing_app.pk)
 
     if request.method == "POST":
         # get_or_create is race-safe (savepoint + IntegrityError catch + re-get), so
         # concurrent POSTs that both pass the pre-check above still converge on one row.
-        app, _ = CourseApplication.objects.get_or_create(
-            user=request.user, course=course
-        )
+        app, _ = CourseApplication.objects.get_or_create(user=user, course=course)
         return redirect("course_applications:status", pk=app.pk)
 
     return render(

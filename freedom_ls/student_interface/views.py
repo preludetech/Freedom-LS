@@ -81,7 +81,7 @@ def _annotate_next_up(course: Course, user, *, can_access_content: bool) -> None
 def _detail_start_url(course: Course, *, is_registered: bool, has_items: bool) -> str:
     """URL the detail page's CTA button should target.
 
-    Unregistered learners go through ``register_for_course`` (idempotent
+    Unregistered learners go through ``initiate_course_access`` (idempotent
     registration + redirect). Already-registered, 0-progress learners skip
     that step and land directly on the first course item; if the course has
     no items, fall back to ``course_home``.
@@ -93,7 +93,7 @@ def _detail_start_url(course: Course, *, is_registered: bool, has_items: bool) -
     """
     if not is_registered:
         return reverse(
-            "student_interface:register_for_course",
+            "student_interface:initiate_course_access",
             kwargs={"course_slug": course.slug},
         )
     if has_items:
@@ -266,8 +266,9 @@ def course_home(request, course_slug):
     """Resume redirector for the bare course URL.
 
     Never renders a start page. Anonymous users hit the login flow via
-    ``login_required``. Unenrolled learners go to the loop-free detail page.
-    Enrolled learners 302 to their resume item (first item with no progress,
+    ``login_required``. Learners without content access (per the access
+    backend) go to the loop-free detail page.
+    Learners with content access 302 to their resume item (first item with no progress,
     last-accessed item otherwise) — a different canonical URL, with nothing in
     the player linking back here, so the browser Back button cannot loop.
     """
@@ -289,10 +290,13 @@ def course_home(request, course_slug):
 
 
 @login_required
-def register_for_course(request, course_slug):
-    """Register the current user for a course.
+def initiate_course_access(request, course_slug):
+    """Act on a learner's intent to get into a course.
 
-    This is the single server-side enforcement point for self-registration.
+    The single server-side chokepoint for self-service course access. Consults
+    the active access backend, which decides what the action resolves to: for a
+    free course it self-registers the learner; for a gated course (e.g.
+    application-backed) it redirects to the backend's CTA (the apply page).
     Admin/cohort registration paths are untouched by this gate.
     """
 

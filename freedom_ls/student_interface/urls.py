@@ -14,9 +14,9 @@ urlpatterns = [
     ),
     path("courses/<slug:course_slug>/", views.course_home, name="course_home"),
     path(
-        "courses/<slug:course_slug>/register/",
-        views.register_for_course,
-        name="register_for_course",
+        "courses/<slug:course_slug>/access/",
+        views.initiate_course_access,
+        name="initiate_course_access",
     ),
     path(
         "courses/<slug:course_slug>/<int:index>/",

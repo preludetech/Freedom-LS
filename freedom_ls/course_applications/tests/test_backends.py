@@ -202,6 +202,41 @@ class TestGetAccess:
         assert decision.acquisition_heading == "Application required"
         assert decision.acquisition_subtext == "Apply and we'll review your request."
 
+    def test_existing_applicant_gets_view_my_application_cta(self, mock_site_context):
+        """An unregistered learner who has already applied sees 'View my application'."""
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        user = UserFactory()
+        course = CourseFactory()
+        course.access_config = {"access_type": "application_gated"}
+        course.save()
+        app = CourseApplicationFactory(user=user, course=course)
+
+        backend = ApplicationCourseAccessBackend()
+        decision = backend.get_access(user=user, course=course)
+
+        expected_url = reverse("course_applications:status", kwargs={"pk": app.pk})
+        assert decision.cta_label == "View my application"
+        assert decision.cta_url == expected_url
+
+    def test_no_application_still_returns_apply_now(self, mock_site_context):
+        """An unregistered learner without an application still sees 'Apply now'."""
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        user = UserFactory()
+        course = CourseFactory()
+        course.access_config = {"access_type": "application_gated"}
+        course.save()
+
+        backend = ApplicationCourseAccessBackend()
+        decision = backend.get_access(user=user, course=course)
+
+        assert decision.cta_label == "Apply now"
+
     def test_free_course_returns_start_cta(self, mock_site_context):
         """get_access for free course returns 'Start' CTA (inherited from parent)."""
         from freedom_ls.course_applications.backends import (

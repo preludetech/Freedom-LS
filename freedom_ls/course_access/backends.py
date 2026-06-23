@@ -1,9 +1,9 @@
 """Course access backend contract objects, base class, and default implementation.
 
 The base class (CourseAccessBackend) and contract objects (CourseAccessDecision,
-DashboardContribution) define the extension point. DefaultCourseAccessBackend is the
+DashboardContribution) define the extension point. FreeOnlyCourseAccessBackend is the
 core "free courses only" implementation. The applications backend (ApplicationCourseAccessBackend)
-lives in course_applications.backends and subclasses DefaultCourseAccessBackend there —
+lives in course_applications.backends and subclasses FreeOnlyCourseAccessBackend there —
 course_access never imports course_applications.
 """
 
@@ -140,7 +140,7 @@ _FREE_ACQUISITION_HEADING = "Free · open to everyone"
 _FREE_ACQUISITION_SUBTEXT = "One click. No credit card."
 
 
-class DefaultCourseAccessBackend(CourseAccessBackend):
+class FreeOnlyCourseAccessBackend(CourseAccessBackend):
     """Core free-only access backend.
 
     Knows nothing about applications. All application-gated logic lives in the
@@ -218,7 +218,7 @@ class DefaultCourseAccessBackend(CourseAccessBackend):
         return CourseAccessDecision(
             cta_label="Start",
             cta_url=reverse(
-                "student_interface:register_for_course",
+                "student_interface:initiate_course_access",
                 kwargs={"course_slug": course.slug},
             ),
             can_self_register=True,

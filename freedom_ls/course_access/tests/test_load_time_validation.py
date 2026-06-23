@@ -12,7 +12,7 @@ import pytest
 
 from django.test import override_settings
 
-DEFAULT_BACKEND = "freedom_ls.course_access.backends.DefaultCourseAccessBackend"
+DEFAULT_BACKEND = "freedom_ls.course_access.backends.FreeOnlyCourseAccessBackend"
 DEFAULT_VALIDATOR = "freedom_ls.course_access.loader.validate_course_access_config"
 
 

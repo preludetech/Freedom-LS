@@ -13,7 +13,20 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from freedom_ls.accounts.models import User
+    from freedom_ls.content_engine.models import Course
     from freedom_ls.course_applications.models import CourseApplication
+
+
+def get_application_for_course(
+    *, user: User, course: Course
+) -> CourseApplication | None:
+    """Return this user's application to the given course, or None.
+
+    Site isolation is automatic via SiteAwareManager.
+    """
+    from freedom_ls.course_applications.models import CourseApplication
+
+    return CourseApplication.objects.filter(user=user, course=course).first()
 
 
 def get_active_applications(user: User) -> QuerySet[CourseApplication]:

@@ -118,49 +118,49 @@ class TestCourseAccessBackend:
         assert result == []
 
 
-class TestDefaultCourseAccessBackendValidate:
-    """DefaultCourseAccessBackend.validate_course_config."""
+class TestFreeOnlyCourseAccessBackendValidate:
+    """FreeOnlyCourseAccessBackend.validate_course_config."""
 
     def test_empty_config_defaults_to_free(self):
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         result = backend.validate_course_config({})
         assert result == {"access_type": "free"}
 
     def test_explicit_free_is_accepted(self):
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         result = backend.validate_course_config({"access_type": "free"})
         assert result == {"access_type": "free"}
 
     def test_unknown_key_raises_value_error(self):
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         with pytest.raises(ValueError, match="unknown key"):
             backend.validate_course_config({"access_type": "free", "unexpected": True})
 
     def test_unknown_access_type_raises_value_error(self):
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         with pytest.raises(ValueError, match="invalid access_type"):
             backend.validate_course_config({"access_type": "not_a_real_type"})
 
     def test_application_gated_rejected_by_default_backend(self):
         """application_gated is NOT a core value — the applications backend extends this."""
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         with pytest.raises(ValueError, match="application_gated"):
             backend.validate_course_config({"access_type": "application_gated"})
 
     def test_file_path_included_in_error_message(self):
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         # Use re.escape pattern for the literal file path (contains regex metacharacters)
         with pytest.raises(ValueError, match=r"courses/my-course\.md"):
             backend.validate_course_config(
@@ -169,16 +169,16 @@ class TestDefaultCourseAccessBackendValidate:
 
 
 @pytest.mark.django_db
-class TestDefaultCourseAccessBackendGetAccess:
-    """DefaultCourseAccessBackend.get_access."""
+class TestFreeOnlyCourseAccessBackendGetAccess:
+    """FreeOnlyCourseAccessBackend.get_access."""
 
     def test_anonymous_user_on_free_course_gets_start_cta(self, mock_site_context):
         from django.contrib.auth.models import AnonymousUser
 
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
         course = CourseFactory(access_config={"access_type": "free"})
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=AnonymousUser(), course=course)
 
         assert decision.cta_label == "Start"
@@ -191,10 +191,10 @@ class TestDefaultCourseAccessBackendGetAccess:
         """A free course's decision carries the free funnel copy (not hardcoded in the template)."""
         from django.contrib.auth.models import AnonymousUser
 
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
         course = CourseFactory(access_config={"access_type": "free"})
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=AnonymousUser(), course=course)
 
         assert decision.enrolment_summary == "Free · open"
@@ -205,25 +205,25 @@ class TestDefaultCourseAccessBackendGetAccess:
         from django.contrib.auth.models import AnonymousUser
         from django.urls import reverse
 
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
         course = CourseFactory(slug="my-course", access_config={"access_type": "free"})
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=AnonymousUser(), course=course)
 
         expected_url = reverse(
-            "student_interface:register_for_course",
+            "student_interface:initiate_course_access",
             kwargs={"course_slug": "my-course"},
         )
         assert decision.cta_url == expected_url
 
     def test_registered_user_gets_continue_cta(self, mock_site_context):
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
         course = CourseFactory(access_config={"access_type": "free"})
         user = UserFactory()
         UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=user, course=course)
 
         assert decision.cta_label == "Continue"
@@ -235,12 +235,12 @@ class TestDefaultCourseAccessBackendGetAccess:
     ):
         from django.urls import reverse
 
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
         course = CourseFactory(slug="my-course", access_config={"access_type": "free"})
         user = UserFactory()
         UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=user, course=course)
 
         expected_url = reverse(
@@ -250,7 +250,7 @@ class TestDefaultCourseAccessBackendGetAccess:
         assert decision.cta_url == expected_url
 
     def test_cohort_registered_user_gets_continue(self, mock_site_context):
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
         course = CourseFactory(access_config={"access_type": "free"})
         user = UserFactory()
@@ -259,7 +259,7 @@ class TestDefaultCourseAccessBackendGetAccess:
         CohortCourseRegistrationFactory(
             cohort=cohort, collection=course, is_active=True
         )
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=user, course=course)
 
         assert decision.can_access_content is True
@@ -267,10 +267,10 @@ class TestDefaultCourseAccessBackendGetAccess:
     def test_invalid_config_returns_no_action_decision(self, mock_site_context):
         from django.contrib.auth.models import AnonymousUser
 
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
         course = CourseFactory(access_config={"access_type": "bad_value"})
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=AnonymousUser(), course=course)
 
         assert decision.cta_label is None
@@ -285,8 +285,8 @@ class TestDefaultCourseAccessBackendGetAccess:
     def test_get_dashboard_contributions_returns_empty_list(self, mock_site_context):
         from django.contrib.auth.models import AnonymousUser
 
-        from freedom_ls.course_access.backends import DefaultCourseAccessBackend
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 
-        backend = DefaultCourseAccessBackend()
+        backend = FreeOnlyCourseAccessBackend()
         result = backend.get_dashboard_contributions(user=AnonymousUser())
         assert result == []

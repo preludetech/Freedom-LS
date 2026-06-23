@@ -1,6 +1,6 @@
 """ApplicationCourseAccessBackend — the application-gating access backend.
 
-Subclasses DefaultCourseAccessBackend from course_access. This is the only new
+Subclasses FreeOnlyCourseAccessBackend from course_access. This is the only new
 inter-app edge: course_applications → course_access. course_access never imports
 course_applications.
 
@@ -16,7 +16,7 @@ from django.urls import reverse
 from freedom_ls.course_access.backends import (
     CourseAccessDecision,
     DashboardContribution,
-    DefaultCourseAccessBackend,
+    FreeOnlyCourseAccessBackend,
 )
 from freedom_ls.student_management.utils import is_registered_for_course
 
@@ -39,10 +39,10 @@ references this string.
 """
 
 
-class ApplicationCourseAccessBackend(DefaultCourseAccessBackend):
+class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
     """Application-gating access backend.
 
-    Extends DefaultCourseAccessBackend to add the application_gated access type,
+    Extends FreeOnlyCourseAccessBackend to add the application_gated access type,
     the "Apply now" CTA, and the in-flight-applications dashboard panel.
 
     Core (course_access, student_interface) remains ignorant of applications —
@@ -55,7 +55,7 @@ class ApplicationCourseAccessBackend(DefaultCourseAccessBackend):
     _ALLOWED_ACCESS_TYPES = frozenset({"free", APPLICATION_GATED})
 
     # filter_visible is deliberately NOT overridden: gated courses stay discoverable
-    # in listings. Gating is enforced at the CTA + register_for_course chokepoint,
+    # in listings. Gating is enforced at the CTA + initiate_course_access chokepoint,
     # not by hiding courses.
 
     def get_access(self, *, user: User, course: Course) -> CourseAccessDecision:
@@ -89,10 +89,25 @@ class ApplicationCourseAccessBackend(DefaultCourseAccessBackend):
         ):
             return super().get_access(user=user, course=course)
 
-        # application_gated branch
-        # Keep "Apply now" for both first-time and returning applicants — the
-        # apply view redirects an in-flight applicant to their status page, so a
-        # single label satisfies the re-apply rule and the QA flow.
+        # application_gated branch. A returning applicant gets a CTA straight to
+        # their status page; a first-time visitor gets "Apply now".
+        from freedom_ls.course_applications.queries import get_application_for_course
+
+        existing_app = get_application_for_course(user=user, course=course)
+        if existing_app is not None:
+            return CourseAccessDecision(
+                cta_label="View my application",
+                cta_url=reverse(
+                    "course_applications:status",
+                    kwargs={"pk": existing_app.pk},
+                ),
+                can_self_register=False,
+                can_access_content=False,
+                enrolment_summary="By application",
+                acquisition_heading="Application required",
+                acquisition_subtext="Apply and we'll review your request.",
+            )
+
         return CourseAccessDecision(
             cta_label="Apply now",
             cta_url=reverse(

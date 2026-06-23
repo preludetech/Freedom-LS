@@ -40,7 +40,7 @@ The course detail page (`student_interface:course_detail`) shows:
 
 ## Self-Registration
 
-A learner who is not yet registered for a course can register from the course detail page. The `register_for_course` view (`student_interface:register_for_course`) creates a `UserCourseRegistration` record and an initial `CourseProgress` record in a single step. No administrator action is needed for self-registration.
+A learner who is not yet registered for a course can register from the course detail page. The `initiate_course_access` view (`student_interface:initiate_course_access`) is the access chokepoint: it consults the active course access backend, and for a free course self-registers the learner — creating a `UserCourseRegistration` record and an initial `CourseProgress` record in a single step. No administrator action is needed for self-registration.
 
 ## Course Player
 

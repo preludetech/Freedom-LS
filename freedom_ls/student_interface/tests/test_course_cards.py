@@ -168,7 +168,7 @@ def test_course_detail_shows_start_for_unregistered_user_free_course(
 ):
     """An unregistered user sees the backend's free-course CTA label on the detail page.
 
-    The DefaultCourseAccessBackend (and ApplicationCourseAccessBackend for free courses)
+    The FreeOnlyCourseAccessBackend (and ApplicationCourseAccessBackend for free courses)
     returns "Start" as the cta_label for an unregistered learner on a free course — the
     not-registered branch uses the backend's acquisition label, not the registered-learner
     "Enrol & start" helper.
@@ -186,10 +186,10 @@ def test_course_detail_shows_start_for_unregistered_user_free_course(
 
 
 @pytest.mark.django_db
-def test_course_detail_enrol_cta_links_to_register_for_course_when_unregistered(
+def test_course_detail_enrol_cta_links_to_initiate_course_access_when_unregistered(
     mock_site_context, course_with_topics
 ):
-    """The CTA for an unregistered user links to the register_for_course URL."""
+    """The CTA for an unregistered user links to the initiate_course_access URL."""
     user = UserFactory()
     client = _logged_in_client(user)
     response = client.get(
@@ -200,7 +200,7 @@ def test_course_detail_enrol_cta_links_to_register_for_course_when_unregistered(
     )
     body = response.content.decode()
     register_url = reverse(
-        "student_interface:register_for_course",
+        "student_interface:initiate_course_access",
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert register_url in body
@@ -388,7 +388,7 @@ def test_registered_card_does_not_link_to_register_url(
     body = response.content.decode()
 
     register_url = reverse(
-        "student_interface:register_for_course",
+        "student_interface:initiate_course_access",
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert register_url not in body

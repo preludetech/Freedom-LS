@@ -233,7 +233,7 @@ def test_course_home_never_renders_start_page(course_structure, enrolled_user):
     assert response.status_code == 302
 
 
-# --- register_for_course lands in the player ----------------------------------
+# --- initiate_course_access lands in the player -------------------------------
 
 
 # --- view_form GET does not mint a spurious FormProgress ---------------------
@@ -346,12 +346,12 @@ def test_page_title_includes_part_when_present(course_structure, enrolled_user):
 
 
 @pytest.mark.django_db
-def test_register_for_course_lands_on_item_url(course_structure):
+def test_initiate_course_access_lands_on_item_url(course_structure):
     user = UserFactory()
     client = Client()
     client.force_login(user)
     url = reverse(
-        "student_interface:register_for_course",
+        "student_interface:initiate_course_access",
         kwargs={"course_slug": "resume-course"},
     )
     response = client.get(url, follow=True)

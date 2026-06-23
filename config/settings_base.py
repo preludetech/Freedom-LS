@@ -405,7 +405,7 @@ TASKS = {
 }
 
 # Ships with applications enabled. The free-only core default backend
-# ("freedom_ls.course_access.backends.DefaultCourseAccessBackend") is the no-applications
+# ("freedom_ls.course_access.backends.FreeOnlyCourseAccessBackend") is the no-applications
 # fallback. This is a project settings string in `config`, NOT a course_access import — so
 # course_access still never depends on course_applications.
 COURSE_ACCESS_BACKEND = (
