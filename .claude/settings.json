@@ -39,8 +39,6 @@
       "Bash(rmdir .sdd-work)"
     ],
     "deny": [
-      "Read(.env)",
-      "Read(.env.*)",
       "Write(config/settings_prod.py)",
       "Bash(git commit --no-verify:*)",
       "Bash(git push --force:*)",

@@ -28,7 +28,7 @@ Instead of having to remember to do this all the time, you can use `npm run tail
 
 ### Tailwind in deploys / CI
 
-`npm run tailwind_build` is **not** a dev-only command. It must run as part of every deploy (CI step, Docker image build, or Caprover predeploy hook) because:
+`npm run tailwind_build` is **not** a dev-only command. It must run as part of every deploy (CI step, Docker image build) because:
 
 - It generates `tailwind.active_theme.css` at the project root (gitignored).
 - It compiles `static/vendor/tailwind.output.css` (also gitignored) — the file Django actually serves.
