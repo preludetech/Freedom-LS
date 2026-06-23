@@ -12,8 +12,9 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 6. **QA** → run the QA plan.
 7. **Refresh the app map** → if structure changed, re-run `/app_map`.
 8. **Document** → run `/update_product_docs` to update `docs/product/` for the shipped feature.
-9. **Sync the course-author plugin** → run `/update_claude_plugin_fls_content` to sync the `fls-content` plugin if authoring functionality changed (fast-skips otherwise).
-10. **Ship** → PR, address feedback, finish worktree.
+9. **Upgrade notes** → run `/update_upgrade_notes` to produce `upgrade_notes.md` for downstream FLS projects.
+10. **Sync the course-author plugin** → run `/update_claude_plugin_fls_content` to sync the `fls-content` plugin if authoring functionality changed (fast-skips otherwise).
+11. **Ship** → PR, address feedback, finish worktree.
 
 > `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** sets up an isolated worktree for the work. Run it once, then do everything else inside the worktree.
 
@@ -86,6 +87,12 @@ If no structural change happened, skip this step.
 
 Run `/update_product_docs` to refresh the product documentation under `docs/product/` for the feature that just shipped. The command reads the spec and plan to identify which docs are affected, fans out one worker per affected doc to draft the updates, applies the edits, and — for features with visible UI — starts a dev server to capture and compress screenshots via Playwright MCP. It ticks its own todo box and cleans up scratch files on completion.
 
+## Step 8.5: Upgrade notes
+
+Run `/update_upgrade_notes` to produce `upgrade_notes.md` in the spec directory. The file has a YAML frontmatter block with machine-readable flags (`requires_migrations`, `requires_template_review`, `requires_settings_change`, `requires_package_upgrade`, `requires_tailwind_rebuild`) plus a short prose body covering breaking changes and manual steps. Downstream FLS projects use this file to know exactly what they need to do after pulling the change.
+
+The command reads the spec, plan, and the actual `git diff main..HEAD` to determine which flags to set. If the feature has no downstream impact, the notes say so plainly — an honest "no action needed" is the right output.
+
 ## Step 9: Sync the course-author plugin (if authoring functionality changed)
 
 Run `/update_claude_plugin_fls_content`. The command runs a single `git diff main --name-only | grep` over authoring-relevant paths (content-engine schema, cotton templates, widget allowlist settings, management commands, demo content) — if nothing matched, it ticks its box and exits immediately at zero LLM cost. If something matched, it fans out one `fls:sdd-worker` to read only the changed authoring-relevant files, drafts scoped edits to the `fls-content` reference skills and the bundled validator, applies them (re-applying both the Django-icon stub and the standalone CLI shim when the validator source changed), and cleans up scratch files on completion.
@@ -121,4 +128,3 @@ Run `/update_claude_plugin_fls_content`. The command runs a single `git diff mai
 ## TODO
 
 - Command for reacting to QA-reported bugs.
-- Command for producing an upgrade guide when a change affects downstream projects that extend FLS.
