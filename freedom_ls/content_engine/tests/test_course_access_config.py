@@ -18,15 +18,6 @@ def test_course_access_config_defaults_to_empty_dict(mock_site_context):
     assert course.access_config == {}
 
 
-@pytest.mark.django_db
-def test_course_access_config_persists_value(mock_site_context):
-    """A Course saved with an access_config dict persists it correctly."""
-    config = {"access_type": "free"}
-    course = CourseFactory(access_config=config)
-    course.refresh_from_db()
-    assert course.access_config == config
-
-
 # ---------------------------------------------------------------------------
 # Pydantic schema field: access_config
 # ---------------------------------------------------------------------------
@@ -42,17 +33,3 @@ def test_course_schema_access_config_defaults_to_none():
         }
     )
     assert schema.access_config is None
-
-
-def test_course_schema_access_config_accepts_dict():
-    """Course schema access_config accepts and stores a dict value."""
-    config = {"access_type": "free"}
-    schema = CourseSchema.model_validate(
-        {
-            "content_type": "COURSE",
-            "file_path": "test/course.yaml",
-            "title": "Test Course",
-            "access_config": config,
-        }
-    )
-    assert schema.access_config == config

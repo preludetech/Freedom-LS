@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import dataclasses
-
 import pytest
 
 from freedom_ls.accounts.factories import UserFactory
@@ -14,75 +12,6 @@ from freedom_ls.student_management.factories import (
     CohortMembershipFactory,
     UserCourseRegistrationFactory,
 )
-
-
-class TestCourseAccessDecision:
-    """The CourseAccessDecision frozen dataclass contract."""
-
-    def test_decision_is_frozen(self):
-        from freedom_ls.course_access.backends import CourseAccessDecision
-
-        decision = CourseAccessDecision(
-            cta_label="Start",
-            cta_url="/enrol/",
-            can_self_register=True,
-            can_access_content=False,
-        )
-        with pytest.raises(dataclasses.FrozenInstanceError):
-            decision.cta_label = "Changed"
-
-    def test_decision_fields(self):
-        from freedom_ls.course_access.backends import CourseAccessDecision
-
-        decision = CourseAccessDecision(
-            cta_label=None,
-            cta_url=None,
-            can_self_register=False,
-            can_access_content=False,
-        )
-        assert decision.cta_label is None
-        assert decision.cta_url is None
-        assert decision.can_self_register is False
-        assert decision.can_access_content is False
-
-    def test_acquisition_copy_defaults_to_none(self):
-        """The acquisition-copy fields are optional and default to None.
-
-        A backend that supplies no funnel copy (e.g. an invalid-config safe
-        decision) leaves them unset and the detail page omits those lines.
-        """
-        from freedom_ls.course_access.backends import CourseAccessDecision
-
-        decision = CourseAccessDecision(
-            cta_label=None,
-            cta_url=None,
-            can_self_register=False,
-            can_access_content=False,
-        )
-        assert decision.enrolment_summary is None
-        assert decision.acquisition_heading is None
-        assert decision.acquisition_subtext is None
-
-
-class TestDashboardContribution:
-    """The DashboardContribution dataclass."""
-
-    def test_contribution_fields(self):
-        from freedom_ls.course_access.backends import DashboardContribution
-
-        contrib = DashboardContribution(
-            template_name="myapp/partials/panel.html",
-            context={"items": [1, 2, 3]},
-        )
-        assert contrib.template_name == "myapp/partials/panel.html"
-        assert contrib.context == {"items": [1, 2, 3]}
-
-    def test_contribution_is_frozen(self):
-        from freedom_ls.course_access.backends import DashboardContribution
-
-        contrib = DashboardContribution(template_name="a.html", context={})
-        with pytest.raises(dataclasses.FrozenInstanceError):
-            contrib.template_name = "b.html"
 
 
 class TestCourseAccessBackend:

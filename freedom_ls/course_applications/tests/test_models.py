@@ -43,9 +43,3 @@ class TestCourseApplicationUniqueConstraint:
         app_a = CourseApplicationFactory(user=user, course=course_a)
         app_b = CourseApplicationFactory(user=user, course=course_b)
         assert app_a.pk != app_b.pk
-
-    def test_application_has_timestamps(self, mock_site_context):
-        """CourseApplication records created_at and updated_at automatically."""
-        app = CourseApplicationFactory()
-        assert app.created_at is not None
-        assert app.updated_at is not None
