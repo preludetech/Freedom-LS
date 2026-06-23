@@ -8,7 +8,7 @@ Critical constraint: the bundled copy must stay Django-free and runnable offline
 
 ## Tooling gotchas for this plugin dir — NOW RESOLVED (as of branch course-editing-plugin)
 - ruff per-file-ignores added: `fls-content-plugin/validate/validate.py` → T20; `fls-content-plugin/validate/tests/*.py` → S404,S603 (+ test defaults). pyproject.toml ~L176-178.
-- mypy `exclude` now lists `fls-content-plugin/` (pyproject.toml L245), so `from schema import SCHEMAS` no longer trips "cannot find module".
+- mypy does NOT exclude `fls-content-plugin/` — the bundled validator (schema.py, validate.py) and its tests are type-checked by `uv run mypy .`. `from schema import SCHEMAS` resolves via mypy_path="." + explicit_package_bases; no duplicate-module clash. (Earlier the whole dir was excluded; that hid type regressions in the bundled copy, so the exclude was dropped.)
 - `--no-project` is required to prove Django-freedom and IS used everywhere. Verified.
 
 ## Verification outcomes (review of full branch vs main)
