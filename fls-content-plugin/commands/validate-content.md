@@ -1,6 +1,6 @@
 ---
-description: Validate FLS content offline and report any problems in plain language (no Python or uv knowledge needed)
-allowed-tools: Read, Glob, Bash
+description: Validate FLS content offline, auto-fix obvious problems, and report the rest in plain language (no Python or uv knowledge needed)
+allowed-tools: Read, Glob, Bash, Edit
 ---
 
 ## Steps
@@ -12,31 +12,38 @@ If `$ARGUMENTS` is empty, use the current working directory as the target.
 
 Expand the path to an absolute path before passing it to the validator.
 
-### 2. Check that `uv` is available
+### 2. Ensure the validator environment exists
 
-Run:
+The validator's dependencies are installed once by `/fls-content:init` into a dedicated
+environment the plugin owns. Confirm it is present and healthy:
+
 ```bash
-uv --version
+"${CLAUDE_PLUGIN_ROOT}/validate/.venv/bin/python" -c "import pydantic, yaml, frontmatter"
 ```
 
-If `uv` is not installed or not on `PATH`, stop here and tell the author:
+If that succeeds, go to Step 3.
 
-> `uv` is not installed. The bundled validator requires `uv` to supply its
-> dependencies ephemerally. Please install `uv` by following the instructions
-> at https://docs.astral.sh/uv/getting-started/installation/ — or ask your
-> FLS administrator to set up the environment.
+If it fails (the author has not run `/fls-content:init` yet, or the environment is broken),
+set it up yourself — do not ask the author to run anything. First check `uv` is available
+(`uv --version`); if `uv` is missing, stop and tell the author to install it from
+https://docs.astral.sh/uv/getting-started/installation/ (or ask their FLS administrator).
+With `uv` present, create the environment:
 
-Do **not** fall back to a bare `python` or `python3` invocation. Do not fail silently.
+```bash
+uv venv "${CLAUDE_PLUGIN_ROOT}/validate/.venv"
+uv pip install --python "${CLAUDE_PLUGIN_ROOT}/validate/.venv/bin/python" \
+  pydantic pyyaml python-frontmatter
+```
+
+Never fall back to a bare `python` or `python3` invocation. Do not fail silently.
 
 ### 3. Run the bundled validator
 
-Always invoke through `uv` — never use bare `python` or `python3` directly.
-`uv` supplies `pydantic`, `pyyaml`, and `python-frontmatter` ephemerally with no
-project setup required.
+Run the validator with the environment's Python:
 
 ```bash
-uv run --no-project --with pydantic --with pyyaml --with python-frontmatter \
-  python "${CLAUDE_PLUGIN_ROOT}/validate/validate.py" "<resolved-target-path>"
+"${CLAUDE_PLUGIN_ROOT}/validate/.venv/bin/python" \
+  "${CLAUDE_PLUGIN_ROOT}/validate/validate.py" "<resolved-target-path>"
 ```
 
 Capture both stdout and stderr; note the exit code.
@@ -61,15 +68,33 @@ validator's human-readable output into friendly, actionable items:
 If the validator output is empty on a non-zero exit (unexpected error), report
 the exit code and ask the author to check the file path and re-run.
 
-### 5. Restate the boundary
+### 5. Auto-fix the obvious problems, then re-validate
+
+For each reported failure, if the fix is **obvious and unambiguous**, just make it directly
+in the source file — do not turn it into a task for the author. These are safe to fix:
+
+- Malformed frontmatter / YAML syntax (bad indentation, missing `---`, unquoted value that
+  breaks parsing).
+- A typo'd or wrong-cased field name or `content_type` value (e.g. `tittle:` → `title:`,
+  `content_type: topic` → `TOPIC`) where the intent is clear.
+- An unknown field that is plainly a misspelling of a valid one.
+
+Do **not** auto-fix anything that needs author judgement or could change meaning:
+
+- Never write or edit a `uuid:`.
+- Never invent prose, titles, or descriptions, and never make semantic widget decisions.
+- A genuinely missing required value you cannot derive from the file's existing content —
+  report it for the author to supply, do not guess.
+
+After applying fixes, **re-run the validator** (Step 3) to confirm. Then report what you
+fixed automatically and list anything that still needs the author to decide or supply.
+
+### 6. Restate the boundary
 
 End every response — success or failure — with this note (keeping it brief):
 
 > **Note:** This is a structural pre-flight check only. It validates frontmatter
-> schemas, required fields, and recognised content types. The authoritative pass —
-> UUID assignment, icon resolution, cross-reference resolution, and asset upload —
-> still happens via `content_save` on an FLS host. A clean result here does not
-> guarantee `content_save` will succeed, but it will catch the most common
-> structural mistakes before you reach the host.
->
-> (See the `fls-content:markdown-conversion` skill for the full boundary description.)
+> schemas, required fields, and recognised content types. It does not perform the
+> authoritative host-side processing (UUID assignment, icon resolution,
+> cross-reference resolution, asset upload). A clean result here does not guarantee
+> that later step will succeed, but it catches the most common structural mistakes first.

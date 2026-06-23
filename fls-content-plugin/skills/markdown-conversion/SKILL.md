@@ -8,7 +8,7 @@ allowed-tools: Read, Grep, Glob
 
 ## When to convert
 
-Use conversion when you have existing Markdown (from a blog, docs site, Obsidian vault, Google Docs export, etc.) that you want to turn into properly structured FLS course content. The goal is a valid structure that passes the bundled validator and then `content_save` on an FLS host.
+Use conversion when you have existing Markdown (from a blog, docs site, Obsidian vault, Google Docs export, etc.) that you want to turn into properly structured FLS course content. The goal is a valid structure that passes the bundled validator.
 
 ## Conservative philosophy
 
@@ -26,12 +26,15 @@ The three tiers:
 
 ## After conversion: validate
 
-After converting, validate the structure before running `content_save`:
+After converting, validate the structure — run `/fls-content:validate-content` on the
+converted path. Do this yourself; never ask the author to run anything. It checks the
+structure (required fields, unknown fields, types, recognised content types) and auto-fixes
+the obvious, unambiguous problems it finds. For a large conversion, validate per file — one
+call per converted file — so each file's issues stay isolated.
 
-- **Non-technical authors**: run `/fls-content:validate-content` — it runs the bundled validator and reports results in plain language.
-- **Technical authors**: `uv run --no-project --with pydantic --with pyyaml --with python-frontmatter python fls-content-plugin/validate/validate.py <path>`
-
-This is a **structural pre-flight only** — required-field, unknown-field, and type checks. The authoritative pass (UUID assignment, icon validation, cross-reference resolution, asset upload) still happens when you run `content_save` on an FLS host. Always run `content_save` after the validator passes.
+This is a **structural pre-flight only**: it catches the most common structural mistakes
+before the content is considered done. A clean result here does not guarantee any later
+host-side processing will succeed, but it resolves the common errors first.
 
 ## Full conversion-pattern tables
 

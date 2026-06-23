@@ -7,12 +7,13 @@
 | Source construct | FLS output | Notes |
 |---|---|---|
 | `![alt](local-path.jpg)` | `<c-picture src="images/..." alt="..." title="...">` | Derive `title` from surrounding caption; emit `alt=""` and flag if no alt text available |
-| `![[image.jpg]]` (Obsidian) | `<c-picture src="image.jpg"></c-picture>` | Expand during conversion — `content_save`'s built-in translation drops alt text |
+| `![[image.jpg]]` (Obsidian) | `<c-picture src="image.jpg"></c-picture>` | Expand during conversion — the host's built-in translation drops alt text |
 | `![[image.jpg \| title]]` (Obsidian) | `<c-picture src="image.jpg" title="title"></c-picture>` | Flag if no alt text to set |
 | YouTube watch URL `https://www.youtube.com/watch?v=ID` | `<c-youtube video_id="ID"></c-youtube>` | Unambiguous URL pattern |
 | Setext heading `===`/`---` underlines | ATX `#`/`##` equivalent | Purely structural normalisation; do this before any other heading step |
 | Heading promoted to frontmatter `title` | Removed from body | The heading text goes into `title:`; the body starts after it |
 | Body heading re-levelling | Shift headings so top section is `#` | After title lifting, promote remaining headings to start at `#` |
+| Mis-named file or directory | Rename to the correct `NN. name` / role-file form | The rename appears in the `git diff`; not flagged |
 
 ### Propose only (list in `_conversion_review.md`, never apply silently)
 
@@ -51,7 +52,7 @@ Apply in this order:
    - `subtitle`: the first sub-heading immediately below the split point (if any); omit if none.
    - `description`: the first non-heading, non-list, non-code, non-widget paragraph below the title (if it reads as introductory); omit if none.
 
-4. **Remove the title (and subtitle if lifted) from the body.** The page template renders the frontmatter `title` as the visible H1 — repeating it in the body produces two H1s.
+4. **Remove the title (and subtitle if lifted) from the body.** The template renders the frontmatter `title` and `subtitle` automatically (title as the visible H1, subtitle beneath it) — repeating either as a heading or prose in the body renders it twice.
 
 5. **Re-base the body heading hierarchy.** After the title is lifted out, promote all remaining body headings so the topmost section is `#` (H1). This preserves relative nesting depth. Only the `#` marker count changes; heading **text is never altered**.
    - Example: if the remaining body starts at `##`, shift everything down by one: `##` → `#`, `###` → `##`, etc.
@@ -103,7 +104,7 @@ The review file is written only when at least one of these exists:
 - Things the converter could not resolve: missing alt text, unknown widget name, out-of-set `c-admonition type`, skipped heading level, remote image URLs needing manual download, links to targets outside the converted set
 - Any concern that substantive prose may have been lost or added
 
-Each item includes the source-line reference. The file ends by reminding the author to resolve items, review the `git diff`, run `/fls-content:validate-content`, and delete `_conversion_review.md` before `content_save`.
+Each item includes the source-line reference. The file ends by reminding the author to resolve items, review the `git diff`, run `/fls-content:validate-content`, and delete `_conversion_review.md` once everything is resolved.
 
 **If nothing needs the author's attention, no `_conversion_review.md` is written.**
 

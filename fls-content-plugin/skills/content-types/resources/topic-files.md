@@ -1,25 +1,5 @@
 # TOPIC and ACTIVITY Files
 
-<!-- claude todo: add: title and subtitle are automatically rendered, dont add top-level headings in the markdown text
-
-Eg:
-
-
-```[bad]
----
-title: foo
----
-# Foo
-```
-
-This will render as:
-
-<h1>Foo</h1>
-<h2>Foo</h2>
-
-
- -->
-
 ## TOPIC
 
 A numbered directory (e.g. `01. welcome/`) inside a course or course-part directory,
@@ -44,7 +24,9 @@ directory-with-`content.md` form is preferred.
 
 ### Heading rule (load-bearing)
 
-The `title` frontmatter value is rendered as the page H1 by the template — **do not repeat it as a heading in the body**.
+The `title` and `subtitle` frontmatter values are rendered automatically (title as the page
+H1, subtitle beneath it) — **do not repeat either as a heading or prose in the body**.
+Writing `title: Foo` and then `# Foo` in the body renders `Foo` twice (an H1 and an H2).
 
 Body headings use the `mdx_headdown` rendering shift: every heading in the body is shifted down one level at render time:
 - Body `#` (H1) → rendered H2

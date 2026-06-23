@@ -73,6 +73,16 @@ A named container for a value that can change over time.
 </c-flashcard>
 ```
 
+### `c-slot` (inside `c-flashcard` only)
+
+`c-slot` is **not a standalone widget** — it is an internal cotton mechanism for passing
+named content into a `c-flashcard`'s `front` and `back` slots (shown above).
+
+**Allowed attributes:** `name` — `"front"` or `"back"`.
+
+Do not use `<c-slot>` outside of `c-flashcard`. It has no visible output on its own and is
+stripped if used standalone.
+
 ---
 
 ## `c-accordion`

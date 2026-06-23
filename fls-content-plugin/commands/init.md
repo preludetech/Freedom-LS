@@ -1,6 +1,6 @@
 ---
-description: Scaffold .fls-content.yaml in a content repo (non-destructive, safe to re-run)
-allowed-tools: Read, Write, Glob
+description: Scaffold .fls-content.yaml and install the validator's dependencies (non-destructive, safe to re-run)
+allowed-tools: Read, Write, Glob, Bash
 ---
 
 ## Steps
@@ -55,7 +55,7 @@ Example report format:
 > This is informational only — your config is the authoritative set for this repo and may
 > intentionally differ from the FLS base set.
 
-Do **not** merge, reorder, overwrite, or delete anything. Exit here.
+Do **not** merge, reorder, overwrite, or delete anything. Then continue to Step 5.
 
 ### 4. File is absent — create it
 
@@ -79,14 +79,14 @@ Write the following content verbatim to `<content-root>/.fls-content.yaml`:
 # conversion.
 
 admonition_types:
-  - note
-  - tip
-  - important
-  - warning
-  - danger
-  - key_takeaways
-  - checklist
-  # - regulation   # Example: add deployment-specific types like this
+  - note            # neutral aside or extra context
+  - tip             # helpful suggestion or shortcut
+  - important       # something the reader must not miss
+  - warning         # caution — risk of a mistake or pitfall
+  - danger          # severe risk — serious consequences if ignored
+  - key_takeaways   # summary of the main points (usually a list)
+  - checklist       # things to verify or complete (reading checklist, not a task list)
+  # - regulation: "SACAA regulations and law"   # Example: add deployment-specific types like this
 ```
 
 After writing, confirm to the author:
@@ -96,7 +96,42 @@ After writing, confirm to the author:
 > is the complete authoritative set for this repo, not a floor. Run `/fls-content:init`
 > again at any time; it will not overwrite your customised config.
 
+### 5. Install the validator's dependencies
+
+`/fls-content:validate-content` runs a bundled Python validator that needs `pydantic`,
+`pyyaml`, and `python-frontmatter`. Install them once here, into a dedicated environment the
+plugin owns, so validation never re-resolves dependencies on every run.
+
+First confirm `uv` is available:
+
+```bash
+uv --version
+```
+
+If `uv` is not installed, tell the author to install it from
+https://docs.astral.sh/uv/getting-started/installation/ (or ask their FLS administrator),
+and stop — the validator cannot be set up without it.
+
+If the environment already exists and is healthy, do nothing:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/validate/.venv/bin/python" -c "import pydantic, yaml, frontmatter"
+```
+
+If that command succeeds, the dependencies are already installed — report that and skip the
+install. If it fails (or the environment does not exist), create it and install the deps:
+
+```bash
+uv venv "${CLAUDE_PLUGIN_ROOT}/validate/.venv"
+uv pip install --python "${CLAUDE_PLUGIN_ROOT}/validate/.venv/bin/python" \
+  pydantic pyyaml python-frontmatter
+```
+
+Then confirm to the author that the validator is ready and they can run
+`/fls-content:validate-content`.
+
 ### Constraint reminder
 
-This command's only-ever write is creating `.fls-content.yaml` when absent (Step 4).
-It does **not** read, modify, rename, or delete any course files, images, or UUIDs.
+This command writes only two things: `.fls-content.yaml` in the content root when absent
+(Step 4), and the validator's dependency environment under the plugin's own directory
+(Step 5). It does **not** read, modify, rename, or delete any course files, images, or UUIDs.

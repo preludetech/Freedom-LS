@@ -80,8 +80,8 @@ All other widget bodies use standard markdown; escaping is automatic.
 See `resources/` for full syntax, all attributes, and copy-pasteable examples:
 
 - [`resources/media-widgets.md`](resources/media-widgets.md) — `c-youtube`, `c-picture`, `c-image-grid`, `c-pdf-embed`, `c-file-download`
-- [`resources/interactive-widgets.md`](resources/interactive-widgets.md) — `c-admonition`, `c-flashcard`, `c-accordion`, `c-card`
+- [`resources/interactive-widgets.md`](resources/interactive-widgets.md) — `c-admonition`, `c-flashcard`, `c-slot`, `c-accordion`, `c-card`
 - [`resources/structured-widgets.md`](resources/structured-widgets.md) — `c-table`, `c-code-block`, `c-pull-quote`, `c-equation`
-- [`resources/content-link.md`](resources/content-link.md) — `c-content-link` and `c-slot`
+- [`resources/content-link.md`](resources/content-link.md) — `c-content-link`
 
 HTML-escaping rule detail: see the `fls-content:conventions` skill.

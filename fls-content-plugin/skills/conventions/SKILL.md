@@ -11,18 +11,29 @@ allowed-tools: Read, Grep, Glob
 All ordered content (topics, course-part directories, form-page files) uses a numeric prefix:
 
 ```
-01. Getting Started/      ← course-part directory
+01. Getting Started/          ← course-part directory (holds part.yaml)
 02. Core Concepts/
-01. welcome/              ← topic directory (contains content.md)
-02. what-to-expect/
-1. page.yaml              ← form-page file
-2. results.yaml
+    01. welcome/              ← topic directory (holds content.md)
+        content.md
+    02. what-to-expect/
+        content.md
+    03. knowledge-check/      ← form directory (holds form.md)
+        1. page.yaml          ← form-page file
+        2. results.yaml       ← another form-page file (e.g. a results page)
 ```
 
+Form-page files live **inside** the form directory alongside `form.md`. The names
+`page.yaml` / `results.yaml` are just illustrative — each numbered `.yaml` is one page of
+the form, named with a kebab-case slug like any other content.
+
 Rules:
-- Use two-digit zero-padded prefix (`01.`, `02.` … `09.`, `10.`) for directories (topic, part, and form directories).
-- Use single-digit prefix (`1.`, `2.`) for form-page files inside a form directory.
-- Discovery order is strict alphabetical — zero-pad consistently whenever a directory will have more than 9 ordered items.
+- Zero-pad every numeric prefix to the digit-width of the largest sibling in the same
+  directory (largest is `10.` → pad all to two digits; largest is `100.` → three). Discovery
+  order is strict alphabetical, so consistent padding is what keeps the order correct.
+- Default to two digits for top-level course items (topics, parts) — those sets usually grow
+  past nine.
+- Form-page files inside a form directory follow the same rule: single digit until there are
+  at least ten pages, then two.
 - Slug portion is kebab-case derived from the content title; never invented.
 
 ## Role files (unnumbered)
@@ -35,6 +46,8 @@ These files are identified by **name alone** — they are never numbered:
 | `content.md` | Identifies a numbered directory as a TOPIC / ACTIVITY |
 | `form.md` | Identifies the directory as a FORM |
 | `part.yaml` | Identifies the directory as a COURSE_PART |
+
+(An ACTIVITY uses `content.md` too — same as a TOPIC. There is no `activity.md`.)
 
 `part.yaml` has **no closing `---`** — the file ends after the last field:
 
