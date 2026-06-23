@@ -15,12 +15,11 @@ Expand the path to an absolute path before passing it to the validator.
 ### 2. Ensure the validator environment exists
 
 The validator's dependencies are installed once by `/fls-content:init` into a `.venv/` at the
-repo root — the current working directory where Claude runs, alongside `.claude/`. Resolve
-that to an absolute path and call it `<repo-root>`, then confirm the venv is present and
-healthy:
+repo root — the current working directory where Claude runs, alongside `.claude/`. Confirm the
+venv is present and healthy:
 
 ```bash
-"<repo-root>/.venv/bin/python" -c "import pydantic, yaml, frontmatter"
+".venv/bin/python" -c "import pydantic, yaml, frontmatter"
 ```
 
 If that succeeds, go to Step 3.
@@ -32,8 +31,8 @@ https://docs.astral.sh/uv/getting-started/installation/ (or ask their FLS admini
 With `uv` present, create the environment:
 
 ```bash
-uv venv "<repo-root>/.venv"
-uv pip install --python "<repo-root>/.venv/bin/python" \
+uv venv .venv
+uv pip install --python .venv/bin/python \
   pydantic pyyaml python-frontmatter
 ```
 
@@ -44,7 +43,7 @@ Never fall back to a bare `python` or `python3` invocation. Do not fail silently
 Run the validator with the environment's Python:
 
 ```bash
-"<repo-root>/.venv/bin/python" \
+".venv/bin/python" \
   "${CLAUDE_PLUGIN_ROOT}/validate/validate.py" "<resolved-target-path>"
 ```
 

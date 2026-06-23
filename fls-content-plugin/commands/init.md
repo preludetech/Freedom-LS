@@ -103,8 +103,8 @@ After writing, confirm to the author:
 so validation never re-resolves dependencies on every run.
 
 The venv lives at the repo root — the current working directory where Claude runs, alongside
-`.claude/`. Resolve that to an absolute path and call it `<repo-root>`. (This is independent
-of the content root from Step 1; in the common case they are the same directory.)
+`.claude/`. (This is independent of the content root from Step 1; in the common case they are
+the same directory.)
 
 First confirm `uv` is available:
 
@@ -119,15 +119,15 @@ and stop — the validator cannot be set up without it.
 If the environment already exists and is healthy, do nothing:
 
 ```bash
-"<repo-root>/.venv/bin/python" -c "import pydantic, yaml, frontmatter"
+".venv/bin/python" -c "import pydantic, yaml, frontmatter"
 ```
 
 If that command succeeds, the dependencies are already installed — report that and skip the
 install. If it fails (or the environment does not exist), create it and install the deps:
 
 ```bash
-uv venv "<repo-root>/.venv"
-uv pip install --python "<repo-root>/.venv/bin/python" \
+uv venv .venv
+uv pip install --python .venv/bin/python \
   pydantic pyyaml python-frontmatter
 ```
 
@@ -135,8 +135,8 @@ Finally, make sure the venv is never committed — ensure `.venv/` is listed in 
 `.gitignore` (idempotent; creates the file if absent):
 
 ```bash
-if ! grep -qxF '.venv/' "<repo-root>/.gitignore" 2>/dev/null; then
-  printf '.venv/\n' >> "<repo-root>/.gitignore"
+if ! grep -qxF '.venv/' .gitignore 2>/dev/null; then
+  printf '.venv/\n' >> .gitignore
 fi
 ```
 
