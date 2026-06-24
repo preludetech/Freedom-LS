@@ -49,6 +49,8 @@ These behaviours must be preserved in every future edit to this command. Each op
 1. If `.claude/fls/config.local.md` already exists, skip this step
 2. Copy from `${CLAUDE_PLUGIN_ROOT}/templates/fls.local.md`
 
+This file carries machine-specific overrides, including the `## Template Repo` section where the user records the absolute path to their local clone of the concrete-project template repo. The `/update_template_repo` SDD step reads that path; leave it blank if the user doesn't maintain the template repo locally.
+
 ## Step 4: Update `.gitignore`
 
 1. Read `.gitignore`

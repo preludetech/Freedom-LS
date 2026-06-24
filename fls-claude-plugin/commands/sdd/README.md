@@ -13,8 +13,9 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 7. **Refresh the app map** → if structure changed, re-run `/app_map`.
 8. **Document** → run `/update_product_docs` to update `docs/product/` for the shipped feature.
 9. **Upgrade notes** → run `/update_upgrade_notes` to produce `upgrade_notes.md` for downstream FLS projects.
-10. **Sync the course-author plugin** → run `/update_claude_plugin_fls_content` to sync the `fls-content` plugin if authoring functionality changed (fast-skips otherwise).
-11. **Ship** → PR, address feedback, finish worktree.
+10. **Template repo** → run `/update_template_repo` to update the scaffold new FLS projects are created from, when the feature changed something they need.
+11. **Sync the course-author plugin** → run `/update_claude_plugin_fls_content` to sync the `fls-content` plugin if authoring functionality changed (fast-skips otherwise).
+12. **Ship** → PR, address feedback, finish worktree.
 
 > `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** sets up an isolated worktree for the work. Run it once, then do everything else inside the worktree.
 
@@ -92,6 +93,16 @@ Run `/update_product_docs` to refresh the product documentation under `docs/prod
 Run `/update_upgrade_notes` to produce `upgrade_notes.md` in the spec directory. The file has a YAML frontmatter block with machine-readable flags (`requires_migrations`, `requires_template_review`, `requires_settings_change`, `requires_package_upgrade`, `requires_tailwind_rebuild`) plus a short prose body covering breaking changes and manual steps. Downstream FLS projects use this file to know exactly what they need to do after pulling the change.
 
 The command reads the spec, plan, and the actual `git diff main..HEAD` to determine which flags to set. If the feature has no downstream impact, the notes say so plainly — an honest "no action needed" is the right output.
+
+## Step 8.6: Update the template repo
+
+Run `/update_template_repo` to keep the **template repo** in sync — the scaffold new concrete FLS projects are created from. This is the upstream counterpart to `/update_fls`: where `/update_fls` propagates a completed spec into an *existing* downstream project, this step propagates it into the scaffold so projects created *after* the feature ships start with the change already in place. It covers the scaffold files `fls:init` deliberately doesn't generate: `config/` settings (`settings_base.py`/`settings_dev.py`/`settings_prod.py`, `urls.py`), `pyproject.toml`, `tailwind.input.css` and theme tokens, `package.json`, the `CLAUDE.md` skeleton, and the baseline `.claude/settings.json`. It never touches the template repo's own `submodules/` (the read-only FLS dependency).
+
+The template repo lives in a separate repository on the local machine. Its path is machine-specific, so it's configured under a `## Template Repo` section in `.claude/fls/config.local.md` (gitignored). If no path is configured, the command stops and tells you how to set it; if you don't maintain the template repo locally, skip the step by hand.
+
+The command reads `upgrade_notes.md` and the actual diff to decide whether any template-repo-relevant change happened. If nothing applies, it reports "no template repo update needed" and finishes. If edits are needed, it makes them in the template repo's working tree but **does not commit there** — the template repo has its own review process, so it leaves the changes for you to review and commit. Most features need no template repo change; an honest "nothing to do" is the common, correct outcome.
+
+> Note: `requires_template_review` in `upgrade_notes.md` is a *different* concern — it flags Django HTML templates that downstream projects override, handled by `/update_fls`. It is not about the template repo.
 
 ## Step 9: Sync the course-author plugin (if authoring functionality changed)
 
