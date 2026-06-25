@@ -61,27 +61,19 @@ The app label is `freedom_ls_accounts`, not `accounts`. Django namespaces instal
 
 ---
 
-## The theming cascade
+## Theming
 
-FreedomLS uses a three-tier theming model:
+FreedomLS uses a three-tier theming model — CSS tokens, then component classes, then template shadowing. The *Theming FreedomLS* guide ([`theme-fls.md`](theme-fls.md)) documents all three tiers, the full token contract, and the build steps.
 
-- **Tier 1 — CSS tokens:** override custom properties in `themes/<slug>/static/themes/<slug>/theme.css`. No template changes needed; every component re-renders automatically.
-- **Tier 2 — Component classes:** adjust component structure via mergeable `class` attributes and Cotton slots, without forking behaviour logic.
-- **Tier 3 — Template shadowing:** replace individual leaf templates by placing a file at the same relative path inside your theme's `templates/` directory. Escape hatch only.
-
-The template repo ships a `custom` theme scaffold at `themes/custom/static/themes/custom/theme.css` with every token commented out. It renders identically to the FLS default until you uncomment and set values. To rebrand: edit that file, then run `npm run tailwind_build`.
-
-For the full token reference, tier-2 Cotton slots, and tier-3 template shadowing details, see [`docs/how tos/theme-fls.md`](theme-fls.md).
+What's specific to a new project: the template repo ships a `custom` theme scaffold at `themes/custom/static/themes/custom/theme.css` with every token commented out. It renders identically to the FLS default until you uncomment and set values. To rebrand, edit that file and run `npm run tailwind_build`.
 
 ---
 
 ## The Tailwind `@source` / `.gitignore` pitfall
 
-Tailwind's `@source` glob honours `.gitignore`. If the FLS submodule lives under a path excluded by an ancestor `.gitignore` (such as `.venv/` or `node_modules/`), the glob silently skips its templates and you get missing utility classes at runtime — with no error, just invisible unstyled output.
+Tailwind's `@source` glob honours `.gitignore`. If the FLS submodule lives under a path excluded by an ancestor `.gitignore` (such as `.venv/` or `node_modules/`), the glob silently skips its templates and you get missing utility classes at runtime — no error, just invisible unstyled output. The *Build pitfalls* section of [`theme-fls.md`](theme-fls.md) covers the mechanism and its workarounds.
 
-The template repo's `tailwind.input.css` uses hardcoded relative paths to the submodule that keep it outside any gitignored directory. If you place your submodule somewhere non-standard, verify the `@source` paths still resolve and are not caught by a `.gitignore` rule.
-
-The `@source` cascade order is intentional: FLS default theme tokens come first as the always-on baseline, then FLS component classes (which depend on those tokens), then your active theme's overrides — so your theme wins on every token and component class it touches.
+The template repo's `tailwind.input.css` already uses hardcoded relative paths to the submodule that keep it outside any gitignored directory. If you place your submodule somewhere non-standard, verify the `@source` paths still resolve and are not caught by a `.gitignore` rule.
 
 Add these to your `.gitignore`:
 
@@ -111,20 +103,8 @@ RESOLVED_THEME_DIR = configure_theme(
 )
 ```
 
-`configure_theme` prepends the active theme's `templates/` directory to Django's template search path and its `static/` directory to `STATICFILES_DIRS`. An unknown theme slug raises `ImproperlyConfigured` at startup, naming the slug and the directories searched — it fails loud so misconfiguration is caught early.
+`configure_theme` wires the active theme into Django's template and static-file search paths, and raises `ImproperlyConfigured` at startup on an unknown slug. Your `themes/` directory at `BASE_DIR` is searched before the FLS package directory, so placing a `themes/default/` folder there shadows the built-in FLS default. For how resolution works and its failure modes, see the *FLS_THEME and FLS_THEMES_DIRS* section of [`theme-fls.md`](theme-fls.md).
 
-Your `themes/` directory at `BASE_DIR` is searched before the FLS package directory. Placing a `themes/default/` folder there shadows the built-in FLS default.
-
-**Deploy / CI:** `npm run tailwind_build` must run as part of your deploy pipeline. The build step regenerates `tailwind.active_theme.css` and compiles `tailwind.input.css` to `static/vendor/tailwind.output.css`. Both generated files are gitignored. Set `FLS_THEME` before running the build — setting it only at runtime will not affect the compiled CSS.
+**Deploy / CI:** `npm run tailwind_build` must run in your deploy pipeline with `FLS_THEME` already set in the environment — setting it only at runtime will not affect the compiled CSS. The compiled output (`static/vendor/tailwind.output.css`) is gitignored. To switch themes downstream, edit the active-theme `@import` in your `tailwind.input.css` and rebuild; see the *Build-time half* section of [`theme-fls.md`](theme-fls.md).
 
 ---
-
-## Canonical `config/` reference
-
-The template repo is the single source of truth for a correctly wired `config/`. Do not reconstruct the settings from memory or from this document — values drift. The live files in the template repo are maintained against the current FLS version.
-
-See [`fls-claude-plugin/resources/template_repo_manifest.md`](../../fls-claude-plugin/resources/template_repo_manifest.md) for:
-
-- the full repo file tree
-- a completeness checklist for `settings_base.py`, `settings_dev.py`, `settings_prod.py`, and `urls.py`
-- the list of FLS-internal items that must be absent from a concrete implementation
