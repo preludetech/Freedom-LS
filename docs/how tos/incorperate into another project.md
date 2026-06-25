@@ -93,7 +93,14 @@ ACCOUNT_ADAPTER = "accounts.allauth_account_adapter.AccountAdapter"
 
 ### Tailwind set up
 
-Copy `package-lock.json` and `package.json` into your own project root, then create a `tailwind.input.css` file at the project root using the template below. Replace `<path-to-freedom_ls>` with the actual path to the FLS package relative to your project root (e.g. `./submodules/Freedom-LS/freedom_ls` if you added FLS as a submodule under `submodules/`), and replace `<theme_slug>` with the slug of your active theme (use `default` to start):
+Copy `package-lock.json` and `package.json` into your own project root, then create a `tailwind.input.css` file at the project root using the template below.
+
+Two different paths are involved, so be careful:
+
+- `<path-to-freedom_ls>` — the FLS **package** directory (the `freedom_ls/` package), relative to your project root (e.g. `./submodules/Freedom-LS/freedom_ls` if you added FLS as a submodule under `submodules/`). This is where the templates and the default theme's `theme.css` live.
+- `<path-to-fls-repo-root>` — the FLS **repo root**, one level above the package directory (e.g. `./submodules/Freedom-LS`). This is where the `tailwind.*.css` component stylesheets live — they are **not** inside the `freedom_ls/` package.
+
+Replace `<theme_slug>` with the slug of your active theme (use `default` to start):
 
 ```css
 @import "tailwindcss";
@@ -102,13 +109,18 @@ Copy `package-lock.json` and `package.json` into your own project root, then cre
 @source "./themes/<theme_slug>/templates/**/*.html";
 
 @import "<path-to-freedom_ls>/themes/default/static/themes/default/theme.css";
-@import "<path-to-freedom_ls>/tailwind.components.css";
+/* Component layers live at the FLS repo ROOT, not under the freedom_ls/ package. */
+@import "<path-to-fls-repo-root>/tailwind.components.css";
+@import "<path-to-fls-repo-root>/tailwind.base_interface.css";
+@import "<path-to-fls-repo-root>/tailwind.picture_spotlight.css";
 @import "./themes/<theme_slug>/static/themes/<theme_slug>/theme.css";
 
 @theme { /* downstream project-level overrides, optional */ }
 ```
 
 The cascade order is intentional: the default theme's tokens come first as the always-on baseline, then FLS component classes (which depend on those tokens), then your active theme's overrides — so your theme wins on every token and component class it touches.
+
+`tailwind.components.css` provides the reusable component primitives (`.btn`, `.header`, `.surface`, `.chip`, `.alert`, `.course-card`, …); `tailwind.base_interface.css` styles the shared interface shell (`_base_interface.html`); and `tailwind.picture_spotlight.css` styles the image-spotlight dialog. Omitting them compiles a bundle with utility classes but no component styling, leaving buttons, the header bar, and forms unstyled. This mirrors FLS's own `tailwind.input.css`.
 
 Run `npm i` to install dependencies, then `npm run tailwind_build` to compile.
 
