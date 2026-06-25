@@ -43,13 +43,26 @@
       "Bash(git commit --no-verify:*)",
       "Bash(git push --force:*)",
       "Read(**/*.pem)",
-      "Read(**/*.key)"
+      "Read(**/*.key)",
+      "Read(.env)"
     ]
   },
   "enabledPlugins": {
     "fls": true
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Read(.env*)",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"${f##*/}\" in .env.example) ;; .env|.env.*) printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Reading .env secret files is blocked; only .env.example may be read.\"}}' ;; esac"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "hooks": [
