@@ -41,6 +41,8 @@ Read the change's downstream impact. Prefer the structured notes; fall back to t
 1. Read `<spec-dir>/upgrade_notes.md` if it exists and parse its frontmatter flags.
 2. Run `git diff main..HEAD --stat` (and inspect specific files as needed) to see what actually changed.
 
+First read `${CLAUDE_PLUGIN_ROOT}/resources/template_repo_manifest.md` — the manifest for the concrete-implementation template repo. Its file-tree listing and `config/` content contract tell you the scaffold's actual layout and what each file is expected to contain, so you can map an FLS change to the right template file with confidence. Use it alongside the signal→file table below.
+
 Map the changes to template-repo-relevant categories. Only these matter here — the template repo carries the project *scaffold*, not FLS's own source. The paths below are the template repo's actual layout:
 
 | Signal | Template repo file(s) to update |
@@ -69,6 +71,11 @@ For each relevant category, apply the corresponding edit **inside the template r
 - Never touch the template repo's `submodules/` directory — only its own scaffold files.
 - Do **not** run migrations, builds, or tests in the template repo, and do **not** commit there. The template repo is a separate repository with its own review process.
 - Don't hand-edit lockfiles. If you changed `pyproject.toml`, note that the user must run `uv lock` in the template repo; if you changed npm deps in `package.json`, note that they must run `npm i`.
+
+Use `${CLAUDE_PLUGIN_ROOT}/resources/template_repo_manifest.md` as your reference while editing:
+
+- Its **`config/` content contract** is the completeness checklist for settings/middleware/URL changes — check `INSTALLED_APPS` ordering and required keys against it when you add or adjust a setting.
+- Its **"What must be absent"** exclusion table is the authority on FLS-internal dev items (`freedom_ls.qa_helpers`, branch-to-db logic, `FORCE_SITE_NAME`, demo branding, `debug_branch_info`, etc.) that must **never** be copied into the scaffold. This is the concrete form of "mirror the change, don't copy FLS internals" above.
 
 After editing, run `git -C <path> status --short` and `git -C <path> diff` and include a concise summary of every file you touched — plus any lockfile-regeneration the user still needs to run — in your report, so they can review and commit in the template repo themselves.
 

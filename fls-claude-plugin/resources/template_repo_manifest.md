@@ -10,7 +10,7 @@ It is a [GitHub Template Repository](https://docs.github.com/en/repositories/cre
 
 **Why "Use this template" rather than clone-and-script or cookiecutter?** The submodule pointer needs to survive the copy. GitHub's template mechanism handles this correctly; cookiecutter and bare clone-then-rename do not — they either drop the submodule metadata or require a post-creation init script that is easy to forget.
 
-For a conceptual wiring overview — how the submodule integrates with your project's settings, URL conf, and dependencies — see [`docs/how tos/incorporate into another project.md`](incorporate%20into%20another%20project.md).
+For a conceptual wiring overview — how the submodule integrates with your project's settings, URL conf, and dependencies — see [`docs/how tos/incorporate into another project.md`](../../docs/how%20tos/incorporate%20into%20another%20project.md).
 
 ---
 

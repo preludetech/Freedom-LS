@@ -14,7 +14,7 @@ git@github.com:preludetech/freedom-ls-concrete-template.git
 
 Hit "Use this template" on GitHub to create your repo. The template copies the full working tree including the `.gitmodules` submodule pointer, which cookiecutter and plain clone-then-rename do not handle correctly. After creating the repo, clone with `--recurse-submodules` to initialise the submodule.
 
-For a full file-tree listing and a completeness checklist for `config/`, see [`docs/how tos/template repo manifest.md`](template%20repo%20manifest.md).
+For a full file-tree listing and a completeness checklist for `config/`, see [`fls-claude-plugin/resources/template_repo_manifest.md`](../../fls-claude-plugin/resources/template_repo_manifest.md).
 
 ---
 
@@ -123,7 +123,7 @@ Your `themes/` directory at `BASE_DIR` is searched before the FLS package direct
 
 The template repo is the single source of truth for a correctly wired `config/`. Do not reconstruct the settings from memory or from this document — values drift. The live files in the template repo are maintained against the current FLS version.
 
-See [`docs/how tos/template repo manifest.md`](template%20repo%20manifest.md) for:
+See [`fls-claude-plugin/resources/template_repo_manifest.md`](../../fls-claude-plugin/resources/template_repo_manifest.md) for:
 
 - the full repo file tree
 - a completeness checklist for `settings_base.py`, `settings_dev.py`, `settings_prod.py`, and `urls.py`
