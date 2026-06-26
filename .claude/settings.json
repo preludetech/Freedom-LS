@@ -34,6 +34,9 @@
       "Bash(git grep *)",
       "Bash(.claude/fls/scripts/dev_db_delete.sh:*)",
       "Bash(git ls-files *)",
+      "Bash(git rev-parse *)",
+      "Bash(git mv *)",
+      "Bash(chmod +x *)",
       "Bash(GIT_EDITOR=true git rebase --continue)",
       "Bash(rm -f .sdd-work/*)",
       "Bash(rmdir .sdd-work)"
