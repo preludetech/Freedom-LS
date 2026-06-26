@@ -76,7 +76,7 @@ For each relevant category, apply the corresponding edit **inside the template r
 Use `${CLAUDE_PLUGIN_ROOT}/resources/template_repo_manifest.md` as your reference while editing:
 
 - Its **`config/` content contract** is the completeness checklist for settings/middleware/URL changes — check `INSTALLED_APPS` ordering and required keys against it when you add or adjust a setting.
-- Its **"What must be absent"** exclusion table is the authority on FLS-internal dev items (`freedom_ls.qa_helpers`, branch-to-db logic, `FORCE_SITE_NAME`, demo branding, `debug_branch_info`, etc.) that must **never** be copied into the scaffold. This is the concrete form of "mirror the change, don't copy FLS internals" above.
+- Its **"What must be absent"** exclusion table is the authority on FLS-internal dev items (`freedom_ls.qa_helpers`, `FORCE_SITE_NAME`, the DemoDev role module/mapping, FirstClass demo branding, the demo `"regulation"` admonition, etc.) that must **never** be copied into the scaffold. This is the concrete form of "mirror the change, don't copy FLS internals" above. Note the scaffold *does* intentionally carry the branch-aware multi-worktree dev setup (branch→db logic, `SESSION_COOKIE_NAME`, `debug_branch_info`, `HEADLESS_SERVE_SPECIFICATION`) — see the manifest's `settings_dev.py` contract and "Multi-worktree dev setup" section.
 
 After editing, run `git -C <path> status --short` and `git -C <path> diff` and include a concise summary of every file you touched — plus any lockfile-regeneration the user still needs to run — in your report, so they can review and commit in the template repo themselves.
 
