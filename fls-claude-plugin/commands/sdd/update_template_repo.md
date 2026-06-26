@@ -49,7 +49,8 @@ Map the changes to template-repo-relevant categories. Only these matter here —
 |---|---|
 | `requires_settings_change` / changes under FLS's `config/` | `config/settings_base.py` for shared keys/defaults; `config/settings_dev.py` / `config/settings_prod.py` for environment-specific values; `config/urls.py` if FLS exposes new root URLs new projects must wire up |
 | `requires_package_upgrade` / `pyproject.toml` changes | `pyproject.toml`. **Don't hand-edit `uv.lock`** — note that the user must run `uv lock` in the template repo to refresh it |
-| `requires_tailwind_rebuild` / Tailwind/theming changes | `tailwind.input.css` — its `@source` globs mirror `FLS_THEMES_DIRS` in `config/settings_base.py`, so keep the two in sync; `themes/custom/static/themes/custom/theme.css` for theme tokens; and `package.json` if a new Tailwind or `@iconify-json/*` version is needed (note `package-lock.json` needs `npm i`, don't hand-edit it) |
+| `requires_npm_install` / `package.json` changes | `package.json` — add the new npm deps from `changed_npm_packages` (e.g. a new `@iconify-json/*` icon set or Tailwind version). **Don't hand-edit `package-lock.json`** — note that the user must run `npm i` in the template repo to refresh it |
+| `requires_tailwind_rebuild` / Tailwind/theming changes | `tailwind.input.css` — its `@source` globs mirror `FLS_THEMES_DIRS` in `config/settings_base.py`, so keep the two in sync; and `themes/custom/static/themes/custom/theme.css` for theme tokens (npm package bumps for new icon sets are handled by the `requires_npm_install` row above) |
 | Changes to project conventions documented in FLS's `CLAUDE.md` | the root `CLAUDE.md` skeleton |
 | Changes to the recommended baseline `.claude/settings.json` | `.claude/settings.json` |
 

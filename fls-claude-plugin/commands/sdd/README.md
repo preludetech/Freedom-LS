@@ -90,7 +90,7 @@ Run `/update_product_docs` to refresh the product documentation under `docs/prod
 
 ## Step 8.5: Upgrade notes
 
-Run `/update_upgrade_notes` to produce `upgrade_notes.md` in the spec directory. The file has a YAML frontmatter block with machine-readable flags (`requires_migrations`, `requires_template_review`, `requires_settings_change`, `requires_package_upgrade`, `requires_tailwind_rebuild`) plus a short prose body covering breaking changes and manual steps. Downstream FLS projects use this file to know exactly what they need to do after pulling the change.
+Run `/update_upgrade_notes` to produce `upgrade_notes.md` in the spec directory. The file has a YAML frontmatter block with machine-readable flags (`requires_migrations`, `requires_template_review`, `requires_settings_change`, `requires_package_upgrade`, `requires_npm_install`, `requires_tailwind_rebuild`) plus a short prose body covering breaking changes and manual steps. Downstream FLS projects use this file to know exactly what they need to do after pulling the change.
 
 The command reads the spec, plan, and the actual `git diff main..HEAD` to determine which flags to set. If the feature has no downstream impact, the notes say so plainly — an honest "no action needed" is the right output.
 

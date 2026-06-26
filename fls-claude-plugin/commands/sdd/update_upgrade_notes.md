@@ -20,6 +20,8 @@ requires_settings_change: false
 changed_settings: []                # keys/settings when requires_settings_change is true
 requires_package_upgrade: false
 changed_packages: []                # package==version entries when true
+requires_npm_install: false
+changed_npm_packages: []            # package@version npm entries to add to the project's package.json
 requires_tailwind_rebuild: false
 ---
 
@@ -38,6 +40,7 @@ Flag semantics:
 - **`requires_template_review`** — one or more templates that downstream projects typically override were changed. List paths in `changed_template_paths`.
 - **`requires_settings_change`** — new or renamed settings keys. List them in `changed_settings`.
 - **`requires_package_upgrade`** — new or updated Python packages. List `package==version` entries in `changed_packages`.
+- **`requires_npm_install`** — new or updated npm packages (e.g. a new `@iconify-json/*` icon set or a build tool). Downstream projects keep their **own** `package.json`, so `uv sync` can't pick these up — they must be mirrored into it and `npm install` run. List `package@version` entries in `changed_npm_packages`.
 - **`requires_tailwind_rebuild`** — Tailwind source changed; downstream must rebuild the CSS bundle.
 
 Set every unused list to `[]` and every unused flag to `false`.
@@ -75,6 +78,7 @@ Read the output. Focus on:
 - Changed templates under `freedom_ls/` → `requires_template_review` + `changed_template_paths`
 - New or changed `settings` keys or `config/` files → `requires_settings_change` + `changed_settings`
 - Changes to `pyproject.toml` or `requirements*.txt` → `requires_package_upgrade` + `changed_packages`
+- New or changed npm dependencies in `package.json` / `package-lock.json` → `requires_npm_install` + `changed_npm_packages`. Adding a new `@iconify-json/*` icon pack typically sets **both** this flag and `requires_tailwind_rebuild`.
 - Changes to Tailwind source files (e.g. `tailwind.config.*`, input CSS, any `*.html` that introduces new Tailwind utility classes a downstream bundle must include) → `requires_tailwind_rebuild`
 
 ## Step 3: Write upgrade_notes.md

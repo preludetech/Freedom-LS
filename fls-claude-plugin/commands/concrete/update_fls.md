@@ -1,6 +1,6 @@
 Update the FreedomLS submodule (`submodules/Freedom-LS`) to the latest version, integrating each completed spec one at a time.
 
-The core flow is unchanged: advance the submodule **spec by spec**, integrate each completed spec, run a test gate, and make **one commit per spec** (`Update FLS: <spec-name>`). On top of that, this command reads each spec's structured `upgrade_notes.md` to know exactly which integration steps to run, previews the whole plan before touching anything, guards migrations, and documents how to roll back a failed spec.
+The core flow is: advance the submodule **spec by spec**, integrate each completed spec, run a test gate, and make **one commit per spec** (`Update FLS: <spec-name>`). On top of that, this command reads each spec's structured `upgrade_notes.md` to know exactly which integration steps to run, previews the whole plan before touching anything, guards migrations, and documents how to roll back a failed spec.
 
 # Step 1: Identify new completed specs
 
@@ -25,6 +25,7 @@ This file is authored as part of FLS's own spec-completion workflow (the `/updat
 - `requires_template_review` (+ `changed_template_paths`)
 - `requires_settings_change` (+ `changed_settings`)
 - `requires_package_upgrade` (+ `changed_packages`)
+- `requires_npm_install` (+ `changed_npm_packages`)
 - `requires_tailwind_rebuild`
 
 Print a preview table — one row per spec — listing the spec name and the flags its notes set. If a spec has **no `upgrade_notes.md`** (older specs predate the artifact), mark that row **"no notes — will infer from spec/plan prose"**.
@@ -76,6 +77,7 @@ Run only the steps the notes call for (or that prose inference indicated, for sp
 - **`requires_migrations`** → `uv run python manage.py makemigrations && uv run python manage.py migrate`
 - **`requires_settings_change`** → review and apply the listed `changed_settings` to the concrete project's `config/`.
 - **`requires_package_upgrade`** → apply the listed `changed_packages` (already partly covered by `uv sync`; reconcile versions if the notes pin specific ones).
+- **`requires_npm_install`** → add the listed `changed_npm_packages` to the concrete project's own `package.json`, then run `npm install`. Unlike `uv sync`, this is **not** auto-resolved from the submodule — the concrete project keeps a standalone `package.json`, so the new deps must be mirrored in by hand. Commit the updated `package-lock.json` alongside the integration. Run this **before** any Tailwind rebuild so new icon sets/packages are present when the bundle is built.
 - **`requires_tailwind_rebuild`** → `npm run tailwind_build`.
 - **`requires_template_review`** → run the template-drift detection in 3f.
 
@@ -133,9 +135,10 @@ If a spec fails partway through Step 3 — tests won't pass, a migration conflic
    git submodule update --init submodules/Freedom-LS
    ```
    This restores `submodules/Freedom-LS` to the commit recorded in the last good concrete-project commit.
-3. Re-sync dependencies to the restored pointer:
+3. Re-sync dependencies to the restored pointer. Step 1 already restored `package.json` / `package-lock.json`, so reinstall npm packages too if this spec touched them:
    ```
    uv sync
+   npm install
    ```
 4. Confirm you are clean and green:
    ```
@@ -158,6 +161,7 @@ for spec in pending_completed_specs (chronological):
     if notes.requires_migrations:        makemigrations && migrate
     if notes.requires_settings_change:   apply notes.changed_settings
     if notes.requires_package_upgrade:   reconcile notes.changed_packages
+    if notes.requires_npm_install:       mirror notes.changed_npm_packages into package.json && npm install
     if notes.requires_tailwind_rebuild:  npm run tailwind_build
     if notes.requires_template_review:   flag drift for notes.changed_template_paths (no auto-merge)
     makemigrations --check               # catch conflicts introduced by this spec
