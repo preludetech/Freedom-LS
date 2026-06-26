@@ -16,7 +16,7 @@ Set up the FLS Claude Code plugin for this project.
 These behaviours must be preserved in every future edit to this command. Each operation is additive or create-when-absent, with one deliberate exception noted below for the `hooks` section.
 
 - **`.claude/settings.json`** — merge, don't replace. Add missing `allow`/`deny` entries, add `fls: true` to `enabledPlugins`, and merge the `SessionStart` hook. Never replace the whole file, and never touch `allow`/`deny`/`enabledPlugins` entries that already exist. **Exception:** the `hooks` section is plugin-owned — only `SessionStart` is permitted there, and any other hook events are removed by design (see Step 1 and validation check 6).
-- **`.claude/fls/config.md` and `.claude/fls/config.local.md`** — create only when absent. If either file already exists, skip that step entirely.
+- **`.claude/fls/config.md` and `.claude/fls/config.local.md`** — create when absent, otherwise extend. If a file already exists, add any configuration option the template defines but the file lacks (new sections/keys), using the template's default. Preserve every existing value, comment, and ordering. Never overwrite or delete existing config, and never re-prompt the user for options the file already has.
 - **`.gitignore`** — append missing entries only. Never remove or reorder existing lines.
 - **Wrapper scripts** (`claude.sh` at the project root; all others under `.claude/fls/scripts/`) — copy the template, substitute `__FLS_PATH__`, and mark it executable **only when the destination file does not yet exist**. If a script is already present, skip it without modification.
 
@@ -34,20 +34,29 @@ These behaviours must be preserved in every future edit to this command. Each op
    - Create it from the template with `enabledPlugins: {"fls": true}` added
 4. Report what was added/changed
 
-## Step 2: Create `.claude/fls/config.md`
+## Step 2: Create or extend `.claude/fls/config.md`
 
 1. Ensure the `.claude/fls/` directory exists (create it if missing)
-2. If `.claude/fls/config.md` already exists, skip this step
-3. Ask the user for:
-   - Dev admin email (default: `demodev@email.com`)
-   - Dev admin password (default: `demodev@email.com`)
-   - Base URL (default: `http://127.0.0.1:8000`)
-4. Generate `.claude/fls/config.md` from `${CLAUDE_PLUGIN_ROOT}/templates/fls.md`, substituting the user's values
+2. If `.claude/fls/config.md` does **not** exist:
+   - Ask the user for:
+     - Dev admin email (default: `demodev@email.com`)
+     - Dev admin password (default: `demodev@email.com`)
+     - Base URL (default: `http://127.0.0.1:8000`)
+   - Generate `.claude/fls/config.md` from `${CLAUDE_PLUGIN_ROOT}/templates/fls.md`, substituting the user's values
+3. If `.claude/fls/config.md` already exists, extend it instead of skipping:
+   - Compare it against `${CLAUDE_PLUGIN_ROOT}/templates/fls.md`
+   - Add any section or key the template defines but the existing file lacks, using the template's default value — do **not** re-prompt the user for options the file already carries
+   - Preserve every existing value, comment, and ordering — never overwrite or delete what's already there
+   - If the file already has every option the template defines, leave it untouched
 
-## Step 3: Create `.claude/fls/config.local.md`
+## Step 3: Create or extend `.claude/fls/config.local.md`
 
-1. If `.claude/fls/config.local.md` already exists, skip this step
-2. Copy from `${CLAUDE_PLUGIN_ROOT}/templates/fls.local.md`
+1. If `.claude/fls/config.local.md` does **not** exist, copy it from `${CLAUDE_PLUGIN_ROOT}/templates/fls.local.md`
+2. If it already exists, extend it instead of skipping:
+   - Compare it against `${CLAUDE_PLUGIN_ROOT}/templates/fls.local.md`
+   - Add any section or key the template defines but the existing file lacks, using the template's default/placeholder
+   - Preserve every existing value and comment — never overwrite or delete what's already there
+   - If the file already has every option the template defines, leave it untouched
 
 This file carries machine-specific overrides, including the `## Template Repo` section where the user records the absolute path to their local clone of the concrete-project template repo. The `/update_template_repo` SDD step reads that path; leave it blank if the user doesn't maintain the template repo locally.
 
