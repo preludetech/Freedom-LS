@@ -22,7 +22,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
