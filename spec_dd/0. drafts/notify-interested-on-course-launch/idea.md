@@ -9,9 +9,10 @@ students who **expressed interest** in that course (the lightweight waitlist) sh
 This is the deferred follow-up to the **Coming Soon & Hidden Courses** feature. That spec
 (`spec_dd/2. in progress/courses_coming_soon/1. spec.md`) deliberately ships
 **interest-recording only** in v1: it records `CourseInterest` rows but sends nothing on
-launch, because FLS had no notification system at the time. The data model was built ready
-for this feature — `CourseInterest.notified_at` (nullable) exists precisely so notify-on-
-launch can be wired up **without a migration**.
+launch, because FLS had no notification system at the time. The v1 model deliberately omits
+any unused notification plumbing — so **this feature owns the `notified_at` stamp**: it adds a
+nullable `CourseInterest.notified_at = models.DateTimeField(null=True, blank=True)` field via
+its own migration, used for send-once idempotency (see Behaviour below).
 
 ## Origin / why this matters
 
@@ -21,8 +22,9 @@ launch can be wired up **without a migration**.
 - The courses_coming_soon spec currently has to tell educators "students will **not** be
   automatically notified" when they publish — this feature flips that into "X interested
   students will be notified".
-- Everything except delivery already exists: the interest records, the unique `(user,
-  course)` constraint, and the `notified_at` stamp for idempotency.
+- Most of the data model already exists: the interest records and the unique `(user, course)`
+  constraint. This feature adds the one missing piece — the `notified_at` stamp (a new field +
+  migration) — plus the delivery wiring.
 
 ## Dependency: a notification delivery mechanism
 

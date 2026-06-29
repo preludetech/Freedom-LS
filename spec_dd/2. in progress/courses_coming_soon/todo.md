@@ -19,17 +19,19 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 4. Plan
 
 - [x] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
-- [ ] (user) Review both plans and edit where needed
+- [-] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
 
-- [ ] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
-- [ ] (user) Address any concerns raised in the plan
+- [-] (cmd) Run `/plan_security_review` to check the plan for insecure design choices before implementation
+- [-] (user) Address any concerns raised in the plan
 
 ## 6. Plan structure review
 
-- [ ] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
+- [x] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
 - [ ] (user) Address any structure concerns raised in the plan
+- [ ] (user) Resolve structure concern: new course_interest app and its inbound/outbound cross-app edges (Task 1.2 callout)
+- [ ] (user) Resolve structure concern: course_access→course_interest reverse() URL-name coupling — record as a graph edge or not (Task 2.2 callout)
 
 ## 7. Implementation
 
@@ -50,6 +52,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 10. Product documentation
 
+- [ ] fls:sdd:update_claude_plugin_fls_content
 - [ ] (cmd) Run `/update_product_docs` to update docs/product/ for this feature
 - [ ] (user) Review the updated documentation
 
