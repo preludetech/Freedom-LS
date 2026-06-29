@@ -5,6 +5,7 @@ icon: notes
 subtitle: A working reference for content authors
 title: Content Widgets - Demo Reference
 uuid: 8bc127c1-edf1-4997-b7fc-35fdf8604f30
+visibility: coming_soon
 ---
 
 This course is two things at once: living documentation and a set of QA fixtures.
