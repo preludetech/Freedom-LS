@@ -135,6 +135,36 @@ def test_dashboard_recommended_coming_soon_shows_express_interest(mock_site_cont
 
 
 @pytest.mark.django_db
+def test_dashboard_hidden_recommended_absent_for_unregistered(mock_site_context):
+    """A hidden recommended course must not leak as a card for an unregistered
+    user — recommendations bypass the available-courses filter_visible pass, so
+    the dashboard view must drop hidden-and-unregistered recommendations."""
+    course = _course(CourseVisibility.HIDDEN, slug="hid", title="Hidden Recommended")
+    user = UserFactory()
+    RecommendedCourseFactory(user=user, collection=course)
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:dashboard"))
+
+    assert "Hidden Recommended" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_dashboard_hidden_recommended_present_for_registered(mock_site_context):
+    """A hidden recommended course the user IS registered for still appears —
+    the "registered keeps access" rule wins over the hidden exclusion."""
+    course = _course(CourseVisibility.HIDDEN, slug="hid", title="Hidden Recommended")
+    user = UserFactory()
+    RecommendedCourseFactory(user=user, collection=course)
+    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:dashboard"))
+
+    assert "Hidden Recommended" in response.content.decode()
+
+
+@pytest.mark.django_db
 def test_dashboard_hidden_absent_for_unregistered(mock_site_context):
     _course(CourseVisibility.HIDDEN, slug="hid", title="Hidden Course")
     client = _logged_in_client(UserFactory())

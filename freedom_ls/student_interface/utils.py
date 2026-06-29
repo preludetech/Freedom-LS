@@ -699,6 +699,8 @@ def get_course_listing(
     - ``REGISTERED`` — registered but no progress recorded yet (0%).
     - ``IN_PROGRESS`` — registered with some progress and not yet complete.
     - ``COMPLETE`` — registered and the course has a ``completed_time``.
+    - ``COMING_SOON`` — the course is coming-soon; takes precedence over any
+      registration-derived status (always shows the express-interest affordance).
 
     ``access_badge`` on each entry comes from the access backend's config-only
     ``get_access_badge`` signal (one call per course, no per-user registration
@@ -713,6 +715,15 @@ def get_course_listing(
     courses = visible_courses if visible_courses is not None else get_all_courses()
 
     if not user.is_authenticated:
+        # Currently unreachable in production (both callers are @login_required),
+        # but route anonymous discovery through filter_visible for consistency
+        # with the authenticated path so hidden courses are excluded and never
+        # leak if a public listing view is added later.
+        from freedom_ls.course_access.loader import get_course_access_backend
+
+        anon_visible = get_course_access_backend().filter_visible(
+            user=user, courses=get_all_courses()
+        )
         return [
             CourseListingEntry(
                 course,
@@ -720,7 +731,7 @@ def get_course_listing(
                 0,
                 access_badge=backend.get_access_badge(course=course),
             )
-            for course in courses
+            for course in anon_visible
         ]
     registered_ids = {c.id for c in get_course_registrations(user)}
     progress_rows = {

@@ -141,7 +141,18 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     # unauthenticated users), so they run unconditionally.
     registered_courses = get_current_courses(request.user)
     completed_courses = get_completed_courses(request.user)
-    recommended_courses = get_recommended_courses(request.user)
+    # Recommendations bypass the available-courses filter_visible pass, so drop
+    # hidden recommendations the user is not registered for — otherwise a hidden
+    # course leaks as a clickable card. A hidden recommendation the user IS
+    # registered for is kept (registered keeps access).
+    recommended_courses = [
+        rec
+        for rec in get_recommended_courses(request.user)
+        if not (
+            rec.collection.visibility == CourseVisibility.HIDDEN
+            and not get_is_registered(user=request.user, course=rec.collection)
+        )
+    ]
 
     if is_auth:
         for course in registered_courses:
