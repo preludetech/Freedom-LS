@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.auth.models import AnonymousUser
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -341,3 +342,43 @@ class TestDashboardPartialRendering:
         )
 
         assert expected_url in rendered
+
+
+@pytest.mark.django_db
+class TestGetAccessAnonymousUser:
+    """get_access on ApplicationCourseAccessBackend with anonymous user."""
+
+    def test_anonymous_user_on_gated_course_returns_apply_now_with_no_query(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        """Anonymous user on an application-gated course gets 'Apply now' with no application query."""
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        course = CourseFactory()
+        course.access_config = {"access_type": "application_gated"}
+        course.save()
+
+        backend = ApplicationCourseAccessBackend()
+
+        with django_assert_num_queries(0):
+            decision = backend.get_access(user=AnonymousUser(), course=course)
+
+        assert decision.cta_label == "Apply now"
+
+
+@pytest.mark.django_db
+class TestGetDashboardContributionsAnonymousUser:
+    """get_dashboard_contributions on ApplicationCourseAccessBackend with anonymous user."""
+
+    def test_anonymous_user_returns_empty_list(self, mock_site_context):
+        """get_dashboard_contributions returns empty list for anonymous user."""
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        backend = ApplicationCourseAccessBackend()
+        contributions = backend.get_dashboard_contributions(user=AnonymousUser())
+
+        assert contributions == []

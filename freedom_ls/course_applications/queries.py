@@ -10,32 +10,41 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from django.contrib.auth.models import AnonymousUser
     from django.db.models import QuerySet
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
     from freedom_ls.course_applications.models import CourseApplication
 
+    type RequestUser = User | AnonymousUser
+
 
 def get_application_for_course(
-    *, user: User, course: Course
+    *, user: RequestUser, course: Course
 ) -> CourseApplication | None:
     """Return this user's application to the given course, or None.
 
+    Returns None immediately for anonymous users — no DB query is issued.
     Site isolation is automatic via SiteAwareManager.
     """
+    if not user.is_authenticated:
+        return None
     from freedom_ls.course_applications.models import CourseApplication
 
     return CourseApplication.objects.filter(user=user, course=course).first()
 
 
-def get_active_applications(user: User) -> QuerySet[CourseApplication]:
+def get_active_applications(user: RequestUser) -> QuerySet[CourseApplication]:
     """Return all applications for this user on the current site.
 
+    Returns an empty queryset immediately for anonymous users — no DB query is issued.
     Site isolation is automatic via SiteAwareManager. With no terminal states
     yet, this returns all of the user's applications; it narrows to active states
     once withdraw/approve/reject exist.
     """
     from freedom_ls.course_applications.models import CourseApplication
 
+    if not user.is_authenticated:
+        return CourseApplication.objects.none()
     return CourseApplication.objects.filter(user=user).select_related("course")

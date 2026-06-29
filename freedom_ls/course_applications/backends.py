@@ -21,9 +21,13 @@ from freedom_ls.course_access.backends import (
 from freedom_ls.student_management.utils import is_registered_for_course
 
 if TYPE_CHECKING:
+    from django.contrib.auth.models import AnonymousUser
+
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
     from freedom_ls.course_applications.models import CourseApplication
+
+    type RequestUser = User | AnonymousUser
 
 
 # ---------------------------------------------------------------------------
@@ -58,7 +62,7 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
     # in listings. Gating is enforced at the CTA + initiate_course_access chokepoint,
     # not by hiding courses.
 
-    def get_access(self, *, user: User, course: Course) -> CourseAccessDecision:
+    def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
         """Return a CourseAccessDecision for this user + course.
 
         Registered → Continue/content (inherited from parent). A learner enrolled
@@ -121,7 +125,9 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
             acquisition_subtext="Apply and we'll review your request.",
         )
 
-    def get_dashboard_contributions(self, *, user: User) -> list[DashboardContribution]:
+    def get_dashboard_contributions(
+        self, *, user: RequestUser
+    ) -> list[DashboardContribution]:
         """Return in-flight-application panel if the learner has any applications.
 
         student_interface renders each contribution generically via render_to_string

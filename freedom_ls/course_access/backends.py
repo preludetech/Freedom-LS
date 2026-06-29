@@ -19,10 +19,13 @@ from django.utils.translation import gettext_lazy as _
 from freedom_ls.student_management.utils import is_registered_for_course
 
 if TYPE_CHECKING:
+    from django.contrib.auth.models import AnonymousUser
     from django.db.models import QuerySet
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
+
+    type RequestUser = User | AnonymousUser
 
 
 # ---------------------------------------------------------------------------
@@ -80,12 +83,12 @@ class CourseAccessBackend:
     it here. Do not implement it now; do not delete this comment.
     """
 
-    def get_access(self, *, user: User, course: Course) -> CourseAccessDecision:
+    def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
         """Return an access decision for this user + course pair."""
         raise NotImplementedError
 
     def filter_visible(
-        self, *, user: User, courses: QuerySet[Course]
+        self, *, user: RequestUser, courses: QuerySet[Course]
     ) -> QuerySet[Course]:
         """Filter the queryset to courses visible to this user.
 
@@ -112,7 +115,9 @@ class CourseAccessBackend:
         """
         raise NotImplementedError
 
-    def get_dashboard_contributions(self, *, user: User) -> list[DashboardContribution]:
+    def get_dashboard_contributions(
+        self, *, user: RequestUser
+    ) -> list[DashboardContribution]:
         """Backend-owned panels for the learner dashboard. Default: nothing.
 
         The dashboard renders each generically and never names the backend — this is
@@ -182,7 +187,7 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
             )
         return {"access_type": access_type}
 
-    def get_access(self, *, user: User, course: Course) -> CourseAccessDecision:
+    def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
         """Return a CourseAccessDecision for this user + course.
 
         Registered (direct or cohort) → Continue/content.
@@ -229,7 +234,7 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
         )
 
     def filter_visible(
-        self, *, user: User, courses: QuerySet[Course]
+        self, *, user: RequestUser, courses: QuerySet[Course]
     ) -> QuerySet[Course]:
         """Return courses unchanged — all courses are visible with the default backend."""
         return courses
