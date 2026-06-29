@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q, QuerySet
@@ -42,6 +42,10 @@ if TYPE_CHECKING:
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
 
+    # The access backend's RequestUser union (User | AnonymousUser), used for
+    # casts when calling backend methods that don't accept AbstractBaseUser.
+    type BackendUser = User | AnonymousUser
+
 # Status constants
 BLOCKED = "BLOCKED"
 READY = "READY"
@@ -62,6 +66,17 @@ class CourseListingEntry:
     course: Course
     status: CourseListingStatus
     progress_percentage: int
+    is_accessible_for_free: bool = True
+
+
+def access_badge_label(is_free: bool) -> str:
+    """Derive the human-readable access badge label from the free/gated signal.
+
+    Single source of truth for badge copy — both the all_courses catalogue and
+    the dashboard discovery cards stamp this onto each course object so templates
+    render {{ course.access_badge_label }} with no conditional branching.
+    """
+    return "Free" if is_free else "By application"
 
 
 def get_content_status(
@@ -679,11 +694,32 @@ def get_course_listing(
     - ``IN_PROGRESS`` — registered with some progress and not yet complete.
     - ``COMPLETE`` — registered and the course has a ``completed_time``.
 
+    ``is_accessible_for_free`` on each entry comes from the access backend's
+    decision (one call per course). This is the same cost the detail page pays
+    once per course, and the anonymous application query is guarded to zero by
+    the Phase 0 anonymous-safety guard. No second backend round-trip per card
+    is introduced in the template — the label is stamped here once.
+
     Used by the all-courses view (see ``views.py``) to populate the listing.
     """
+    from freedom_ls.course_access.loader import get_course_access_backend
+
+    backend = get_course_access_backend()
+    # Narrow to the union the backend accepts (User | AnonymousUser); at runtime
+    # request.user is always one of the two — AbstractBaseUser is only a wider
+    # static annotation on the function parameter.
+    backend_user = cast("BackendUser", user)
+
     if not user.is_authenticated:
         return [
-            CourseListingEntry(course, CourseListingStatus.NOT_REGISTERED, 0)
+            CourseListingEntry(
+                course,
+                CourseListingStatus.NOT_REGISTERED,
+                0,
+                is_accessible_for_free=backend.get_access(
+                    user=backend_user, course=course
+                ).is_accessible_for_free,
+            )
             for course in get_all_courses()
         ]
     courses = visible_courses if visible_courses is not None else get_all_courses()
@@ -697,9 +733,17 @@ def get_course_listing(
 
     entries: list[CourseListingEntry] = []
     for course in courses:
+        is_accessible_for_free = backend.get_access(
+            user=backend_user, course=course
+        ).is_accessible_for_free
         if course.id not in registered_ids:
             entries.append(
-                CourseListingEntry(course, CourseListingStatus.NOT_REGISTERED, 0)
+                CourseListingEntry(
+                    course,
+                    CourseListingStatus.NOT_REGISTERED,
+                    0,
+                    is_accessible_for_free=is_accessible_for_free,
+                )
             )
             continue
         row = progress_rows.get(course.id)  # may be missing -> treat as 0%
@@ -710,5 +754,5 @@ def get_course_listing(
             status = CourseListingStatus.IN_PROGRESS
         else:
             status = CourseListingStatus.REGISTERED
-        entries.append(CourseListingEntry(course, status, pct))
+        entries.append(CourseListingEntry(course, status, pct, is_accessible_for_free))
     return entries

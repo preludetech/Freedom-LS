@@ -31,11 +31,10 @@ def _logged_in_client(user) -> Client:
 
 
 @pytest.mark.django_db
-def test_all_courses_anonymous_redirects_to_login(client, courses, mock_site_context):
-    """Anonymous users get bounced to login — same gate as the dashboard."""
+def test_all_courses_anonymous_returns_200(client, courses, mock_site_context):
+    """Anonymous users can browse the catalogue — no login redirect (Phase 3)."""
     response = client.get(reverse("student_interface:courses"))
-    assert response.status_code == 302
-    assert "login" in response["Location"].lower()
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db

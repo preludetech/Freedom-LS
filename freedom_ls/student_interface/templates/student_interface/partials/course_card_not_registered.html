@@ -9,15 +9,24 @@ No desktop/mobile branch. No modal.
 Uses the stretched-link pattern (before:absolute before:inset-0) on the title
 anchor so the whole card is clickable — same pattern as course_card_registered.html.
 
+For authenticated users: the "Not registered" status eyebrow conveys registration
+state (WCAG 1.4.1).
+For anonymous users: the eyebrow is suppressed; the access badge (Free / By
+application) is shown instead as the at-a-glance signal.
+
 Required context: course (needs course.slug, course.accent_slot_key, course.icon,
-course.icon_fallback, course.title).
+course.icon_fallback, course.title, course.access_badge_label).
 {% endcomment %}
 {% url 'student_interface:course_detail' course_slug=course.slug as detail_url %}
 <c-course-card-shell accent_slot_key="{{ course.accent_slot_key }}"
                      icon="{{ course.icon }}"
                      icon_fallback="{{ course.icon_fallback }}"
                      title="{{ course.title }}">
-    {% include "student_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=False %}
+    {% if user.is_authenticated %}
+        {% include "student_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=False %}
+    {% else %}
+        <c-chip variant="primary" size="xs">{{ course.access_badge_label }}</c-chip>
+    {% endif %}
     <h3>
         <a href="{{ detail_url }}"
            class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">

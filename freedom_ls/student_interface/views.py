@@ -4,7 +4,7 @@ import contextlib
 from typing import TYPE_CHECKING
 
 from django.contrib.auth.decorators import login_required
-from django.http import Http404
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -33,6 +33,7 @@ from freedom_ls.student_progress.models import (
 from .utils import (
     IN_PROGRESS,
     READY,
+    access_badge_label,
     count_form_questions,
     form_start_page_buttons,
     get_all_courses,
@@ -177,9 +178,14 @@ def dashboard(request):
     return render(request, "student_interface/dashboard.html", context)
 
 
-@login_required
-def all_courses(request):
-    """Flat list of all courses with correct, cheaply-derived statuses."""
+def all_courses(request: HttpRequest) -> HttpResponse:
+    """Flat list of all courses — public, no login required.
+
+    Anonymous visitors see every site course with an access badge ("Free" or
+    "By application"). Authenticated visitors additionally see their registration
+    status and progress. The badge label is stamped once here (from the listing
+    builder) so row/card templates never call the backend or read access_config.
+    """
     backend = get_course_access_backend()
     entries = get_course_listing(
         request.user,
@@ -191,6 +197,12 @@ def all_courses(request):
         course = entry.course
         setattr(course, "listing_status", entry.status)  # noqa: B010
         setattr(course, "progress_percentage", entry.progress_percentage)  # noqa: B010
+        setattr(  # noqa: B010
+            course,
+            "access_badge_label",
+            access_badge_label(entry.is_accessible_for_free),
+        )
+        setattr(course, "is_accessible_for_free", entry.is_accessible_for_free)  # noqa: B010
     return render(
         request,
         "student_interface/all_courses.html",
