@@ -29,9 +29,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 6. Plan structure review
 
 - [x] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
-- [ ] (user) Address any structure concerns raised in the plan
-- [ ] (user) Resolve structure concern: new course_interest app and its inbound/outbound cross-app edges (Task 1.2 callout)
-- [ ] (user) Resolve structure concern: course_access→course_interest reverse() URL-name coupling — record as a graph edge or not (Task 2.2 callout)
+- [x] (user) Address any structure concerns raised in the plan
+- [x] (user) Resolve structure concern: new course_interest app and its inbound/outbound cross-app edges (Task 1.2 callout) — DECISION: accept & document. App stays as designed (mirrors course_applications); regenerate docs/app_structure.md via /app_map after implementation.
+- [x] (user) Resolve structure concern: course_access→course_interest reverse() URL-name coupling — record as a graph edge or not (Task 2.2 callout) — DECISION: record a dashed loose edge `course_access -.-> course_interest`. NOTE: /app_map only detects Python imports, so this reverse()-by-name edge must be added manually when regenerating docs/app_structure.md.
 
 ## 7. Implementation
 
