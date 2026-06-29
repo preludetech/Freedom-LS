@@ -110,6 +110,7 @@ INSTALLED_APPS = [
     # COURSE ACCESS
     "freedom_ls.course_access",
     "freedom_ls.course_applications",
+    "freedom_ls.course_interest",
     #########
     # STUDENT INTERFACE
     "freedom_ls.student_interface",
