@@ -2,6 +2,7 @@
 Row-list partials for the all-courses page.
 
 `dispatch-row` is the single dispatch seam for all row states:
+    * "coming_soon"    -> course_row_coming_soon.html     (express-interest CTA)
     * "not_registered" -> course_row_not_registered.html (single link to course detail page)
     * "complete"       -> course_row_complete.html       (completed course)
     * else             -> course_row_registered.html     (registered or in_progress)
@@ -13,7 +14,9 @@ no special ordering. Consumed by all_courses.html.
 {% endcomment %}
 
 {% partialdef dispatch-row %}
-    {% if course.listing_status == "not_registered" %}
+    {% if course.listing_status == "coming_soon" %}
+        {% include "student_interface/partials/course_row_coming_soon.html" %}
+    {% elif course.listing_status == "not_registered" %}
         {% include "student_interface/partials/course_row_not_registered.html" %}
     {% elif course.listing_status == "complete" %}
         {% include "student_interface/partials/course_row_complete.html" %}

@@ -14,6 +14,7 @@ from django.utils import timezone
 from freedom_ls.content_engine.models import (
     Course,
     CoursePart,
+    CourseVisibility,
     Form,
     FormQuestion,
     FormStrategy,
@@ -56,6 +57,9 @@ class CourseListingStatus(StrEnum):
     REGISTERED = "registered"  # registered, 0%, not complete
     IN_PROGRESS = "in_progress"  # registered, >0%, completed_time is None
     COMPLETE = "complete"  # registered, completed_time is not None
+    COMING_SOON = (
+        "coming_soon"  # visibility == COMING_SOON; precedes registration status
+    )
 
 
 @dataclass(frozen=True)
@@ -729,6 +733,19 @@ def get_course_listing(
     entries: list[CourseListingEntry] = []
     for course in courses:
         access_badge = backend.get_access_badge(course=course)
+        # Coming-soon takes precedence over any registration-derived status: the
+        # row always shows the express-interest affordance, never an enrol/resume
+        # control. (Hidden courses never reach here — filter_visible drops them.)
+        if course.visibility == CourseVisibility.COMING_SOON:
+            entries.append(
+                CourseListingEntry(
+                    course,
+                    CourseListingStatus.COMING_SOON,
+                    0,
+                    access_badge=access_badge,
+                )
+            )
+            continue
         if course.id not in registered_ids:
             entries.append(
                 CourseListingEntry(

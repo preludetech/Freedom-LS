@@ -13,11 +13,13 @@ from django.views.decorators.http import require_POST
 
 from freedom_ls.content_engine.models import (
     Course,
+    CourseVisibility,
     Form,
     FormStrategy,
     Topic,
 )
 from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.course_interest.queries import get_interested_course_ids
 from freedom_ls.student_management.config import config
 from freedom_ls.student_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.student_management.models import (
@@ -33,6 +35,7 @@ from freedom_ls.student_progress.models import (
 from .utils import (
     IN_PROGRESS,
     READY,
+    CourseListingStatus,
     count_form_questions,
     form_start_page_buttons,
     get_all_courses,
@@ -153,9 +156,16 @@ def dashboard(request: HttpRequest) -> HttpResponse:
                 can_access_content=course_decision.can_access_content,
             )
         for rec in recommended_courses:
-            # Recommendations are by definition not yet registered, so they get
-            # the not-registered card (single link to detail page).
+            # Recommendations are by definition not yet registered. A recommended
+            # course can still be coming-soon, and the dashboard renders it through
+            # the same dispatch-card seam, so stamp is_coming_soon here too — the
+            # interest state is batched below alongside the available-courses slice.
             setattr(rec.collection, "is_registered", False)  # noqa: B010
+            setattr(  # noqa: B010
+                rec.collection,
+                "is_coming_soon",
+                rec.collection.visibility == CourseVisibility.COMING_SOON,
+            )
 
     registered_ids = (
         {c.id for c in get_course_registrations(request.user)} if is_auth else set()
@@ -172,9 +182,29 @@ def dashboard(request: HttpRequest) -> HttpResponse:
             continue
         setattr(course, "is_registered", False)  # noqa: B010
         stamp_course_access_badge(course, badge=backend.get_access_badge(course=course))
+        setattr(  # noqa: B010
+            course,
+            "is_coming_soon",
+            course.visibility == CourseVisibility.COMING_SOON,
+        )
         available_courses.append(course)
         if len(available_courses) == 3:
             break
+
+    # Batch the interest lookup once over just the coming-soon courses the
+    # dashboard renders (the 3-course available slice plus any recommended
+    # coming-soon courses) — not the whole visible queryset — then stamp so the
+    # coming-soon card leaf picks the interested vs not-interested variant.
+    coming_soon_cards = [
+        c for c in available_courses if getattr(c, "is_coming_soon", False)
+    ] + [
+        rec.collection
+        for rec in recommended_courses
+        if getattr(rec.collection, "is_coming_soon", False)
+    ]
+    interested_ids = get_interested_course_ids(request.user, coming_soon_cards)
+    for course in coming_soon_cards:
+        setattr(course, "is_interested", course.id in interested_ids)  # noqa: B010
 
     # Dashboard contributions from the active backend (e.g. the applications panel).
     # Only fetched for authenticated users — anonymous visitors have no panels,
@@ -220,6 +250,15 @@ def all_courses(request: HttpRequest) -> HttpResponse:
         stamp_course_access_badge(course, badge=entry.access_badge)
         courses_with_attrs.append(course)
 
+    # Batch the interest lookup once over only the coming-soon entries, then
+    # stamp is_interested so the coming-soon row leaf picks the right variant.
+    coming_soon_courses = [
+        e.course for e in entries if e.status == CourseListingStatus.COMING_SOON
+    ]
+    interested_ids = get_interested_course_ids(request.user, coming_soon_courses)
+    for course in coming_soon_courses:
+        setattr(course, "is_interested", course.id in interested_ids)  # noqa: B010
+
     # JSON-LD for schema.org/ItemList — each item carries its absolute detail URL.
     catalogue_json_ld: dict[str, object] = {
         "@context": "https://schema.org",
@@ -258,6 +297,11 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     # decision.can_access_content drives the content gate. They diverge for an
     # invalid-config course, so neither can be derived from the other.
     is_registered = get_is_registered(user=request.user, course=course)
+    # Hidden courses 404 for anyone not registered, matching the wrapper's
+    # filter_visible rule. This is the only place a hidden course 404s;
+    # coming_soon and published detail pages stay accessible.
+    if course.visibility == CourseVisibility.HIDDEN and not is_registered:
+        raise Http404
     decision = get_course_access_backend().get_access(user=request.user, course=course)
     # get_course_index is anonymous-safe (it fetches user-scoped progress/deadlines
     # only behind its own is_authenticated / can_access_content guards).
@@ -281,6 +325,14 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         # backends that provide no CTA (e.g. invalid config) — <c-button href=""> renders disabled.
         start_url = decision.cta_url
         cta_label = decision.cta_label
+    # Coming-soon courses render the shared express-interest control in the
+    # not-registered branch instead of the generic enrol anchor (which would
+    # GET a POST-only endpoint and can't reflect existing interest). Stamp the
+    # course's current interest state so the partial picks the right variant.
+    is_coming_soon = course.visibility == CourseVisibility.COMING_SOON
+    if is_coming_soon and not is_registered:
+        interested_ids = get_interested_course_ids(request.user, [course])
+        setattr(course, "is_interested", course.id in interested_ids)  # noqa: B010
     breadcrumbs = [
         {"label": "All courses", "url": reverse("student_interface:courses")},
         {"label": course.title},
@@ -326,6 +378,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             "course": course,
             "children": children,
             "is_registered": is_registered,
+            "is_coming_soon": is_coming_soon,
             "start_url": start_url,
             "cta_label": cta_label,
             # Acquisition-funnel copy is access-type-specific and comes from the

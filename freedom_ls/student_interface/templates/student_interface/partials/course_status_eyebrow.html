@@ -7,16 +7,20 @@ labels and their icons. Every row leaf (all-courses page) and card leaf
     registered     -> play  icon  + "Registered"      (enrolled, 0%)
     in_progress    -> play  icon  + "In progress"      (enrolled, >0%)
     complete       -> complete icon + "Completed"
+    coming_soon    -> deadline icon + "Coming soon"    (visibility == COMING_SOON)
 
 Params:
-  status    — one of: not_registered | registered | in_progress | complete
+  status    — one of: not_registered | registered | in_progress | complete | coming_soon
   with_icon — include the reinforcement icon (rows: True; dashboard cards: False)
 
 WCAG 1.4.1: the text label is always present; the icon (and any colour) is
 reinforcement only — never the sole indicator of state.
 {% endcomment %}
 <p class="{% if with_icon %}flex items-center gap-1 {% endif %}text-xs text-muted uppercase tracking-wide">
-    {% if status == "complete" %}
+    {% if status == "coming_soon" %}
+        {% if with_icon %}<span aria-hidden="true"><c-icon name="deadline" class="size-4" /></span>{% endif %}
+        Coming soon
+    {% elif status == "complete" %}
         {% if with_icon %}<span aria-hidden="true"><c-icon name="complete" class="size-4" /></span>{% endif %}
         Completed
     {% elif status == "in_progress" %}

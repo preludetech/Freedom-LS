@@ -1,0 +1,35 @@
+{% comment %}
+Coming-soon course card leaf.
+
+Dispatch seam: course_list.html > dispatch-card > here (course.is_coming_soon).
+
+Reuses the shared <c-course-card-shell> like every other card leaf. Shows a
+"Coming soon" badge and the shared express-interest CTA partial in place of any
+enrol/apply control. The CTA's variant (interested vs not-interested) is driven
+by course.is_interested, stamped by the dashboard view. This leaf is only
+reached when the course is coming-soon, so the badge renders unconditionally.
+
+No enrol/apply button — only the express-interest affordance (spec §6.3, §8).
+
+Required context: course (slug, accent_slot_key, icon, icon_fallback, title,
+is_interested).
+{% endcomment %}
+<c-course-card-shell accent_slot_key="{{ course.accent_slot_key }}"
+                     icon="{{ course.icon }}"
+                     icon_fallback="{{ course.icon_fallback }}"
+                     title="{{ course.title }}">
+    <c-slot name="eyebrow">
+        {% include "student_interface/partials/course_status_eyebrow.html" with status="coming_soon" with_icon=False %}
+    </c-slot>
+
+    <div class="flex items-start justify-between gap-2">
+        <h3>
+            {{ course.title }}
+        </h3>
+        <c-chip variant="info" size="xs" class="shrink-0">Coming soon</c-chip>
+    </div>
+
+    <c-slot name="footer">
+        {% include "course_interest/partials/express_interest_cta.html" with is_interested=course.is_interested %}
+    </c-slot>
+</c-course-card-shell>
