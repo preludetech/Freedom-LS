@@ -68,7 +68,7 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
         Registered → Continue/content (inherited from parent). A learner enrolled
         into a gated course by an admin or via a cohort therefore reaches content:
         admin/cohort enrolment deliberately bypasses the gate.
-        Free, not registered → Start/self-register (inherited from parent).
+        Free, not registered → Enrol for free/self-register (inherited from parent).
         Application-gated, not registered → Apply now / apply URL.
         Invalid config → safe no-action decision (inherited from parent).
         """
@@ -110,6 +110,7 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
                 enrolment_summary="By application",
                 acquisition_heading="Application required",
                 acquisition_subtext="Apply and we'll review your request.",
+                is_accessible_for_free=False,
             )
 
         return CourseAccessDecision(
@@ -123,6 +124,7 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
             enrolment_summary="By application",
             acquisition_heading="Application required",
             acquisition_subtext="Apply and we'll review your request.",
+            is_accessible_for_free=False,
         )
 
     def get_dashboard_contributions(

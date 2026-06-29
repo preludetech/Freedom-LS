@@ -107,13 +107,12 @@ def _detail_start_url(course: Course, *, is_registered: bool, has_items: bool) -
     )
 
 
-def _detail_cta_label(course: Course, user, *, is_registered: bool) -> str:
-    """State-aware CTA label for the course detail page.
+def _detail_cta_label(course: Course, user: User) -> str:
+    """Progress-aware CTA label for a registered learner on the course detail page.
 
     Uses a single CourseProgress lookup — does not scan TopicProgress/FormProgress.
+    Only call this for registered learners; unregistered paths use decision.cta_label.
     """
-    if not is_registered:
-        return "Enrol & start"
     progress = CourseProgress.objects.filter(user=user, course=course).first()
     if progress is None or progress.completed_time is None:
         if progress is not None and progress.progress_percentage > 0:
@@ -221,11 +220,11 @@ def course_detail(request, course_slug):
         start_url = _detail_start_url(
             course, is_registered=True, has_items=bool(children)
         )
-        cta_label = _detail_cta_label(course, request.user, is_registered=True)
+        cta_label = _detail_cta_label(course, request.user)
     else:
-        # Not-registered: use the backend's acquisition affordance (e.g. "Start" for free
-        # courses, "Apply now" for application-gated courses). May be None for backends
-        # that provide no CTA (e.g. invalid config) — <c-button href=""> renders disabled.
+        # Not-registered: use the backend's acquisition affordance (e.g. "Enrol for free"
+        # for free courses, "Apply now" for application-gated courses). May be None for
+        # backends that provide no CTA (e.g. invalid config) — <c-button href=""> renders disabled.
         start_url = decision.cta_url
         cta_label = decision.cta_label
     breadcrumbs = [

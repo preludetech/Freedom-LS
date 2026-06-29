@@ -238,8 +238,8 @@ class TestGetAccess:
 
         assert decision.cta_label == "Apply now"
 
-    def test_free_course_returns_start_cta(self, mock_site_context):
-        """get_access for free course returns 'Start' CTA (inherited from parent)."""
+    def test_free_course_returns_enrol_for_free_cta(self, mock_site_context):
+        """get_access for free course returns 'Enrol for free' CTA (inherited from parent)."""
         from freedom_ls.course_applications.backends import (
             ApplicationCourseAccessBackend,
         )
@@ -252,8 +252,48 @@ class TestGetAccess:
         backend = ApplicationCourseAccessBackend()
         decision = backend.get_access(user=user, course=course)
 
-        assert decision.cta_label == "Start"
+        assert decision.cta_label == "Enrol for free"
         assert decision.can_self_register is True
+
+    def test_apply_now_decision_is_not_accessible_for_free(self, mock_site_context):
+        """The 'Apply now' decision signals the course is not freely accessible."""
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        user = UserFactory()
+        course = CourseFactory()
+        course.access_config = {"access_type": "application_gated"}
+        course.save()
+
+        backend = ApplicationCourseAccessBackend()
+        decision = backend.get_access(user=user, course=course)
+
+        assert decision.cta_label == "Apply now"
+        assert decision.is_accessible_for_free is False
+
+    def test_view_my_application_decision_is_not_accessible_for_free(
+        self, mock_site_context
+    ):
+        """The 'View my application' decision signals the course is not freely accessible."""
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        user = UserFactory()
+        course = CourseFactory()
+        course.access_config = {"access_type": "application_gated"}
+        course.save()
+        app = CourseApplicationFactory(user=user, course=course)
+
+        backend = ApplicationCourseAccessBackend()
+        decision = backend.get_access(user=user, course=course)
+
+        assert decision.cta_label == "View my application"
+        assert decision.is_accessible_for_free is False
+        assert decision.cta_url == reverse(
+            "course_applications:status", kwargs={"pk": app.pk}
+        )
 
 
 @pytest.mark.django_db

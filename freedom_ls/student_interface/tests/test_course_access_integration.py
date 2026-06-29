@@ -181,7 +181,9 @@ def test_course_detail_gated_not_registered_cta_url_is_apply_url(mock_site_conte
 
 
 @pytest.mark.django_db
-def test_course_detail_free_not_registered_shows_start_label(mock_site_context):
+def test_course_detail_free_not_registered_shows_enrol_for_free_label(
+    mock_site_context,
+):
     """course_detail for a free course with an unregistered learner shows the backend's free label."""
     course = _free_course()
     user = UserFactory()
@@ -193,8 +195,8 @@ def test_course_detail_free_not_registered_shows_start_label(mock_site_context):
     response = client.get(url)
 
     assert response.status_code == 200
-    # The FreeOnlyCourseAccessBackend label for free unregistered is "Start"
-    assert "Start" in response.content.decode()
+    # The FreeOnlyCourseAccessBackend label for a free unregistered learner
+    assert "Enrol for free" in response.content.decode()
 
 
 @pytest.mark.django_db

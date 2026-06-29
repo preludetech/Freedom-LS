@@ -101,7 +101,9 @@ class TestFreeOnlyCourseAccessBackendValidate:
 class TestFreeOnlyCourseAccessBackendGetAccess:
     """FreeOnlyCourseAccessBackend.get_access."""
 
-    def test_anonymous_user_on_free_course_gets_start_cta(self, mock_site_context):
+    def test_anonymous_user_on_free_course_gets_enrol_for_free_cta(
+        self, mock_site_context
+    ):
         from django.contrib.auth.models import AnonymousUser
 
         from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
@@ -110,9 +112,34 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
         backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=AnonymousUser(), course=course)
 
-        assert decision.cta_label == "Start"
+        assert decision.cta_label == "Enrol for free"
         assert decision.can_self_register is True
         assert decision.can_access_content is False
+
+    def test_free_decision_is_accessible_for_free(self, mock_site_context):
+        from django.contrib.auth.models import AnonymousUser
+
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
+
+        course = CourseFactory(access_config={"access_type": "free"})
+        backend = FreeOnlyCourseAccessBackend()
+        decision = backend.get_access(user=AnonymousUser(), course=course)
+
+        assert decision.is_accessible_for_free is True
+
+    def test_registered_free_decision_is_accessible_for_free(self, mock_site_context):
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
+        from freedom_ls.student_management.factories import (
+            UserCourseRegistrationFactory,
+        )
+
+        course = CourseFactory(access_config={"access_type": "free"})
+        user = UserFactory()
+        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        backend = FreeOnlyCourseAccessBackend()
+        decision = backend.get_access(user=user, course=course)
+
+        assert decision.is_accessible_for_free is True
 
     def test_free_course_decision_carries_free_acquisition_copy(
         self, mock_site_context

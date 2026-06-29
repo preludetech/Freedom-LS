@@ -41,7 +41,9 @@ class CourseAccessDecision:
     Course.access_config directly (backend-private convention).
     """
 
-    cta_label: str | None  # "Start", "Apply now", "Continue", …; None = no affordance
+    cta_label: (
+        str | None
+    )  # "Enrol for free", "Apply now", "Continue", …; None = no affordance
     cta_url: str | None  # None = not actionable
     can_self_register: bool
     can_access_content: bool
@@ -51,6 +53,7 @@ class CourseAccessDecision:
     enrolment_summary: str | None = None  # hero stat-card "Enrolment" value
     acquisition_heading: str | None = None  # sign-up panel heading
     acquisition_subtext: str | None = None  # sign-up panel subtext
+    is_accessible_for_free: bool = True  # honest free/gated signal for badge + JSON-LD
 
 
 @dataclass(frozen=True)
@@ -138,8 +141,8 @@ class CourseAccessType(models.TextChoices):
 
 
 # Acquisition-funnel copy for free courses, surfaced on the detail page via the
-# CourseAccessDecision. Shared by the Start (unregistered) and Continue (registered)
-# branches so the free funnel reads identically in both.
+# CourseAccessDecision. Shared by the "Enrol for free" (unregistered) and Continue
+# (registered) branches so the free funnel reads identically in both.
 _FREE_ENROLMENT_SUMMARY = "Free · open"
 _FREE_ACQUISITION_HEADING = "Free · open to everyone"
 _FREE_ACQUISITION_SUBTEXT = "One click. No credit card."
@@ -191,7 +194,7 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
         """Return a CourseAccessDecision for this user + course.
 
         Registered (direct or cohort) → Continue/content.
-        Free, not registered → Start/self-register.
+        Free, not registered → Enrol for free/self-register.
         Invalid config → safe no-action decision.
         """
         try:
@@ -221,7 +224,7 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
         # At this point, config is valid and access_type is CourseAccessType.FREE
         # (the only core value). Registered case handled above.
         return CourseAccessDecision(
-            cta_label="Start",
+            cta_label="Enrol for free",
             cta_url=reverse(
                 "student_interface:initiate_course_access",
                 kwargs={"course_slug": course.slug},

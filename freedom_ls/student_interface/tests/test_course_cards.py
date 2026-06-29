@@ -163,15 +163,15 @@ def test_course_detail_requires_login(mock_site_context, course_with_topics, cli
 
 
 @pytest.mark.django_db
-def test_course_detail_shows_start_for_unregistered_user_free_course(
+def test_course_detail_shows_enrol_for_free_for_unregistered_user_free_course(
     mock_site_context, course_with_topics
 ):
     """An unregistered user sees the backend's free-course CTA label on the detail page.
 
     The FreeOnlyCourseAccessBackend (and ApplicationCourseAccessBackend for free courses)
-    returns "Start" as the cta_label for an unregistered learner on a free course — the
-    not-registered branch uses the backend's acquisition label, not the registered-learner
-    "Enrol & start" helper.
+    returns "Enrol for free" as the cta_label for an unregistered learner on a free
+    course — the not-registered branch uses the backend's acquisition label, not the
+    registered-learner progress-aware helper.
     """
     user = UserFactory()
     client = _logged_in_client(user)
@@ -182,7 +182,7 @@ def test_course_detail_shows_start_for_unregistered_user_free_course(
         )
     )
     body = response.content.decode()
-    assert "Start" in body
+    assert "Enrol for free" in body
 
 
 @pytest.mark.django_db
