@@ -1,0 +1,44 @@
+{% comment %}
+Shared express-interest CTA partial for coming-soon courses.
+
+Context variables:
+  course        — the Course instance
+  is_interested — True if request.user has already expressed interest
+
+Two states:
+  not-interested: primary "I'm interested" button that hx-posts to the express-interest URL.
+  interested:     muted "Interested" label + quiet "Remove interest" secondary control.
+
+CSRF is handled globally via the body hx-headers attribute — no per-request token.
+The hx-swap="outerHTML" swap visibly replaces the entire wrapper on each action.
+
+Confirmation copy deliberately does NOT promise a notification (spec §7.2, §10).
+{% endcomment %}
+<div id="express-interest-cta-{{ course.slug }}">
+    {% if is_interested %}
+        <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1.5 text-success font-medium">
+                <c-icon name="check" class="size-5" aria_label="Interested" />
+                Interested
+            </span>
+            <form hx-post="{% url 'course_interest:remove_interest' course_slug=course.slug %}"
+                  hx-target="#express-interest-cta-{{ course.slug }}"
+                  hx-swap="outerHTML">
+                <c-button type="submit" variant="ghost" size="small">
+                    Remove interest
+                </c-button>
+            </form>
+        </div>
+        <p class="text-sm text-muted mt-1">
+            This course will show up here when it opens.
+        </p>
+    {% else %}
+        <form hx-post="{% url 'course_interest:express_interest' course_slug=course.slug %}"
+              hx-target="#express-interest-cta-{{ course.slug }}"
+              hx-swap="outerHTML">
+            <c-button type="submit" variant="primary" icon_left="star">
+                I'm interested
+            </c-button>
+        </form>
+    {% endif %}
+</div>
