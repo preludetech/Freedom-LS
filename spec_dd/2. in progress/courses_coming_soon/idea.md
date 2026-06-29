@@ -12,9 +12,17 @@ is decided entirely by the active **course-access backend**
 Visibility is a **new dimension, orthogonal to access type**. A course is independently
 *free-or-gated* (its `access_config`) **and** *published / coming-soon / hidden* (its
 visibility). The two compose: an application-gated course can also be "coming soon", a
-free course can be "hidden", and so on. Crucially, visibility is enforced uniformly in
-the **base access backend**, so every backend — free, application-gated, and any future
-backend — honours coming-soon and hidden without bespoke per-backend code.
+free course can be "hidden", and so on. Crucially, visibility must be enforced **once, in
+shared backend code that every concrete backend inherits**, so free, application-gated, and
+any future backend honour coming-soon and hidden without bespoke per-backend code.
+
+Note the shipped hierarchy this plugs into: the abstract `CourseAccessBackend` declares the
+seams (its `get_access`/`filter_visible` raise `NotImplementedError`); the core
+`FreeOnlyCourseAccessBackend` implements the free path; and the **shipped default
+`ApplicationCourseAccessBackend`** (in `course_applications`) *subclasses* `FreeOnlyCourseAccessBackend`
+to add the `application_gated` access type. Free and application-gated are therefore one
+inheritance chain, not two sibling backends — which is exactly what lets a single shared
+visibility short-circuit cover both.
 
 For "coming soon" courses, students can't register but can **express interest**
 (a lightweight waitlist), giving educators a demand signal for what to launch next.
@@ -49,7 +57,10 @@ understand directly.
 The course-access backend is the single authority for access decisions. It exposes four
 seams (`freedom_ls/course_access/backends.py`): `get_access()` returning a
 `CourseAccessDecision`, `filter_visible()` for discovery, `validate_course_config()`, and
-`get_dashboard_contributions()`. Visibility hooks into the first two:
+`get_dashboard_contributions()`. `CourseAccessDecision` is a frozen dataclass whose fields
+are `cta_label`, `cta_url`, `can_self_register`, `can_access_content`, plus optional
+detail-page funnel copy (`enrolment_summary`, `acquisition_heading`, `acquisition_subtext`).
+Visibility hooks into the first two seams:
 
 - **`filter_visible(*, user, courses)`** — the discovery choke-point already wired into
   `dashboard` and `all_courses` (it replaces the old "filter at `get_all_courses()`"
@@ -65,10 +76,18 @@ seams (`freedom_ls/course_access/backends.py`): `get_access()` returning a
   - `published` → falls through to the existing access-type logic (free → "Start",
     application-gated → "Apply now", etc.).
 
-Because `ApplicationCourseAccessBackend.get_access` currently branches on access type
-itself, the visibility short-circuit must live in a **shared base/template-method path**
-that runs for *all* backends — it must not be duplicated per subclass. This is the
-mechanism that satisfies "every access backend supports coming-soon and hidden".
+A naive placement won't be uniform: `FreeOnlyCourseAccessBackend.get_access` holds the
+free/registered logic, but `ApplicationCourseAccessBackend.get_access` **overrides** it and
+only calls `super().get_access()` for the free-or-registered cases — its
+`application_gated`-and-unregistered branch returns its own "Apply now" decision without
+ever delegating up. So a visibility check sitting only inside `FreeOnlyCourseAccessBackend.get_access`
+would be **bypassed** for a coming-soon or hidden application-gated course. The short-circuit
+must therefore live in a **shared prelude / template-method on the abstract
+`CourseAccessBackend`** (e.g. a concrete `get_access` that resolves visibility first, then
+calls a subclass hook for the published case), or equivalently in a shared helper both
+`get_access` overrides call first. It must not be duplicated per subclass. This is the
+mechanism that satisfies "every access backend supports coming-soon and hidden". The spec
+must pin down the exact placement.
 
 ### Visibility rules
 
@@ -94,7 +113,10 @@ mechanism that satisfies "every access backend supports coming-soon and hidden".
   action (avoids implying a capacity-limited queue). The CTA label and URL come from the
   backend's `CourseAccessDecision` (e.g. `cta_label="I'm interested"`,
   `cta_url=express_interest`), so every backend presents it consistently. Clicking it
-  records the student's interest.
+  records the student's interest. The same coming-soon decision should also set (or
+  deliberately blank) the detail-page funnel copy fields (`enrolment_summary`,
+  `acquisition_heading`, `acquisition_subtext`) so the page reads as "coming soon" rather
+  than inheriting the free "One click. No credit card." or gated "Application required" copy.
 - A new **`CourseInterest`** record captures `user`, `course`, `created_at`, and a
   nullable `notified_at` (unused in v1, but present so launch-notification can be wired up
   later without a migration). Unique on `(user, course)`; created via `get_or_create` so
