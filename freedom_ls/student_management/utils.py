@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
+from django.db.models import Exists, OuterRef, Q
+
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 
@@ -62,6 +64,34 @@ def calculate_course_progress_percentage(
         return round((completed_items / total_items) * 100)
     else:
         return 0
+
+
+def registered_course_exists(user: RequestUser) -> Q:
+    """OR of Exists() subqueries: courses (OuterRef pk) this user is registered for.
+
+    Queryset-level mirror of is_registered_for_course, so the wrapper's
+    filter_visible and the per-row check stay in lockstep. Combining two
+    Exists() with ``|`` yields a Q-compatible expression usable in both
+    ``annotate()`` and ``exclude()``.
+    """
+    # Lazy import inside the body — mirrors is_registered_for_course (utils.py:76-79),
+    # which imports these models locally to avoid a module-load import cycle.
+    from freedom_ls.student_management.models import (
+        CohortCourseRegistration,
+        UserCourseRegistration,
+    )
+
+    return Exists(
+        UserCourseRegistration.objects.filter(
+            collection=OuterRef("pk"), user=user, is_active=True
+        )
+    ) | Exists(
+        CohortCourseRegistration.objects.filter(
+            collection=OuterRef("pk"),
+            cohort__cohortmembership__user=user,
+            is_active=True,
+        )
+    )
 
 
 def is_registered_for_course(user: RequestUser, course: Course) -> bool:

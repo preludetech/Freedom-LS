@@ -13,10 +13,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from django.db import models
+from django.db.models import Q
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
-from freedom_ls.student_management.utils import is_registered_for_course
+from freedom_ls.student_management.utils import (
+    is_registered_for_course,
+    registered_course_exists,
+)
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AnonymousUser
@@ -24,6 +28,7 @@ if TYPE_CHECKING:
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
+    from freedom_ls.student_management.utils import RequestUser
 
     type RequestUser = User | AnonymousUser
 
@@ -132,6 +137,9 @@ class CourseAccessBackend:
         future backend that hides courses a learner genuinely cannot reach (e.g.
         a subscription/paywall backend). Note application-gating does NOT use it:
         gated courses stay discoverable and are gated at the CTA + chokepoint level.
+
+        ``user`` is a RequestUser (may be anonymous): discovery listings are
+        available to anonymous visitors, so anon users genuinely flow through here.
         """
         raise NotImplementedError
 
@@ -282,3 +290,81 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
     ) -> QuerySet[Course]:
         """Return courses unchanged — all courses are visible with the default backend."""
         return courses
+
+
+# ---------------------------------------------------------------------------
+# Visibility-enforcing wrapper
+# ---------------------------------------------------------------------------
+
+# Acquisition-funnel copy for coming-soon courses, surfaced on the detail page via
+# CourseAccessDecision. Does NOT promise a launch notification (spec §7.2, §10).
+_COMING_SOON_ENROLMENT_SUMMARY = "Coming soon"
+_COMING_SOON_ACQUISITION_HEADING = "Coming soon"
+_COMING_SOON_ACQUISITION_SUBTEXT = (
+    "Register your interest and it'll show up here when it opens."
+)
+
+
+class VisibilityEnforcingBackend(CourseAccessBackend):
+    """Applies Course.visibility around any inner backend.
+
+    Applied by the loader so no backend (present or future) can bypass
+    coming-soon / hidden. The inner backend handles all published-course logic;
+    this wrapper intercepts coming_soon and hidden before the inner sees them.
+    """
+
+    def __init__(self, inner: CourseAccessBackend) -> None:
+        self._inner = inner
+
+    def get_access(self, *, user: User, course: Course) -> CourseAccessDecision:
+        from freedom_ls.content_engine.models import CourseVisibility
+
+        if course.visibility == CourseVisibility.COMING_SOON:
+            return CourseAccessDecision(
+                cta_label="I'm interested",
+                cta_url=reverse(
+                    "course_interest:express_interest",
+                    kwargs={"course_slug": course.slug},
+                ),
+                can_self_register=False,
+                can_access_content=False,
+                enrolment_summary=_COMING_SOON_ENROLMENT_SUMMARY,
+                acquisition_heading=_COMING_SOON_ACQUISITION_HEADING,
+                acquisition_subtext=_COMING_SOON_ACQUISITION_SUBTEXT,
+            )
+        if (
+            course.visibility == CourseVisibility.HIDDEN
+            and not is_registered_for_course(user, course)
+        ):
+            return CourseAccessDecision(
+                cta_label=None,
+                cta_url=None,
+                can_self_register=False,
+                can_access_content=False,
+            )
+        return self._inner.get_access(user=user, course=course)
+
+    def filter_visible(
+        self, *, user: RequestUser, courses: QuerySet[Course]
+    ) -> QuerySet[Course]:
+        from freedom_ls.content_engine.models import CourseVisibility
+
+        courses = self._inner.filter_visible(user=user, courses=courses)
+        # Anonymous users never see hidden courses; authenticated users see a
+        # hidden course only if registered for it (Exists() subquery, no joins).
+        if not user.is_authenticated:
+            return courses.exclude(visibility=CourseVisibility.HIDDEN)
+        return courses.annotate(_is_registered=registered_course_exists(user)).exclude(
+            Q(visibility=CourseVisibility.HIDDEN) & Q(_is_registered=False)
+        )
+
+    def validate_course_config(
+        self,
+        raw: dict[str, Any],
+        *,
+        file_path: str = "",
+    ) -> dict[str, Any]:
+        return self._inner.validate_course_config(raw, file_path=file_path)
+
+    def get_dashboard_contributions(self, *, user: User) -> list[DashboardContribution]:
+        return self._inner.get_dashboard_contributions(user=user)
