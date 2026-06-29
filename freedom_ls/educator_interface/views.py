@@ -28,7 +28,8 @@ from django.utils import timezone as tz
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
-from freedom_ls.educator_interface.forms import CohortForm
+from freedom_ls.course_interest.models import CourseInterest
+from freedom_ls.educator_interface.forms import CohortForm, CourseForm
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     DeleteAction,
@@ -789,6 +790,7 @@ class CourseDataTable(DataTable):
                     filter=Q(user_registrations__is_active=True),
                     distinct=True,
                 ),
+                interest_count=Count("interests", distinct=True),
             )
             .prefetch_related(
                 "cohort_registrations__cohort__cohortmembership_set",
@@ -839,6 +841,16 @@ class CourseDataTable(DataTable):
                 "htmx_nav": True,
             },
             {
+                "header": "Visibility",
+                "template": "cotton/data-table-cells/text.html",
+                "attr": "get_visibility_display",
+            },
+            {
+                "header": "Interest",
+                "template": "cotton/data-table-cells/text.html",
+                "attr": "interest_count",
+            },
+            {
                 "header": "Active Students",
                 "template": "cotton/data-table-cells/text.html",
                 "attr": "total_student_count",
@@ -859,7 +871,9 @@ class CourseDataTable(DataTable):
 
 
 class CourseDetailsPanel(InstanceDetailsPanel):
-    fields = ["title", "category"]
+    fields = ["title", "category", "visibility"]
+    editable = True
+    form_class = CourseForm
 
 
 class CourseCohortRegistrationDataTable(DataTable):
@@ -953,11 +967,59 @@ class CourseStudentRegistrationsPanel(DataTablePanel):
         return {"collection": self.instance}
 
 
+class CourseInterestDataTable(DataTable):
+    @staticmethod
+    def get_queryset(request: HttpRequest) -> QuerySet:
+        return CourseInterest.objects.select_related("user").order_by(
+            "user__first_name", "user__last_name"
+        )
+
+    @staticmethod
+    def get_columns() -> list[dict[str, object]]:
+        return [
+            {
+                "header": "First Name",
+                "template": "cotton/data-table-cells/link.html",
+                "text_attr": "user.first_name",
+                "url_name": "educator_interface:interface",
+                "url_path_template": "users/{user.pk}",
+                "htmx_nav": True,
+            },
+            {
+                "header": "Last Name",
+                "template": "cotton/data-table-cells/link.html",
+                "text_attr": "user.last_name",
+                "url_name": "educator_interface:interface",
+                "url_path_template": "users/{user.pk}",
+                "htmx_nav": True,
+            },
+            {
+                "header": "Email",
+                "template": "cotton/data-table-cells/text.html",
+                "attr": "user.email",
+            },
+            {
+                "header": "Interested",
+                "template": "cotton/data-table-cells/text.html",
+                "attr": "created_at",
+            },
+        ]
+
+
+class CourseInterestPanel(DataTablePanel):
+    title = "Interested Students"
+    data_table = CourseInterestDataTable
+
+    def get_filters(self) -> dict:
+        return {"course": self.instance}
+
+
 class CourseInstanceView(InstanceView):
     panels = {
         "details": CourseDetailsPanel,
         "cohorts": CourseCohortRegistrationsPanel,
         "students": CourseStudentRegistrationsPanel,
+        "interest": CourseInterestPanel,
     }
 
 
