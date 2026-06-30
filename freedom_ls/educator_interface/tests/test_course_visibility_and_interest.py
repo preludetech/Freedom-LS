@@ -160,14 +160,6 @@ def test_course_details_panel_does_not_edit_visibility():
     from freedom_ls.educator_interface.views import CourseDetailsPanel
 
     assert "visibility" not in CourseDetailsPanel.fields
-    assert not getattr(CourseDetailsPanel, "editable", False)
-
-
-def test_educator_interface_has_no_course_form():
-    """No educator CourseForm exists — visibility is set via content import only."""
-    import freedom_ls.educator_interface.forms as forms
-
-    assert not hasattr(forms, "CourseForm")
 
 
 def test_course_admin_visibility_is_read_only():

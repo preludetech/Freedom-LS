@@ -52,15 +52,13 @@ class TestCourseVisibilityRoundTrip:
 
 
 @pytest.mark.django_db
-class TestCourseVisibilityBackfillGuarantee:
-    """Rows that do not specify visibility end up as PUBLISHED (migration backfill guarantee)."""
+class TestCourseVisibilityPersistedDefault:
+    """A Course saved without an explicit visibility persists 'published' in the DB column."""
 
-    def test_course_without_visibility_kwarg_is_published(self, mock_site_context):
-        """A Course created without the visibility kwarg (simulating a pre-migration row)
-        ends up with visibility == PUBLISHED via the model/DB default.
-        """
-        # Simulate a pre-migration row: create via factory without visibility arg,
-        # then verify the DB column contains 'published'.
+    def test_course_without_visibility_kwarg_persists_published(
+        self, mock_site_context
+    ):
+        """Creating a Course without the visibility kwarg stores 'published' in the DB column."""
         course = CourseFactory()
         db_value = (
             Course.objects.filter(pk=course.pk)
