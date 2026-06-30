@@ -41,12 +41,14 @@ def test_dashboard_title_tag_says_dashboard(mock_site_context, courses):
 
 @pytest.mark.django_db
 def test_all_courses_title_tag_says_all_courses(mock_site_context, courses):
-    """The all-courses page's browser-tab title is 'All Courses'."""
+    """The all-courses page title includes 'All Courses' and the site name."""
     user = UserFactory()
     client = _logged_in_client(user)
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
-    assert _extract_title(response.content.decode()) == "All Courses"
+    title = _extract_title(response.content.decode())
+    assert "All Courses" in title
+    assert mock_site_context.name in title
 
 
 @pytest.mark.django_db

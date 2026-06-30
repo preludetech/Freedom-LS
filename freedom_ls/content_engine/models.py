@@ -244,6 +244,21 @@ class Course(MarkdownContent, TitledContent):
             parts.append(f"{minutes} min")
         return "~" + " ".join(parts) if parts else ""
 
+    def iso_estimated_duration(self) -> str:
+        """ISO-8601 duration string (e.g. 'PT1H30M'). Returns '' when unset or zero."""
+        # Round to whole minutes the same way display_estimated_duration does, so
+        # the human label and the machine-readable duration never disagree.
+        if not self.estimated_duration or not self.estimated_duration.total_seconds():
+            return ""
+        total_minutes = round(self.estimated_duration.total_seconds() / 60)
+        hours, minutes = divmod(total_minutes, 60)
+        parts: list[str] = ["PT"]
+        if hours:
+            parts.append(f"{hours}H")
+        if minutes:
+            parts.append(f"{minutes}M")
+        return "".join(parts)
+
     def save(self, *args, **kwargs):
         if self._state.adding:
             self._set_site_from_request()

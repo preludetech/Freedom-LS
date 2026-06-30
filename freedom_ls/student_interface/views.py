@@ -218,6 +218,7 @@ def all_courses(request: HttpRequest) -> HttpResponse:
             user=request.user, courses=get_all_courses()
         ),
     )
+    courses_with_attrs = []
     for entry in entries:
         course = entry.course
         setattr(course, "listing_status", entry.status)  # noqa: B010
@@ -228,10 +229,35 @@ def all_courses(request: HttpRequest) -> HttpResponse:
             access_badge_label(entry.is_accessible_for_free),
         )
         setattr(course, "is_accessible_for_free", entry.is_accessible_for_free)  # noqa: B010
+        courses_with_attrs.append(course)
+
+    # JSON-LD for schema.org/ItemList — each item carries its absolute detail URL.
+    catalogue_json_ld: dict[str, object] = {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": idx + 1,
+                "url": request.build_absolute_uri(
+                    reverse(
+                        "student_interface:course_detail",
+                        kwargs={"course_slug": c.slug},
+                    )
+                ),
+                "name": c.title,
+            }
+            for idx, c in enumerate(courses_with_attrs)
+        ],
+    }
+
     return render(
         request,
         "student_interface/all_courses.html",
-        {"all_courses": [e.course for e in entries]},
+        {
+            "all_courses": courses_with_attrs,
+            "catalogue_json_ld": catalogue_json_ld,
+        },
     )
 
 
@@ -273,6 +299,34 @@ def course_detail(request, course_slug):
     lesson_count = sum(1 for c in viewable if not isinstance(c, Form))
     lesson_count_label = f"{lesson_count} lesson{'' if lesson_count == 1 else 's'}"
     includes_assessments = any(isinstance(c, Form) for c in viewable)
+
+    # meta_description: derived once here; reused by JSON-LD (never re-derived there).
+    meta_description: str = (
+        course.description
+        or course.subtitle
+        or "Explore this course and expand your skills."
+    )
+
+    # JSON-LD for schema.org/Course — only honestly-sourced fields; no provider/image/author.
+    course_url = request.build_absolute_uri(
+        reverse("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    )
+    json_ld: dict[str, object] = {
+        "@context": "https://schema.org",
+        "@type": "Course",
+        "name": course.title,
+        "description": meta_description,
+        "url": course_url,
+        "isAccessibleForFree": decision.is_accessible_for_free,
+    }
+    if course.get_difficulty_display():
+        json_ld["educationalLevel"] = course.get_difficulty_display()
+    iso_duration = course.iso_estimated_duration()
+    if iso_duration:
+        json_ld["timeRequired"] = iso_duration
+    if course.learning_outcomes:
+        json_ld["teaches"] = course.learning_outcomes
+
     return render(
         request,
         "student_interface/course_detail.html",
@@ -292,6 +346,8 @@ def course_detail(request, course_slug):
             "lesson_count": lesson_count,
             "lesson_count_label": lesson_count_label,
             "includes_assessments": includes_assessments,
+            "meta_description": meta_description,
+            "json_ld": json_ld,
         },
     )
 

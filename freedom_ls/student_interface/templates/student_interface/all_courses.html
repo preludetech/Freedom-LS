@@ -1,8 +1,14 @@
 {% extends "_base.html" %}
 
 {% block head_title %}
-    All Courses
+    All Courses — {{ site_name }}
 {% endblock head_title %}
+
+{% block meta_description %}Browse all available courses on {{ site_name }}. Find the right course to expand your skills and knowledge.{% endblock meta_description %}
+
+{% block extra_head %}
+    {{ catalogue_json_ld|json_script:"catalogue-jsonld" }}
+{% endblock extra_head %}
 
 {% block content %}
     <c-page>

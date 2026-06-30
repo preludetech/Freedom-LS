@@ -11,6 +11,12 @@
     {{ course.title }}
 {% endblock head_title %}
 
+{% block meta_description %}{{ meta_description }}{% endblock meta_description %}
+
+{% block extra_head %}
+    {{ json_ld|json_script:"course-jsonld" }}
+{% endblock extra_head %}
+
 {% block content %}
     {% comment %}One stat inside the hero's glass stats strip. The dividers and
     glass surface live on the container; this is just the icon + label + value.

@@ -20,8 +20,12 @@ import os
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.contrib.sitemaps.views import sitemap
 from django.http import JsonResponse
 from django.urls import include, path
+
+from freedom_ls.base.sitemaps import CourseSitemap, StaticViewSitemap
+from freedom_ls.base.views import robots_txt
 
 # from ninja import NinjaAPI
 
@@ -39,9 +43,22 @@ def health_check(request):
 # api.add_router("student/", "student_interface.apis.router")
 
 
+_sitemaps = {
+    "static": StaticViewSitemap,
+    "courses": CourseSitemap,
+}
+
 urlpatterns = [
     path("health/", health_check, name="health_check"),
     path(ADMIN_URL, admin.site.urls),
+    # Robots and sitemap — registered before the student_interface catch-all
+    path("robots.txt", robots_txt, name="robots_txt"),
+    path(
+        "sitemap.xml",
+        sitemap,
+        {"sitemaps": _sitemaps},
+        name="sitemap",
+    ),
     # path("api/", api.urls),
     # path("api/xapi/", include("xapi_learning_record_store.api_urls")),
     # path("api/", api.urls),
