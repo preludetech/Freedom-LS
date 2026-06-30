@@ -66,13 +66,22 @@ def calculate_course_progress_percentage(
         return 0
 
 
-def registered_course_exists(user: RequestUser) -> Q:
-    """OR of Exists() subqueries: courses (OuterRef pk) this user is registered for.
+def is_registered_for_course_expression(user: RequestUser) -> Q:
+    """Build a Q expression marking courses this user is registered for.
 
     Queryset-level mirror of is_registered_for_course, so the wrapper's
     filter_visible and the per-row check stay in lockstep. Combining two
     Exists() with ``|`` yields a Q-compatible expression usable in both
     ``annotate()`` and ``exclude()``.
+
+    The ``Exists()`` subqueries reference ``OuterRef("pk")``, so this must be
+    embedded in a queryset of courses (its pk is the registration target).
+
+    Example::
+
+        courses.annotate(
+            _is_registered=is_registered_for_course_expression(user)
+        ).exclude(Q(visibility=CourseVisibility.HIDDEN) & Q(_is_registered=False))
     """
     # Lazy import inside the body — mirrors is_registered_for_course (utils.py:76-79),
     # which imports these models locally to avoid a module-load import cycle.

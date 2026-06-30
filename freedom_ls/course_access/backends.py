@@ -19,7 +19,7 @@ from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.student_management.utils import (
     is_registered_for_course,
-    registered_course_exists,
+    is_registered_for_course_expression,
 )
 
 if TYPE_CHECKING:
@@ -354,9 +354,9 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
         # hidden course only if registered for it (Exists() subquery, no joins).
         if not user.is_authenticated:
             return courses.exclude(visibility=CourseVisibility.HIDDEN)
-        return courses.annotate(_is_registered=registered_course_exists(user)).exclude(
-            Q(visibility=CourseVisibility.HIDDEN) & Q(_is_registered=False)
-        )
+        return courses.annotate(
+            _is_registered=is_registered_for_course_expression(user)
+        ).exclude(Q(visibility=CourseVisibility.HIDDEN) & Q(_is_registered=False))
 
     def validate_course_config(
         self,

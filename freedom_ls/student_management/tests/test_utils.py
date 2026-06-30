@@ -63,25 +63,29 @@ class TestIsRegisteredForCourse:
 
 
 @pytest.mark.django_db
-class TestRegisteredCourseExists:
-    """Tests for student_management.utils.registered_course_exists."""
+class TestIsRegisteredForCourseExpression:
+    """Tests for student_management.utils.is_registered_for_course_expression."""
 
     def test_directly_registered_course_annotates_true(self, mock_site_context):
         from freedom_ls.content_engine.models import Course
-        from freedom_ls.student_management.utils import registered_course_exists
+        from freedom_ls.student_management.utils import (
+            is_registered_for_course_expression,
+        )
 
         course = CourseFactory()
         user = UserFactory()
         UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
 
         qs = Course.objects.filter(pk=course.pk).annotate(
-            _registered=registered_course_exists(user)
+            _registered=is_registered_for_course_expression(user)
         )
         assert qs.get()._registered is True
 
     def test_cohort_registered_course_annotates_true(self, mock_site_context):
         from freedom_ls.content_engine.models import Course
-        from freedom_ls.student_management.utils import registered_course_exists
+        from freedom_ls.student_management.utils import (
+            is_registered_for_course_expression,
+        )
 
         course = CourseFactory()
         user = UserFactory()
@@ -92,13 +96,15 @@ class TestRegisteredCourseExists:
         )
 
         qs = Course.objects.filter(pk=course.pk).annotate(
-            _registered=registered_course_exists(user)
+            _registered=is_registered_for_course_expression(user)
         )
         assert qs.get()._registered is True
 
     def test_unregistered_course_annotates_false(self, mock_site_context):
         from freedom_ls.content_engine.models import Course
-        from freedom_ls.student_management.utils import registered_course_exists
+        from freedom_ls.student_management.utils import (
+            is_registered_for_course_expression,
+        )
 
         course_registered = CourseFactory()
         course_unrelated = CourseFactory()
@@ -108,6 +114,6 @@ class TestRegisteredCourseExists:
         )
 
         qs = Course.objects.filter(pk=course_unrelated.pk).annotate(
-            _registered=registered_course_exists(user)
+            _registered=is_registered_for_course_expression(user)
         )
         assert qs.get()._registered is False
