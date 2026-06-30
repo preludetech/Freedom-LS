@@ -122,31 +122,47 @@ def _detail_cta_label(course: Course, user: User) -> str:
     return "Review course"
 
 
-@login_required
-def dashboard(request):
-    """Authenticated dashboard listing the learner's courses."""
+def dashboard(request: HttpRequest) -> HttpResponse:
+    """Dashboard view — authenticated or anonymous.
+
+    Authenticated users see their personalised course lists, backend-contributed
+    panels, and the welcome greeting. Anonymous users see a hero and the
+    discovery (available courses) section only. Both states share a single code
+    path; personalised work is guarded by ``is_auth`` to avoid unnecessary
+    backend calls for anonymous visitors.
+    """
     backend = get_course_access_backend()
+    is_auth = request.user.is_authenticated
+
+    # These helpers are all anonymous-safe (return empty lists / querysets for
+    # unauthenticated users), so they run unconditionally.
     registered_courses = get_current_courses(request.user)
     completed_courses = get_completed_courses(request.user)
     recommended_courses = get_recommended_courses(request.user)
 
-    for course in registered_courses:
-        setattr(course, "is_registered", True)  # noqa: B010
-        # Registered learners can always access content for the default backend.
-        # Pass can_access_content from the backend decision so a future backend
-        # (e.g. subscription-gated) could revoke access without a separate check.
-        course_decision = backend.get_access(user=request.user, course=course)
-        _annotate_next_up(
-            course, request.user, can_access_content=course_decision.can_access_content
-        )
-    for rec in recommended_courses:
-        # Recommendations are by definition not yet registered, so they get
-        # the not-registered card (single link to detail page).
-        setattr(rec.collection, "is_registered", False)  # noqa: B010
+    if is_auth:
+        for course in registered_courses:
+            setattr(course, "is_registered", True)  # noqa: B010
+            # Pass can_access_content from the backend decision so a future
+            # backend (e.g. subscription-gated) could revoke access without a
+            # separate check.
+            course_decision = backend.get_access(user=request.user, course=course)
+            _annotate_next_up(
+                course,
+                request.user,
+                can_access_content=course_decision.can_access_content,
+            )
+        for rec in recommended_courses:
+            # Recommendations are by definition not yet registered, so they get
+            # the not-registered card (single link to detail page).
+            setattr(rec.collection, "is_registered", False)  # noqa: B010
 
-    registered_ids = {c.id for c in get_course_registrations(request.user)}
+    registered_ids = (
+        {c.id for c in get_course_registrations(request.user)} if is_auth else set()
+    )
     recommended_ids = {rec.collection_id for rec in recommended_courses}
 
+    # Shared discovery loop — runs for both auth states (empty id-sets for anon).
     visible_courses = backend.filter_visible(
         user=request.user, courses=get_all_courses()
     )
@@ -155,18 +171,27 @@ def dashboard(request):
         if course.id in registered_ids or course.id in recommended_ids:
             continue
         setattr(course, "is_registered", False)  # noqa: B010
+        decision = backend.get_access(user=request.user, course=course)
+        setattr(  # noqa: B010
+            course,
+            "access_badge_label",
+            access_badge_label(decision.is_accessible_for_free),
+        )
+        setattr(course, "is_accessible_for_free", decision.is_accessible_for_free)  # noqa: B010
         available_courses.append(course)
         if len(available_courses) == 3:
             break
 
     # Dashboard contributions from the active backend (e.g. the applications panel).
-    # Each contribution is rendered generically; the view never reads context keys and
-    # never imports course_applications — the contributing backend owns the partial.
-    contributions = backend.get_dashboard_contributions(user=request.user)
-    dashboard_panels = [
-        render_to_string(c.template_name, c.context, request=request)
-        for c in contributions
-    ]
+    # Only fetched for authenticated users — anonymous visitors have no panels,
+    # and calling get_dashboard_contributions for an anonymous user is unnecessary.
+    dashboard_panels: list[str] = []
+    if is_auth:
+        contributions = backend.get_dashboard_contributions(user=request.user)
+        dashboard_panels = [
+            render_to_string(c.template_name, c.context, request=request)
+            for c in contributions
+        ]
 
     context = {
         "registered_courses": registered_courses,

@@ -115,8 +115,17 @@ seam.
 {% endpartialdef %}
 
 <div class="space-y-8 lg:space-y-12">
-    {% partial current-courses %}
+    {% comment %}
+    current-courses and learning-history are personalised sections that only make
+    sense for authenticated users. Anonymous visitors see available-courses (the
+    discovery section) and recommended-courses self-hides when empty.
+    {% endcomment %}
+    {% if user.is_authenticated %}
+        {% partial current-courses %}
+    {% endif %}
     {% partial recommended-courses %}
     {% partial available-courses %}
-    {% partial learning-history %}
+    {% if user.is_authenticated %}
+        {% partial learning-history %}
+    {% endif %}
 </div>
