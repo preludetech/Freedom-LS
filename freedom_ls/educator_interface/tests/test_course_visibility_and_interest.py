@@ -2,14 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from django.test import RequestFactory
-
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
-from freedom_ls.educator_interface.forms import CourseForm
 from freedom_ls.educator_interface.views import (
     CourseDataTable,
     CourseInterestPanel,
@@ -155,44 +152,26 @@ def test_interest_panel_is_wired_into_course_instance_view():
     assert CourseInstanceView.panels["interest"] is CourseInterestPanel
 
 
-# -- Task 5.3: visibility editable via the educator panel ---------------
+# -- Task 5.3: visibility is content-file-only, not educator/admin editable --
 
 
-@pytest.mark.django_db
-def test_editing_visibility_to_published_persists(mock_site_context):
-    """Saving the course form with visibility=published persists the change."""
-    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-
-    request = RequestFactory().post(
-        "/",
-        {
-            "title": course.title,
-            "category": course.category,
-            "visibility": CourseVisibility.PUBLISHED,
-        },
-    )
-    form = CourseForm(request.POST, instance=course)
-    assert form.is_valid(), form.errors
-    form.save()
-
-    course.refresh_from_db()
-    assert course.visibility == CourseVisibility.PUBLISHED
-
-
-@pytest.mark.django_db
-def test_course_details_panel_is_editable_with_visibility_field():
-    """The educator course details panel is editable and includes visibility."""
+def test_course_details_panel_does_not_edit_visibility():
+    """The educator course details panel never exposes visibility for editing."""
     from freedom_ls.educator_interface.views import CourseDetailsPanel
 
-    assert CourseDetailsPanel.editable is True
-    assert "visibility" in CourseDetailsPanel.fields
-    assert "visibility" in CourseForm().fields
+    assert "visibility" not in CourseDetailsPanel.fields
+    assert not getattr(CourseDetailsPanel, "editable", False)
 
 
-def test_course_admin_exposes_visibility_as_editable():
-    """The Course admin lets a site admin edit visibility."""
+def test_educator_interface_has_no_course_form():
+    """No educator CourseForm exists — visibility is set via content import only."""
+    import freedom_ls.educator_interface.forms as forms
+
+    assert not hasattr(forms, "CourseForm")
+
+
+def test_course_admin_visibility_is_read_only():
+    """The Course admin shows visibility but does not let an admin edit it."""
     from freedom_ls.content_engine.admin import CourseAdmin
 
-    main_fieldset_fields = CourseAdmin.fieldsets[0][1]["fields"]
-    assert "visibility" in main_fieldset_fields
-    assert "visibility" not in CourseAdmin.readonly_fields
+    assert "visibility" in CourseAdmin.readonly_fields

@@ -45,10 +45,11 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)
+- [x] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
+- [x] (user + cmd) Resolve QA Finding 1 (educator cannot edit visibility): decision = visibility is **content-file-only**, not editable in educator interface or admin. Removed the ccs-5 editing code (educator `CourseForm`, editable `CourseDetailsPanel`), made admin `visibility` read-only, updated spec §9/§14, plan Task 5.3, QA plan Test 7, and qa_report Finding 1. Tests assert the lock.
 
 ## 10. Product documentation
 

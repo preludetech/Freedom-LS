@@ -29,7 +29,7 @@ from django.utils import timezone as tz
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
 from freedom_ls.course_interest.models import CourseInterest
-from freedom_ls.educator_interface.forms import CohortForm, CourseForm
+from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     DeleteAction,
@@ -871,9 +871,7 @@ class CourseDataTable(DataTable):
 
 
 class CourseDetailsPanel(InstanceDetailsPanel):
-    fields = ["title", "category", "visibility"]
-    editable = True
-    form_class = CourseForm
+    fields = ["title", "category"]
 
 
 class CourseCohortRegistrationDataTable(DataTable):
