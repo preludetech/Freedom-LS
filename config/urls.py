@@ -68,7 +68,7 @@ urlpatterns = [
     path("accounts/", include("freedom_ls.accounts.urls")),
     path("", include("freedom_ls.student_interface.urls")),
     path("applications/", include("freedom_ls.course_applications.urls")),
-    path("", include("freedom_ls.course_interest.urls")),
+    path("interest/", include("freedom_ls.course_interest.urls")),
     # path("_allauth/", include("allauth.headless.urls")),
 ]
 
