@@ -29,24 +29,39 @@ See the `research_*.md` files in this directory:
    one place a user looks; individual channels surface there and link back to context.
    Fragmentation across separate inboxes/forums/comment threads is the #1 complaint.
 2. **Conservative, digest-leaning notification defaults.** Immediate delivery only for
-   private/direct messages and critical alerts; everything else defaults to a daily digest.
-   Per-category, per-channel preferences (immediate / digest / off). Quiet hours,
+   private/direct messages and critical alerts; everything else defaults to a digest.
+   **Digest frequency is configurable** (e.g. immediate / daily / weekly / off) — daily is a
+   sensible default but won't suit everyone, so it must be a per-user, per-category,
+   per-channel preference and overridable down the config precedence chain. Quiet hours,
    timezone-aware. This is the single biggest driver of notification fatigue and mass
    unsubscribes.
-3. **Email is table-stakes.** Every in-platform message also generates an email
-   notification (respecting preferences). This requires getting email right: verified
-   addresses, surfaced delivery failures (never silent), SPF/DKIM/DMARC, one-click
-   unsubscribe, conservative volume. (See dependency note on async queue below.)
+3. **Email is table-stakes — but governed by preferences, never one-per-message.** Email is
+   a first-class delivery channel for in-platform activity, but it must never fire an email
+   for every message: a per-message email on an active back-and-forth conversation is
+   notification spam. Email follows the same per-category, per-channel preferences as the
+   in-app centre — **immediate / digest / off**, fully configurable, and any category can be
+   turned off completely. The conversational default is a roll-up digest ("you have 5 unread
+   messages across 3 conversations") rather than one email per message; immediate email is
+   reserved for things that genuinely warrant it (e.g. the first message of a new
+   conversation, or critical alerts) and is itself opt-out. This requires getting email
+   right: verified addresses, surfaced delivery failures (never silent), SPF/DKIM/DMARC,
+   one-click unsubscribe, conservative volume. (See dependency note on async queue below.)
 4. **Audience scoping is first-class and cohort-optional.** A single audience abstraction
-   targets `site | course | cohort | individual`. Installs without cohorts degrade
-   gracefully to course/site/individual scope with the cohort layer invisible.
+   targets `project | site | course | cohort | individual`. `project` is the broadest scope —
+   the whole multi-site install — and provides the default that all sites inherit and can
+   override (e.g. a project-wide announcement, or project-level comms config every site falls
+   back to). Installs without cohorts degrade gracefully to project/site/course/individual
+   scope with the cohort layer invisible.
 5. **Privacy & safeguarding by default.** Role-based visibility (FERPA/GDPR aware);
    explicit "who will see this" labelling on every compose action; peer (student↔student)
    messaging off by default; moderation built in (report → queue, hide/soft-delete, audit
    trail); stricter defaults available for deployments serving minors.
 6. **Accessible and mobile-first.** WCAG 2.2 AA, keyboard-navigable, ARIA live regions for
    unread counts, redundant (icon+text+colour) unread state; designed for a 375px viewport.
-   HTMX, no Django Channels yet.
+   HTMX for general interactivity, with **Django Channels / WebSockets for real-time
+   delivery** (live unread counts, incoming messages, typing/presence where it helps). The
+   real-time layer must degrade gracefully to HTMX polling where WebSockets aren't available,
+   so the experience never hard-depends on a live connection.
 7. **Pluggable everything.** Channels are optional installed apps; messaging policy and
    notification delivery are swappable backends; per-site behaviour is DB-configurable.
 
@@ -70,8 +85,9 @@ need.
 4. **Contextual / inline feedback** — comments attached to a specific content item or
    submission (generic-FK pattern already used in FLS). Private instructor↔student feedback
    distinct from public discussion; "internal" instructor-only notes supported.
-5. **Notifications layer** — unified in-app centre (bell + unread badge, HTMX-polled) plus
-   email delivery, behind a pluggable backend (in-app / email / webhook-via-existing
+5. **Notifications layer** — unified in-app centre (bell + unread badge), updated in
+   **real time over Django Channels / WebSockets** with HTMX polling as a graceful fallback,
+   plus email delivery, behind a pluggable backend (in-app / email / webhook-via-existing
    `fire_webhook_event`, with push/SMS as future backends). Per-user preferences and
    digests live here.
 
@@ -89,16 +105,26 @@ need.
   `announcement_posted`); template overrides via the loader hierarchy; a lightweight channel
   registry for future channels.
 
-### Configuration precedence (most precise wins)
+### Configuration precedence (two axes, per-field resolution)
 
 Comms configuration (which channels are enabled, messaging policy, notification defaults —
-i.e. the *level of communication service*) resolves down a precedence chain. The most
-precise config that applies to a given user-in-a-context wins; each level overrides only the
-values it sets and otherwise falls through to the next. This lets a deployment offer
-different levels of service in different situations — e.g. a premium cohort that gets more
-support than the default.
+i.e. the *level of communication service*) resolves along **two orthogonal axes**:
 
-From most precise (wins) to least (default):
+- **Context axis** — *where* the user is. A precedence chain from most precise to least:
+  course-registration → course → site → project/install default. The most precise config that
+  applies to the user-in-that-context wins; each level overrides only the values it sets and
+  otherwise falls through to the next. This lets a deployment offer different levels of service
+  in different situations — e.g. a premium cohort that gets more support than the default.
+- **User axis** — *who* the user is. A per-user, platform-wide entitlement that applies across
+  every context — e.g. someone who bought a "premium subscription" to the platform as a whole
+  and should get a higher level of comms service everywhere they go.
+
+A platform-wide per-user entitlement is **not "more" or "less precise"** than a
+course-registration config — it's broad in *context* but specific in *person*. The two axes
+are orthogonal, so when they disagree on a field "most precise wins" is undefined. A
+**per-field tie-break** decides which axis wins for that field (see below).
+
+**Context axis (most precise context wins).** From most precise (wins) to least (default):
 
 1. **Course-registration config** — attached to a specific `UserCourseRegistration` *or*
    `CohortCourseRegistration`. The finest grain: "this individual learner's registration" or
@@ -110,13 +136,42 @@ From most precise (wins) to least (default):
 4. **Project / install default** — Django settings (with in-app defaults). The baseline when
    nothing more specific is set.
 
-Resolution is centralised in one helper (a single place implements the walk up the chain and
-the per-field fall-through), so adding a new config field or scope only touches that helper.
+**User axis.** A per-user config attached to the `User`, site-scoped (one row per user per
+site, mirroring `SiteAwareModel`). The motivating case is a platform-wide premium
+subscription that grants a richer level of comms service regardless of which course, cohort,
+or site context the user is acting in.
+
+**Per-field resolution.** When the resolved user-axis value and the resolved context-axis
+value disagree on a field, a **declared per-field policy** decides the winner — the deployment
+chooses *at each point*. Three illustrative cases:
+
+- **User wins (floor).** The premium user's value acts as a *minimum guaranteed* level of
+  service — the context can raise it but never drop below it.
+- **Context wins.** The context value wins even over a premium user — e.g. a course that
+  disables peer (student↔student) messaging for safeguarding must win regardless of any
+  user-level entitlement.
+- **Neither privileged.** Fall back to the context axis ("most precise context wins") as the
+  default for ordinary fields.
+
+Resolution is centralised in one helper: a single place walks *both* axes and applies the
+per-field tie-break, so adding a new config field or scope only touches that helper.
 
 **To resolve in spec/plan:**
 - A learner can be registered to one course *both* individually (`UserCourseRegistration`)
   *and* via a cohort (`CohortCourseRegistration`). When both carry a comms config, which
   wins? Likely "individual registration beats cohort registration" — confirm during spec.
+- **How the per-field tie-break is expressed** — e.g. fields declaring floor / ceiling /
+  override semantics, or the user-axis config naming which fields it forcibly overrides. The
+  mechanism is a spec/plan decision; the fixed requirement is that the user-vs-context winner
+  is **decidable per field**.
+- **Where the user-axis config lives and what feeds it** — likely a per-user, site-scoped
+  model (mirrors `SiteSignupPolicy` / `SiteAwareModel`). Its value is *likely fed by* the
+  drafted subscriptions concept (`spec_dd/0. drafts/03. subscriptions/`), but comms must stay
+  **decoupled** — it reads a user-level config value and must not hard-depend on a
+  subscriptions app existing.
+- **Scope of the user axis** — confirm whether per-user config is per-site (a user can be
+  premium on one site but not another) or truly project-wide; per-site (`SiteAwareModel`) is
+  the likely default given the multi-tenant model.
 - Whether config is a shared embedded value object / `JSONField` reused at every level, or a
   separate model per scope, is a spec/plan decision; the precedence semantics are the fixed
   requirement.
@@ -124,7 +179,8 @@ the per-field fall-through), so adding a new config field or scope only touches 
 ## Sensible out-of-the-box defaults
 
 - In-app notification centre: always on, works with no configuration.
-- Email notifications: on, digest-leaning defaults, user-opt-out — gated by the async-queue
+- Email notifications: on, digest-leaning defaults (daily digest out of the box, frequency
+  configurable per user/category/channel), user-opt-out — gated by the async-queue
   dependency below.
 - Messaging policy: `InstructorInitiatedPolicy` (instructors start, students reply; no peer
   DMs).
@@ -139,10 +195,14 @@ the per-field fall-through), so adding a new config field or scope only touches 
 - **Email deliverability** for the host deployment (SPF/DKIM/DMARC, verified-address
   handling, bounce/complaint feedback). FLS only sends allauth transactional mail today; the
   comms layer significantly increases volume.
+- **Django Channels / ASGI + channel layer.** Real-time delivery requires running FLS under
+  ASGI and a channel-layer backend (e.g. Redis via `channels_redis`) for cross-process
+  fan-out. FLS is WSGI today, so the spec/plan must decide the ASGI deployment story and how
+  the real-time layer stays optional — degrading to HTMX polling — for installs that don't
+  run a channel layer.
 
 ## Explicitly later (not this iteration)
 
-- Real-time delivery via Django Channels / WebSockets (start with HTMX polling).
 - SMS / mobile push backends (architecture should accommodate; not built now).
 - Reply-by-email (inbound email → thread).
 - Behaviour-triggered automated messages (milestone / inactivity nudges).
