@@ -235,7 +235,6 @@ def all_courses(request: HttpRequest) -> HttpResponse:
     )
 
 
-@login_required
 def course_detail(request, course_slug):
     """Canonical course detail page — accessible on all screen sizes."""
     course = get_object_or_404(Course, slug=course_slug)

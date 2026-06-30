@@ -151,15 +151,15 @@ def test_course_detail_returns_200_for_authenticated_user(
 
 
 @pytest.mark.django_db
-def test_course_detail_requires_login(mock_site_context, course_with_topics, client):
-    """Anonymous users get redirected from the detail page."""
+def test_course_detail_is_public(mock_site_context, course_with_topics, client):
+    """Anonymous users can access the course detail page — no login redirect."""
     response = client.get(
         reverse(
             "student_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
-    assert response.status_code == 302
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db
