@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpRequest, HttpResponse
@@ -261,7 +261,7 @@ def all_courses(request: HttpRequest) -> HttpResponse:
     )
 
 
-def course_detail(request, course_slug):
+def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     """Canonical course detail page — accessible on all screen sizes."""
     course = get_object_or_404(Course, slug=course_slug)
     # Two distinct registration signals, intentionally both fetched: is_registered
@@ -270,8 +270,12 @@ def course_detail(request, course_slug):
     # invalid-config course, so neither can be derived from the other.
     is_registered = get_is_registered(user=request.user, course=course)
     decision = get_course_access_backend().get_access(user=request.user, course=course)
+    # get_course_index and _detail_cta_label both require an authenticated User.
+    # course_detail is reachable by anonymous users (public page) so we cast here;
+    # the is_registered guard ensures _detail_cta_label is only called when authed.
+    authed_user = cast("User", request.user)
     children = get_course_index(
-        user=request.user, course=course, can_access_content=decision.can_access_content
+        user=authed_user, course=course, can_access_content=decision.can_access_content
     )
     start_url: str | None
     cta_label: str | None
@@ -282,7 +286,7 @@ def course_detail(request, course_slug):
         start_url = _detail_start_url(
             course, is_registered=True, has_items=bool(children)
         )
-        cta_label = _detail_cta_label(course, request.user)
+        cta_label = _detail_cta_label(course, authed_user)
     else:
         # Not-registered: use the backend's acquisition affordance (e.g. "Enrol for free"
         # for free courses, "Apply now" for application-gated courses). May be None for

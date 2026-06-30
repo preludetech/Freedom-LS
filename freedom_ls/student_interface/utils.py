@@ -697,7 +697,7 @@ def get_course_listing(
     ``is_accessible_for_free`` on each entry comes from the access backend's
     decision (one call per course). This is the same cost the detail page pays
     once per course, and the anonymous application query is guarded to zero by
-    the Phase 0 anonymous-safety guard. No second backend round-trip per card
+    the anonymous-safety guard above. No second backend round-trip per card
     is introduced in the template — the label is stamped here once.
 
     Used by the all-courses view (see ``views.py``) to populate the listing.
@@ -711,6 +711,7 @@ def get_course_listing(
     backend_user = cast("BackendUser", user)
 
     if not user.is_authenticated:
+        courses = visible_courses if visible_courses is not None else get_all_courses()
         return [
             CourseListingEntry(
                 course,
@@ -720,7 +721,7 @@ def get_course_listing(
                     user=backend_user, course=course
                 ).is_accessible_for_free,
             )
-            for course in get_all_courses()
+            for course in courses
         ]
     courses = visible_courses if visible_courses is not None else get_all_courses()
     registered_ids = {c.id for c in get_course_registrations(user)}

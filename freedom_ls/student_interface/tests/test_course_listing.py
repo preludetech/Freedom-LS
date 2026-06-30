@@ -7,16 +7,20 @@ Tests cover every classification branch of the helper:
   - in progress (>0%, completed_time is None)
   - complete (completed_time set)
   - cross-site isolation (a course on a different site must not appear)
+  - anonymous users respect filter_visible (hidden courses not leaked)
 """
 
 from __future__ import annotations
 
 import pytest
 
+from django.contrib.auth.models import AnonymousUser
+from django.db.models import QuerySet
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import Course
 from freedom_ls.student_interface.utils import (
     CourseListingEntry,
     CourseListingStatus,
@@ -176,3 +180,25 @@ def test_multiple_courses_all_classified_independently(mock_site_context):
     )
     assert by_course[registered_course.id].status == CourseListingStatus.REGISTERED
     assert by_course[complete_course.id].status == CourseListingStatus.COMPLETE
+
+
+@pytest.mark.django_db
+def test_anonymous_user_respects_visible_courses_filter(mock_site_context):
+    """Anonymous branch of get_course_listing must honour the visible_courses argument.
+
+    A backend that overrides filter_visible to hide a course must not leak that
+    course to anonymous visitors. Previously the anonymous branch unconditionally
+    iterated get_all_courses(), ignoring visible_courses entirely.
+    """
+    visible_course = CourseFactory()
+    hidden_course = CourseFactory()
+
+    # Simulate a backend whose filter_visible drops hidden_course.
+    visible_qs: QuerySet[Course] = Course.objects.filter(pk=visible_course.pk)
+
+    anon = AnonymousUser()
+    entries = get_course_listing(anon, visible_courses=visible_qs)
+
+    entry_courses = [e.course for e in entries]
+    assert visible_course in entry_courses
+    assert hidden_course not in entry_courses
