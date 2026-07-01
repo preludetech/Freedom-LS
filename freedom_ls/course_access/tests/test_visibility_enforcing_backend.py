@@ -147,8 +147,9 @@ class TestVisibilityEnforcingBackendGetAccess:
         )
         decision = _decision_for(backend_path, user=UserFactory(), course=course)
 
-        # Both inner backends give "Start" for a free, unregistered course
-        assert decision.cta_label == "Start"
+        # Both inner backends give the free acquisition CTA for an unregistered
+        # learner on a free course; the wrapper delegates unchanged.
+        assert decision.cta_label == "Enrol for free"
         assert decision.can_self_register is True
 
 

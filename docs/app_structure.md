@@ -18,6 +18,7 @@ flowchart TB
     content_engine
     course_access
     course_applications
+    course_interest
     educator_interface
     icons
     markdown_rendering
@@ -46,8 +47,13 @@ flowchart TB
     course_applications --> course_access
     course_applications --> site_aware_models
     course_applications --> student_management
+    course_interest --> accounts
+    course_interest --> content_engine
+    course_interest --> course_access
+    course_interest --> site_aware_models
     educator_interface --> accounts
     educator_interface --> content_engine
+    educator_interface --> course_interest
     educator_interface --> panel_framework
     educator_interface --> student_management
     educator_interface --> student_progress
@@ -61,6 +67,7 @@ flowchart TB
     student_interface --> accounts
     student_interface --> content_engine
     student_interface --> course_access
+    student_interface --> course_interest
     student_interface --> icons
     student_interface --> student_management
     student_interface --> student_progress
@@ -76,8 +83,8 @@ flowchart TB
     webhooks --> base
     webhooks --> site_aware_models
     xapi_learning_record_store --> site_aware_models
-    accounts -.-> content_engine
     accounts -.-> student_management
+    course_interest -.-> student_management
     markdown_rendering -.-> content_engine
     role_based_permissions -.-> student_management
     site_aware_models -.-> accounts
@@ -89,20 +96,21 @@ flowchart TB
 
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
-| accounts | base, markdown_rendering, site_aware_models, webhooks | content_engine, student_management |
+| accounts | base, markdown_rendering, site_aware_models, webhooks | student_management |
 | app_authentication | site_aware_models | — |
 | base | — | — |
 | content_engine | icons, markdown_rendering, site_aware_models | — |
 | course_access | accounts, content_engine, student_management | — |
 | course_applications | accounts, content_engine, course_access, site_aware_models, student_management | — |
-| educator_interface | accounts, content_engine, panel_framework, student_management, student_progress | — |
+| course_interest | accounts, content_engine, course_access, site_aware_models | student_management |
+| educator_interface | accounts, content_engine, course_interest, panel_framework, student_management, student_progress | — |
 | icons | — | — |
 | markdown_rendering | — | content_engine |
 | panel_framework | — | — |
 | qa_helpers | accounts, content_engine, course_applications, student_management, student_progress | — |
 | role_based_permissions | accounts, site_aware_models | student_management |
 | site_aware_models | — | accounts |
-| student_interface | accounts, content_engine, course_access, icons, student_management, student_progress, webhooks | course_applications |
+| student_interface | accounts, content_engine, course_access, course_interest, icons, student_management, student_progress, webhooks | course_applications |
 | student_management | accounts, content_engine, site_aware_models, webhooks | — |
 | student_progress | accounts, content_engine, site_aware_models, student_management | — |
 | webhooks | base, site_aware_models | accounts |

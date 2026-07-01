@@ -133,8 +133,8 @@ def test_published_detail_renders_generic_cta(mock_site_context):
     body = response.content.decode()
 
     # The free backend's acquisition CTA for an unregistered learner on a
-    # published course is "Start"; the express-interest affordance must not
-    # appear for a published course.
+    # published course is "Enrol for free"; the express-interest affordance must
+    # not appear for a published course.
     assert response.status_code == 200
-    assert "Start" in body
+    assert "Enrol for free" in body
     assert "I'm interested" not in body

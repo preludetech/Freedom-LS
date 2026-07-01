@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pytest
 
-from django.test import override_settings
+from django.test import Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -523,6 +523,13 @@ def test_dashboard_panels_in_context(mock_site_context, logged_in_client):
 # ---------------------------------------------------------------------------
 # Visibility chokepoints — hidden 404s, coming-soon routing
 # ---------------------------------------------------------------------------
+
+
+def _client(user) -> Client:
+    """A Django test client force-logged-in as ``user``."""
+    client = Client()
+    client.force_login(user)
+    return client
 
 
 def _hidden_course() -> Course:

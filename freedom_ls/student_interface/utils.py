@@ -716,14 +716,13 @@ def get_course_listing(
     courses = visible_courses if visible_courses is not None else get_all_courses()
 
     if not user.is_authenticated:
-        # Currently unreachable in production (both callers are @login_required),
-        # but route anonymous discovery through filter_visible for consistency
-        # with the authenticated path so hidden courses are excluded and never
-        # leak if a public listing view is added later.
-        from freedom_ls.course_access.loader import get_course_access_backend
-
-        anon_visible = get_course_access_backend().filter_visible(
-            user=user, courses=get_all_courses()
+        # The public catalogue passes a pre-filtered ``visible_courses`` queryset;
+        # honour it verbatim. When a caller omits it, apply filter_visible to the
+        # all-courses fallback so an anonymous listing never leaks hidden courses.
+        anon_courses = (
+            courses
+            if visible_courses is not None
+            else backend.filter_visible(user=user, courses=courses)
         )
         # Anonymous users are never registered, so coming-soon courses always show
         # the express-interest affordance (never an enrol link).
@@ -736,7 +735,7 @@ def get_course_listing(
                 0,
                 access_badge=backend.get_access_badge(course=course),
             )
-            for course in anon_visible
+            for course in anon_courses
         ]
     registered_ids = {c.id for c in get_course_registrations(user)}
     progress_rows = {

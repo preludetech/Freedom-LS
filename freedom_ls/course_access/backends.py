@@ -28,7 +28,6 @@ if TYPE_CHECKING:
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
-    from freedom_ls.student_management.utils import RequestUser
 
     type RequestUser = User | AnonymousUser
 
@@ -320,7 +319,7 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
     def __init__(self, inner: CourseAccessBackend) -> None:
         self._inner = inner
 
-    def get_access(self, *, user: User, course: Course) -> CourseAccessDecision:
+    def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
         from freedom_ls.content_engine.models import CourseVisibility
 
         if (
@@ -351,6 +350,15 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
             )
         return self._inner.get_access(user=user, course=course)
 
+    def is_accessible_for_free(self, *, course: Course) -> bool:
+        # Visibility does not change the access model; delegate to the inner backend.
+        return self._inner.is_accessible_for_free(course=course)
+
+    def get_access_badge(self, *, course: Course) -> AccessBadge | None:
+        # The access-model badge is owned by the inner backend; the visibility
+        # wrapper never mints its own badge copy.
+        return self._inner.get_access_badge(course=course)
+
     def filter_visible(
         self, *, user: RequestUser, courses: QuerySet[Course]
     ) -> QuerySet[Course]:
@@ -373,5 +381,7 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
     ) -> dict[str, Any]:
         return self._inner.validate_course_config(raw, file_path=file_path)
 
-    def get_dashboard_contributions(self, *, user: User) -> list[DashboardContribution]:
+    def get_dashboard_contributions(
+        self, *, user: RequestUser
+    ) -> list[DashboardContribution]:
         return self._inner.get_dashboard_contributions(user=user)
