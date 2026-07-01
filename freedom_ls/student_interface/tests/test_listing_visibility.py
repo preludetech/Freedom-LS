@@ -1,22 +1,20 @@
 """Tests for coming-soon / hidden visibility in the discovery listings (Task 4.2).
 
 Covers the dashboard "Available courses" grid and the all-courses row list:
-  * a coming-soon course appears in discovery rendered with the coming-soon
-    affordance ("I'm interested" / "Coming soon") and NO enrol CTA.
+  * a coming-soon course appears in discovery as an ordinary card/row — a plain
+    link to the course detail page carrying a "Coming soon" chip — with NO
+    express-interest CTA and NO enrol control (the CTA lives only on the course
+    detail page).
   * a hidden course is dropped from discovery for an unregistered user but
     still appears on the dashboard for a registered user (registered lists
     bypass filter_visible).
-  * the is_interested stamp drives the interested vs not-interested variant.
-  * the batched interest lookup issues a single query for the listing.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from django.db import connection
 from django.test import Client
-from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -48,20 +46,28 @@ def _course(visibility: str, *, slug: str, title: str) -> Course:
 
 
 @pytest.mark.django_db
-def test_all_courses_coming_soon_shows_express_interest_no_enrol(mock_site_context):
+def test_all_courses_coming_soon_is_plain_detail_link_no_cta(mock_site_context):
+    """A coming-soon course lists as an ordinary row: a "Coming soon" chip and a
+    plain link to the course detail page, with no express-interest CTA."""
     _course(CourseVisibility.COMING_SOON, slug="cs", title="Coming Soon Course")
     client = _logged_in_client(UserFactory())
 
     response = client.get(reverse("student_interface:courses"))
     body = response.content.decode()
 
+    detail_url = reverse(
+        "student_interface:course_detail", kwargs={"course_slug": "cs"}
+    )
     assert response.status_code == 200
     assert "Coming soon" in body
-    assert "I'm interested" in body
+    assert f'href="{detail_url}"' in body
+    assert "I'm interested" not in body
 
 
 @pytest.mark.django_db
-def test_all_courses_coming_soon_interested_state(mock_site_context):
+def test_all_courses_coming_soon_no_cta_even_when_interested(mock_site_context):
+    """The listing never shows the express-interest CTA, even for a learner who
+    has already expressed interest (that control lives only on the detail page)."""
     course = _course(
         CourseVisibility.COMING_SOON, slug="cs", title="Coming Soon Course"
     )
@@ -72,7 +78,8 @@ def test_all_courses_coming_soon_interested_state(mock_site_context):
     response = client.get(reverse("student_interface:courses"))
     body = response.content.decode()
 
-    assert "Remove interest" in body
+    assert "I'm interested" not in body
+    assert "Remove interest" not in body
 
 
 @pytest.mark.django_db
@@ -108,20 +115,28 @@ def test_all_courses_coming_soon_registered_keeps_registered_status(mock_site_co
 
 
 @pytest.mark.django_db
-def test_dashboard_coming_soon_shows_express_interest_no_enrol(mock_site_context):
+def test_dashboard_coming_soon_is_plain_detail_link_no_cta(mock_site_context):
+    """A coming-soon course lists as an ordinary card: a "Coming soon" chip and a
+    plain link to the course detail page, with no express-interest CTA."""
     _course(CourseVisibility.COMING_SOON, slug="cs", title="Coming Soon Course")
     client = _logged_in_client(UserFactory())
 
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
 
+    detail_url = reverse(
+        "student_interface:course_detail", kwargs={"course_slug": "cs"}
+    )
     assert response.status_code == 200
     assert "Coming soon" in body
-    assert "I'm interested" in body
+    assert f'href="{detail_url}"' in body
+    assert "I'm interested" not in body
 
 
 @pytest.mark.django_db
-def test_dashboard_coming_soon_interested_state_driven_by_stamp(mock_site_context):
+def test_dashboard_coming_soon_no_cta_even_when_interested(mock_site_context):
+    """The dashboard never shows the express-interest CTA, even for a learner who
+    has already expressed interest (that control lives only on the detail page)."""
     course = _course(
         CourseVisibility.COMING_SOON, slug="cs", title="Coming Soon Course"
     )
@@ -132,13 +147,16 @@ def test_dashboard_coming_soon_interested_state_driven_by_stamp(mock_site_contex
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
 
-    assert "Remove interest" in body
+    assert "I'm interested" not in body
+    assert "Remove interest" not in body
 
 
 @pytest.mark.django_db
-def test_dashboard_recommended_coming_soon_shows_express_interest(mock_site_context):
-    """A recommended coming-soon course renders the express-interest affordance,
-    not the generic detail-link card."""
+def test_dashboard_recommended_coming_soon_is_plain_detail_link_no_cta(
+    mock_site_context,
+):
+    """A recommended coming-soon course renders as a plain detail-link card with a
+    "Coming soon" chip and no express-interest CTA."""
     course = _course(
         CourseVisibility.COMING_SOON, slug="cs", title="Coming Soon Course"
     )
@@ -149,8 +167,12 @@ def test_dashboard_recommended_coming_soon_shows_express_interest(mock_site_cont
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
 
+    detail_url = reverse(
+        "student_interface:course_detail", kwargs={"course_slug": "cs"}
+    )
     assert "Coming soon" in body
-    assert "I'm interested" in body
+    assert f'href="{detail_url}"' in body
+    assert "I'm interested" not in body
 
 
 @pytest.mark.django_db
@@ -203,36 +225,3 @@ def test_dashboard_hidden_present_for_registered_user(mock_site_context):
     response = client.get(reverse("student_interface:dashboard"))
 
     assert "Hidden Course" in response.content.decode()
-
-
-# --- batched lookup (no N+1) ---
-
-
-def _course_interest_query_count(captured: CaptureQueriesContext) -> int:
-    """Number of SELECTs against the course_interest table in the capture."""
-    return sum(
-        1
-        for q in captured.captured_queries
-        if "course_interest" in q["sql"].lower()
-        and q["sql"].lstrip().lower().startswith("select")
-    )
-
-
-@pytest.mark.django_db
-def test_all_courses_interest_lookup_is_single_query(mock_site_context):
-    for n in range(3):
-        _course(
-            CourseVisibility.COMING_SOON,
-            slug=f"cs-{n}",
-            title=f"Coming Soon {n}",
-        )
-    user = UserFactory()
-    client = _logged_in_client(user)
-    base = reverse("student_interface:courses")
-
-    with CaptureQueriesContext(connection) as captured:
-        client.get(base)
-
-    # Batched: three coming-soon courses must trigger exactly one interest
-    # SELECT, not one per course (the N+1 the batching exists to prevent).
-    assert _course_interest_query_count(captured) == 1

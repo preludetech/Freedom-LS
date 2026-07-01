@@ -36,7 +36,6 @@ from freedom_ls.student_progress.models import (
 from .utils import (
     IN_PROGRESS,
     READY,
-    CourseListingStatus,
     count_form_questions,
     form_start_page_buttons,
     get_all_courses,
@@ -205,19 +204,6 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         if len(available_courses) == 3:
             break
 
-    # Batch the interest lookup once over just the coming-soon courses the
-    # dashboard renders (the 3-course available slice plus any recommended
-    # coming-soon courses) — not the whole visible queryset — then stamp so the
-    # coming-soon card leaf picks the interested vs not-interested variant.
-    coming_soon_cards = [
-        c for c in available_courses if getattr(c, "is_coming_soon", False)
-    ] + [
-        rec.collection
-        for rec in recommended_courses
-        if getattr(rec.collection, "is_coming_soon", False)
-    ]
-    stamp_interest(request.user, coming_soon_cards)
-
     # Dashboard contributions from the active backend (e.g. the applications panel).
     # Only fetched for authenticated users — anonymous visitors have no panels,
     # and calling get_dashboard_contributions for an anonymous user is unnecessary.
@@ -261,13 +247,6 @@ def all_courses(request: HttpRequest) -> HttpResponse:
         setattr(course, "progress_percentage", entry.progress_percentage)  # noqa: B010
         stamp_course_access_badge(course, badge=entry.access_badge)
         courses_with_attrs.append(course)
-
-    # Stamp is_interested over only the coming-soon entries so the coming-soon row
-    # leaf picks the right variant.
-    stamp_interest(
-        request.user,
-        [e.course for e in entries if e.status == CourseListingStatus.COMING_SOON],
-    )
 
     # JSON-LD for schema.org/ItemList — each item carries its absolute detail URL.
     catalogue_json_ld: dict[str, object] = {

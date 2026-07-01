@@ -3,17 +3,17 @@ Coming-soon course card leaf.
 
 Dispatch seam: course_list.html > dispatch-card > here (course.is_coming_soon).
 
-Reuses the shared <c-course-card-shell> like every other card leaf. Shows a
-"Coming soon" badge and the shared express-interest CTA partial in place of any
-enrol/apply control. The CTA's variant (interested vs not-interested) is driven
-by course.is_interested, stamped by the dashboard view. This leaf is only
-reached when the course is coming-soon, so the badge renders unconditionally.
+Behaves like course_card_not_registered.html — a single plain, stretched link to
+student_interface:course_detail on all screen sizes — distinguished only by the
+"Coming soon" eyebrow and chip. No enrol/apply control and no express-interest CTA
+on the dashboard listing.
 
-No enrol/apply button — only the express-interest affordance (spec §6.3, §8).
+Uses the stretched-link pattern (before:absolute before:inset-0) on the title
+anchor so the whole card is clickable — same pattern as course_card_not_registered.html.
 
-Required context: course (slug, accent_slot_key, icon, icon_fallback, title,
-is_interested).
+Required context: course (slug, accent_slot_key, icon, icon_fallback, title).
 {% endcomment %}
+{% url 'student_interface:course_detail' course_slug=course.slug as detail_url %}
 <c-course-card-shell accent_slot_key="{{ course.accent_slot_key }}"
                      icon="{{ course.icon }}"
                      icon_fallback="{{ course.icon_fallback }}"
@@ -24,12 +24,11 @@ is_interested).
 
     <div class="flex items-start justify-between gap-2">
         <h3>
-            {{ course.title }}
+            <a href="{{ detail_url }}"
+               class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">
+                {{ course.title }}
+            </a>
         </h3>
         <c-chip variant="info" size="xs" class="shrink-0">Coming soon</c-chip>
     </div>
-
-    <c-slot name="footer">
-        {% include "course_interest/partials/express_interest_cta.html" with is_interested=course.is_interested %}
-    </c-slot>
 </c-course-card-shell>
