@@ -1,4 +1,4 @@
-"""Tests for Phase 5: deferred login — user intent survives authentication.
+"""Tests for deferred login — user intent survives authentication.
 
 Covers:
 - Middleware preserving `next` through the registration-completion step.
@@ -19,7 +19,6 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
-from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.student_management.models import UserCourseRegistration
 
 ALWAYS_INCOMPLETE_PATH = (
@@ -35,41 +34,14 @@ def _next_param(location: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _free_course(slug: str = "free-test-course"):
-    """A free course with one topic item."""
-    course = CourseFactory(
-        slug=slug,
-        title="Free Test Course",
-        access_config={"access_type": "free"},
-    )
-    topic = TopicFactory(title="Topic 1", slug=f"{slug}-topic-1", content="content")
-    course.items.create(child=topic, order=0)
-    return course
-
-
-def _gated_course(slug: str = "gated-test-course"):
-    """An application-gated course with one topic item."""
-    course = CourseFactory(
-        slug=slug,
-        title="Gated Test Course",
-        access_config={"access_type": "application_gated"},
-    )
-    topic = TopicFactory(title="Topic 1", slug=f"{slug}-topic-1", content="content")
-    course.items.create(child=topic, order=0)
-    return course
-
-
-# ---------------------------------------------------------------------------
-# 5.2 Middleware: next preservation
+# Middleware: next preservation
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
-def test_middleware_preserves_next_from_get_param(mock_site_context, site, settings):
+def test_middleware_preserves_next_from_get_param(
+    mock_site_context, site, settings, logged_in_client
+):
     """Middleware appends the in-flight `next` to the completion redirect URL.
 
     When the user reaches a protected page that carries `?next=…` (e.g.
@@ -81,8 +53,7 @@ def test_middleware_preserves_next_from_get_param(mock_site_context, site, setti
         site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
     )
     user = UserFactory()
-    client = Client()
-    client.force_login(user)
+    client = logged_in_client(user)
 
     target_path = "/courses/free-test-course/access/"
     # The completion view is exempt — hit a non-exempt URL that carries ?next
@@ -97,15 +68,14 @@ def test_middleware_preserves_next_from_get_param(mock_site_context, site, setti
 
 @pytest.mark.django_db
 def test_middleware_falls_back_to_request_path_when_no_next_param(
-    mock_site_context, site, settings
+    mock_site_context, site, settings, logged_in_client
 ):
     """When no ?next= is in the query string, `request.path` is used as fallback."""
     SiteSignupPolicyFactory(
         site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
     )
     user = UserFactory()
-    client = Client()
-    client.force_login(user)
+    client = logged_in_client(user)
 
     profile_url = reverse("accounts:account_profile")
     response = client.get(profile_url, follow=False)
@@ -117,7 +87,7 @@ def test_middleware_falls_back_to_request_path_when_no_next_param(
 
 @pytest.mark.django_db
 def test_middleware_rejects_off_host_next_and_falls_back_to_path(
-    mock_site_context, site, settings
+    mock_site_context, site, settings, logged_in_client
 ):
     """An off-host `next` value must NOT be forwarded by the middleware.
 
@@ -130,8 +100,7 @@ def test_middleware_rejects_off_host_next_and_falls_back_to_path(
         site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
     )
     user = UserFactory()
-    client = Client()
-    client.force_login(user)
+    client = logged_in_client(user)
 
     profile_path = reverse("accounts:account_profile")
     response = client.get(
@@ -146,12 +115,14 @@ def test_middleware_rejects_off_host_next_and_falls_back_to_path(
 
 
 # ---------------------------------------------------------------------------
-# 5.2 Full chain: new-user + additional-registration-forms next survival
+# Full chain: new-user + additional-registration-forms next survival
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
-def test_next_survives_complete_registration_step(mock_site_context, site, settings):
+def test_next_survives_complete_registration_step(
+    mock_site_context, site, settings, logged_in_client
+):
     """Intent destination survives the forced registration-completion step.
 
     Simulates the critical path:
@@ -165,8 +136,7 @@ def test_next_survives_complete_registration_step(mock_site_context, site, setti
 
     SiteSignupPolicyFactory(site=site, additional_registration_forms=[PHONE_FORM_PATH])
     user = UserFactory()
-    client = Client()
-    client.force_login(user)
+    client = logged_in_client(user)
 
     target_path = "/courses/free-test-course/access/"
 
@@ -187,7 +157,7 @@ def test_next_survives_complete_registration_step(mock_site_context, site, setti
 
 @pytest.mark.django_db
 def test_unsafe_next_in_complete_registration_falls_back_to_login_redirect(
-    mock_site_context, site, settings
+    mock_site_context, site, settings, logged_in_client
 ):
     """Open-redirect rejection in the completion view's post-submit redirect.
 
@@ -199,8 +169,7 @@ def test_unsafe_next_in_complete_registration_falls_back_to_login_redirect(
 
     SiteSignupPolicyFactory(site=site, additional_registration_forms=[PHONE_FORM_PATH])
     user = UserFactory()
-    client = Client()
-    client.force_login(user)
+    client = logged_in_client(user)
 
     response = client.post(
         reverse("accounts:complete_registration"),
@@ -217,14 +186,16 @@ def test_unsafe_next_in_complete_registration_falls_back_to_login_redirect(
 
 
 # ---------------------------------------------------------------------------
-# 5.1 / Deferred-login flows: free course via @login_required
+# Deferred-login flows: free course via @login_required
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_initiate_redirects_to_login_with_next(mock_site_context):
+def test_anonymous_access_to_initiate_redirects_to_login_with_next(
+    mock_site_context, course_with_topic
+):
     """Anonymous GET of initiate_course_access → 302 to login with ?next= set."""
-    course = _free_course()
+    course = course_with_topic(access_type="free")
 
     client = Client()
     access_url = reverse(
@@ -240,16 +211,17 @@ def test_anonymous_access_to_initiate_redirects_to_login_with_next(mock_site_con
 
 
 @pytest.mark.django_db
-def test_deferred_login_free_course_enrolls_and_redirects(mock_site_context):
+def test_deferred_login_free_course_enrolls_and_redirects(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """After login, the ?next= chain lands the learner inside the course.
 
     Simulates the full deferred-login flow using force_login (representing
     what happens immediately after a successful login with `next` set).
     """
-    course = _free_course(slug="deferred-free-course")
+    course = course_with_topic(access_type="free")
     user = UserFactory()
-    client = Client()
-    client.force_login(user)
+    client = logged_in_client(user)
 
     access_url = reverse(
         "student_interface:initiate_course_access",
@@ -264,9 +236,11 @@ def test_deferred_login_free_course_enrolls_and_redirects(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_apply_redirects_to_login_with_next(mock_site_context):
+def test_anonymous_access_to_apply_redirects_to_login_with_next(
+    mock_site_context, course_with_topic
+):
     """Anonymous GET of apply → 302 to login?next=<apply-url>."""
-    course = _gated_course()
+    course = course_with_topic(access_type="application_gated")
     client = Client()
     apply_url = reverse(
         "course_applications:apply", kwargs={"course_slug": course.slug}
@@ -280,15 +254,16 @@ def test_anonymous_access_to_apply_redirects_to_login_with_next(mock_site_contex
 
 
 @pytest.mark.django_db
-def test_deferred_login_gated_course_lands_on_apply_page(mock_site_context):
+def test_deferred_login_gated_course_lands_on_apply_page(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """After login, the ?next= chain lands an authenticated user on the apply page.
 
     The apply view's GET shows the confirmation page — it must NOT auto-POST.
     """
-    course = _gated_course(slug="deferred-gated-course")
+    course = course_with_topic(access_type="application_gated")
     user = UserFactory()
-    client = Client()
-    client.force_login(user)
+    client = logged_in_client(user)
 
     apply_url = reverse(
         "course_applications:apply", kwargs={"course_slug": course.slug}
@@ -300,21 +275,20 @@ def test_deferred_login_gated_course_lands_on_apply_page(mock_site_context):
 
 
 # ---------------------------------------------------------------------------
-# 5.3 Open-redirect: complete_registration view GET next rendering
+# Open-redirect: complete_registration view GET next rendering
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
 def test_complete_registration_get_with_safe_next_renders_hidden_field(
-    mock_site_context, site
+    mock_site_context, site, logged_in_client
 ):
     """A safe ?next= is re-emitted as a hidden input in the completion form."""
     STORED_PHONE_NUMBERS.clear()
 
     SiteSignupPolicyFactory(site=site, additional_registration_forms=[PHONE_FORM_PATH])
     user = UserFactory()
-    client = Client()
-    client.force_login(user)
+    client = logged_in_client(user)
 
     target_path = "/courses/some-course/access/"
     response = client.get(

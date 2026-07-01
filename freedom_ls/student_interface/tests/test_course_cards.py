@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import pytest
 
-from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
@@ -25,12 +24,6 @@ from freedom_ls.student_progress.factories import (
 )
 
 
-def _logged_in_client(user) -> Client:
-    client = Client()
-    client.force_login(user)
-    return client
-
-
 @pytest.fixture
 def course_with_topics(mock_site_context):
     course = CourseFactory(title="Course X", slug="course-x")
@@ -44,14 +37,16 @@ def course_with_topics(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_registered_card_for_zero_progress(mock_site_context, course_with_topics):
+def test_registered_card_for_zero_progress(
+    mock_site_context, course_with_topics, logged_in_client
+):
     """A registered course with progress_percentage == 0 renders the
     Registered card variant, not the In progress one. The old ambiguous
     "Not started" label (shared with unregistered courses) is retired."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
     # No progress => percentage stays 0.
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
     assert "Registered" in body
@@ -61,13 +56,13 @@ def test_registered_card_for_zero_progress(mock_site_context, course_with_topics
 
 @pytest.mark.django_db
 def test_registered_card_shows_empty_progress_bar(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """The Registered card always renders an empty (0%) progress bar so it
     visually anchors next to in-progress cards in a mixed grid row."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
     assert "Registered" in body
@@ -77,7 +72,7 @@ def test_registered_card_shows_empty_progress_bar(
 
 @pytest.mark.django_db
 def test_in_progress_card_when_progress_above_zero(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """A course whose first topic is complete (>0 progress) renders the
     In progress card with the Next up line."""
@@ -89,14 +84,16 @@ def test_in_progress_card_when_progress_above_zero(
     # Recompute progress on CourseProgress (the helper expects this row).
     CourseProgressFactory(user=user, course=course_with_topics, progress_percentage=33)
 
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
     assert "In progress" in body
 
 
 @pytest.mark.django_db
-def test_complete_card_for_completed_course(mock_site_context, course_with_topics):
+def test_complete_card_for_completed_course(
+    mock_site_context, course_with_topics, logged_in_client
+):
     """A completed course renders the Completed eyebrow."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
@@ -105,7 +102,7 @@ def test_complete_card_for_completed_course(mock_site_context, course_with_topic
         course=course_with_topics,
         completed_time=timezone.now(),
     )
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
     assert "Completed" in body
@@ -113,14 +110,14 @@ def test_complete_card_for_completed_course(mock_site_context, course_with_topic
 
 @pytest.mark.django_db
 def test_not_registered_card_shows_not_registered_label(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """A recommended (unregistered) course on the dashboard shows the
     "Not registered" status — distinct from a registered-but-unstarted
     course — instead of the old ambiguous "Not started"."""
     user = UserFactory()
     RecommendedCourseFactory(user=user, collection=course_with_topics)
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
     assert "Not registered" in body
@@ -132,10 +129,10 @@ def test_not_registered_card_shows_not_registered_label(
 
 @pytest.mark.django_db
 def test_course_detail_returns_200_for_authenticated_user(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(
         reverse(
             "student_interface:course_detail",
@@ -146,8 +143,7 @@ def test_course_detail_returns_200_for_authenticated_user(
     body = response.content.decode()
     assert course_with_topics.title in body
     # ToC items render.
-    for child in course_with_topics.children():
-        assert child.title in body
+    assert all(child.title in body for child in course_with_topics.children())
 
 
 @pytest.mark.django_db
@@ -164,7 +160,7 @@ def test_course_detail_is_public(mock_site_context, course_with_topics, client):
 
 @pytest.mark.django_db
 def test_course_detail_shows_enrol_for_free_for_unregistered_user_free_course(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """An unregistered user sees the backend's free-course CTA label on the detail page.
 
@@ -174,7 +170,7 @@ def test_course_detail_shows_enrol_for_free_for_unregistered_user_free_course(
     registered-learner progress-aware helper.
     """
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(
         reverse(
             "student_interface:course_detail",
@@ -187,11 +183,11 @@ def test_course_detail_shows_enrol_for_free_for_unregistered_user_free_course(
 
 @pytest.mark.django_db
 def test_course_detail_enrol_cta_links_to_initiate_course_access_when_unregistered(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """The CTA for an unregistered user links to the initiate_course_access URL."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(
         reverse(
             "student_interface:course_detail",
@@ -208,13 +204,13 @@ def test_course_detail_enrol_cta_links_to_initiate_course_access_when_unregister
 
 @pytest.mark.django_db
 def test_course_detail_has_start_button_when_registered_zero_progress(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """A registered learner with 0 progress lands on the detail page
     and sees a Start course button pointing to the first item."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(
         reverse(
             "student_interface:course_detail",
@@ -232,7 +228,7 @@ def test_course_detail_has_start_button_when_registered_zero_progress(
 
 @pytest.mark.django_db
 def test_course_detail_shows_continue_when_registered_with_progress(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """A registered learner with partial (>0) progress and no completion
     sees a 'Continue' CTA."""
@@ -245,7 +241,7 @@ def test_course_detail_shows_continue_when_registered_with_progress(
         completed_time=None,
     )
 
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(
         reverse(
             "student_interface:course_detail",
@@ -258,7 +254,7 @@ def test_course_detail_shows_continue_when_registered_with_progress(
 
 @pytest.mark.django_db
 def test_course_detail_shows_review_course_when_completed(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """A registered learner who has completed the course sees a
     'Review course' CTA."""
@@ -270,7 +266,7 @@ def test_course_detail_shows_review_course_when_completed(
         completed_time=timezone.now(),
     )
 
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(
         reverse(
             "student_interface:course_detail",
@@ -282,11 +278,13 @@ def test_course_detail_shows_review_course_when_completed(
 
 
 @pytest.mark.django_db
-def test_course_detail_renders_breadcrumbs(mock_site_context, course_with_topics):
+def test_course_detail_renders_breadcrumbs(
+    mock_site_context, course_with_topics, logged_in_client
+):
     """The detail page renders breadcrumbs including the 'All courses' link
     and the current course title."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(
         reverse(
             "student_interface:course_detail",
@@ -302,11 +300,11 @@ def test_course_detail_renders_breadcrumbs(mock_site_context, course_with_topics
 
 @pytest.mark.django_db
 def test_course_detail_renders_lesson_count_in_stats(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """The detail page stats strip always shows the lesson count."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(
         reverse(
             "student_interface:course_detail",
@@ -323,11 +321,11 @@ def test_course_detail_renders_lesson_count_in_stats(
     "label", ["Beginner", "Intermediate", "Advanced", "All levels"]
 )
 def test_course_detail_omits_difficulty_when_not_set(
-    mock_site_context, course_with_topics, label
+    mock_site_context, course_with_topics, label, logged_in_client
 ):
     """When difficulty is not set, no difficulty display value renders."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(
         reverse(
             "student_interface:course_detail",
@@ -340,11 +338,11 @@ def test_course_detail_omits_difficulty_when_not_set(
 
 @pytest.mark.django_db
 def test_course_detail_omits_duration_when_not_set(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """When estimated_duration is not set, the detail page shows no duration."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(
         reverse(
             "student_interface:course_detail",
@@ -358,11 +356,11 @@ def test_course_detail_omits_duration_when_not_set(
 
 @pytest.mark.django_db
 def test_course_detail_omits_learning_outcomes_section_when_not_set(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """When learning_outcomes is empty, the 'What you'll learn' section is absent."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(
         reverse(
             "student_interface:course_detail",
@@ -375,14 +373,14 @@ def test_course_detail_omits_learning_outcomes_section_when_not_set(
 
 @pytest.mark.django_db
 def test_registered_card_does_not_link_to_register_url(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """A registered learner's card never links to the registration URL —
     registering again would be a no-op redirect. Registered courses render
     the progress card (no preview modal), so the register link is absent."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
@@ -396,14 +394,14 @@ def test_registered_card_does_not_link_to_register_url(
 
 @pytest.mark.django_db
 def test_registered_zero_progress_card_links_title_to_first_item(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """A registered 0-progress course renders the progress card (not a modal):
     the "Registered" eyebrow, a 0% progress bar, and a title that links
     straight to the first course item via the "Next up" target."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()
@@ -419,12 +417,12 @@ def test_registered_zero_progress_card_links_title_to_first_item(
 
 @pytest.mark.django_db
 def test_not_registered_card_links_to_course_detail(
-    mock_site_context, course_with_topics
+    mock_site_context, course_with_topics, logged_in_client
 ):
     """A not-registered course card links to the course_detail URL (not a modal)."""
     user = UserFactory()
     RecommendedCourseFactory(user=user, collection=course_with_topics)
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     body = response.content.decode()

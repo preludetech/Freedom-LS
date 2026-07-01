@@ -1,4 +1,4 @@
-"""Tests for Phase 3: public all_courses view + access badge.
+"""Tests for the public all_courses view + access badge.
 
 Covers:
 - Anonymous access (no login redirect)

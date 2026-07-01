@@ -16,13 +16,12 @@ from __future__ import annotations
 
 import pytest
 
-from django.test import Client, override_settings
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.student_interface.utils import BLOCKED
@@ -31,51 +30,18 @@ from freedom_ls.student_management.models import UserCourseRegistration
 from freedom_ls.student_progress.factories import CourseProgressFactory
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _client(user) -> Client:
-    c = Client()
-    c.force_login(user)
-    return c
-
-
-def _free_course() -> Course:
-    """Create a free course (access_config = {"access_type": "free"})."""
-    course: Course = CourseFactory(
-        slug="free-course",
-        title="Free Course",
-        access_config={"access_type": "free"},
-    )
-    topic = TopicFactory(title="Topic 1", slug="topic-1", content="content")
-    course.items.create(child=topic, order=0)
-    return course
-
-
-def _gated_course() -> Course:
-    """Create an application-gated course."""
-    course: Course = CourseFactory(
-        slug="gated-course",
-        title="Gated Course",
-        access_config={"access_type": "application_gated"},
-    )
-    topic = TopicFactory(title="Topic 1", slug="gated-topic-1", content="content")
-    course.items.create(child=topic, order=0)
-    return course
-
-
-# ---------------------------------------------------------------------------
 # 1. Chokepoint gate — initiate_course_access
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
-def test_initiate_access_gated_course_redirects_to_apply_url(mock_site_context):
+def test_initiate_access_gated_course_redirects_to_apply_url(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """POST initiate_course_access for a gated course redirects to the apply URL."""
-    course = _gated_course()
+    course = course_with_topic(access_type="application_gated")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
@@ -90,11 +56,13 @@ def test_initiate_access_gated_course_redirects_to_apply_url(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_initiate_access_gated_course_creates_no_registration(mock_site_context):
+def test_initiate_access_gated_course_creates_no_registration(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """POST initiate_course_access for a gated course does NOT create a UserCourseRegistration."""
-    course = _gated_course()
+    course = course_with_topic(access_type="application_gated")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
@@ -107,11 +75,13 @@ def test_initiate_access_gated_course_creates_no_registration(mock_site_context)
 
 
 @pytest.mark.django_db
-def test_initiate_access_gated_course_get_also_redirects(mock_site_context):
+def test_initiate_access_gated_course_get_also_redirects(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """GET initiate_course_access for a gated course also redirects (no self-register)."""
-    course = _gated_course()
+    course = course_with_topic(access_type="application_gated")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
@@ -126,11 +96,13 @@ def test_initiate_access_gated_course_get_also_redirects(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_initiate_access_free_course_creates_registration(mock_site_context):
+def test_initiate_access_free_course_creates_registration(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """POST initiate_course_access for a free course creates a UserCourseRegistration."""
-    course = _free_course()
+    course = course_with_topic(access_type="free")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
@@ -146,11 +118,13 @@ def test_initiate_access_free_course_creates_registration(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_course_detail_gated_not_registered_shows_apply_now(mock_site_context):
+def test_course_detail_gated_not_registered_shows_apply_now(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """course_detail for a gated course with an unregistered learner shows 'Apply now'."""
-    course = _gated_course()
+    course = course_with_topic(access_type="application_gated")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:course_detail", kwargs={"course_slug": course.slug}
@@ -163,11 +137,13 @@ def test_course_detail_gated_not_registered_shows_apply_now(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_course_detail_gated_not_registered_cta_url_is_apply_url(mock_site_context):
+def test_course_detail_gated_not_registered_cta_url_is_apply_url(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """course_detail for a gated course: start_url points to the apply view."""
-    course = _gated_course()
+    course = course_with_topic(access_type="application_gated")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:course_detail", kwargs={"course_slug": course.slug}
@@ -182,12 +158,12 @@ def test_course_detail_gated_not_registered_cta_url_is_apply_url(mock_site_conte
 
 @pytest.mark.django_db
 def test_course_detail_free_not_registered_shows_enrol_for_free_label(
-    mock_site_context,
+    mock_site_context, logged_in_client, course_with_topic
 ):
     """course_detail for a free course with an unregistered learner shows the backend's free label."""
-    course = _free_course()
+    course = course_with_topic(access_type="free")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:course_detail", kwargs={"course_slug": course.slug}
@@ -200,16 +176,18 @@ def test_course_detail_free_not_registered_shows_enrol_for_free_label(
 
 
 @pytest.mark.django_db
-def test_course_detail_gated_shows_application_copy_not_free_copy(mock_site_context):
+def test_course_detail_gated_shows_application_copy_not_free_copy(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """The gated detail page must show application funnel copy, not the free copy.
 
     The funnel copy (enrolment summary, sign-up heading/subtext) is driven by the
     access backend, so a gated course must not claim to be "Free · open" / "One
     click. No credit card." alongside its "Apply now" CTA.
     """
-    course = _gated_course()
+    course = course_with_topic(access_type="application_gated")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:course_detail", kwargs={"course_slug": course.slug}
@@ -224,11 +202,13 @@ def test_course_detail_gated_shows_application_copy_not_free_copy(mock_site_cont
 
 
 @pytest.mark.django_db
-def test_course_detail_free_shows_free_acquisition_copy(mock_site_context):
+def test_course_detail_free_shows_free_acquisition_copy(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """The free detail page still shows the free funnel copy (driven by the backend)."""
-    course = _free_course()
+    course = course_with_topic(access_type="free")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:course_detail", kwargs={"course_slug": course.slug}
@@ -240,12 +220,14 @@ def test_course_detail_free_shows_free_acquisition_copy(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_course_detail_registered_shows_start_course_label(mock_site_context):
+def test_course_detail_registered_shows_start_course_label(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """course_detail for a registered learner with 0 progress shows 'Start course'."""
-    course = _free_course()
+    course = course_with_topic(access_type="free")
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course)
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:course_detail", kwargs={"course_slug": course.slug}
@@ -257,13 +239,15 @@ def test_course_detail_registered_shows_start_course_label(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_course_detail_registered_in_progress_shows_continue_label(mock_site_context):
+def test_course_detail_registered_in_progress_shows_continue_label(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """course_detail for a registered learner with progress shows 'Continue'."""
-    course = _free_course()
+    course = course_with_topic(access_type="free")
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course)
     CourseProgressFactory(user=user, course=course, progress_percentage=50)
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:course_detail", kwargs={"course_slug": course.slug}
@@ -275,9 +259,11 @@ def test_course_detail_registered_in_progress_shows_continue_label(mock_site_con
 
 
 @pytest.mark.django_db
-def test_course_detail_registered_completed_shows_review_label(mock_site_context):
+def test_course_detail_registered_completed_shows_review_label(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """course_detail for a registered and completed learner shows 'Review course'."""
-    course = _free_course()
+    course = course_with_topic(access_type="free")
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course)
     CourseProgressFactory(
@@ -286,7 +272,7 @@ def test_course_detail_registered_completed_shows_review_label(mock_site_context
         progress_percentage=100,
         completed_time=timezone.now(),
     )
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:course_detail", kwargs={"course_slug": course.slug}
@@ -303,12 +289,14 @@ def test_course_detail_registered_completed_shows_review_label(mock_site_context
 
 
 @pytest.mark.django_db
-def test_dashboard_lists_all_courses_with_default_backend(mock_site_context):
+def test_dashboard_lists_all_courses_with_default_backend(
+    mock_site_context, logged_in_client
+):
     """With the default backend, available_courses set is unchanged (filter_visible is a no-op)."""
     user = UserFactory()
     course_a = CourseFactory(title="Course A", slug="course-a")
     course_b = CourseFactory(title="Course B", slug="course-b")
-    client = _client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
 
@@ -325,11 +313,13 @@ def test_dashboard_lists_all_courses_with_default_backend(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_view_course_item_unregistered_redirects_to_course_detail(mock_site_context):
+def test_view_course_item_unregistered_redirects_to_course_detail(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """view_course_item for an unregistered learner redirects to course_detail."""
-    course = _free_course()
+    course = course_with_topic(access_type="free")
     user = UserFactory()  # not registered
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:view_course_item",
@@ -344,12 +334,14 @@ def test_view_course_item_unregistered_redirects_to_course_detail(mock_site_cont
 
 
 @pytest.mark.django_db
-def test_view_course_item_registered_renders_content(mock_site_context):
+def test_view_course_item_registered_renders_content(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """view_course_item for a registered learner renders the content (not a redirect)."""
-    course = _free_course()
+    course = course_with_topic(access_type="free")
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course)
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:view_course_item",
@@ -361,12 +353,14 @@ def test_view_course_item_registered_renders_content(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_course_detail_unregistered_all_toc_items_blocked(mock_site_context):
+def test_course_detail_unregistered_all_toc_items_blocked(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """course_detail for an unregistered learner shows all TOC items as BLOCKED."""
 
-    course = _free_course()
+    course = course_with_topic(access_type="free")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:course_detail", kwargs={"course_slug": course.slug}
@@ -376,18 +370,19 @@ def test_course_detail_unregistered_all_toc_items_blocked(mock_site_context):
     assert response.status_code == 200
     children = response.context["children"]
     assert children  # at least one item exists
-    for child in children:
-        assert child["status"] == BLOCKED
+    assert all(child["status"] == BLOCKED for child in children)
 
 
 @pytest.mark.django_db
-def test_course_detail_registered_toc_items_not_all_blocked(mock_site_context):
+def test_course_detail_registered_toc_items_not_all_blocked(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """course_detail for a registered learner has at least one non-BLOCKED TOC item."""
 
-    course = _free_course()
+    course = course_with_topic(access_type="free")
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course)
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:course_detail", kwargs={"course_slug": course.slug}
@@ -402,11 +397,13 @@ def test_course_detail_registered_toc_items_not_all_blocked(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_course_home_unregistered_redirects_to_course_detail(mock_site_context):
+def test_course_home_unregistered_redirects_to_course_detail(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """course_home for an unregistered learner redirects to course_detail."""
-    course = _free_course()
+    course = course_with_topic(access_type="free")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse("student_interface:course_home", kwargs={"course_slug": course.slug})
     response = client.get(url)
@@ -419,13 +416,13 @@ def test_course_home_unregistered_redirects_to_course_detail(mock_site_context):
 
 @pytest.mark.django_db
 def test_gated_course_detail_unregistered_shows_apply_not_item_content(
-    mock_site_context,
+    mock_site_context, logged_in_client, course_with_topic
 ):
     """course_detail for a gated course: unregistered learner sees Apply affordance and blocked items."""
 
-    course = _gated_course()
+    course = course_with_topic(access_type="application_gated")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:course_detail", kwargs={"course_slug": course.slug}
@@ -442,12 +439,12 @@ def test_gated_course_detail_unregistered_shows_apply_not_item_content(
 
 @pytest.mark.django_db
 def test_view_course_item_gated_unregistered_redirects_to_course_detail(
-    mock_site_context,
+    mock_site_context, logged_in_client, course_with_topic
 ):
     """view_course_item for a gated course with an unregistered learner redirects to course_detail."""
-    course = _gated_course()
+    course = course_with_topic(access_type="application_gated")
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:view_course_item",
@@ -467,12 +464,14 @@ def test_view_course_item_gated_unregistered_redirects_to_course_detail(
 
 
 @pytest.mark.django_db
-def test_dashboard_with_active_application_shows_status_link(mock_site_context):
+def test_dashboard_with_active_application_shows_status_link(
+    mock_site_context, logged_in_client, course_with_topic
+):
     """Dashboard shows the status link for an in-flight application (via ApplicationCourseAccessBackend)."""
-    course = _gated_course()
+    course = course_with_topic(access_type="application_gated")
     user = UserFactory()
     application = CourseApplicationFactory(user=user, course=course)
-    client = _client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
 
@@ -483,7 +482,9 @@ def test_dashboard_with_active_application_shows_status_link(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_dashboard_without_applications_shows_no_extra_panel(mock_site_context):
+def test_dashboard_without_applications_shows_no_extra_panel(
+    mock_site_context, logged_in_client
+):
     """Dashboard with no active applications shows no application panel.
 
     Uses FreeOnlyCourseAccessBackend (which returns [] for get_dashboard_contributions)
@@ -493,7 +494,7 @@ def test_dashboard_without_applications_shows_no_extra_panel(mock_site_context):
     takes effect within this test body.
     """
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     with override_settings(
         COURSE_ACCESS_BACKEND="freedom_ls.course_access.backends.FreeOnlyCourseAccessBackend"
@@ -507,10 +508,10 @@ def test_dashboard_without_applications_shows_no_extra_panel(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_dashboard_panels_in_context(mock_site_context):
+def test_dashboard_panels_in_context(mock_site_context, logged_in_client):
     """The dashboard view always includes dashboard_panels in context."""
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
 

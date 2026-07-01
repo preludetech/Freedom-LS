@@ -7,17 +7,9 @@ from __future__ import annotations
 
 import pytest
 
-from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-
-
-def _logged_in_client(user) -> Client:
-    """Build a Client logged in as `user`. Local helper — do not lift across files."""
-    client = Client()
-    client.force_login(user)
-    return client
 
 
 def _extract_title(body: str) -> str:
@@ -30,20 +22,24 @@ def _extract_title(body: str) -> str:
 
 
 @pytest.mark.django_db
-def test_dashboard_title_tag_says_dashboard(mock_site_context, courses):
+def test_dashboard_title_tag_says_dashboard(
+    mock_site_context, courses, logged_in_client
+):
     """The dashboard's browser-tab title is 'Dashboard'."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
     assert _extract_title(response.content.decode()) == "Dashboard"
 
 
 @pytest.mark.django_db
-def test_all_courses_title_tag_says_all_courses(mock_site_context, courses):
+def test_all_courses_title_tag_says_all_courses(
+    mock_site_context, courses, logged_in_client
+):
     """The all-courses page title includes 'All Courses' and the site name."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
     title = _extract_title(response.content.decode())
@@ -52,10 +48,12 @@ def test_all_courses_title_tag_says_all_courses(mock_site_context, courses):
 
 
 @pytest.mark.django_db
-def test_course_detail_title_tag_uses_course_title(mock_site_context, courses):
+def test_course_detail_title_tag_uses_course_title(
+    mock_site_context, courses, logged_in_client
+):
     """The course-detail page's browser-tab title matches the course title."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(
         reverse(
             "student_interface:course_detail", kwargs={"course_slug": courses[0].slug}

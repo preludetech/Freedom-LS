@@ -1,7 +1,6 @@
-"""Tests for Phase 2: anonymous home page variant.
+"""Tests for the anonymous home page variant.
 
-TDD: these tests are written first and must fail before the implementation is
-added. They cover:
+They cover:
 - Anonymous GET / returns 200 (no login redirect)
 - Anonymous home shows hero headline + Browse-all CTA
 - Anonymous home does NOT show authenticated-only content
@@ -170,7 +169,7 @@ def test_authenticated_dashboard_does_not_show_hero(mock_site_context):
 
 @pytest.mark.django_db
 def test_authenticated_dashboard_still_returns_200(mock_site_context):
-    """Authenticated dashboard still returns 200 after Phase 2 changes."""
+    """Authenticated dashboard still returns 200 for the anonymous-home variant."""
     user = UserFactory(first_name="Ada")
     client = Client()
     client.force_login(user)

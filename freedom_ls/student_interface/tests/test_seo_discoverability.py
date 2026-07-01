@@ -1,4 +1,4 @@
-"""Tests for Phase 6: Basic SEO / discoverability.
+"""Tests for basic SEO / discoverability.
 
 Covers:
 - Per-page <title> and <meta name="description"> on catalogue and detail pages
@@ -7,8 +7,8 @@ Covers:
 - sitemap.xml (per-site)
 - robots.txt
 
-The catalogue and course-detail pages are public (Phase 3/4), so these tests
-use an anonymous client — the same view a search-engine crawler sees.
+The catalogue and course-detail pages are public, so these tests use an
+anonymous client — the same view a search-engine crawler sees.
 """
 
 from __future__ import annotations
@@ -23,8 +23,7 @@ from django.contrib.sites.models import Site
 from django.test import Client
 from django.urls import reverse
 
-from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.factories import CourseFactory
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -68,16 +67,8 @@ def _extract_json_ld(body: str, script_id: str) -> dict:
     return parsed
 
 
-def _course_with_topic(**kwargs) -> Course:
-    """A course with a single topic item (the minimum for a viewable detail page)."""
-    course: Course = CourseFactory(**kwargs)
-    topic = TopicFactory()
-    course.items.create(child=topic, order=0)
-    return course
-
-
 # ---------------------------------------------------------------------------
-# 6.1 — catalogue page: title + meta description
+# catalogue page: title + meta description
 # ---------------------------------------------------------------------------
 
 
@@ -91,21 +82,26 @@ def test_catalogue_page_has_meaningful_title(mock_site_context):
 
 @pytest.mark.django_db
 def test_catalogue_page_has_meta_description(mock_site_context):
-    """The all-courses page emits a non-empty <meta name="description">."""
+    """The all-courses page emits its own catalogue-specific meta description.
+
+    It must override the generic base-template fallback, so we assert the
+    distinctive catalogue copy is present rather than merely non-empty.
+    """
     desc = _extract_meta_description(_get("student_interface:courses"))
-    assert desc  # non-empty, not the generic fallback "Learning management system"
-    assert desc != "Learning management system"
+    assert "Browse all available courses" in desc
 
 
 # ---------------------------------------------------------------------------
-# 6.1 — course detail: meta description
+# course detail: meta description
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
-def test_course_detail_has_meta_description_from_description_field(mock_site_context):
+def test_course_detail_has_meta_description_from_description_field(
+    mock_site_context, course_with_topic
+):
     """Detail page uses course.description when available."""
-    course = _course_with_topic(
+    course = course_with_topic(
         description="A thorough introduction to Python programming.",
         subtitle="",
     )
@@ -117,32 +113,36 @@ def test_course_detail_has_meta_description_from_description_field(mock_site_con
 
 
 @pytest.mark.django_db
-def test_course_detail_falls_back_to_subtitle_when_no_description(mock_site_context):
+def test_course_detail_falls_back_to_subtitle_when_no_description(
+    mock_site_context, course_with_topic
+):
     """Detail page uses course.subtitle when description is empty."""
-    course = _course_with_topic(description="", subtitle="Learn fast, learn well.")
+    course = course_with_topic(description="", subtitle="Learn fast, learn well.")
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     assert _extract_meta_description(body) == "Learn fast, learn well."
 
 
 @pytest.mark.django_db
 def test_course_detail_falls_back_to_site_default_when_no_description_or_subtitle(
-    mock_site_context,
+    mock_site_context, course_with_topic
 ):
-    """Detail page uses a non-empty fallback when both description and subtitle are empty."""
-    course = _course_with_topic(description="", subtitle="")
+    """Detail page uses the built-in generic fallback when description and subtitle are empty."""
+    course = course_with_topic(description="", subtitle="")
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
-    assert _extract_meta_description(body)  # non-empty fallback
+    assert (
+        _extract_meta_description(body) == "Explore this course and expand your skills."
+    )
 
 
 # ---------------------------------------------------------------------------
-# 6.2 — Course detail JSON-LD (schema.org/Course)
+# Course detail JSON-LD (schema.org/Course)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
-def test_course_detail_json_ld_is_course_type(mock_site_context):
+def test_course_detail_json_ld_is_course_type(mock_site_context, course_with_topic):
     """Detail page JSON-LD has @type: Course."""
-    course = _course_with_topic()
+    course = course_with_topic()
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     data = _extract_json_ld(body, "course-jsonld")
     assert data["@type"] == "Course"
@@ -150,9 +150,11 @@ def test_course_detail_json_ld_is_course_type(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_course_detail_json_ld_has_required_fields(mock_site_context):
+def test_course_detail_json_ld_has_required_fields(
+    mock_site_context, course_with_topic
+):
     """Detail JSON-LD has name, url, and isAccessibleForFree."""
-    course = _course_with_topic()
+    course = course_with_topic()
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     data = _extract_json_ld(body, "course-jsonld")
     assert data["name"] == course.title
@@ -161,30 +163,34 @@ def test_course_detail_json_ld_has_required_fields(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_course_detail_json_ld_free_course_is_accessible_for_free(mock_site_context):
+def test_course_detail_json_ld_free_course_is_accessible_for_free(
+    mock_site_context, course_with_topic
+):
     """A free course has isAccessibleForFree: true in its JSON-LD."""
-    course = _course_with_topic()
+    course = course_with_topic()
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     assert _extract_json_ld(body, "course-jsonld")["isAccessibleForFree"] is True
 
 
 @pytest.mark.django_db
 def test_course_detail_json_ld_gated_course_is_not_accessible_for_free(
-    mock_site_context,
+    mock_site_context, course_with_topic
 ):
     """An application-gated course has isAccessibleForFree: false in its JSON-LD."""
-    course = _course_with_topic(
+    course = course_with_topic(
         slug="gated-seo-course",
-        access_config={"access_type": "application_gated"},
+        access_type="application_gated",
     )
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     assert _extract_json_ld(body, "course-jsonld")["isAccessibleForFree"] is False
 
 
 @pytest.mark.django_db
-def test_course_detail_json_ld_omits_forbidden_fields(mock_site_context):
+def test_course_detail_json_ld_omits_forbidden_fields(
+    mock_site_context, course_with_topic
+):
     """Detail JSON-LD must NOT include provider, image, author, or courseCode."""
-    course = _course_with_topic()
+    course = course_with_topic()
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     data = _extract_json_ld(body, "course-jsonld")
     assert "provider" not in data
@@ -194,84 +200,96 @@ def test_course_detail_json_ld_omits_forbidden_fields(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_course_detail_json_ld_url_contains_course_slug(mock_site_context):
+def test_course_detail_json_ld_url_contains_course_slug(
+    mock_site_context, course_with_topic
+):
     """The JSON-LD url includes the course slug (absolute URL)."""
-    course = _course_with_topic(slug="my-test-course")
+    course = course_with_topic(slug="my-test-course")
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     assert "my-test-course" in _extract_json_ld(body, "course-jsonld")["url"]
 
 
 @pytest.mark.django_db
-def test_course_detail_json_ld_description_matches_meta_description(mock_site_context):
-    """The JSON-LD description is the same value as the meta description tag."""
-    course = _course_with_topic(description="Hands-on Python course.", subtitle="")
+def test_course_detail_json_ld_description_matches_meta_description(
+    mock_site_context, course_with_topic
+):
+    """The JSON-LD and meta descriptions both equal the course description field."""
+    course = course_with_topic(description="Hands-on Python course.", subtitle="")
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     meta_desc = _extract_meta_description(body)
     json_ld = _extract_json_ld(body, "course-jsonld")
-    assert json_ld.get("description") == meta_desc
+    assert json_ld.get("description") == "Hands-on Python course."
+    assert meta_desc == "Hands-on Python course."
 
 
 @pytest.mark.django_db
-def test_course_detail_json_ld_omits_educational_level_when_unset(mock_site_context):
+def test_course_detail_json_ld_omits_educational_level_when_unset(
+    mock_site_context, course_with_topic
+):
     """educationalLevel is omitted when course.difficulty is blank."""
-    course = _course_with_topic(difficulty="")
+    course = course_with_topic(difficulty="")
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     assert "educationalLevel" not in _extract_json_ld(body, "course-jsonld")
 
 
 @pytest.mark.django_db
-def test_course_detail_json_ld_includes_educational_level_when_set(mock_site_context):
-    """educationalLevel is present when course.difficulty is set."""
-    course = _course_with_topic(difficulty="beginner")
+def test_course_detail_json_ld_includes_educational_level_when_set(
+    mock_site_context, course_with_topic
+):
+    """educationalLevel carries the human-readable difficulty label when set."""
+    course = course_with_topic(difficulty="beginner")
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     data = _extract_json_ld(body, "course-jsonld")
-    assert data["educationalLevel"]  # present and non-empty
+    assert data["educationalLevel"] == "Beginner"
 
 
 @pytest.mark.django_db
 def test_course_detail_json_ld_omits_time_required_when_duration_unset(
-    mock_site_context,
+    mock_site_context, course_with_topic
 ):
     """timeRequired is absent when estimated_duration is not set."""
-    course = _course_with_topic(estimated_duration=None)
+    course = course_with_topic(estimated_duration=None)
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     assert "timeRequired" not in _extract_json_ld(body, "course-jsonld")
 
 
 @pytest.mark.django_db
 def test_course_detail_json_ld_includes_time_required_when_duration_set(
-    mock_site_context,
+    mock_site_context, course_with_topic
 ):
     """timeRequired is present and ISO-8601 when estimated_duration is set."""
-    course = _course_with_topic(estimated_duration=timedelta(hours=1, minutes=30))
+    course = course_with_topic(estimated_duration=timedelta(hours=1, minutes=30))
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     assert _extract_json_ld(body, "course-jsonld")["timeRequired"] == "PT1H30M"
 
 
 @pytest.mark.django_db
 def test_course_detail_json_ld_omits_teaches_when_learning_outcomes_empty(
-    mock_site_context,
+    mock_site_context, course_with_topic
 ):
     """teaches is absent when course.learning_outcomes is empty."""
-    course = _course_with_topic(learning_outcomes=[])
+    course = course_with_topic(learning_outcomes=[])
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
     assert "teaches" not in _extract_json_ld(body, "course-jsonld")
 
 
 @pytest.mark.django_db
 def test_course_detail_json_ld_includes_teaches_when_learning_outcomes_set(
-    mock_site_context,
+    mock_site_context, course_with_topic
 ):
-    """teaches is present when course.learning_outcomes is non-empty."""
-    course = _course_with_topic(
+    """teaches carries the course learning outcomes when non-empty."""
+    course = course_with_topic(
         learning_outcomes=["Understand variables", "Write functions"]
     )
     body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
-    assert "teaches" in _extract_json_ld(body, "course-jsonld")
+    assert _extract_json_ld(body, "course-jsonld")["teaches"] == [
+        "Understand variables",
+        "Write functions",
+    ]
 
 
 # ---------------------------------------------------------------------------
-# 6.2 — Catalogue JSON-LD (schema.org/ItemList)
+# Catalogue JSON-LD (schema.org/ItemList)
 # ---------------------------------------------------------------------------
 
 
@@ -285,16 +303,18 @@ def test_catalogue_json_ld_is_item_list(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_catalogue_json_ld_contains_course_detail_urls(mock_site_context):
+def test_catalogue_json_ld_contains_course_detail_urls(
+    mock_site_context, course_with_topic
+):
     """Catalogue JSON-LD items include absolute URLs to each course's detail page."""
-    _course_with_topic(slug="alpha-course")
+    course_with_topic(slug="alpha-course")
     data = _extract_json_ld(_get("student_interface:courses"), "catalogue-jsonld")
     item_urls = [item.get("url", "") for item in data.get("itemListElement", [])]
     assert any("alpha-course" in url for url in item_urls)
 
 
 # ---------------------------------------------------------------------------
-# 6.3 — sitemap.xml
+# sitemap.xml
 # ---------------------------------------------------------------------------
 
 
@@ -314,20 +334,20 @@ def test_sitemap_contains_catalogue_url(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_sitemap_contains_course_detail_url(mock_site_context):
+def test_sitemap_contains_course_detail_url(mock_site_context, course_with_topic):
     """sitemap.xml includes each course's detail URL."""
-    _course_with_topic(slug="sitemap-test-course")
+    course_with_topic(slug="sitemap-test-course")
     response = Client().get("/sitemap.xml")
     assert "sitemap-test-course" in response.content.decode()
 
 
 @pytest.mark.django_db
-def test_sitemap_excludes_other_site_courses(mock_site_context):
+def test_sitemap_excludes_other_site_courses(mock_site_context, course_with_topic):
     """sitemap.xml does not include courses from a different site."""
     other_site = Site.objects.create(name="OtherSite", domain="othersite.example.com")
 
-    _course_with_topic(slug="current-site-course")
-    _course_with_topic(slug="other-site-course", site=other_site)
+    course_with_topic(slug="current-site-course")
+    course_with_topic(slug="other-site-course", site=other_site)
 
     content = Client().get("/sitemap.xml").content.decode()
     assert "current-site-course" in content
@@ -335,7 +355,7 @@ def test_sitemap_excludes_other_site_courses(mock_site_context):
 
 
 # ---------------------------------------------------------------------------
-# 6.3 — robots.txt
+# robots.txt
 # ---------------------------------------------------------------------------
 
 

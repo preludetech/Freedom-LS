@@ -12,7 +12,6 @@ import re
 
 import pytest
 
-from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
@@ -22,15 +21,10 @@ from freedom_ls.student_management.factories import UserCourseRegistrationFactor
 from freedom_ls.student_progress.factories import CourseProgressFactory
 
 
-def _logged_in_client(user) -> Client:
-    """Build a Client logged in as `user`. Local helper — do not lift across files."""
-    client = Client()
-    client.force_login(user)
-    return client
-
-
 @pytest.mark.django_db
-def test_all_courses_renders_four_distinct_status_labels(mock_site_context, courses):
+def test_all_courses_renders_four_distinct_status_labels(
+    mock_site_context, courses, logged_in_client
+):
     """Each of the four registration states renders its own visible label, so a
     registered-but-unstarted course is no longer indistinguishable from an
     unregistered one. The old ambiguous "Not started" label is gone entirely."""
@@ -55,7 +49,7 @@ def test_all_courses_renders_four_distinct_status_labels(mock_site_context, cour
         completed_time=timezone.now(),
     )
 
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
     body = response.content.decode()
@@ -69,11 +63,11 @@ def test_all_courses_renders_four_distinct_status_labels(mock_site_context, cour
 
 @pytest.mark.django_db
 def test_all_courses_not_registered_row_links_to_course_detail(
-    mock_site_context, courses
+    mock_site_context, courses, logged_in_client
 ):
     """A not-registered course row renders a single link to the course_detail URL."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
@@ -87,11 +81,13 @@ def test_all_courses_not_registered_row_links_to_course_detail(
 
 
 @pytest.mark.django_db
-def test_all_courses_not_registered_row_has_no_progress_bar(mock_site_context, courses):
+def test_all_courses_not_registered_row_has_no_progress_bar(
+    mock_site_context, courses, logged_in_client
+):
     """A not-registered course row does not render a progress bar."""
     user = UserFactory()
     # No registration — courses[0] is NOT_REGISTERED
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
@@ -106,12 +102,12 @@ def test_all_courses_not_registered_row_has_no_progress_bar(mock_site_context, c
 
 @pytest.mark.django_db
 def test_all_courses_registered_zero_percent_row_links_to_first_item(
-    mock_site_context, courses
+    mock_site_context, courses, logged_in_client
 ):
     """A registered-0% row links to view_course_item at index=1."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
@@ -126,12 +122,12 @@ def test_all_courses_registered_zero_percent_row_links_to_first_item(
 
 @pytest.mark.django_db
 def test_all_courses_registered_zero_percent_row_has_aria_valuenow_zero(
-    mock_site_context, courses
+    mock_site_context, courses, logged_in_client
 ):
     """A registered-0% row renders a progress bar with aria-valuenow='0'."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
@@ -141,14 +137,16 @@ def test_all_courses_registered_zero_percent_row_has_aria_valuenow_zero(
 
 
 @pytest.mark.django_db
-def test_all_courses_in_progress_row_links_to_first_item(mock_site_context, courses):
+def test_all_courses_in_progress_row_links_to_first_item(
+    mock_site_context, courses, logged_in_client
+):
     """An in-progress row links to view_course_item at index=1."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     CourseProgressFactory(
         user=user, course=courses[0], progress_percentage=55, completed_time=None
     )
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
@@ -163,7 +161,7 @@ def test_all_courses_in_progress_row_links_to_first_item(mock_site_context, cour
 
 @pytest.mark.django_db
 def test_all_courses_in_progress_row_has_aria_valuenow_above_zero(
-    mock_site_context, courses
+    mock_site_context, courses, logged_in_client
 ):
     """An in-progress row renders a progress bar with aria-valuenow > 0."""
     user = UserFactory()
@@ -171,7 +169,7 @@ def test_all_courses_in_progress_row_has_aria_valuenow_above_zero(
     CourseProgressFactory(
         user=user, course=courses[0], progress_percentage=55, completed_time=None
     )
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
@@ -181,7 +179,9 @@ def test_all_courses_in_progress_row_has_aria_valuenow_above_zero(
 
 
 @pytest.mark.django_db
-def test_all_courses_complete_row_links_to_course_finish(mock_site_context, courses):
+def test_all_courses_complete_row_links_to_course_finish(
+    mock_site_context, courses, logged_in_client
+):
     """A completed-course row links to the course_finish URL."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
@@ -191,7 +191,7 @@ def test_all_courses_complete_row_links_to_course_finish(mock_site_context, cour
         progress_percentage=100,
         completed_time=timezone.now(),
     )
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
@@ -205,7 +205,9 @@ def test_all_courses_complete_row_links_to_course_finish(mock_site_context, cour
 
 
 @pytest.mark.django_db
-def test_all_courses_complete_row_has_no_progress_bar(mock_site_context, courses):
+def test_all_courses_complete_row_has_no_progress_bar(
+    mock_site_context, courses, logged_in_client
+):
     """A completed-course row does not render a progress bar."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
@@ -217,7 +219,7 @@ def test_all_courses_complete_row_has_no_progress_bar(mock_site_context, courses
     )
     # Register and complete only courses[0]; courses[1] and [2] remain unregistered.
     # No registered-but-incomplete courses means no progress bars in the whole page.
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200
@@ -227,7 +229,9 @@ def test_all_courses_complete_row_has_no_progress_bar(mock_site_context, courses
 
 
 @pytest.mark.django_db
-def test_all_courses_status_icons_are_decorative(mock_site_context, courses):
+def test_all_courses_status_icons_are_decorative(
+    mock_site_context, courses, logged_in_client
+):
     """Status icons are decorative: the icon backend always stamps the semantic
     slug as the svg's aria-label, so each status icon must be wrapped in an
     `aria-hidden="true"` element to keep that slug out of the accessibility tree.
@@ -247,7 +251,7 @@ def test_all_courses_status_icons_are_decorative(mock_site_context, courses):
         completed_time=timezone.now(),
     )
     # courses[2] stays unregistered -> exercises the not_started icon.
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:courses"))
     assert response.status_code == 200

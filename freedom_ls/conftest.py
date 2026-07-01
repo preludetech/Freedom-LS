@@ -2,17 +2,22 @@
 
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
 
 import pytest
 
 from django.contrib.sites.models import Site
-from django.test import RequestFactory
+from django.test import Client, RequestFactory
 from django.urls import reverse
 
 # Re-export Playwright fixtures (logged_in_page, reset_local_storage) so
 # tests can consume them without importing the fixtures module directly.
 from freedom_ls.tests.playwright_fixtures import *  # noqa: F403
+
+if TYPE_CHECKING:
+    from freedom_ls.accounts.models import User
+    from freedom_ls.content_engine.models import Course
 
 
 @pytest.fixture(autouse=True)
@@ -117,6 +122,34 @@ def mock_site_context(site, mocker):
         _thread_locals.request = old_request
     elif hasattr(_thread_locals, "request"):
         delattr(_thread_locals, "request")
+
+
+@pytest.fixture
+def logged_in_client():
+    """Factory: a Django test client logged in as the given user."""
+
+    def _make(user: "User") -> Client:
+        client = Client()
+        client.force_login(user)
+        return client
+
+    return _make
+
+
+@pytest.fixture
+def course_with_topic(mock_site_context):
+    """Factory: a course (default free) with one topic item — the minimum viewable course."""
+    from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+
+    def _make(*, access_type: str = "free", **kwargs) -> "Course":
+        course = cast(
+            "Course",
+            CourseFactory(access_config={"access_type": access_type}, **kwargs),
+        )
+        course.items.create(child=TopicFactory(), order=0)
+        return course
+
+    return _make
 
 
 @pytest.fixture

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import pytest
 
-from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
@@ -23,23 +22,15 @@ from freedom_ls.student_management.factories import (
 )
 from freedom_ls.student_progress.factories import CourseProgressFactory
 
-
-def _logged_in_client(user) -> Client:
-    """Build a Client logged in as `user`. Local helper — do not lift across files."""
-    client = Client()
-    client.force_login(user)
-    return client
-
-
 # --- dashboard view ---
 
 
 @pytest.mark.django_db
 def test_dashboard_authenticated_returns_200_with_user_label(
-    mock_site_context, courses
+    mock_site_context, courses, logged_in_client
 ):
     user = UserFactory(first_name="Ada")
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
     # The greeting renders the user's first name.
@@ -47,11 +38,11 @@ def test_dashboard_authenticated_returns_200_with_user_label(
 
 
 @pytest.mark.django_db
-def test_dashboard_current_courses(mock_site_context, courses):
+def test_dashboard_current_courses(mock_site_context, courses, logged_in_client):
     """Registered non-completed courses appear under registered_courses."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -62,11 +53,13 @@ def test_dashboard_current_courses(mock_site_context, courses):
 
 
 @pytest.mark.django_db
-def test_dashboard_current_courses_have_progress_percentage(mock_site_context, courses):
+def test_dashboard_current_courses_have_progress_percentage(
+    mock_site_context, courses, logged_in_client
+):
     """In-progress courses show progress_percentage attribute for progress bars."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     registered = response.context["registered_courses"]
@@ -75,12 +68,12 @@ def test_dashboard_current_courses_have_progress_percentage(mock_site_context, c
 
 
 @pytest.mark.django_db
-def test_dashboard_completed_courses(mock_site_context, courses):
+def test_dashboard_completed_courses(mock_site_context, courses, logged_in_client):
     """Completed courses surface in completed_courses, not registered_courses."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     CourseProgressFactory(user=user, course=courses[0], completed_time=timezone.now())
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -90,11 +83,11 @@ def test_dashboard_completed_courses(mock_site_context, courses):
 
 
 @pytest.mark.django_db
-def test_dashboard_recommended_courses(mock_site_context, courses):
+def test_dashboard_recommended_courses(mock_site_context, courses, logged_in_client):
     """Recommended courses appear in recommended_courses context list."""
     user = UserFactory()
     RecommendedCourseFactory(user=user, collection=courses[0])
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -105,14 +98,16 @@ def test_dashboard_recommended_courses(mock_site_context, courses):
 
 
 @pytest.mark.django_db
-def test_dashboard_annotates_accent_on_every_course(mock_site_context, courses):
+def test_dashboard_annotates_accent_on_every_course(
+    mock_site_context, courses, logged_in_client
+):
     """Every current/completed/recommended course gets an accent_slot_key."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     UserCourseRegistrationFactory(user=user, collection=courses[1])
     CourseProgressFactory(user=user, course=courses[1], completed_time=timezone.now())
     RecommendedCourseFactory(user=user, collection=courses[2])
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -130,14 +125,14 @@ def test_dashboard_annotates_accent_on_every_course(mock_site_context, courses):
 
 @pytest.mark.django_db
 def test_dashboard_available_excludes_registered_and_completed(
-    mock_site_context, courses
+    mock_site_context, courses, logged_in_client
 ):
     """Available list omits both in-progress and completed registrations."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     UserCourseRegistrationFactory(user=user, collection=courses[1])
     CourseProgressFactory(user=user, course=courses[1], completed_time=timezone.now())
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -147,11 +142,13 @@ def test_dashboard_available_excludes_registered_and_completed(
 
 
 @pytest.mark.django_db
-def test_dashboard_available_excludes_recommended(mock_site_context, courses):
+def test_dashboard_available_excludes_recommended(
+    mock_site_context, courses, logged_in_client
+):
     """Recommended courses do not also appear in the available list."""
     user = UserFactory()
     RecommendedCourseFactory(user=user, collection=courses[0])
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -160,12 +157,14 @@ def test_dashboard_available_excludes_recommended(mock_site_context, courses):
 
 
 @pytest.mark.django_db
-def test_dashboard_available_capped_at_three(mock_site_context, courses):
+def test_dashboard_available_capped_at_three(
+    mock_site_context, courses, logged_in_client
+):
     """No more than three available courses are surfaced, even with more eligible."""
     user = UserFactory()
     CourseFactory(title="Course D", slug="course-d")
     CourseFactory(title="Course E", slug="course-e")
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -173,10 +172,12 @@ def test_dashboard_available_capped_at_three(mock_site_context, courses):
 
 
 @pytest.mark.django_db
-def test_dashboard_available_includes_eligible_course(mock_site_context, courses):
+def test_dashboard_available_includes_eligible_course(
+    mock_site_context, courses, logged_in_client
+):
     """A course with no registration or recommendation shows up as available."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -185,14 +186,16 @@ def test_dashboard_available_includes_eligible_course(mock_site_context, courses
 
 
 @pytest.mark.django_db
-def test_dashboard_available_courses_are_not_registered(mock_site_context, courses):
+def test_dashboard_available_courses_are_not_registered(
+    mock_site_context, courses, logged_in_client
+):
     """Available courses have is_registered=False and no stale preview annotations.
 
     The dead ``_annotate_preview_context`` helper has been removed; the not-registered
     card now links directly to the course_detail page via the course slug only.
     """
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -209,11 +212,11 @@ def test_dashboard_available_courses_are_not_registered(mock_site_context, cours
 
 @pytest.mark.django_db
 def test_dashboard_available_section_renders_browse_all_link(
-    mock_site_context, courses
+    mock_site_context, courses, logged_in_client
 ):
     """When eligible courses exist, the section shows a Browse-all-courses link."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -227,14 +230,16 @@ def test_dashboard_available_section_renders_browse_all_link(
 
 
 @pytest.mark.django_db
-def test_dashboard_available_section_hidden_when_empty(mock_site_context, courses):
+def test_dashboard_available_section_hidden_when_empty(
+    mock_site_context, courses, logged_in_client
+):
     """With no eligible courses, the whole section (heading + link) disappears."""
     user = UserFactory()
     # Register two and recommend the third -> nothing left to surface.
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     UserCourseRegistrationFactory(user=user, collection=courses[1])
     RecommendedCourseFactory(user=user, collection=courses[2])
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -245,10 +250,12 @@ def test_dashboard_available_section_hidden_when_empty(mock_site_context, course
 
 
 @pytest.mark.django_db
-def test_dashboard_old_all_courses_button_removed(mock_site_context, courses):
+def test_dashboard_old_all_courses_button_removed(
+    mock_site_context, courses, logged_in_client
+):
     """The old bottom 'All Courses' button no longer renders."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -257,11 +264,11 @@ def test_dashboard_old_all_courses_button_removed(mock_site_context, courses):
 
 @pytest.mark.django_db
 def test_dashboard_empty_state_browse_courses_button_present(
-    mock_site_context, courses
+    mock_site_context, courses, logged_in_client
 ):
     """A learner with no registrations still sees the empty-state Browse button."""
     user = UserFactory()
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
@@ -272,13 +279,13 @@ def test_dashboard_empty_state_browse_courses_button_present(
 
 @pytest.mark.django_db
 def test_dashboard_completed_course_in_history_not_available(
-    mock_site_context, courses
+    mock_site_context, courses, logged_in_client
 ):
     """A completed course shows under Learning History, never under Available."""
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     CourseProgressFactory(user=user, course=courses[0], completed_time=timezone.now())
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(reverse("student_interface:dashboard"))
     assert response.status_code == 200
