@@ -149,8 +149,7 @@ def test_anonymous_dashboard_does_not_call_get_dashboard_contributions(
 ):
     """Anonymous GET / must NOT invoke backend.get_dashboard_contributions.
 
-    This is the view-level guard (Phase 2.1 / plan §0.2). The authenticated
-    path still calls it; anonymous must skip it entirely.
+    The authenticated path still calls it; anonymous must skip it entirely.
     """
     client = Client()
     backend_path = "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend.get_dashboard_contributions"

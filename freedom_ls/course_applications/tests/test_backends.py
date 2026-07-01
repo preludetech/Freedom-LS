@@ -422,3 +422,34 @@ class TestGetDashboardContributionsAnonymousUser:
         contributions = backend.get_dashboard_contributions(user=AnonymousUser())
 
         assert contributions == []
+
+
+@pytest.mark.django_db
+class TestIsAccessibleForFree:
+    """ApplicationCourseAccessBackend.is_accessible_for_free (config-only, no queries)."""
+
+    def test_free_course_is_accessible_for_free(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        course = CourseFactory(access_config={"access_type": "free"})
+        backend = ApplicationCourseAccessBackend()
+
+        with django_assert_num_queries(0):
+            assert backend.is_accessible_for_free(course=course) is True
+
+    def test_gated_course_is_not_accessible_for_free(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        course = CourseFactory(access_config={"access_type": "application_gated"})
+        backend = ApplicationCourseAccessBackend()
+
+        with django_assert_num_queries(0):
+            assert backend.is_accessible_for_free(course=course) is False

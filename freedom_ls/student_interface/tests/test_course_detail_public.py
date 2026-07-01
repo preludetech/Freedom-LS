@@ -103,8 +103,8 @@ def test_anonymous_free_course_detail_cta_href_is_access_url(mock_site_context):
 def test_anonymous_gated_course_detail_returns_200(mock_site_context):
     """Anonymous GET of a gated course detail returns 200 — no crash, no login redirect.
 
-    Regression test for spec §3 bug: ApplicationCourseAccessBackend.get_access
-    previously crashed for anonymous users due to an unsafe application DB query.
+    Regression test: ApplicationCourseAccessBackend.get_access previously crashed
+    for anonymous users due to an unsafe application DB query.
     """
     course = _gated_course()
     client = Client()

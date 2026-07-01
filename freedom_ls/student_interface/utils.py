@@ -42,10 +42,6 @@ if TYPE_CHECKING:
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
 
-    # The access backend's RequestUser union (User | AnonymousUser), used for
-    # casts when calling backend methods that don't accept AbstractBaseUser.
-    type BackendUser = User | AnonymousUser
-
 # Status constants
 BLOCKED = "BLOCKED"
 READY = "READY"
@@ -79,9 +75,20 @@ def access_badge_label(is_free: bool) -> str:
     return "Free" if is_free else "By application"
 
 
+def stamp_course_access_badge(course: Course, *, is_accessible_for_free: bool) -> None:
+    """Stamp the access badge label onto a course instance for template rendering.
+
+    Shared by the all_courses catalogue and the dashboard discovery cards so the
+    badge is derived one way; templates read {{ course.access_badge_label }}.
+    """
+    setattr(  # noqa: B010
+        course, "access_badge_label", access_badge_label(is_accessible_for_free)
+    )
+
+
 def get_content_status(
     content_item: Topic | Form | CoursePart | Course,
-    user: User,
+    user: RequestUser,
     next_status: str,
     topic_progress_map: dict[uuid.UUID, TopicProgress],
     form_progress_map: dict[uuid.UUID, FormProgress],
@@ -268,7 +275,7 @@ def _fetch_player_progress_maps(
 
 
 def get_course_index(
-    user: User,
+    user: RequestUser,
     course: Course,
     current_index: int | None = None,
     *,
@@ -289,7 +296,8 @@ def get_course_index(
         tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]
     ] = {}
     if user.is_authenticated and config.DEADLINES_ACTIVE:
-        deadlines_map = get_course_deadlines(user, course)
+        # is_authenticated guard above guarantees a real User here.
+        deadlines_map = get_course_deadlines(cast("User", user), course)
 
     # Bulk-fetch per-item progress once (two queries) instead of one per item.
     # Only needed when the learner can access content: users without access get
@@ -299,8 +307,10 @@ def get_course_index(
     topic_progress_map: dict[uuid.UUID, TopicProgress] = {}
     form_progress_map: dict[uuid.UUID, FormProgress] = {}
     if can_access_content:
+        # can_access_content implies an authenticated, registered user (it comes
+        # from the backend decision), so the cast to User is safe here.
         topic_progress_map, form_progress_map = _fetch_player_progress_maps(
-            user, course.viewable_items()
+            cast("User", user), course.viewable_items()
         )
 
     children = []
@@ -376,7 +386,7 @@ def _apply_deadline_locking(
 
 def create_child_dict_with_flattened_index(
     content_item: Topic | Form | CoursePart,
-    user: User,
+    user: RequestUser,
     course: Course,
     start_index: int,
     next_status: str,
@@ -695,35 +705,28 @@ def get_course_listing(
     - ``COMPLETE`` — registered and the course has a ``completed_time``.
 
     ``is_accessible_for_free`` on each entry comes from the access backend's
-    decision (one call per course). This is the same cost the detail page pays
-    once per course, and the anonymous application query is guarded to zero by
-    the anonymous-safety guard above. No second backend round-trip per card
-    is introduced in the template — the label is stamped here once.
+    config-only ``is_accessible_for_free`` signal (one call per course, no
+    per-user registration queries) — so the catalogue does not scale registration
+    lookups with course count. The label is stamped here once; templates never
+    call the backend.
 
     Used by the all-courses view (see ``views.py``) to populate the listing.
     """
     from freedom_ls.course_access.loader import get_course_access_backend
 
     backend = get_course_access_backend()
-    # Narrow to the union the backend accepts (User | AnonymousUser); at runtime
-    # request.user is always one of the two — AbstractBaseUser is only a wider
-    # static annotation on the function parameter.
-    backend_user = cast("BackendUser", user)
+    courses = visible_courses if visible_courses is not None else get_all_courses()
 
     if not user.is_authenticated:
-        courses = visible_courses if visible_courses is not None else get_all_courses()
         return [
             CourseListingEntry(
                 course,
                 CourseListingStatus.NOT_REGISTERED,
                 0,
-                is_accessible_for_free=backend.get_access(
-                    user=backend_user, course=course
-                ).is_accessible_for_free,
+                is_accessible_for_free=backend.is_accessible_for_free(course=course),
             )
             for course in courses
         ]
-    courses = visible_courses if visible_courses is not None else get_all_courses()
     registered_ids = {c.id for c in get_course_registrations(user)}
     progress_rows = {
         row["course_id"]: row
@@ -734,9 +737,7 @@ def get_course_listing(
 
     entries: list[CourseListingEntry] = []
     for course in courses:
-        is_accessible_for_free = backend.get_access(
-            user=backend_user, course=course
-        ).is_accessible_for_free
+        is_accessible_for_free = backend.is_accessible_for_free(course=course)
         if course.id not in registered_ids:
             entries.append(
                 CourseListingEntry(

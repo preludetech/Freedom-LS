@@ -127,6 +127,19 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
             is_accessible_for_free=False,
         )
 
+    def is_accessible_for_free(self, *, course: Course) -> bool:
+        """Free unless the course is application-gated — config-only, no queries.
+
+        Mirrors the is_accessible_for_free field get_access sets on the gated
+        branches; invalid config falls back to True (the CourseAccessDecision default).
+        """
+        try:
+            config = self.validate_course_config(course.access_config)
+        except ValueError:
+            return True
+        # access_config values are typed Any (opaque JSON); coerce to bool.
+        return bool(config["access_type"] != APPLICATION_GATED)
+
     def get_dashboard_contributions(
         self, *, user: RequestUser
     ) -> list[DashboardContribution]:

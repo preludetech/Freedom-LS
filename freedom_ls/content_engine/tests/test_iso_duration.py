@@ -27,6 +27,26 @@ def test_iso_estimated_duration_returns_empty_string_for_zero(mock_site_context)
 
 
 @pytest.mark.django_db
+def test_iso_estimated_duration_returns_empty_string_for_sub_minute(mock_site_context):
+    """A non-zero duration under 30s rounds to 0 minutes and must return ''.
+
+    Guards against emitting the malformed bare prefix "PT" (invalid ISO-8601),
+    which would leak into the course JSON-LD timeRequired field.
+    """
+    course = CourseFactory(estimated_duration=timedelta(seconds=20))
+    assert course.iso_estimated_duration() == ""
+
+
+@pytest.mark.django_db
+def test_iso_estimated_duration_returns_empty_string_for_thirty_seconds(
+    mock_site_context,
+):
+    """30s rounds to 0 whole minutes (banker's rounding) and must return ''."""
+    course = CourseFactory(estimated_duration=timedelta(seconds=30))
+    assert course.iso_estimated_duration() == ""
+
+
+@pytest.mark.django_db
 def test_iso_estimated_duration_hours_only(mock_site_context):
     """iso_estimated_duration() returns 'PT2H' for exactly 2 hours."""
     course = CourseFactory(estimated_duration=timedelta(hours=2))

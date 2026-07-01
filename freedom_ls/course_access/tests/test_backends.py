@@ -141,6 +141,18 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
 
         assert decision.is_accessible_for_free is True
 
+    def test_is_accessible_for_free_is_true_with_no_queries(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        """The config-only free signal returns True and issues no per-user queries."""
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
+
+        course = CourseFactory(access_config={"access_type": "free"})
+        backend = FreeOnlyCourseAccessBackend()
+
+        with django_assert_num_queries(0):
+            assert backend.is_accessible_for_free(course=course) is True
+
     def test_free_course_decision_carries_free_acquisition_copy(
         self, mock_site_context
     ):

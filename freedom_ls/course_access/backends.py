@@ -90,6 +90,15 @@ class CourseAccessBackend:
         """Return an access decision for this user + course pair."""
         raise NotImplementedError
 
+    def is_accessible_for_free(self, *, course: Course) -> bool:
+        """User-independent free/gated signal for badges and JSON-LD.
+
+        Config-only: issues no per-user queries, so listings can call it once per
+        course without the registration lookups that get_access performs. The value
+        must agree with the is_accessible_for_free field get_access sets.
+        """
+        raise NotImplementedError
+
     def filter_visible(
         self, *, user: RequestUser, courses: QuerySet[Course]
     ) -> QuerySet[Course]:
@@ -235,6 +244,10 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
             acquisition_heading=_FREE_ACQUISITION_HEADING,
             acquisition_subtext=_FREE_ACQUISITION_SUBTEXT,
         )
+
+    def is_accessible_for_free(self, *, course: Course) -> bool:
+        """Always free — the only valid access type for this backend is FREE."""
+        return True
 
     def filter_visible(
         self, *, user: RequestUser, courses: QuerySet[Course]

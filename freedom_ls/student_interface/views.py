@@ -33,7 +33,6 @@ from freedom_ls.student_progress.models import (
 from .utils import (
     IN_PROGRESS,
     READY,
-    access_badge_label,
     count_form_questions,
     form_start_page_buttons,
     get_all_courses,
@@ -47,6 +46,7 @@ from .utils import (
     get_item_part,
     get_recommended_courses,
     get_resume_index,
+    stamp_course_access_badge,
 )
 
 
@@ -171,13 +171,10 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         if course.id in registered_ids or course.id in recommended_ids:
             continue
         setattr(course, "is_registered", False)  # noqa: B010
-        decision = backend.get_access(user=request.user, course=course)
-        setattr(  # noqa: B010
+        stamp_course_access_badge(
             course,
-            "access_badge_label",
-            access_badge_label(decision.is_accessible_for_free),
+            is_accessible_for_free=backend.is_accessible_for_free(course=course),
         )
-        setattr(course, "is_accessible_for_free", decision.is_accessible_for_free)  # noqa: B010
         available_courses.append(course)
         if len(available_courses) == 3:
             break
@@ -223,12 +220,9 @@ def all_courses(request: HttpRequest) -> HttpResponse:
         course = entry.course
         setattr(course, "listing_status", entry.status)  # noqa: B010
         setattr(course, "progress_percentage", entry.progress_percentage)  # noqa: B010
-        setattr(  # noqa: B010
-            course,
-            "access_badge_label",
-            access_badge_label(entry.is_accessible_for_free),
+        stamp_course_access_badge(
+            course, is_accessible_for_free=entry.is_accessible_for_free
         )
-        setattr(course, "is_accessible_for_free", entry.is_accessible_for_free)  # noqa: B010
         courses_with_attrs.append(course)
 
     # JSON-LD for schema.org/ItemList — each item carries its absolute detail URL.
@@ -270,12 +264,10 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     # invalid-config course, so neither can be derived from the other.
     is_registered = get_is_registered(user=request.user, course=course)
     decision = get_course_access_backend().get_access(user=request.user, course=course)
-    # get_course_index and _detail_cta_label both require an authenticated User.
-    # course_detail is reachable by anonymous users (public page) so we cast here;
-    # the is_registered guard ensures _detail_cta_label is only called when authed.
-    authed_user = cast("User", request.user)
+    # get_course_index is anonymous-safe (it fetches user-scoped progress/deadlines
+    # only behind its own is_authenticated / can_access_content guards).
     children = get_course_index(
-        user=authed_user, course=course, can_access_content=decision.can_access_content
+        user=request.user, course=course, can_access_content=decision.can_access_content
     )
     start_url: str | None
     cta_label: str | None
@@ -286,7 +278,8 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         start_url = _detail_start_url(
             course, is_registered=True, has_items=bool(children)
         )
-        cta_label = _detail_cta_label(course, authed_user)
+        # is_registered implies an authenticated User, so the cast is safe here.
+        cta_label = _detail_cta_label(course, cast("User", request.user))
     else:
         # Not-registered: use the backend's acquisition affordance (e.g. "Enrol for free"
         # for free courses, "Apply now" for application-gated courses). May be None for

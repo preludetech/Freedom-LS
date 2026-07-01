@@ -245,12 +245,15 @@ class Course(MarkdownContent, TitledContent):
         return "~" + " ".join(parts) if parts else ""
 
     def iso_estimated_duration(self) -> str:
-        """ISO-8601 duration string (e.g. 'PT1H30M'). Returns '' when unset or zero."""
+        """ISO-8601 duration string (e.g. 'PT1H30M'). Returns '' when unset, zero,
+        or under half a minute (which would otherwise round to a bare, invalid 'PT')."""
         # Round to whole minutes the same way display_estimated_duration does, so
         # the human label and the machine-readable duration never disagree.
-        if not self.estimated_duration or not self.estimated_duration.total_seconds():
+        if not self.estimated_duration:
             return ""
         total_minutes = round(self.estimated_duration.total_seconds() / 60)
+        if total_minutes == 0:
+            return ""
         hours, minutes = divmod(total_minutes, 60)
         parts: list[str] = ["PT"]
         if hours:

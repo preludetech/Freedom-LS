@@ -202,3 +202,34 @@ def test_anonymous_user_respects_visible_courses_filter(mock_site_context):
     entry_courses = [e.course for e in entries]
     assert visible_course in entry_courses
     assert hidden_course not in entry_courses
+
+
+@pytest.mark.django_db
+def test_authenticated_listing_query_count_does_not_scale_with_courses(
+    mock_site_context,
+):
+    """The authenticated listing must not issue registration queries per course.
+
+    Regression guard: the access badge's free/gated signal now comes from the
+    config-only backend.is_accessible_for_free (no per-user queries), so the
+    query count for a large catalogue must equal that of a small one.
+    """
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    user = UserFactory()
+
+    CourseFactory()
+    with CaptureQueriesContext(connection) as few:
+        get_course_listing(user)
+    few_count = len(few.captured_queries)
+
+    for _ in range(9):
+        CourseFactory()
+    with CaptureQueriesContext(connection) as many:
+        get_course_listing(user)
+    many_count = len(many.captured_queries)
+
+    # 1 course vs 10 courses must issue the same number of queries — a per-course
+    # backend.get_access would have added ~2 registration exists() queries each.
+    assert many_count == few_count
