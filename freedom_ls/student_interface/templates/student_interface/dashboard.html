@@ -19,24 +19,7 @@
                     </h1>
                 </div>
             {% else %}
-                {% comment %}
-                Anonymous hero — shown instead of the personalised greeting.
-                Gives visitors a clear value proposition and a single CTA to
-                browse the course catalogue.
-                {% endcomment %}
-                <div class="text-left space-y-4 py-4 lg:py-8">
-                    <h1 class="text-3xl lg:text-4xl font-heading font-bold text-midnight">
-                        Teach the way your learners need.
-                    </h1>
-                    <p class="text-base lg:text-lg text-slate max-w-2xl leading-relaxed">
-                        Most learning platforms are digital textbooks — linear, rigid, and full of opinions about how learning should work. This is different: a learning system that flexes around your learners, not the other way around.
-                    </p>
-                    <div class="pt-2">
-                        <c-button href="{% url 'student_interface:courses' %}">
-                            Browse all courses
-                        </c-button>
-                    </div>
-                </div>
+                {% include "student_interface/partials/anonymous_hero.html" %}
             {% endif %}
 
             {% comment %}
