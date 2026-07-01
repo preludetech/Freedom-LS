@@ -21,6 +21,7 @@ A course can contain COURSE_PARTs, but they are not required. Course parts are l
 | `icon_fallback` | `str` | No | `"<iconset>:<glyph>"` (e.g. `"phosphor:drone"`); only valid when `icon` is also set |
 | `learning_outcomes` | `list[str]` | No | "What you'll learn" bullet list |
 | `difficulty` | `beginner`, `intermediate`, `advanced`, or `all_levels` | No | Difficulty level |
+| `visibility` | `published`, `coming_soon`, or `hidden` | No | Course visibility lifecycle state. Defaults to `published` when omitted. |
 | `estimated_duration` | `str` | No | Duration string e.g. `"1:30:00"` (HH:MM:SS) |
 | `children` | `list` | No | Explicit ordered list of child paths; if omitted, auto-discovered alphabetically |
 | `content` | `str` | No | Optional markdown intro body |

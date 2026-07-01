@@ -18,4 +18,4 @@ GOTCHA: `Course.children()`/`children_flat()`/`viewable_items()` are memoized pe
 
 Build viewable content via `ContentCollectionItemFactory(collection_object=course, child_object=topic, site=site)` (dual GenericFK). See [[reference_demo_content_loader]] and [[reference_verified_student_setup]].
 
-DemoDev domain is stored as `127.0.0.1:8000` (NOT bare `127.0.0.1` — that is the separate `Demo` site). QA testers hitting `http://127.0.0.1` without a port land on `Demo`; confirm the port is 8000 to hit DemoDev data.
+DemoDev domain is stored as `127.0.0.1:8000` in the Site record, BUT in dev this domain is irrelevant to site resolution: `config/settings_dev.py` sets `FORCE_SITE_NAME = "DemoDev"`, so `get_cached_site()` (freedom_ls/site_aware_models/models.py) always returns DemoDev for EVERY request regardless of host/port. So `runserver` on ANY port (e.g. 127.0.0.1:8903) serves DemoDev data — no hosts file/domain/query-param needed. The header shows "FirstClass" because that is `HEADER_TITLE` branding in settings_dev.py, NOT a site; testers often mistake it for a different site.

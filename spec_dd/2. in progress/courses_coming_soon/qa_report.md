@@ -1,128 +1,134 @@
 # QA Report — Coming Soon & Hidden Courses
 
-**Feature:** Course visibility (`published` / `coming_soon` / `hidden`) with student express-interest and educator demand/visibility management.
-**Date:** 2026-06-30
+**Feature:** Course visibility (`published` / `coming_soon` / `hidden`), express-interest flow, and educator demand view.
+**Date:** 2026-07-01
 **Branch:** `courses_coming_soon`
-**Site:** DemoDev (dev server forces `FORCE_SITE_NAME = "DemoDev"`, so the random port still resolves to DemoDev data)
-**Test plan:** `3. frontend_qa.md`
-**Tooling:** Playwright MCP. Test data provisioned via the `fls:qa-data-helper` agent (idempotent `qa_create_course_visibility` management command).
-
-## Test data used
-
-| Shape | Slug | Visibility |
-|---|---|---|
-| published-free | `qa-published-free-visibility` | `published` (free) |
-| coming-soon | `qa-coming-soon-visibility` | `coming_soon` |
-| hidden, unregistered | `qa-hidden-visibility` | `hidden` |
-| hidden, registered | `qa-hidden-registered-visibility` | `hidden` |
-
-- Student: `demodev_visibility_student@email.com` (registered in `qa-hidden-registered-visibility` + `qa-published-free-visibility`; **not** registered in `qa-hidden-visibility`).
-- Educator: `demodev_visibility_educator@email.com`.
+**Site:** DemoDev (dev server forces `FORCE_SITE_NAME = "DemoDev"`, so every request on any port resolves to DemoDev; the "FirstClass" text in the header is just `HEADER_TITLE` branding, not a separate site).
+**Tooling:** Playwright MCP, desktop 1920×1080 + mobile 375×812 + tablet 768×1024.
 
 ## Result summary
 
-| Test | Surface | Result |
-|---|---|---|
-| 1 | Coming-soon discoverable + badged (list + card) | ✅ Pass |
+**All 8 tests passed. No bugs found.** Mobile and tablet responsive checks also passed with no layout, navigation, or touch-target issues.
+
+Test data was provisioned by the `fls:qa-data-helper` agent (accounts + four visibility courses on DemoDev). Test 8's `coming_soon → published` flip (and the reset back) were also performed by that agent via targeted `save(update_fields=["visibility"])`, preserving the interest record.
+
+| Test | Description | Result |
+|------|-------------|--------|
+| 1 | Coming-soon course discoverable + badged, no CTA / no interest control in listings | ✅ Pass |
 | 2 | Express interest HTMX swap + idempotency + remove | ✅ Pass |
-| 3 | Coming-soon detail page (accessible, funnel copy, no content access) | ✅ Pass |
-| 4 | Hidden course invisible + 404 | ✅ Pass |
-| 5 | Hidden-registered stays available + content accessible | ✅ Pass |
+| 3 | Coming-soon detail page (accessible, funnel copy, interest control, no content access) | ✅ Pass |
+| 4 | Hidden course invisible to unregistered student + direct URL 404 | ✅ Pass |
+| 5 | Hidden course stays available to a registered student | ✅ Pass |
 | 6 | Published course unchanged | ✅ Pass |
-| 7 | Educator demand view + visibility management | ✅ Pass — see Finding 1 (resolved) |
-| 8 | No scarcity / no notification promises | ✅ Pass |
-
-Mobile (375×812) and tablet (768×1024) layouts were spot-checked for the new student surfaces — all clean (see below). Django-admin screens were not viewport-tested per the QA command.
+| 7 | Educator demand view + read-only visibility (incl. Django admin) | ✅ Pass |
+| 8 | `coming_soon → published` transition, enrollable, no notification | ✅ Pass |
 
 ---
 
-## Findings
+## Test 1 — Coming-soon course is discoverable and badged ✅
 
-### Finding 1 — Educator cannot edit course visibility from the educator Details panel (Test 7) — RESOLVED: working as intended
-
-**Resolution:** This is **not** a bug. The spec has been clarified: course `visibility` is configured **only** in the course content front-matter (loaded into the DB at import), and is **not** editable in the educator interface or the Django admin. So the educator Details panel correctly renders `visibility` **read-only** with no Edit affordance — that is the intended behaviour.
-
-**Original observation:** Logged in as the educator, the course Details panel showed `visibility` as plain read-only text (`coming_soon`) with no Edit button/form.
-
-![](screenshots/desktop_7.6_details_panel_no_edit.png)
-
-**What changed:** the now-unwanted editing code added by batch ccs-5 was removed — the educator `CourseForm` and the `editable`/`form_class` on `CourseDetailsPanel` are gone (panel back to read-only `["title", "category"]`), and the Course admin now lists `visibility` in `readonly_fields` (still shown for support, not editable). The spec (§9, §14), plan (Task 5.3) and QA plan (Test 7) were updated to match. Tests now assert the lock instead of editability.
-
-**How visibility is flipped:** edit the course `course.md` front-matter `visibility:` value (or use the `qa_create_course_visibility` management command) and re-import. Validated end-to-end: setting `coming_soon` → `published` this way is immediately reflected on the student side — the formerly-coming-soon course becomes a normal enrollable course (normal "Start" CTA, no "Coming soon" badge, no express-interest control, no launch notification anywhere). See Test 7 evidence below.
-
-The QA data helper correctly **refused** to grant the educator `change_course` (flagging it as a privilege escalation) — consistent with the now-confirmed design that educators do not change visibility.
-
----
-
-## Passing tests — evidence
-
-### Test 1 — Coming-soon discoverable + badged
-All-courses list and dashboard card both show the coming-soon course with a **"Coming soon"** badge/eyebrow and an **"I'm interested"** control, and **no** Enrol/Start/Apply button. The hidden (unregistered) course does not appear; the published and hidden-registered courses appear normally.
+- All-courses page (`/courses/`): the `qa-coming-soon-visibility` course is listed with a **"Coming soon"** badge and is a **plain link to its detail page** (`/courses/qa-coming-soon-visibility/detail/`). No Enrol/Start/Apply button and **no "I'm interested"** control in the listing.
+- Dashboard card/grid view: same presentation — "Coming soon" eyebrow, plain detail link, no CTA.
+- The unregistered `qa-hidden-visibility` course does **not** appear in either surface.
 
 ![](screenshots/desktop_1.1_all_courses.png)
-![](screenshots/desktop_1.4_dashboard_card.png)
+![](screenshots/desktop_1.4_dashboard_cards.png)
 
-### Test 2 — Express interest (HTMX) + idempotency + remove
-Clicking **"I'm interested"** swaps the CTA in place (no reload) to an **"Interested"** state with a quiet **"Remove interest"** link and the message *"This course will show up here when it opens."* — no email/notification promise. State persisted across reload (exactly one interest record, confirmed by the educator interest count = 1). **"Remove interest"** swaps back to **"I'm interested"** immediately; also persists.
+## Test 2 — Express interest (HTMX swap) and idempotency ✅
 
-![](screenshots/desktop_2.1_interested_swap.png)
+On the coming-soon detail page the express-interest control swaps **in place with no page reload**:
 
-### Test 3 — Coming-soon detail page
-Detail page is accessible (200). Reads as coming-soon (*"Register your interest and it'll show up here when it opens."*) — not the free "One click. No credit card." nor gated "Application required" copy. Primary affordance is the express-interest control reflecting the current state. The lesson is **Locked**, and navigating directly to the player URL (`/courses/<slug>/1/`) **redirects back to the detail page** — no content access.
+- Not-interested → **"I'm interested"** button.
+- Click → immediately swaps to an **"Interested"** confirmation with a quiet **"Remove interest"** secondary button.
+- Reload → state persists as **"Interested"** (exactly one interest recorded; the educator interest count later reads `1`).
+- Click **"Remove interest"** → swaps back to **"I'm interested"**; reload confirms not-interested persists.
+
+The copy sets a soft expectation (*"Register your interest and we'll let you know when the course is ready."*) with **no scarcity** (no queue position, count, or countdown).
+
+![](screenshots/desktop_2.1_not_interested.png)
+![](screenshots/desktop_2.2_interested.png)
+
+## Test 3 — Coming-soon detail page ✅
+
+- Detail page loads (200, not 404).
+- Reads as "coming soon": eyebrow "Coming soon", Enrolment "Coming soon", funnel copy — **not** the free "One click. No credit card." nor a gated "Application required" copy.
+- Primary affordance is the **express-interest control** reflecting current interest state — not a plain enrol link.
+- No content access: the outline topic is marked **Locked**, and navigating directly to the player URL (`/courses/qa-coming-soon-visibility/1/`) **redirects back to the detail page**.
 
 ![](screenshots/desktop_3.1_coming_soon_detail.png)
 
-### Test 4 — Hidden course invisible + 404
-The hidden (unregistered) course appears nowhere in discovery. Direct navigation to its detail URL returns **HTTP 404** (confirmed via fetch — `404`, not a redirect or login prompt).
+## Test 4 — Hidden course invisible to unregistered student ✅
+
+- `qa-hidden-visibility` (student not registered) does not appear anywhere in discovery (confirmed in Test 1).
+- Direct navigation to `/courses/qa-hidden-visibility/detail/` returns **HTTP 404** — no redirect, no login prompt that would confirm existence.
 
 ![](screenshots/desktop_4.4_hidden_404.png)
 
-### Test 5 — Hidden-registered stays available
-For the registered student, `qa-hidden-registered-visibility` appears in the dashboard "In Progress" list, the detail page loads (200), and the content/player is accessible despite the hidden state — mid-course access preserved.
+## Test 5 — Hidden course stays available to a registered student ✅
 
-![](screenshots/desktop_5.4_hidden_registered_content.png)
+- `qa-hidden-registered-visibility` appears in the student's registered/in-progress lists and is openable.
+- Its content player (`/courses/qa-hidden-registered-visibility/1/`) loads (200) and the Intro Topic is accessible — mid-course access is preserved despite the hidden state.
 
-### Test 6 — Published course unchanged
-`published-free` shows normal "Free · open" / "One click. No credit card." / "Start" CTA, no coming-soon badge, no express-interest control, content accessible per access type.
+![](screenshots/desktop_5.3_hidden_registered_content.png)
+
+## Test 6 — Published courses unchanged ✅
+
+- `qa-published-free-visibility` detail page shows the normal **"Start course"** CTA with "Free · open to everyone / One click. No credit card." copy.
+- No coming-soon badge, no express-interest control; the outline topic is a normal clickable link ("Not started"), and content is accessible per the free access type.
 
 ![](screenshots/desktop_6.1_published_detail.png)
 
-### Test 7 — Educator demand view (list + interest count + interested-students panel)
-The educator course-management list shows a **Visibility** column and an **Interest** column. The coming-soon course shows interest count **1** (matching the single student who expressed interest); other courses show their states (Published / Hidden / Coming soon).
+## Test 7 — Educator demand view + visibility management ✅
 
-![](screenshots/desktop_7.3_educator_course_list.png)
+- Educator course-management list (`/educator/courses`) shows a **Visibility** column (Coming soon / Hidden / Hidden / Published) and an **Interest** column. The coming-soon course shows an interest count of **1**, matching the student who expressed interest.
+- The coming-soon course's detail view has an **"Interested Students"** panel listing the student's name, email, and the timestamp of interest (July 1, 2026, 4:49 p.m.).
+- **Visibility is read-only** in the educator interface — there is no Edit affordance for it.
+- **Django admin**: `CourseAdmin.readonly_fields = ("slug", "visibility")`. The change form renders "Visibility: Coming soon" as static text with **no editable input** (`[name="visibility"]` is absent from the form).
 
-The coming-soon course's detail view includes an **Interested Students** panel listing the student name, email, and the timestamp they expressed interest.
-
+![](screenshots/desktop_7.3_educator_courses.png)
 ![](screenshots/desktop_7.5_interested_students_panel.png)
+![](screenshots/desktop_7.7_admin_visibility_readonly.png)
 
-**Step 7 (visibility flip → enrollable), validated via the Django admin path** (see Finding 1): after setting visibility to `published`, the student sees the course as a normal enrollable course — "Start" CTA, no "Coming soon" badge, no express-interest control, no launch notification.
+## Test 8 — `coming_soon → published` transition ✅
 
-![](screenshots/desktop_7.7_now_published_detail.png)
+After flipping `qa-coming-soon-visibility` to `visibility = published` (via the qa-data-helper agent, interest record preserved 1→1):
 
-### Test 8 — No scarcity / no notification promises
-Across every coming-soon student surface (dashboard card, all-courses row, detail page, and the post-click confirmation swap) there is **no** queue position, **no** "X people ahead", **no** countdown, **no** interest count shown to the student, and **no** copy promising an email/in-app notification on launch. The interest **count** is shown only in the educator interface.
+- In discovery the course loses its "Coming soon" badge and shows a normal enrollable presentation (**"Not registered"** badge, plain detail link).
+- On the detail page it now shows a normal **"Start"** CTA with free-access copy and **no express-interest control**.
+- **No automated launch notification is sent** — confirmed at the code level: there is no `post_save`/signal/`send_mail` trigger on the transition anywhere in `course_interest` / `content_engine`; the `CourseInterest` model docstring notes notify-on-launch (`notified_at`) is not yet implemented (spec §10). Dev mail is routed to Mailpit (`EMAIL_HOST=localhost:1025`), so any mail would be observable — none is generated.
+
+The course was then reset back to `coming_soon` (interest intact) to leave the scenario re-runnable.
+
+![](screenshots/desktop_8_after_flip_discovery.png)
+![](screenshots/mobile_8_published_after_flip_detail.png)
+
+## Test 8 (cont.) — No scarcity mechanics ✅
+
+Across all coming-soon surfaces (dashboard cards, all-courses rows, detail page, and the interested-confirmation swap) there is **no** queue position, "X people ahead", countdown, or interest count shown to students — only a "Coming soon" badge and the soft "we'll let you know when the course is ready" expectation.
 
 ---
 
-## Mobile & tablet
+## Responsive checks
 
-**Mobile (375×812)** — Dashboard cards stack vertically; the coming-soon card renders the badge, "Interested"/"Remove interest" controls, and helper text without overflow. The detail page stacks the hero stats and express-interest panel into a single column. The express-interest HTMX toggle works in both directions at mobile width. Touch targets for the interest controls are adequate.
+**Mobile (375×812):** dashboard, all-courses, and the coming-soon detail page all render single-column with no overflow or overlap. The coming-soon card keeps its badge; the express-interest control renders as a full-width, comfortably-sized touch target.
 
 ![](screenshots/mobile_1.4_dashboard.png)
-![](screenshots/mobile_3.1_coming_soon_detail.png)
 ![](screenshots/mobile_1.1_all_courses.png)
+![](screenshots/mobile_3.1_coming_soon_detail.png)
 
-**Tablet (768×1024)** — The site uses the desktop nav at this width (no hamburger). All-courses rows lay out horizontally (thumbnail + content + badge) and the detail page's express-interest panel spans the column cleanly. No crowding or overflow.
+**Tablet (768×1024):** the header user-menu (Profile / Sign Out) opens correctly; the dashboard's In-Progress and Available-courses sections and the coming-soon detail layout adapt sensibly at this width.
 
-![](screenshots/tablet_1.1_all_courses.png)
+![](screenshots/tablet_1.4_dashboard_menu.png)
 ![](screenshots/tablet_3.1_coming_soon_detail.png)
 
 ---
 
-## Notes / difficulties
+## Notes / tangential observations (not defects)
 
-- **Site resolution:** the QA data helper initially warned that DemoDev's Site domain is `127.0.0.1:8000`, implying the app had to be hit on port 8000. This is not the case under dev settings — `config/settings_dev.py` sets `FORCE_SITE_NAME = "DemoDev"`, so the app resolves to DemoDev on any port. Testing on the random port (8832) showed DemoDev data correctly.
-- **Privilege escalation refused (working as intended):** to exercise Test 7 step 6 through the educator panel, the educator would need object-level `change_course`. The `fls:qa-data-helper` agent's safety classifier blocked granting it (escalation requiring user authorization) and the staged change was reverted, leaving no permission change in the DB and the data command in its original state. The visibility-flip behaviour was therefore validated via the Django admin superuser path instead. See Finding 1.
-- **Django Debug Toolbar** is enabled in dev and overlaps content on narrow viewports; it was hidden before capturing mobile/tablet screenshots. This is a dev-only artifact, not a feature defect.
-- **Pre-existing debug branch badge** (`courses_coming_soon`, bottom-left) appears on all pages — expected dev affordance, used in Step 3 to confirm the correct branch/port.
+- **Header shows "FirstClass" while the site is DemoDev.** This is expected: `config/settings_dev.py` sets `HEADER_TITLE = "FirstClass"` and `FORCE_SITE_NAME = "DemoDev"`. Not a bug.
+- **Django Debug Toolbar overlapped the top-left user-menu click target** at mobile/tablet widths, requiring the toolbar to be hidden before the menu could be clicked in automation. This is a dev-only artifact (the toolbar is not present in production) and does not reflect a frontend defect.
+- The QA fixture course is literally titled "QA Coming Soon Course (Visibility)"; that text in the heading is the course **name**, independent of its visibility state (which is why, when flipped to published, the title still reads "Coming Soon" but the funnel/CTA correctly switch to the published presentation).
+
+## Nothing skipped
+
+No tests were skipped. All required data existed (or was created/adjusted by the `fls:qa-data-helper` agent), and every test in the plan — including the Test 8 launch transition and the Django-admin read-only check — was executed.

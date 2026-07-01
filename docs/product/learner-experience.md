@@ -6,6 +6,7 @@ _Last updated: 2026-07-01_
 
 - Anonymous (logged-out) visitors can browse the home page, the course catalogue, and individual course detail pages without creating an account. Login is required only at the committing action (enrolment or application). The three personalised dashboard sections (In Progress, Recommended, Completed) are shown only to authenticated learners; anonymous visitors see a value-proposition hero and a discovery section instead.
 - Each course listing entry shows an **access-model badge** (Free / By application) so a visitor can tell the access model before clicking through. Each course displays learning outcomes, difficulty, estimated duration, and a description; the acquisition CTA wording is action-forward: free courses show "Enrol for free", application-gated courses show "Apply now" (or "View my application" for a returning applicant).
+- Independently of access type, a course also has a visibility state — published, coming soon, or hidden — that governs whether it's discoverable and enrollable; see [Course Visibility](#course-visibility-coming-soon--hidden) below.
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
 - Hard deadlines lock uncompleted content after expiry; soft deadlines show an overdue indicator without locking.
@@ -44,6 +45,44 @@ Each entry shows an **access-model badge** ("Free" or "By application") so a vis
 
 For authenticated learners, the listing additionally shows registration status (not registered, registered/in progress, or completed) and allows navigating directly to a registered course to resume. For anonymous visitors the "Not registered" status eyebrow is suppressed — the access badge serves as the at-a-glance signal instead. Card links point to the public course detail page for all visitors.
 
+A course set to "coming soon" also appears in this listing, clearly badged, but as a plain link to its detail page rather than a course card with a registration action — there is no enrol, apply, or express-interest control on the listing itself. A "hidden" course does not appear in this listing at all, unless the learner is already registered for it. See [Course Visibility](#course-visibility-coming-soon--hidden).
+
+![All-courses listing with a "Coming soon"-badged course](screenshots/learner_coming_soon_listing.png)
+
+## Course Visibility (Coming Soon & Hidden)
+
+Independently of a course's access type (free or application-gated), every course also has a **visibility** state: **published**, **coming soon**, or **hidden**. Visibility governs whether a course is discoverable and enrollable; access type governs how a learner enrols once it is. The two combine freely — for example, an application-gated course can be coming soon.
+
+- **Published** is the default and is unchanged from the rest of this document: the course is discoverable everywhere and access is decided entirely by its access type.
+- **Coming soon** courses are discoverable everywhere and clearly badged "Coming soon", but are not yet enrollable.
+- **Hidden** courses are removed from discovery entirely.
+
+A learner who is **already registered** for a course is unaffected by its visibility. Whether the course is coming soon or hidden, it stays on their dashboard, is reachable by direct URL, its content stays open, and they see the normal registered CTA. A visibility change never disrupts a learner partway through a course.
+
+### Coming soon
+
+![Coming-soon course detail page with the "I'm interested" control](screenshots/learner_coming_soon_detail.png)
+
+In the course listing and on the dashboard, a coming-soon course is badged "Coming soon" and is a plain link through to its detail page — there is no enrol, apply, or express-interest control on the card or row itself.
+
+On the course detail page, an unregistered learner sees an "I'm interested" control in place of the usual Start/Apply CTA. This expresses interest in the course — a lightweight, capacity-free waitlist — rather than enrolling the learner. Clicking it swaps the page, without a reload, to a quiet "Interested" confirmation alongside a "Remove interest" secondary action, so the learner can change their mind. Expressing interest is idempotent: clicking repeatedly (or across visits) never creates more than one interest record for that learner and course.
+
+![Detail page after expressing interest, showing "Interested" and "Remove interest"](screenshots/learner_coming_soon_interested.png)
+
+The confirmation copy sets a soft expectation that the learner will be told when the course is ready. In the current release, expressing interest only records that interest — no email or in-app notification is sent when the course later launches, because FLS has no notification system yet. Notify-on-launch is planned future work; see [roadmap](./roadmap.md).
+
+There is deliberately no scarcity signalling anywhere in this flow: no queue position, no count of other interested students, and no countdown to launch.
+
+A coming-soon course's content stays locked: a learner who is not registered cannot open the course player, and is sent back to the detail page if they try.
+
+### Hidden
+
+A hidden course is removed from discovery entirely — it does not appear in the course listing, the dashboard, or any other browse surface. Its detail page returns a "not found" result for a learner who isn't already registered, the same as if the course didn't exist; a hidden course never confirms its own existence to a student who stumbles onto its URL.
+
+### Setting visibility
+
+Visibility is set per course in the course's content file and takes effect on import; it is not something a learner or educator toggles in the app. See [content editing workflow](./content-editing-workflow.md) for how it's authored and [configuration and extension](./configuration-and-extension.md) for how access types and backends interact with it. The educator-facing view of visibility (badges, interest counts, drill-down to interested students) is described in [educator-interface](./educator-interface.md).
+
 ## Course Detail Page
 
 ![Course detail page](screenshots/learner_course_detail.png)
@@ -67,6 +106,8 @@ The CTA label is action-forward and does not mention login; an anonymous visitor
 
 **Progress-aware CTA (already-registered learners).** For learners who are already enrolled, the detail page shows a progress-aware CTA regardless of access model: "Start course", "Continue", or "Review course", pointing at the appropriate position in the course.
 
+**Visibility overrides the CTA.** A course marked "coming soon" replaces the acquisition CTA with an "I'm interested" express-interest control, and a "hidden" course's detail page is not reachable at all for a learner who isn't already registered — both are described in [Course Visibility](#course-visibility-coming-soon--hidden).
+
 ## Deferred-login Intent Completion
 
 When an anonymous visitor clicks an acquisition CTA ("Enrol for free" or "Apply now"), they are sent through the standard full-page login or signup flow via a `?next=` parameter. After authenticating, their intended action completes automatically:
@@ -80,7 +121,7 @@ This intent is preserved even through the new-user signup path that requires com
 
 Because the catalogue and course detail pages are public, they are crawlable. Each page emits a per-page `<title>` and `<meta name="description">`. Course detail pages include `schema.org/Course` JSON-LD structured data (populated only from fields that exist in the model: title, description, difficulty, estimated duration, learning outcomes, and whether the course is accessible for free). The catalogue page includes `schema.org/ItemList` JSON-LD covering the visible courses and their detail URLs.
 
-The installation serves a dynamic per-site `sitemap.xml` listing the catalogue and all course detail pages, and a `robots.txt` that allows crawling of the public course paths and references the current site's sitemap. All URLs in structured data and the sitemap are absolute and tenant-correct. For details of per-tenant URL isolation, see [Multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
+The installation serves a dynamic per-site `sitemap.xml` listing the catalogue and course detail pages, and a `robots.txt` that allows crawling of the public course paths and references the current site's sitemap. The sitemap follows the same visibility rules as the catalogue: hidden courses are excluded, while coming-soon courses (whose detail pages are publicly reachable) are included. All URLs in structured data and the sitemap are absolute and tenant-correct. For details of per-tenant URL isolation, see [Multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
 
 ## Self-Registration
 
@@ -89,6 +130,8 @@ When a learner enrols in a free course from its detail page, they are registered
 Access is enforced server-side: a learner cannot self-register for an application-gated course by guessing a URL. Attempting to do so routes them into the application flow instead. Administrator and cohort enrolment deliberately bypass this gate and work for any course regardless of access type.
 
 Content within a course is also gated consistently: a learner who is not entitled to a course's content is redirected to the course detail page rather than reaching item content directly.
+
+This same chokepoint also enforces course visibility, for every access type: a learner cannot self-register for, apply to, or open the content of a "coming soon" or "hidden" course by guessing a URL. See [Course Visibility](#course-visibility-coming-soon--hidden).
 
 ## Applying to a Course
 

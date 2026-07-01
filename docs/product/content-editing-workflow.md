@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-06-23_
+_Last updated: 2026-07-01_
 
 ## Summary
 
@@ -49,6 +49,22 @@ access_config:
 When `access_config` is absent the course behaves as a free course — the default. Invalid configuration (an unrecognised `access_type` value or an unknown key) is rejected at content-load time with a file-located error message, consistent with the rest of content validation.
 
 Which access types a deployment supports, and how the active backend is selected, are described in [configuration and extension](./configuration-and-extension.md). The learner-facing experience for application-gated courses is described in [learner experience](./learner-experience.md).
+
+## Course Visibility
+
+A course's visibility — published, coming soon, or hidden — is configured through the same frontmatter-and-`content_save` workflow as every other course property. There is no admin or educator toggle; changing a course's visibility (e.g. flipping it from coming-soon to published at launch) means editing the frontmatter and re-running `content_save`.
+
+To mark a course as coming soon or hidden, add a `visibility` key to its YAML frontmatter:
+
+```yaml
+visibility: coming_soon
+```
+
+Supported values are `published`, `coming_soon`, and `hidden`. When `visibility` is absent the course behaves as `published` — the default. Invalid configuration (an unrecognised `visibility` value) is rejected at content-load time with a file-located error message, consistent with the rest of content validation.
+
+`visibility` is a separate, top-level course field from `access_config` — it is not part of the access-type mechanism described above, and the two are validated independently. A course's visibility (published / coming-soon / hidden) and its access type (free / application-gated) compose freely: for example, an application-gated course can be coming soon.
+
+The learner-facing effect of each visibility state is described in [learner experience](./learner-experience.md). How visibility is enforced uniformly across access backends is described in [configuration and extension](./configuration-and-extension.md).
 
 ## Validation
 
