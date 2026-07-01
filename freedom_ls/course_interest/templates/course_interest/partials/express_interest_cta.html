@@ -36,7 +36,7 @@ Confirmation copy deliberately does NOT promise a notification (spec §7.2, §10
         <form hx-post="{% url 'course_interest:express_interest' course_slug=course.slug %}"
               hx-target="#express-interest-cta-{{ course.slug }}"
               hx-swap="outerHTML">
-            <c-button type="submit" variant="primary" icon_left="star">
+            <c-button type="submit" variant="primary" class="w-full">
                 I'm interested
             </c-button>
         </form>
