@@ -20,7 +20,7 @@ The student dashboard (`student_interface:dashboard`) serves as the home page at
 
 ![Anonymous home page with value-proposition hero and course discovery](screenshots/learner_home_anonymous.png)
 
-**Authenticated learners** see the dashboard unchanged from before: the personalised greeting, and three sections:
+**Authenticated learners** see the personalised greeting and three sections:
 
 - **In progress** — courses the learner has started but not completed, ordered by recent activity.
 - **Recommended** — courses surfaced via `RecommendedCourse` records (set by site administrators).
@@ -38,7 +38,7 @@ The site header shows **Log in** and **Sign up** affordances for anonymous visit
 
 The course listing page (`student_interface:courses`) is publicly accessible — no login is required to browse it. It shows all courses available on the current site.
 
-Each entry shows an **access-model badge** ("Free" or "By application") so a visitor can identify the access model before clicking through to the detail page. The badge is provided by the active course-access backend and is not read from the course model configuration directly in templates.
+Each entry shows an **access-model badge** ("Free" or "By application") so a visitor can identify the access model before clicking through to the detail page.
 
 ![Course catalogue with Free and By-application access badges](screenshots/learner_catalogue_access_badges.png)
 
@@ -54,7 +54,7 @@ The course detail page (`student_interface:course_detail`) is publicly accessibl
 - **Difficulty** — one of: beginner, intermediate, advanced, all levels.
 - **Estimated duration** — a human-readable display of the `estimated_duration` field.
 - **Description** — full course markdown description.
-- **Access-model signal** — the "Enrolment" stat near the CTA shows "Free · open" for free courses and "By application" for application-gated courses. This signal is provided by the active course-access backend.
+- **Access-model signal** — the "Enrolment" stat near the CTA shows "Free · open" for free courses and "By application" for application-gated courses.
 - **Table of contents** — all items render as blocked (no URLs) for visitors who are not registered, which is the expected behaviour for both anonymous and not-yet-registered authenticated visitors.
 
 **Acquisition CTA (not-registered visitors).** The CTA label and destination are owned by the active course-access backend, so a future access model can supply its own wording without changing the detail page. For the two access models that exist today:
@@ -65,7 +65,7 @@ The course detail page (`student_interface:course_detail`) is publicly accessibl
 
 The CTA label is action-forward and does not mention login; an anonymous visitor is taken through the standard login or signup flow automatically when they click the CTA (see [Deferred-login intent completion](#deferred-login-intent-completion) below). See [configuration and extension](./configuration-and-extension.md) for how access types are configured per course.
 
-**Progress-aware CTA (already-registered learners).** For learners who are already enrolled, the detail page shows a progress-aware CTA independent of the access backend: "Start course", "Continue", or "Review course", pointing at the appropriate position in the course. This registered path is unchanged from before this feature.
+**Progress-aware CTA (already-registered learners).** For learners who are already enrolled, the detail page shows a progress-aware CTA independent of the access backend: "Start course", "Continue", or "Review course", pointing at the appropriate position in the course.
 
 ## Deferred-login Intent Completion
 
@@ -81,8 +81,6 @@ This intent is preserved even through the new-user signup path that requires com
 Because the catalogue and course detail pages are public, they are crawlable. Each page emits a per-page `<title>` and `<meta name="description">`. Course detail pages include `schema.org/Course` JSON-LD structured data (populated only from fields that exist in the model: title, description, difficulty, estimated duration, learning outcomes, and whether the course is accessible for free). The catalogue page includes `schema.org/ItemList` JSON-LD covering the visible courses and their detail URLs.
 
 The installation serves a dynamic per-site `sitemap.xml` listing the catalogue and all course detail pages, and a `robots.txt` that allows crawling of the public course paths and references the current site's sitemap. All URLs in structured data and the sitemap are absolute and tenant-correct. For details of per-tenant URL isolation, see [Multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
-
-No provider, image, author, or rating structured-data fields are populated, as no backing model data exists for them.
 
 ## Self-Registration
 
@@ -106,7 +104,7 @@ Selecting "Apply now" leads to a confirmation page ("Apply to \<course\>?"); con
 
 Applying is idempotent: a learner who has already applied for a course is taken directly to their existing application's status page rather than creating a duplicate submission.
 
-The application does not collect any questions or file uploads in the current release — it records only that the learner applied. A multi-step application form is planned for a future release. There is no review or approval workflow in the current release: the status page is static and shows no dynamic state, reviewer messages, or withdraw action. Application review is planned future work; see [roadmap](./roadmap.md).
+The application records only that the learner applied — it collects no questions or file uploads, and there is no review or approval workflow: the status page is static, with no reviewer messages or withdraw action. Multi-step application forms and application review are planned; see [roadmap](./roadmap.md).
 
 Access type is configured per course through the content-loading pipeline; see [content editing workflow](./content-editing-workflow.md) for authoring details and [configuration and extension](./configuration-and-extension.md) for the backend settings.
 
