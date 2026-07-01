@@ -25,7 +25,7 @@ from django.http import JsonResponse
 from django.urls import include, path
 
 from config.sitemaps import CourseSitemap, StaticViewSitemap
-from freedom_ls.base.views import robots_txt
+from config.views import robots_txt
 
 # from ninja import NinjaAPI
 

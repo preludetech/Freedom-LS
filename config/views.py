@@ -1,4 +1,4 @@
-"""Base app views for site-wide concerns (robots.txt, etc.)."""
+"""Project-level views for site-wide concerns (robots.txt, etc.)."""
 
 from __future__ import annotations
 
