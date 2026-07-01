@@ -24,7 +24,7 @@ The `CourseApplication` model and the seams both follow-ups attach to are in pla
 
 ## Course Visibility & Express Interest
 
-**Status: Published/coming-soon/hidden visibility and the express-interest waitlist are built and functional; notify-on-launch, auto-enrolment, a separate draft state, and any scarcity mechanic are not built.**
+**Status: Published/coming-soon/hidden visibility and the express-interest waitlist are built and functional; notify-on-launch, auto-enrolment, and a separate draft state are not built.**
 
 Courses can now be set to published, coming soon, or hidden, enforced consistently across every course-access backend, with an express-interest waitlist for coming-soon courses and an educator-facing demand view. This is documented in [learner experience](./learner-experience.md) and [educator-interface](./educator-interface.md).
 
@@ -33,7 +33,6 @@ The following are not yet built:
 - **Notify-on-launch** — when a coming-soon course is switched to published, interested students receive no automated notification. Expressing interest only records the interest; FLS has no email or in-app notification system yet to build this on. The coming-soon experience sets a soft "we'll let you know when it's ready" expectation, but nothing currently fulfils it. This is a deferred dependency on a future notification system, not something students can rely on today.
 - **Auto-enrolment on launch** — students who expressed interest in a coming-soon course are not automatically registered when it launches; they must return and register or apply as normal.
 - **A separate "draft" state** — visibility currently has three states (published, coming soon, hidden). A further educator-only "draft" state, invisible even by direct link, has not been built; it remains a possible small future addition.
-- **Capacity-limited waitlists** — express interest is a plain, capacity-free signal of demand. There is no queue position, no "X people ahead of you," no count shown to students, and no waitlist capacity or cutoff. This is a deliberate design decision, not a gap to be filled later: FLS courses have no enrollment capacity limit, and implying one would mislead students.
 
 When notify-on-launch (or auto-enrolment) is implemented, it will extend the behaviour described in [learner experience](./learner-experience.md) and [educator-interface](./educator-interface.md).
 
