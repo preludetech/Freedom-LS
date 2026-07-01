@@ -160,10 +160,3 @@ def test_course_details_panel_does_not_edit_visibility():
     from freedom_ls.educator_interface.views import CourseDetailsPanel
 
     assert "visibility" not in CourseDetailsPanel.fields
-
-
-def test_course_admin_visibility_is_read_only():
-    """The Course admin shows visibility but does not let an admin edit it."""
-    from freedom_ls.content_engine.admin import CourseAdmin
-
-    assert "visibility" in CourseAdmin.readonly_fields

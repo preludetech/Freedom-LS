@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.auth.models import AnonymousUser
 from django.test import override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -27,60 +29,50 @@ BACKEND_PATHS = [
 ]
 
 
+def _decision_for(backend_path, *, user, course):
+    """Resolve the configured backend and return its access decision."""
+    with override_settings(COURSE_ACCESS_BACKEND=backend_path):
+        get_course_access_backend.cache_clear()
+        return get_course_access_backend().get_access(user=user, course=course)
+
+
+def _filter_visible_for(backend_path, *, user, courses):
+    """Resolve the configured backend and return its filtered queryset."""
+    with override_settings(COURSE_ACCESS_BACKEND=backend_path):
+        get_course_access_backend.cache_clear()
+        return get_course_access_backend().filter_visible(user=user, courses=courses)
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("backend_path", BACKEND_PATHS)
 class TestVisibilityEnforcingBackendGetAccess:
     """VisibilityEnforcingBackend.get_access — parametrised over both inner backends."""
 
     def test_coming_soon_cannot_access_content(self, mock_site_context, backend_path):
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-        user = UserFactory()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            decision = backend.get_access(user=user, course=course)
+        decision = _decision_for(backend_path, user=UserFactory(), course=course)
 
         assert decision.can_access_content is False
 
     def test_coming_soon_cannot_self_register(self, mock_site_context, backend_path):
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-        user = UserFactory()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            decision = backend.get_access(user=user, course=course)
+        decision = _decision_for(backend_path, user=UserFactory(), course=course)
 
         assert decision.can_self_register is False
 
     def test_coming_soon_cta_label_is_interested(self, mock_site_context, backend_path):
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-        user = UserFactory()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            decision = backend.get_access(user=user, course=course)
+        decision = _decision_for(backend_path, user=UserFactory(), course=course)
 
         assert decision.cta_label == "I'm interested"
 
     def test_coming_soon_cta_url_resolves_to_express_interest(
         self, mock_site_context, backend_path
     ):
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(
             slug="my-coming-course", visibility=CourseVisibility.COMING_SOON
         )
-        user = UserFactory()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            decision = backend.get_access(user=user, course=course)
+        decision = _decision_for(backend_path, user=UserFactory(), course=course)
 
         expected_url = reverse(
             "course_interest:express_interest",
@@ -91,14 +83,8 @@ class TestVisibilityEnforcingBackendGetAccess:
     def test_coming_soon_funnel_copy_is_coming_soon(
         self, mock_site_context, backend_path
     ):
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-        user = UserFactory()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            decision = backend.get_access(user=user, course=course)
+        decision = _decision_for(backend_path, user=UserFactory(), course=course)
 
         assert decision.enrolment_summary == "Coming soon"
         assert decision.acquisition_heading == "Coming soon"
@@ -107,14 +93,8 @@ class TestVisibilityEnforcingBackendGetAccess:
         self, mock_site_context, backend_path
     ):
         """Funnel copy must not promise email/notify/we'll let you know."""
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-        user = UserFactory()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            decision = backend.get_access(user=user, course=course)
+        decision = _decision_for(backend_path, user=UserFactory(), course=course)
 
         subtext = (decision.acquisition_subtext or "").lower()
         assert "email" not in subtext
@@ -123,14 +103,8 @@ class TestVisibilityEnforcingBackendGetAccess:
         assert "we'll let you know" not in subtext
 
     def test_hidden_unregistered_is_fully_closed(self, mock_site_context, backend_path):
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
-        user = UserFactory()  # not registered
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            decision = backend.get_access(user=user, course=course)
+        decision = _decision_for(backend_path, user=UserFactory(), course=course)
 
         assert decision.can_access_content is False
         assert decision.can_self_register is False
@@ -141,15 +115,10 @@ class TestVisibilityEnforcingBackendGetAccess:
         self, mock_site_context, backend_path
     ):
         """A registered user on a hidden course gets content access (delegated)."""
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
         user = UserFactory()
         UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            decision = backend.get_access(user=user, course=course)
+        decision = _decision_for(backend_path, user=user, course=course)
 
         assert decision.can_access_content is True
 
@@ -161,15 +130,10 @@ class TestVisibilityEnforcingBackendGetAccess:
         coming_soon exempts already-registered learners, mirroring hidden — a
         visibility change never disrupts a mid-course learner.
         """
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
         user = UserFactory()
         UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            decision = backend.get_access(user=user, course=course)
+        decision = _decision_for(backend_path, user=user, course=course)
 
         assert decision.can_access_content is True
         # The express-interest CTA never reaches a registered learner.
@@ -178,17 +142,11 @@ class TestVisibilityEnforcingBackendGetAccess:
     def test_published_delegates_to_inner_start_cta(
         self, mock_site_context, backend_path
     ):
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(
             visibility=CourseVisibility.PUBLISHED,
             access_config={"access_type": "free"},
         )
-        user = UserFactory()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            decision = backend.get_access(user=user, course=course)
+        decision = _decision_for(backend_path, user=UserFactory(), course=course)
 
         # Both inner backends give "Start" for a free, unregistered course
         assert decision.cta_label == "Start"
@@ -203,83 +161,53 @@ class TestVisibilityEnforcingBackendFilterVisible:
     def test_hidden_course_excluded_for_anonymous(
         self, mock_site_context, backend_path
     ):
-        from django.contrib.auth.models import AnonymousUser
-
-        from freedom_ls.content_engine.models import Course
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         CourseFactory(visibility=CourseVisibility.HIDDEN)
-        qs = Course.objects.all()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            result = backend.filter_visible(user=AnonymousUser(), courses=qs)
+        result = _filter_visible_for(
+            backend_path, user=AnonymousUser(), courses=Course.objects.all()
+        )
 
         assert result.count() == 0
 
     def test_hidden_course_excluded_for_unregistered_authed_user(
         self, mock_site_context, backend_path
     ):
-        from freedom_ls.content_engine.models import Course
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         CourseFactory(visibility=CourseVisibility.HIDDEN)
         user = UserFactory()  # not registered for this course
-        qs = Course.objects.all()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            result = backend.filter_visible(user=user, courses=qs)
+        result = _filter_visible_for(
+            backend_path, user=user, courses=Course.objects.all()
+        )
 
         assert result.count() == 0
 
     def test_hidden_course_kept_for_registered_user(
         self, mock_site_context, backend_path
     ):
-        from freedom_ls.content_engine.models import Course
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
         user = UserFactory()
         UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
-        qs = Course.objects.all()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            result = backend.filter_visible(user=user, courses=qs)
+        result = _filter_visible_for(
+            backend_path, user=user, courses=Course.objects.all()
+        )
 
         assert result.filter(pk=course.pk).exists()
 
     def test_coming_soon_course_kept_for_anonymous(
         self, mock_site_context, backend_path
     ):
-        from django.contrib.auth.models import AnonymousUser
-
-        from freedom_ls.content_engine.models import Course
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-        qs = Course.objects.all()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            result = backend.filter_visible(user=AnonymousUser(), courses=qs)
+        result = _filter_visible_for(
+            backend_path, user=AnonymousUser(), courses=Course.objects.all()
+        )
 
         assert result.filter(pk=course.pk).exists()
 
     def test_coming_soon_course_kept_for_authenticated_user(
         self, mock_site_context, backend_path
     ):
-        from freedom_ls.content_engine.models import Course
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-        user = UserFactory()
-        qs = Course.objects.all()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            result = backend.filter_visible(user=user, courses=qs)
+        result = _filter_visible_for(
+            backend_path, user=UserFactory(), courses=Course.objects.all()
+        )
 
         assert result.filter(pk=course.pk).exists()
 
@@ -287,9 +215,6 @@ class TestVisibilityEnforcingBackendFilterVisible:
         self, mock_site_context, backend_path
     ):
         """filter_visible uses Exists() not joins — no row duplication for cohort members."""
-        from freedom_ls.content_engine.models import Course
-        from freedom_ls.course_access.loader import get_course_access_backend
-
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
         user = UserFactory()
         cohort = CohortFactory()
@@ -297,11 +222,9 @@ class TestVisibilityEnforcingBackendFilterVisible:
         CohortCourseRegistrationFactory(
             cohort=cohort, collection=course, is_active=True
         )
-        qs = Course.objects.all()
-        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
-            get_course_access_backend.cache_clear()
-            backend = get_course_access_backend()
-            result = list(backend.filter_visible(user=user, courses=qs))
+        result = list(
+            _filter_visible_for(backend_path, user=user, courses=Course.objects.all())
+        )
 
         # The hidden course is kept, and there is exactly 1 row (no duplicate)
         assert len([c for c in result if c.pk == course.pk]) == 1
@@ -313,7 +236,6 @@ class TestLoaderReturnsVisibilityEnforcingBackend:
 
     def test_loader_returns_visibility_enforcing_backend(self, mock_site_context):
         from freedom_ls.course_access.backends import VisibilityEnforcingBackend
-        from freedom_ls.course_access.loader import get_course_access_backend
 
         backend = get_course_access_backend()
         assert isinstance(backend, VisibilityEnforcingBackend)

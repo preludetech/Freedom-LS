@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.auth.models import AnonymousUser
+
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_interest.queries import get_interested_course_ids
 
@@ -25,8 +27,6 @@ class TestGetInterestedCourseIds:
         course_b = CourseFactory(visibility=CourseVisibility.COMING_SOON)
         CourseInterestFactory(user=user, course=course_a)
 
-        from freedom_ls.content_engine.models import Course
-
         courses = Course.objects.filter(pk__in=[course_a.pk, course_b.pk])
         result = get_interested_course_ids(user, courses)
 
@@ -35,11 +35,7 @@ class TestGetInterestedCourseIds:
 
     def test_returns_empty_set_for_unauthenticated_user(self, mock_site_context):
         """Returns an empty set for an anonymous (unauthenticated) user."""
-        from django.contrib.auth.models import AnonymousUser
-
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-
-        from freedom_ls.content_engine.models import Course
 
         courses = Course.objects.filter(pk=course.pk)
         result = get_interested_course_ids(AnonymousUser(), courses)
@@ -50,8 +46,6 @@ class TestGetInterestedCourseIds:
         """Returns an empty set when the user has no interest in any of the given courses."""
         user = UserFactory()
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-
-        from freedom_ls.content_engine.models import Course
 
         courses = Course.objects.filter(pk=course.pk)
         result = get_interested_course_ids(user, courses)
@@ -64,8 +58,6 @@ class TestGetInterestedCourseIds:
         other_user = UserFactory()
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
         CourseInterestFactory(user=other_user, course=course)
-
-        from freedom_ls.content_engine.models import Course
 
         courses = Course.objects.filter(pk=course.pk)
         result = get_interested_course_ids(user, courses)
