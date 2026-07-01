@@ -12,8 +12,10 @@ Update the product documentation under `docs/product/` to reflect the feature th
 Write to that audience and at that altitude:
 
 - Describe capabilities and configuration surfaces in prose. Name a setting when it is the configuration entry point; do not document its internal schema.
-- A typical feature update is **a few sentences** in the relevant doc, matching the length and depth of the surrounding sections in the file you are editing.
-- **Do not** dump code blocks, settings dictionaries, or registry contents; enumerate every field/attribute/option in a table; explain internal mechanics, resolution order, fallbacks, or class/function names; or restate at length anything covered elsewhere — link instead.
+- A typical feature update is **a few sentences** in the relevant doc. Gauge depth by the *altitude* defined above — not by whatever is already in the file. Some existing sections are over-detailed; write to the audience, and where you touch such a section, trim it toward the audience rather than perpetuating the bloat.
+- **Do not** dump code blocks, settings dictionaries, or registry contents; enumerate every field/attribute/option in a table; explain internal mechanics, resolution order, or fallbacks; name view/URL routes (`app:view_name`), model/class/method names, ORM field names or types (e.g. `GenericForeignKey`), or internal status/state enums; or restate at length anything covered elsewhere — link instead.
+
+**Symbol litmus test.** If a sentence names a Python/Django symbol — a view or URL route name, a model, method, field, an ORM type, or an internal status constant (e.g. `BLOCKED`/`READY`) — it is almost certainly too low-level: rephrase it into plain product language or cut it. The **only** code symbols that belong in these docs are a configuration setting an operator sets or an author-facing content option — and then only named in prose, never schema-dumped.
 
 When in doubt, write less and link to the authoritative detail (the code, the spec, or another doc).
 
@@ -55,7 +57,7 @@ Accuracy rules that every worker must follow (bake these into each prompt):
 - Facts only. Base every statement on the spec, the plan, and code that exists. Do not guess, infer optimistically, or be creative.
 - State absence plainly. Where a capability is absent, manual, or half-built, say so.
 - No duplication. The canonical statement of a fact lives in exactly one doc body; other docs link to it.
-- Right altitude. Product docs are high-level feature/configuration info for evaluators, operators, and integrators — not API reference. Match the length and depth of the existing sections in the target doc (typically a few sentences). No code dumps, no full option tables, no internal mechanics. See "Purpose and audience" above.
+- Right altitude. Product docs are high-level feature/configuration info for evaluators, operators, and integrators — not API reference. Aim for a few sentences. Do NOT gauge altitude by copying the surrounding sections — some existing docs are over-detailed; write to the audience instead. Apply the **symbol litmus test**: if a sentence names a view/URL route, model, method, field, ORM type, or internal status constant, rephrase it into plain product language or cut it — the only code symbols allowed are a configuration setting an operator sets or an author-facing content option. No code dumps, no full option tables, no internal mechanics. See "Purpose and audience" above.
 - Plain Markdown only — no cotton components, no custom widgets.
 
 ## Step 3: Synthesise — apply edits to the real docs
