@@ -34,16 +34,20 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     course = get_object_or_404(Course, slug=course_slug)
     user = cast(User, request.user)  # login_required guarantees an authenticated User
 
-    # Enforce course visibility: hidden courses 404 for unregistered users, and
-    # coming-soon courses are not enrollable — route to the detail page's
-    # express-interest CTA instead of creating an application.
+    # Enforce course visibility: hidden courses 404 for unregistered users.
     raise_404_if_hidden_unregistered(user, course)
-    if course.visibility == CourseVisibility.COMING_SOON:
-        return redirect("student_interface:course_detail", course_slug=course.slug)
 
+    # An existing applicant always reaches their application record, even if the
+    # course was later flipped to coming-soon — so this short-circuit precedes the
+    # coming-soon redirect below.
     existing_app = get_application_for_course(user=user, course=course)
     if existing_app is not None:
         return redirect("course_applications:status", pk=existing_app.pk)
+
+    # Coming-soon courses are not enrollable — route to the detail page's
+    # express-interest CTA instead of creating an application.
+    if course.visibility == CourseVisibility.COMING_SOON:
+        return redirect("student_interface:course_detail", course_slug=course.slug)
 
     if request.method == "POST":
         # get_or_create is race-safe (savepoint + IntegrityError catch + re-get), so

@@ -222,6 +222,26 @@ class TestApplyViewVisibilityGate:
         assert response["Location"] == expected
         assert not CourseApplication.objects.filter(user=user, course=course).exists()
 
+    def test_coming_soon_with_existing_application_redirects_to_status(
+        self, client, mock_site_context
+    ):
+        """An applicant on a course later flipped to coming-soon still reaches their status page.
+
+        The existing-application short-circuit must take precedence over the
+        coming-soon detail redirect, so the applicant is never bounced to the
+        express-interest CTA for a course they have already applied to.
+        """
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        existing_app = CourseApplicationFactory(user=user, course=course)
+        client.force_login(user)
+
+        response = client.get(self._apply_url(course))
+
+        expected = reverse("course_applications:status", kwargs={"pk": existing_app.pk})
+        assert response.status_code == 302
+        assert response["Location"] == expected
+
 
 # ---------------------------------------------------------------------------
 # application_status view

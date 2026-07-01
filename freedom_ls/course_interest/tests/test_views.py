@@ -191,6 +191,43 @@ class TestRemoveInterest:
         assert "I'm interested" in content
 
 
+@pytest.mark.django_db
+class TestRemoveInterestOnHiddenCourse:
+    """POST remove_interest on a hidden course 404s for unregistered users.
+
+    Mirrors express_interest: a hidden course must never confirm its existence —
+    so it returns 404, not the 200 CTA partial a coming-soon course returns, which
+    would be a distinguishable existence oracle.
+    """
+
+    def test_post_hidden_unregistered_returns_404(self, client, mock_site_context):
+        """POST remove_interest on a hidden course by an unregistered user returns 404."""
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        client.force_login(user)
+
+        url = reverse(
+            "course_interest:remove_interest", kwargs={"course_slug": course.slug}
+        )
+        response = client.post(url, HTTP_HX_REQUEST="true")
+
+        assert response.status_code == 404
+
+    def test_post_hidden_registered_returns_200(self, client, mock_site_context):
+        """A registered learner on a hidden course can still remove interest (200)."""
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        client.force_login(user)
+
+        url = reverse(
+            "course_interest:remove_interest", kwargs={"course_slug": course.slug}
+        )
+        response = client.post(url, HTTP_HX_REQUEST="true")
+
+        assert response.status_code == 200
+
+
 # ---------------------------------------------------------------------------
 # GET rejected (POST-only)
 # ---------------------------------------------------------------------------

@@ -29,9 +29,7 @@ Confirmation copy deliberately does NOT promise a notification (spec §7.2, §10
                 </c-button>
             </form>
         </div>
-        <p class="text-sm text-muted mt-1">
-            This course will show up here when it opens.
-        </p>
+
     {% else %}
         <form hx-post="{% url 'course_interest:express_interest' course_slug=course.slug %}"
               hx-target="#express-interest-cta-{{ course.slug }}"

@@ -50,9 +50,13 @@ def partial_remove_interest(request: HttpRequest, course_slug: str) -> HttpRespo
     """Remove interest in a coming-soon course (HTMX, POST-only).
 
     Deletes the user's CourseInterest for this course if present; no error if absent.
-    Returns the CTA partial in the not-interested state.
+    Returns the CTA partial in the not-interested state. Returns 404 if the course
+    is hidden and the user is not registered (matches express_interest — never
+    confirms a hidden course exists).
     """
     course = get_object_or_404(Course, slug=course_slug)
+
+    raise_404_if_hidden_unregistered(request.user, course)
 
     CourseInterest.objects.filter(user=request.user, course=course).delete()
 

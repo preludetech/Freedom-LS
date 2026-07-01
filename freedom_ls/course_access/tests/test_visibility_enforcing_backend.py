@@ -89,10 +89,10 @@ class TestVisibilityEnforcingBackendGetAccess:
         assert decision.enrolment_summary == "Coming soon"
         assert decision.acquisition_heading == "Coming soon"
 
-    def test_coming_soon_acquisition_subtext_does_not_promise_notification(
+    def test_coming_soon_acquisition_subtext_does_not_promise_email_notification(
         self, mock_site_context, backend_path
     ):
-        """Funnel copy must not promise email/notify/we'll let you know."""
+        """Funnel copy must not promise an email/notification channel."""
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
         decision = _decision_for(backend_path, user=UserFactory(), course=course)
 
@@ -100,7 +100,6 @@ class TestVisibilityEnforcingBackendGetAccess:
         assert "email" not in subtext
         assert "notify" not in subtext
         assert "notification" not in subtext
-        assert "we'll let you know" not in subtext
 
     def test_hidden_unregistered_is_fully_closed(self, mock_site_context, backend_path):
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)

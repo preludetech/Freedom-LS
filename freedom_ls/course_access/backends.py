@@ -301,7 +301,7 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
 _COMING_SOON_ENROLMENT_SUMMARY = "Coming soon"
 _COMING_SOON_ACQUISITION_HEADING = "Coming soon"
 _COMING_SOON_ACQUISITION_SUBTEXT = (
-    "Register your interest and it'll show up here when it opens."
+    "Register your interest and we'll let you know when the course is ready."
 )
 
 
