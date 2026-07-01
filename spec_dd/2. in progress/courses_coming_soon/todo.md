@@ -53,7 +53,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 10. Product documentation
 
-- [ ] fls:sdd:update_claude_plugin_fls_content
+- [x] fls:sdd:update_claude_plugin_fls_content
 - [x] (cmd) Run `/update_product_docs` to update docs/product/ for this feature
 - [ ] (user) Review the updated documentation
 

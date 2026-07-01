@@ -20,6 +20,10 @@ Content lives as files on disk — Markdown (`.md`) for text-heavy items, YAML (
 
 **AI authoring.** Authors may use AI tools (LLMs, etc.) to draft or revise Markdown. This is a workflow affordance only — there is no AI integration in the application code.
 
+**Draft content.** Any file or directory whose name begins with `_` (or `.`) is skipped by the content scanner and never loaded into the database. This is how work-in-progress content is kept out of the running system: it lives in the repository, under version control, without ever appearing to learners, educators, or admins. The rule applies at any level — a whole `_drafts/` directory (and everything nested inside it) or a single `_topic.md` / `_lesson.yaml`. For completeness, the scanner also skips `README.md`, `CLAUDE.md`, and any file whose name ends with `~`. To publish a draft, rename it to remove the leading `_` and re-run `content_save`.
+
+Because draft content is never loaded, it cannot be previewed in the running application. To load a course but keep it invisible to learners — for example, to review it in the app before launch — set its visibility to `hidden` instead (see [Course Visibility](#course-visibility) below).
+
 ## Content Types
 
 The schema (`freedom_ls/content_engine/schema.py`) defines eight content types:
