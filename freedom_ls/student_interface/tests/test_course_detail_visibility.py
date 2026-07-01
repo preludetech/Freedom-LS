@@ -104,6 +104,27 @@ def test_coming_soon_detail_interested_state_when_interest_exists(mock_site_cont
 
 
 @pytest.mark.django_db
+def test_coming_soon_registered_user_gets_generic_cta_not_express_interest(
+    mock_site_context,
+):
+    """A registered learner on a coming-soon course keeps the normal registered CTA.
+
+    coming_soon exempts already-registered learners, so the detail page must not
+    show the express-interest control (which would bounce / hide their content).
+    """
+    course = _course(CourseVisibility.COMING_SOON, slug="coming-soon-course")
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+    client = _logged_in_client(user)
+
+    response = client.get(_detail_url(course))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "I'm interested" not in body
+
+
+@pytest.mark.django_db
 def test_published_detail_renders_generic_cta(mock_site_context):
     course = _course(CourseVisibility.PUBLISHED, slug="published-course")
     client = _logged_in_client(UserFactory())

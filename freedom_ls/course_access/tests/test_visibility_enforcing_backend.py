@@ -153,6 +153,28 @@ class TestVisibilityEnforcingBackendGetAccess:
 
         assert decision.can_access_content is True
 
+    def test_coming_soon_registered_delegates_to_inner(
+        self, mock_site_context, backend_path
+    ):
+        """A registered user on a coming-soon course keeps content access (delegated).
+
+        coming_soon exempts already-registered learners, mirroring hidden — a
+        visibility change never disrupts a mid-course learner.
+        """
+        from freedom_ls.course_access.loader import get_course_access_backend
+
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        user = UserFactory()
+        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        with override_settings(COURSE_ACCESS_BACKEND=backend_path):
+            get_course_access_backend.cache_clear()
+            backend = get_course_access_backend()
+            decision = backend.get_access(user=user, course=course)
+
+        assert decision.can_access_content is True
+        # The express-interest CTA never reaches a registered learner.
+        assert decision.cta_label != "I'm interested"
+
     def test_published_delegates_to_inner_start_cta(
         self, mock_site_context, backend_path
     ):

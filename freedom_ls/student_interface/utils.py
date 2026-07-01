@@ -699,8 +699,9 @@ def get_course_listing(
     - ``REGISTERED`` — registered but no progress recorded yet (0%).
     - ``IN_PROGRESS`` — registered with some progress and not yet complete.
     - ``COMPLETE`` — registered and the course has a ``completed_time``.
-    - ``COMING_SOON`` — the course is coming-soon; takes precedence over any
-      registration-derived status (always shows the express-interest affordance).
+    - ``COMING_SOON`` — the course is coming-soon and the learner is not registered
+      for it (shows the express-interest affordance). Registered learners keep their
+      registration-derived status, since coming-soon exempts already-registered users.
 
     ``access_badge`` on each entry comes from the access backend's config-only
     ``get_access_badge`` signal (one call per course, no per-user registration
@@ -724,10 +725,14 @@ def get_course_listing(
         anon_visible = get_course_access_backend().filter_visible(
             user=user, courses=get_all_courses()
         )
+        # Anonymous users are never registered, so coming-soon courses always show
+        # the express-interest affordance (never an enrol link).
         return [
             CourseListingEntry(
                 course,
-                CourseListingStatus.NOT_REGISTERED,
+                CourseListingStatus.COMING_SOON
+                if course.visibility == CourseVisibility.COMING_SOON
+                else CourseListingStatus.NOT_REGISTERED,
                 0,
                 access_badge=backend.get_access_badge(course=course),
             )
@@ -744,10 +749,14 @@ def get_course_listing(
     entries: list[CourseListingEntry] = []
     for course in courses:
         access_badge = backend.get_access_badge(course=course)
-        # Coming-soon takes precedence over any registration-derived status: the
-        # row always shows the express-interest affordance, never an enrol/resume
-        # control. (Hidden courses never reach here — filter_visible drops them.)
-        if course.visibility == CourseVisibility.COMING_SOON:
+        # Coming-soon shows the express-interest affordance for learners not
+        # registered for the course; registered learners keep their normal
+        # registration-derived status (coming-soon exempts them, mirroring hidden).
+        # (Hidden courses never reach here — filter_visible drops them.)
+        if (
+            course.visibility == CourseVisibility.COMING_SOON
+            and course.id not in registered_ids
+        ):
             entries.append(
                 CourseListingEntry(
                     course,

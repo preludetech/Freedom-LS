@@ -14,6 +14,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_interest.models import CourseInterest
+from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 
 # ---------------------------------------------------------------------------
 # express_interest view
@@ -96,6 +97,43 @@ class TestExpressInterestOnPublishedCourse:
         client.post(url, HTTP_HX_REQUEST="true")
 
         assert CourseInterest.objects.filter(user=user, course=course).count() == 0
+
+
+@pytest.mark.django_db
+class TestExpressInterestOnHiddenCourse:
+    """POST express_interest on a hidden course 404s for unregistered users.
+
+    A hidden course must never confirm its existence (spec §13) — so it returns
+    404, not the distinguishable 422 a published course returns.
+    """
+
+    def test_post_hidden_unregistered_returns_404(self, client, mock_site_context):
+        """POST express_interest on a hidden course by an unregistered user returns 404."""
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        client.force_login(user)
+
+        url = reverse(
+            "course_interest:express_interest", kwargs={"course_slug": course.slug}
+        )
+        response = client.post(url, HTTP_HX_REQUEST="true")
+
+        assert response.status_code == 404
+        assert CourseInterest.objects.filter(user=user, course=course).count() == 0
+
+    def test_post_hidden_registered_returns_422(self, client, mock_site_context):
+        """A registered learner on a hidden (non-coming-soon) course gets the 422 no-op."""
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        client.force_login(user)
+
+        url = reverse(
+            "course_interest:express_interest", kwargs={"course_slug": course.slug}
+        )
+        response = client.post(url, HTTP_HX_REQUEST="true")
+
+        assert response.status_code == 422
 
 
 # ---------------------------------------------------------------------------

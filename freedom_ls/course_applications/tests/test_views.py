@@ -8,8 +8,10 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 
 # ---------------------------------------------------------------------------
 # apply view
@@ -160,6 +162,65 @@ class TestApplyViewPost:
         )
         assert response.status_code == 302
         assert response["Location"] == expected_status_url
+
+
+@pytest.mark.django_db
+class TestApplyViewVisibilityGate:
+    """apply enforces course visibility (hidden means hidden; coming-soon not enrollable)."""
+
+    def _apply_url(self, course):
+        return reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+
+    def test_hidden_unregistered_get_returns_404(self, client, mock_site_context):
+        """GET apply for a hidden course by an unregistered user 404s (no existence leak)."""
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        client.force_login(user)
+
+        response = client.get(self._apply_url(course))
+
+        assert response.status_code == 404
+
+    def test_hidden_unregistered_post_does_not_create_application(
+        self, client, mock_site_context
+    ):
+        """POST apply for a hidden course by an unregistered user 404s and creates nothing."""
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        client.force_login(user)
+
+        response = client.post(self._apply_url(course))
+
+        assert response.status_code == 404
+        assert not CourseApplication.objects.filter(user=user, course=course).exists()
+
+    def test_hidden_registered_get_returns_200(self, client, mock_site_context):
+        """A registered learner still reaches the apply page for a hidden course."""
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        client.force_login(user)
+
+        response = client.get(self._apply_url(course))
+
+        assert response.status_code == 200
+
+    def test_coming_soon_post_redirects_to_detail_and_creates_nothing(
+        self, client, mock_site_context
+    ):
+        """POST apply for a coming-soon course redirects to detail without applying."""
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        client.force_login(user)
+
+        response = client.post(self._apply_url(course))
+
+        expected = reverse(
+            "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        )
+        assert response.status_code == 302
+        assert response["Location"] == expected
+        assert not CourseApplication.objects.filter(user=user, course=course).exists()
 
 
 # ---------------------------------------------------------------------------

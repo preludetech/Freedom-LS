@@ -19,7 +19,8 @@ from freedom_ls.content_engine.models import (
     Topic,
 )
 from freedom_ls.course_access.loader import get_course_access_backend
-from freedom_ls.course_interest.queries import get_interested_course_ids
+from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
+from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.student_management.config import config
 from freedom_ls.student_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.student_management.models import (
@@ -141,16 +142,18 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     # unauthenticated users), so they run unconditionally.
     registered_courses = get_current_courses(request.user)
     completed_courses = get_completed_courses(request.user)
+    registered_ids = {c.id for c in get_course_registrations(request.user)}
     # Recommendations bypass the available-courses filter_visible pass, so drop
     # hidden recommendations the user is not registered for — otherwise a hidden
     # course leaks as a clickable card. A hidden recommendation the user IS
-    # registered for is kept (registered keeps access).
+    # registered for is kept (registered keeps access). Membership-test against the
+    # already-computed registered_ids set — no per-recommendation query.
     recommended_courses = [
         rec
         for rec in get_recommended_courses(request.user)
         if not (
             rec.collection.visibility == CourseVisibility.HIDDEN
-            and not get_is_registered(user=request.user, course=rec.collection)
+            and rec.collection_id not in registered_ids
         )
     ]
 
@@ -213,9 +216,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         for rec in recommended_courses
         if getattr(rec.collection, "is_coming_soon", False)
     ]
-    interested_ids = get_interested_course_ids(request.user, coming_soon_cards)
-    for course in coming_soon_cards:
-        setattr(course, "is_interested", course.id in interested_ids)  # noqa: B010
+    stamp_interest(request.user, coming_soon_cards)
 
     # Dashboard contributions from the active backend (e.g. the applications panel).
     # Only fetched for authenticated users — anonymous visitors have no panels,
@@ -261,14 +262,12 @@ def all_courses(request: HttpRequest) -> HttpResponse:
         stamp_course_access_badge(course, badge=entry.access_badge)
         courses_with_attrs.append(course)
 
-    # Batch the interest lookup once over only the coming-soon entries, then
-    # stamp is_interested so the coming-soon row leaf picks the right variant.
-    coming_soon_courses = [
-        e.course for e in entries if e.status == CourseListingStatus.COMING_SOON
-    ]
-    interested_ids = get_interested_course_ids(request.user, coming_soon_courses)
-    for course in coming_soon_courses:
-        setattr(course, "is_interested", course.id in interested_ids)  # noqa: B010
+    # Stamp is_interested over only the coming-soon entries so the coming-soon row
+    # leaf picks the right variant.
+    stamp_interest(
+        request.user,
+        [e.course for e in entries if e.status == CourseListingStatus.COMING_SOON],
+    )
 
     # JSON-LD for schema.org/ItemList — each item carries its absolute detail URL.
     catalogue_json_ld: dict[str, object] = {
@@ -309,10 +308,8 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     # invalid-config course, so neither can be derived from the other.
     is_registered = get_is_registered(user=request.user, course=course)
     # Hidden courses 404 for anyone not registered, matching the wrapper's
-    # filter_visible rule. This is the only place a hidden course 404s;
-    # coming_soon and published detail pages stay accessible.
-    if course.visibility == CourseVisibility.HIDDEN and not is_registered:
-        raise Http404
+    # filter_visible rule (coming_soon and published detail pages stay accessible).
+    raise_404_if_hidden_unregistered(request.user, course)
     decision = get_course_access_backend().get_access(user=request.user, course=course)
     # get_course_index is anonymous-safe (it fetches user-scoped progress/deadlines
     # only behind its own is_authenticated / can_access_content guards).
@@ -342,8 +339,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     # course's current interest state so the partial picks the right variant.
     is_coming_soon = course.visibility == CourseVisibility.COMING_SOON
     if is_coming_soon and not is_registered:
-        interested_ids = get_interested_course_ids(request.user, [course])
-        setattr(course, "is_interested", course.id in interested_ids)  # noqa: B010
+        stamp_interest(request.user, [course])
     breadcrumbs = [
         {"label": "All courses", "url": reverse("student_interface:courses")},
         {"label": course.title},

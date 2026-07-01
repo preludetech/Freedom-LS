@@ -10,7 +10,8 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
 
@@ -32,6 +33,13 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     """
     course = get_object_or_404(Course, slug=course_slug)
     user = cast(User, request.user)  # login_required guarantees an authenticated User
+
+    # Enforce course visibility: hidden courses 404 for unregistered users, and
+    # coming-soon courses are not enrollable — route to the detail page's
+    # express-interest CTA instead of creating an application.
+    raise_404_if_hidden_unregistered(user, course)
+    if course.visibility == CourseVisibility.COMING_SOON:
+        return redirect("student_interface:course_detail", course_slug=course.slug)
 
     existing_app = get_application_for_course(user=user, course=course)
     if existing_app is not None:

@@ -311,6 +311,10 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
     Applied by the loader so no backend (present or future) can bypass
     coming-soon / hidden. The inner backend handles all published-course logic;
     this wrapper intercepts coming_soon and hidden before the inner sees them.
+
+    Both coming_soon and hidden exempt users already registered for the course:
+    a registered learner keeps full access and delegates to the inner backend,
+    so mid-course learners are never disrupted by a visibility change.
     """
 
     def __init__(self, inner: CourseAccessBackend) -> None:
@@ -319,7 +323,10 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
     def get_access(self, *, user: User, course: Course) -> CourseAccessDecision:
         from freedom_ls.content_engine.models import CourseVisibility
 
-        if course.visibility == CourseVisibility.COMING_SOON:
+        if (
+            course.visibility == CourseVisibility.COMING_SOON
+            and not is_registered_for_course(user, course)
+        ):
             return CourseAccessDecision(
                 cta_label="I'm interested",
                 cta_url=reverse(

@@ -85,6 +85,25 @@ def test_all_courses_hidden_course_absent_for_unregistered(mock_site_context):
     assert "Hidden Course" not in response.content.decode()
 
 
+@pytest.mark.django_db
+def test_all_courses_coming_soon_registered_keeps_registered_status(mock_site_context):
+    """A learner registered for a coming-soon course keeps their registered listing
+    status — coming-soon exempts registered users, so no express-interest CTA."""
+    course = _course(
+        CourseVisibility.COMING_SOON, slug="cs", title="Coming Soon Course"
+    )
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+    client = _logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Coming Soon Course" in body
+    assert "I'm interested" not in body
+
+
 # --- dashboard ---
 
 

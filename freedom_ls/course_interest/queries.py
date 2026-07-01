@@ -33,3 +33,16 @@ def get_interested_course_ids(
             "course_id", flat=True
         )
     )
+
+
+def stamp_interest(
+    user: RequestUser, courses: QuerySet[Course] | Sequence[Course]
+) -> None:
+    """Stamp ``is_interested`` on each course, batching the lookup in one query.
+
+    Sets ``course.is_interested`` to True/False so a coming-soon card/row leaf can
+    pick the interested vs not-interested CTA variant. No-op for an empty sequence.
+    """
+    interested_ids = get_interested_course_ids(user, courses)
+    for course in courses:
+        setattr(course, "is_interested", course.id in interested_ids)  # noqa: B010
