@@ -14,6 +14,7 @@
       "mcp__ide__getDiagnostics",
       "Bash(tail:*)",
       "Bash(uv run git status:*)",
+      "Bash(uv run git mv:*)",
       "Bash(uv run ruff check:*)",
       "Bash(git add:*)",
       "Bash(git fetch:*)",
