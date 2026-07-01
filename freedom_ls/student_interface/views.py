@@ -171,10 +171,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         if course.id in registered_ids or course.id in recommended_ids:
             continue
         setattr(course, "is_registered", False)  # noqa: B010
-        stamp_course_access_badge(
-            course,
-            is_accessible_for_free=backend.is_accessible_for_free(course=course),
-        )
+        stamp_course_access_badge(course, badge=backend.get_access_badge(course=course))
         available_courses.append(course)
         if len(available_courses) == 3:
             break
@@ -220,9 +217,7 @@ def all_courses(request: HttpRequest) -> HttpResponse:
         course = entry.course
         setattr(course, "listing_status", entry.status)  # noqa: B010
         setattr(course, "progress_percentage", entry.progress_percentage)  # noqa: B010
-        stamp_course_access_badge(
-            course, is_accessible_for_free=entry.is_accessible_for_free
-        )
+        stamp_course_access_badge(course, badge=entry.access_badge)
         courses_with_attrs.append(course)
 
     # JSON-LD for schema.org/ItemList — each item carries its absolute detail URL.

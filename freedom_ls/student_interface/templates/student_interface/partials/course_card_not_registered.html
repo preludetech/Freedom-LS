@@ -15,7 +15,7 @@ For anonymous users: the eyebrow is suppressed; the access badge (Free / By
 application) is shown instead as the at-a-glance signal.
 
 Required context: course (needs course.slug, course.accent_slot_key, course.icon,
-course.icon_fallback, course.title, course.access_badge_label).
+course.icon_fallback, course.title, course.access_badge).
 {% endcomment %}
 {% url 'student_interface:course_detail' course_slug=course.slug as detail_url %}
 <c-course-card-shell accent_slot_key="{{ course.accent_slot_key }}"
@@ -24,8 +24,8 @@ course.icon_fallback, course.title, course.access_badge_label).
                      title="{{ course.title }}">
     {% if user.is_authenticated %}
         {% include "student_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=False %}
-    {% else %}
-        <c-chip variant="primary" size="xs">{{ course.access_badge_label }}</c-chip>
+    {% elif course.access_badge %}
+        <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
     {% endif %}
     <h3>
         <a href="{{ detail_url }}"

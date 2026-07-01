@@ -57,6 +57,19 @@ class CourseAccessDecision:
 
 
 @dataclass(frozen=True)
+class AccessBadge:
+    """Backend-owned at-a-glance access badge for course cards/rows.
+
+    The backend owns both the copy and the chip styling so a new access type
+    (e.g. "Paid") can add its own label/variant without student_interface knowing
+    any access-type copy. None from get_access_badge means "render no badge".
+    """
+
+    label: str  # e.g. "Free", "By application"
+    variant: str = "primary"  # chip variant; backend owns the styling too
+
+
+@dataclass(frozen=True)
 class DashboardContribution:
     """A backend-owned panel for the learner dashboard.
 
@@ -96,6 +109,17 @@ class CourseAccessBackend:
         Config-only: issues no per-user queries, so listings can call it once per
         course without the registration lookups that get_access performs. The value
         must agree with the is_accessible_for_free field get_access sets.
+        """
+        raise NotImplementedError
+
+    def get_access_badge(self, *, course: Course) -> AccessBadge | None:
+        """Config-only display badge for course cards/rows. None = no badge.
+
+        Config-only (no per-user queries) so listings can call it once per course.
+        Sibling of is_accessible_for_free: that is the semantic boolean (badge +
+        JSON-LD agree with it), this is the display badge itself. Each backend owns
+        its own labels/variants, so a new access type never leaks copy into
+        student_interface.
         """
         raise NotImplementedError
 
@@ -248,6 +272,10 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
     def is_accessible_for_free(self, *, course: Course) -> bool:
         """Always free — the only valid access type for this backend is FREE."""
         return True
+
+    def get_access_badge(self, *, course: Course) -> AccessBadge | None:
+        """Every course is free, so the badge always reads "Free"."""
+        return AccessBadge(label="Free")
 
     def filter_visible(
         self, *, user: RequestUser, courses: QuerySet[Course]

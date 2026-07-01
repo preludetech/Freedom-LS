@@ -210,9 +210,9 @@ def test_authenticated_listing_query_count_does_not_scale_with_courses(
 ):
     """The authenticated listing must not issue registration queries per course.
 
-    Regression guard: the access badge's free/gated signal now comes from the
-    config-only backend.is_accessible_for_free (no per-user queries), so the
-    query count for a large catalogue must equal that of a small one.
+    Regression guard: the access badge comes from the config-only
+    backend.get_access_badge (no per-user queries), so the query count for a
+    large catalogue must equal that of a small one.
     """
     from django.db import connection
     from django.test.utils import CaptureQueriesContext

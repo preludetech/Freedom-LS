@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from django.urls import reverse
 
 from freedom_ls.course_access.backends import (
+    AccessBadge,
     CourseAccessDecision,
     DashboardContribution,
     FreeOnlyCourseAccessBackend,
@@ -139,6 +140,16 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
             return True
         # access_config values are typed Any (opaque JSON); coerce to bool.
         return bool(config["access_type"] != APPLICATION_GATED)
+
+    def get_access_badge(self, *, course: Course) -> AccessBadge | None:
+        """Free courses read "Free"; application-gated courses read "By application".
+
+        Reuses the config-only is_accessible_for_free so the free/gated decision
+        lives in one place.
+        """
+        if self.is_accessible_for_free(course=course):
+            return AccessBadge(label="Free")
+        return AccessBadge(label="By application")
 
     def get_dashboard_contributions(
         self, *, user: RequestUser

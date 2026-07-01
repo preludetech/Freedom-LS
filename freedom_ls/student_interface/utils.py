@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 
     from freedom_ls.accounts.models import User
+    from freedom_ls.course_access.backends import AccessBadge
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
 
@@ -62,28 +63,19 @@ class CourseListingEntry:
     course: Course
     status: CourseListingStatus
     progress_percentage: int
-    is_accessible_for_free: bool = True
+    access_badge: AccessBadge | None = None
 
 
-def access_badge_label(is_free: bool) -> str:
-    """Derive the human-readable access badge label from the free/gated signal.
-
-    Single source of truth for badge copy — both the all_courses catalogue and
-    the dashboard discovery cards stamp this onto each course object so templates
-    render {{ course.access_badge_label }} with no conditional branching.
-    """
-    return "Free" if is_free else "By application"
-
-
-def stamp_course_access_badge(course: Course, *, is_accessible_for_free: bool) -> None:
-    """Stamp the access badge label onto a course instance for template rendering.
+def stamp_course_access_badge(course: Course, *, badge: AccessBadge | None) -> None:
+    """Stamp the backend-owned access badge onto a course for template rendering.
 
     Shared by the all_courses catalogue and the dashboard discovery cards so the
-    badge is derived one way; templates read {{ course.access_badge_label }}.
+    setattr lives in one place; templates read {{ course.access_badge.label }} /
+    {{ course.access_badge.variant }} with no conditional branching. The badge
+    itself comes from the active backend's get_access_badge — student_interface
+    never mints access-type copy.
     """
-    setattr(  # noqa: B010
-        course, "access_badge_label", access_badge_label(is_accessible_for_free)
-    )
+    setattr(course, "access_badge", badge)  # noqa: B010
 
 
 def get_content_status(
@@ -704,11 +696,10 @@ def get_course_listing(
     - ``IN_PROGRESS`` — registered with some progress and not yet complete.
     - ``COMPLETE`` — registered and the course has a ``completed_time``.
 
-    ``is_accessible_for_free`` on each entry comes from the access backend's
-    config-only ``is_accessible_for_free`` signal (one call per course, no
-    per-user registration queries) — so the catalogue does not scale registration
-    lookups with course count. The label is stamped here once; templates never
-    call the backend.
+    ``access_badge`` on each entry comes from the access backend's config-only
+    ``get_access_badge`` signal (one call per course, no per-user registration
+    queries) — so the catalogue does not scale registration lookups with course
+    count. The backend owns the badge copy; templates never call the backend.
 
     Used by the all-courses view (see ``views.py``) to populate the listing.
     """
@@ -723,7 +714,7 @@ def get_course_listing(
                 course,
                 CourseListingStatus.NOT_REGISTERED,
                 0,
-                is_accessible_for_free=backend.is_accessible_for_free(course=course),
+                access_badge=backend.get_access_badge(course=course),
             )
             for course in courses
         ]
@@ -737,14 +728,14 @@ def get_course_listing(
 
     entries: list[CourseListingEntry] = []
     for course in courses:
-        is_accessible_for_free = backend.is_accessible_for_free(course=course)
+        access_badge = backend.get_access_badge(course=course)
         if course.id not in registered_ids:
             entries.append(
                 CourseListingEntry(
                     course,
                     CourseListingStatus.NOT_REGISTERED,
                     0,
-                    is_accessible_for_free=is_accessible_for_free,
+                    access_badge=access_badge,
                 )
             )
             continue
@@ -756,5 +747,5 @@ def get_course_listing(
             status = CourseListingStatus.IN_PROGRESS
         else:
             status = CourseListingStatus.REGISTERED
-        entries.append(CourseListingEntry(course, status, pct, is_accessible_for_free))
+        entries.append(CourseListingEntry(course, status, pct, access_badge))
     return entries

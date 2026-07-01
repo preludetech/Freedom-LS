@@ -453,3 +453,38 @@ class TestIsAccessibleForFree:
 
         with django_assert_num_queries(0):
             assert backend.is_accessible_for_free(course=course) is False
+
+
+@pytest.mark.django_db
+class TestGetAccessBadge:
+    """ApplicationCourseAccessBackend.get_access_badge (config-only, no queries)."""
+
+    def test_free_course_badge_reads_free(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        from freedom_ls.course_access.backends import AccessBadge
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        course = CourseFactory(access_config={"access_type": "free"})
+        backend = ApplicationCourseAccessBackend()
+
+        with django_assert_num_queries(0):
+            assert backend.get_access_badge(course=course) == AccessBadge(label="Free")
+
+    def test_gated_course_badge_reads_by_application(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        from freedom_ls.course_access.backends import AccessBadge
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        course = CourseFactory(access_config={"access_type": "application_gated"})
+        backend = ApplicationCourseAccessBackend()
+
+        with django_assert_num_queries(0):
+            assert backend.get_access_badge(course=course) == AccessBadge(
+                label="By application"
+            )
