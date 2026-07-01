@@ -19,6 +19,8 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
+from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
+
 
 @pytest.mark.django_db
 def test_anonymous_dashboard_returns_200(mock_site_context):
@@ -122,8 +124,6 @@ def test_anonymous_login_link_carries_deeper_path(mock_site_context):
 @pytest.mark.django_db
 def test_anonymous_dashboard_shows_signup_when_allowed(mock_site_context):
     """Sign up button appears when the site allows signups."""
-    from freedom_ls.accounts.factories import SiteSignupPolicyFactory
-
     SiteSignupPolicyFactory(allow_signups=True)
     client = Client()
     response = client.get(reverse("student_interface:dashboard"))
@@ -135,8 +135,6 @@ def test_anonymous_dashboard_shows_signup_when_allowed(mock_site_context):
 @pytest.mark.django_db
 def test_anonymous_dashboard_hides_signup_when_disallowed(mock_site_context):
     """Sign up button is hidden when the site disallows signups."""
-    from freedom_ls.accounts.factories import SiteSignupPolicyFactory
-
     SiteSignupPolicyFactory(allow_signups=False)
     client = Client()
     response = client.get(reverse("student_interface:dashboard"))
@@ -161,8 +159,6 @@ def test_anonymous_dashboard_does_not_call_get_dashboard_contributions(
 @pytest.mark.django_db
 def test_authenticated_dashboard_does_not_show_hero(mock_site_context):
     """Authenticated dashboard must NOT show the anonymous hero headline."""
-    from freedom_ls.accounts.factories import UserFactory
-
     user = UserFactory(first_name="Ada")
     client = Client()
     client.force_login(user)
@@ -175,8 +171,6 @@ def test_authenticated_dashboard_does_not_show_hero(mock_site_context):
 @pytest.mark.django_db
 def test_authenticated_dashboard_still_returns_200(mock_site_context):
     """Authenticated dashboard still returns 200 after Phase 2 changes."""
-    from freedom_ls.accounts.factories import UserFactory
-
     user = UserFactory(first_name="Ada")
     client = Client()
     client.force_login(user)

@@ -10,12 +10,15 @@ Covers:
 
 from __future__ import annotations
 
+from urllib.parse import parse_qs, urlparse
+
 import pytest
 
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
+from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.student_management.models import UserCourseRegistration
 
@@ -23,6 +26,12 @@ ALWAYS_INCOMPLETE_PATH = (
     "freedom_ls.accounts.tests._completion_view_fixtures.AlwaysIncompleteForm"
 )
 PHONE_FORM_PATH = "freedom_ls.accounts.tests._completion_view_fixtures.PhoneNumberForm"
+
+
+def _next_param(location: str) -> str | None:
+    """Return the single `next` query-param value from a redirect Location, if any."""
+    values = parse_qs(urlparse(location).query).get("next")
+    return values[0] if values else None
 
 
 # ---------------------------------------------------------------------------
@@ -152,8 +161,6 @@ def test_next_survives_complete_registration_step(mock_site_context, site, setti
       4. They submit the form.
       5. The view redirects them to the original destination.
     """
-    from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
-
     STORED_PHONE_NUMBERS.clear()
 
     SiteSignupPolicyFactory(site=site, additional_registration_forms=[PHONE_FORM_PATH])
@@ -187,8 +194,6 @@ def test_unsafe_next_in_complete_registration_falls_back_to_login_redirect(
     An off-host `next` supplied to `complete_registration` must be ignored;
     the redirect must fall back to `LOGIN_REDIRECT_URL`.
     """
-    from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
-
     STORED_PHONE_NUMBERS.clear()
     settings.LOGIN_REDIRECT_URL = "/"
 
@@ -231,9 +236,7 @@ def test_anonymous_access_to_initiate_redirects_to_login_with_next(mock_site_con
     assert response.status_code == 302
     login_url = reverse("account_login")
     assert response["Location"].startswith(login_url)
-    assert (
-        f"next={access_url}" in response["Location"] or "next=" in response["Location"]
-    )
+    assert _next_param(response["Location"]) == access_url
 
 
 @pytest.mark.django_db
@@ -273,7 +276,7 @@ def test_anonymous_access_to_apply_redirects_to_login_with_next(mock_site_contex
     assert response.status_code == 302
     login_url = reverse("account_login")
     assert response["Location"].startswith(login_url)
-    assert "next=" in response["Location"]
+    assert _next_param(response["Location"]) == apply_url
 
 
 @pytest.mark.django_db
@@ -306,8 +309,6 @@ def test_complete_registration_get_with_safe_next_renders_hidden_field(
     mock_site_context, site
 ):
     """A safe ?next= is re-emitted as a hidden input in the completion form."""
-    from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
-
     STORED_PHONE_NUMBERS.clear()
 
     SiteSignupPolicyFactory(site=site, additional_registration_forms=[PHONE_FORM_PATH])
