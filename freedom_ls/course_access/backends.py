@@ -17,10 +17,10 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
-from freedom_ls.student_management.utils import (
-    is_registered_for_course,
+from freedom_ls.student_management.queries import (
     is_registered_for_course_expression,
 )
+from freedom_ls.student_management.utils import is_registered_for_course
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AnonymousUser

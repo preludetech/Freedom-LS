@@ -64,11 +64,11 @@ class TestIsRegisteredForCourse:
 
 @pytest.mark.django_db
 class TestIsRegisteredForCourseExpression:
-    """Tests for student_management.utils.is_registered_for_course_expression."""
+    """Tests for student_management.queries.is_registered_for_course_expression."""
 
     def test_directly_registered_course_annotates_true(self, mock_site_context):
         from freedom_ls.content_engine.models import Course
-        from freedom_ls.student_management.utils import (
+        from freedom_ls.student_management.queries import (
             is_registered_for_course_expression,
         )
 
@@ -83,7 +83,7 @@ class TestIsRegisteredForCourseExpression:
 
     def test_cohort_registered_course_annotates_true(self, mock_site_context):
         from freedom_ls.content_engine.models import Course
-        from freedom_ls.student_management.utils import (
+        from freedom_ls.student_management.queries import (
             is_registered_for_course_expression,
         )
 
@@ -102,7 +102,7 @@ class TestIsRegisteredForCourseExpression:
 
     def test_unregistered_course_annotates_false(self, mock_site_context):
         from freedom_ls.content_engine.models import Course
-        from freedom_ls.student_management.utils import (
+        from freedom_ls.student_management.queries import (
             is_registered_for_course_expression,
         )
 
