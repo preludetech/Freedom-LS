@@ -53,6 +53,7 @@ flowchart TB
     educator_interface --> student_progress
     qa_helpers --> accounts
     qa_helpers --> content_engine
+    qa_helpers --> course_applications
     qa_helpers --> student_management
     qa_helpers --> student_progress
     role_based_permissions --> accounts
@@ -75,6 +76,8 @@ flowchart TB
     webhooks --> base
     webhooks --> site_aware_models
     xapi_learning_record_store --> site_aware_models
+    accounts -.-> content_engine
+    accounts -.-> student_management
     markdown_rendering -.-> content_engine
     role_based_permissions -.-> student_management
     site_aware_models -.-> accounts
@@ -86,7 +89,7 @@ flowchart TB
 
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
-| accounts | base, markdown_rendering, site_aware_models, webhooks | — |
+| accounts | base, markdown_rendering, site_aware_models, webhooks | content_engine, student_management |
 | app_authentication | site_aware_models | — |
 | base | — | — |
 | content_engine | icons, markdown_rendering, site_aware_models | — |
@@ -96,7 +99,7 @@ flowchart TB
 | icons | — | — |
 | markdown_rendering | — | content_engine |
 | panel_framework | — | — |
-| qa_helpers | accounts, content_engine, student_management, student_progress | — |
+| qa_helpers | accounts, content_engine, course_applications, student_management, student_progress | — |
 | role_based_permissions | accounts, site_aware_models | student_management |
 | site_aware_models | — | accounts |
 | student_interface | accounts, content_engine, course_access, icons, student_management, student_progress, webhooks | course_applications |
