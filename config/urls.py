@@ -24,9 +24,8 @@ from django.contrib.sitemaps.views import sitemap
 from django.http import JsonResponse
 from django.urls import include, path
 
-from freedom_ls.base.sitemaps import StaticViewSitemap
+from config.sitemaps import CourseSitemap, StaticViewSitemap
 from freedom_ls.base.views import robots_txt
-from freedom_ls.content_engine.sitemaps import CourseSitemap
 
 # from ninja import NinjaAPI
 

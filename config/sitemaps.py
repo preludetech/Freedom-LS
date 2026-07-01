@@ -1,7 +1,8 @@
-"""Sitemaps for content_engine models.
+"""Sitemaps for the Freedom Learning System.
 
-Lives in content_engine because it owns the Course model. The Sites framework
-supplies the correct domain per request, making the sitemap multi-tenant safe.
+All sitemaps are co-located here in the project's composition root, which is
+allowed to depend on any app. The Sites framework supplies the correct domain
+per request, making every sitemap multi-tenant safe.
 """
 
 from __future__ import annotations
@@ -11,6 +12,19 @@ from django.db.models import QuerySet
 from django.urls import reverse
 
 from freedom_ls.content_engine.models import Course
+
+
+class StaticViewSitemap(Sitemap):
+    """Sitemap entry for static public views (the course catalogue)."""
+
+    changefreq = "weekly"
+    priority = 0.8
+
+    def items(self) -> list[str]:
+        return ["student_interface:courses"]
+
+    def location(self, item: str) -> str:
+        return reverse(item)
 
 
 class CourseSitemap(Sitemap):
