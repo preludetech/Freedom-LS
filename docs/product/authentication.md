@@ -1,12 +1,12 @@
 # Authentication
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-07-01_
 
 ## Summary
 
 - Email is the sole login identifier; there are no usernames. Email verification is mandatory before login is permitted.
 - Account security is hardened with Argon2 password hashing, brute-force lockout (5 failures → 1-hour cooldown), signup rate limiting, email-enumeration prevention, and a minimum 10-character password policy.
-- Per-site signup policy controls whether self-registration is open, and what information is collected; additional registration forms and a post-registration completion step are supported.
+- Per-site signup policy controls whether self-registration is open, and what information is collected; additional registration forms and a post-registration completion step are supported. When a `?next=` destination is in flight, it is preserved through the completion step and validated against the current host before use.
 - Every user consent to a legal document is recorded in an append-only `LegalConsent` table with the git hash of the accepted document, the IP address, a timestamp, and the consent method — this is the canonical consent audit trail.
 - A separate token-based API authentication system (`app_authentication`) handles machine-to-machine access. Multi-factor authentication (2FA/MFA) is not yet implemented; see [roadmap](./roadmap.md).
 
@@ -34,6 +34,8 @@ _Last updated: 2026-06-09_
 If no `SiteSignupPolicy` row exists for a site, the global settings defaults apply (`ALLOW_SIGN_UPS`, `REQUIRE_NAME`, `REQUIRE_TERMS_ACCEPTANCE`).
 
 **Additional registration forms and post-registration completion.** The `additional_registration_forms` list on `SiteSignupPolicy` allows additional form steps to be inserted into the registration flow. `RegistrationCompletionMiddleware` intercepts authenticated users who have not yet completed all required forms and redirects them to the `complete_registration` view before allowing access to any other page.
+
+**`next` preservation and open-redirect safety.** When an anonymous visitor triggers an action that requires authentication, the intended destination URL is passed as `?next=` into the allauth login/signup flow. For new users who proceed through the `complete_registration` step, `RegistrationCompletionMiddleware` now carries `next` forward on its forced redirect so the destination survives the additional-forms step and the user lands on their originally intended destination after finishing. Every read of `next` is validated with Django's `url_has_allowed_host_and_scheme` (same-host paths only); an off-host value is discarded and the user falls back to the default post-login redirect. For the learner-facing browse-first, login-at-commitment experience that motivates this flow, see [learner experience](./learner-experience.md).
 
 ## Legal Consent Audit Trail
 

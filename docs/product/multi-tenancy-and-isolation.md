@@ -1,6 +1,6 @@
 # Multi-Tenancy and Isolation
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-07-01_
 
 ## Summary
 
@@ -55,6 +55,7 @@ The following data categories are site-scoped and therefore isolated between ten
 - **Webhooks** — `WebhookEndpoint` and `WebhookSecret` are both `SiteAwareModel` subclasses; each site's webhook configuration and secrets are isolated.
 - **Legal consent** — `LegalConsent` is site-scoped.
 - **Recommended courses** — `RecommendedCourse` is site-scoped.
+- **Public discoverability surfaces** — the per-site `sitemap.xml`, `robots.txt`, and `schema.org` JSON-LD structured data on catalogue and course-detail pages are tenant-isolated in the same way. The `CourseSitemap` queryset is site-filtered automatically by `SiteAwareManager`, and all absolute URLs in the sitemap and JSON-LD are built per-request from the current site's domain — never a hardcoded host. A visitor on site A therefore never sees site B's courses, sitemap entries, or JSON-LD URLs. See [learner experience](./learner-experience.md) for SEO and discoverability details.
 
 ## Limitations and Gaps
 
@@ -64,6 +65,6 @@ The following data categories are site-scoped and therefore isolated between ten
 
 ## Compliance: Tenant Data-Separation Guarantee
 
-From a compliance perspective, the isolation guarantee is: for any HTTP request arriving at the application, all ORM queries executed during that request are automatically scoped to the site matching the request's `Host` header. An authenticated user or educator on site A cannot retrieve records belonging to site B through any standard view or form interaction, because `SiteAwareManager` applies the site filter unconditionally on every queryset.
+From a compliance perspective, the isolation guarantee is: for any HTTP request arriving at the application, all ORM queries executed during that request are automatically scoped to the site matching the request's `Host` header. An authenticated user or educator on site A cannot retrieve records belonging to site B through any standard view or form interaction, because `SiteAwareManager` applies the site filter unconditionally on every queryset. This guarantee extends equally to anonymous (unauthenticated) visitors: the home page, course catalogue, and course-detail pages are now publicly accessible, and `SiteAwareManager` applies the same per-request site filter on every ORM query they trigger, so anonymous browsing of one tenant's domain cannot surface another tenant's courses, sitemap entries, or structured-data URLs.
 
 This isolation is at the application layer, not the database layer. All tenants share a single PostgreSQL database and schema. Physical database-level isolation (separate schemas, separate databases) is not provided. For deployments requiring stricter separation, a separate FLS installation per tenant is the supported approach.

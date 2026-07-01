@@ -1,11 +1,11 @@
 # Learner Experience
 
-_Last updated: 2026-06-23_
+_Last updated: 2026-07-01_
 
 ## Summary
 
-- Learners see a personalised dashboard grouping courses into in-progress, recommended, and completed; a full course listing shows registration status at a glance.
-- Each course displays learning outcomes, difficulty, estimated duration, and a description; the action available depends on the course's access type — free courses can be started immediately, while application-gated courses present an "Apply now" path instead.
+- Anonymous (logged-out) visitors can browse the home page, the course catalogue, and individual course detail pages without creating an account. Login is required only at the committing action (enrolment or application). The three personalised dashboard sections (In Progress, Recommended, Completed) are shown only to authenticated learners; anonymous visitors see a value-proposition hero and a discovery section instead.
+- Each course listing entry shows an **access-model badge** (Free / By application) so a visitor can tell the access model before clicking through. Each course displays learning outcomes, difficulty, estimated duration, and a description; the acquisition CTA wording is action-forward: free courses show "Enrol for free", application-gated courses show "Apply now" (or "View my application" for a returning applicant).
 - The course player enforces sequential item unlock (BLOCKED → READY → IN_PROGRESS → COMPLETE/FAILED) and resumes automatically at the last accessed item.
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
 - Hard deadlines lock uncompleted content after expiry; soft deadlines show an overdue indicator without locking.
@@ -14,7 +14,13 @@ _Last updated: 2026-06-23_
 
 ![Learner dashboard](screenshots/learner_dashboard.png)
 
-The student dashboard (`student_interface:dashboard`) is the entry point after login. It presents three sections:
+The student dashboard (`student_interface:dashboard`) serves as the home page at `/`. Its content branches on whether the visitor is authenticated.
+
+**Anonymous visitors** see a value-proposition hero (a short headline, subtext, and a single "Browse all courses" CTA) at the top of the page, followed by the **Available courses** discovery section showing a sample of courses on the site. The personalised sections — the "Welcome back" greeting, In Progress, Recommended, Learning History, and any backend panels — are not shown. They are omitted entirely rather than shown as "sign in to see this" placeholders.
+
+![Anonymous home page with value-proposition hero and course discovery](screenshots/learner_home_anonymous.png)
+
+**Authenticated learners** see the dashboard unchanged from before: the personalised greeting, and three sections:
 
 - **In progress** — courses the learner has started but not completed, ordered by recent activity.
 - **Recommended** — courses surfaced via `RecommendedCourse` records (set by site administrators).
@@ -22,27 +28,61 @@ The student dashboard (`student_interface:dashboard`) is the entry point after l
 
 Each course card shows the course title, category, and progress percentage.
 
-When the application-gated access type is in use, the dashboard also shows an **In-flight applications** panel listing any courses the learner has applied to but not yet been enrolled in, each linking to its application status page. This panel appears only when the active course-access backend contributes it; it is absent on installations using only free courses.
+When the application-gated access type is in use, the authenticated dashboard also shows an **In-flight applications** panel listing any courses the learner has applied to but not yet been enrolled in, each linking to its application status page. This panel appears only when the active course-access backend contributes it; it is absent on installations using only free courses.
+
+The site header shows **Log in** and **Sign up** affordances for anonymous visitors (carrying a `?next=` parameter so the visitor returns to the page they were on after authenticating). These affordances are absent from the header for authenticated users.
 
 ![Learner dashboard with in-flight applications panel](screenshots/learner_dashboard_applications.png)
 
 ## Course Listing
 
-The course listing page (`student_interface:courses`) shows all courses available on the current site. Each entry displays the learner's registration status: not registered, registered (in progress), or completed. Learners can navigate from the listing to a course detail page or directly to a registered course to resume.
+The course listing page (`student_interface:courses`) is publicly accessible — no login is required to browse it. It shows all courses available on the current site.
+
+Each entry shows an **access-model badge** ("Free" or "By application") so a visitor can identify the access model before clicking through to the detail page. The badge is provided by the active course-access backend and is not read from the course model configuration directly in templates.
+
+![Course catalogue with Free and By-application access badges](screenshots/learner_catalogue_access_badges.png)
+
+For authenticated learners, the listing additionally shows registration status (not registered, registered/in progress, or completed) and allows navigating directly to a registered course to resume. For anonymous visitors the "Not registered" status eyebrow is suppressed — the access badge serves as the at-a-glance signal instead. Card links point to the public course detail page for all visitors.
 
 ## Course Detail Page
 
 ![Course detail page](screenshots/learner_course_detail.png)
 
-The course detail page (`student_interface:course_detail`) shows:
+The course detail page (`student_interface:course_detail`) is publicly accessible. Anonymous visitors and authenticated learners alike can view:
 
 - **Learning outcomes** — a list of what the learner will achieve.
 - **Difficulty** — one of: beginner, intermediate, advanced, all levels.
 - **Estimated duration** — a human-readable display of the `estimated_duration` field.
 - **Description** — full course markdown description.
-- **Start / resume CTA** — if already registered, the button resumes from the last accessed item.
+- **Access-model signal** — the "Enrolment" stat near the CTA shows "Free · open" for free courses and "By application" for application-gated courses. This signal is provided by the active course-access backend.
+- **Table of contents** — all items render as blocked (no URLs) for visitors who are not registered, which is the expected behaviour for both anonymous and not-yet-registered authenticated visitors.
 
-The CTA label and destination are driven by the active course-access backend: free courses show "Start", application-gated courses show "Apply now", and already-registered learners see "Continue" (or the appropriate resume label). See [configuration and extension](./configuration-and-extension.md) for how access types are configured per course.
+**Acquisition CTA (not-registered visitors).** The CTA label and destination are owned by the active course-access backend, so a future access model can supply its own wording without changing the detail page. For the two access models that exist today:
+
+- Free course → **"Enrol for free"**, which targets the enrolment endpoint.
+- Application-gated course, no prior application → **"Apply now"**, which targets the apply view.
+- Application-gated course, existing application → **"View my application"**, which links to the learner's application status page.
+
+The CTA label is action-forward and does not mention login; an anonymous visitor is taken through the standard login or signup flow automatically when they click the CTA (see [Deferred-login intent completion](#deferred-login-intent-completion) below). See [configuration and extension](./configuration-and-extension.md) for how access types are configured per course.
+
+**Progress-aware CTA (already-registered learners).** For learners who are already enrolled, the detail page shows a progress-aware CTA independent of the access backend: "Start course", "Continue", or "Review course", pointing at the appropriate position in the course. This registered path is unchanged from before this feature.
+
+## Deferred-login Intent Completion
+
+When an anonymous visitor clicks an acquisition CTA ("Enrol for free" or "Apply now"), they are sent through the standard full-page login or signup flow via a `?next=` parameter. After authenticating, their intended action completes automatically:
+
+- **"Enrol for free"** — after login or signup, the learner is enrolled and dropped straight into the course content with no additional click.
+- **"Apply now"** — after login or signup, the learner lands on the apply confirmation page, ready to submit. The application is not auto-submitted; applying is a deliberate action.
+
+This intent is preserved even through the new-user signup path that requires completing additional registration forms. For the technical details of how `?next=` survives the registration-completion step, see [Authentication](./authentication.md).
+
+## Discoverability
+
+Because the catalogue and course detail pages are public, they are crawlable. Each page emits a per-page `<title>` and `<meta name="description">`. Course detail pages include `schema.org/Course` JSON-LD structured data (populated only from fields that exist in the model: title, description, difficulty, estimated duration, learning outcomes, and whether the course is accessible for free). The catalogue page includes `schema.org/ItemList` JSON-LD covering the visible courses and their detail URLs.
+
+The installation serves a dynamic per-site `sitemap.xml` listing the catalogue and all course detail pages, and a `robots.txt` that allows crawling of the public course paths and references the current site's sitemap. All URLs in structured data and the sitemap are absolute and tenant-correct. For details of per-tenant URL isolation, see [Multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
+
+No provider, image, author, or rating structured-data fields are populated, as no backing model data exists for them.
 
 ## Self-Registration
 
