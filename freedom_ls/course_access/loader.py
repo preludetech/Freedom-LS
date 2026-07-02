@@ -14,12 +14,18 @@ from typing import Any
 from django.conf import settings
 from django.utils.module_loading import import_string
 
-from freedom_ls.course_access.backends import CourseAccessBackend
+from freedom_ls.course_access.backends import (
+    CourseAccessBackend,
+    VisibilityEnforcingBackend,
+)
 
 
 @functools.cache
 def get_course_access_backend() -> CourseAccessBackend:
     """Return the configured course-access backend (cached for the process lifetime).
+
+    Always wraps the configured backend in a VisibilityEnforcingBackend so that
+    no backend (present or future) can bypass coming-soon / hidden enforcement.
 
     Resolves settings.COURSE_ACCESS_BACKEND via import_string and instantiates it.
 
@@ -27,10 +33,10 @@ def get_course_access_backend() -> CourseAccessBackend:
     get_course_access_backend.cache_clear() before and after the test so that the
     overridden setting takes effect and the cache is restored afterward.
     """
-    backend_class: type[CourseAccessBackend] = import_string(
+    inner_class: type[CourseAccessBackend] = import_string(
         settings.COURSE_ACCESS_BACKEND
     )
-    return backend_class()
+    return VisibilityEnforcingBackend(inner_class())
 
 
 def validate_course_access_config(

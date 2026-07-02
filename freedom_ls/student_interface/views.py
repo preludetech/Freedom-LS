@@ -13,11 +13,14 @@ from django.views.decorators.http import require_POST
 
 from freedom_ls.content_engine.models import (
     Course,
+    CourseVisibility,
     Form,
     FormStrategy,
     Topic,
 )
 from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
+from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.student_management.config import config
 from freedom_ls.student_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.student_management.models import (
@@ -138,7 +141,20 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     # unauthenticated users), so they run unconditionally.
     registered_courses = get_current_courses(request.user)
     completed_courses = get_completed_courses(request.user)
-    recommended_courses = get_recommended_courses(request.user)
+    # Route recommendations through the shared visibility gate rather than
+    # re-implementing the hidden rule here: filter_visible drops hidden courses the
+    # user is not registered for (and keeps coming-soon), so a hidden course can
+    # never leak as a clickable recommendation card and this path cannot drift from
+    # the wrapper's rule. Only pks are queried; the already-fetched rec.collection
+    # instances are reused for rendering.
+    recs = list(get_recommended_courses(request.user))
+    visible_rec_ids = set(
+        backend.filter_visible(
+            user=request.user,
+            courses=Course.objects.filter(pk__in=[rec.collection_id for rec in recs]),
+        ).values_list("pk", flat=True)
+    )
+    recommended_courses = [rec for rec in recs if rec.collection_id in visible_rec_ids]
 
     if is_auth:
         for course in registered_courses:
@@ -153,9 +169,17 @@ def dashboard(request: HttpRequest) -> HttpResponse:
                 can_access_content=course_decision.can_access_content,
             )
         for rec in recommended_courses:
-            # Recommendations are by definition not yet registered, so they get
-            # the not-registered card (single link to detail page).
+            # Recommendations are by definition not yet registered. A recommended
+            # course can still be coming-soon, and the dashboard renders it through
+            # the same dispatch-card seam, so stamp is_coming_soon here too. The
+            # dashboard coming-soon card is a plain detail link (no express-interest
+            # CTA), so no per-course interest lookup is needed here.
             setattr(rec.collection, "is_registered", False)  # noqa: B010
+            setattr(  # noqa: B010
+                rec.collection,
+                "is_coming_soon",
+                rec.collection.visibility == CourseVisibility.COMING_SOON,
+            )
 
     registered_ids = (
         {c.id for c in get_course_registrations(request.user)} if is_auth else set()
@@ -172,6 +196,11 @@ def dashboard(request: HttpRequest) -> HttpResponse:
             continue
         setattr(course, "is_registered", False)  # noqa: B010
         stamp_course_access_badge(course, badge=backend.get_access_badge(course=course))
+        setattr(  # noqa: B010
+            course,
+            "is_coming_soon",
+            course.visibility == CourseVisibility.COMING_SOON,
+        )
         available_courses.append(course)
         if len(available_courses) == 3:
             break
@@ -258,6 +287,9 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     # decision.can_access_content drives the content gate. They diverge for an
     # invalid-config course, so neither can be derived from the other.
     is_registered = get_is_registered(user=request.user, course=course)
+    # Hidden courses 404 for anyone not registered, matching the wrapper's
+    # filter_visible rule (coming_soon and published detail pages stay accessible).
+    raise_404_if_hidden_unregistered(request.user, course)
     decision = get_course_access_backend().get_access(user=request.user, course=course)
     # get_course_index is anonymous-safe (it fetches user-scoped progress/deadlines
     # only behind its own is_authenticated / can_access_content guards).
@@ -281,6 +313,13 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         # backends that provide no CTA (e.g. invalid config) — <c-button href=""> renders disabled.
         start_url = decision.cta_url
         cta_label = decision.cta_label
+    # Coming-soon courses render the shared express-interest control in the
+    # not-registered branch instead of the generic enrol anchor (which would
+    # GET a POST-only endpoint and can't reflect existing interest). Stamp the
+    # course's current interest state so the partial picks the right variant.
+    is_coming_soon = course.visibility == CourseVisibility.COMING_SOON
+    if is_coming_soon and not is_registered:
+        stamp_interest(request.user, [course])
     breadcrumbs = [
         {"label": "All courses", "url": reverse("student_interface:courses")},
         {"label": course.title},
@@ -326,6 +365,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
             "course": course,
             "children": children,
             "is_registered": is_registered,
+            "is_coming_soon": is_coming_soon,
             "start_url": start_url,
             "cta_label": cta_label,
             # Acquisition-funnel copy is access-type-specific and comes from the
@@ -356,6 +396,9 @@ def course_home(request, course_slug):
     the player linking back here, so the browser Back button cannot loop.
     """
     course = get_object_or_404(Course, slug=course_slug)
+    # Hidden courses 404 for anyone not registered, matching every other slug
+    # chokepoint — never leak existence via a 302-vs-404 divergence.
+    raise_404_if_hidden_unregistered(request.user, course)
 
     if (
         not get_course_access_backend()
@@ -384,6 +427,14 @@ def initiate_course_access(request, course_slug):
     """
 
     course = get_object_or_404(Course, slug=course_slug)
+
+    # Enforce course visibility, mirroring the apply view: hidden courses 404 for
+    # unregistered users, and coming-soon courses are not enrollable — route to the
+    # detail page's express-interest CTA. (The coming-soon decision's cta_url is the
+    # POST-only express-interest endpoint, so redirecting the browser there would 405.)
+    raise_404_if_hidden_unregistered(request.user, course)
+    if course.visibility == CourseVisibility.COMING_SOON:
+        return redirect("student_interface:course_detail", course_slug=course.slug)
 
     # Chokepoint gate: consult the active backend before allowing self-registration.
     # If the backend does not permit self-registration (e.g. application-gated courses),
@@ -416,6 +467,9 @@ def initiate_course_access(request, course_slug):
 @login_required
 def view_course_item(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
+    # Hidden courses 404 for anyone not registered, matching every other slug
+    # chokepoint — never leak existence via a 302-vs-404 divergence.
+    raise_404_if_hidden_unregistered(request.user, course)
 
     # Content-access gate: an unregistered learner (or one blocked by a gating
     # backend) is redirected to course_detail. This closes the hole where an

@@ -1,12 +1,13 @@
 # Educator Interface
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-07-01_
 
 ## Summary
 
 - Educators access a single-page HTMX panel interface with three sections: Cohorts, Users, and Courses.
 - Object-level access control via django-guardian ensures educators see only the cohorts they have been explicitly granted permission on; no cross-cohort data leakage is possible through the interface.
 - The cohort detail view includes a course-progress matrix showing completion status, quiz scores, pass/fail, and deadlines for every student × course-item combination.
+- Courses carry a visibility state (published / coming soon / hidden); the Courses list shows each course's visibility and, for coming-soon courses, an interest count with drill-down to the interested students. Visibility itself is read-only in the interface — see [content editing workflow](./content-editing-workflow.md) for how it's set.
 - **Limits:** cohort membership management, course registration, and deadline-setting are admin-only operations — they cannot be performed from the educator interface. There is no messaging capability.
 
 ## Panel Interface
@@ -29,7 +30,15 @@ Lists users who are members of at least one cohort the educator has permission o
 
 ### Courses
 
-Lists all courses with the count of active students and cohorts. The course detail shows the course title and category, the cohorts registered for the course, and any direct (non-cohort) student registrations.
+![Educator courses list with visibility and interest count](screenshots/educator_course_visibility.png)
+
+Lists all courses with the count of active students and cohorts. Each course also shows its **visibility** — published, coming soon, or hidden — so educators and admins can see every course regardless of state; visibility filtering only ever applies to learners, never to the educator or admin querysets. For courses that are coming soon, the list also shows an **interest count**: the number of learners who have expressed interest via the coming-soon waitlist, giving educators a demand signal for what to launch next.
+
+![Interested-students drill-down panel](screenshots/educator_interest_panel.png)
+
+The course detail view shows the course title and category, the cohorts registered for the course, any direct (non-cohort) student registrations, and — for coming-soon courses — a drill-down panel listing the interested students by name and the date they expressed interest, making the waitlist actionable. Interest counts and the drill-down are scoped to the current site, consistent with the rest of the interface.
+
+Visibility itself is **read-only** here and in the Django admin — it cannot be changed from either interface. Visibility is set solely in the course content front-matter and takes effect when the course is (re-)imported; see [content editing workflow](./content-editing-workflow.md) for how educators/authors flip a course between published, coming soon, and hidden. The learner-facing experience of coming-soon and hidden courses (badging, the "I'm interested" affordance, hidden-course 404 behaviour) is covered in [learner experience](./learner-experience.md).
 
 ## Course-Progress Matrix
 

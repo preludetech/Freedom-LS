@@ -1,6 +1,6 @@
 # Freedom LS — Product Documentation
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-07-01_
 
 ## Security Posture
 
@@ -18,9 +18,9 @@ The target deployment runs on **Vultr Johannesburg**, which holds **ISO/IEC 2700
 |---|---|
 | [Content Editing Workflow](./content-editing-workflow.md) | Git-backed Markdown/YAML authoring with Pydantic validation, idempotent upsert by UUID, a four-stage render pipeline (python-markdown → nh3 → cotton → Django), and a tamper-evident legal-document consent audit trail. |
 | [Authentication](./authentication.md) | Email-only login with mandatory verification, per-site signup policy, Argon2 hashing, django-axes lockout, email-enumeration prevention, append-only `LegalConsent` records, and a separate API-client token system. |
-| [Learner Experience](./learner-experience.md) | Personalised dashboard, course detail with outcomes and difficulty, self-registration, sequential item unlock with resume, multi-page forms, quiz feedback, and hard/soft deadline enforcement. |
+| [Learner Experience](./learner-experience.md) | Personalised dashboard, course detail with outcomes and difficulty, self-registration, coming-soon/hidden course visibility with an express-interest waitlist, sequential item unlock with resume, multi-page forms, quiz feedback, and hard/soft deadline enforcement. |
 | [Learner Tracking](./learner-tracking.md) | Per-item completion records (`TopicProgress`, `FormProgress`, `QuestionAnswer`), course progress percentage with auto-recalculation, and a resume pointer; no time-on-task or score export. |
-| [Educator Interface](./educator-interface.md) | Single-page HTMX panel with cohort, user, and course views; course-progress matrix (completion, quiz scores, deadlines); access restricted to permissioned cohorts via django-guardian. Membership and deadline management are admin-only. |
+| [Educator Interface](./educator-interface.md) | Single-page HTMX panel with cohort, user, and course views; course-progress matrix (completion, quiz scores, deadlines); course visibility and coming-soon interest counts with drill-down to interested students; access restricted to permissioned cohorts via django-guardian. Membership and deadline management are admin-only. |
 | [Admin Interface](./admin-interface.md) | Django admin enhanced with Unfold; configurable admin URL; django-guardian object-level permissions for cohort grants; read-only `LegalConsent`; webhook test-send action. |
 | [Webhooks](./webhooks.md) | Outbound events (`user.registered`, `course.completed`, `course.registered`) with HMAC-SHA256 signing, Fernet-encrypted per-site secrets, Jinja2 body/header templates, SSRF protection, retry with exponential back-off, and circuit breaker. |
 

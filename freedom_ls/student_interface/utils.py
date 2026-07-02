@@ -14,6 +14,7 @@ from django.utils import timezone
 from freedom_ls.content_engine.models import (
     Course,
     CoursePart,
+    CourseVisibility,
     Form,
     FormQuestion,
     FormStrategy,
@@ -56,6 +57,9 @@ class CourseListingStatus(StrEnum):
     REGISTERED = "registered"  # registered, 0%, not complete
     IN_PROGRESS = "in_progress"  # registered, >0%, completed_time is None
     COMPLETE = "complete"  # registered, completed_time is not None
+    COMING_SOON = (
+        "coming_soon"  # visibility == COMING_SOON; precedes registration status
+    )
 
 
 @dataclass(frozen=True)
@@ -695,6 +699,9 @@ def get_course_listing(
     - ``REGISTERED`` — registered but no progress recorded yet (0%).
     - ``IN_PROGRESS`` — registered with some progress and not yet complete.
     - ``COMPLETE`` — registered and the course has a ``completed_time``.
+    - ``COMING_SOON`` — the course is coming-soon and the learner is not registered
+      for it (shows the express-interest affordance). Registered learners keep their
+      registration-derived status, since coming-soon exempts already-registered users.
 
     ``access_badge`` on each entry comes from the access backend's config-only
     ``get_access_badge`` signal (one call per course, no per-user registration
@@ -709,14 +716,26 @@ def get_course_listing(
     courses = visible_courses if visible_courses is not None else get_all_courses()
 
     if not user.is_authenticated:
+        # The public catalogue passes a pre-filtered ``visible_courses`` queryset;
+        # honour it verbatim. When a caller omits it, apply filter_visible to the
+        # all-courses fallback so an anonymous listing never leaks hidden courses.
+        anon_courses = (
+            courses
+            if visible_courses is not None
+            else backend.filter_visible(user=user, courses=courses)
+        )
+        # Anonymous users are never registered, so coming-soon courses always show
+        # the express-interest affordance (never an enrol link).
         return [
             CourseListingEntry(
                 course,
-                CourseListingStatus.NOT_REGISTERED,
+                CourseListingStatus.COMING_SOON
+                if course.visibility == CourseVisibility.COMING_SOON
+                else CourseListingStatus.NOT_REGISTERED,
                 0,
                 access_badge=backend.get_access_badge(course=course),
             )
-            for course in courses
+            for course in anon_courses
         ]
     registered_ids = {c.id for c in get_course_registrations(user)}
     progress_rows = {
@@ -729,6 +748,23 @@ def get_course_listing(
     entries: list[CourseListingEntry] = []
     for course in courses:
         access_badge = backend.get_access_badge(course=course)
+        # Coming-soon shows the express-interest affordance for learners not
+        # registered for the course; registered learners keep their normal
+        # registration-derived status (coming-soon exempts them, mirroring hidden).
+        # (Hidden courses never reach here — filter_visible drops them.)
+        if (
+            course.visibility == CourseVisibility.COMING_SOON
+            and course.id not in registered_ids
+        ):
+            entries.append(
+                CourseListingEntry(
+                    course,
+                    CourseListingStatus.COMING_SOON,
+                    0,
+                    access_badge=access_badge,
+                )
+            )
+            continue
         if course.id not in registered_ids:
             entries.append(
                 CourseListingEntry(

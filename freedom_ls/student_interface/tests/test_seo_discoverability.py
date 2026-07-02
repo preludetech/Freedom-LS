@@ -24,6 +24,7 @@ from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseVisibility
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -352,6 +353,27 @@ def test_sitemap_excludes_other_site_courses(mock_site_context, course_with_topi
     content = Client().get("/sitemap.xml").content.decode()
     assert "current-site-course" in content
     assert "other-site-course" not in content
+
+
+@pytest.mark.django_db
+def test_sitemap_excludes_hidden_but_keeps_coming_soon(
+    mock_site_context, course_with_topic
+):
+    """sitemap.xml drops hidden courses but keeps published and coming-soon ones.
+
+    Coming-soon detail pages are publicly reachable, so they belong in the sitemap;
+    hidden courses must never leak their URLs to crawlers.
+    """
+    course_with_topic(slug="published-sitemap-course")
+    course_with_topic(
+        slug="coming-soon-sitemap-course", visibility=CourseVisibility.COMING_SOON
+    )
+    course_with_topic(slug="hidden-sitemap-course", visibility=CourseVisibility.HIDDEN)
+
+    content = Client().get("/sitemap.xml").content.decode()
+    assert "published-sitemap-course" in content
+    assert "coming-soon-sitemap-course" in content
+    assert "hidden-sitemap-course" not in content
 
 
 # ---------------------------------------------------------------------------

@@ -2,6 +2,7 @@
 Course-list partials shared by the dashboard and the all-courses page.
 
 `dispatch-card` is the single dispatch seam for all card states:
+    * course.is_coming_soon -> course_card_coming_soon.html  (express-interest CTA)
     * "history"           -> course_card_complete.html   (completed course)
     * course.is_registered -> course_card_registered.html (in-progress / not-started)
     * else                -> course_card_not_registered.html (single link to course detail page)
@@ -16,7 +17,9 @@ seam.
 {% endcomment %}
 
 {% partialdef dispatch-card %}
-    {% if course_status == "history" %}
+    {% if course.is_coming_soon %}
+        {% include "student_interface/partials/course_card_coming_soon.html" %}
+    {% elif course_status == "history" %}
         {% include "student_interface/partials/course_card_complete.html" %}
     {% elif course.is_registered %}
         {% include "student_interface/partials/course_card_registered.html" %}

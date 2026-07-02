@@ -135,9 +135,17 @@
                                 {% endif %}
                             </div>
                         {% endif %}
-                        <c-button href="{{ start_url }}" class="w-full">
-                            {{ cta_label }}
-                        </c-button>
+                        {% if is_coming_soon and not is_registered %}
+                            {% comment %}Coming-soon, not-registered: the shared
+                            express-interest control (two-state, HTMX-swapped) replaces
+                            the generic enrol anchor. is_interested is stamped by the
+                            view.{% endcomment %}
+                            {% include "course_interest/partials/express_interest_cta.html" with is_interested=course.is_interested %}
+                        {% else %}
+                            <c-button href="{{ start_url }}" class="w-full">
+                                {{ cta_label }}
+                            </c-button>
+                        {% endif %}
                         <div class="pt-2 border-t border-border">
                             <h3 class="text-sm font-semibold uppercase tracking-wide text-muted mb-2">
                                 This course includes

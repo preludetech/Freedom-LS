@@ -39,6 +39,14 @@ class DifficultyLevel(models.TextChoices):
     ALL_LEVELS = "all_levels", _("All levels")
 
 
+class CourseVisibility(models.TextChoices):
+    """Course visibility lifecycle state."""
+
+    PUBLISHED = "published", _("Published")
+    COMING_SOON = "coming_soon", _("Coming soon")
+    HIDDEN = "hidden", _("Hidden")
+
+
 class BaseContent(SiteAwareModel):
     """Base model for all content types."""
 
@@ -207,6 +215,12 @@ class Course(MarkdownContent, TitledContent):
         blank=True,
         default="",
         choices=DifficultyLevel.choices,
+    )
+    visibility = models.CharField(
+        max_length=20,
+        choices=CourseVisibility.choices,
+        default=CourseVisibility.PUBLISHED,
+        db_index=True,
     )
     estimated_duration = models.DurationField(null=True, blank=True)
     items = GenericRelation(

@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-06-23_
+_Last updated: 2026-07-01_
 
 ## Summary
 
@@ -75,6 +75,8 @@ Adding a future access model — for example a subscription or a per-course purc
 Access configuration is authored per course in the content-loading pipeline. For how a learner experiences the two current access types, see [learner experience](./learner-experience.md). For authoring a course's access type, see [content editing workflow](./content-editing-workflow.md).
 
 A companion setting, `COURSE_ACCESS_CONFIG_VALIDATOR`, names the validator used to check each course's access configuration at content-load time. A custom backend that introduces its own configuration keys swaps this setting to point at its own validator; in most deployments it does not need to be set.
+
+Course **visibility** (published, coming soon, or hidden) is layered on top of the access backend and is orthogonal to it: a course's access type (free vs. application-gated) and its visibility are independent concerns that compose freely. Visibility is enforced uniformly across every backend — the free backend, the application-gated backend, and any future custom backend a deployment adds — with no per-backend configuration and no way to bypass or opt out of it; a new access backend added via `COURSE_ACCESS_BACKEND` automatically honours coming-soon and hidden without any extra work. Visibility is also independent of `COURSE_ACCESS_CONFIG_VALIDATOR`: it is not part of `access_config` and is not subject to access-configuration validation, so the two remain separate pipelines. For the learner-facing effect of each visibility state, see [learner experience](./learner-experience.md); for how visibility is authored on a course, see [content editing workflow](./content-editing-workflow.md).
 
 ## Custom-App Extension Model
 

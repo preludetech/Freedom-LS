@@ -185,10 +185,10 @@ class ContentCollectionItemInline(GenericTabularInline):
 
 @admin.register(Course)
 class CourseAdmin(SiteAwareModelAdmin):
-    list_display = ["title", "subtitle"]
-    list_filter = ("tags",)
+    list_display = ["title", "subtitle", "visibility"]
+    list_filter = ("visibility", "tags")
     search_fields = ("title", "subtitle", "description")
-    readonly_fields = ("slug",)
+    readonly_fields = ("slug", "visibility")
     inlines = [ContentCollectionItemInline]
 
     fieldsets = (
@@ -202,6 +202,7 @@ class CourseAdmin(SiteAwareModelAdmin):
                     "slug",
                     "learning_outcomes",
                     "difficulty",
+                    "visibility",
                     "estimated_duration",
                 )
             },

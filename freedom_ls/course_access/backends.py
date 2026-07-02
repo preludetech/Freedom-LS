@@ -13,9 +13,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from django.db import models
+from django.db.models import Q
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
+from freedom_ls.student_management.queries import (
+    is_registered_for_course_expression,
+)
 from freedom_ls.student_management.utils import is_registered_for_course
 
 if TYPE_CHECKING:
@@ -132,6 +136,9 @@ class CourseAccessBackend:
         future backend that hides courses a learner genuinely cannot reach (e.g.
         a subscription/paywall backend). Note application-gating does NOT use it:
         gated courses stay discoverable and are gated at the CTA + chokepoint level.
+
+        ``user`` is a RequestUser (may be anonymous): discovery listings are
+        available to anonymous visitors, so anon users genuinely flow through here.
         """
         raise NotImplementedError
 
@@ -282,3 +289,99 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
     ) -> QuerySet[Course]:
         """Return courses unchanged — all courses are visible with the default backend."""
         return courses
+
+
+# ---------------------------------------------------------------------------
+# Visibility-enforcing wrapper
+# ---------------------------------------------------------------------------
+
+# Acquisition-funnel copy for coming-soon courses, surfaced on the detail page via
+# CourseAccessDecision. Does NOT promise a launch notification (spec §7.2, §10).
+_COMING_SOON_ENROLMENT_SUMMARY = "Coming soon"
+_COMING_SOON_ACQUISITION_HEADING = "Coming soon"
+_COMING_SOON_ACQUISITION_SUBTEXT = (
+    "Register your interest and we'll let you know when the course is ready."
+)
+
+
+class VisibilityEnforcingBackend(CourseAccessBackend):
+    """Applies Course.visibility around any inner backend.
+
+    Applied by the loader so no backend (present or future) can bypass
+    coming-soon / hidden. The inner backend handles all published-course logic;
+    this wrapper intercepts coming_soon and hidden before the inner sees them.
+
+    Both coming_soon and hidden exempt users already registered for the course:
+    a registered learner keeps full access and delegates to the inner backend,
+    so mid-course learners are never disrupted by a visibility change.
+    """
+
+    def __init__(self, inner: CourseAccessBackend) -> None:
+        self._inner = inner
+
+    def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
+        from freedom_ls.content_engine.models import CourseVisibility
+
+        if (
+            course.visibility == CourseVisibility.COMING_SOON
+            and not is_registered_for_course(user, course)
+        ):
+            return CourseAccessDecision(
+                cta_label="I'm interested",
+                cta_url=reverse(
+                    "course_interest:express_interest",
+                    kwargs={"course_slug": course.slug},
+                ),
+                can_self_register=False,
+                can_access_content=False,
+                enrolment_summary=_COMING_SOON_ENROLMENT_SUMMARY,
+                acquisition_heading=_COMING_SOON_ACQUISITION_HEADING,
+                acquisition_subtext=_COMING_SOON_ACQUISITION_SUBTEXT,
+            )
+        if (
+            course.visibility == CourseVisibility.HIDDEN
+            and not is_registered_for_course(user, course)
+        ):
+            return CourseAccessDecision(
+                cta_label=None,
+                cta_url=None,
+                can_self_register=False,
+                can_access_content=False,
+            )
+        return self._inner.get_access(user=user, course=course)
+
+    def is_accessible_for_free(self, *, course: Course) -> bool:
+        # Visibility does not change the access model; delegate to the inner backend.
+        return self._inner.is_accessible_for_free(course=course)
+
+    def get_access_badge(self, *, course: Course) -> AccessBadge | None:
+        # The access-model badge is owned by the inner backend; the visibility
+        # wrapper never mints its own badge copy.
+        return self._inner.get_access_badge(course=course)
+
+    def filter_visible(
+        self, *, user: RequestUser, courses: QuerySet[Course]
+    ) -> QuerySet[Course]:
+        from freedom_ls.content_engine.models import CourseVisibility
+
+        courses = self._inner.filter_visible(user=user, courses=courses)
+        # Anonymous users never see hidden courses; authenticated users see a
+        # hidden course only if registered for it (Exists() subquery, no joins).
+        if not user.is_authenticated:
+            return courses.exclude(visibility=CourseVisibility.HIDDEN)
+        return courses.annotate(
+            _is_registered=is_registered_for_course_expression(user)
+        ).exclude(Q(visibility=CourseVisibility.HIDDEN) & Q(_is_registered=False))
+
+    def validate_course_config(
+        self,
+        raw: dict[str, Any],
+        *,
+        file_path: str = "",
+    ) -> dict[str, Any]:
+        return self._inner.validate_course_config(raw, file_path=file_path)
+
+    def get_dashboard_contributions(
+        self, *, user: RequestUser
+    ) -> list[DashboardContribution]:
+        return self._inner.get_dashboard_contributions(user=user)

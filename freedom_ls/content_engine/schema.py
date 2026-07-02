@@ -48,6 +48,14 @@ class DifficultyLevel(StrEnum):
     ALL_LEVELS = "all_levels"
 
 
+class CourseVisibility(StrEnum):
+    """Course visibility lifecycle state (mirrors models.CourseVisibility)."""
+
+    PUBLISHED = "published"
+    COMING_SOON = "coming_soon"
+    HIDDEN = "hidden"
+
+
 class BaseBaseContentModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -140,6 +148,10 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
     difficulty: DifficultyLevel | None = Field(
         None,
         description="Course difficulty level",
+    )
+    visibility: CourseVisibility | None = Field(
+        CourseVisibility.PUBLISHED,
+        description="Course visibility lifecycle state",
     )
     estimated_duration: timedelta | None = Field(
         None,

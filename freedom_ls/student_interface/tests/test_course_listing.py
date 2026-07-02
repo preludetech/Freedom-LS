@@ -20,7 +20,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.student_interface.utils import (
     CourseListingEntry,
     CourseListingStatus,
@@ -139,6 +139,20 @@ def test_course_on_different_site_excluded_from_listing(mock_site_context):
     entry_courses = [e.course for e in entries]
     assert current_site_course in entry_courses
     assert other_site_course not in entry_courses
+
+
+@pytest.mark.django_db
+def test_anonymous_listing_excludes_hidden_courses(mock_site_context):
+    """The anonymous branch routes through filter_visible, so a hidden course
+    is excluded while a published course is listed."""
+    published = CourseFactory(visibility=CourseVisibility.PUBLISHED)
+    hidden = CourseFactory(visibility=CourseVisibility.HIDDEN)
+
+    entries = get_course_listing(AnonymousUser())
+
+    entry_courses = [e.course for e in entries]
+    assert published in entry_courses
+    assert hidden not in entry_courses
 
 
 @pytest.mark.django_db

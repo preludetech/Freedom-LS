@@ -1,12 +1,12 @@
 # Roadmap
 
-_Last updated: 2026-06-23_
+_Last updated: 2026-07-01_
 
 ## Summary
 
 - This document is the canonical home for features that are planned, partially built, or not yet started. Other product docs link here rather than restating half-built status.
 - Current half-built items: course applications (apply flow built; review/approval and authored form not yet built), RBAC role system (infrastructure exists, not wired into access control), xAPI tracking (placeholder stub only), `SiteGroup` (commented out).
-- Features not yet built: 2FA/MFA, educator-interface management actions (membership, registration, deadlines, messaging).
+- Features not yet built: 2FA/MFA, educator-interface management actions (membership, registration, deadlines, messaging), notify-on-launch/auto-enrolment for coming-soon courses (the visibility and express-interest features themselves have shipped).
 - Shipped and functional features are documented in their own product docs; this document covers only what is not yet complete.
 
 ## Course Applications
@@ -21,6 +21,19 @@ Two significant pieces are not yet built:
 - **Authored application form** — applying collects no questions, answers, or file uploads. The multi-step application form — with configurable questions, per-question options, and file upload support — is deferred to a separate follow-up.
 
 The `CourseApplication` model and the seams both follow-ups attach to are in place; neither will require any rearchitecture of the current access backend or apply flow.
+
+## Course Visibility & Express Interest
+
+**Status: Published/coming-soon/hidden visibility and the express-interest waitlist are built and functional; notify-on-launch and auto-enrolment are not built.**
+
+Courses can now be set to published, coming soon, or hidden, enforced consistently across every course-access backend, with an express-interest waitlist for coming-soon courses and an educator-facing demand view. This is documented in [learner experience](./learner-experience.md) and [educator-interface](./educator-interface.md).
+
+The following are not yet built:
+
+- **Notify-on-launch** — when a coming-soon course is switched to published, interested students receive no automated notification. Expressing interest only records the interest; FLS has no email or in-app notification system yet to build this on. The coming-soon experience sets a soft "we'll let you know when it's ready" expectation, but nothing currently fulfils it. This is a deferred dependency on a future notification system, not something students can rely on today.
+- **Auto-enrolment on launch** — students who expressed interest in a coming-soon course are not automatically registered when it launches; they must return and register or apply as normal.
+
+When notify-on-launch (or auto-enrolment) is implemented, it will extend the behaviour described in [learner experience](./learner-experience.md) and [educator-interface](./educator-interface.md).
 
 ## Two-Factor Authentication (2FA / MFA)
 
