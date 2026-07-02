@@ -8,6 +8,9 @@ Covers the dashboard "Available courses" grid and the all-courses row list:
   * a hidden course is dropped from discovery for an unregistered user but
     still appears on the dashboard for a registered user (registered lists
     bypass filter_visible).
+  * the public home page (anonymous GET /) drops hidden courses while still
+    showing published and coming-soon courses (the anonymous filter_visible
+    branch excludes only HIDDEN).
 """
 
 from __future__ import annotations
@@ -225,3 +228,43 @@ def test_dashboard_hidden_present_for_registered_user(mock_site_context):
     response = client.get(reverse("student_interface:dashboard"))
 
     assert "Hidden Course" in response.content.decode()
+
+
+# --- public home page (anonymous GET /) ---
+
+
+@pytest.mark.django_db
+def test_dashboard_shows_published_course_for_anonymous(mock_site_context):
+    """Positive control: the anonymous public home page renders published courses
+    in its discovery grid, so the hidden-course absence assertion below is
+    meaningful (the grid is not simply empty)."""
+    _course(CourseVisibility.PUBLISHED, slug="pub", title="Published Course")
+
+    response = Client().get(reverse("student_interface:dashboard"))
+
+    assert response.status_code == 200
+    assert "Published Course" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_dashboard_hidden_absent_for_anonymous(mock_site_context):
+    """A hidden course must never appear on the public home page for an anonymous
+    visitor — the anonymous filter_visible branch excludes HIDDEN."""
+    _course(CourseVisibility.HIDDEN, slug="hid", title="Hidden Course")
+
+    response = Client().get(reverse("student_interface:dashboard"))
+
+    assert "Hidden Course" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_dashboard_coming_soon_present_for_anonymous(mock_site_context):
+    """A coming-soon course still appears on the public home page for an anonymous
+    visitor (with its "Coming soon" chip) — the exclusion is specific to HIDDEN."""
+    _course(CourseVisibility.COMING_SOON, slug="cs", title="Coming Soon Course")
+
+    response = Client().get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    assert "Coming Soon Course" in body
+    assert "Coming soon" in body
