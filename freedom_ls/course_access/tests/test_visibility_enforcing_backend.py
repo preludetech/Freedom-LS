@@ -16,6 +16,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -41,6 +42,13 @@ def _filter_visible_for(backend_path, *, user, courses):
     with override_settings(COURSE_ACCESS_BACKEND=backend_path):
         get_course_access_backend.cache_clear()
         return get_course_access_backend().filter_visible(user=user, courses=courses)
+
+
+def _backend_for(backend_path):
+    """Resolve the configured (visibility-wrapped) backend instance."""
+    with override_settings(COURSE_ACCESS_BACKEND=backend_path):
+        get_course_access_backend.cache_clear()
+        return get_course_access_backend()
 
 
 @pytest.mark.django_db
@@ -239,6 +247,88 @@ class TestLoaderReturnsVisibilityEnforcingBackend:
 
         backend = get_course_access_backend()
         assert isinstance(backend, VisibilityEnforcingBackend)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("backend_path", BACKEND_PATHS)
+class TestVisibilityEnforcingBackendDelegatesAccessModel:
+    """The wrapper delegates access-model methods to its inner backend instead of
+    raising NotImplementedError.
+
+    These methods (is_accessible_for_free, get_access_badge,
+    get_dashboard_contributions) are called on the now-public catalogue/detail
+    surfaces; the wrapper must pass them through to the inner backend rather than
+    inherit the base class's NotImplementedError.
+    """
+
+    def test_free_course_is_accessible_for_free_delegates_true(
+        self, mock_site_context, backend_path
+    ):
+        course = CourseFactory()  # default access_config → free
+        backend = _backend_for(backend_path)
+
+        assert backend.is_accessible_for_free(course=course) is True
+
+    def test_free_course_badge_delegates_free_label(
+        self, mock_site_context, backend_path
+    ):
+        course = CourseFactory()  # default access_config → free
+        backend = _backend_for(backend_path)
+
+        badge = backend.get_access_badge(course=course)
+
+        assert badge is not None
+        assert badge.label == "Free"
+
+    def test_dashboard_contributions_empty_without_applications(
+        self, mock_site_context, backend_path
+    ):
+        user = UserFactory()
+        backend = _backend_for(backend_path)
+
+        assert backend.get_dashboard_contributions(user=user) == []
+
+
+@pytest.mark.django_db
+class TestVisibilityEnforcingBackendDelegatesToApplicationBackend:
+    """Delegation returns the inner backend's own answer — not a wrapper default.
+
+    Uses the application backend, whose answers differ from the free backend's, so
+    these tests would fail if the wrapper hard-coded free values instead of delegating.
+    """
+
+    application_backend = (
+        "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend"
+    )
+
+    def test_application_gated_is_accessible_for_free_delegates_false(
+        self, mock_site_context
+    ):
+        course = CourseFactory(access_config={"access_type": "application_gated"})
+        backend = _backend_for(self.application_backend)
+
+        assert backend.is_accessible_for_free(course=course) is False
+
+    def test_application_gated_badge_delegates_by_application_label(
+        self, mock_site_context
+    ):
+        course = CourseFactory(access_config={"access_type": "application_gated"})
+        backend = _backend_for(self.application_backend)
+
+        badge = backend.get_access_badge(course=course)
+
+        assert badge is not None
+        assert badge.label == "By application"
+
+    def test_dashboard_contributions_delegates_application_panel(
+        self, mock_site_context
+    ):
+        application = CourseApplicationFactory()
+        backend = _backend_for(self.application_backend)
+
+        contributions = backend.get_dashboard_contributions(user=application.user)
+
+        assert len(contributions) == 1
 
 
 @pytest.mark.django_db

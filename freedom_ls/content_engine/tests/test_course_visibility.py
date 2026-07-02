@@ -35,6 +35,26 @@ visibility: coming_soon
         )
         assert course.visibility == "coming_soon"
 
+    def test_import_hidden_persists_hidden(self, mock_site_context, make_temp_file):
+        """A course file with visibility: hidden imports as a hidden course."""
+        content = """---
+content_type: COURSE
+title: Hidden Imported Course
+uuid: bbbbbbbb-cccc-dddd-eeee-000000000004
+visibility: hidden
+---
+"""
+        temp_file = make_temp_file(suffix=".md", content=content)
+        parsed_items = parse_single_file(temp_file)
+        assert len(parsed_items) == 1
+
+        save_course(parsed_items[0], mock_site_context, temp_file.parent)
+
+        course = Course.objects.get(
+            title="Hidden Imported Course", site=mock_site_context
+        )
+        assert course.visibility == "hidden"
+
     def test_import_without_visibility_defaults_to_published(
         self, mock_site_context, make_temp_file
     ):
