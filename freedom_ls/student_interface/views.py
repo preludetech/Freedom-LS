@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import uuid
 from typing import TYPE_CHECKING, cast
 
 from django.contrib.auth.decorators import login_required
@@ -125,6 +126,89 @@ def _detail_cta_label(course: Course, user: User) -> str:
     return "Review course"
 
 
+def _visible_recommendations(
+    user, backend: CourseAccessBackend
+) -> list[RecommendedCourse]:
+    """Recommended courses for the user, minus any the visibility gate hides.
+
+    Route recommendations through the shared visibility gate rather than
+    re-implementing the hidden rule here: filter_visible drops hidden courses the
+    user is not registered for (and keeps coming-soon), so a hidden course can
+    never leak as a clickable recommendation card and this path cannot drift from
+    the wrapper's rule. Only pks are queried; the already-fetched rec.collection
+    instances are reused for rendering.
+    """
+    recs = list(get_recommended_courses(user))
+    visible_rec_ids = set(
+        backend.filter_visible(
+            user=user,
+            courses=Course.objects.filter(pk__in=[rec.collection_id for rec in recs]),
+        ).values_list("pk", flat=True)
+    )
+    return [rec for rec in recs if rec.collection_id in visible_rec_ids]
+
+
+def _annotate_registered_courses(
+    courses: list[Course], user, backend: CourseAccessBackend
+) -> None:
+    """Stamp is_registered and the next-up item onto each registered course."""
+    for course in courses:
+        setattr(course, "is_registered", True)  # noqa: B010
+        # Pass can_access_content from the backend decision so a future
+        # backend (e.g. subscription-gated) could revoke access without a
+        # separate check.
+        course_decision = backend.get_access(user=user, course=course)
+        _annotate_next_up(
+            course,
+            user,
+            can_access_content=course_decision.can_access_content,
+        )
+
+
+def _annotate_recommendations(recommendations: list[RecommendedCourse]) -> None:
+    """Stamp is_registered and is_coming_soon onto each recommendation's course.
+
+    Recommendations are by definition not yet registered. A recommended course
+    can still be coming-soon, and the dashboard renders it through the same
+    dispatch-card seam, so stamp is_coming_soon here too. The dashboard
+    coming-soon card is a plain detail link (no express-interest CTA), so no
+    per-course interest lookup is needed here.
+    """
+    for rec in recommendations:
+        setattr(rec.collection, "is_registered", False)  # noqa: B010
+        setattr(  # noqa: B010
+            rec.collection,
+            "is_coming_soon",
+            rec.collection.visibility == CourseVisibility.COMING_SOON,
+        )
+
+
+def _available_courses(
+    user, backend: CourseAccessBackend, *, excluded_ids: set[uuid.UUID]
+) -> list[Course]:
+    """Up to three discovery courses the user is neither registered for nor recommended.
+
+    Runs for both auth states — anonymous visitors simply arrive with an empty
+    registration half of ``excluded_ids``.
+    """
+    visible_courses = backend.filter_visible(user=user, courses=get_all_courses())
+    available_courses: list[Course] = []
+    for course in visible_courses:
+        if course.id in excluded_ids:
+            continue
+        setattr(course, "is_registered", False)  # noqa: B010
+        stamp_course_access_badge(course, badge=backend.get_access_badge(course=course))
+        setattr(  # noqa: B010
+            course,
+            "is_coming_soon",
+            course.visibility == CourseVisibility.COMING_SOON,
+        )
+        available_courses.append(course)
+        if len(available_courses) == 3:
+            break
+    return available_courses
+
+
 def dashboard(request: HttpRequest) -> HttpResponse:
     """Dashboard view — authenticated or anonymous.
 
@@ -141,69 +225,18 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     # unauthenticated users), so they run unconditionally.
     registered_courses = get_current_courses(request.user)
     completed_courses = get_completed_courses(request.user)
-    # Route recommendations through the shared visibility gate rather than
-    # re-implementing the hidden rule here: filter_visible drops hidden courses the
-    # user is not registered for (and keeps coming-soon), so a hidden course can
-    # never leak as a clickable recommendation card and this path cannot drift from
-    # the wrapper's rule. Only pks are queried; the already-fetched rec.collection
-    # instances are reused for rendering.
-    recs = list(get_recommended_courses(request.user))
-    visible_rec_ids = set(
-        backend.filter_visible(
-            user=request.user,
-            courses=Course.objects.filter(pk__in=[rec.collection_id for rec in recs]),
-        ).values_list("pk", flat=True)
-    )
-    recommended_courses = [rec for rec in recs if rec.collection_id in visible_rec_ids]
+    recommended_courses = _visible_recommendations(request.user, backend)
 
     if is_auth:
-        for course in registered_courses:
-            setattr(course, "is_registered", True)  # noqa: B010
-            # Pass can_access_content from the backend decision so a future
-            # backend (e.g. subscription-gated) could revoke access without a
-            # separate check.
-            course_decision = backend.get_access(user=request.user, course=course)
-            _annotate_next_up(
-                course,
-                request.user,
-                can_access_content=course_decision.can_access_content,
-            )
-        for rec in recommended_courses:
-            # Recommendations are by definition not yet registered. A recommended
-            # course can still be coming-soon, and the dashboard renders it through
-            # the same dispatch-card seam, so stamp is_coming_soon here too. The
-            # dashboard coming-soon card is a plain detail link (no express-interest
-            # CTA), so no per-course interest lookup is needed here.
-            setattr(rec.collection, "is_registered", False)  # noqa: B010
-            setattr(  # noqa: B010
-                rec.collection,
-                "is_coming_soon",
-                rec.collection.visibility == CourseVisibility.COMING_SOON,
-            )
+        _annotate_registered_courses(registered_courses, request.user, backend)
+        _annotate_recommendations(recommended_courses)
 
-    registered_ids = (
+    excluded_ids = (
         {c.id for c in get_course_registrations(request.user)} if is_auth else set()
+    ) | {rec.collection_id for rec in recommended_courses}
+    available_courses = _available_courses(
+        request.user, backend, excluded_ids=excluded_ids
     )
-    recommended_ids = {rec.collection_id for rec in recommended_courses}
-
-    # Shared discovery loop — runs for both auth states (empty id-sets for anon).
-    visible_courses = backend.filter_visible(
-        user=request.user, courses=get_all_courses()
-    )
-    available_courses: list[Course] = []
-    for course in visible_courses:
-        if course.id in registered_ids or course.id in recommended_ids:
-            continue
-        setattr(course, "is_registered", False)  # noqa: B010
-        stamp_course_access_badge(course, badge=backend.get_access_badge(course=course))
-        setattr(  # noqa: B010
-            course,
-            "is_coming_soon",
-            course.visibility == CourseVisibility.COMING_SOON,
-        )
-        available_courses.append(course)
-        if len(available_courses) == 3:
-            break
 
     # Dashboard contributions from the active backend (e.g. the applications panel).
     # Only fetched for authenticated users — anonymous visitors have no panels,
@@ -1052,6 +1085,7 @@ def form_submit_and_exit(request, course_slug: str, index: int):
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
+    from freedom_ls.course_access.backends import CourseAccessBackend
 
 
 def _is_content_item_completed(content_item: Topic | Form, user: User) -> bool:
