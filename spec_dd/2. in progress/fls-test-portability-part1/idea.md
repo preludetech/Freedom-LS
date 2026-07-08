@@ -1,4 +1,13 @@
-# Make the FLS test suite portable to concrete implementations
+# Make the FLS test suite portable to concrete implementations — Part 1: quiet the noise
+
+> **This is Part 1 of a two-part effort.**
+> **Part 1 (this spec) — "quiet the noise" (defensive):** Layers 1, 2, and 6.
+> Stops the collection aborts and brand-noise a downstream hits today, and updates
+> the plugin docs so the new conventions stick.
+> **Part 2 — "positive signal":** Layers 3, 4, 5 — the conformance suite, system
+> checks, and upgrade-notes tie-in (see `fls-test-portability-part-2/idea.md`).
+> They land in that order; Part 1 is the immediate bleed-stopper, Part 2 is new
+> capability that builds on it.
 
 ## Problem
 
@@ -59,39 +68,25 @@ different goals**:
   This is what a downstream actually needs from a test run.
 
 Today a concrete project accidentally does (a) and drowns in brand noise, while
-(b) — the genuinely valuable signal — **isn't a first-class thing at all**. Worse,
-the one real integration bug in the `home_page` update (student_interface newly
-requiring `settings.COURSE_ACCESS_BACKEND`, which First Class had never set, plus a
-missing `applications/` URL include) was caught *only as a side effect* of running
-FLS's own tests. `manage.py check` passed clean while the catalogue/dashboard
-would 500 at runtime. We got lucky.
+(b) — the genuinely valuable signal — **isn't a first-class thing at all**. This
+Part 1 spec attacks (a): it stops the noise and the aborts so that whatever
+signal *is* present becomes visible. Making (b) a first-class thing is Part 2.
 
-## Goal
+## Goal (Part 1)
 
-Make an FLS upgrade **verifiable and low-noise** for a concrete implementation:
+Make an FLS upgrade **low-noise** for a concrete implementation:
 
 1. Running the concrete project's tests should surface **real integration
    problems** and nothing else — no brand-mismatch or browser-setup noise.
 2. FLS's own brand/demo/e2e tests should be **cleanly excludable** by downstreams,
    and should **degrade to skips, never collection aborts**, when an optional app
    is absent.
-3. A concrete project should get a **positive "am I wired correctly?" signal**
-   that would have caught the `COURSE_ACCESS_BACKEND` / missing-include class of
-   bug *before* runtime.
 
-## Proposed strategy (layered — each layer stands alone and adds value)
+(The third goal — a positive "am I wired correctly?" signal — is Part 2.)
 
-> **Sequencing (decided):** ship as **two specs**.
-> **Spec A — "quiet the noise" (defensive):** Layers 1, 2, and 6. Stops the
-> collection aborts and brand-noise a downstream hits today, and updates the
-> plugin docs so the new conventions stick.
-> **Spec B — "positive signal":** Layers 3, 4, 5. Adds the conformance suite,
-> system checks, and the upgrade-notes tie-in that give a downstream a real
-> "am I wired correctly?" answer.
-> They land in that order; Spec A is the immediate bleed-stopper, Spec B is new
-> capability that builds on it.
+## Proposed strategy (Part 1 layers)
 
-### Layer 1 — Marker taxonomy + collection safety  *(Spec A)*
+### Layer 1 — Marker taxonomy + collection safety
 
 **Marker taxonomy (decided): keep the existing `playwright` marker, add
 `fls_internal`.** We do *not* introduce an `e2e` marker — `playwright` already
@@ -149,7 +144,7 @@ discovery when pytest is given no path args, and silently falls back to full
 recursive collection when its globs match nothing — which is the original bug.
 Markers + `collect_ignore` are the real controls.
 
-### Layer 2 — De-couple FLS's own tests from FLS branding/config  *(Spec A)*
+### Layer 2 — De-couple FLS's own tests from FLS branding/config
 
 Shrink the `fls_internal` set by making assertions test the **contract**, not
 FLS-default literals. The concrete offenders found in the codebase:
@@ -177,87 +172,10 @@ reach for `fls_internal` only when the test genuinely depends on FLS's own
 brand/demo/repo state.** Every test moved from `fls_internal` → portable becomes
 real integration signal for every downstream. This is the highest-leverage layer.
 
-### Layer 3 — Ship a "concrete conformance" suite (the positive signal)  *(Spec B)*
-
-FLS ships a small, opt-in **importable module** — `freedom_ls.contrib.conformance`
-— that a concrete project references from its own `tests/` dir
-(`from freedom_ls.contrib.conformance import *`). **Not a `pytest11` plugin:**
-an entry-point plugin would auto-activate silently in *every* downstream (FLS is
-always on `sys.path`), re-creating the exact coupling we're removing. An
-importable module makes opt-in explicit and visible, and matches how DRF
-(`rest_framework.test`), django-cms (`CMSTestCase`), and Wagtail
-(`wagtail.test.utils`) ship reusable test helpers.
-
-It verifies **the integration seams**, using the concrete project's own settings
-(zero `override_settings` — it reads the downstream's real config), and calls
-FLS's *own* production resolution code (the `get_course_access_backend()` loader,
-theme/icon resolvers) so it can't drift from runtime behaviour:
-
-- all **required settings** present & importable — `COURSE_ACCESS_BACKEND` and its
-  validator, `AUTH_USER_MODEL == "freedom_ls_accounts.User"`, etc.;
-- **every FLS URL namespace reverses** (`student_interface:*`,
-  `course_applications:apply/status`, `sitemap`, `robots_txt`) — would have caught
-  the missing `applications/` include;
-- **installed-apps / migration state consistent** (`call_command("makemigrations",
-  check=True, dry_run=True)`, configured backend's app is installed);
-- **active theme + icon set resolve**;
-- the **configured access backend imports and instantiates**.
-
-Drive the namespace/settings coverage from small, explicitly-maintained data
-tables parametrized with `pytest.mark.parametrize(..., ids=...)`, each probe
-reversing one concrete `viewname` — so a broken include surfaces as one
-specifically-named failure, and "add a probe here" becomes a documented step when
-a new FLS app/setting is added. Tiny, fast, deterministic: stdlib + django +
-pytest only (no factories/demo-content/browser/network — must pass under the
-existing `--disable-socket`). It catches **both** bugs from the `home_page`
-update before runtime — and it's the thing "running FLS tests" was accidentally
-approximating.
-
-### Layer 4 — Django system checks (shift-left; complements tests)  *(Spec B)*
-
-Register `django.core.checks` in FLS so `manage.py check` **fails** on the exact
-config gaps we hit, independent of any test run. **This extends an existing house
-style** — FLS already ships checks in `course_access/checks.py`, `icons/checks.py`,
-`accounts/checks.py`, `base/checks.py`; the gap is that `student_interface/apps.py`
-is a bare `AppConfig` with no `ready()`/checks. New checks:
-
-- `student_interface` installed but `COURSE_ACCESS_BACKEND` unset → error;
-- configured `COURSE_ACCESS_BACKEND` backend's app not in `INSTALLED_APPS` → error
-  (model on Django's own `admin.check_dependencies` + `apps.is_installed()`);
-- sitemaps wired but `django.contrib.sitemaps` absent → warning.
-
-Conventions to follow (from the existing check modules): namespace IDs by **app
-label** (`freedom_ls_student_interface.E001`, not a flat `freedom_ls.E001`) so
-downstreams can `SILENCED_SYSTEM_CHECKS` precisely; register via
-`AppConfig.ready()`; **do not** tag `Tags.database` or set `deploy=True` (these
-are internal-consistency checks that must run on *every* `check`/`runserver`/
-`migrate`, not just `--deploy`); no DB access needed (they read `settings` +
-`apps` only). This converts a silent runtime 500 into a boot-time failure visible
-in CI/deploy. (`manage.py check` passing while the site was broken is the
-strongest argument for this layer.)
-
-**Layer 3 vs Layer 4 division (both needed — the `home_page` bugs split along
-it):** static config-shape questions ("is the setting set", "is its app
-installed") belong in **checks** because they should fail even if the downstream
-never wrote a test; behavioural questions ("does the backend instantiate", "does
-this namespace reverse") belong in the **conformance suite** because verifying
-them means *executing* code. Checks would not have caught the missing URL include;
-the conformance suite would not have failed boot for the missing setting.
-
-### Layer 5 — Tie into `upgrade_notes.md`  *(Spec B)*
-
-The `concrete-implementation-helpers` spec already added structured per-spec
-`upgrade_notes.md`. When a spec introduces a **hard config requirement** (as
-`home_page` did with `COURSE_ACCESS_BACKEND`), its notes must set
-`requires_settings_change: true` with the specific keys, so `update_fls` surfaces
-it — and ideally the Layer 4 system check enforces it. (Neither of the two specs
-integrated in this repo shipped upgrade notes, since the command shipped *in* the
-first of them; going forward this should be routine.)
-
-### Layer 6 — Make the new conventions stick (update the plugin docs)  *(Spec A)*
+### Layer 6 — Make the new conventions stick (update the plugin docs)
 
 A convention that isn't documented in the FLS claude-plugin will not be held to
-in future development. Whatever Layers 1–5 establish must be reflected in the
+in future development. Whatever Layers 1–2 establish must be reflected in the
 plugin so every future test/feature follows it. Concretely:
 
 - **`skills/testing/SKILL.md` + `resources/testing.md`** (kept in sync manually —
@@ -274,24 +192,24 @@ plugin so every future test/feature follows it. Concretely:
   `fls_internal`; a new module importing an optional-app factory at module scope
   without the guard.
 - **`commands/concrete/update_fls.md`** (the literal bug reproduction — 4 bare
-  `uv run pytest` call sites): switch to the documented downstream `-m` selection,
-  and (once Spec B lands) invoke the Layer-3 conformance suite as the positive
-  signal. FLS-repo-internal callers (`hooks.json`, `commit.md`, `implement_plan.md`,
+  `uv run pytest` call sites): switch to the documented downstream `-m` selection.
+  (Invoking Part 2's conformance suite as the positive signal is added once Part 2
+  lands.) FLS-repo-internal callers (`hooks.json`, `commit.md`, `implement_plan.md`,
   etc.) keep running the full suite — unchanged.
-- **(Spec B) `commands/sdd/update_upgrade_notes.md`:** consider whether a
-  spec that adds a system check enforcing a hard config requirement needs a new
-  flag, or whether `requires_settings_change: true` suffices (it already supports
-  the key list).
 
-## Scope / non-goals
+> Layer 6's Part-2-only doc touch (`commands/sdd/update_upgrade_notes.md`) lives in
+> `fls-test-portability-part-2/idea.md`.
 
-- **In scope:** FLS-side test packaging, markers, collection-safety, de-branding
-  of assertions, the conformance module, system checks, and the plugin-doc updates
-  that make the conventions durable (Layer 6).
+## Scope / non-goals (Part 1)
+
+- **In scope:** FLS-side test markers, collection-safety, de-branding of
+  assertions, and the plugin-doc updates that make those conventions durable
+  (Layer 6, Part-1 portions).
+- **Out of scope:** the conformance module, system checks, and upgrade-notes
+  tie-in — those are Part 2 (`fls-test-portability-part-2/idea.md`).
 - **Out of scope:** the concrete project's own pytest config (`testpaths`,
   `--ignore=submodules`, shipping a `tests/` dir) — that's template-repo /
-  downstream work, though Layer 3 is what gives a downstream something *worth*
-  putting in `tests/`. Note it here so the two sides land together.
+  downstream work.
 - **Non-goal:** running FLS's browser suite from a concrete project — Layer 1
   simply makes it cleanly excludable via the existing `playwright` marker.
 
@@ -300,8 +218,6 @@ plugin so every future test/feature follows it. Concretely:
 FLS is explicitly built to be embedded in downstream projects. Right now a routine
 FLS upgrade lands a downstream in a suite that is **partly broken by design**
 (brand tests), **partly abortive** (optional-app collection errors) and **partly
-un-runnable** (browser tests), while the **one signal that matters** — is my
-integration correct? — is absent and has to be reconstructed by hand each upgrade.
-Layers 1–4 turn that inverted situation right-side-up: quiet where it should be
-quiet, loud exactly where a real wiring bug exists; Layer 6 keeps it that way as
-FLS grows.
+un-runnable** (browser tests). Part 1 turns off the noise: quiet where it should
+be quiet, so that when Part 2 adds the positive signal, a real wiring bug is the
+only thing that shows up loud. Layer 6 keeps it that way as FLS grows.
