@@ -38,7 +38,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 12. Template repo
 
-- [ ] (cmd) Run `/update_template_repo` to update the template repo for new projects
+- [x] (cmd) Run `/update_template_repo` to update the template repo for new projects
 - [ ] (user) Review and commit the template repo changes (if any)
 
 ## 13. Author plugin sync
