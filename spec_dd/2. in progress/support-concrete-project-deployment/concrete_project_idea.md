@@ -1,8 +1,15 @@
-# Deploy First Class to Vultr (Docker Compose on a single VPS)
+# Deploy `ConcreteFlsImplementation` to Vultr (Docker Compose on a single VPS)
+
+> **Terminology.** `ConcreteFlsImplementation` is the placeholder used throughout for the
+> specific concrete production implementation of FLS this document deploys — a downstream repo
+> that installs `freedom_ls` as a submodule. It is deliberately *not* named after any theme;
+> earlier prototyping in the FLS repo produced a similarly-named theme, and the placeholder
+> keeps the two from being confused. Wherever `ConcreteFlsImplementation` appears it always
+> means that downstream implementation project, never a theme.
 
 ## Problem
 
-We need to deploy **First Class** (this concrete FLS project) to production. The
+We need to deploy **`ConcreteFlsImplementation`** (this concrete FLS project) to production. The
 target architecture is already decided in FLS's own docs — a single **Vultr
 Johannesburg** VPS running Docker Compose (Caddy + Gunicorn + Django + a
 containerised PostgreSQL), provisioned with Ansible, deployed via GitHub Actions →
@@ -31,7 +38,7 @@ submodule:
 3. They use **nginx**, which FLS's `deployment.md` explicitly marks **superseded
    by Caddy**.
 
-So First Class must author its **own** deployment artifacts at the project root.
+So `ConcreteFlsImplementation` must author its **own** deployment artifacts at the project root.
 
 ## How this differs from what FLS documents
 
@@ -51,13 +58,13 @@ top:
 - **Caddy, not nginx — aligned with FLS.** FLS marks its nginx-based
   `DOCKER_DEPLOY.md` **superseded by Caddy** (automatic HTTPS, no Certbot). We skip
   the legacy nginx path entirely, matching FLS's current stance.
-- **Two stacks on one host (staging + prod) — a First Class addition.** FLS's docs
+- **Two stacks on one host (staging + prod) — a `ConcreteFlsImplementation` addition.** FLS's docs
   describe a single standalone deployment. We run staging + prod as two Compose
   stacks on one VPS (per-env `COMPOSE_PROJECT_NAME` + `--env-file`, one shared
   Caddy routing by host, staging basic-auth + `noindex`). FLS does not document
   this.
 - **Deliberate divergence on background tasks.** FLS's docs assume the
-  `django-tasks` **DatabaseBackend** + a separate `db_worker` container. First Class
+  `django-tasks` **DatabaseBackend** + a separate `db_worker` container. `ConcreteFlsImplementation`
   keeps the built-in Django Tasks **`ImmediateBackend`** for V1 — Django 6 ships the
   Tasks framework natively, so there is no `django-tasks` package to install and no
   `worker` container to run, and tasks execute synchronously in-process — because no
@@ -71,14 +78,14 @@ top:
 - **Project-specific choices FLS leaves open.** S3 media provider (Vultr Object
   Storage / Cloudflare R2 / Backblaze B2), the observability tool (**decided:
   Sentry**, covering errors + logs + uptime + crons), the **log shipping backend**
-  (stdout is only *emission* — retention/aggregation off the box is a First Class
+  (stdout is only *emission* — retention/aggregation off the box is a `ConcreteFlsImplementation`
   decision; V1 uses Sentry for app logs, keeps infra logs on-box), backup automation,
-  and the forward-looking multi-project reuse goal are all decisions First Class
+  and the forward-looking multi-project reuse goal are all decisions `ConcreteFlsImplementation`
   makes that FLS does not prescribe.
 
 ## Goal
 
-**Staging and production** deployments of First Class on Vultr that match the FLS
+**Staging and production** deployments of `ConcreteFlsImplementation` on Vultr that match the FLS
 target architecture, with **all deployment code living in this repo**, structured
 so the generic parts can later be shared across multiple FLS projects.
 
@@ -448,7 +455,7 @@ account for both directions:
 ## Why not Kubernetes (yet)?
 
 Vultr Kubernetes Engine (VKE) offers a **free control plane**, which invites the
-question: why not run First Class on k8s and scale up/down on demand? For V1 the
+question: why not run `ConcreteFlsImplementation` on k8s and scale up/down on demand? For V1 the
 answer is **no** — and this is not a fresh opinion, it is exactly what FLS's own
 `deployment-playbook.md` already prescribes. k8s remains the right *deferred*
 option, not the right *now* option.

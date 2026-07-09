@@ -5,12 +5,20 @@
 
 ## Problem
 
-A concrete FLS project (First Class) installs `freedom_ls` as a **read-only git
+> **Terminology.** `ConcreteFlsImplementation` is the placeholder used throughout this idea
+> for the specific concrete production implementation of FLS that raised this handoff — a
+> separate downstream repo that installs `freedom_ls` as a submodule. It is deliberately *not*
+> named after any theme; earlier prototyping in this repo produced a similarly-named theme, and
+> the placeholder keeps the two from being confused. Wherever `ConcreteFlsImplementation`
+> appears it always means that downstream implementation project, never a theme. (Generic
+> phrases like "every concrete project" still refer to concrete FLS projects *in general*.)
+
+A concrete FLS project (`ConcreteFlsImplementation`) installs `freedom_ls` as a **read-only git
 submodule** (`submodules/Freedom-LS`, sourced via `[tool.uv.sources]`) and owns its own
 `config/`, apps, and `tailwind.input.css`. It is authoring its own production deployment
 — single Vultr JNB VPS, Docker Compose, Caddy + Gunicorn + PostgreSQL (see the downstream
 `spec_dd/next/deployment/idea.md`). While scoping that work we found that most of the
-friction is **not First-Class-specific**: it lives in FLS's reference config, in the
+friction is **not `ConcreteFlsImplementation`-specific**: it lives in FLS's reference config, in the
 shared **concrete-project template repo**, in FLS's shipped deployment artifacts, and in
 FLS's deployment docs. Every FLS-based concrete project inherits these gaps, more such
 projects are planned, so fixing them **once upstream** is far cheaper than each project
@@ -38,9 +46,9 @@ surfaces below, or they drift:
    **future** projects.
 2. **FLS's own reference `config/`** (`submodules/Freedom-LS/config/settings_*.py`) — a
    near-verbatim twin and the documented *authority*, so the same bug exists in both.
-3. **Existing downstream projects, via `/fls:sdd:update_fls`.** First Class **already exists**,
+3. **Existing downstream projects, via `/fls:sdd:update_fls`.** `ConcreteFlsImplementation` **already exists**,
    generated from an older template — so a fix landed only in (1) reaches *new* projects and
-   **silently misses First Class itself**. The P0 settings fixes only reach the flagship consumer
+   **silently misses `ConcreteFlsImplementation` itself**. The P0 settings fixes only reach the flagship consumer
    that motivated this idea when `/update_fls` is run against it. Any triage that stops at (1)+(2)
    leaves the project that raised the idea unpatched.
 
@@ -106,7 +114,7 @@ every concrete project inherits unchanged.
      So the documented deferred/out-of-process path does not exist; the one real consumer
      today, webhook dispatch (`freedom_ls/webhooks/events.py`), ships as a synchronous
      in-request side effect in prod.
-   - **Fix (opt-in upgrade, not a forced default).** The downstream First Class idea has
+   - **Fix (opt-in upgrade, not a forced default).** The downstream `ConcreteFlsImplementation` idea has
      **explicitly decided** that V1 keeps `ImmediateBackend`, runs **no worker container**, and
      defers async "until a feature needs it" — treating this as the *resolution* of the
      `# TODO @claude`, not an outstanding gap (`spec_dd/next/deployment/idea.md`,
@@ -285,7 +293,7 @@ thing is an artifact or code.
 - **Then (P1):** the importable health endpoint (5) and the background-tasks reconciliation
   (3/6), which unblock real compose healthchecks and any async work.
 - **Then (P2/P3):** artifact/doc hygiene and the template-repo scaffolding.
-- **Every P0 landing has a fourth step: run `/fls:sdd:update_fls` against First Class** (and any
+- **Every P0 landing has a fourth step: run `/fls:sdd:update_fls` against `ConcreteFlsImplementation`** (and any
   other existing project). Landing in the template + reference config only patches *future*
   projects; the flagship consumer that raised this idea stays vulnerable until `/update_fls` runs.
 
@@ -293,7 +301,7 @@ Items 1–5 are each independently shippable and independently valuable.
 
 ## Out of scope
 
-- **First Class's own downstream deploy artifacts and CI/CD** — those live in the
+- **`ConcreteFlsImplementation`'s own downstream deploy artifacts and CI/CD** — those live in the
   downstream repo (`spec_dd/next/deployment/idea.md`); this document only covers FLS-side
   changes.
 - **Kubernetes / horizontal scaling** — deferred per the downstream deployment idea and
