@@ -258,13 +258,18 @@ be designed for reuse from the start:
 - Keep the **generic, reusable** parts (Dockerfile pattern, compose file, Caddyfile,
   Ansible roles, CI workflow templates) cleanly separable from the
   **project-specific** config (domain, `.env` values, server inventory, secrets).
-- This leaves the door open to later **extract** the generic parts into a shared
-  FLS deployment toolkit / template repo, or to **upstream** them into FLS itself
-  (replacing the superseded nginx scaffolding) so every concrete project benefits.
+- The **eventual home is decided (see "Shared scaffolding home" under Decisions
+  resolved): split by reuse mechanism** — root boilerplate → the existing
+  concrete-project **template repo** (copy-at-birth via `/update_template_repo`);
+  CI/CD → **FLS reusable `workflow_call` workflows**; Ansible → a **deferred** shared
+  collection, extracted only when a second project needs it. Full analysis in
+  [`shared-scaffolding-home-research.md`](./shared-scaffolding-home-research.md).
 
 This is a forward-looking design constraint only — for now everything lives in
-this repo. (Upstreaming into FLS would be a separate effort against the FLS repo,
-not part of this work, since the submodule is read-only here.)
+this repo; the generic-vs-project-specific separation above is what keeps later
+promotion a copy, not a rewrite. (Upstreaming CI into FLS or extracting the Ansible
+collection are separate efforts, not part of this work, since the submodule is
+read-only here.)
 
 ## Suggested spec split
 
@@ -361,6 +366,34 @@ one:
   custom-domain binding with edge caching, public bucket for images / presigned GET
   for protected media, CORS, and a POPIA note for if media later holds PII. See
   [`s3-media-provider-research.md`](./s3-media-provider-research.md).
+- **Shared scaffolding home: split by reuse mechanism — not one home.** The
+  eventual multi-project home is decided per *how each artifact reuses*, because the
+  artifacts don't reuse the same way (full analysis in
+  [`shared-scaffolding-home-research.md`](./shared-scaffolding-home-research.md)):
+  - **Root boilerplate** (Dockerfile, compose, Caddyfile, entrypoint,
+    `.env.example`, `.dockerignore`) → the **existing concrete-project template
+    repo** (`preludetech/freedom-ls-concrete-template`), propagated with the
+    already-built `/update_template_repo` machinery. These files *must* sit at each
+    project's root (build context + `docker compose` discovery), so they can't be
+    consumed live from FLS's read-only submodule — copy-at-birth via the template is
+    the right mechanism, and the template already owns root wiring (incl. `dev_db/`
+    compose). This is the third option the earlier "shared repo vs upstream" framing
+    omitted, and it carries the largest part.
+  - **CI/CD** → **upstream into FLS as `workflow_call` reusable workflows**, called
+    by a thin per-project caller pinned to a version. Workflows are referenced by
+    repo path (no build-context problem), and FLS is already the org CI hub (it runs
+    `notify-downstream.yml`), so a fix reaches every project by bumping one ref.
+  - **Ansible** → **stay in this repo for V1; extract to a shared
+    `freedom-ls-deploy` collection (or FLS `deploy/`) only when the *second*
+    concrete project actually needs it** — a real-consumer trigger, not speculative
+    extraction.
+  This does **not** change V1: every artifact is still authored **in this project
+  repo** now (per "Multi-project consideration"), just *structured* generic-vs-
+  project-specific so promotion later is a copy, not a rewrite. "Upstream everything
+  into FLS" was rejected (root files can't be consumed from a submodule, so FLS
+  could only hold duplicate reference copies); "one new shared repo for everything"
+  was rejected (for copy-at-birth files it's also just a source-to-copy, duplicating
+  the template and adding a second sync path before a second project even exists).
 - **Zero-downtime deploys: deferred.** Ship V1 on the `docker compose up -d` blip
   (~1–2s per deploy, absorbed by Cloudflare + Caddy retries on idempotent requests);
   **not** adopting `docker-rollout` now. At a single small VPS with gated prod deploys
@@ -377,8 +410,7 @@ one:
 
 ## Decisions needed
 
-- **Shared scaffolding home:** where the reusable multi-project parts eventually
-  live (shared repo vs upstream into FLS).
+_(none open)_
 
 ## Cloudflare front (edge CDN/WAF)
 
