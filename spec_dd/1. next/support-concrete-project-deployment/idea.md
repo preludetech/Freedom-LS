@@ -1,7 +1,7 @@
 # FLS support for concrete-project production deployment
 
 > **Audience: the FLS (Freedom Learning System) team.** This is a handoff idea raised
-> by a concrete downstream project
+> by a concrete downstream project. The deployment spec/idea for that downstream project can be seen in `concrete_project_idea.md` in this directory
 
 ## Problem
 
