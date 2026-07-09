@@ -11,9 +11,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 2. Spec
 
 - [x] (cmd) Run `/spec_from_idea` to generate the spec
-- [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/spec_review` to sanity-check the spec
-- [ ] (user) Address any issues raised by the review
+- [x] (user) Review the spec carefully and edit where needed
+- [x] (cmd) Run `/spec_review` to sanity-check the spec
+- [x] (user) Address any issues raised by the review
 
 ## 3. Threat model
 
