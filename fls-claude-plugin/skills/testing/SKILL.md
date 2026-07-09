@@ -186,7 +186,7 @@ For anything with a validation rule, test that invalid input is **rejected**, no
     1. **Assert the structure, not the config-driven value.** Match a pattern the output must always have, not a literal the config happens to produce (regex `viewBox="0 0 \d+ \d+"`, not the ambient-default `24 24`).
     2. **Pin the config when it's genuinely the subject.** If a test exists to verify behaviour *for one specific config*, set that config explicitly (`@override_settings(...)`) and assert against it — that's controlled input, not coupling. Leave those literals as-is.
     3. **Supply controlled inputs; compute the expected by hand.** Feed a fixed input and assert a value you worked out yourself; never re-derive the expected from the same live asset the code reads (`monkeypatch` a native size and assert a hand-computed width, rather than reading the shipped image).
-    4. **Mark tests that depend on non-distributed fixtures.** Tag them (`pytestmark = pytest.mark.fls_internal`) so they're excluded from the packaged test suite when the fixture (e.g. `demo_content/`) isn't shipped.
+    4. **Mark tests that depend on non-distributed fixtures.** When a test genuinely can't de-brand (e.g. it reads `demo_content/`), mark it `fls_internal` — see "Marker taxonomy" below for when this is the right last resort.
   - Full examples in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
 
 ### Testing HTMX views

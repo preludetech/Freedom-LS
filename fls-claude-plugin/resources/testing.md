@@ -275,7 +275,7 @@ If you are tempted to add `transaction=True` for any other reason (it makes a fl
 - **`ci_only`** — existing slow / real-time tests, excluded from FLS's own default run too.
 
 FLS's own `uv run pytest` runs everything except `ci_only` — it must exercise `fls_internal` and `playwright` tests against FLS's own settings, since that *is* FLS regression testing. A concrete downstream project instead runs
-`uv run pytest -m "not playwright and not fls_internal and not ci_only"` to get only the portable contract set (this is the selection `commands/concrete/update_fls.md` runs at its downstream call sites).
+`uv run pytest -m "not playwright and not fls_internal and not ci_only"` to get only the portable contract set (this is the selection a concrete downstream project's own suite runs).
 
 **The reach-for-`fls_internal`-last rule:** every test that stays portable is real integration signal for a downstream. Before marking a test `fls_internal`, ask whether it genuinely depends on FLS's own repo/brand/demo state, or whether it's a contract test wearing a brand-literal disguise — see the worked examples further down this file (next to "Don't assert hardcoded config values").
 
