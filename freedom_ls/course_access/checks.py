@@ -30,7 +30,13 @@ def check_course_access_configs(
     from django.db.utils import DatabaseError, OperationalError, ProgrammingError
 
     from freedom_ls.content_engine.models import Course
+    from freedom_ls.course_access.config import config
     from freedom_ls.course_access.loader import get_course_access_backend
+
+    if config.missing_required():
+        # COURSE_ACCESS_BACKEND is unset: the loader would raise
+        # ImproperlyConfigured, so stay silent rather than crash manage.py check.
+        return []
 
     errors: list[CheckMessage] = []
 

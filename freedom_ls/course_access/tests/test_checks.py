@@ -57,3 +57,11 @@ class TestCourseAccessSystemCheck:
         )
         errors = check_course_access_configs(app_configs=None)
         assert any("bad-course" in str(e) for e in errors)
+
+    @override_settings(COURSE_ACCESS_BACKEND="")
+    def test_unset_backend_produces_no_errors(self, mock_site_context):
+        """An unset COURSE_ACCESS_BACKEND makes the check return [] rather than crash."""
+        from freedom_ls.course_access.checks import check_course_access_configs
+
+        errors = check_course_access_configs(app_configs=None)
+        assert errors == []

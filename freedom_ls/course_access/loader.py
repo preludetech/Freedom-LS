@@ -11,13 +11,13 @@ from __future__ import annotations
 import functools
 from typing import Any
 
-from django.conf import settings
 from django.utils.module_loading import import_string
 
 from freedom_ls.course_access.backends import (
     CourseAccessBackend,
     VisibilityEnforcingBackend,
 )
+from freedom_ls.course_access.config import config
 
 
 @functools.cache
@@ -27,15 +27,13 @@ def get_course_access_backend() -> CourseAccessBackend:
     Always wraps the configured backend in a VisibilityEnforcingBackend so that
     no backend (present or future) can bypass coming-soon / hidden enforcement.
 
-    Resolves settings.COURSE_ACCESS_BACKEND via import_string and instantiates it.
+    Resolves config.COURSE_ACCESS_BACKEND via import_string and instantiates it.
 
     Test caveat: callers using override_settings(COURSE_ACCESS_BACKEND=...) must call
     get_course_access_backend.cache_clear() before and after the test so that the
     overridden setting takes effect and the cache is restored afterward.
     """
-    inner_class: type[CourseAccessBackend] = import_string(
-        settings.COURSE_ACCESS_BACKEND
-    )
+    inner_class: type[CourseAccessBackend] = import_string(config.COURSE_ACCESS_BACKEND)
     return VisibilityEnforcingBackend(inner_class())
 
 
