@@ -86,6 +86,38 @@ Make an FLS upgrade **low-noise** for a concrete implementation:
 
 ## Proposed strategy (Part 1 layers)
 
+### Layer 0 — Hygiene first: remove test-only app dependencies
+
+**Do this before anything else.** Before adding markers or guards, audit the test
+suite for cross-app dependencies that exist *only in the tests* — an app whose
+runtime code has no dependency on another app, but whose tests import that other
+app's factories, models, fixtures or settings. These test-only couplings are the
+root cause of much of the downstream chaos: they are exactly what turns an
+un-installed optional app into a collection abort, and they quietly bind an app's
+test suite to the presence of apps it does not actually need.
+
+The rule: **if an app does not depend on another app for its functionality, then
+ideally its tests should not depend on that app either.** Where such a test-only
+dependency is genuinely unnecessary, remove it — rework the test to use only its
+own app's models/factories, or move the cross-app test to the app that actually
+owns the behaviour. Only where a test-only dependency is *inherent* (an
+integration test whose whole purpose is to exercise two apps together) do we fall
+through to Layers 1–2 (guard the collection, and mark/de-brand as appropriate).
+
+This is hygiene, and it is the highest-value first step: every unnecessary
+test-only dependency removed is one fewer optional-app guard to write, one fewer
+way for a downstream to abort, and one less piece of hidden coupling for future
+development to trip over. Doing the cleanup first also shrinks the surface that
+Layers 1–2 have to cover, so the guards and markers land only where a real
+cross-app dependency remains.
+
+> Concretely: the `course_applications` imports in
+> `student_interface/tests/test_course_access_integration.py` and the
+> `course_applications/tests/` modules are the first candidates to examine — is
+> each cross-app import load-bearing for what the test verifies, or an incidental
+> convenience that can be dropped? Answer that before reaching for the Layer 1
+> `INSTALLED_APPS` guard.
+
 ### Layer 1 — Marker taxonomy + collection safety
 
 **Marker taxonomy (decided): keep the existing `playwright` marker, add
@@ -202,8 +234,9 @@ plugin so every future test/feature follows it. Concretely:
 
 ## Scope / non-goals (Part 1)
 
-- **In scope:** FLS-side test markers, collection-safety, de-branding of
-  assertions, and the plugin-doc updates that make those conventions durable
+- **In scope:** removing unnecessary test-only cross-app dependencies (Layer 0,
+  the hygiene-first step), FLS-side test markers, collection-safety, de-branding
+  of assertions, and the plugin-doc updates that make those conventions durable
   (Layer 6, Part-1 portions).
 - **Out of scope:** the conformance module, system checks, and upgrade-notes
   tie-in — those are Part 2 (`fls-test-portability-part-2/idea.md`).
