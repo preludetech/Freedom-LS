@@ -16,8 +16,7 @@ Usage:
 
 import djclick as click
 
-from django.conf import settings
-
+from freedom_ls.role_based_permissions.config import config
 from freedom_ls.role_based_permissions.loader import get_role_config, load_base_config
 from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
@@ -34,7 +33,7 @@ from freedom_ls.role_based_permissions.types import (
 
 def _get_permissions_modules() -> dict[str, str]:
     """Return the FREEDOMLS_PERMISSIONS_MODULES setting."""
-    return getattr(settings, "FREEDOMLS_PERMISSIONS_MODULES", {})
+    return config.FREEDOMLS_PERMISSIONS_MODULES
 
 
 @click.command()
@@ -62,11 +61,11 @@ def command() -> None:
     click.echo("All role configurations are valid.")
 
 
-def _validate_config(config: SiteRolesConfig, label: str) -> list[str]:
+def _validate_config(role_config: SiteRolesConfig, label: str) -> list[str]:
     """Validate a single SiteRolesConfig. Returns list of error messages."""
     errors: list[str] = []
 
-    for role_name, role in config.items():
+    for role_name, role in role_config.items():
         # Check: role name is valid Python identifier
         if not role_name.isidentifier():
             errors.append(

@@ -4,9 +4,10 @@ import markdown
 import nh3
 from django_cotton.compiler_regex import CottonCompiler
 
-from django.conf import settings
 from django.template import engines
 from django.utils.safestring import mark_safe
+
+from freedom_ls.markdown_rendering.config import config
 
 _cotton_compiler = CottonCompiler()
 
@@ -26,14 +27,14 @@ def render_markdown(markdown_text, request, context=None):
     )
     md.parser.blockprocessors.deregister("code")  # Disable indented code blocks
 
-    for key in settings.MARKDOWN_ALLOWED_TAGS:
+    for key in config.MARKDOWN_ALLOWED_TAGS:
         md.block_level_elements.append(key)
 
     rendered_content = md.convert(markdown_text)
 
     # now clean it
 
-    allowed_attribute_tags = settings.MARKDOWN_ALLOWED_TAGS
+    allowed_attribute_tags = config.MARKDOWN_ALLOWED_TAGS
 
     allowed_tags = deepcopy(nh3.ALLOWED_TAGS)
     allowed_tags.update(allowed_attribute_tags.keys())
@@ -57,7 +58,7 @@ def render_markdown(markdown_text, request, context=None):
 
     # do the cotton rendering
 
-    if settings.MARKDOWN_TEMPLATE_RENDER_ON:
+    if config.MARKDOWN_TEMPLATE_RENDER_ON:
         # Cotton's loader normally compiles `<c-foo>` to `{% cotton foo %}` when
         # reading templates from disk. Since we're rendering from a string we
         # have to invoke the compiler directly before handing the source to the

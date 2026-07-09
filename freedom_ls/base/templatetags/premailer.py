@@ -1,7 +1,8 @@
 from premailer import Premailer
 
 from django import template
-from django.conf import settings
+
+from freedom_ls.base.config import config
 
 register = template.Library()
 
@@ -17,7 +18,7 @@ class PremailerNode(template.Node):
 
     def render(self, context: template.Context) -> str:
         rendered_contents = self.nodelist.render(context)
-        kwargs: dict[str, object] = getattr(settings, "PREMAILER_OPTIONS", {}).copy()
+        kwargs: dict[str, object] = config.PREMAILER_OPTIONS.copy()
         for expression in self.filter_expressions:
             kwargs.update(base_url=expression.resolve(context, True))
         result: str = Premailer(rendered_contents, **kwargs).transform()

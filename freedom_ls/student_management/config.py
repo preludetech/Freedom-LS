@@ -2,7 +2,7 @@
 App-level configuration for student_management.
 
 Provides a `config` object that resolves settings by checking Django's
-``settings`` first, then falling back to the defaults defined here.
+``settings`` first, then falling back to the defaults declared here.
 
 Usage::
 
@@ -12,26 +12,15 @@ Usage::
         # show deadline UI
 """
 
-from django.conf import settings
+from __future__ import annotations
 
-defaults: dict[str, object] = {
-    "DEADLINES_ACTIVE": True,
-}
+from freedom_ls.base.app_settings import AppSettings, Setting
 
 
-class Config:
-    """Layered config: Django settings override app defaults."""
+class StudentManagementConfig(AppSettings):
+    DEADLINES_ACTIVE: bool
 
-    def __init__(self, defaults: dict[str, object]) -> None:
-        self._defaults = defaults
-
-    def __getattr__(self, name: str) -> object:
-        if hasattr(settings, name):
-            return getattr(settings, name)
-        try:
-            return self._defaults[name]
-        except KeyError as e:
-            raise AttributeError(f"Config has no setting '{name}'") from e
+    declared_settings = {"DEADLINES_ACTIVE": Setting(default=True)}
 
 
-config = Config(defaults)
+config = StudentManagementConfig()

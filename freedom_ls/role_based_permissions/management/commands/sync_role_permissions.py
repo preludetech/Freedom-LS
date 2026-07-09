@@ -3,11 +3,11 @@
 import djclick as click
 from guardian.models import GroupObjectPermission, UserObjectPermission
 
-from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 
+from freedom_ls.role_based_permissions.config import config
 from freedom_ls.role_based_permissions.loader import get_role_config, load_base_config
 from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
@@ -32,10 +32,10 @@ from freedom_ls.role_based_permissions.utils import sync_user_object_permissions
 )
 def command(dry_run: bool, report_orphans: bool, site: str | None) -> None:
     """Sync guardian permissions with role assignments and detect drift."""
-    config = get_role_config(site) if site else load_base_config()
+    role_config = get_role_config(site) if site else load_base_config()
 
     # Phase 1: Ensure permission objects exist
-    _ensure_permissions_exist(config)
+    _ensure_permissions_exist(role_config)
 
     # Phase 2: Sync ObjectRoleAssignments
     drifted = 0
@@ -56,9 +56,9 @@ def command(dry_run: bool, report_orphans: bool, site: str | None) -> None:
     click.echo(f"{prefix}{drifted} drifted assignment(s) found.")
 
 
-def _ensure_permissions_exist(config: SiteRolesConfig) -> None:
+def _ensure_permissions_exist(role_config: SiteRolesConfig) -> None:
     """Ensure all permissions in config exist in auth_permission table."""
-    for perm_string in config.all_permission_strings():
+    for perm_string in role_config.all_permission_strings():
         app_label, codename = perm_string.split(".", 1)
 
         exists = Permission.objects.filter(
@@ -168,7 +168,7 @@ def _validate_system_assignments() -> None:
     against the union of all known role names across all configs.
     """
     all_role_names: set[str] = set(load_base_config().keys())
-    modules: dict[str, str] = getattr(settings, "FREEDOMLS_PERMISSIONS_MODULES", {})
+    modules: dict[str, str] = config.FREEDOMLS_PERMISSIONS_MODULES
     for site_name in modules:
         site_config = get_role_config(site_name)
         all_role_names.update(site_config.keys())
@@ -192,12 +192,12 @@ def _build_all_configs_union() -> dict[str, set[str]]:
     """
     role_perms: dict[str, set[str]] = {}
     configs: list[SiteRolesConfig] = [load_base_config()]
-    modules: dict[str, str] = getattr(settings, "FREEDOMLS_PERMISSIONS_MODULES", {})
+    modules: dict[str, str] = config.FREEDOMLS_PERMISSIONS_MODULES
     for site_name in modules:
         configs.append(get_role_config(site_name))
 
-    for config in configs:
-        for role_name, role in config.items():
+    for role_config in configs:
+        for role_name, role in role_config.items():
             role_perms.setdefault(role_name, set()).update(role.permissions)
 
     return role_perms

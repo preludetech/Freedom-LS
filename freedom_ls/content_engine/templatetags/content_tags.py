@@ -2,10 +2,10 @@ import re
 from urllib.parse import urlparse
 
 from django import template
-from django.conf import settings
 from django.utils.html import escape
 from django.utils.safestring import SafeString
 
+from freedom_ls.content_engine.config import config
 from freedom_ls.content_engine.models import File, Form, Topic
 from freedom_ls.icons.render import render_icon
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
@@ -17,13 +17,13 @@ register = template.Library()
 def admonition_config(admonition_type: str) -> dict[str, str]:
     """Return the registry entry for *admonition_type*.
 
-    Looks up ``settings.ADMONITION_TYPES`` and returns the matching entry.
+    Looks up ``config.ADMONITION_TYPES`` and returns the matching entry.
     Unknown types fall back to the ``"default"`` entry so templates never
     need to handle a missing key.
 
     Usage: ``{% admonition_config type as cfg %}``
     """
-    registry = settings.ADMONITION_TYPES
+    registry = config.ADMONITION_TYPES
     return registry.get(admonition_type, registry["default"])
 
 

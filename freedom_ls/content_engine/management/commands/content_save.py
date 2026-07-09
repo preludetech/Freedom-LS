@@ -15,7 +15,6 @@ import djclick as click
 import frontmatter
 import yaml
 
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.contrib.sites.models import Site
 from django.core.files import File as DjangoFile
@@ -23,6 +22,7 @@ from django.db import transaction
 from django.utils.module_loading import import_string
 from django.utils.text import slugify
 
+from freedom_ls.content_engine.config import config
 from freedom_ls.content_engine.models import (
     Activity,
     ContentCollectionItem,
@@ -358,7 +358,7 @@ def save_course(item, site, base_path):
     # is the only seam (resolved via import_string). This avoids a dependency cycle:
     # course_access already depends on content_engine, so a direct import here would
     # close the cycle. Degrades safely if COURSE_ACCESS_CONFIG_VALIDATOR is unset.
-    validator_path = getattr(settings, "COURSE_ACCESS_CONFIG_VALIDATOR", None)
+    validator_path = config.COURSE_ACCESS_CONFIG_VALIDATOR
     if validator_path:
         validate_access_config = import_string(validator_path)
         item.access_config = validate_access_config(

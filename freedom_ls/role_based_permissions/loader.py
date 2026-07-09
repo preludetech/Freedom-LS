@@ -1,9 +1,9 @@
 from functools import cache
 from importlib import import_module
 
-from django.conf import settings
 from django.contrib.sites.models import Site
 
+from freedom_ls.role_based_permissions.config import config
 from freedom_ls.role_based_permissions.types import SiteRolesConfig
 
 _BASE_MODULE = "freedom_ls.role_based_permissions.roles"
@@ -13,14 +13,14 @@ def _load_module_config(module_path: str) -> SiteRolesConfig:
     """Load a SiteRolesConfig from the given module path."""
     module = import_module(module_path)
     if hasattr(module, "ROLES"):
-        config: SiteRolesConfig = module.ROLES
+        role_config: SiteRolesConfig = module.ROLES
     elif hasattr(module, "BASE_ROLES"):
-        config = module.BASE_ROLES
+        role_config = module.BASE_ROLES
     else:
         raise ImportError(
             f"Module '{module_path}' has neither 'ROLES' nor 'BASE_ROLES' attribute"
         )
-    return config
+    return role_config
 
 
 def load_base_config() -> SiteRolesConfig:
@@ -52,6 +52,6 @@ def get_role_config(site_name: str | None = None) -> SiteRolesConfig:
 @cache
 def _get_role_config_cached(site_name: str) -> SiteRolesConfig:
     """Cached inner function — site_name is always a concrete string."""
-    modules: dict[str, str] = getattr(settings, "FREEDOMLS_PERMISSIONS_MODULES", {})
+    modules: dict[str, str] = config.FREEDOMLS_PERMISSIONS_MODULES
     module_path = modules.get(site_name, _BASE_MODULE)
     return _load_module_config(module_path)
