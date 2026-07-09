@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.test import override_settings
 from django.urls import reverse
@@ -16,6 +17,10 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
+
+if "freedom_ls.course_applications" not in settings.INSTALLED_APPS:
+    pytest.skip("course_applications not installed", allow_module_level=True)
+
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,

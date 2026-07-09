@@ -74,6 +74,7 @@ addopts = "--strict-markers -m 'not ci_only' --disable-socket --allow-hosts=127.
 markers = [
     "playwright: marks tests that use playwright for browser automation",
     "ci_only: marks slow tests that should only run in CI (e.g. real-time rate-limit windows)",
+    "fls_internal: marks tests that only pass under FLS's own settings, theme, branding or demo content (not portable to a concrete downstream)",
 ]
 
 [tool.coverage.run]

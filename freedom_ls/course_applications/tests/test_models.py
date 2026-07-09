@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import pytest
 
+from django.conf import settings
 from django.db import IntegrityError
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+
+if "freedom_ls.course_applications" not in settings.INSTALLED_APPS:
+    pytest.skip("course_applications not installed", allow_module_level=True)
+
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 
 
