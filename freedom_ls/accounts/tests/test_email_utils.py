@@ -1,9 +1,12 @@
+import struct
 import warnings
+from collections.abc import Iterator
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+from freedom_ls.accounts import email_utils
 from freedom_ls.accounts.email_utils import (
     EMAIL_LOGO_DISPLAY_HEIGHT,
     ColorResolveError,
@@ -18,6 +21,22 @@ from freedom_ls.accounts.email_utils import (
     resolve_color_token,
     resolve_css_color,
 )
+
+
+@pytest.fixture(autouse=True)
+def _clear_cached_email_lookups() -> Iterator[None]:
+    """Clear process-lifetime caches so overrides in a test take effect and don't leak.
+
+    ``get_email_theme`` and ``email_logo_dimensions`` are both ``functools.cache``d
+    for the process lifetime; clearing both before and after every test means
+    individual tests never need their own try/finally cache-clear dance.
+    """
+    get_email_theme.cache_clear()
+    email_logo_dimensions.cache_clear()
+    yield
+    get_email_theme.cache_clear()
+    email_logo_dimensions.cache_clear()
+
 
 # ---------------------------------------------------------------------------
 # parse_tailwind_tokens — Task 1.1
@@ -392,14 +411,17 @@ def test_extract_button_radius_rejects_non_length_and_raises(raw: str) -> None:
 # image_dimensions / email_logo_dimensions
 # ---------------------------------------------------------------------------
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
 _LOGO_STATIC_PATH = "images/first_class_logo.png"
-_LOGO_FILE = _REPO_ROOT / "static" / "images" / "first_class_logo.png"
 
 
-def test_image_dimensions_reads_png_intrinsic_size() -> None:
-    """The bundled PNG logo reports its real 512x248 pixel size."""
-    assert image_dimensions(str(_LOGO_FILE)) == (512, 248)
+def test_image_dimensions_reads_png_intrinsic_size(tmp_path: Path) -> None:
+    """image_dimensions reads a PNG's intrinsic (width, height) from its header."""
+    w, h = 320, 200
+    png = tmp_path / "probe.png"
+    png.write_bytes(
+        b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\rIHDR" + struct.pack(">II", w, h)
+    )
+    assert image_dimensions(str(png)) == (w, h)
 
 
 def test_image_dimensions_returns_none_for_non_image(make_temp_file) -> None:
@@ -413,24 +435,19 @@ def test_image_dimensions_returns_none_for_missing_file(tmp_path) -> None:
     assert image_dimensions(str(tmp_path / "nope.png")) is None
 
 
-def test_email_logo_dimensions_scales_to_display_height() -> None:
+def test_email_logo_dimensions_scales_to_display_height(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The logo is scaled to the fixed display height with width preserving ratio."""
-    email_logo_dimensions.cache_clear()
-    try:
-        result = email_logo_dimensions(_LOGO_STATIC_PATH)
-    finally:
-        email_logo_dimensions.cache_clear()
-    # 512x248 scaled to height 48 -> width round(512*48/248) = 99.
-    assert result == (99, EMAIL_LOGO_DISPLAY_HEIGHT)
+    # Controlled native size, unrelated to the shipped 512x248 asset.
+    monkeypatch.setattr(email_utils, "image_dimensions", lambda _path: (300, 100))
+    # Independent oracle: 300 wide at native height 100, scaled to height 48 -> 144.
+    assert email_logo_dimensions(_LOGO_STATIC_PATH) == (144, EMAIL_LOGO_DISPLAY_HEIGHT)
 
 
 def test_email_logo_dimensions_returns_none_for_unfound_static() -> None:
     """An unresolvable static path yields None (template falls back to height-only)."""
-    email_logo_dimensions.cache_clear()
-    try:
-        assert email_logo_dimensions("images/does_not_exist_logo.png") is None
-    finally:
-        email_logo_dimensions.cache_clear()
+    assert email_logo_dimensions("images/does_not_exist_logo.png") is None
 
 
 # ---------------------------------------------------------------------------
@@ -465,21 +482,17 @@ def test_get_email_theme_falls_back_to_default_theme_when_active_css_missing(
     default_css = tmp_path / "default.css"
     default_css.write_text(_SENTINEL_DEFAULT_CSS)
     absent_active = str(tmp_path / "nope" / "theme.css")
-    get_email_theme.cache_clear()
-    try:
-        with (
-            patch(
-                "freedom_ls.accounts.email_utils.default_theme_css_path",
-                return_value=str(default_css),
-            ),
-            patch(
-                "freedom_ls.accounts.email_utils.active_theme_css_path",
-                return_value=absent_active,
-            ),
-        ):
-            theme = get_email_theme()
-    finally:
-        get_email_theme.cache_clear()
+    with (
+        patch(
+            "freedom_ls.accounts.email_utils.default_theme_css_path",
+            return_value=str(default_css),
+        ),
+        patch(
+            "freedom_ls.accounts.email_utils.active_theme_css_path",
+            return_value=absent_active,
+        ),
+    ):
+        theme = get_email_theme()
     assert theme.color_primary == "#abc123"
     assert theme.color_header == "#abc124"
     assert theme.button_radius == "0.5rem"
@@ -493,21 +506,17 @@ def test_get_email_theme_overlays_active_theme_over_default(tmp_path) -> None:
     default_css.write_text(_SENTINEL_DEFAULT_CSS)
     active_css = tmp_path / "active.css"
     active_css.write_text("@theme { --color-primary: #def456; }")
-    get_email_theme.cache_clear()
-    try:
-        with (
-            patch(
-                "freedom_ls.accounts.email_utils.default_theme_css_path",
-                return_value=str(default_css),
-            ),
-            patch(
-                "freedom_ls.accounts.email_utils.active_theme_css_path",
-                return_value=str(active_css),
-            ),
-        ):
-            theme = get_email_theme()
-    finally:
-        get_email_theme.cache_clear()
+    with (
+        patch(
+            "freedom_ls.accounts.email_utils.default_theme_css_path",
+            return_value=str(default_css),
+        ),
+        patch(
+            "freedom_ls.accounts.email_utils.active_theme_css_path",
+            return_value=str(active_css),
+        ),
+    ):
+        theme = get_email_theme()
     # Active overrides primary; header (absent from active) stays the default.
     assert theme.color_primary == "#def456"
     assert theme.color_header == "#abc124"
@@ -516,15 +525,11 @@ def test_get_email_theme_overlays_active_theme_over_default(tmp_path) -> None:
 def test_get_email_theme_raises_when_default_theme_css_missing(tmp_path) -> None:
     """A missing *default* theme.css fails loud rather than rendering wrong colours."""
     absent = str(tmp_path / "nope" / "theme.css")
-    get_email_theme.cache_clear()
-    try:
-        with (
-            patch(
-                "freedom_ls.accounts.email_utils.default_theme_css_path",
-                return_value=absent,
-            ),
-            pytest.raises(FileNotFoundError),
-        ):
-            get_email_theme()
-    finally:
-        get_email_theme.cache_clear()
+    with (
+        patch(
+            "freedom_ls.accounts.email_utils.default_theme_css_path",
+            return_value=absent,
+        ),
+        pytest.raises(FileNotFoundError),
+    ):
+        get_email_theme()

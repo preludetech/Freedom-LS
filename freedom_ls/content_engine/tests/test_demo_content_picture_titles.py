@@ -8,7 +8,11 @@ the demo content against re-introducing that duplication (QA Bug 4).
 
 import re
 
+import pytest
+
 from config.settings_base import BASE_DIR
+
+pytestmark = pytest.mark.fls_internal
 
 CONTENT_WIDGETS_MEDIA = (
     BASE_DIR

@@ -1,8 +1,11 @@
+import re
+
 import pytest
 
 from django.test import override_settings
 
 from freedom_ls.icons.backend import DefaultIconBackend, _validate_svg_body
+from freedom_ls.icons.loader import load_iconify_data
 
 _backend = DefaultIconBackend()
 
@@ -22,8 +25,26 @@ class TestRenderIcon:
     def test_returns_svg_with_viewbox(self) -> None:
         result = render_icon("success")
         assert "<svg" in result
-        assert 'viewBox="0 0 24 24"' in result
+        assert re.search(r'viewBox="0 0 \d+ \d+"', result)
         assert "</svg>" in result
+
+    @override_settings(FREEDOM_LS_ICON_SET="heroicons")
+    def test_returns_svg_with_non_24_viewbox_when_active_set_glyphs_differ(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A downstream set whose glyphs aren't 24x24 still gets a structural viewBox."""
+        real_data = load_iconify_data("heroicons")
+        fake_heroicons = {**real_data, "width": 20, "height": 20}
+        monkeypatch.setattr(
+            "freedom_ls.icons.backend.load_iconify_data",
+            lambda set_name: fake_heroicons if set_name == "heroicons" else real_data,
+        )
+
+        result = render_icon("success")
+
+        assert re.search(r'viewBox="0 0 \d+ \d+"', result)
+        assert 'viewBox="0 0 20 20"' in result
+        assert 'viewBox="0 0 24 24"' not in result
 
     def test_default_class(self) -> None:
         result = render_icon("success")

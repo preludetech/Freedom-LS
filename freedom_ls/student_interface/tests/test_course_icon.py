@@ -66,6 +66,7 @@ def test_render_returns_safestring_svg_with_expected_aria(
     assert f'aria-label="{expected_aria}"' in out
 
 
+@override_settings(FREEDOM_LS_ICON_SET="heroicons")
 def test_literal_glyph_in_active_set(monkeypatch: pytest.MonkeyPatch) -> None:
     # Active set is heroicons by default; pretend it has a 'drone' glyph.
     real_data = load_iconify_data("heroicons")
@@ -87,6 +88,7 @@ def test_literal_glyph_in_active_set(monkeypatch: pytest.MonkeyPatch) -> None:
     assert 'aria-label="drone"' in out
 
 
+@override_settings(FREEDOM_LS_ICON_SET="heroicons")
 def test_explicit_fallback_used_when_active_lacks_glyph(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -144,6 +146,7 @@ def test_unknown_iconset_in_fallback_renders_default(
     assert 'aria-label="course"' in out
 
 
+@override_settings(FREEDOM_LS_ICON_SET="heroicons")
 def test_missing_suffixed_glyph_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     # Heroicons has 4 variants; mini suffix is "-20-solid". Provide the base
     # glyph and the outline (no suffix) but NOT the solid variant — asking for
