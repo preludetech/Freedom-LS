@@ -27,7 +27,7 @@ the problem. "Run `uv run pytest` in the concrete project" is currently conflati
 - **(b) Concrete integration verification** — *"did I wire FLS up correctly?"*
   This is what a downstream actually needs from a test run.
 
-Today (b) — the genuinely valuable signal — **isn't a first-class thing at all**.
+Today (b) — the genuinely valuable signal — **isn't a supported, dedicated thing at all**.
 Worse, the one real integration bug in the `home_page` update (student_interface
 newly requiring `settings.COURSE_ACCESS_BACKEND`, which First Class had never set,
 plus a missing `applications/` URL include) was caught *only as a side effect* of
