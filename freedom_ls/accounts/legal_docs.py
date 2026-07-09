@@ -28,6 +28,8 @@ from django.http import HttpRequest
 
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 
+from .config import config
+
 logger = logging.getLogger(__name__)
 
 LEGAL_DOCS_DIRNAME = "legal_docs"
@@ -133,15 +135,13 @@ def read_blob_at_head(rel_path: str) -> tuple[str, str]:
     """Return ``(blob_sha, blob_content_text)`` for ``rel_path`` at HEAD.
 
     Two deployment modes:
-    1. ``settings.LEGAL_DOCS_MANIFEST_PATH`` is set and points at an existing
+    1. ``config.LEGAL_DOCS_MANIFEST_PATH`` is set and points at an existing
        JSON file → use the manifest.
     2. Otherwise → invoke ``git show HEAD:<rel_path>``.
 
     Raises ``FileNotFoundError`` when the path does not resolve.
     """
-    manifest_path_setting: str | None = getattr(
-        settings, "LEGAL_DOCS_MANIFEST_PATH", None
-    )
+    manifest_path_setting: str | None = config.LEGAL_DOCS_MANIFEST_PATH
     if manifest_path_setting:
         manifest_path = Path(manifest_path_setting)
         if not manifest_path.exists():

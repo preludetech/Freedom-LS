@@ -18,8 +18,10 @@ from freedom_ls.accounts.email_utils import (
     get_email_theme,
     resolved_email_logo_path,
 )
+from freedom_ls.site_aware_models.config import config as site_aware_config
 from freedom_ls.site_aware_models.models import get_cached_site
 
+from .config import config
 from .models import SiteSignupPolicy, User
 
 
@@ -94,7 +96,7 @@ class AccountAdapter(DefaultAccountAdapter):
 
         return {
             "email_logo_url": email_logo_url,
-            "email_label": settings.HEADER_TITLE or current_site.name,
+            "email_label": site_aware_config.HEADER_TITLE or current_site.name,
             "email_logo_width": email_logo_width,
             "email_logo_height": email_logo_height,
         }
@@ -167,9 +169,9 @@ class AccountAdapter(DefaultAccountAdapter):
     def is_open_for_signup(self, request):
         """
         Signup is controlled per-site via accounts.SiteSignupPolicy.
-        If no policy exists for the current site, fall back to settings.ALLOW_SIGN_UPS.
+        If no policy exists for the current site, fall back to config.ALLOW_SIGN_UPS.
         """
-        default_allow = getattr(settings, "ALLOW_SIGN_UPS", True)
+        default_allow = config.ALLOW_SIGN_UPS
 
         # If there's no request (rare, but possible), use the global default.
         if request is None:

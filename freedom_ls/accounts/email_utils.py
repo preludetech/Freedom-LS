@@ -421,9 +421,9 @@ def resolved_email_logo_path() -> str | None:
     Checks EMAIL_LOGO_STATIC_PATH first, then falls back to HEADER_LOGO_STATIC_PATH.
     Returns None if neither is set.
     """
-    from django.conf import settings
+    from freedom_ls.site_aware_models.config import config
 
-    return settings.EMAIL_LOGO_STATIC_PATH or settings.HEADER_LOGO_STATIC_PATH or None
+    return config.EMAIL_LOGO_STATIC_PATH or config.HEADER_LOGO_STATIC_PATH or None
 
 
 def resolve_color_token(token_map: dict[str, str], token: str) -> str:

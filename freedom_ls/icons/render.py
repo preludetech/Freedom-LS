@@ -16,10 +16,10 @@ from __future__ import annotations
 
 import re
 
-from django.conf import settings
 from django.utils.safestring import SafeString
 
 from freedom_ls.icons.backend import build_svg, get_icon_backend
+from freedom_ls.icons.config import config
 from freedom_ls.icons.loader import load_iconify_data
 from freedom_ls.icons.mappings import ICON_SETS
 from freedom_ls.icons.semantic_names import SEMANTIC_ICON_NAMES
@@ -37,7 +37,7 @@ class IconResolutionError(RuntimeError):
 
 
 def _active_set_name() -> str:
-    return settings.FREEDOM_LS_ICON_SET
+    return config.FREEDOM_LS_ICON_SET
 
 
 def _render_literal(
@@ -59,19 +59,19 @@ def _render_literal(
     """
     if set_name not in ICON_SETS:
         return None
-    config = ICON_SETS[set_name]
-    if variant not in config.variants:
+    set_config = ICON_SETS[set_name]
+    if variant not in set_config.variants:
         # Unknown variants don't gracefully degrade — that's a programmer
         # error, not authored-content error.
         raise ValueError(
             f"Variant {variant!r} is not supported by icon set {set_name!r}. "
-            f"Supported variants: {sorted(config.variants)}"
+            f"Supported variants: {sorted(set_config.variants)}"
         )
     data = load_iconify_data(set_name)
     icons = data["icons"]
     if glyph not in icons:
         return None
-    suffix = config.variants[variant]
+    suffix = set_config.variants[variant]
     lookup = glyph + suffix if suffix else glyph
     if lookup not in icons:
         raise IconResolutionError(

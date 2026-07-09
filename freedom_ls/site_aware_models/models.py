@@ -3,12 +3,13 @@ from __future__ import annotations
 import uuid
 from threading import local
 
-from django.conf import settings
 from django.contrib.sites.models import Site
 from django.contrib.sites.requests import RequestSite
 from django.contrib.sites.shortcuts import get_current_site
 from django.db import models
 from django.http import HttpRequest
+
+from .config import config
 
 _thread_locals = local()
 
@@ -21,7 +22,7 @@ def get_cached_site(request: HttpRequest) -> Site | RequestSite:
     if cached is not None:
         return cached
 
-    force_name = getattr(settings, "FORCE_SITE_NAME", None)
+    force_name = config.FORCE_SITE_NAME
     site: Site | RequestSite
     if force_name:
         try:

@@ -14,9 +14,9 @@ E007 — Mapping keys don't match SEMANTIC_ICON_NAMES.
 W001 — Warn if commonly used variants (outline, solid) are unsupported.
 """
 
-from django.conf import settings
 from django.core.checks import CheckMessage, Error, Warning, register
 
+from freedom_ls.icons.config import config
 from freedom_ls.icons.loader import PACKAGE_MAP, iconify_json_path
 from freedom_ls.icons.mappings import ICON_SETS
 from freedom_ls.icons.semantic_names import SEMANTIC_ICON_NAMES
@@ -26,7 +26,7 @@ from freedom_ls.icons.semantic_names import SEMANTIC_ICON_NAMES
 def check_iconify_json_exists(**kwargs: object) -> list[CheckMessage]:
     """E001/E002: Check that the icon set is known and its JSON file exists."""
     errors: list[CheckMessage] = []
-    icon_set_name: str = getattr(settings, "FREEDOM_LS_ICON_SET", "heroicons")
+    icon_set_name: str = config.FREEDOM_LS_ICON_SET
     pkg = PACKAGE_MAP.get(icon_set_name)
     if pkg is None:
         errors.append(
@@ -54,7 +54,7 @@ def check_iconify_json_exists(**kwargs: object) -> list[CheckMessage]:
 def check_mapping_values_exist(**kwargs: object) -> list[CheckMessage]:
     """E003/E004: Check that every mapping value and variant-suffixed name exists."""
     errors: list[CheckMessage] = []
-    icon_set_name: str = getattr(settings, "FREEDOM_LS_ICON_SET", "heroicons")
+    icon_set_name: str = config.FREEDOM_LS_ICON_SET
     if icon_set_name not in ICON_SETS:
         return errors  # E001 will catch this
 
@@ -66,8 +66,8 @@ def check_mapping_values_exist(**kwargs: object) -> list[CheckMessage]:
         return errors  # E002 will catch this
 
     icons = data.get("icons", {})
-    config = ICON_SETS[icon_set_name]
-    for semantic_name, icon_name in config.mapping.items():
+    set_config = ICON_SETS[icon_set_name]
+    for semantic_name, icon_name in set_config.mapping.items():
         if icon_name not in icons:
             errors.append(
                 Error(
@@ -77,7 +77,7 @@ def check_mapping_values_exist(**kwargs: object) -> list[CheckMessage]:
                 )
             )
         else:
-            for variant_name, suffix in config.variants.items():
+            for variant_name, suffix in set_config.variants.items():
                 if suffix is not None:
                     lookup = icon_name + suffix
                     if lookup not in icons:
@@ -95,11 +95,11 @@ def check_mapping_values_exist(**kwargs: object) -> list[CheckMessage]:
 def check_overrides_exist(**kwargs: object) -> list[CheckMessage]:
     """E005/E006: Check that override icon names exist in the Iconify JSON data."""
     errors: list[CheckMessage] = []
-    overrides: dict[str, str] = getattr(settings, "FREEDOM_LS_ICON_OVERRIDES", {})
+    overrides: dict[str, str] = config.FREEDOM_LS_ICON_OVERRIDES
     if not overrides:
         return errors
 
-    icon_set_name: str = getattr(settings, "FREEDOM_LS_ICON_SET", "heroicons")
+    icon_set_name: str = config.FREEDOM_LS_ICON_SET
     try:
         from freedom_ls.icons.loader import load_iconify_data
 
@@ -131,8 +131,8 @@ def check_overrides_exist(**kwargs: object) -> list[CheckMessage]:
 def check_mapping_keys(**kwargs: object) -> list[CheckMessage]:
     """E007: Check that every icon set mapping covers exactly SEMANTIC_ICON_NAMES."""
     errors: list[CheckMessage] = []
-    for set_name, config in ICON_SETS.items():
-        mapping_keys = set(config.mapping.keys())
+    for set_name, set_config in ICON_SETS.items():
+        mapping_keys = set(set_config.mapping.keys())
         if mapping_keys != SEMANTIC_ICON_NAMES:
             missing = SEMANTIC_ICON_NAMES - mapping_keys
             extra = mapping_keys - SEMANTIC_ICON_NAMES
@@ -150,18 +150,18 @@ def check_mapping_keys(**kwargs: object) -> list[CheckMessage]:
 def check_variant_support(**kwargs: object) -> list[CheckMessage]:
     """W001: Warn if commonly used variants are not supported by the active icon set."""
     warnings: list[CheckMessage] = []
-    icon_set_name: str = getattr(settings, "FREEDOM_LS_ICON_SET", "heroicons")
+    icon_set_name: str = config.FREEDOM_LS_ICON_SET
     if icon_set_name not in ICON_SETS:
         return warnings
 
-    config = ICON_SETS[icon_set_name]
+    set_config = ICON_SETS[icon_set_name]
     common_variants = {"outline", "solid"}
     for variant in common_variants:
-        if variant not in config.variants:
+        if variant not in set_config.variants:
             warnings.append(
                 Warning(
                     f"Variant {variant!r} is not supported by icon set {icon_set_name!r}",
-                    hint=f"Available variants: {sorted(config.variants)}",
+                    hint=f"Available variants: {sorted(set_config.variants)}",
                     id="freedom_ls.W001",
                 )
             )

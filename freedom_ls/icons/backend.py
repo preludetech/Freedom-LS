@@ -1,10 +1,10 @@
 import functools
 import re
 
-from django.conf import settings
 from django.utils.html import escape
 from django.utils.module_loading import import_string
 
+from freedom_ls.icons.config import config
 from freedom_ls.icons.loader import load_iconify_data
 from freedom_ls.icons.mappings import ICON_SETS
 
@@ -72,10 +72,10 @@ class DefaultIconBackend(IconBackend):
         css_class: str = "size-5",
         aria_label: str = "",
     ) -> str:
-        # No caching needed: getattr on settings is trivial, and
+        # No caching needed: attribute access on config is trivial, and
         # load_iconify_data() already caches its result.
-        icon_set_name: str = getattr(settings, "FREEDOM_LS_ICON_SET", "heroicons")
-        overrides: dict[str, str] = getattr(settings, "FREEDOM_LS_ICON_OVERRIDES", {})
+        icon_set_name: str = config.FREEDOM_LS_ICON_SET
+        overrides: dict[str, str] = config.FREEDOM_LS_ICON_OVERRIDES
 
         set_config = ICON_SETS[icon_set_name]
         mapping = {**set_config.mapping, **overrides}
@@ -116,7 +116,7 @@ def get_icon_backend() -> IconBackend:
     ``override_settings(FREEDOM_LS_ICON_BACKEND=...)``, call
     ``get_icon_backend.cache_clear()`` before and after the test.
     """
-    backend_path: str | None = getattr(settings, "FREEDOM_LS_ICON_BACKEND", None)
+    backend_path: str | None = config.FREEDOM_LS_ICON_BACKEND
     if backend_path is None:
         return DefaultIconBackend()
     backend_class: type[IconBackend] = import_string(backend_path)
