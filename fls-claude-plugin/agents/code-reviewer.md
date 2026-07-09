@@ -74,6 +74,8 @@ Review the changes against these criteria, organized by priority:
 ### Important Issues (Should Fix)
 - **Missing type hints**: All functions must have type hints. No `Any` type.
 - **Missing tests**: New functionality should have corresponding tests
+- **Test portability — brand-literal assertion**: A new test asserting an FLS-default literal (icon `viewBox`, logo dimensions, a demo-content string) without `@pytest.mark.fls_internal` — it should either de-brand (pin the input, assert the contract) or be marked `fls_internal`. See the `fls:testing` skill's marker taxonomy.
+- **Test portability — missing collection-safety guard**: A new test module importing an optional app's factory or model (e.g. `freedom_ls.course_applications`) at module scope without the `INSTALLED_APPS` skip guard above the import — this aborts collection for a downstream that hasn't installed that app. See the `fls:testing` skill's "Collection safety for optional apps".
 - **ORM misuse**: Missing `select_related()`/`prefetch_related()` on related-object queries, use of `raw()`, `extra()`, or Raw SQL
 - **Error handling**: Overly broad exception catching, silent failures, missing `get_object_or_404` in views
 - **Code duplication**: Repeated code that should be extracted into functions/classes

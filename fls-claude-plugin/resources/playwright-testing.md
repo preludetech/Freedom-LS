@@ -23,6 +23,13 @@ Use pytest instead for:
 
 For unit-level HTMX patterns (header simulation, `HX-Trigger` assertions, 422 validation responses) and general testing guidelines see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
 
+## Portability: this is the browser set a downstream excludes
+
+`tests/e2e/**` and every `@pytest.mark.playwright` test are, together, the browser-dependent set a concrete downstream project cannot run headless-plain (no `live_server` + real browser to drive, and `pytest-socket` blocks outbound sockets by default). The recommended downstream selection is
+`uv run pytest -m "not playwright and not fls_internal and not ci_only"` — see the `fls:testing` skill's marker taxonomy for the full four-marker picture (`fls_internal`, `ci_only`).
+
+**No marker rename.** `playwright` remains the one stable name for this set — it is not renamed to `e2e` (there is no separate `e2e` marker). Keep marking every new browser test `@pytest.mark.playwright` and keep it under `tests/e2e/`; that's the only thing a downstream needs to exclude it.
+
 ## Setup
 
 ```bash

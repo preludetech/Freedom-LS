@@ -27,6 +27,7 @@ Use this Skill when:
 - Use `expect(locator).to_be_visible()` and similar `expect()` matchers — they auto-wait and surface better failure messages than `wait_for_selector` / `is_visible`.
 - Locator priority: `get_by_role` → `get_by_label` → `get_by_text` → `get_by_test_id` → CSS as a last resort.
 - Test location: `tests/e2e/`
+- `tests/e2e/**` / `@pytest.mark.playwright` is the **browser set a downstream excludes** — a concrete project runs `uv run pytest -m "not playwright and not fls_internal and not ci_only"` to skip these (no server/browser to drive) alongside FLS's own brand-coupled tests. Keep every browser test under this marker; do not rename it (see the `fls:testing` skill's marker taxonomy).
 
 ## Best practices
 

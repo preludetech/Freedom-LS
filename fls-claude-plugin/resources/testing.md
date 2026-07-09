@@ -265,6 +265,64 @@ When `transaction=True` is used, **add a one-line comment** on the marker explai
 
 If you are tempted to add `transaction=True` for any other reason (it makes a flaky test pass, you don't know why the rollback path is failing), do not — it is masking a real bug in the test or the production code.
 
+## Marker taxonomy
+
+**(currently available)** — every test falls into exactly one of four buckets, all registered in `pyproject.toml`'s `[tool.pytest.ini_options]` `markers = [...]` (mandatory: `--strict-markers` is on, so an unregistered marker is a hard collection error):
+
+- **Unmarked (default) = portable.** The downstream-valuable set — contract/unit tests that pass under any settings, theme, icon set, or installed-app list. Most tests belong here.
+- **`playwright`** — browser-dependent; needs a running server (`live_server`) and a real browser. See the `fls:playwright-tests` skill. Lives under per-app `tests/e2e/` dirs.
+- **`fls_internal`** — only valid under FLS's own settings, theme, branding, or demo content. Reach for it when a test's assertion is inherently tied to FLS's own repo state (a shipped `demo_content/` file excluded from the packaged distribution, for example) — not merely because the test happens to assert an FLS-default value it could instead assert as a contract.
+- **`ci_only`** — existing slow / real-time tests, excluded from FLS's own default run too.
+
+FLS's own `uv run pytest` runs everything except `ci_only` — it must exercise `fls_internal` and `playwright` tests against FLS's own settings, since that *is* FLS regression testing. A concrete downstream project instead runs
+`uv run pytest -m "not playwright and not fls_internal and not ci_only"` to get only the portable contract set (this is the selection `commands/concrete/update_fls.md` runs at its downstream call sites).
+
+**The reach-for-`fls_internal`-last rule:** every test that stays portable is real integration signal for a downstream. Before marking a test `fls_internal`, ask whether it genuinely depends on FLS's own repo/brand/demo state, or whether it's a contract test wearing a brand-literal disguise — see the worked examples further down this file (next to "Don't assert hardcoded config values").
+
+**Scoping the marker:** prefer a file-level `pytestmark = pytest.mark.fls_internal` only when *every* test in the file is brand/demo-coupled (e.g. a file that only ever reads `demo_content/`). In a file that mixes portable and brand-coupled tests, mark the individual `fls_internal` tests instead — a blanket file-level marker would wrongly de-scope real integration signal a downstream needs.
+
+## Collection safety for optional apps
+
+**(currently available)** — a module that imports an optional app's factory or model at **module scope** (e.g. `from freedom_ls.course_applications.factories import CourseApplicationFactory` at the top of a test file) raises Django's model-registry `RuntimeError: Model class ... isn't in an application in INSTALLED_APPS` at **collection** time when a downstream has legitimately not installed that app. This aborts the *entire* pytest session (`Interrupted: N errors during collection`, exit code 2) — not just the one module.
+
+### The guard (braces)
+
+Place a module-top `INSTALLED_APPS` check **immediately above** the offending import, keyed on a plain string check (safe to read without app-registry readiness):
+
+```python
+from __future__ import annotations
+
+import pytest
+from django.conf import settings
+
+if "freedom_ls.course_applications" not in settings.INSTALLED_APPS:
+    pytest.skip("course_applications not installed", allow_module_level=True)
+
+from freedom_ls.course_applications.factories import CourseApplicationFactory  # now safe
+```
+
+`allow_module_level=True` is required — `pytest.skip()` at module scope is otherwise a usage error.
+
+**Why not `pytest.importorskip` or `@pytest.mark.skipif`:**
+
+- `pytest.importorskip("freedom_ls.course_applications")` doesn't help — the *package* is importable; it's the **model class definition** that raises `RuntimeError` because the model isn't registered under `INSTALLED_APPS`. `importorskip` only catches `ImportError` unless you pass an explicit `exc_type`.
+- `@pytest.mark.skipif(...)` doesn't help either — the module-scope import statement executes (and raises) while pytest is still *collecting* the module, before the decorator is ever reached.
+
+### The colocated `collect_ignore_glob` conftest (belt)
+
+Add a `conftest.py` in the **same directory** as the guarded test files (`collect_ignore*` is scoped to the conftest's own directory) that skips importing them at all when the app is absent:
+
+```python
+# freedom_ls/course_applications/tests/conftest.py
+from django.conf import settings
+
+collect_ignore_glob: list[str] = []
+if "freedom_ls.course_applications" not in settings.INSTALLED_APPS:
+    collect_ignore_glob = ["test_*.py"]
+```
+
+This is defense-in-depth: the conftest never imports the file at all (belt); the module-level guard skips cleanly even if something did import it (braces). Use the conftest for files that live entirely inside the optional app's own `tests/` dir; a test module that lives in a *different* app's `tests/` dir (a cross-app integration test) can't use a directory-level ignore without also hiding its sibling tests, so it relies on the module-top guard alone.
+
 ## Writing High-Value Tests
 
 Every test must justify its existence. A test has value when it catches real bugs, documents important behaviour, or protects against meaningful regressions. Tests that merely exercise code without asserting anything interesting are noise.
@@ -415,6 +473,21 @@ When testing validation logic: Test the happy and unhappy path. Don't just test 
 Never test that a hardcoded configuration value is what it is meant to be. Eg never say `assert config.hardcoded_value == [whatever]` or `assert "something" in config.hardcoded_value`
 
 This also covers the subtler version where you read live configuration and run it **through** the code under test, then assert the **derived** result against a hardcoded expected — eg loading a real theme `.css` and asserting `resolve_color(load_theme("first_class")) == "#283593"`, or `email_safe_font_stack(theme["font-sans"]) == "sans-serif"`. Configuration exists precisely so it can change; a test like that breaks the day someone re-skins a theme or edits a setting, even though the code is still correct, and it duplicates the behaviour your controlled-input tests already cover. Test the function with an explicit input instead (`assert resolve_color({"color-primary": "#283593"}) == "#283593"`). If you genuinely need to know that the *real* shipped config still resolves, assert that via a system check / smoke test that the resolution succeeds (no exception) — not by pinning the exact values.
+
+**Worked examples from FLS's own de-branding pass** (each swaps an FLS-default literal for a contract assertion, a pinned input, or an `fls_internal` marker — see "Marker taxonomy" above for when each applies):
+
+- **Ambient-default icon viewBox** — `icons/tests/test_renderer.py::test_returns_svg_with_viewbox` hardcoded `viewBox="0 0 24 24"` on the *ambient* default icon set. Rewritten to `assert re.search(r'viewBox="0 0 \d+ \d+"', result)` — matches `icons/tests/test_no_font_awesome.py`'s existing style, and is proven to actually flex (not just asserted to in theory) by a second case that stubs a non-`24 24` glyph set and asserts the same regex against it.
+- **Pinned icon set — leave as-is.** `icons/tests/test_renderer.py::test_lucide_icon_set` asserts the literal `viewBox="0 0 24 24"` under `@override_settings(FREEDOM_LS_ICON_SET="lucide")`. The set is *pinned*, so the literal is a controlled-input assertion, not brand coupling — don't loosen it to a regex. Where a test stubs one specific icon set (e.g. `icons/tests/test_render.py::test_literal_glyph_in_active_set`) without pinning `FREEDOM_LS_ICON_SET`, pin it with `@override_settings(FREEDOM_LS_ICON_SET="heroicons")` so the test doesn't silently depend on heroicons being the ambient default.
+- **Logo scaling with an independent oracle** — `accounts/tests/test_email_utils.py::test_email_logo_dimensions_scales_to_display_height` used to hardcode the shipped `512x248` logo. Re-deriving the expected width by re-running the SUT's own `round(nw * H / nh)` formula against that asset would be a tautology (see "Tautology guidance" above) — instead, `monkeypatch` a **controlled** native size onto `image_dimensions` and assert against a **hand-computed** expected width:
+
+  ```python
+  def test_email_logo_dimensions_scales_to_display_height(monkeypatch):
+      monkeypatch.setattr(email_utils, "image_dimensions", lambda _p: (300, 100))
+      # 300 wide at native height 100, scaled to display height 48 -> 144 (hand-computed)
+      assert email_logo_dimensions("images/any.png") == (144, EMAIL_LOGO_DISPLAY_HEIGHT)
+  ```
+
+- **Demo content → `fls_internal`** — `content_engine/tests/test_demo_content_picture_titles.py` reads a `demo_content/` file that is excluded from the packaged distribution; a downstream hits `FileNotFoundError`, not a mismatch. The whole file is demo-coupled, so a file-level `pytestmark = pytest.mark.fls_internal` is correct there.
 
 Never test trivial model instance creation. Eg never test that default values are as they should be, or that passed in values are saved unless the model is meant to do something unusual. Assume Django's model implementation works, don't waste time testing it.
 

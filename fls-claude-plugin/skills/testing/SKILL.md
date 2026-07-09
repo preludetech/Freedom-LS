@@ -182,6 +182,7 @@ For anything with a validation rule, test that invalid input is **rejected**, no
 - Coverage is a signal, not a goal. High coverage with weak assertions is worse than moderate coverage with strong ones.
 - Don't assert on styling (CSS classes, colours, font sizes) — only on functionality.
 - Don't assert hardcoded config values (`assert settings.TIMEOUT == 30`) — you're testing the config file, not behaviour. This includes the subtler variant: feeding **live** configuration (a settings value, a theme `.css`, any file that exists to be edited) *through* the code under test and asserting the **derived** result against a hardcoded expected (`assert resolve_color(load_theme("first_class")) == "#283593"`). Configuration is meant to change — such a test breaks the moment someone re-skins a theme or edits a setting, while testing nothing the controlled-input tests don't already cover. Instead, test the function with an **explicit input** (`assert resolve_color({"color-primary": "#283593"}) == "#283593"`), and let a system check or smoke test guard that the *real* config still resolves without error.
+  - Worked examples from FLS's own de-branding pass: a `viewBox="0 0 \d+ \d+"` regex instead of the ambient-default `24 24` literal; pinning `@override_settings(FREEDOM_LS_ICON_SET=...)` when a test's subject really is one specific set (leave those literals as-is — they're controlled-input assertions, not brand coupling); a logo-scaling test that `monkeypatch`es a **controlled** native size and asserts a hand-computed width, never re-deriving from the shipped `512x248` asset; and `pytestmark = pytest.mark.fls_internal` for a test that reads `demo_content/` (excluded from the packaged distribution). Full examples in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
 
 ### Testing HTMX views
 
@@ -200,6 +201,33 @@ Use `client.force_login(user)` to authenticate. Do **not** patch `request.user` 
 ### Playwright tests
 
 Playwright is slow; prefer pytest. Reach for Playwright only when testing interactivity that requires a real browser (HTMX swaps, Alpine-driven behaviour, JS-rendered UI). See the `fls:playwright-tests` skill for details.
+
+### Marker taxonomy
+
+- **Unmarked (default) = portable** — contract/unit tests; the downstream-valuable set.
+- **`playwright`** — browser-dependent (see `fls:playwright-tests`).
+- **`fls_internal`** — only valid under FLS's own settings/theme/branding/demo content.
+- **`ci_only`** — existing slow tests (unchanged).
+
+Reach for `fls_internal` only when a test genuinely can't run outside FLS's own repo/brand/demo state — **de-brand first** (pin the input or assert the contract; see "Don't assert hardcoded config values" above). Prefer a file-level `pytestmark = pytest.mark.fls_internal` only for wholly brand-coupled files; mark individual tests in mixed files.
+
+See `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` for the full taxonomy and worked examples.
+
+### Collection safety for optional apps
+
+A module that imports an optional app's factory/model (e.g. `freedom_ls.course_applications`) at module scope raises Django's model-registry `RuntimeError` at **collection** time when a downstream hasn't installed that app — aborting the whole session, not just that module. Guard it immediately above the import:
+
+```python
+import pytest
+from django.conf import settings
+
+if "freedom_ls.course_applications" not in settings.INSTALLED_APPS:
+    pytest.skip("course_applications not installed", allow_module_level=True)
+
+from freedom_ls.course_applications.factories import CourseApplicationFactory  # now safe
+```
+
+`pytest.importorskip(...)` doesn't work here (the package *is* importable — it's the model-registry `RuntimeError` that fires); `@pytest.mark.skipif` doesn't either (the module-scope import raises before the decorator is ever reached). Belt-and-braces: colocate a `conftest.py` that sets `collect_ignore_glob` under the same condition so the offending files are never even imported — see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` for the full pattern.
 
 ## Anti-pattern cheatsheet
 
