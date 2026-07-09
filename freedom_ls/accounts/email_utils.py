@@ -593,7 +593,7 @@ def email_logo_dimensions(logo_static_path: str) -> tuple[int, int] | None:
     ``EMAIL_LOGO_DISPLAY_HEIGHT`` so the aspect ratio is preserved. Returns None
     when the file cannot be located or its dimensions cannot be read (the
     template then falls back to a height-only constraint). Cached for the
-    process lifetime; tests overriding the logo must call ``.cache_clear()``.
+    process lifetime.
     """
     from django.contrib.staticfiles import finders
 

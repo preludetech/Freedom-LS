@@ -439,7 +439,11 @@ def test_email_logo_dimensions_scales_to_display_height(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The logo is scaled to the fixed display height with width preserving ratio."""
-    # Controlled native size, unrelated to the shipped 512x248 asset.
+    from django.contrib.staticfiles import finders
+
+    # No dependency on any shipped asset: stub the finder to resolve, and feed a
+    # controlled native size unrelated to the shipped 512x248 logo.
+    monkeypatch.setattr(finders, "find", lambda path: "/nonexistent/logo.png")
     monkeypatch.setattr(email_utils, "image_dimensions", lambda _path: (300, 100))
     # Independent oracle: 300 wide at native height 100, scaled to height 48 -> 144.
     assert email_logo_dimensions(_LOGO_STATIC_PATH) == (144, EMAIL_LOGO_DISPLAY_HEIGHT)

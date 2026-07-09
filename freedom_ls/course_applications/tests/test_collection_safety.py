@@ -49,6 +49,6 @@ def test_collection_survives_without_course_applications(
         str(REPO_ROOT / "freedom_ls" / "course_access"),
     )
 
-    # exit 2 == "errors during collection" (the bug). 0 (collected) or 5 (none
-    # collected) mean collection did not abort.
-    assert result.ret != 2
+    # exit 2 == "errors during collection" (the bug). 0 (items collected) or 5
+    # (none collected) both mean collection did not abort.
+    assert result.ret in (0, 5)
