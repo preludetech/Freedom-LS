@@ -5,6 +5,18 @@ This effort was split from a single monolith into **5 numbered specs** plus this
 Specs 1–4 target **this repo** (`freedom_ls`); Spec 5 targets the **separate
 `freedom-ls-concrete-template` repo** and is meant to be moved there and implemented there.
 
+Each spec now lives in its **own directory** under `spec_dd/1. next/` (as `1. spec.md`, with an
+`idea.md` pointing back here); this index, `third-party-services.md`, the shared idea, and the
+research artifacts stay in this parent directory:
+
+| # | Directory under `spec_dd/1. next/` |
+|---|------|
+| 1 | `support-concrete-project-deployment-1-prod-settings` |
+| 2 | `support-concrete-project-deployment-2-health-module` |
+| 3 | `support-concrete-project-deployment-3-background-tasks` |
+| 4 | `support-concrete-project-deployment-4-remove-standalone-path` |
+| 5 | `support-concrete-project-deployment-5-template-repo-scaffolding` |
+
 ## The specs
 
 | # | Spec | Repo | Scope (one line) | Depends on |
