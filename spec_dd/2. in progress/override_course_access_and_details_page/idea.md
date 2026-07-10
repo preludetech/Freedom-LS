@@ -26,8 +26,8 @@ course while it is being built.
 
 ### Proposed solution
 
-Add a new course **frontmatter** flag, `contents_in_development` (boolean,
-default `false`), on the `Course` schema.
+Add a new course **frontmatter** flag, `table_of_contents_in_development`
+(boolean, default `false`), on the `Course` schema.
 
 - When `true`, **omit entirely** all three TOC-related surfaces on the detail
   page: the "Course content" section (heading included), the "This course
@@ -39,7 +39,7 @@ default `false`), on the `Course` schema.
 
 ### Validation rule
 
-A **published** course may not have `contents_in_development: true` — a live
+A **published** course may not have `table_of_contents_in_development: true` — a live
 course should always show its contents. Enforce this at content load time so a
 bad combination fails loudly during `content_validate` / `content_save` rather
 than rendering a half-broken page.
@@ -50,14 +50,16 @@ than rendering a half-broken page.
   frontmatter field against a matching Django model field, so it needs a
   pydantic schema field **and** a `Course` model `BooleanField(default=False)`
   **plus a migration** (same shape as the existing `visibility` field).
-- `contents_in_development` is orthogonal to the existing `visibility`
+- `table_of_contents_in_development` is orthogonal to the existing `visibility`
   lifecycle (`published` / `coming_soon` / `hidden`). Typical use is a
   `coming_soon` course whose lessons aren't written yet: it stays listed and
   demoable, but its empty TOC is hidden. The spec should reconcile the wording
   with `hidden` visibility, which the product docs already frame as
   "preview before launch".
-- Naming: `contents_in_development` matches the codebase's existing no-prefix
-  boolean style. Open to a shorter alternative during spec if preferred.
+- Naming: `table_of_contents_in_development` is explicit that only the TOC is
+  suppressed — a course's content can still be under development while its table
+  of contents is complete enough to display. It matches the codebase's existing
+  no-prefix boolean style. Open to a shorter alternative during spec if preferred.
 
 ---
 
