@@ -1,22 +1,25 @@
 ---
 name: app-settings
-description: Define and manage FLS-specific Django settings via per-app config.py modules. Use when adding, reading, or enforcing an FLS setting, when a downstream project must supply a value, or when the user mentions config.py, AppSettings, declared_settings, required settings, or COURSE_ACCESS_BACKEND.
+description: Define and manage per-app Django settings via per-app config.py modules. Use when adding, reading, or enforcing a setting an app owns, when a downstream project must supply a value, or when the user mentions config.py, AppSettings, declared_settings, required settings, or COURSE_ACCESS_BACKEND.
 allowed-tools: Read, Grep, Glob
 ---
 
 # Per-app settings (`config.py`)
 
-FLS ships as a package installed into downstream projects. Every FLS-specific setting
-is declared in a **`config.py` in the app that reads it**, so an app owns its defaults,
-resolves project overrides, and marks which settings a downstream *must* supply. Never
-read `settings.SOME_FLS_SETTING` directly from FLS app code — read it through that app's
-`config`.
+A reusable Django app is installed into a host project that owns the real `settings.py`.
+Every setting an app reads is declared in a **`config.py` in the app that reads it**, so
+the app owns its defaults, resolves project overrides, and marks which settings the host
+project *must* supply. Never read `settings.SOME_SETTING` directly from app code — read it
+through that app's `config`.
+
+This convention applies to any Django app that reads a project-level setting: FLS's own
+apps, and any app you add in a concrete project built on FLS.
 
 ## When to use this skill
 
-- **Adding a new FLS setting** — declare it in the consuming app's `config.py`.
-- **Reading an FLS setting** — import `config` from the app and read `config.NAME`.
-- **A setting a downstream must set** — mark it `required` and register a system check.
+- **Adding a new setting** — declare it in the consuming app's `config.py`.
+- **Reading a setting** — import `config` from the app and read `config.NAME`.
+- **A setting the host project must set** — mark it `required` and register a system check.
 - **User mentions** `config.py`, `AppSettings`, `declared_settings`, `Setting`,
   required settings, or `COURSE_ACCESS_BACKEND`.
 
@@ -26,24 +29,27 @@ as direct `settings.X` reads — they are **not** routed through `config.py`.
 
 ## The shared base
 
-`freedom_ls/base/app_settings.py` provides `AppSettings`, `Setting`, and
-`required_settings_errors()`. It imports only `django.conf`, `django.core.checks`,
-`django.core.exceptions`, and stdlib — **no models** — so `from freedom_ls.<app>.config
-import config` is safe at any module top level (no import-cycle risk).
+`freedom_ls/base/app_settings.py` (shipped in the installed FLS package) provides
+`AppSettings`, `Setting`, and `required_settings_errors()`. Any app — FLS's own or one in
+your project — imports these from there. That module imports only `django.conf`,
+`django.core.checks`, `django.core.exceptions`, and stdlib — **no models** — so
+`from <app>.config import config` is safe at the top of any module (it can't cause an
+import cycle).
 
 - `config.NAME` returns the project's `settings.NAME` if set (strings are stripped;
   empty/`None` count as unset), else the declared `default`.
 - A `required` setting the project has not supplied raises `ImproperlyConfigured`
   **lazily, only when read** — never at import. A mutable default is deep-copied per
   read, so a caller mutating a list/dict in place can't corrupt the shared default.
-- `config.missing_required()` lists unset required names and **never raises** — checks
-  and other must-not-raise callers use it to gate.
+- `config.missing_required()` lists unset required names and **never raises**, so checks
+  and other code that must not raise can call it first.
 
 ## Declaring settings — one `config.py` per app
 
-Each module ends in a module-level `config` singleton. Type each setting as a
-**class-level annotation without assignment** (django-stubs idiom) so consumers get real
-static types while `__getattr__` supplies values at runtime — no `Any`, no `type: ignore`.
+Each `config.py` defines a subclass of `AppSettings` and creates one instance of it named
+`config`. Declare each setting as a class-level type annotation with no value assigned.
+That gives callers a real static type, and the value is looked up at runtime — no `Any`,
+no `type: ignore`.
 
 ```python
 # freedom_ls/course_access/config.py
@@ -63,17 +69,21 @@ class CourseAccessConfig(AppSettings):
 config = CourseAccessConfig()
 ```
 
-Optional settings carry a `default`; required settings carry `required=True` and no
-default. Add a short comment when a setting is required *because* it has no safe empty
-default (e.g. the consumer indexes into it), or when it's declared only to appear in the
-ownership map (a third party reads it, not FLS):
+```python
+Setting(default: object = None, required: bool = False)
+```
+
+Optional settings pass a `default`; required settings pass `required=True` and no default.
+Add a short comment when a setting is required *because* it has no safe empty default (e.g.
+the consumer indexes into it), or when it's declared only to record that the app owns it
+even though something else reads the value (a third party reads it, not FLS):
 
 ```python
     declared_settings = {
         "COURSE_ACCESS_CONFIG_VALIDATOR": Setting(default=None),
         # No safe empty default: the consumer reads registry["default"].
         "ADMONITION_TYPES": Setting(required=True),
-        # Declared for the ownership map only; django-cotton reads it itself.
+        # Declared here only to record ownership; django-cotton reads it itself.
         "COTTON_SNAKE_CASED_NAMES": Setting(default=False),
     }
 ```
@@ -101,7 +111,7 @@ per-setting boilerplate. Register the check from the app that consumes the setti
 wire it up in `apps.py`'s `ready()`:
 
 ```python
-# freedom_ls/<app>/checks.py
+# <app>/checks.py
 from django.core.checks import CheckMessage, register
 
 from freedom_ls.base.app_settings import required_settings_errors
@@ -109,15 +119,15 @@ from freedom_ls.base.app_settings import required_settings_errors
 
 @register()
 def check_required_<app>_settings(**kwargs: object) -> list[CheckMessage]:
-    from freedom_ls.<app>.config import config
+    from <app>.config import config
 
-    return required_settings_errors(config, "freedom_ls_<app>")
+    return required_settings_errors(config, "<app_label>")
 ```
 
 ```python
-# freedom_ls/<app>/apps.py — inside the AppConfig
+# <app>/apps.py — inside the AppConfig
     def ready(self) -> None:
-        from freedom_ls.<app> import checks  # noqa: F401
+        from <app> import checks  # noqa: F401
 ```
 
 **Gotcha — a check that also calls a loader/DB.** If a check reads a required setting
@@ -137,23 +147,14 @@ silent rather than crashing.
 ## Ownership rules
 
 - `config.py` lives in the app that **reads** the setting. A dotted-string default (e.g. a
-  backend path) does **not** create an import edge, so it doesn't force the config into
-  another app.
-- Home a setting at the **lowest** layer that reads it so other apps read *downward* — e.g.
-  branding settings live in `site_aware_models` so `accounts` and templates read down with
-  no reverse edge.
-- Most FLS settings have safe defaults; keep `required=True` for the genuinely
+  backend path) is just a string, so it doesn't make the config app import the other app.
+- Put a setting in the **lowest-level** app that reads it, so higher-level apps import
+  from it and not the other way around — e.g. a shared branding setting belongs in a
+  low-level app that higher-level apps and templates can read, without that app importing
+  back up.
+- Most settings have safe defaults; keep `required=True` for the genuinely
   unsatisfiable-by-default ones only.
-- **Theme values are read-only here.** `config.py` may read `FLS_THEME` /
-  `FLS_THEMES_DIRS` / `RESOLVED_THEME_DIR`, but must **never** call `configure_theme(...)`
-  (it mutates `TEMPLATES`/`STATICFILES_DIRS`). Theme misconfiguration already fails loud in
-  `base/theming.py`; don't add a second check.
-
-## Testing
-
-Follow the `testing` skill (pytest/TDD). Cover, at minimum: default fallback,
-settings-override wins, unknown name → `AttributeError`, a required setting unset/empty →
-`ImproperlyConfigured` on read, `missing_required()` enumeration, and that
-`required_settings_errors()` produces the right id/level and never raises. For a `config`
-read cached behind a `@functools.cache`d loader, clear that cache around
-`override_settings(...)` (see `get_course_access_backend.cache_clear()`).
+- **`config.py` is read-only.** It only reads and resolves settings. It must **never**
+  mutate Django settings (e.g. append to `TEMPLATES`, `INSTALLED_APPS`, or
+  `STATICFILES_DIRS`) or run other side effects. Keep that setup where it already
+  belongs and let `config.py` read the result.
