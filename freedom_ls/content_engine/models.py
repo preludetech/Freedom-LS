@@ -222,6 +222,7 @@ class Course(MarkdownContent, TitledContent):
         default=CourseVisibility.PUBLISHED,
         db_index=True,
     )
+    table_of_contents_in_development = models.BooleanField(default=False)
     estimated_duration = models.DurationField(null=True, blank=True)
     items = GenericRelation(
         "ContentCollectionItem",
