@@ -89,9 +89,11 @@
                     Render each stat only when present.{% endcomment %}
                     <div class="mt-6 w-fit max-w-full overflow-hidden rounded-xl border border-white/20 bg-white/20 backdrop-blur-md">
                         <div class="flex max-w-[36.5rem] flex-wrap -mt-px -ml-px">
-                            {% with stat_icon="topic" stat_label="Lessons" stat_value=lesson_count_label %}
-                                {% partial stat-card %}
-                            {% endwith %}
+                            {% if not course.table_of_contents_in_development %}
+                                {% with stat_icon="topic" stat_label="Lessons" stat_value=lesson_count_label %}
+                                    {% partial stat-card %}
+                                {% endwith %}
+                            {% endif %}
                             {% if course.get_difficulty_display %}
                                 {% with stat_icon="achievement" stat_label="Level" stat_value=course.get_difficulty_display %}
                                     {% partial stat-card %}
@@ -146,24 +148,28 @@
                                 {{ cta_label }}
                             </c-button>
                         {% endif %}
-                        <div class="pt-2 border-t border-border">
-                            <h3 class="text-sm font-semibold uppercase tracking-wide text-muted mb-2">
-                                This course includes
-                            </h3>
-                            <ul class="space-y-1 text-sm">
-                                <li>
-                                    {{ lesson_count }} lesson{{ lesson_count|pluralize }}
-                                </li>
-                                {% if includes_assessments %}
-                                    <li>
-                                        Includes assessments
-                                    </li>
-                                {% endif %}
-                                {% comment %}
-                                @claude TODO: certificate item goes here once a certificate model exists — not rendered now
-                                {% endcomment %}
-                            </ul>
-                        </div>
+                        {% if not course.table_of_contents_in_development or includes_assessments %}
+                            <div class="pt-2 border-t border-border">
+                                <h3 class="text-sm font-semibold uppercase tracking-wide text-muted mb-2">
+                                    This course includes
+                                </h3>
+                                <ul class="space-y-1 text-sm">
+                                    {% if not course.table_of_contents_in_development %}
+                                        <li>
+                                            {{ lesson_count }} lesson{{ lesson_count|pluralize }}
+                                        </li>
+                                    {% endif %}
+                                    {% if includes_assessments %}
+                                        <li>
+                                            Includes assessments
+                                        </li>
+                                    {% endif %}
+                                    {% comment %}
+                                    @claude TODO: certificate item goes here once a certificate model exists — not rendered now
+                                    {% endcomment %}
+                                </ul>
+                            </div>
+                        {% endif %}
                     </div>
                 </aside>
 
@@ -205,15 +211,17 @@
 
                     {% comment %}Course content ToC — reuse the existing course-children partialdef.
                     The partialdef requires children, course, is_registered — all supplied by the view.{% endcomment %}
-                    <section>
-                        <h2>
-                            Course content
-                        </h2>
-                        <div class="mt-4">
-                            {% include "student_interface/partials/course_minimal_toc.html#course-children" %}
+                    {% if not course.table_of_contents_in_development %}
+                        <section>
+                            <h2>
+                                Course content
+                            </h2>
+                            <div class="mt-4">
+                                {% include "student_interface/partials/course_minimal_toc.html#course-children" %}
 
-                        </div>
-                    </section>
+                            </div>
+                        </section>
+                    {% endif %}
 
                 </div>
 
