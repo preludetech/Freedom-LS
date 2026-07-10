@@ -80,13 +80,13 @@ class SiteAwareSignupForm(SignupForm):
         policy = get_signup_policy_for_request(request) if request is not None else None
 
         # Name handling. Per-site policy takes precedence; without one, fall
-        # back to settings.REQUIRE_NAME.
+        # back to config.REQUIRE_NAME.
         if not get_effective_require_name(policy):
             self.fields["first_name"].required = False
             self.fields["first_name"].label = _("First name (optional)")
 
         # Terms / Privacy clickwrap. Per-site policy takes precedence; without
-        # one, fall back to settings.REQUIRE_TERMS_ACCEPTANCE so operators can
+        # one, fall back to config.REQUIRE_TERMS_ACCEPTANCE so operators can
         # flip consent on for every site without creating a row per site.
         require_terms = get_effective_require_terms_acceptance(policy)
 

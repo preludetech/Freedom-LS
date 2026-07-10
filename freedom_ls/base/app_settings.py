@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import copy
 from typing import NamedTuple
 
 from django.conf import settings
-from django.core.checks import Error
+from django.core.checks import CheckMessage, Error
 from django.core.exceptions import ImproperlyConfigured
 
 
@@ -41,7 +42,9 @@ class AppSettings:
                 f"{name} is required but is not set. "
                 f"Set {name} in your Django settings."
             )
-        return setting.default
+        # Copy so a caller mutating a mutable default (list/dict) in place cannot
+        # corrupt the shared declared default for every later read.
+        return copy.deepcopy(setting.default)
 
     def missing_required(self) -> list[str]:
         """Names of required settings the project has not supplied. Never raises."""
@@ -56,7 +59,7 @@ class AppSettings:
         return missing
 
 
-def required_settings_errors(config: AppSettings, app_label: str) -> list[Error]:
+def required_settings_errors(config: AppSettings, app_label: str) -> list[CheckMessage]:
     """Build ``<app_label>.E001`` Errors for each missing required setting.
 
     The single reusable body every required-settings check calls, so no

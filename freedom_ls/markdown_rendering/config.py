@@ -8,7 +8,7 @@ class MarkdownRenderingConfig(AppSettings):
     MARKDOWN_TEMPLATE_RENDER_ON: bool
 
     declared_settings = {
-        "MARKDOWN_ALLOWED_TAGS": Setting(default=None),
+        "MARKDOWN_ALLOWED_TAGS": Setting(default={}),
         "MARKDOWN_TEMPLATE_RENDER_ON": Setting(default=True),
     }
 

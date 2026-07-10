@@ -166,7 +166,7 @@ class SiteSignupPolicy(SiteAwareModel):
     """
     Per-site signup policy — controls whether signups are allowed and what
     information is collected from the user at signup / post-verification.
-    If no row exists for a site, the global default in settings.ALLOW_SIGN_UPS
+    If no row exists for a site, the global default in config.ALLOW_SIGN_UPS
     is used for `allow_signups`; the other fields use their model defaults.
     """
 

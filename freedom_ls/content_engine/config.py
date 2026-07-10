@@ -10,7 +10,9 @@ class ContentEngineConfig(AppSettings):
 
     declared_settings = {
         "COURSE_ACCESS_CONFIG_VALIDATOR": Setting(default=None),
-        "ADMONITION_TYPES": Setting(default=None),
+        # No safe empty default: the consumer reads registry["default"], so an
+        # unset registry would KeyError. Required, and surfaced by checks.py.
+        "ADMONITION_TYPES": Setting(required=True),
         # No FLS consumer reads this: django-cotton reads it itself. Declared
         # here purely so it appears in the ownership map for this app.
         "COTTON_SNAKE_CASED_NAMES": Setting(default=False),

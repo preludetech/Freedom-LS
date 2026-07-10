@@ -69,7 +69,7 @@ def check_legal_docs_present_when_required(
 
     A site effectively requires terms acceptance when either it has a
     `SiteSignupPolicy` with `require_terms_acceptance=True`, or it has no
-    policy row and `settings.REQUIRE_TERMS_ACCEPTANCE` is True.
+    policy row and `config.REQUIRE_TERMS_ACCEPTANCE` is True.
     """
     warnings: list[Warning] = []
 

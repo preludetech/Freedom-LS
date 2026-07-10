@@ -4,8 +4,10 @@ Check IDs follow Django's convention: ``app_label.severity + number``.
 E = Error. Checks run automatically on runserver, migrate, test,
 and ``manage.py check``.
 
-E001 — A Course has an access_config that the active backend rejects.
-       This surfaces config invalidated by a COURSE_ACCESS_BACKEND swap
+E001 — Either COURSE_ACCESS_BACKEND is unset (required), or a Course has an
+       access_config that the active backend rejects. The two never fire in the
+       same run: an unset backend short-circuits before any Course is checked.
+       The latter surfaces config invalidated by a COURSE_ACCESS_BACKEND swap
        at manage.py check time.
 """
 
@@ -15,6 +17,8 @@ from collections.abc import Sequence
 
 from django.apps import AppConfig
 from django.core.checks import CheckMessage, Error, register
+
+from freedom_ls.base.app_settings import required_settings_errors
 
 
 @register()
@@ -34,9 +38,10 @@ def check_course_access_configs(
     from freedom_ls.course_access.loader import get_course_access_backend
 
     if config.missing_required():
-        # COURSE_ACCESS_BACKEND is unset: the loader would raise
-        # ImproperlyConfigured, so stay silent rather than crash manage.py check.
-        return []
+        # COURSE_ACCESS_BACKEND is unset: the loader below would raise
+        # ImproperlyConfigured. Report the missing setting instead of crashing
+        # (or silently passing) manage.py check.
+        return required_settings_errors(config, "freedom_ls_course_access")
 
     errors: list[CheckMessage] = []
 

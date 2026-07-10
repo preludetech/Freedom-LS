@@ -16,10 +16,12 @@ class DemoConfig(AppSettings):
 
     DEMO_OPTIONAL: str
     DEMO_REQUIRED: str
+    DEMO_MUTABLE: list[str]
 
     declared_settings = {
         "DEMO_OPTIONAL": Setting(default="fallback-value"),
         "DEMO_REQUIRED": Setting(required=True),
+        "DEMO_MUTABLE": Setting(default=[]),
     }
 
 
@@ -27,6 +29,16 @@ def test_returns_declared_default_when_setting_absent_from_django_settings() -> 
     config = DemoConfig()
 
     assert config.DEMO_OPTIONAL == "fallback-value"
+
+
+def test_mutating_a_returned_default_does_not_corrupt_later_reads() -> None:
+    config = DemoConfig()
+
+    first = config.DEMO_MUTABLE
+    first.append("mutated")
+
+    # The declared default must be untouched for the next reader.
+    assert config.DEMO_MUTABLE == []
 
 
 def test_django_setting_value_overrides_declared_default() -> None:
