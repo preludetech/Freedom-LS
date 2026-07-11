@@ -27,7 +27,6 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve, reverse
-from django.utils.http import url_has_allowed_host_and_scheme
 
 EXEMPT_URL_NAMES: frozenset[str] = frozenset(
     {
@@ -100,6 +99,7 @@ class RegistrationCompletionMiddleware:
         from .utils import (
             get_effective_additional_registration_forms,
             get_signup_policy_for_request,
+            is_safe_next_url,
         )
 
         policy = get_signup_policy_for_request(request)
@@ -120,16 +120,7 @@ class RegistrationCompletionMiddleware:
         # fall back to the intercepted path itself, which is always same-host so
         # the user never silently loses their destination. `request.path` (not
         # `get_full_path()`) avoids dragging unrelated query params along.
-        candidate = request.GET.get("next")
-        if not (
-            candidate
-            and url_has_allowed_host_and_scheme(
-                candidate,
-                allowed_hosts={request.get_host()},
-                require_https=request.is_secure(),
-            )
-        ):
-            candidate = request.path
+        candidate = is_safe_next_url(request, request.GET.get("next")) or request.path
         target = f"{reverse('accounts:complete_registration')}?next={quote(candidate)}"
         return redirect(target)
 

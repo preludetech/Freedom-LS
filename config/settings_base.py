@@ -343,7 +343,11 @@ ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_ADAPTER = "freedom_ls.accounts.allauth_account_adapter.AccountAdapter"
-ACCOUNT_FORMS = {"signup": "freedom_ls.accounts.forms.SiteAwareSignupForm"}
+ACCOUNT_FORMS = {
+    "signup": "freedom_ls.accounts.forms.SiteAwareSignupForm",
+    "reset_password_from_key": "freedom_ls.accounts.forms.SiteAwareResetPasswordKeyForm",  # pragma: allowlist secret
+    "user_token": "freedom_ls.accounts.forms.SiteUnscopedUserTokenForm",
+}
 # Don't differentiate signup/login responses for known vs. unknown emails.
 ACCOUNT_PREVENT_ENUMERATION = True
 # Per-IP and per-key signup throttling. Disabled in dev (settings_dev.py).

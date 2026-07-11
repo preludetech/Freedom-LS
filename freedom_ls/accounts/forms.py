@@ -3,20 +3,29 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from allauth.account.forms import SignupForm
+from allauth.account.forms import ResetPasswordKeyForm, SignupForm, UserTokenForm
+from allauth.account.models import EmailAddress
+from allauth.account.utils import url_str_to_user_pk
 from allauth.core import context as allauth_context
 
 from django import forms
-from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.db import transaction
+from django.http import HttpRequest, HttpResponse
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.site_aware_models.models import get_cached_site
 
-User = get_user_model()
+from .models import User
+from .utils import is_safe_next_url
 
 logger = logging.getLogger(__name__)
+
+# Session key an in-flight enrolment `next` is stashed under during signup, so
+# it survives the existing-email/enumeration branch (which never reaches
+# SignupView.get_success_url()) and can be resumed on the next login. Shared
+# with AccountAdapter.get_login_redirect_url, which consumes it.
+SIGNUP_NEXT_SESSION_KEY = "signup_enrolment_next"
 
 
 class UserForm(forms.ModelForm):
@@ -123,6 +132,29 @@ class SiteAwareSignupForm(SignupForm):
                 "This form is only intended for use from the signup HTTP view."
             )
 
+    def try_save(self, request: HttpRequest) -> tuple[User | None, HttpResponse | None]:
+        """Stash a validated enrolment destination before the new-vs-existing branch.
+
+        `try_save` is allauth's common entry point for both the genuine-new-
+        account save and the existing-email/enumeration branch, so writing
+        the session key here — before either branch runs — cannot reveal to
+        the requester which one was taken (both branches write identically).
+        The stash is consumed by `AccountAdapter.get_login_redirect_url` once
+        the user next authenticates in this session.
+        """
+        candidate = is_safe_next_url(
+            request, request.POST.get("next") or request.GET.get("next")
+        )
+        if candidate:
+            request.session[SIGNUP_NEXT_SESSION_KEY] = candidate
+        else:
+            # An earlier CTA signup may have stashed a destination and then
+            # been abandoned; a later, next-less signup/login in the same
+            # session must not inherit it and land on that stale course.
+            request.session.pop(SIGNUP_NEXT_SESSION_KEY, None)
+        result: tuple[User | None, HttpResponse | None] = super().try_save(request)
+        return result
+
     def clean__hp(self) -> str:
         value = self.cleaned_data.get("_hp", "")
         if value:
@@ -168,3 +200,58 @@ class SiteAwareSignupForm(SignupForm):
                     ip_address=ip or None,
                     consent_method="signup_checkbox",
                 )
+
+
+class SiteAwareResetPasswordKeyForm(ResetPasswordKeyForm):
+    """On a completed keyed password reset, mark the reset address verified.
+
+    Completing a keyed reset proves control of the inbox the link was
+    delivered to. With `ACCOUNT_LOGIN_ON_PASSWORD_RESET` enabled, allauth
+    immediately tries to log the user in after `save()`, and that login runs
+    the mandatory email-verification stage — so without this, an unverified
+    account that resets its password would immediately be bounced back into
+    verification instead of being logged in.
+    """
+
+    def save(self) -> None:
+        super().save()  # Resets the password — unchanged allauth behaviour.
+        user = self.user
+        if user is None:
+            return
+        # This project's User.email is globally unique, so the reset target
+        # is unambiguous. Deliberately not forcing "primary": True here — the
+        # user may already have a different primary address, and forcing this
+        # one to primary on create could violate allauth's unique_primary_email
+        # constraint (mirrors allauth's own sync_email_address, which also
+        # does not force primary).
+        address, _created = EmailAddress.objects.get_or_create(
+            user=user,
+            email__iexact=user.email,
+            defaults={"email": user.email, "verified": True},
+        )
+        if not address.verified:
+            address.set_verified(commit=True)
+
+
+class SiteUnscopedUserTokenForm(UserTokenForm):
+    """Resolve a password-reset key's user without the site-scoped manager.
+
+    A reset key only proves control of the inbox it was emailed to -- it says
+    nothing about which Site the request that later opens the link resolves
+    to. The stock `_get_user` resolves via `User.objects.get(pk=...)`, which
+    goes through this project's site-scoped `UserManager` and raises
+    `DoesNotExist` (turning a genuinely valid link into
+    `invalid_password_reset`) whenever the current request's Site differs
+    from the user's `site` FK. `_base_manager` is the plain `Manager` Django
+    auto-provides (no `base_manager_name` is set on the model), so it applies
+    no site filtering -- this bypass is scoped to exactly reset-key
+    resolution; `User.objects`/`_default_manager` are untouched and stay
+    site-scoped everywhere else.
+    """
+
+    def _get_user(self, uidb36: str) -> User | None:
+        try:
+            pk = url_str_to_user_pk(uidb36)
+            return User._base_manager.get(pk=pk)
+        except (ValueError, User.DoesNotExist):
+            return None

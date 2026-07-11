@@ -72,6 +72,8 @@ Navigate to the base url and log in using the credentials above. Confirm you are
 Use the Playwright MCP server tools (browser_navigate, browser_snapshot, browser_click, browser_type, browser_take_screenshot, etc.) to manually walk through the test plan.
 DO NOT write test scripts — interact with the site directly using the MCP tools, just as a human tester would.
 
+Beyond the scripted steps, probe the obvious failure/side-effect branches for the functionality under test (e.g. repeat submissions, an existing account instead of a fresh one, invalid input, permission/enumeration edges) — not just the golden path. Keep it proportionate.
+
 Set the browser to a desktop resolution of 1920x1080.
 
 Take screenshots of relevant functionality and put them in a "screenshots" directory in this current directory (alongside the test plan file). Name screenshots with this pattern: `desktop_<test-id>_<short-description>.png` (e.g. `desktop_1.1_cohort_list.png`).

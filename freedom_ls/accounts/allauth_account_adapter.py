@@ -22,7 +22,9 @@ from freedom_ls.site_aware_models.config import config as site_aware_config
 from freedom_ls.site_aware_models.models import get_cached_site
 
 from .config import config
+from .forms import SIGNUP_NEXT_SESSION_KEY
 from .models import SiteSignupPolicy, User
+from .utils import is_safe_next_url
 
 
 def _set_8bit_encoding(msg: EmailMessage) -> None:
@@ -165,6 +167,23 @@ class AccountAdapter(DefaultAccountAdapter):
         context = context or {}
         context["user"] = user
         super().send_notification_mail(template_prefix, user, context, email=email)
+
+    def get_login_redirect_url(self, request: HttpRequest) -> str:
+        """Resume a signup-time enrolment destination allauth itself has none for.
+
+        allauth only calls this when the `Login` carried no explicit
+        `redirect_url` — the genuine-new-signup branch keeps its own, so this
+        never disturbs it. Re-validated here (not just at stash time): the
+        session is attacker-influenceable in principle, so the open-redirect
+        guard must hold at the point of use.
+        """
+        stashed = is_safe_next_url(
+            request, request.session.pop(SIGNUP_NEXT_SESSION_KEY, None)
+        )
+        if stashed:
+            return stashed
+        default_url: str = super().get_login_redirect_url(request)
+        return default_url
 
     def is_open_for_signup(self, request):
         """

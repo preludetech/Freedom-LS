@@ -4,11 +4,30 @@ from __future__ import annotations
 
 from django.contrib.sites.models import Site
 from django.http import HttpRequest
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from freedom_ls.site_aware_models.models import get_cached_site
 
 from .config import config
 from .models import SiteSignupPolicy
+
+
+def is_safe_next_url(request: HttpRequest, candidate: str | None) -> str | None:
+    """Return `candidate` if it is a safe same-host redirect target, else None.
+
+    The single open-redirect guard for every `?next=`-style destination in
+    this app (post-registration-completion redirect, signup-intent stash,
+    signup-intent consume) — re-validate with this at each point of use,
+    since a value that was safe when written is not guaranteed to still be
+    safe when read back (e.g. from a session).
+    """
+    if candidate and url_has_allowed_host_and_scheme(
+        candidate,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return candidate
+    return None
 
 
 def get_client_ip(request: HttpRequest) -> str:

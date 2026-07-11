@@ -1,0 +1,19 @@
+{% extends "account/base_entrance.html" %}
+{% load allauth i18n %}
+
+{% block head_title %}
+    {% trans "Check Your Email" %}
+{% endblock head_title %}
+
+{% block content %}
+    {% element h1 %}
+        {% trans "Check your email" %}
+    {% endelement %}
+    {% element p %}
+        {% blocktrans %}If we could set up or find your account, we've emailed you a link to continue. Check your inbox (and your spam folder).{% endblocktrans %}
+    {% endelement %}
+    {% url 'account_reset_password' as reset_url %}
+    {% element p %}
+        {% blocktrans %}Didn't get anything? You can <a href="{{ reset_url }}" class="text-primary underline">request another link</a>.{% endblocktrans %}
+    {% endelement %}
+{% endblock content %}

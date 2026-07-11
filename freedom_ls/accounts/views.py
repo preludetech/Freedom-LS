@@ -9,7 +9,6 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
-from django.utils.http import url_has_allowed_host_and_scheme
 
 from freedom_ls.site_aware_models.models import get_cached_site
 
@@ -23,6 +22,7 @@ from .registration_forms import (
 from .utils import (
     get_effective_additional_registration_forms,
     get_signup_policy_for_request,
+    is_safe_next_url,
 )
 
 
@@ -59,12 +59,9 @@ def legal_doc_view(request: HttpRequest, doc_type: str) -> HttpResponse:
 
 def _safe_post_completion_redirect(request: HttpRequest) -> HttpResponse:
     next_url = request.POST.get("next") or request.GET.get("next")
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        return redirect(next_url)
+    safe_next_url = is_safe_next_url(request, next_url)
+    if safe_next_url:
+        return redirect(safe_next_url)
     return redirect(getattr(settings, "LOGIN_REDIRECT_URL", "/"))
 
 
