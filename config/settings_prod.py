@@ -1,5 +1,7 @@
 import os
 
+from freedom_ls.base.env import env_bool, env_int
+
 from .settings_base import *  # noqa: F403
 
 HOST_DOMAIN = os.environ["HOST_DOMAIN"]
@@ -177,10 +179,9 @@ if AWS_STORAGE_BUCKET_NAME:
         endpoint_url=os.getenv("AWS_S3_ENDPOINT_URL"),
         region_name=os.getenv("AWS_S3_REGION_NAME"),
         custom_domain=os.getenv("AWS_S3_CUSTOM_DOMAIN"),  # unset ⇒ private signed URLs
-        # default True (private signed URLs); case-insensitive so `false`/`False` both disable it
-        querystring_auth=os.getenv("AWS_QUERYSTRING_AUTH", "True").strip().lower()
-        != "false",
-        querystring_expire=int(os.getenv("AWS_QUERYSTRING_EXPIRE", "3600")),
+        # default True (private signed URLs); any falsy value (false/0/no/off) opts into public serving
+        querystring_auth=env_bool("AWS_QUERYSTRING_AUTH", True),
+        querystring_expire=env_int("AWS_QUERYSTRING_EXPIRE", 3600),
     )
 else:
     default_storage = {

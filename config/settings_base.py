@@ -20,6 +20,7 @@ from django.utils.csp import (
     CSP,
 )
 
+from freedom_ls.base.env import env_bool, env_float
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR, configure_theme
 from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
 
@@ -451,8 +452,5 @@ POSTHOG_UI_HOST = os.environ.get("POSTHOG_UI_HOST")
 SENTRY_DSN = os.environ.get("SENTRY_DSN")
 SENTRY_ENVIRONMENT = os.environ.get("SENTRY_ENVIRONMENT")
 SENTRY_RELEASE = os.environ.get("SENTRY_RELEASE")
-_sentry_traces = os.environ.get("SENTRY_TRACES_SAMPLE_RATE")
-SENTRY_TRACES_SAMPLE_RATE = float(_sentry_traces) if _sentry_traces else None
-SENTRY_SEND_DEFAULT_PII = (
-    os.environ.get("SENTRY_SEND_DEFAULT_PII", "").strip().lower() == "true"
-)
+SENTRY_TRACES_SAMPLE_RATE = env_float("SENTRY_TRACES_SAMPLE_RATE", None)
+SENTRY_SEND_DEFAULT_PII = env_bool("SENTRY_SEND_DEFAULT_PII", False)
