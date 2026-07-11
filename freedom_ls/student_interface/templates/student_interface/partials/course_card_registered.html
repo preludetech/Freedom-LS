@@ -43,6 +43,10 @@ Behaviour:
         </p>
     {% endif %}
 
+    <div class="flex justify-end">
+        {% include "student_interface/partials/course_details_link.html" %}
+    </div>
+
     <c-slot name="footer">
         <c-course-progress-bar percentage="{{ course.progress_percentage|default:0 }}"
                                accent_slot_key="{{ course.accent_slot_key }}"

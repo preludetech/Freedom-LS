@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.student_management.factories import (
     RecommendedCourseFactory,
     UserCourseRegistrationFactory,
@@ -30,6 +31,18 @@ def course_with_topics(mock_site_context):
     for i in range(3):
         topic = TopicFactory(title=f"Topic {i}", slug=f"topic-x-{i}", content="content")
         course.items.create(child=topic, order=i)
+    return course
+
+
+def _coming_soon_course(*, slug: str, title: str) -> Course:
+    """A coming-soon course with one topic. Local helper mirroring the
+    coming-soon fixture in test_listing_visibility.py — not shared, to avoid
+    a cross-file test dependency."""
+    course: Course = CourseFactory(
+        title=title, slug=slug, visibility=CourseVisibility.COMING_SOON
+    )
+    topic = TopicFactory(title=f"{slug}-t", slug=f"{slug}-topic", content="content")
+    course.items.create(child=topic, order=0)
     return course
 
 
@@ -432,3 +445,117 @@ def test_not_registered_card_links_to_course_detail(
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert detail_url in body
+
+
+# --- Details link affordance (all card states) ---
+
+
+@pytest.mark.django_db
+def test_registered_zero_progress_card_shows_details_link(
+    mock_site_context, course_with_topics, logged_in_client
+):
+    """The Registered (0%) card includes an explicit "Details" link to
+    course_detail, distinct from the progress-aware title link."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    client = logged_in_client(user)
+
+    response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": course_with_topics.slug},
+    )
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_in_progress_card_shows_details_link(
+    mock_site_context, course_with_topics, logged_in_client
+):
+    """The In-progress card includes an explicit "Details" link to
+    course_detail."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    first_topic = course_with_topics.children()[0]
+    TopicProgressFactory(user=user, topic=first_topic, complete_time=timezone.now())
+    CourseProgressFactory(user=user, course=course_with_topics, progress_percentage=33)
+
+    client = logged_in_client(user)
+    response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": course_with_topics.slug},
+    )
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_complete_card_shows_details_link(
+    mock_site_context, course_with_topics, logged_in_client
+):
+    """The Completed card includes an explicit "Details" link to
+    course_detail."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    CourseProgressFactory(
+        user=user,
+        course=course_with_topics,
+        progress_percentage=100,
+        completed_time=timezone.now(),
+    )
+
+    client = logged_in_client(user)
+    response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": course_with_topics.slug},
+    )
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_not_registered_card_shows_explicit_details_link(
+    mock_site_context, course_with_topics, logged_in_client
+):
+    """The Not-registered card already stretches its title link to
+    course_detail; an explicit "Details" affordance is also present and
+    resolves to the identical URL (two occurrences of the same href)."""
+    user = UserFactory()
+    RecommendedCourseFactory(user=user, collection=course_with_topics)
+    client = logged_in_client(user)
+
+    response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": course_with_topics.slug},
+    )
+    assert "Details" in body
+    assert body.count(f'href="{detail_url}"') >= 2
+
+
+@pytest.mark.django_db
+def test_coming_soon_card_shows_details_link(mock_site_context, logged_in_client):
+    """The Coming-soon card includes an explicit "Details" link to
+    course_detail."""
+    course = _coming_soon_course(slug="cs-details", title="Coming Soon Course")
+    client = logged_in_client(UserFactory())
+
+    response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    detail_url = reverse(
+        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body

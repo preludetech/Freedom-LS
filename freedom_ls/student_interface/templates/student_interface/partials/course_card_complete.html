@@ -26,6 +26,10 @@ Shell slots used:
         {% include "student_interface/partials/card_title_link.html" %}
     {% endwith %}
 
+    <div class="flex justify-end">
+        {% include "student_interface/partials/course_details_link.html" %}
+    </div>
+
     <c-slot name="footer">
         <span class="inline-flex items-center gap-1 rounded-full bg-success-soft text-success px-2 py-0.5 text-xs font-medium">
             <span aria-hidden="true"><c-icon name="complete" class="size-4" /></span>

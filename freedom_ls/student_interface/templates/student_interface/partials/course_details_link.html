@@ -1,0 +1,19 @@
+{% comment %}
+"Details" entry point to the course overview page (student_interface:course_detail).
+Low-emphasis secondary link; reuses the "Browse all courses" text-link affordance.
+
+`relative z-10` lifts this anchor above the sibling title link's ::before stretched
+overlay so it is independently clickable and keyboard-focusable. `p-3` gives an
+adequate (~44px) touch target. The chevron is decorative (aria-hidden).
+
+Context: course (needs course.slug). Placement/alignment is the caller's job:
+cards wrap this on its own right-aligned footer line; rows render it inline,
+right-aligned beside the title.
+{% endcomment %}
+<a href="{% url 'student_interface:course_detail' course_slug=course.slug %}"
+   class="relative z-10 inline-flex items-center gap-1 whitespace-nowrap p-3 text-sm font-medium no-underline hover:text-primary-hover">
+    Details
+    <span aria-hidden="true">
+        <c-icon name="next" class="size-4" />
+    </span>
+</a>

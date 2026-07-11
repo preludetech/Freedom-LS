@@ -33,4 +33,8 @@ course.icon_fallback, course.title, course.access_badge).
             {{ course.title }}
         </a>
     </h3>
+
+    <div class="flex justify-end">
+        {% include "student_interface/partials/course_details_link.html" %}
+    </div>
 </c-course-card-shell>
