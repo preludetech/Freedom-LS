@@ -21,6 +21,7 @@
       "Bash(uv run ruff format:*)",
       "Bash(git add:*)",
       "Bash(uv run git add *)",
+      "Bash(uv run git push:*)",
       "Bash(git fetch:*)",
       "Bash(git push *)",
       "Bash(git stash:*)",
