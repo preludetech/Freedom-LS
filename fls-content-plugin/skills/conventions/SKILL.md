@@ -81,6 +81,12 @@ The FLS scanner (`validate.py`) skips these files and directories — they are n
 - Files named `README.md` or `CLAUDE.md`
 - Files whose name ends with `~`
 
+Note: when a `course.md`/`part.yaml` omits `children:`, `content_save`'s child
+auto-discovery walk applies only the first two rules (the `_`/`.`-prefix
+rules) — it does not skip `README.md`, `CLAUDE.md`, or a trailing `~`. See the
+`fls-content:content-types` skill's `resources/file-layout.md#child-auto-discovery`
+for the exact rule.
+
 ## UUID rules (load-bearing — read before creating any file)
 
 1. **Omit `uuid` on new content.** Do not write a `uuid:` field. `content_save` generates a UUID and writes it back into the source file on first run.

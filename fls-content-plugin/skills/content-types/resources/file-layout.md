@@ -83,6 +83,16 @@ The FLS scanner skips:
 
 When a COURSE or COURSE_PART has no explicit `children:` list, `content_save` auto-discovers children by iterating the directory alphabetically. Ordering therefore depends on correct `NN.` numbering. For custom ordering, add an explicit `children:` list in `course.md` or `part.yaml`.
 
+Auto-discovery skips any file or directory whose name starts with `_` or `.`
+(e.g. `_drafts/`, `.fls-content.yaml`) — both among the top-level items of the
+collection directory, and among the files inside a numbered subdirectory when
+deciding whether that subdirectory is a nested collection (`course.md` /
+`form.md` / `part.yaml`) or a topic (`content.md`). This is **narrower** than
+the "Files excluded from scanning" list above: auto-discovery does not
+separately special-case `README.md`, `CLAUDE.md`, or a trailing `~` — only the
+`_`/`.`-prefix rule applies to auto-discovered children. Prefix a draft
+file/directory with `_` to keep it out of an auto-discovered `children:` list.
+
 ## Image path resolution
 
 Paths in `c-picture`, `c-pdf-embed`, and `c-file-download` are stored relative to the course root in the DB (as uploaded by `content_save`). In source files, write paths relative to the content file referencing them:

@@ -22,6 +22,7 @@ A course can contain COURSE_PARTs, but they are not required. Course parts are l
 | `learning_outcomes` | `list[str]` | No | "What you'll learn" bullet list |
 | `difficulty` | `beginner`, `intermediate`, `advanced`, or `all_levels` | No | Difficulty level |
 | `visibility` | `published`, `coming_soon`, or `hidden` | No | Course visibility lifecycle state. Defaults to `published` when omitted. |
+| `table_of_contents_in_development` | `bool` | No | Hide the course's table-of-contents surfaces (Lessons stat card, the lesson-count line in "This course includes", and the "Course content" section) while the course is still being built. Defaults to `false`. **Must be `false`/omitted for a `published` course** — since `visibility` itself defaults to `published`, setting this flag `true` while omitting `visibility` also fails. See [Table of contents in development](#table-of-contents-in-development) below. |
 | `estimated_duration` | `str` | No | Duration string e.g. `"1:30:00"` (HH:MM:SS) |
 | `children` | `list` | No | Explicit ordered list of child paths; if omitted, auto-discovered alphabetically |
 | `content` | `str` | No | Optional markdown intro body |
@@ -69,6 +70,40 @@ children:
   - path: 02. concepts/content.md
   - path: 03. quiz/form.md
 ```
+
+### Table of contents in development
+
+`table_of_contents_in_development: true` hides three TOC surfaces on the course
+detail page while the course is still being authored: the Lessons stat card,
+the lesson-count line inside "This course includes", and the entire "Course
+content" section. It has no effect on anything else — the course still renders
+otherwise.
+
+**A published course can never set this flag.** `visibility` defaults to
+`published` when omitted, so this fails even without writing `visibility` at
+all:
+
+```yaml
+---
+content_type: COURSE
+title: Being Built
+table_of_contents_in_development: true   # ✗ fails — visibility defaults to published
+---
+```
+
+Pair it with a non-published `visibility` while the course is being built:
+
+```yaml
+---
+content_type: COURSE
+title: Being Built
+visibility: coming_soon
+table_of_contents_in_development: true   # ✓ ok — visibility is coming_soon
+---
+```
+
+Remove the flag (or set it back to `false`) before switching `visibility` back
+to `published`.
 
 ### Course access configuration
 
