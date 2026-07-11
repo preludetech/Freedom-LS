@@ -343,6 +343,7 @@ ACCOUNT_ADAPTER = "freedom_ls.accounts.allauth_account_adapter.AccountAdapter"
 ACCOUNT_FORMS = {
     "signup": "freedom_ls.accounts.forms.SiteAwareSignupForm",
     "reset_password_from_key": "freedom_ls.accounts.forms.SiteAwareResetPasswordKeyForm",  # pragma: allowlist secret
+    "user_token": "freedom_ls.accounts.forms.SiteUnscopedUserTokenForm",
 }
 # Don't differentiate signup/login responses for known vs. unknown emails.
 ACCOUNT_PREVENT_ENUMERATION = True

@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from allauth.account.forms import ResetPasswordKeyForm, SignupForm
+from allauth.account.forms import ResetPasswordKeyForm, SignupForm, UserTokenForm
 from allauth.account.models import EmailAddress
+from allauth.account.utils import url_str_to_user_pk
 from allauth.core import context as allauth_context
 
 from django import forms
@@ -230,3 +231,27 @@ class SiteAwareResetPasswordKeyForm(ResetPasswordKeyForm):
         )
         if not address.verified:
             address.set_verified(commit=True)
+
+
+class SiteUnscopedUserTokenForm(UserTokenForm):
+    """Resolve a password-reset key's user without the site-scoped manager.
+
+    A reset key only proves control of the inbox it was emailed to -- it says
+    nothing about which Site the request that later opens the link resolves
+    to. The stock `_get_user` resolves via `User.objects.get(pk=...)`, which
+    goes through this project's site-scoped `UserManager` and raises
+    `DoesNotExist` (turning a genuinely valid link into
+    `invalid_password_reset`) whenever the current request's Site differs
+    from the user's `site` FK. `_base_manager` is the plain `Manager` Django
+    auto-provides (no `base_manager_name` is set on the model), so it applies
+    no site filtering -- this bypass is scoped to exactly reset-key
+    resolution; `User.objects`/`_default_manager` are untouched and stay
+    site-scoped everywhere else.
+    """
+
+    def _get_user(self, uidb36: str) -> User | None:
+        try:
+            pk = url_str_to_user_pk(uidb36)
+            return User._base_manager.get(pk=pk)
+        except (ValueError, User.DoesNotExist):
+            return None
