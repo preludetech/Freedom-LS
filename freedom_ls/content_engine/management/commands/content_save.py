@@ -450,6 +450,15 @@ def save_form_question(item, form_page, site, base_path, order=0):
     return question
 
 
+def is_skipped_path(path):
+    """Whether a file/directory should be skipped when scanning collection children.
+
+    Mirrors the filtering rules in `get_all_files`: names starting with `_` or
+    `.` are ignored, along with everything inside such directories.
+    """
+    return path.name.startswith("_") or path.name.startswith(".")
+
+
 def get_file_type_from_extension(file_path):
     """Determine file type based on file extension."""
     extension = file_path.suffix.lower()
@@ -633,8 +642,11 @@ def save_content_to_db(path, site_name):
         # If no children specified, scan the directory for all content files
         if not children_list:
             collection_dir = schema_item.file_path.parent
-            # Get all items (both files and directories) in sorted order
-            all_items = sorted(collection_dir.iterdir())
+            # Get all items (both files and directories) in sorted order,
+            # skipping anything starting with _ or . (same rule as get_all_files)
+            all_items = sorted(
+                item for item in collection_dir.iterdir() if not is_skipped_path(item)
+            )
 
             for item in all_items:
                 if item.is_file() and item.suffix in [".md", ".yaml", ".yml"]:
@@ -651,6 +663,8 @@ def save_content_to_db(path, site_name):
                     collection_file = None
                     topic_file = None
                     for f in sorted(item.iterdir()):
+                        if is_skipped_path(f):
+                            continue
                         if not (f.is_file() and f.suffix in [".md", ".yaml", ".yml"]):
                             continue
                         parsed = parse_single_file(f)
