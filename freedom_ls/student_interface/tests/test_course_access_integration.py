@@ -17,13 +17,13 @@ from __future__ import annotations
 import pytest
 
 from django.conf import settings
-from django.test import Client, override_settings
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
 
 if "freedom_ls.course_applications" not in settings.INSTALLED_APPS:
@@ -530,40 +530,13 @@ def test_dashboard_panels_in_context(mock_site_context, logged_in_client):
 # ---------------------------------------------------------------------------
 
 
-def _client(user) -> Client:
-    """A Django test client force-logged-in as ``user``."""
-    client = Client()
-    client.force_login(user)
-    return client
-
-
-def _hidden_course() -> Course:
-    """Create a hidden course with one viewable topic."""
-    course: Course = CourseFactory(
-        slug="hidden-course", title="Hidden Course", visibility=CourseVisibility.HIDDEN
-    )
-    topic = TopicFactory(title="Topic 1", slug="hidden-topic-1", content="content")
-    course.items.create(child=topic, order=0)
-    return course
-
-
-def _coming_soon_course() -> Course:
-    """Create a coming-soon course with one viewable topic."""
-    course: Course = CourseFactory(
-        slug="coming-soon-course",
-        title="Coming Soon Course",
-        visibility=CourseVisibility.COMING_SOON,
-    )
-    topic = TopicFactory(title="Topic 1", slug="cs-topic-1", content="content")
-    course.items.create(child=topic, order=0)
-    return course
-
-
 @pytest.mark.django_db
-def test_course_home_hidden_unregistered_returns_404(mock_site_context):
+def test_course_home_hidden_unregistered_returns_404(
+    mock_site_context, course_with_topic, logged_in_client
+):
     """course_home for a hidden course must 404 for an unregistered user, not 302."""
-    course = _hidden_course()
-    client = _client(UserFactory())
+    course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
+    client = logged_in_client(UserFactory())
 
     url = reverse("student_interface:course_home", kwargs={"course_slug": course.slug})
     response = client.get(url)
@@ -572,12 +545,14 @@ def test_course_home_hidden_unregistered_returns_404(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_course_home_hidden_registered_still_resolves(mock_site_context):
+def test_course_home_hidden_registered_still_resolves(
+    mock_site_context, course_with_topic, logged_in_client
+):
     """A registered learner still reaches course_home for a hidden course (redirects into player)."""
-    course = _hidden_course()
+    course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse("student_interface:course_home", kwargs={"course_slug": course.slug})
     response = client.get(url)
@@ -586,10 +561,12 @@ def test_course_home_hidden_registered_still_resolves(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_view_course_item_hidden_unregistered_returns_404(mock_site_context):
+def test_view_course_item_hidden_unregistered_returns_404(
+    mock_site_context, course_with_topic, logged_in_client
+):
     """view_course_item for a hidden course must 404 for an unregistered user, not 302."""
-    course = _hidden_course()
-    client = _client(UserFactory())
+    course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
+    client = logged_in_client(UserFactory())
 
     url = reverse(
         "student_interface:view_course_item",
@@ -601,12 +578,14 @@ def test_view_course_item_hidden_unregistered_returns_404(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_view_course_item_hidden_registered_renders_content(mock_site_context):
+def test_view_course_item_hidden_registered_renders_content(
+    mock_site_context, course_with_topic, logged_in_client
+):
     """A registered learner still views content of a hidden course."""
-    course = _hidden_course()
+    course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:view_course_item",
@@ -618,14 +597,18 @@ def test_view_course_item_hidden_registered_renders_content(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_initiate_access_coming_soon_redirects_to_detail(mock_site_context):
+def test_initiate_access_coming_soon_redirects_to_detail(
+    mock_site_context, course_with_topic, logged_in_client
+):
     """POST initiate_course_access for a coming-soon course redirects to the detail page.
 
     The coming-soon CTA url is the POST-only express-interest endpoint; redirecting
     the browser (GET) there would 405. The safe fallback is the detail page.
     """
-    course = _coming_soon_course()
-    client = _client(UserFactory())
+    course = course_with_topic(
+        visibility=CourseVisibility.COMING_SOON, slug="coming-soon-course"
+    )
+    client = logged_in_client(UserFactory())
 
     url = reverse(
         "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
@@ -640,11 +623,15 @@ def test_initiate_access_coming_soon_redirects_to_detail(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_initiate_access_coming_soon_creates_no_registration(mock_site_context):
+def test_initiate_access_coming_soon_creates_no_registration(
+    mock_site_context, course_with_topic, logged_in_client
+):
     """initiate_course_access for a coming-soon course does not self-register the learner."""
-    course = _coming_soon_course()
+    course = course_with_topic(
+        visibility=CourseVisibility.COMING_SOON, slug="coming-soon-course"
+    )
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
@@ -657,10 +644,12 @@ def test_initiate_access_coming_soon_creates_no_registration(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_initiate_access_hidden_unregistered_returns_404(mock_site_context):
+def test_initiate_access_hidden_unregistered_returns_404(
+    mock_site_context, course_with_topic, logged_in_client
+):
     """initiate_course_access for a hidden course 404s for an unregistered user."""
-    course = _hidden_course()
-    client = _client(UserFactory())
+    course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
+    client = logged_in_client(UserFactory())
 
     url = reverse(
         "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
@@ -672,14 +661,16 @@ def test_initiate_access_hidden_unregistered_returns_404(mock_site_context):
 
 @pytest.mark.django_db
 def test_initiate_access_coming_soon_self_registers_with_visibility_override(
-    mock_site_context,
+    mock_site_context, course_with_topic, logged_in_client
 ):
     """With OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE on, a coming-soon course flows
     through to the backend's free self-registration instead of bouncing back to
     the detail page."""
-    course = _coming_soon_course()
+    course = course_with_topic(
+        visibility=CourseVisibility.COMING_SOON, slug="coming-soon-course"
+    )
     user = UserFactory()
-    client = _client(user)
+    client = logged_in_client(user)
 
     url = reverse(
         "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}

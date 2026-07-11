@@ -27,6 +27,20 @@ def _disable_force_site_name(settings):
 
 
 @pytest.fixture(autouse=True)
+def _disable_preview_overrides(settings):
+    """Force both course-access preview overrides off by default.
+
+    settings_dev turns OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE and
+    OVERRIDE_COURSE_ACCESS_TO_FREE on for manual QA of the preview modes. Tests run
+    under settings_dev, so without this the whole suite would inherit the previews
+    and exercise the wrong branch. Pinning them off makes the default contract
+    deterministic; tests that need a preview on opt in via override_settings(...).
+    """
+    settings.OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE = False
+    settings.OVERRIDE_COURSE_ACCESS_TO_FREE = False
+
+
+@pytest.fixture(autouse=True)
 def _clear_course_access_backend_cache():
     """Reset the cached course-access backend before and after each test.
 

@@ -11,30 +11,14 @@ from __future__ import annotations
 
 import pytest
 
-from django.test import Client, override_settings
+from django.test import override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.student_management.factories import UserCourseRegistrationFactory
-
-
-def _logged_in_client(user) -> Client:
-    """Build a Client logged in as `user`. Local helper — do not lift across files."""
-    client = Client()
-    client.force_login(user)
-    return client
-
-
-def _course(visibility: str, *, slug: str) -> Course:
-    """A course with the given visibility and one topic item."""
-    course: Course = CourseFactory(slug=slug, visibility=visibility)
-    topic = TopicFactory(title="Topic", slug=f"{slug}-topic", content="content")
-    course.items.create(child=topic, order=0)
-    return course
 
 
 def _detail_url(course: Course) -> str:
@@ -44,9 +28,11 @@ def _detail_url(course: Course) -> str:
 
 
 @pytest.mark.django_db
-def test_hidden_course_unregistered_user_gets_404(mock_site_context):
-    course = _course(CourseVisibility.HIDDEN, slug="hidden-course")
-    client = _logged_in_client(UserFactory())
+def test_hidden_course_unregistered_user_gets_404(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
+    client = logged_in_client(UserFactory())
 
     response = client.get(_detail_url(course))
 
@@ -54,11 +40,13 @@ def test_hidden_course_unregistered_user_gets_404(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_hidden_course_registered_user_gets_200(mock_site_context):
-    course = _course(CourseVisibility.HIDDEN, slug="hidden-course")
+def test_hidden_course_registered_user_gets_200(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(_detail_url(course))
 
@@ -66,9 +54,13 @@ def test_hidden_course_registered_user_gets_200(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_coming_soon_detail_renders_express_interest_not_enrol(mock_site_context):
-    course = _course(CourseVisibility.COMING_SOON, slug="coming-soon-course")
-    client = _logged_in_client(UserFactory())
+def test_coming_soon_detail_renders_express_interest_not_enrol(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    course = course_with_topic(
+        visibility=CourseVisibility.COMING_SOON, slug="coming-soon-course"
+    )
+    client = logged_in_client(UserFactory())
 
     response = client.get(_detail_url(course))
     body = response.content.decode()
@@ -79,9 +71,13 @@ def test_coming_soon_detail_renders_express_interest_not_enrol(mock_site_context
 
 
 @pytest.mark.django_db
-def test_coming_soon_detail_default_state_is_not_interested(mock_site_context):
-    course = _course(CourseVisibility.COMING_SOON, slug="coming-soon-course")
-    client = _logged_in_client(UserFactory())
+def test_coming_soon_detail_default_state_is_not_interested(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    course = course_with_topic(
+        visibility=CourseVisibility.COMING_SOON, slug="coming-soon-course"
+    )
+    client = logged_in_client(UserFactory())
 
     response = client.get(_detail_url(course))
     body = response.content.decode()
@@ -91,11 +87,15 @@ def test_coming_soon_detail_default_state_is_not_interested(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_coming_soon_detail_interested_state_when_interest_exists(mock_site_context):
-    course = _course(CourseVisibility.COMING_SOON, slug="coming-soon-course")
+def test_coming_soon_detail_interested_state_when_interest_exists(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    course = course_with_topic(
+        visibility=CourseVisibility.COMING_SOON, slug="coming-soon-course"
+    )
     user = UserFactory()
     CourseInterestFactory(user=user, course=course)
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(_detail_url(course))
     body = response.content.decode()
@@ -106,17 +106,19 @@ def test_coming_soon_detail_interested_state_when_interest_exists(mock_site_cont
 
 @pytest.mark.django_db
 def test_coming_soon_registered_user_gets_generic_cta_not_express_interest(
-    mock_site_context,
+    mock_site_context, course_with_topic, logged_in_client
 ):
     """A registered learner on a coming-soon course keeps the normal registered CTA.
 
     coming_soon exempts already-registered learners, so the detail page must not
     show the express-interest control (which would bounce / hide their content).
     """
-    course = _course(CourseVisibility.COMING_SOON, slug="coming-soon-course")
+    course = course_with_topic(
+        visibility=CourseVisibility.COMING_SOON, slug="coming-soon-course"
+    )
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
-    client = _logged_in_client(user)
+    client = logged_in_client(user)
 
     response = client.get(_detail_url(course))
     body = response.content.decode()
@@ -126,9 +128,13 @@ def test_coming_soon_registered_user_gets_generic_cta_not_express_interest(
 
 
 @pytest.mark.django_db
-def test_published_detail_renders_generic_cta(mock_site_context):
-    course = _course(CourseVisibility.PUBLISHED, slug="published-course")
-    client = _logged_in_client(UserFactory())
+def test_published_detail_renders_generic_cta(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    course = course_with_topic(
+        visibility=CourseVisibility.PUBLISHED, slug="published-course"
+    )
+    client = logged_in_client(UserFactory())
 
     response = client.get(_detail_url(course))
     body = response.content.decode()
@@ -146,10 +152,10 @@ def test_published_detail_renders_generic_cta(mock_site_context):
 
 @pytest.mark.django_db
 def test_hidden_course_unregistered_user_gets_200_with_visibility_override(
-    mock_site_context,
+    mock_site_context, course_with_topic, logged_in_client
 ):
-    course = _course(CourseVisibility.HIDDEN, slug="hidden-course")
-    client = _logged_in_client(UserFactory())
+    course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
+    client = logged_in_client(UserFactory())
 
     with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
         get_course_access_backend.cache_clear()
@@ -160,12 +166,14 @@ def test_hidden_course_unregistered_user_gets_200_with_visibility_override(
 
 @pytest.mark.django_db
 def test_coming_soon_detail_shows_generic_cta_with_visibility_override(
-    mock_site_context,
+    mock_site_context, course_with_topic, logged_in_client
 ):
     """With the override on, a coming-soon course looks fully published: the
     generic enrol CTA renders instead of the express-interest affordance."""
-    course = _course(CourseVisibility.COMING_SOON, slug="coming-soon-course")
-    client = _logged_in_client(UserFactory())
+    course = course_with_topic(
+        visibility=CourseVisibility.COMING_SOON, slug="coming-soon-course"
+    )
+    client = logged_in_client(UserFactory())
 
     with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
         get_course_access_backend.cache_clear()

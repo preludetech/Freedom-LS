@@ -13,25 +13,18 @@ from __future__ import annotations
 import pytest
 
 from django.conf import settings
-from django.test import Client, override_settings
+from django.test import override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_access.backends import AccessBadge
 from freedom_ls.course_access.loader import get_course_access_backend
 
 APPLICATION_BACKEND = (
     "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend"
 )
-
-
-def _course_with_topic(visibility: str, *, slug: str) -> Course:
-    course: Course = CourseFactory(slug=slug, visibility=visibility)
-    topic = TopicFactory(title="Topic", slug=f"{slug}-topic", content="content")
-    course.items.create(child=topic, order=0)
-    return course
 
 
 @pytest.mark.django_db
@@ -42,10 +35,13 @@ class TestOverridesOffRegression:
         OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=False,
         OVERRIDE_COURSE_ACCESS_TO_FREE=False,
     )
-    def test_hidden_course_still_404s_for_unregistered_visitor(self, mock_site_context):
-        course = _course_with_topic(CourseVisibility.HIDDEN, slug="hidden-course")
-        client = Client()
-        client.force_login(UserFactory())
+    def test_hidden_course_still_404s_for_unregistered_visitor(
+        self, mock_site_context, course_with_topic, logged_in_client
+    ):
+        course = course_with_topic(
+            visibility=CourseVisibility.HIDDEN, slug="hidden-course"
+        )
+        client = logged_in_client(UserFactory())
 
         get_course_access_backend.cache_clear()
         response = client.get(
