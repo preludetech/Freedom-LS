@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-07-01_
+_Last updated: 2026-07-11_
 
 ## Summary
 
@@ -78,6 +78,14 @@ A companion setting, `COURSE_ACCESS_CONFIG_VALIDATOR`, names the validator used 
 
 Course **visibility** (published, coming soon, or hidden) is layered on top of the access backend and is orthogonal to it: a course's access type (free vs. application-gated) and its visibility are independent concerns that compose freely. Visibility is enforced uniformly across every backend — the free backend, the application-gated backend, and any future custom backend a deployment adds — with no per-backend configuration and no way to bypass or opt out of it; a new access backend added via `COURSE_ACCESS_BACKEND` automatically honours coming-soon and hidden without any extra work. Visibility is also independent of `COURSE_ACCESS_CONFIG_VALIDATOR`: it is not part of `access_config` and is not subject to access-configuration validation, so the two remain separate pipelines. For the learner-facing effect of each visibility state, see [learner experience](./learner-experience.md); for how visibility is authored on a course, see [content editing workflow](./content-editing-workflow.md).
 
+## Preview Overrides for Course Visibility and Access (Dev/Staging Only)
+
+Two global settings, owned alongside `COURSE_ACCESS_BACKEND`, let a dev or staging deployment preview coming-soon, hidden, or access-gated courses exactly as they will behave once launched, without editing any course data. `OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE` makes every course reachable and present as fully published — no "Coming soon" badge or "I'm interested" prompt, and a coming-soon course's enrol action self-registers the learner. `OVERRIDE_COURSE_ACCESS_TO_FREE` makes every course show a "Free" badge and be freely self-registerable and enterable, regardless of its configured access type. Both apply uniformly across every site's courses.
+
+Both settings default to `False`, so a deployment that never sets them is unaffected, and neither writes to the database — a course's stored visibility and access configuration are untouched; only how it is presented and entered changes. Because leaving either on in production would be damaging, a system check emits a warning (not a blocking error) whenever either is `True` while `DEBUG` is `False`, naming the settings and prompting the operator to unset them; they are intended only for a settings module that also keeps `DEBUG = True`, and are not enabled by default in any shipped settings module.
+
+For the learner-facing effect of course visibility and access states, see [learner experience](./learner-experience.md).
+
 ## Custom-App Extension Model
 
 FLS is designed to be installed into an existing Django project using `git submodule add` and `uv add`. The host project retains control:
@@ -112,3 +120,5 @@ For the full isolation model that underpins per-site configuration, see [multi-t
 | `TRUSTED_PROXY_IP_HEADER` | Header to trust for client IP when running behind a reverse proxy (relevant to deployment configuration; not documented in the public how-to guides) |
 | `COURSE_ACCESS_BACKEND` | Selects the pluggable course-access backend (see "Pluggable Course Access Backend" above). Default is the application-gated backend; set to the free-only core default to disable the course-application flow entirely. |
 | `COURSE_ACCESS_CONFIG_VALIDATOR` | Dotted-path to the validator called at content-load time to check each course's access configuration. Swap this when using a custom backend with its own configuration keys. |
+| `OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE` | Dev/staging-only preview override that makes every course present as published, regardless of its real visibility. See "Preview Overrides for Course Visibility and Access" above. |
+| `OVERRIDE_COURSE_ACCESS_TO_FREE` | Dev/staging-only preview override that makes every course present and behave as freely accessible, regardless of its real access configuration. See "Preview Overrides for Course Visibility and Access" above. |

@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-07-01_
+_Last updated: 2026-07-11_
 
 ## Summary
 
@@ -69,6 +69,16 @@ Supported values are `published`, `coming_soon`, and `hidden`. When `visibility`
 `visibility` is a separate, top-level course field from `access_config` — it is not part of the access-type mechanism described above, and the two are validated independently. A course's visibility (published / coming-soon / hidden) and its access type (free / application-gated) compose freely: for example, an application-gated course can be coming soon.
 
 The learner-facing effect of each visibility state is described in [learner experience](./learner-experience.md). How visibility is enforced uniformly across access backends is described in [configuration and extension](./configuration-and-extension.md).
+
+## Course Table of Contents (In-Development Courses)
+
+While a course is still being built, its detail page can otherwise show empty, unfinished-looking table-of-contents elements — a lesson count of zero, a heading with nothing under it. To avoid this, an author can add a `table_of_contents_in_development` key to a course's YAML frontmatter and set it to `true`; this suppresses the table-of-contents elements on that course's detail page (the lesson-count stat, the lesson-count line in the "This course includes" summary, and the course-content listing) so the course can be kept listed and demoable while its lessons are still being written, without showing broken-looking placeholders. When `table_of_contents_in_development` is absent, the course behaves as `false` — the default, and today's behaviour.
+
+This flag is independent of both course visibility and access type: it changes nothing about whether a course is listed, who can enrol, or what they can access — it only affects whether the table of contents renders. It is typically paired with a `coming_soon` visibility while a course is being authored (see [Course Visibility](#course-visibility) above), but the two are set and validated separately.
+
+Because a published course should always show its contents, a course cannot be both `published` and marked `table_of_contents_in_development: true`; this combination is rejected at content-load time with a file-located error message, consistent with the rest of content validation.
+
+The learner-facing effect of an in-development course's table of contents being hidden is described in [learner experience](./learner-experience.md).
 
 ## Validation
 

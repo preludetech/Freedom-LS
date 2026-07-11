@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-07-01_
+_Last updated: 2026-07-11_
 
 ## Summary
 
@@ -95,6 +95,8 @@ The course detail page is publicly accessible. Anonymous visitors and authentica
 - **Description** — full course markdown description.
 - **Access-model signal** — the "Enrolment" stat near the CTA shows "Free · open" for free courses and "By application" for application-gated courses.
 - **Table of contents** — all items are shown locked for visitors who are not registered, whether anonymous or signed in.
+
+An author can flag a course as still being built so its table-of-contents surfaces are hidden entirely on this page — the lesson count, the "This course includes" lesson-count line, and the "Course content" section are omitted rather than shown empty, so an unfinished course never displays a "0 lessons" stat or a heading with nothing under it. This affects only what's shown on the detail page — it does not change a course's enrolment, access, or whether it's listed. See [content editing workflow](./content-editing-workflow.md) for how an author sets this.
 
 **Acquisition CTA (not-registered visitors).** The CTA label and destination follow the course's access model, so new access models can supply their own wording. For the two access models that exist today:
 
