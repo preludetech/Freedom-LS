@@ -33,6 +33,7 @@ dependencies = [
     "urllib3>=2.6.3",
     "coloraide>=8.8.1",
     "pymdown-extensions>=10.21.3",
+    "sentry-sdk[django]>=2.64.0",
 ]
 
 [project.optional-dependencies]
