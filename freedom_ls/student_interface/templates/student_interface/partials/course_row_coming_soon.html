@@ -33,6 +33,9 @@ Required context: course (slug, accent_slot_key, icon, icon_fallback, title).
                 {{ course.title }}
             </a>
         </h3>
-        <c-chip variant="info" size="xs" class="shrink-0">Coming soon</c-chip>
+        <div class="flex items-center gap-2">
+            <c-chip variant="info" size="xs" class="shrink-0">Coming soon</c-chip>
+            {% include "student_interface/partials/course_details_link.html" %}
+        </div>
     </div>
 </c-course-row-shell>

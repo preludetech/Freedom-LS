@@ -27,9 +27,12 @@ Behaviour:
         {% include "student_interface/partials/course_status_eyebrow.html" with status="complete" with_icon=True %}
     </c-slot>
 
-    {% with url=finish_url title=course.title %}
-        {% include "student_interface/partials/card_title_link.html" %}
-    {% endwith %}
+    <div class="flex items-center justify-between gap-2">
+        {% with url=finish_url title=course.title %}
+            {% include "student_interface/partials/card_title_link.html" %}
+        {% endwith %}
+        {% include "student_interface/partials/course_details_link.html" %}
+    </div>
 
     <c-slot name="footer">
         <span class="inline-flex items-center gap-1 rounded-full bg-success-soft text-success px-2 py-0.5 text-xs font-medium">

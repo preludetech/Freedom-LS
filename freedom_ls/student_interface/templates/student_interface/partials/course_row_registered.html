@@ -32,9 +32,12 @@ Do NOT rely on colour alone.
         {% include "student_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
     </c-slot>
 
-    {% with url=course_item_url title=course.title %}
-        {% include "student_interface/partials/card_title_link.html" %}
-    {% endwith %}
+    <div class="flex items-center justify-between gap-2">
+        {% with url=course_item_url title=course.title %}
+            {% include "student_interface/partials/card_title_link.html" %}
+        {% endwith %}
+        {% include "student_interface/partials/course_details_link.html" %}
+    </div>
 
     <c-slot name="footer">
         <div class="flex items-center gap-2">

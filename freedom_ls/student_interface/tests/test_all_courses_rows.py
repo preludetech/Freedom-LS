@@ -12,13 +12,25 @@ import re
 
 import pytest
 
+from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 from freedom_ls.student_progress.factories import CourseProgressFactory
+
+
+def _coming_soon_course(*, slug: str, title: str) -> Course:
+    """A coming-soon-visibility course with one topic item."""
+    course: Course = CourseFactory(
+        title=title, slug=slug, visibility=CourseVisibility.COMING_SOON
+    )
+    topic = TopicFactory(title=f"{slug}-t", slug=f"{slug}-topic", content="content")
+    course.items.create(child=topic, order=0)
+    return course
 
 
 @pytest.mark.django_db
@@ -264,3 +276,133 @@ def test_all_courses_status_icons_are_decorative(
         assert re.search(
             rf'aria-hidden="true">\s*<svg[^>]*aria-label="{slug}"', body
         ), f"status icon {slug!r} is not wrapped in aria-hidden"
+
+
+@pytest.mark.django_db
+def test_all_courses_registered_row_has_details_link(
+    mock_site_context, courses, logged_in_client
+):
+    """A registered (0%) row renders an explicit "Details" link to course_detail,
+    in addition to the progress-linked title."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    client = logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    body = response.content.decode()
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_all_courses_complete_row_has_details_link(
+    mock_site_context, courses, logged_in_client
+):
+    """A completed-course row renders an explicit "Details" link to course_detail,
+    in addition to the finish-page title link."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    CourseProgressFactory(
+        user=user,
+        course=courses[0],
+        progress_percentage=100,
+        completed_time=timezone.now(),
+    )
+    client = logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    body = response.content.decode()
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_all_courses_not_registered_row_has_details_link(
+    mock_site_context, courses, logged_in_client
+):
+    """A not-registered row renders an explicit "Details" link in addition to
+    the stretched title link — both resolve to the same course_detail URL."""
+    user = UserFactory()
+    client = logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    body = response.content.decode()
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_all_courses_coming_soon_row_has_details_link(mock_site_context):
+    """A coming-soon row renders an explicit "Details" link alongside the
+    "Coming soon" chip, in addition to the stretched title link."""
+    course = _coming_soon_course(slug="cs-row", title="Coming Soon Row Course")
+    client = Client()
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    detail_url = reverse(
+        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+    body = response.content.decode()
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_all_courses_details_link_renders_for_anonymous_visitor(
+    mock_site_context, courses
+):
+    """The Details link renders on the all-courses page for an anonymous
+    visitor, not just for authenticated ones."""
+    client = Client()
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    body = response.content.decode()
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_all_courses_details_link_renders_for_authenticated_unregistered_visitor(
+    mock_site_context, courses, logged_in_client
+):
+    """The Details link renders for an authenticated visitor with no
+    registration for the course."""
+    user = UserFactory()
+    client = logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    body = response.content.decode()
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body

@@ -30,10 +30,13 @@ course.icon_fallback, course.title, course.access_badge).
             <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
         {% endif %}
     </c-slot>
-    <h3>
-        <a href="{{ detail_url }}"
-           class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">
-            {{ course.title }}
-        </a>
-    </h3>
+    <div class="flex items-center justify-between gap-2">
+        <h3>
+            <a href="{{ detail_url }}"
+               class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">
+                {{ course.title }}
+            </a>
+        </h3>
+        {% include "student_interface/partials/course_details_link.html" %}
+    </div>
 </c-course-row-shell>
