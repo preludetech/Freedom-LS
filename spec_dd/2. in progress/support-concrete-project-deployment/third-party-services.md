@@ -10,6 +10,9 @@ these accounts exist and reads their credentials from `.env`.
 > containerised `postgres:17`, Caddy) needs no external account. Consumed mostly by **Spec 5** (the
 > template scaffolding); a few values are also read by **Spec 1** settings and **Spec 2** health.
 
+> **Env-var contract.** For the PostHog / Sentry / R2 vars specifically, this repo's `.env.example`
+> is the authoritative, in-sync list — the two documents together form one contract.
+
 ## 1. Cloudflare (DNS + front proxy) — required
 
 - **Sign up for:** a Cloudflare account, and add the deployment's **domain as a zone**.
@@ -30,8 +33,17 @@ these accounts exist and reads their credentials from `.env`.
 - **Sign up for:** an S3-compatible object-storage provider (Cloudflare R2, or AWS S3 / compatible).
 - **Configure:** create the media bucket(s); create an access key/secret scoped to them; note the
   endpoint and region.
-- **Credentials produced (env vars, exact names per the storage backend the project wires):**
-  access key ID, secret access key, bucket name(s), endpoint URL, region.
+- **Credentials produced (env vars, wired by `freedom_ls/deployment` — see this repo's
+  `.env.example`):**
+  - `AWS_STORAGE_BUCKET_NAME` — config; also the on/off gate (unset ⇒ local `FileSystemStorage`).
+  - `AWS_S3_ACCESS_KEY_ID` / `AWS_S3_SECRET_ACCESS_KEY` — **secret**.
+  - `AWS_S3_ENDPOINT_URL` — config, e.g. `https://<account-id>.r2.cloudflarestorage.com`.
+  - `AWS_S3_REGION_NAME` — config, default `auto` (R2's region convention).
+  - `AWS_S3_CUSTOM_DOMAIN` — config, optional; opt-in to public serving only (set together with
+    `AWS_QUERYSTRING_AUTH=False`).
+  - `AWS_QUERYSTRING_AUTH` — config, default `True` (private, time-limited signed URLs).
+  - `AWS_QUERYSTRING_EXPIRE` — config, default `3600` (signed-URL lifetime, seconds).
+  - No `AWS_DEFAULT_ACL` — R2 has no ACLs; the var was removed.
 - **Consumed by:** Spec 5 (media storage config + `.env.example`); Spec 2 (the **opt-in** readiness
   storage check, off by default).
 - **Note:** media is on object storage; static is served by WhiteNoise from the image — Caddy proxies
@@ -40,9 +52,30 @@ these accounts exist and reads their credentials from `.env`.
 ## 3. Sentry (error tracking / observability) — required for prod
 
 - **Sign up for:** a Sentry account and a **project** for this deployment.
-- **Configure:** create the project, grab its **DSN**; optionally set environment/release tagging.
-- **Credentials produced:** `SENTRY_DSN` (+ any environment/release env vars).
+- **Configure:** create the project, grab its **DSN**; set environment/release tagging per
+  environment.
+- **Credentials produced (env vars, wired by `freedom_ls/deployment` — see this repo's
+  `.env.example`):**
+  - `SENTRY_DSN` — **secret**; unset ⇒ Sentry off.
+  - `SENTRY_ENVIRONMENT` — config; set explicitly whenever `SENTRY_DSN` is set — the SDK otherwise
+    silently tags events `"production"`.
+  - `SENTRY_RELEASE` — config, optional; CI-injected git SHA; unset ⇒ no release tag.
+  - `SENTRY_TRACES_SAMPLE_RATE` — config, default `0.1`.
+  - `SENTRY_SEND_DEFAULT_PII` — config, default `False`.
 - **Consumed by:** Spec 5 (§5.6 Sentry observability wiring, parameterised template).
+
+## 3a. PostHog (analytics) — optional
+
+- **Sign up for:** a PostHog account and a **project** per environment (staging and prod each get
+  their own project token).
+- **Configure:** grab the project's API key; pick the region host (US or EU).
+- **Credentials produced (env vars, wired by `freedom_ls/deployment` — see this repo's
+  `.env.example`):**
+  - `POSTHOG_API_KEY` — public project token (safe in client-side HTML); unset ⇒ PostHog disabled.
+  - `POSTHOG_API_HOST` — config, default `https://us.i.posthog.com` (override for EU).
+  - `POSTHOG_UI_HOST` — config, optional; only needed for a reverse-proxied ingestion host.
+- **Consumed by:** `freedom_ls.base.context_processors.posthog_config` (in-repo, every render) —
+  no Spec 5 template wiring needed beyond setting the env vars.
 
 ## 4. GitHub Container Registry (GHCR) — required (CI/CD)
 
@@ -87,8 +120,15 @@ these accounts exist and reads their credentials from `.env`.
 | `DOMAIN` | config | Cloudflare zone (§1) | Spec 1, Spec 5 (Caddy) |
 | `trusted_proxies` (CF ranges) | config | Cloudflare (§1) | Spec 5 (Caddy) |
 | `DB_SSLMODE` | config (`disable` default) | Postgres topology (§7) | Spec 1 |
-| Object-storage access key / secret / bucket / endpoint | per-deploy secret + config | R2 / S3 (§2) | Spec 5, Spec 2 (opt-in) |
+| `AWS_STORAGE_BUCKET_NAME` | config (on/off gate) | R2 / S3 (§2) | Spec 5, Spec 2 (opt-in) |
+| `AWS_S3_ACCESS_KEY_ID` / `AWS_S3_SECRET_ACCESS_KEY` | per-deploy secret | R2 / S3 (§2) | Spec 5, Spec 2 (opt-in) |
+| `AWS_S3_ENDPOINT_URL` / `AWS_S3_REGION_NAME` (`auto` default) | config | R2 / S3 (§2) | Spec 5, Spec 2 (opt-in) |
+| `AWS_S3_CUSTOM_DOMAIN` (opt-in) / `AWS_QUERYSTRING_AUTH` (`True` default) / `AWS_QUERYSTRING_EXPIRE` (`3600` default) | config | R2 / S3 (§2) | Spec 5, Spec 2 (opt-in) |
 | `SENTRY_DSN` | per-deploy secret | Sentry (§3) | Spec 5 |
+| `SENTRY_ENVIRONMENT` / `SENTRY_RELEASE` | config | Sentry (§3) | Spec 5 |
+| `SENTRY_TRACES_SAMPLE_RATE` (`0.1` default) / `SENTRY_SEND_DEFAULT_PII` (`False` default) | config | Sentry (§3) | Spec 5 |
+| `POSTHOG_API_KEY` | public token | PostHog (§3a) | in-repo (`base.context_processors`) |
+| `POSTHOG_API_HOST` (`https://us.i.posthog.com` default) / `POSTHOG_UI_HOST` (optional) | config | PostHog (§3a) | in-repo (`base.context_processors`) |
 | `GITHUB_TOKEN` (`packages: write`) / GHCR pull cred | CI secret | GitHub/GHCR (§4) | Spec 5 |
 | VPS SSH key | operator secret | VPS (§5) | Spec 5 (Ansible) |
 | Backup target creds + backup encryption key | per-deploy secret | off-box target (§6) | Spec 5 (backups) |
