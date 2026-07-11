@@ -12,8 +12,8 @@
     {% element p %}
         {% blocktrans %}If we could set up or find your account, we've emailed you a link to continue. Check your inbox (and your spam folder).{% endblocktrans %}
     {% endelement %}
+    {% url 'account_reset_password' as reset_url %}
     {% element p %}
-        {% trans "Didn't get anything? You can" %}
-        <a href="{% url 'account_reset_password' %}" class="text-primary underline">{% trans "request another link" %}</a>.
+        {% blocktrans %}Didn't get anything? You can <a href="{{ reset_url }}" class="text-primary underline">request another link</a>.{% endblocktrans %}
     {% endelement %}
 {% endblock content %}
