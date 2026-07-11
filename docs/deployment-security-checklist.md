@@ -180,8 +180,7 @@ All required environment variables must be set in production. Never hardcode cre
 | `AWS_S3_ACCESS_KEY_ID` | AWS access key ID. |
 | `AWS_S3_SECRET_ACCESS_KEY` | AWS secret access key. |
 | `AWS_S3_ENDPOINT_URL` | Custom S3 endpoint URL (for S3-compatible services). |
-| `AWS_DEFAULT_ACL` | Default ACL for uploaded files (e.g., `private`). |
-| `AWS_S3_REGION_NAME` | AWS region for the S3 bucket. |
+| `AWS_S3_REGION_NAME` | Region for the S3-compatible bucket (default `auto` for R2). |
 
 ## 11. Legal Documents
 
