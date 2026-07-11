@@ -469,6 +469,8 @@ def initiate_course_access(request, course_slug):
     # unregistered users, and coming-soon courses are not enrollable — route to the
     # detail page's express-interest CTA. (The coming-soon decision's cta_url is the
     # POST-only express-interest endpoint, so redirecting the browser there would 405.)
+    # The visibility preview override lifts the coming-soon gate so the course flows
+    # through to the backend's free self-registration.
     raise_404_if_hidden_unregistered(request.user, course)
     if (
         course.visibility == CourseVisibility.COMING_SOON
