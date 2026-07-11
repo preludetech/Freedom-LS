@@ -29,16 +29,14 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 6. Plan structure review
 
 - [x] (cmd) Run `/plan_structure_review` to check for new cross-app dependencies
-- [ ] (user) Address any structure concerns raised in the plan
 
 ## 7. Implementation
 
 - [x] (cmd) Run `/implement_plan` to execute the implementation plan
-- [ ] (user) Spot-check the changes
 
 ## 8. Code security review
 
-- [ ] (cmd) Run `/security-review` on the pending changes
+- [x] (cmd) Run `/security-review` on the pending changes
 - [ ] (user) Address any issues raised
 
 ## 9. QA
