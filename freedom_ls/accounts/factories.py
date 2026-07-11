@@ -1,6 +1,7 @@
 """Factories for accounts models."""
 
 import factory
+from allauth.account.models import EmailAddress
 
 from django.contrib.sites.models import Site
 
@@ -54,6 +55,22 @@ class UserFactory(SiteAwareFactory):
     class Params:
         staff = factory.Trait(is_staff=True)
         superuser = factory.Trait(is_staff=True, is_superuser=True)
+
+
+class EmailAddressFactory(factory.django.DjangoModelFactory):
+    """Factory for allauth's `EmailAddress` model.
+
+    NOT a `SiteAwareFactory` — `EmailAddress` has no `site` FK, it belongs to
+    allauth and is scoped by `user` alone.
+    """
+
+    class Meta:
+        model = EmailAddress
+
+    user = factory.SubFactory(UserFactory)
+    email = factory.LazyAttribute(lambda obj: obj.user.email)
+    verified = False
+    primary = False
 
 
 class SiteSignupPolicyFactory(SiteAwareFactory):

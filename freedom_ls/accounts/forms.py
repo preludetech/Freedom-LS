@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from allauth.account.forms import SignupForm
+from allauth.account.forms import ResetPasswordKeyForm, SignupForm
+from allauth.account.models import EmailAddress
 from allauth.core import context as allauth_context
 
 from django import forms
@@ -168,3 +169,34 @@ class SiteAwareSignupForm(SignupForm):
                     ip_address=ip or None,
                     consent_method="signup_checkbox",
                 )
+
+
+class SiteAwareResetPasswordKeyForm(ResetPasswordKeyForm):
+    """On a completed keyed password reset, mark the reset address verified.
+
+    Completing a keyed reset proves control of the inbox the link was
+    delivered to. With `ACCOUNT_LOGIN_ON_PASSWORD_RESET` enabled, allauth
+    immediately tries to log the user in after `save()`, and that login runs
+    the mandatory email-verification stage — so without this, an unverified
+    account that resets its password would immediately be bounced back into
+    verification instead of being logged in.
+    """
+
+    def save(self) -> None:
+        super().save()  # Resets the password — unchanged allauth behaviour.
+        user = self.user
+        if user is None:
+            return
+        # This project's User.email is globally unique, so the reset target
+        # is unambiguous. Deliberately not forcing "primary": True here — the
+        # user may already have a different primary address, and forcing this
+        # one to primary on create could violate allauth's unique_primary_email
+        # constraint (mirrors allauth's own sync_email_address, which also
+        # does not force primary).
+        address, _created = EmailAddress.objects.get_or_create(
+            user=user,
+            email__iexact=user.email,
+            defaults={"email": user.email, "verified": True},
+        )
+        if not address.verified:
+            address.set_verified(commit=True)
