@@ -8,16 +8,23 @@ from allauth.account.models import EmailAddress
 from allauth.core import context as allauth_context
 
 from django import forms
-from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.db import transaction
+from django.http import HttpRequest, HttpResponse
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.site_aware_models.models import get_cached_site
 
-User = get_user_model()
+from .models import User
+from .utils import is_safe_next_url
 
 logger = logging.getLogger(__name__)
+
+# Session key an in-flight enrolment `next` is stashed under during signup, so
+# it survives the existing-email/enumeration branch (which never reaches
+# SignupView.get_success_url()) and can be resumed on the next login. Shared
+# with AccountAdapter.get_login_redirect_url, which consumes it.
+SIGNUP_NEXT_SESSION_KEY = "signup_enrolment_next"
 
 
 class UserForm(forms.ModelForm):
@@ -123,6 +130,29 @@ class SiteAwareSignupForm(SignupForm):
                 "outside of a request when require_terms_acceptance is in play. "
                 "This form is only intended for use from the signup HTTP view."
             )
+
+    def try_save(self, request: HttpRequest) -> tuple[User | None, HttpResponse | None]:
+        """Stash a validated enrolment destination before the new-vs-existing branch.
+
+        `try_save` is allauth's common entry point for both the genuine-new-
+        account save and the existing-email/enumeration branch, so writing
+        the session key here — before either branch runs — cannot reveal to
+        the requester which one was taken (both branches write identically).
+        The stash is consumed by `AccountAdapter.get_login_redirect_url` once
+        the user next authenticates in this session.
+        """
+        candidate = is_safe_next_url(
+            request, request.POST.get("next") or request.GET.get("next")
+        )
+        if candidate:
+            request.session[SIGNUP_NEXT_SESSION_KEY] = candidate
+        else:
+            # An earlier CTA signup may have stashed a destination and then
+            # been abandoned; a later, next-less signup/login in the same
+            # session must not inherit it and land on that stale course.
+            request.session.pop(SIGNUP_NEXT_SESSION_KEY, None)
+        result: tuple[User | None, HttpResponse | None] = super().try_save(request)
+        return result
 
     def clean__hp(self) -> str:
         value = self.cleaned_data.get("_hp", "")
