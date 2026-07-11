@@ -321,10 +321,12 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
 
     def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
         from freedom_ls.content_engine.models import CourseVisibility
+        from freedom_ls.course_access.overrides import override_visibility_to_visible
 
         if (
             course.visibility == CourseVisibility.COMING_SOON
             and not is_registered_for_course(user, course)
+            and not override_visibility_to_visible()
         ):
             return CourseAccessDecision(
                 cta_label="I'm interested",
@@ -341,6 +343,7 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
         if (
             course.visibility == CourseVisibility.HIDDEN
             and not is_registered_for_course(user, course)
+            and not override_visibility_to_visible()
         ):
             return CourseAccessDecision(
                 cta_label=None,
@@ -363,8 +366,11 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
         self, *, user: RequestUser, courses: QuerySet[Course]
     ) -> QuerySet[Course]:
         from freedom_ls.content_engine.models import CourseVisibility
+        from freedom_ls.course_access.overrides import override_visibility_to_visible
 
         courses = self._inner.filter_visible(user=user, courses=courses)
+        if override_visibility_to_visible():
+            return courses
         # Anonymous users never see hidden courses; authenticated users see a
         # hidden course only if registered for it (Exists() subquery, no joins).
         if not user.is_authenticated:

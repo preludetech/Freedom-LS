@@ -20,6 +20,10 @@ from freedom_ls.content_engine.models import (
     Topic,
 )
 from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.course_access.overrides import (
+    is_coming_soon_for_display,
+    override_visibility_to_visible,
+)
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.student_management.config import config
@@ -179,7 +183,7 @@ def _annotate_recommendations(recommendations: list[RecommendedCourse]) -> None:
         setattr(  # noqa: B010
             rec.collection,
             "is_coming_soon",
-            rec.collection.visibility == CourseVisibility.COMING_SOON,
+            is_coming_soon_for_display(rec.collection),
         )
 
 
@@ -201,7 +205,7 @@ def _available_courses(
         setattr(  # noqa: B010
             course,
             "is_coming_soon",
-            course.visibility == CourseVisibility.COMING_SOON,
+            is_coming_soon_for_display(course),
         )
         available_courses.append(course)
         if len(available_courses) == 3:
@@ -350,7 +354,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     # not-registered branch instead of the generic enrol anchor (which would
     # GET a POST-only endpoint and can't reflect existing interest). Stamp the
     # course's current interest state so the partial picks the right variant.
-    is_coming_soon = course.visibility == CourseVisibility.COMING_SOON
+    is_coming_soon = is_coming_soon_for_display(course)
     if is_coming_soon and not is_registered:
         stamp_interest(request.user, [course])
     breadcrumbs = [
@@ -466,7 +470,10 @@ def initiate_course_access(request, course_slug):
     # detail page's express-interest CTA. (The coming-soon decision's cta_url is the
     # POST-only express-interest endpoint, so redirecting the browser there would 405.)
     raise_404_if_hidden_unregistered(request.user, course)
-    if course.visibility == CourseVisibility.COMING_SOON:
+    if (
+        course.visibility == CourseVisibility.COMING_SOON
+        and not override_visibility_to_visible()
+    ):
         return redirect("student_interface:course_detail", course_slug=course.slug)
 
     # Chokepoint gate: consult the active backend before allowing self-registration.

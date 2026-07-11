@@ -14,7 +14,6 @@ from django.utils import timezone
 from freedom_ls.content_engine.models import (
     Course,
     CoursePart,
-    CourseVisibility,
     Form,
     FormQuestion,
     FormStrategy,
@@ -711,6 +710,7 @@ def get_course_listing(
     Used by the all-courses view (see ``views.py``) to populate the listing.
     """
     from freedom_ls.course_access.loader import get_course_access_backend
+    from freedom_ls.course_access.overrides import is_coming_soon_for_display
 
     backend = get_course_access_backend()
     courses = visible_courses if visible_courses is not None else get_all_courses()
@@ -730,7 +730,7 @@ def get_course_listing(
             CourseListingEntry(
                 course,
                 CourseListingStatus.COMING_SOON
-                if course.visibility == CourseVisibility.COMING_SOON
+                if is_coming_soon_for_display(course)
                 else CourseListingStatus.NOT_REGISTERED,
                 0,
                 access_badge=backend.get_access_badge(course=course),
@@ -752,10 +752,7 @@ def get_course_listing(
         # registered for the course; registered learners keep their normal
         # registration-derived status (coming-soon exempts them, mirroring hidden).
         # (Hidden courses never reach here — filter_visible drops them.)
-        if (
-            course.visibility == CourseVisibility.COMING_SOON
-            and course.id not in registered_ids
-        ):
+        if is_coming_soon_for_display(course) and course.id not in registered_ids:
             entries.append(
                 CourseListingEntry(
                     course,

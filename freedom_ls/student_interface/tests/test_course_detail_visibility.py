@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import pytest
 
-from django.test import Client
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 
@@ -137,4 +138,39 @@ def test_published_detail_renders_generic_cta(mock_site_context):
     # not appear for a published course.
     assert response.status_code == 200
     assert "Enrol for free" in body
+    assert "I'm interested" not in body
+
+
+# --- OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE ---
+
+
+@pytest.mark.django_db
+def test_hidden_course_unregistered_user_gets_200_with_visibility_override(
+    mock_site_context,
+):
+    course = _course(CourseVisibility.HIDDEN, slug="hidden-course")
+    client = _logged_in_client(UserFactory())
+
+    with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
+        get_course_access_backend.cache_clear()
+        response = client.get(_detail_url(course))
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_coming_soon_detail_shows_generic_cta_with_visibility_override(
+    mock_site_context,
+):
+    """With the override on, a coming-soon course looks fully published: the
+    generic enrol CTA renders instead of the express-interest affordance."""
+    course = _course(CourseVisibility.COMING_SOON, slug="coming-soon-course")
+    client = _logged_in_client(UserFactory())
+
+    with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
+        get_course_access_backend.cache_clear()
+        response = client.get(_detail_url(course))
+    body = response.content.decode()
+
+    assert response.status_code == 200
     assert "I'm interested" not in body

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from django.test import Client
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -268,3 +268,80 @@ def test_dashboard_coming_soon_present_for_anonymous(mock_site_context):
 
     assert "Coming Soon Course" in body
     assert "Coming soon" in body
+
+
+# --- OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE cosmetics ---
+
+
+@pytest.mark.django_db
+def test_all_courses_coming_soon_shows_no_chip_for_anonymous_with_override(
+    mock_site_context,
+):
+    """Anonymous branch of get_course_listing: with the override on, a
+    coming-soon course looks like an ordinary published course in the catalogue."""
+    _course(CourseVisibility.COMING_SOON, slug="cs", title="Preview Launch Course")
+
+    with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
+        response = Client().get(reverse("student_interface:courses"))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Preview Launch Course" in body
+    assert "Coming soon" not in body
+
+
+@pytest.mark.django_db
+def test_all_courses_coming_soon_shows_no_chip_for_authenticated_with_override(
+    mock_site_context,
+):
+    """Authenticated branch of get_course_listing: with the override on, a
+    coming-soon course looks like an ordinary published course in the catalogue."""
+    _course(CourseVisibility.COMING_SOON, slug="cs", title="Preview Launch Course")
+    client = _logged_in_client(UserFactory())
+
+    with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
+        response = client.get(reverse("student_interface:courses"))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Preview Launch Course" in body
+    assert "Coming soon" not in body
+
+
+@pytest.mark.django_db
+def test_dashboard_available_coming_soon_shows_no_chip_with_override(
+    mock_site_context,
+):
+    """_available_courses: with the override on, a coming-soon course's discovery
+    card carries no "Coming soon" chip."""
+    _course(CourseVisibility.COMING_SOON, slug="cs", title="Preview Launch Course")
+    client = _logged_in_client(UserFactory())
+
+    with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
+        response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Preview Launch Course" in body
+    assert "Coming soon" not in body
+
+
+@pytest.mark.django_db
+def test_dashboard_recommended_coming_soon_shows_no_chip_with_override(
+    mock_site_context,
+):
+    """_annotate_recommendations: with the override on, a recommended coming-soon
+    course's card carries no "Coming soon" chip."""
+    course = _course(
+        CourseVisibility.COMING_SOON, slug="cs", title="Preview Launch Course"
+    )
+    user = UserFactory()
+    RecommendedCourseFactory(user=user, collection=course)
+    client = _logged_in_client(user)
+
+    with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
+        response = client.get(reverse("student_interface:dashboard"))
+    body = response.content.decode()
+
+    assert "Preview Launch Course" in body
+    assert "Coming soon" not in body

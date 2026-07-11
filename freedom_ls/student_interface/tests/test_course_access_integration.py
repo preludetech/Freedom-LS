@@ -668,3 +668,28 @@ def test_initiate_access_hidden_unregistered_returns_404(mock_site_context):
     response = client.post(url)
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_initiate_access_coming_soon_self_registers_with_visibility_override(
+    mock_site_context,
+):
+    """With OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE on, a coming-soon course flows
+    through to the backend's free self-registration instead of bouncing back to
+    the detail page."""
+    course = _coming_soon_course()
+    user = UserFactory()
+    client = _client(user)
+
+    url = reverse(
+        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
+    )
+    with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
+        get_course_access_backend.cache_clear()
+        response = client.post(url)
+
+    assert response.status_code == 302
+    assert response["Location"] != reverse(
+        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+    assert UserCourseRegistration.objects.filter(user=user, collection=course).exists()
