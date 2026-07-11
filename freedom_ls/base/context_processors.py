@@ -1,11 +1,11 @@
 import colorsys
 import hashlib
-import os
 
 from django.conf import settings
 from django.http import HttpRequest
 
 from freedom_ls.base.git_utils import get_current_branch
+from freedom_ls.deployment.config import config as deployment_config
 
 
 def branch_name_to_color(name: str) -> str:
@@ -46,16 +46,17 @@ def debug_branch_info(_request: HttpRequest) -> dict[str, str]:
 
 def posthog_config(_request: HttpRequest) -> dict[str, str | None]:
     """
-    Context processor that provides PostHog configuration from environment variables.
+    Context processor that provides PostHog configuration.
 
     Args:
         _request: The current HttpRequest (required by Django context processors)
 
     Returns:
-        dict: Dictionary containing posthog_api_key if defined in environment
+        dict: posthog_api_key, posthog_api_host, and posthog_ui_host resolved
+        through freedom_ls.deployment.config.
     """
-    posthog_api_key = os.environ.get("POSTHOG_API_KEY")
-
     return {
-        "posthog_api_key": posthog_api_key,
+        "posthog_api_key": deployment_config.POSTHOG_API_KEY,
+        "posthog_api_host": deployment_config.POSTHOG_API_HOST,
+        "posthog_ui_host": deployment_config.POSTHOG_UI_HOST,
     }
