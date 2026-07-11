@@ -54,12 +54,12 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 10. Product documentation
 
-- [ ] (cmd) Run `/update_product_docs` to update docs/product/ for this feature
+- [x] (cmd) Run `/update_product_docs` to update docs/product/ for this feature
 - [ ] (user) Review the updated documentation
 
 ## 11. Upgrade notes
 
-- [ ] (cmd) Run `/update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
+- [x] (cmd) Run `/update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
 - [ ] (user) Review the upgrade notes
 
 ## 12. Template repo
