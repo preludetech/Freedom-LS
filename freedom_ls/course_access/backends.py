@@ -188,6 +188,41 @@ _FREE_ACQUISITION_HEADING = "Free · open to everyone"
 _FREE_ACQUISITION_SUBTEXT = "One click. No credit card."
 
 
+def _free_access_decision(*, user: RequestUser, course: Course) -> CourseAccessDecision:
+    """Canonical free/open decision, independent of the course's real access_config.
+
+    Shared by FreeOnlyCourseAccessBackend.get_access (called after its own
+    validate_course_config check) and VisibilityEnforcingBackend's access
+    override (called directly, deliberately bypassing validate_course_config).
+    """
+    if is_registered_for_course(user, course):
+        return CourseAccessDecision(
+            cta_label="Continue",
+            cta_url=reverse(
+                "student_interface:course_home",
+                kwargs={"course_slug": course.slug},
+            ),
+            can_self_register=False,
+            can_access_content=True,
+            enrolment_summary=_FREE_ENROLMENT_SUMMARY,
+            acquisition_heading=_FREE_ACQUISITION_HEADING,
+            acquisition_subtext=_FREE_ACQUISITION_SUBTEXT,
+        )
+
+    return CourseAccessDecision(
+        cta_label="Enrol for free",
+        cta_url=reverse(
+            "student_interface:initiate_course_access",
+            kwargs={"course_slug": course.slug},
+        ),
+        can_self_register=True,
+        can_access_content=False,
+        enrolment_summary=_FREE_ENROLMENT_SUMMARY,
+        acquisition_heading=_FREE_ACQUISITION_HEADING,
+        acquisition_subtext=_FREE_ACQUISITION_SUBTEXT,
+    )
+
+
 class FreeOnlyCourseAccessBackend(CourseAccessBackend):
     """Core free-only access backend.
 
@@ -247,34 +282,9 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
                 can_access_content=False,
             )
 
-        if is_registered_for_course(user, course):
-            return CourseAccessDecision(
-                cta_label="Continue",
-                cta_url=reverse(
-                    "student_interface:course_home",
-                    kwargs={"course_slug": course.slug},
-                ),
-                can_self_register=False,
-                can_access_content=True,
-                enrolment_summary=_FREE_ENROLMENT_SUMMARY,
-                acquisition_heading=_FREE_ACQUISITION_HEADING,
-                acquisition_subtext=_FREE_ACQUISITION_SUBTEXT,
-            )
-
         # At this point, config is valid and access_type is CourseAccessType.FREE
-        # (the only core value). Registered case handled above.
-        return CourseAccessDecision(
-            cta_label="Enrol for free",
-            cta_url=reverse(
-                "student_interface:initiate_course_access",
-                kwargs={"course_slug": course.slug},
-            ),
-            can_self_register=True,
-            can_access_content=False,
-            enrolment_summary=_FREE_ENROLMENT_SUMMARY,
-            acquisition_heading=_FREE_ACQUISITION_HEADING,
-            acquisition_subtext=_FREE_ACQUISITION_SUBTEXT,
-        )
+        # (the only core value).
+        return _free_access_decision(user=user, course=course)
 
     def is_accessible_for_free(self, *, course: Course) -> bool:
         """Always free — the only valid access type for this backend is FREE."""
@@ -321,7 +331,10 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
 
     def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
         from freedom_ls.content_engine.models import CourseVisibility
-        from freedom_ls.course_access.overrides import override_visibility_to_visible
+        from freedom_ls.course_access.overrides import (
+            override_access_to_free,
+            override_visibility_to_visible,
+        )
 
         if (
             course.visibility == CourseVisibility.COMING_SOON
@@ -351,13 +364,28 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
                 can_self_register=False,
                 can_access_content=False,
             )
+        if override_access_to_free():
+            # Dev/staging preview: replace the inner backend's real decision with
+            # the canonical free decision, ignoring the course's actual access_config.
+            return _free_access_decision(user=user, course=course)
         return self._inner.get_access(user=user, course=course)
 
     def is_accessible_for_free(self, *, course: Course) -> bool:
+        from freedom_ls.course_access.overrides import override_access_to_free
+
+        if override_access_to_free():
+            return True
         # Visibility does not change the access model; delegate to the inner backend.
         return self._inner.is_accessible_for_free(course=course)
 
     def get_access_badge(self, *, course: Course) -> AccessBadge | None:
+        from freedom_ls.course_access.overrides import override_access_to_free
+
+        if override_access_to_free():
+            # Dev/staging preview: badge reads "Free" regardless of the real
+            # access model. Delegated, not inlined, so the "Free" copy stays
+            # owned by FreeOnlyCourseAccessBackend.
+            return FreeOnlyCourseAccessBackend().get_access_badge(course=course)
         # The access-model badge is owned by the inner backend; the visibility
         # wrapper never mints its own badge copy.
         return self._inner.get_access_badge(course=course)
