@@ -20,6 +20,7 @@ from django.utils.csp import (
     CSP,
 )
 
+from freedom_ls.base.env import env_bool, env_float
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR, configure_theme
 from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
 
@@ -96,6 +97,7 @@ INSTALLED_APPS = [
     # "app_authentication",
     # xapi_learning_record_store
     "freedom_ls.base",
+    "freedom_ls.deployment",
     "freedom_ls.icons",
     "freedom_ls.markdown_rendering",
     "freedom_ls.content_engine",
@@ -180,6 +182,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "freedom_ls.site_aware_models.context_processors.site_config",
                 "freedom_ls.accounts.context_processors.signup_policy",
+                "freedom_ls.deployment.context_processors.posthog_config",
                 "django.template.context_processors.csp",
             ],
             "builtins": [
@@ -441,3 +444,13 @@ if not _webhook_salt:
         hashlib.sha256(b"webhook-encryption-salt-dev").digest()
     ).decode()
 SALT_KEY = _webhook_salt
+
+# PostHog / Sentry (resolved through freedom_ls.deployment.config)
+POSTHOG_API_KEY = os.environ.get("POSTHOG_API_KEY")
+POSTHOG_API_HOST = os.environ.get("POSTHOG_API_HOST")
+POSTHOG_UI_HOST = os.environ.get("POSTHOG_UI_HOST")
+SENTRY_DSN = os.environ.get("SENTRY_DSN")
+SENTRY_ENVIRONMENT = os.environ.get("SENTRY_ENVIRONMENT")
+SENTRY_RELEASE = os.environ.get("SENTRY_RELEASE")
+SENTRY_TRACES_SAMPLE_RATE = env_float("SENTRY_TRACES_SAMPLE_RATE", None)
+SENTRY_SEND_DEFAULT_PII = env_bool("SENTRY_SEND_DEFAULT_PII", False)

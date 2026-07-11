@@ -64,6 +64,7 @@ urlpatterns = [
     # path("api/", api.urls),
     # path("content_preview/", include("content_engine.preview_urls")),
     path("educator/", include("freedom_ls.educator_interface.urls")),
+    path("", include("freedom_ls.deployment.urls")),
     path("accounts/", include("allauth.urls")),
     path("accounts/", include("freedom_ls.accounts.urls")),
     path("", include("freedom_ls.student_interface.urls")),
