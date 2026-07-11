@@ -67,3 +67,83 @@ class TestCourseAccessSystemCheck:
         assert len(errors) == 1
         assert errors[0].id == "freedom_ls_course_access.E001"
         assert "COURSE_ACCESS_BACKEND" in errors[0].msg
+
+
+class TestPreviewOverridesDisabledInProductionCheck:
+    """W001: warn when a preview override is left on outside DEBUG."""
+
+    @override_settings(
+        DEBUG=False,
+        OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True,
+        OVERRIDE_COURSE_ACCESS_TO_FREE=False,
+    )
+    def test_fires_when_visibility_override_on_and_debug_false(self):
+        from freedom_ls.course_access.checks import (
+            check_preview_overrides_disabled_in_production,
+        )
+
+        warnings = check_preview_overrides_disabled_in_production(app_configs=None)
+
+        assert len(warnings) == 1
+        assert warnings[0].id == "freedom_ls_course_access.W001"
+        assert "OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE" in warnings[0].msg
+
+    @override_settings(
+        DEBUG=False,
+        OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=False,
+        OVERRIDE_COURSE_ACCESS_TO_FREE=True,
+    )
+    def test_fires_when_access_override_on_and_debug_false(self):
+        from freedom_ls.course_access.checks import (
+            check_preview_overrides_disabled_in_production,
+        )
+
+        warnings = check_preview_overrides_disabled_in_production(app_configs=None)
+
+        assert len(warnings) == 1
+        assert warnings[0].id == "freedom_ls_course_access.W001"
+        assert "OVERRIDE_COURSE_ACCESS_TO_FREE" in warnings[0].msg
+
+    @override_settings(
+        DEBUG=False,
+        OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True,
+        OVERRIDE_COURSE_ACCESS_TO_FREE=True,
+    )
+    def test_fires_once_listing_both_names_when_both_overrides_on(self):
+        from freedom_ls.course_access.checks import (
+            check_preview_overrides_disabled_in_production,
+        )
+
+        warnings = check_preview_overrides_disabled_in_production(app_configs=None)
+
+        assert len(warnings) == 1
+        assert "OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE" in warnings[0].msg
+        assert "OVERRIDE_COURSE_ACCESS_TO_FREE" in warnings[0].msg
+
+    @override_settings(
+        DEBUG=True,
+        OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True,
+        OVERRIDE_COURSE_ACCESS_TO_FREE=True,
+    )
+    def test_silent_when_debug_true_even_with_overrides_on(self):
+        from freedom_ls.course_access.checks import (
+            check_preview_overrides_disabled_in_production,
+        )
+
+        warnings = check_preview_overrides_disabled_in_production(app_configs=None)
+
+        assert warnings == []
+
+    @override_settings(
+        DEBUG=False,
+        OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=False,
+        OVERRIDE_COURSE_ACCESS_TO_FREE=False,
+    )
+    def test_silent_when_both_overrides_off(self):
+        from freedom_ls.course_access.checks import (
+            check_preview_overrides_disabled_in_production,
+        )
+
+        warnings = check_preview_overrides_disabled_in_production(app_configs=None)
+
+        assert warnings == []

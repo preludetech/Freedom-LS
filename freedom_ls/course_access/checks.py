@@ -1,7 +1,7 @@
 """Django system checks for the course_access app.
 
 Check IDs follow Django's convention: ``app_label.severity + number``.
-E = Error. Checks run automatically on runserver, migrate, test,
+E = Error, W = Warning. Checks run automatically on runserver, migrate, test,
 and ``manage.py check``.
 
 E001 — Either COURSE_ACCESS_BACKEND is unset (required), or a Course has an
@@ -9,6 +9,8 @@ E001 — Either COURSE_ACCESS_BACKEND is unset (required), or a Course has an
        same run: an unset backend short-circuits before any Course is checked.
        The latter surfaces config invalidated by a COURSE_ACCESS_BACKEND swap
        at manage.py check time.
+W001 — A dev/staging-only preview override (OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE
+       or OVERRIDE_COURSE_ACCESS_TO_FREE) is left on while DEBUG is False.
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from django.apps import AppConfig
-from django.core.checks import CheckMessage, Error, register
+from django.core.checks import CheckMessage, Error, Tags, Warning, register
 
 from freedom_ls.base.app_settings import required_settings_errors
 
@@ -69,3 +71,35 @@ def check_course_access_configs(
             )
 
     return errors
+
+
+@register(Tags.security)
+def check_preview_overrides_disabled_in_production(
+    app_configs: Sequence[AppConfig] | None, **kwargs: object
+) -> list[Warning]:
+    """W001: warn when a preview override is on while DEBUG is False."""
+    from django.conf import settings
+
+    from freedom_ls.course_access.config import config
+
+    if settings.DEBUG:
+        return []
+
+    on = [
+        name
+        for name in (
+            "OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE",
+            "OVERRIDE_COURSE_ACCESS_TO_FREE",
+        )
+        if bool(getattr(config, name))
+    ]
+    if not on:
+        return []
+
+    return [
+        Warning(
+            f"Course preview override(s) enabled with DEBUG=False: {on}. "
+            f"These are dev/staging only — unset them for this environment.",
+            id="freedom_ls_course_access.W001",
+        )
+    ]
