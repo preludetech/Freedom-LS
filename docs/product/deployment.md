@@ -1,6 +1,6 @@
 # Deployment
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-07-11_
 
 ## Summary
 
@@ -56,9 +56,11 @@ Django 6's built-in task framework (`django-tasks` with `DatabaseBackend`) is us
 The following are built into the application code and are always present regardless of deployment configuration:
 
 - **Whitenoise** — serves compressed, cache-busted static files directly from Django/Gunicorn. No separate static file server is required.
-- **S3-compatible media storage** — media files are stored via S3-compatible object storage (`AWS_*` environment variables). Configured via environment at runtime.
+- **S3-compatible media storage (Cloudflare R2)** — media files are stored via S3-compatible object storage, configured specifically for Cloudflare R2 (region, checksum, and compatibility settings suited to R2 rather than plain S3). Object storage is enabled by setting the storage bucket name via environment variable; if unset, the application falls back to local filesystem storage. Media is **private by default**: file links are time-limited signed URLs (one hour by default, configurable) rather than permanently public links, so application-gated course files are not exposed to anyone who obtains a link. A deployment can instead opt into public, edge-cacheable serving via a custom domain, but that is an explicit choice. See [security and data handling](./security-and-data-handling.md) for the rationale behind private-by-default media.
 - **`/health/` endpoint** — used by Docker health checks and uptime monitoring tools.
-- **Environment-variable configuration** — all secrets and deployment-specific settings (SECRET_KEY, HOST_DOMAIN, DB credentials, email credentials, DJANGO_ADMIN_URL, LEGAL_DOCS_MANIFEST_PATH, AWS/S3 storage) are provided via environment variables. No credentials are hardcoded.
+- **Sentry error tracking** — wired into the application and configured via the Sentry DSN environment variable. It is a no-op until that variable is supplied, so local/development and unconfigured deployments send nothing. Once configured it reports the deployment's environment name, release identifier, and a low default trace-sampling rate for cost control; attaching learner personal data to error reports is an explicit opt-in, off by default (see [security and data handling](./security-and-data-handling.md)). A staff-only verification endpoint lets an operator confirm a running deployment is actually reaching Sentry; it is inaccessible to anonymous or non-staff users.
+- **PostHog analytics** — a client-side analytics snippet is wired into the application and configured via environment variables (a project token and a region host, defaulting to the US region and overridable for the EU). If the project token is unset, the snippet does not render, so local/development deployments send no analytics by default.
+- **Environment-variable configuration** — all secrets and deployment-specific settings (SECRET_KEY, HOST_DOMAIN, DB credentials, email credentials, DJANGO_ADMIN_URL, LEGAL_DOCS_MANIFEST_PATH, object storage/R2, Sentry, PostHog) are provided via environment variables, each with a sensible in-repo default where one makes sense, so a deployment configures these services without copy-pasting settings code. No credentials are hardcoded.
 - **Tailwind build required at image-build time** — `npm run tailwind_build` must run during Docker image construction. `FLS_THEME` must be set at build time; it cannot be changed at runtime without a rebuild.
 
 ## Backups
@@ -92,7 +94,7 @@ The FLS operator (you) owns:
 - Encrypted backups (GPG before B2 sync — not yet automated)
 - PostgreSQL SSL connections
 - Access control (deploy key, limited sudo)
-- Logging and monitoring (Uptime Kuma, Sentry free tier recommended)
+- Logging and monitoring (Uptime Kuma; Sentry error tracking is built in and activates once a DSN is configured — a free-tier Sentry account is sufficient)
 - Incident response (documented plan required; not yet written)
 - Change management (git/PR workflow provides this)
 - Vulnerability management (Trivy for container image scanning, Dependabot for Python dependencies)

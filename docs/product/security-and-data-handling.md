@@ -1,13 +1,15 @@
 # Security and Data Handling
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-07-11_
 
 ## Summary
 
 - **Built:** All HTTP traffic is protected at the application layer: CSRF middleware, nh3 markdown sanitisation (Rust-based allowlist), clickjacking prevention (`X_FRAME_OPTIONS=SAMEORIGIN`), Argon2 password hashing, django-axes brute-force lockout, multi-site data isolation via `SiteAwareManager`, and SSRF-protected webhook delivery with Fernet-encrypted secrets.
 - **Built:** Dev-time security gates run on every commit via pre-commit hooks: detect-secrets, detect-private-key, bandit (medium+ severity), ruff, mypy, shellcheck, and merge-conflict/large-file/AST checks.
+- **Built:** Media files in object storage are private by default — served via time-limited signed URLs rather than public links, so application-gated course files do not leak from a guessed or shared link. Error tracking (Sentry) is wired but inactive until an operator supplies credentials, and defaults to **not** sending learner personal data with error events.
 - **Report-only:** Content Security Policy is currently in report-only mode (`SECURE_CSP_REPORT_ONLY`), not enforcing. HSTS is configurable but requires a staged rollout during deployment; it is not active by default.
 - **Not yet built:** 2FA/MFA, automated data-deletion tooling, data-subject-rights tooling, and a formal incident-response runbook do not exist in code. These are documented honestly in §4 and tracked in the [roadmap](./roadmap.md).
+- **Not yet built:** A per-request access-controlled media gate (re-checking course access on every file download) — signed URLs are time-limited but not access-checked per request, so anyone holding a live URL can fetch the file until it expires. Automated scrubbing of personal data from error-tracking events is likewise absent — opting into sending personal data to Sentry sends it unredacted.
 - **Infrastructure:** The target deployment uses Vultr Johannesburg (ISO 27001:2022 certified). Vultr's certification covers physical and hypervisor layers; the FLS operator owns OS hardening, access control, logging, backups, and ISMS documentation. See §5 for the shared-responsibility split.
 
 ---
@@ -88,6 +90,14 @@ A single FLS installation can serve multiple sites (domains), each with fully is
 
 Outbound webhooks use HMAC signing or custom auth headers. Per-site secrets are encrypted at rest using Fernet (`django-fernet-encrypted-fields`). In production mode, webhook target URLs are validated against an SSRF allowlist — only HTTPS URLs resolving to public IP addresses are permitted; private/loopback addresses are blocked. See [webhooks](./webhooks.md) for the full control set.
 
+### Media file access control (built, with a stated limitation)
+
+Course pages are access-controlled: a learner must be authorised to view a course before FLS renders a link to its content. Historically the files themselves — PDFs, videos, images — were not: once a file's URL was known it could be fetched directly regardless of course access, because file links pointed straight at storage rather than passing through a permission check on every download.
+
+When object storage is configured for a deployment, this gap is closed at the storage layer: files are private by default and every file link is a signed URL valid for a limited time (one hour, by default). This prevents files from being publicly discoverable or permanently accessible from a leaked link. Public, edge-cacheable serving remains available for deployments that deliberately opt into it (for example, to put large media behind a CDN), but that is an explicit choice, not the default.
+
+**Stated limitation:** this is storage-layer privacy, not per-request access control. FLS does not re-check whether a specific learner is still authorised for a specific file at the moment it is downloaded — a signed link, once issued, works for anyone who has it until it expires. The stronger control (routing every file download through the same access check used for course pages) is not yet built; see the [roadmap](./roadmap.md). When object storage is not configured, media is served from local disk without this signing — that mode is intended for development only. See [deployment](./deployment.md) for how object storage is configured.
+
 ---
 
 ## Data handling (current-state, honest)
@@ -111,6 +121,12 @@ No payment data, government ID, or biometric data is stored by FLS itself.
 ### Encryption in transit
 
 TLS is termination at the Caddy reverse proxy (or Cloudflare edge) using certificates from Let's Encrypt. `SecurityMiddleware` can enforce HTTPS redirect via `SECURE_SSL_REDIRECT`. Database connections use SSL/TLS as documented in the deployment checklist. All of this requires correct deployment configuration — see [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §3.
+
+### Error tracking and personal data (Sentry)
+
+FLS can report application errors to Sentry, an external error-tracking service, once an operator supplies credentials; it does nothing until then. Because FLS holds learner personal data (name, email, course activity), an error report can incidentally include that data — for example the email of the learner who triggered the error, or the contents of the request that caused it.
+
+This is **off by default**: an operator must consciously opt in via a configuration flag before personal data is attached to error reports. Left at its default, error reports omit personal data. Automated redaction of personal data from error events before they reach Sentry is **not yet built** — so a deployment that opts into sending it should treat Sentry as a place where that data now lives, with no scrubbing safety net. See [deployment](./deployment.md) for how Sentry is configured.
 
 ### Encryption at rest
 
