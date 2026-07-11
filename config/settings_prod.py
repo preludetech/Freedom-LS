@@ -168,37 +168,20 @@ ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
 
 if AWS_STORAGE_BUCKET_NAME:
-    # ACL_OPTIONS = [
-    #     "private",
-    #     "public-read",
-    #     "public-read-write",
-    #     "aws-exec-read",
-    #     "authenticated-read",
-    #     "bucket-owner-read",
-    #     "bucket-owner-full-control",
-    # ]
+    from freedom_ls.deployment.storage import build_s3_media_storage
 
-    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_ACCESS_KEY_ID = os.getenv("AWS_S3_ACCESS_KEY_ID")
-    AWS_S3_SECRET_ACCESS_KEY = os.getenv("AWS_S3_SECRET_ACCESS_KEY")
-    AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL")
-    AWS_DEFAULT_ACL = os.getenv("AWS_DEFAULT_ACL")
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME")
-
-    default_storage = {
-        "BACKEND": "storages.backends.s3.S3Storage",
-        # "BACKEND": "storages.backends.s3.S3Storage",
-        # storages.backends.s3boto3.S3Boto3Storage
-        "OPTIONS": {
-            "bucket_name": AWS_STORAGE_BUCKET_NAME,
-            "access_key": AWS_S3_ACCESS_KEY_ID,
-            "secret_key": AWS_S3_SECRET_ACCESS_KEY,
-            "endpoint_url": AWS_S3_ENDPOINT_URL,
-            "region_name": AWS_S3_REGION_NAME,
-            "default_acl": AWS_DEFAULT_ACL,
-            "signature_version": "s3v4",
-        },
-    }
+    default_storage = build_s3_media_storage(
+        bucket_name=AWS_STORAGE_BUCKET_NAME,
+        access_key=os.getenv("AWS_S3_ACCESS_KEY_ID"),
+        secret_key=os.getenv("AWS_S3_SECRET_ACCESS_KEY"),
+        endpoint_url=os.getenv("AWS_S3_ENDPOINT_URL"),
+        region_name=os.getenv("AWS_S3_REGION_NAME"),
+        custom_domain=os.getenv("AWS_S3_CUSTOM_DOMAIN"),  # unset ⇒ private signed URLs
+        # default True (private signed URLs); case-insensitive so `false`/`False` both disable it
+        querystring_auth=os.getenv("AWS_QUERYSTRING_AUTH", "True").strip().lower()
+        != "false",
+        querystring_expire=int(os.getenv("AWS_QUERYSTRING_EXPIRE", "3600")),
+    )
 else:
     default_storage = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
