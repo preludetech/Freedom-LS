@@ -69,7 +69,6 @@ def test_user_with_incomplete_forms_redirected_to_completion(mock_site_context, 
     assert response.status_code == 302
     completion_url = reverse("accounts:complete_registration")
     assert response.url.startswith(completion_url)
-    assert f"next={profile_url}" in response.url
 
 
 @pytest.mark.django_db
@@ -86,7 +85,6 @@ def test_settings_default_drives_forms_when_no_policy(mock_site_context, setting
     assert response.status_code == 302
     completion_url = reverse("accounts:complete_registration")
     assert response.url.startswith(completion_url)
-    assert f"next={profile_url}" in response.url
 
 
 @pytest.mark.django_db
@@ -195,7 +193,7 @@ def test_substring_match_does_not_exempt(mock_site_context, site):
     client.force_login(user)
 
     # `accounts:account_profile` is not in EXEMPT_URL_NAMES, so the user
-    # should be redirected to complete_registration (with next= preserved).
+    # should be redirected to complete_registration.
     profile_url = reverse("accounts:account_profile")
     response = client.get(profile_url)
     assert response.status_code == 302

@@ -1,11 +1,11 @@
 """Tests for deferred login — user intent survives authentication.
 
 Covers:
-- Middleware preserving `next` through the registration-completion step.
-- Full deferred-login flows: free course (login + signup paths) and
-  application-gated course (apply target survives auth).
-- New-user + additional-registration-forms `next` survival (critical path).
-- Open-redirect rejection in the middleware's `next` handling.
+- Deferred-login flows via `@login_required`: anonymous access to
+  `initiate_course_access` / `apply` redirects to login with `?next=` set,
+  and after login the free/gated course flows land the learner correctly.
+- Open-redirect rejection in the completion view's post-submit redirect.
+- The completion view re-emitting a safe `?next=` as a hidden form field.
 """
 
 from __future__ import annotations
@@ -21,9 +21,6 @@ from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
 from freedom_ls.student_management.models import UserCourseRegistration
 
-ALWAYS_INCOMPLETE_PATH = (
-    "freedom_ls.accounts.tests._completion_view_fixtures.AlwaysIncompleteForm"
-)
 PHONE_FORM_PATH = "freedom_ls.accounts.tests._completion_view_fixtures.PhoneNumberForm"
 
 
@@ -31,128 +28,6 @@ def _next_param(location: str) -> str | None:
     """Return the single `next` query-param value from a redirect Location, if any."""
     values = parse_qs(urlparse(location).query).get("next")
     return values[0] if values else None
-
-
-# ---------------------------------------------------------------------------
-# Middleware: next preservation
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_middleware_preserves_next_from_get_param(
-    mock_site_context, site, settings, logged_in_client
-):
-    """Middleware appends the in-flight `next` to the completion redirect URL.
-
-    When the user reaches a protected page that carries `?next=…` (e.g.
-    allauth forwarded it after signup), the middleware must forward that
-    same `next` into the `complete_registration` redirect so the chain
-    survives to the end.
-    """
-    SiteSignupPolicyFactory(
-        site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
-    )
-    user = UserFactory()
-    client = logged_in_client(user)
-
-    target_path = "/courses/free-test-course/access/"
-    # The completion view is exempt — hit a non-exempt URL that carries ?next
-    # to trigger the middleware.
-    profile_url = reverse("accounts:account_profile") + f"?next={target_path}"
-    response = client.get(profile_url, follow=False)
-
-    assert response.status_code == 302
-    expected = reverse("accounts:complete_registration") + f"?next={target_path}"
-    assert response["Location"] == expected
-
-
-@pytest.mark.django_db
-def test_middleware_falls_back_to_request_path_when_no_next_param(
-    mock_site_context, site, settings, logged_in_client
-):
-    """When no ?next= is in the query string, `request.path` is used as fallback."""
-    SiteSignupPolicyFactory(
-        site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
-    )
-    user = UserFactory()
-    client = logged_in_client(user)
-
-    profile_url = reverse("accounts:account_profile")
-    response = client.get(profile_url, follow=False)
-
-    assert response.status_code == 302
-    expected = reverse("accounts:complete_registration") + f"?next={profile_url}"
-    assert response["Location"] == expected
-
-
-@pytest.mark.django_db
-def test_middleware_rejects_off_host_next_and_falls_back_to_path(
-    mock_site_context, site, settings, logged_in_client
-):
-    """An off-host `next` value must NOT be forwarded by the middleware.
-
-    When `url_has_allowed_host_and_scheme` rejects the supplied `?next=`, the
-    middleware discards it and falls back to the (always same-host)
-    `request.path`, so no unvalidated redirect leaks and the user still keeps a
-    sensible destination.
-    """
-    SiteSignupPolicyFactory(
-        site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
-    )
-    user = UserFactory()
-    client = logged_in_client(user)
-
-    profile_path = reverse("accounts:account_profile")
-    response = client.get(
-        profile_path + "?next=https://evil.example.com/phish", follow=False
-    )
-
-    assert response.status_code == 302
-    # The off-host value is rejected; the same-host request path is preserved.
-    assert "evil.example.com" not in response["Location"]
-    expected = reverse("accounts:complete_registration") + f"?next={profile_path}"
-    assert response["Location"] == expected
-
-
-# ---------------------------------------------------------------------------
-# Full chain: new-user + additional-registration-forms next survival
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_next_survives_complete_registration_step(
-    mock_site_context, site, settings, logged_in_client
-):
-    """Intent destination survives the forced registration-completion step.
-
-    Simulates the critical path:
-      1. User is authenticated but has incomplete registration forms.
-      2. They request a protected page (simulated via the middleware redirect).
-      3. The middleware forwards `next` into `complete_registration?next=…`.
-      4. They submit the form.
-      5. The view redirects them to the original destination.
-    """
-    STORED_PHONE_NUMBERS.clear()
-
-    SiteSignupPolicyFactory(site=site, additional_registration_forms=[PHONE_FORM_PATH])
-    user = UserFactory()
-    client = logged_in_client(user)
-
-    target_path = "/courses/free-test-course/access/"
-
-    # Submit the completion form with the next parameter (as if the middleware
-    # forwarded the user there with ?next=...).
-    response = client.post(
-        reverse("accounts:complete_registration") + f"?next={target_path}",
-        {
-            "PhoneNumberForm-phone_number": "+27 11 555 0001",
-            "next": target_path,
-        },
-        follow=False,
-    )
-
-    assert response.status_code == 302
-    assert response["Location"] == target_path
 
 
 @pytest.mark.django_db

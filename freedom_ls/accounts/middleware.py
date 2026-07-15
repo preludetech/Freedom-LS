@@ -20,14 +20,12 @@ import hashlib
 import json
 from collections.abc import Callable
 from typing import cast
-from urllib.parse import quote
 
 from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve, reverse
-from django.utils.http import url_has_allowed_host_and_scheme
 
 EXEMPT_URL_NAMES: frozenset[str] = frozenset(
     {
@@ -115,23 +113,7 @@ class RegistrationCompletionMiddleware:
             self._mark_complete(request, dotted_paths_hash)
             return self.get_response(request)
 
-        # Preserve the in-flight destination through the forced completion step.
-        # Prefer a validated ?next= that allauth already forwarded; otherwise
-        # fall back to the intercepted path itself, which is always same-host so
-        # the user never silently loses their destination. `request.path` (not
-        # `get_full_path()`) avoids dragging unrelated query params along.
-        candidate = request.GET.get("next")
-        if not (
-            candidate
-            and url_has_allowed_host_and_scheme(
-                candidate,
-                allowed_hosts={request.get_host()},
-                require_https=request.is_secure(),
-            )
-        ):
-            candidate = request.path
-        target = f"{reverse('accounts:complete_registration')}?next={quote(candidate)}"
-        return redirect(target)
+        return redirect(reverse("accounts:complete_registration"))
 
     # ------------------------------------------------------------------
     # Helpers

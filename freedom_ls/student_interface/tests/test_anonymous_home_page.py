@@ -4,7 +4,7 @@ They cover:
 - Anonymous GET / returns 200 (no login redirect)
 - Anonymous home shows hero headline + Browse-all CTA
 - Anonymous home does NOT show authenticated-only content
-- Anonymous home shows Login/Sign-up buttons carrying next=/
+- Anonymous home shows Login/Sign-up buttons (un-parameterised, no next=)
 - Anonymous GET / does NOT call backend.get_dashboard_contributions
 - Authenticated dashboard unchanged (hero absent for auth user)
 """
@@ -91,33 +91,6 @@ def test_anonymous_dashboard_shows_login_link(mock_site_context):
     login_url = reverse("account_login")
     assert "Login" in body
     assert login_url in body
-
-
-@pytest.mark.django_db
-def test_anonymous_dashboard_login_link_carries_next(mock_site_context):
-    """Login link on anonymous home page carries next=/ (current path)."""
-    client = Client()
-    dashboard_url = reverse("student_interface:dashboard")
-    response = client.get(dashboard_url)
-    body = response.content.decode()
-    login_url = reverse("account_login")
-    # The login link must carry next=<dashboard path> so post-login lands back here.
-    assert f"{login_url}?next={dashboard_url}" in body
-
-
-@pytest.mark.django_db
-def test_anonymous_login_link_carries_deeper_path(mock_site_context):
-    """Login link carries the current path, not just root.
-
-    Exercises login_prompt.html against a deeper anonymous page than / (the
-    catalogue), so a regression that hardcodes ?next=/ would be caught.
-    """
-    client = Client()
-    courses_url = reverse("student_interface:courses")
-    response = client.get(courses_url)
-    body = response.content.decode()
-    login_url = reverse("account_login")
-    assert f"{login_url}?next={courses_url}" in body
 
 
 @pytest.mark.django_db

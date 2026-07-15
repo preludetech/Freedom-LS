@@ -1,11 +1,11 @@
 {% url 'account_login' as login_url %}
 <div class="flex items-center gap-2">
-    <c-button href="{{ login_url }}?next={{ request.path|urlencode }}">
+    <c-button href="{{ login_url }}">
         Login
     </c-button>
     {% if allow_signups %}
         {% url 'account_signup' as signup_url %}
-        <c-button href="{{ signup_url }}?next={{ request.path|urlencode }}">
+        <c-button href="{{ signup_url }}">
             Sign up
         </c-button>
     {% endif %}
