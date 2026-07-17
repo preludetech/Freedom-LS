@@ -8,7 +8,6 @@
       "Bash(git diff*)",
       "Bash(git log*)",
       "Bash(git show *)",
-      "Bash(find)",
       "Bash(find:*)",
       "Bash(uv run pytest:*)",
       "Bash(uv run git commit:*)",
