@@ -93,11 +93,13 @@ INSTALLED_APPS = [
     "unfold.contrib.constance",  # optional, if django-constance package is used
     "django.contrib.admin",  # required
     "guardian",
+    "health_check",
     # CUSTOM APPS
     # "app_authentication",
     # xapi_learning_record_store
     "freedom_ls.base",
     "freedom_ls.deployment",
+    "freedom_ls.health",
     "freedom_ls.icons",
     "freedom_ls.markdown_rendering",
     "freedom_ls.content_engine",
