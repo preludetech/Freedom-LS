@@ -1,6 +1,7 @@
 import os
 
 from freedom_ls.base.env import env_bool, env_int
+from freedom_ls.deployment import settings_defaults as fls_defaults
 
 from .settings_base import *  # noqa: F403
 
@@ -16,6 +17,11 @@ CSRF_TRUSTED_ORIGINS = [f"https://{HOST_DOMAIN}"]
 
 # --- HTTPS Enforcement ---
 SECURE_SSL_REDIRECT = True
+
+# Safe as a hard default because production terminates TLS at a trusted proxy that
+# forwards X-Forwarded-Proto: https on every request reaching this app; the trust
+# preconditions live beside the primitive in settings_defaults.py.
+SECURE_PROXY_SSL_HEADER = fls_defaults.SECURE_PROXY_SSL_HEADER
 
 # --- HSTS (configurable rollout via env vars) ---
 SECURE_HSTS_SECONDS = int(os.environ.get("HSTS_SECONDS", "3600"))
@@ -45,9 +51,11 @@ SESSION_COOKIE_AGE = 1209600  # 2 weeks
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5_242_880  # 5 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5_242_880  # 5 MB
 
-SECRET_KEY = os.getenv("SECRET_KEY", "")
+SECRET_KEY = fls_defaults.require_secret_key()
 
-DATABASES = {
+# Explicitly typed so the OPTIONS/CONN_MAX_AGE/CONN_HEALTH_CHECKS values added below
+# (not all plain strings) type-check as assignments into the same dict.
+DATABASES: dict[str, dict[str, str | int | bool | dict[str, str]]] = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "USER": os.getenv("DB_USER", "DB_USER"),
@@ -58,94 +66,24 @@ DATABASES = {
     },
 }
 
+DATABASES["default"]["OPTIONS"] = fls_defaults.database_ssl_options(
+    os.getenv("DB_SSLMODE", "prefer")
+)
+
+DATABASES["default"]["CONN_MAX_AGE"] = env_int(
+    "DB_CONN_MAX_AGE", fls_defaults.CONN_MAX_AGE
+)
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = fls_defaults.CONN_HEALTH_CHECKS
+
 
 # Static files
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # noqa: F405
 
 
 # Logging configuration
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {name} {module} {process:d} {thread:d} {message}",
-            "style": "{",
-        },
-        "simple": {
-            "format": "{levelname} {asctime} {message}",
-            "style": "{",
-        },
-    },
-    "filters": {
-        "require_debug_false": {
-            "()": "django.utils.log.RequireDebugFalse",
-        },
-    },
-    "handlers": {
-        "console": {
-            "level": "INFO",
-            "class": "logging.StreamHandler",
-            "formatter": "simple",
-        },
-        "file": {
-            "level": "INFO",
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": os.path.join(BASE_DIR, "logs", "django.log"),  # noqa: F405
-            "maxBytes": 1024 * 1024 * 10,  # 10 MB
-            "backupCount": 5,
-            "formatter": "verbose",
-        },
-        "error_file": {
-            "level": "ERROR",
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": os.path.join(BASE_DIR, "logs", "django_errors.log"),  # noqa: F405
-            "maxBytes": 1024 * 1024 * 10,  # 10 MB
-            "backupCount": 5,
-            "formatter": "verbose",
-        },
-        "security_file": {
-            "level": "INFO",
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": os.path.join(BASE_DIR, "logs", "security.log"),  # noqa: F405
-            "maxBytes": 1024 * 1024 * 10,  # 10 MB
-            "backupCount": 5,
-            "formatter": "verbose",
-        },
-    },
-    "loggers": {
-        "django": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "django.request": {
-            "handlers": ["error_file", "console"],
-            "level": "ERROR",
-            "propagate": False,
-        },
-        "django.security": {
-            "handlers": ["security_file", "console"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "django.db.backends": {
-            "handlers": ["file"],
-            "level": "WARNING",
-            "propagate": False,
-        },
-        # Application loggers
-        "freedom_ls": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-    },
-    "root": {
-        "handlers": ["console", "file"],
-        "level": "INFO",
-    },
-}
+# log_dir is temporary: drop it once container-level log size/rotation caps exist,
+# to move to stdout-only.
+LOGGING = fls_defaults.build_logging_config(log_dir=BASE_DIR / "logs")  # noqa: F405
 
 # Email
 
@@ -187,16 +125,6 @@ else:
     default_storage = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     }
-
-
-# TODO @claude: Configure a production-ready TASKS backend (e.g., database-backed)
-# when background tasks are used in production. The base setting uses ImmediateBackend
-# which runs tasks synchronously.
-TASKS = {
-    "default": {
-        "BACKEND": "django.tasks.backends.immediate.ImmediateBackend",
-    },
-}
 
 
 STORAGES = {
