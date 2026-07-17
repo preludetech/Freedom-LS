@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 
 import pytest
@@ -168,11 +169,23 @@ def test_conn_max_age_constant_is_positive_int_in_recommended_range() -> None:
     assert 60 <= settings_defaults.CONN_MAX_AGE <= 300
 
 
-def test_database_tasks_constant_uses_database_backend() -> None:
-    assert (
-        settings_defaults.DATABASE_TASKS["default"]["BACKEND"]
-        == "django_tasks_db.DatabaseBackend"
-    )
+def test_database_tasks_default_backend_path_is_importable() -> None:
+    from django.utils.module_loading import import_string
+
+    backend_path = settings_defaults.DATABASE_TASKS["default"]["BACKEND"]
+
+    assert import_string(backend_path) is not None
+
+
+def test_prod_settings_uses_database_task_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HOST_DOMAIN", "example.test")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key")
+
+    prod = importlib.reload(importlib.import_module("config.settings_prod"))
+
+    assert prod.TASKS["default"]["BACKEND"] == "django_tasks_db.DatabaseBackend"
 
 
 @override_settings(SECURE_PROXY_SSL_HEADER=settings_defaults.SECURE_PROXY_SSL_HEADER)

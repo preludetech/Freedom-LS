@@ -394,6 +394,10 @@ class WebhookDelivery(SiteAwareModel):
     class Meta:
         verbose_name_plural = "Webhook deliveries"
         constraints = [
+            # One delivery per (event, endpoint) — the at-least-once idempotency
+            # guard. Applies cleanly on fresh databases; a live database with
+            # pre-existing duplicate rows must be de-duplicated once before the
+            # constraint migration runs.
             models.UniqueConstraint(
                 fields=["event", "endpoint"], name="uniq_delivery_event_endpoint"
             ),

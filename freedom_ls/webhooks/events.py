@@ -75,6 +75,11 @@ def dispatch_event(event_id: str, site_id: int) -> None:
         if not check_circuit_breaker(endpoint):
             continue
 
+        # The unique (event, endpoint) row is the at-least-once idempotency guard:
+        # a redelivered task finds the existing row and must not re-send. A row
+        # left in "pending" (a prior attempt crashed after the row committed but
+        # before the send finished) is not auto-retried; recover it via the admin
+        # "Retry" action.
         delivery, created = WebhookDelivery.objects.get_or_create(
             event=event,
             endpoint=endpoint,

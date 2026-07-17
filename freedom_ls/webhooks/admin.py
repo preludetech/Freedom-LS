@@ -243,12 +243,14 @@ class WebhookDeliveryAdmin(SiteAwareModelAdmin):
             return url[:50] + "..."
         return url
 
-    @admin.action(description="Retry failed/dead-lettered deliveries")
+    @admin.action(description="Retry failed/stuck/dead-lettered deliveries")
     def retry_deliveries(
         self, request: HttpRequest, queryset: QuerySet[WebhookDelivery]
     ) -> None:
+        # "pending" is included so a delivery stranded by a worker crash (row
+        # committed, send never finished) has a manual recovery path.
         retryable = queryset.filter(
-            status__in=["failed", "permanent_failure", "dead_letter"]
+            status__in=["pending", "failed", "permanent_failure", "dead_letter"]
         ).select_related("endpoint", "event")
         for delivery in retryable:
             delivery.attempt_count = 0
