@@ -75,10 +75,10 @@ def dispatch_event(event_id: str, site_id: int) -> None:
         if not check_circuit_breaker(endpoint):
             continue
 
-        delivery = WebhookDelivery.objects.create(
+        delivery, created = WebhookDelivery.objects.get_or_create(
             event=event,
             endpoint=endpoint,
-            status="pending",
-            site_id=site_id,
+            defaults={"status": "pending", "site_id": site_id},
         )
-        attempt_delivery(delivery)
+        if created:
+            attempt_delivery(delivery)

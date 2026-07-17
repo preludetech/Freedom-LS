@@ -393,6 +393,11 @@ class WebhookDelivery(SiteAwareModel):
 
     class Meta:
         verbose_name_plural = "Webhook deliveries"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "endpoint"], name="uniq_delivery_event_endpoint"
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"Delivery {self.pk} ({self.status})"

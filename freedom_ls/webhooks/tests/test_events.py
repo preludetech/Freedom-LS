@@ -170,6 +170,19 @@ class TestDispatchEvent:
         assert WebhookDelivery.objects.count() == 0
         mock_attempt.assert_not_called()
 
+    def test_dispatch_event_is_idempotent(self, mock_site_context: object) -> None:
+        from freedom_ls.webhooks.events import dispatch_event
+
+        WebhookEndpointFactory(event_types=["user.registered"], is_active=True)
+        event = WebhookEventFactory(event_type="user.registered")
+
+        with patch("freedom_ls.webhooks.events.attempt_delivery") as mock_attempt:
+            dispatch_event(str(event.pk), mock_site_context.pk)
+            dispatch_event(str(event.pk), mock_site_context.pk)
+
+        assert WebhookDelivery.objects.count() == 1
+        mock_attempt.assert_called_once()
+
     def test_filters_by_site_id(self, mock_site_context: object) -> None:
         from freedom_ls.accounts.factories import SiteFactory
         from freedom_ls.webhooks.events import dispatch_event
