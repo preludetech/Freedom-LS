@@ -168,6 +168,13 @@ def test_conn_max_age_constant_is_positive_int_in_recommended_range() -> None:
     assert 60 <= settings_defaults.CONN_MAX_AGE <= 300
 
 
+def test_database_tasks_constant_uses_database_backend() -> None:
+    assert (
+        settings_defaults.DATABASE_TASKS["default"]["BACKEND"]
+        == "django_tasks_db.DatabaseBackend"
+    )
+
+
 @override_settings(SECURE_PROXY_SSL_HEADER=settings_defaults.SECURE_PROXY_SSL_HEADER)
 def test_forwarded_https_header_makes_request_secure() -> None:
     request = RequestFactory().get("/", HTTP_X_FORWARDED_PROTO="https")

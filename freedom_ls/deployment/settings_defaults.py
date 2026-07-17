@@ -42,6 +42,14 @@ CONN_HEALTH_CHECKS: bool = True
 # and kept greppable there rather than mutated invisibly from an AppConfig.
 SECURE_REDIRECT_EXEMPT: list[str] = [r"^health/"]
 
+# Durable, database-backed task backend for production (django-tasks-db, ORM/Postgres —
+# no Celery/Redis). HARD operational dependency: an out-of-process `python manage.py db_worker`
+# must be running, or enqueued tasks persist in the DB and never execute. Enqueue stays
+# on-commit (Django default) so the worker sees the committed WebhookEvent row.
+DATABASE_TASKS: dict[str, dict[str, str]] = {
+    "default": {"BACKEND": "django_tasks_db.DatabaseBackend"},
+}
+
 
 def require_secret_key() -> str:
     """Return SECRET_KEY from the environment, raising ImproperlyConfigured if

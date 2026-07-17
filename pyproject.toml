@@ -35,6 +35,7 @@ dependencies = [
     "pymdown-extensions>=10.21.3",
     "sentry-sdk[django]>=2.64.0",
     "django-health-check>=4.4.3",
+    "django-tasks-db==0.12.0",
 ]
 
 [project.optional-dependencies]

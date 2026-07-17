@@ -76,6 +76,10 @@ DATABASES["default"]["CONN_MAX_AGE"] = env_int(
 )
 DATABASES["default"]["CONN_HEALTH_CHECKS"] = fls_defaults.CONN_HEALTH_CHECKS
 
+# Durable, database-backed task backend (django-tasks-db). Requires a running
+# `python manage.py db_worker` process; see settings_defaults.py for details.
+TASKS = fls_defaults.DATABASE_TASKS
+
 
 # Static files
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # noqa: F405

@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     "django.contrib.sitemaps",
     "django.contrib.postgres",
     "django.tasks",
+    "django_tasks_db",
     "unfold",  # before django.contrib.admin
     "unfold.contrib.filters",  # optional, if special filters are needed
     "unfold.contrib.forms",  # optional, if special form elements are needed
@@ -403,8 +404,9 @@ SECURE_CSP_REPORT_ONLY = {
 
 
 # Background Tasks Framework
-# Using ImmediateBackend for development. A production backend
-# (e.g., database-backed) is needed before using tasks in production.
+# ImmediateBackend runs tasks inline with no worker, which is what dev and the
+# test suite need. Production overrides TASKS to the durable database-backed
+# backend in settings_prod.py.
 TASKS = {
     "default": {
         "BACKEND": "django.tasks.backends.immediate.ImmediateBackend",
