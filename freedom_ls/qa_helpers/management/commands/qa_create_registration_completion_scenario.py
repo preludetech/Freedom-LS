@@ -22,7 +22,9 @@ import djclick as click
 
 from django.contrib.sites.models import Site
 
-from freedom_ls.accounts.models import SiteSignupPolicy
+from freedom_ls.accounts.factories import LegalConsentFactory
+from freedom_ls.accounts.legal_docs import get_legal_doc
+from freedom_ls.accounts.models import LegalConsent, SiteSignupPolicy, User
 from freedom_ls.accounts.registration_forms import get_incomplete_forms
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.qa_helpers.factories import QARegistrationCompletionFactory
@@ -42,6 +44,36 @@ from freedom_ls.student_management.models import UserCourseRegistration
 COMPLETION_FORM_PATH = (
     "freedom_ls.qa_helpers.registration_forms.QAProfileCompletionForm"
 )
+
+
+def _ensure_legal_consents(learner: User, site: Site) -> list[str]:
+    """Idempotently record terms + privacy LegalConsent rows for the learner.
+
+    Mirrors what ``SignupForm.custom_signup`` writes at signup so the seeded
+    student looks like a real, fully-consented account when the policy has
+    ``require_terms_acceptance=True``. ``LegalConsent`` is append-only, so a
+    row is only created when one is missing for that document type. The real
+    doc ``version``/``git_hash`` are copied from the site's legal docs.
+    """
+    recorded: list[str] = []
+    for doc_type in ("terms", "privacy"):
+        if LegalConsent.objects.filter(
+            user=learner, document_type=doc_type, site=site
+        ).exists():
+            recorded.append(doc_type)
+            continue
+        doc = get_legal_doc(site, doc_type)
+        if doc is None:
+            continue
+        LegalConsentFactory(
+            user=learner,
+            site=site,
+            document_type=doc_type,
+            document_version=doc.version,
+            git_hash=doc.git_hash,
+        )
+        recorded.append(doc_type)
+    return recorded
 
 
 @click.command()
@@ -97,6 +129,10 @@ def command(site_name: str) -> None:
     # middleware does NOT intercept them even though the form is now required.
     QARegistrationCompletionFactory(user=learner)
 
+    # Record terms + privacy consent so the "complete" student mirrors a real,
+    # fully-consented signup (policy has require_terms_acceptance=True).
+    consents = _ensure_legal_consents(learner, site)
+
     # Verify the gate behaves: seeded learner complete, hypothetical new signup gated.
     learner_incomplete = get_incomplete_forms(
         learner, policy.additional_registration_forms
@@ -133,6 +169,11 @@ def command(site_name: str) -> None:
         f"Student registrations: {reg_count} | applications: {app_count} "
         f"(both must be 0)",
         fg="green" if reg_count == 0 and app_count == 0 else "red",
+        bold=True,
+    )
+    click.secho(
+        f"Student legal consents recorded: {consents} (terms + privacy expected)",
+        fg="green" if set(consents) == {"terms", "privacy"} else "yellow",
         bold=True,
     )
     click.secho(

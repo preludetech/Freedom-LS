@@ -1,141 +1,158 @@
 # QA Report: vanilla allauth login after removing `next`-threading
 
-**Branch:** `bugfix-shitty-allauth-decisions`
-**Site:** DemoDev (dev forces `FORCE_SITE_NAME="DemoDev"`, so every request resolves to DemoDev regardless of port)
-**Server:** `http://127.0.0.1:8999`
-**Date:** 2026-07-15
-**Result:** ✅ **All tests passed. No bugs found.**
+**Feature under test:** the revert of the home-feature `next`-threading allauth customisations.
+**Site:** DemoDev (dev server forces `FORCE_SITE_NAME="DemoDev"`, so every request resolves to
+DemoDev; its brand renders as "FirstClass").
+**Tooling:** Playwright MCP at desktop 1920×1080, mobile 375×812, tablet 768×1024. Test data was
+created/verified by the `fls:qa-data-helper` agent; the confirmation emails were read from the
+local Mailpit catcher (SMTP :1025 / UI :8025).
 
-Every test in `3. frontend_qa.md` was executed with Playwright MCP across desktop (1920×1080),
-mobile (375×812) and tablet (768×1024). Test data (free/gated courses, a complete student, and the
-DemoDev signup policy with an additional registration form) was provisioned via the
-`fls:qa-data-helper` agent — see *Notes* below.
+## Result: PASS — no failing tests, no skipped tests
+
+Every test in the plan (1, 1b, 1c, 2, 2b, 3, 4a, 4b, 4c, 4d) was executed and passed. Two
+environment/doc observations are recorded below; neither is a product defect.
 
 ---
 
 ## Test results
 
-| Test | Description | Result |
-|---|---|---|
-| 1 | Anonymous header Login/Sign-up links have **no** `?next=` (home page) | ✅ PASS |
-| 1b | Same, on a deeper page (`/courses/`) — no `?next=/courses/` appended | ✅ PASS |
-| 1c | Signups disabled hides the Sign-up link, Login stays | ✅ PASS |
-| 2 | Vanilla `@login_required` carries an existing user back to the free-course CTA | ✅ PASS |
-| 2b | Application-gated `apply` CTA — no auto-POST, lands on GET confirmation page | ✅ PASS |
-| 3 | Forced registration-completion drops the destination → lands on site home | ✅ PASS |
+### Test 1 — Anonymous header Login/Sign-up links have NO `?next=` — PASS
+Home page (`/`), anonymous. Header **Login** → `/accounts/login/` and **Sign up** →
+`/accounts/signup/`, both bare (no `?next=`).
 
----
+![](screenshots/desktop_1.1_home_anon_header.png)
 
-## Test 1 — Anonymous header links have no `?next=` ✅
+### Test 1b — Deeper page, still no `?next=` — PASS
+On `/courses/`, the header **Login** link is still `/accounts/login/` (no `?next=/courses/`) and
+**Sign up** is still `/accounts/signup/`.
 
-On the anonymous home page the header **Login** link `href` is exactly `/accounts/login/` and the
-**Sign up** link is exactly `/accounts/signup/` — neither carries a `?next=` query string. The
-`login_prompt.html` revert is in place.
+![](screenshots/desktop_1.2_courses_anon_header.png)
 
-![](screenshots/desktop_1_home_header_no_next.png)
+### Test 1c — Signups disabled hides the Sign-up link — PASS
+With DemoDev `SiteSignupPolicy.allow_signups=False` (set via `fls:qa-data-helper`), the anonymous
+header shows only **Login** (`/accounts/login/`) — the **Sign up** link is absent. `allow_signups`
+was restored to `True` afterwards.
 
-### 1b — Deeper page, still no `?next=` ✅
+![](screenshots/desktop_1c.1_signups_disabled_no_signup_link.png)
 
-On `/courses/` (a non-home page) the header **Login** link is still bare `/accounts/login/` with **no**
-`?next=/courses/`. The old path-appending behaviour is gone.
+### Test 2 — Vanilla `@login_required` carries an existing user back to the CTA — PASS
+Anonymous visit to `/courses/qa-free-course-access-types/access/` redirected to
+`/accounts/login/?next=/courses/qa-free-course-access-types/access/` (Django-generated `next`).
+After logging in as the complete student `demodev_access_learner@email.com`, the user landed on the
+course content (`/courses/qa-free-course-access-types/1/` — the Intro Topic), i.e. back at the
+original destination.
 
-![](screenshots/desktop_1b_courses_header_no_next.png)
+![](screenshots/desktop_2.1_post_login_free_course.png)
 
-### 1c — Signups disabled hides the Sign-up link ✅
+### Test 2b — Application-gated apply page, no auto-POST — PASS
+Anonymous visit to the apply CTA redirected to
+`/accounts/login/?next=/applications/apply/qa-application-gated-course-access-types/`. After login,
+the user landed on the **apply confirmation page** (GET, HTTP 200) showing "Submit application" /
+"Cancel" — it did **not** auto-submit an application.
 
-With DemoDev `SiteSignupPolicy.allow_signups=False` (toggled by `fls:qa-data-helper`, then restored to
-`True`), the anonymous header shows the **Login** link (`/accounts/login/`) but the **Sign up** link is
-**absent**.
+![](screenshots/desktop_2b.1_apply_confirmation.png)
 
-![](screenshots/desktop_1c_signups_disabled_no_signup_link.png)
+> Note (doc slip, not a defect): the test plan lists the apply CTA as `/apply/<gated-slug>/`, which
+> 404s. The application URLs are mounted under `/applications/`, so the real path is
+> `/applications/apply/<slug>/` (`config/urls.py:71`). The test was executed against the correct
+> path. Consider fixing the URL in the test plan.
 
----
-
-## Test 2 — Vanilla `@login_required` carries an existing user back to the CTA ✅
-
-1. Anonymous visit to `/courses/qa-free-course-access-types/access/` redirected to
-   `/accounts/login/?next=/courses/qa-free-course-access-types/access/` — the `?next=` is
-   **Django-generated by `@login_required`**, exactly as intended.
-
-   ![](screenshots/desktop_2_login_with_next.png)
-
-2. After logging in as the existing complete student (`demodev_access_learner@email.com`), the user was
-   enrolled and dropped straight into the course at `/courses/qa-free-course-access-types/1/` — i.e.
-   back to the original destination, **not** the home page.
-
-   ![](screenshots/desktop_2_post_login_course.png)
-
-### 2b — Application-gated `apply` CTA, no auto-POST ✅
-
-1. Anonymous visit to the gated apply CTA redirected to
-   `/accounts/login/?next=/applications/apply/qa-application-gated-course-access-types/`.
-2. After login, the user landed on the **apply confirmation page** (HTTP 200 GET) showing a
-   "Submit application" button and a Cancel link. The application was **not** auto-submitted — it waits
-   for the user to click Submit.
-
-   ![](screenshots/desktop_2b_apply_confirmation.png)
-
-> Path note (not a bug): the test plan refers to the apply CTA as `/apply/<slug>/`, but the route is
-> actually mounted at `/applications/apply/<slug>/` (`course_applications:apply`). The **behaviour**
-> under test — vanilla `@login_required` → `?next=` → GET confirmation with no auto-POST — is correct.
-
----
-
-## Test 3 — Registration-completion trade-off (destination deliberately dropped) ✅
-
-1. Anonymous visit to `/courses/qa-free-course-access-types/access/` redirected to
+### Test 3 — Registration-completion trade-off (destination deliberately dropped) — PASS
+Exercised rigorously by threading a course destination through the whole signup flow:
+1. Anonymous → `/courses/qa-free-course-access-types/access/` → redirect to
    `/accounts/login/?next=/courses/qa-free-course-access-types/access/`.
-2. Followed the in-page **Sign up** link and registered a brand-new account
-   (`qa_reg_completion_test@email.com`), then confirmed the email via the link captured in Mailpit.
-3. After email confirmation + auto-login, `RegistrationCompletionMiddleware` intercepted the user and
-   sent them to **`/accounts/complete-registration/`**. The URL carries **no** `?next=` for the course —
-   the original destination is gone at this point, as expected.
+2. Followed the **Sign up** link (which carried `?next=/courses/qa-free-course-access-types/access/`),
+   registered a brand-new account, and completed email verification.
+3. After verification, the middleware sent the user to `/accounts/complete-registration/` — a bare
+   URL that does **not** carry the course `?next=`.
 
-   ![](screenshots/desktop_3_complete_registration_no_next.png)
+   ![](screenshots/desktop_4c.1_completion_form.png)
 
-4. Submitting the completion form ("How did you hear about us?") landed the user on the **site home**
-   (`/`, i.e. `LOGIN_REDIRECT_URL`) — **not** back on the course access CTA.
+4. After submitting the completion form, the user landed on the **site home** (`/`,
+   `LOGIN_REDIRECT_URL`) — **not** back on the course CTA. The original destination was
+   deliberately dropped, exactly the accepted trade-off of the revert.
 
-   ![](screenshots/desktop_3_landed_home_not_course.png)
+![](screenshots/desktop_3.2_destination_dropped_home.png)
 
-This confirms the *accepted* consequence of the revert: a user forced through registration completion
-loses their original destination and lands on the home page.
+(A first pass via a direct signup — no threaded destination — likewise landed on home after
+completion.)
+
+![](screenshots/desktop_3.1_completion_lands_home.png)
+
+### Test 4a — Signup form renders the better-registration fields — PASS
+Signup form fields: **email** (required), **first name** (required), **last name** (optional),
+**password**, **password confirmation**. No email-confirmation (`email2`) field is present (the
+only extra input is a hidden `_hp` honeypot).
+
+![](screenshots/desktop_4a.1_signup_form.png)
+
+### Test 4b — T&C + Privacy clickwrap consent is captured — PASS
+Two separate, initially-unchecked checkboxes — **Accept Terms** (→ `/accounts/legal/terms/`) and
+**Accept Privacy Policy** (→ `/accounts/legal/privacy/`). Submitting with the boxes unchecked (with
+the HTML `required` attributes stripped, to prove server-side enforcement) was **blocked** — the
+form re-rendered with "This field is required." on both fields and no account was created.
+
+![](screenshots/desktop_4b.1_consent_unchecked_blocked.png)
+
+Consent audit (verified in-DB via `fls:qa-data-helper`): each new signup
+(`qa_newsignup_1@email.com`, `qa_newsignup_2@email.com`) has **exactly two** `LegalConsent` rows —
+one `document_type="terms"`, one `document_type="privacy"` — each with a non-empty `git_hash`,
+`document_version="1.0"`, a `timestamp`, and `consent_method="signup_checkbox"`, on the DemoDev
+site.
+
+### Test 4c — Additional registration form gates and persists — PASS
+The completion page rendered the configured additional form field
+**"How did you hear about us? *"** (`QAProfileCompletionForm.how_did_you_hear`, required). After a
+valid submit the user was "complete": re-visiting an internal page (`/courses/`) no longer bounced
+back to `/accounts/complete-registration/`.
+
+### Test 4d — `require_name=False` makes first name optional — PASS
+With DemoDev `SiteSignupPolicy.require_name=False`, the signup form labelled the field
+**"First name (optional):"** (not required), and a signup submitted with an empty first name
+**succeeded** (advanced to email verification). `require_name` was restored to `True` afterwards.
+
+![](screenshots/desktop_4d.1_require_name_false_form.png)
+![](screenshots/desktop_4d.2_empty_firstname_signup_ok.png)
 
 ---
 
-## Responsive checks (mobile 375×812 & tablet 768×1024)
+## Responsive checks (mobile 375×812, tablet 768×1024)
 
-The change touches the header nav (`login_prompt.html`) and server-side redirect behaviour. Both were
-re-verified on mobile and tablet:
+The custom frontend surfaces touched by the revert render cleanly at all three viewports with **no
+horizontal overflow**. The anonymous header uses the same inline Login/Sign-up links at every width
+(a simple two-link nav — no hamburger/drawer involved), and the signup and login forms reflow to a
+single readable column.
 
-- Header **Login** / **Sign up** links render inline without overflow and remain bare (`/accounts/login/`,
-  `/accounts/signup/`, no `?next=`).
-- The `@login_required` redirect (`?next=`) behaves identically — viewport does not affect it.
-- The login form renders at a usable width on both sizes.
-
-| Mobile home header | Mobile login form |
-|---|---|
-| ![](screenshots/mobile_1_home_header.png) | ![](screenshots/mobile_2_login_form.png) |
-
-| Tablet home header | Tablet login form |
-|---|---|
-| ![](screenshots/tablet_1_home_header.png) | ![](screenshots/tablet_2_login_form.png) |
+| Surface | Mobile | Tablet |
+|---|---|---|
+| Anonymous home header | ![](screenshots/mobile_1.1_home_anon_header.png) | ![](screenshots/tablet_1.1_home_anon_header.png) |
+| Signup form | ![](screenshots/mobile_4a.1_signup_form.png) | ![](screenshots/tablet_4a.1_signup_form.png) |
+| Login form | ![](screenshots/mobile_2.1_login_form.png) | — |
 
 ---
 
-## Notes / observations (nothing tested was skipped)
+## Tangential observations (investigated — not defects, no action needed)
 
-- **Test data provisioning (`fls:qa-data-helper`).** The DemoDev catalogue was initially empty, so the
-  helper created the free course (`qa-free-course-access-types`), the application-gated course
-  (`qa-application-gated-course-access-types`), a complete student
-  (`demodev_access_learner@email.com`), and configured the DemoDev `SiteSignupPolicy`
-  (`allow_signups=True`, one `additional_registration_forms` entry). To satisfy "new signups are gated
-  but the seeded student stays complete", the helper added a **dev-only `qa_helpers` app**
-  (`freedom_ls/qa_helpers/` — a `QARegistrationCompletion` model, a `QAProfileCompletionForm`, a
-  factory, one applied migration, and a re-runnable management command). This is QA scaffolding created
-  by the data helper, not code under test — flagging it so it is not mistaken for part of the feature
-  branch.
-- **Policy toggle for Test 1c** was applied and then restored, so DemoDev ends this run with
-  `allow_signups=True` and the full scenario intact.
-- **Spec path discrepancy** for the apply CTA (`/apply/…` in the plan vs. `/applications/apply/…` in the
-  code) is documented under Test 2b. It did not affect any pass/fail outcome.
+1. **Application-gated course shows an "Enrol for free" CTA on its detail page (dev only).**
+   `/courses/qa-application-gated-course-access-types/detail/` renders a primary CTA "Enrol for
+   free" → `/access/` rather than "Apply now". An `fls:sdd-worker` probe traced this to
+   `OVERRIDE_COURSE_ACCESS_TO_FREE = True` in `config/settings_dev.py` — a **documented dev/staging
+   preview override** that short-circuits `VisibilityEnforcingBackend.get_access()`
+   (`freedom_ls/course_access/backends.py:367-371`) to the canonical free decision for every course.
+   With the override off (production default), `ApplicationCourseAccessBackend.get_access()`
+   (`freedom_ls/course_applications/backends.py:117-129`) correctly yields "Apply now" →
+   `/applications/apply/<slug>/`. This is expected behaviour, unrelated to the allauth revert, and
+   did not affect Test 2b (which was exercised via the apply URL directly). No code change
+   warranted.
+
+2. **Test-plan apply URL is stale** — see the note under Test 2b. Suggest updating the plan from
+   `/apply/<gated-slug>/` to `/applications/apply/<gated-slug>/`.
+
+## Data / environment notes
+
+- All test data was created/verified by the `fls:qa-data-helper` agent on the DemoDev site; no data
+  was hand-created by the QA run. The DemoDev `SiteSignupPolicy` was left in its default state
+  (`allow_signups=True`, `require_name=True`, `require_terms_acceptance=True`, additional form
+  `QAProfileCompletionForm`) after the adversarial toggles for 1c and 4d.
+- Legal docs (`legal_docs/_default/terms.md`, `privacy.md`) were confirmed committed to the branch,
+  so the signup consent checkboxes rendered correctly.

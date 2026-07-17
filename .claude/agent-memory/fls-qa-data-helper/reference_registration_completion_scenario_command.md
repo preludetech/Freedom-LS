@@ -19,7 +19,14 @@ so it produces the SAME learner + courses, then adds the policy/completion bits:
   `application_gated`, published, anon catalogue). Apply flow is mounted at
   `/applications/apply/<slug>/` (name `course_applications:apply`), NOT `/apply/`.
 - Student `demodev_access_learner@email.com` (password == email), verified+primary
-  allauth EmailAddress, ZERO regs/apps, and registration-COMPLETE.
+  allauth EmailAddress, ZERO regs/apps, and registration-COMPLETE. Also now gets
+  terms+privacy `LegalConsent` rows via `LegalConsentFactory` (helper
+  `_ensure_legal_consents`, copies the site's real doc version/git_hash from
+  `get_legal_doc`) so the "complete" student mirrors a fully-consented signup.
+  NOTE: `RegistrationCompletionMiddleware` only checks additional_registration_forms
+  completion, NOT LegalConsent — the consent rows are for realism/other flows, not
+  the middleware gate. LegalConsent is append-only; the helper is existence-guarded
+  so re-runs never duplicate. DemoDev has real terms+privacy docs (v1.0).
 - `SiteSignupPolicy` for the site: `allow_signups=True`, `require_name=True`,
   `require_terms_acceptance=True` (preserve dev defaults — a fresh policy row
   otherwise silently resets these to model defaults, see
