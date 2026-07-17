@@ -26,7 +26,6 @@
       "Bash(git stash:*)",
       "Bash(git rebase *)",
       "Bash(gh pr:*)",
-      "Bash(ls)",
       "Bash(ls:*)",
       "Bash(npm run tailwind_build:*)",
       "mcp__plugin_fls_playwright__*",

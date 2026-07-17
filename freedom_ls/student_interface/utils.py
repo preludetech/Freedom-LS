@@ -69,6 +69,33 @@ class CourseListingEntry:
     access_badge: AccessBadge | None = None
 
 
+def derive_listing_status(
+    *,
+    is_registered: bool,
+    is_coming_soon: bool,
+    is_complete: bool,
+    progress_percentage: int,
+) -> CourseListingStatus:
+    """Map a course's registration/progress signals to its listing status.
+
+    Single source of the status-precedence rule shared by the all-courses
+    catalogue (``get_course_listing``) and the dashboard cards
+    (``views.dashboard``): coming-soon (for the unregistered) precedes
+    registration, which precedes completion, which precedes the in-progress /
+    registered split. A learner registered for a coming-soon course keeps their
+    registration-derived status, mirroring how hidden courses treat registrants.
+    """
+    if is_coming_soon and not is_registered:
+        return CourseListingStatus.COMING_SOON
+    if not is_registered:
+        return CourseListingStatus.NOT_REGISTERED
+    if is_complete:
+        return CourseListingStatus.COMPLETE
+    if progress_percentage > 0:
+        return CourseListingStatus.IN_PROGRESS
+    return CourseListingStatus.REGISTERED
+
+
 def stamp_course_access_badge(course: Course, *, badge: AccessBadge | None) -> None:
     """Stamp the backend-owned access badge onto a course for template rendering.
 
@@ -729,9 +756,12 @@ def get_course_listing(
         return [
             CourseListingEntry(
                 course,
-                CourseListingStatus.COMING_SOON
-                if is_coming_soon_for_display(course)
-                else CourseListingStatus.NOT_REGISTERED,
+                derive_listing_status(
+                    is_registered=False,
+                    is_coming_soon=is_coming_soon_for_display(course),
+                    is_complete=False,
+                    progress_percentage=0,
+                ),
                 0,
                 access_badge=backend.get_access_badge(course=course),
             )
@@ -748,37 +778,18 @@ def get_course_listing(
     entries: list[CourseListingEntry] = []
     for course in courses:
         access_badge = backend.get_access_badge(course=course)
-        # Coming-soon shows the express-interest affordance for learners not
-        # registered for the course; registered learners keep their normal
-        # registration-derived status (coming-soon exempts them, mirroring hidden).
-        # (Hidden courses never reach here — filter_visible drops them.)
-        if is_coming_soon_for_display(course) and course.id not in registered_ids:
-            entries.append(
-                CourseListingEntry(
-                    course,
-                    CourseListingStatus.COMING_SOON,
-                    0,
-                    access_badge=access_badge,
-                )
-            )
-            continue
-        if course.id not in registered_ids:
-            entries.append(
-                CourseListingEntry(
-                    course,
-                    CourseListingStatus.NOT_REGISTERED,
-                    0,
-                    access_badge=access_badge,
-                )
-            )
-            continue
+        # progress_rows only holds registered courses, so unregistered / coming-soon
+        # courses have no row and fall through to 0%. derive_listing_status owns the
+        # precedence: coming-soon (for the unregistered) exempts already-registered
+        # learners, mirroring hidden. (Hidden courses never reach here — filter_visible
+        # drops them.)
         row = progress_rows.get(course.id)  # may be missing -> treat as 0%
         pct = row["progress_percentage"] if row else 0
-        if row and row["completed_time"] is not None:
-            status = CourseListingStatus.COMPLETE
-        elif pct > 0:
-            status = CourseListingStatus.IN_PROGRESS
-        else:
-            status = CourseListingStatus.REGISTERED
+        status = derive_listing_status(
+            is_registered=course.id in registered_ids,
+            is_coming_soon=is_coming_soon_for_display(course),
+            is_complete=bool(row and row["completed_time"] is not None),
+            progress_percentage=pct,
+        )
         entries.append(CourseListingEntry(course, status, pct, access_badge))
     return entries

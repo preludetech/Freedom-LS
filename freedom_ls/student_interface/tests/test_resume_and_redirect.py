@@ -302,24 +302,6 @@ def test_breadcrumb_drops_part_when_item_top_level(course_structure, enrolled_us
 
 
 @pytest.mark.django_db
-def test_breadcrumb_first_crumb_links_to_item_one_not_course_home(
-    course_structure, enrolled_user
-):
-    client = Client()
-    client.force_login(enrolled_user)
-    url = reverse(
-        "student_interface:view_course_item",
-        kwargs={"course_slug": "resume-course", "index": 3},
-    )
-    html = client.get(url).content.decode()
-    item_one_url = reverse(
-        "student_interface:view_course_item",
-        kwargs={"course_slug": "resume-course", "index": 1},
-    )
-    assert item_one_url in html
-
-
-@pytest.mark.django_db
 def test_page_title_is_item_course_site(course_structure, enrolled_user):
     client = Client()
     client.force_login(enrolled_user)

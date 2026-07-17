@@ -2,7 +2,7 @@
 
 These assert on the markup the all_courses page produces for each
 registration state: status labels, preview/link affordances, progress-bar
-presence and aria-valuenow, and decorative status icons. The context-level
+presence and value, and decorative status icons. The context-level
 status/annotation logic is covered in ``test_all_courses_view``.
 """
 
@@ -12,13 +12,25 @@ import re
 
 import pytest
 
+from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 from freedom_ls.student_progress.factories import CourseProgressFactory
+
+
+def _coming_soon_course(*, slug: str, title: str) -> Course:
+    """A coming-soon-visibility course with one topic item."""
+    course: Course = CourseFactory(
+        title=title, slug=slug, visibility=CourseVisibility.COMING_SOON
+    )
+    topic = TopicFactory(title=f"{slug}-t", slug=f"{slug}-topic", content="content")
+    course.items.create(child=topic, order=0)
+    return course
 
 
 @pytest.mark.django_db
@@ -121,10 +133,15 @@ def test_all_courses_registered_zero_percent_row_links_to_first_item(
 
 
 @pytest.mark.django_db
-def test_all_courses_registered_zero_percent_row_has_aria_valuenow_zero(
+def test_all_courses_registered_zero_percent_row_has_progress_value_zero(
     mock_site_context, courses, logged_in_client
 ):
-    """A registered-0% row renders a progress bar with aria-valuenow='0'."""
+    """A registered-0% row renders a progress bar reporting value='0'.
+
+    The shared <c-course-progress-bar> uses a native <progress>, which exposes
+    its value to assistive tech via the value attribute (implicit progressbar
+    role) rather than an explicit aria-valuenow.
+    """
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = logged_in_client(user)
@@ -133,7 +150,8 @@ def test_all_courses_registered_zero_percent_row_has_aria_valuenow_zero(
     assert response.status_code == 200
 
     body = response.content.decode()
-    assert 'aria-valuenow="0"' in body
+    assert "<progress" in body
+    assert 'value="0"' in body
 
 
 @pytest.mark.django_db
@@ -160,10 +178,14 @@ def test_all_courses_in_progress_row_links_to_first_item(
 
 
 @pytest.mark.django_db
-def test_all_courses_in_progress_row_has_aria_valuenow_above_zero(
+def test_all_courses_in_progress_row_has_progress_value_above_zero(
     mock_site_context, courses, logged_in_client
 ):
-    """An in-progress row renders a progress bar with aria-valuenow > 0."""
+    """An in-progress row renders a progress bar reporting its percentage as value.
+
+    The shared <c-course-progress-bar> uses a native <progress>, whose value
+    attribute carries the percentage to assistive tech.
+    """
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     CourseProgressFactory(
@@ -175,7 +197,8 @@ def test_all_courses_in_progress_row_has_aria_valuenow_above_zero(
     assert response.status_code == 200
 
     body = response.content.decode()
-    assert 'aria-valuenow="55"' in body
+    assert "<progress" in body
+    assert 'value="55"' in body
 
 
 @pytest.mark.django_db
@@ -264,3 +287,133 @@ def test_all_courses_status_icons_are_decorative(
         assert re.search(
             rf'aria-hidden="true">\s*<svg[^>]*aria-label="{slug}"', body
         ), f"status icon {slug!r} is not wrapped in aria-hidden"
+
+
+@pytest.mark.django_db
+def test_all_courses_registered_row_has_details_link(
+    mock_site_context, courses, logged_in_client
+):
+    """A registered (0%) row renders an explicit "Details" link to course_detail,
+    in addition to the progress-linked title."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    client = logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    body = response.content.decode()
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_all_courses_complete_row_has_details_link(
+    mock_site_context, courses, logged_in_client
+):
+    """A completed-course row renders an explicit "Details" link to course_detail,
+    in addition to the finish-page title link."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    CourseProgressFactory(
+        user=user,
+        course=courses[0],
+        progress_percentage=100,
+        completed_time=timezone.now(),
+    )
+    client = logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    body = response.content.decode()
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_all_courses_not_registered_row_has_details_link(
+    mock_site_context, courses, logged_in_client
+):
+    """A not-registered row renders an explicit "Details" link in addition to
+    the stretched title link — both resolve to the same course_detail URL."""
+    user = UserFactory()
+    client = logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    body = response.content.decode()
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_all_courses_coming_soon_row_has_details_link(mock_site_context):
+    """A coming-soon row renders an explicit "Details" link alongside the
+    "Coming soon" status eyebrow, in addition to the stretched title link."""
+    course = _coming_soon_course(slug="cs-row", title="Coming Soon Row Course")
+    client = Client()
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    detail_url = reverse(
+        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+    body = response.content.decode()
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_all_courses_details_link_renders_for_anonymous_visitor(
+    mock_site_context, courses
+):
+    """The Details link renders on the all-courses page for an anonymous
+    visitor, not just for authenticated ones."""
+    client = Client()
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    body = response.content.decode()
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body
+
+
+@pytest.mark.django_db
+def test_all_courses_details_link_renders_for_authenticated_unregistered_visitor(
+    mock_site_context, courses, logged_in_client
+):
+    """The Details link renders for an authenticated visitor with no
+    registration for the course."""
+    user = UserFactory()
+    client = logged_in_client(user)
+
+    response = client.get(reverse("student_interface:courses"))
+    assert response.status_code == 200
+
+    detail_url = reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": courses[0].slug},
+    )
+    body = response.content.decode()
+    assert "Details" in body
+    assert f'href="{detail_url}"' in body

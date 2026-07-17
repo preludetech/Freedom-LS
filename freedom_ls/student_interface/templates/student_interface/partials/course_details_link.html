@@ -1,0 +1,22 @@
+{% comment %}
+"Details" entry point to the course overview page (student_interface:course_detail).
+Low-emphasis secondary link rendered as a text-only link button
+(<c-button variant="link">) — no background fill; the hover treatment (colour
+intensify + scale pop) lives in the `.btn-link` variant so this control stays
+consistent with the "Browse all courses" link that uses the same variant.
+
+`relative z-10` lifts this control above the sibling title link's ::before stretched
+overlay so it is independently clickable and keyboard-focusable. The chevron
+(icon_right="next") is supplied by the button component.
+
+Context: course (needs course.slug). Placement/alignment is the caller's job:
+cards wrap this on its own right-aligned footer line; rows render it inline,
+right-aligned in the eyebrow slot.
+{% endcomment %}
+<c-button href="{% url 'student_interface:course_detail' course_slug=course.slug %}"
+          variant="link"
+          size="small"
+          icon_right="next"
+          class="relative z-10 whitespace-nowrap">
+    Details
+</c-button>

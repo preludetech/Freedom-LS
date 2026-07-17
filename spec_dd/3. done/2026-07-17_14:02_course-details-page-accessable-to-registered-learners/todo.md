@@ -5,14 +5,14 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 1. Idea
 
 - [x] (user) Write the idea file in this directory
-- [ ] (cmd) Optionally run `/improve_idea` to research and refine the idea
+- [x] (cmd) Optionally run `/improve_idea` to research and refine the idea
 - [ ] (user) Review the refined idea and edit as needed
 
 ## 2. Spec
 
-- [ ] (cmd) Run `/spec_from_idea` to generate the spec
+- [x] (cmd) Run `/spec_from_idea` to generate the spec
 - [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/spec_review` to sanity-check the spec
+- [x] (cmd) Run `/spec_review` to sanity-check the spec
 - [ ] (user) Address any issues raised by the review
 
 ## 3. Threat model
@@ -22,7 +22,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
@@ -37,7 +37,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 7. Implementation
 
-- [ ] (cmd) Run `/implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 
 ## 8. Code security review
@@ -47,19 +47,20 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)
+- [x] (cmd) Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: All-courses 'Coming soon' rows clip the Details link off-screen on mobile (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
-- [ ] (cmd) Run `/update_product_docs` to update docs/product/ for this feature
+- [x] (cmd) Run `/update_product_docs` to update docs/product/ for this feature
 - [ ] (user) Review the updated documentation
 
 ## 11. Upgrade notes
 
-- [ ] (cmd) Run `/update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
+- [x] (cmd) Run `/update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
 - [ ] (user) Review the upgrade notes
 
 ## 12. Template repo
@@ -79,5 +80,5 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 15. Cleanup
 
-- [ ] (cmd) Run `/finish_worktree` to clean up the worktree
+- [x] (cmd) Run `/finish_worktree` to clean up the worktree
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved
