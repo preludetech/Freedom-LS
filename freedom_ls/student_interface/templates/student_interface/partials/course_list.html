@@ -1,32 +1,9 @@
 {% comment %}
-Course-list partials shared by the dashboard and the all-courses page.
-
-`dispatch-card` is the single dispatch seam for all card states:
-    * course.is_coming_soon -> course_card_coming_soon.html  (express-interest CTA)
-    * "history"           -> course_card_complete.html   (completed course)
-    * course.is_registered -> course_card_registered.html (in-progress / not-started)
-    * else                -> course_card_not_registered.html (single link to course detail page)
-
-Each leaf is single-purpose and contains no further state branching beyond
-its own concern (registered leaf: eyebrow text; not-registered leaf: plain
-link to the course_detail page on all screen sizes).
-
-The collection partials below (`current-courses`, `recommended-courses`,
-`available-courses`, `learning-history`) all dispatch through this single
-seam.
+Dashboard course-list sections. Each collection partial (`current-courses`,
+`recommended-courses`, `available-courses`, `learning-history`) lays out a grid
+of course_card.html — the single card template, which branches internally on
+course.listing_status. No per-status dispatch or leaf templates here.
 {% endcomment %}
-
-{% partialdef dispatch-card %}
-    {% if course.is_coming_soon %}
-        {% include "student_interface/partials/course_card_coming_soon.html" %}
-    {% elif course_status == "history" %}
-        {% include "student_interface/partials/course_card_complete.html" %}
-    {% elif course.is_registered %}
-        {% include "student_interface/partials/course_card_registered.html" %}
-    {% else %}
-        {% include "student_interface/partials/course_card_not_registered.html" %}
-    {% endif %}
-{% endpartialdef %}
 
 {% partialdef section-heading %}
     <h2 class="text-base sm:text-lg lg:text-xl font-semibold">
@@ -37,7 +14,7 @@ seam.
 {% partialdef course-grid %}
     <div class="grid gap-6 md:gap-8 lg:gap-10 md:grid-cols-2 lg:grid-cols-3">
         {% for course in courses %}
-            {% partial dispatch-card %}
+            {% include "student_interface/partials/course_card.html" %}
         {% endfor %}
     </div>
 {% endpartialdef %}
@@ -49,7 +26,7 @@ seam.
         {% endwith %}
 
         {% if registered_courses %}
-            {% with courses=registered_courses course_status="current" %}
+            {% with courses=registered_courses %}
                 {% partial course-grid %}
             {% endwith %}
         {% else %}
@@ -74,7 +51,7 @@ seam.
             <div class="grid gap-6 md:gap-8 lg:gap-10 md:grid-cols-2 lg:grid-cols-3">
                 {% for recommendation in recommended_courses %}
                     {% with course=recommendation.collection %}
-                        {% partial dispatch-card %}
+                        {% include "student_interface/partials/course_card.html" %}
                     {% endwith %}
                 {% endfor %}
             </div>
@@ -110,7 +87,7 @@ seam.
             {% with heading="Learning History" %}
                 {% partial section-heading %}
             {% endwith %}
-            {% with courses=completed_courses course_status="history" %}
+            {% with courses=completed_courses %}
                 {% partial course-grid %}
             {% endwith %}
         </div>

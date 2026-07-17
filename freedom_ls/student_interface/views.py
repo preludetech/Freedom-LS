@@ -42,6 +42,7 @@ from .utils import (
     IN_PROGRESS,
     READY,
     count_form_questions,
+    derive_listing_status,
     form_start_page_buttons,
     get_all_courses,
     get_completed_courses,
@@ -155,9 +156,24 @@ def _visible_recommendations(
 def _annotate_registered_courses(
     courses: list[Course], user, backend: CourseAccessBackend
 ) -> None:
-    """Stamp is_registered and the next-up item onto each registered course."""
+    """Stamp registration status, listing status and the next-up item onto each course.
+
+    ``get_current_courses`` already excludes completed courses and stamps
+    ``progress_percentage``, so the listing status here is only ever registered
+    (0%) or in_progress (>0%).
+    """
     for course in courses:
         setattr(course, "is_registered", True)  # noqa: B010
+        setattr(  # noqa: B010
+            course,
+            "listing_status",
+            derive_listing_status(
+                is_registered=True,
+                is_coming_soon=course.visibility == CourseVisibility.COMING_SOON,
+                is_complete=False,
+                progress_percentage=getattr(course, "progress_percentage", 0),
+            ),
+        )
         # Pass can_access_content from the backend decision so a future
         # backend (e.g. subscription-gated) could revoke access without a
         # separate check.
@@ -169,21 +185,44 @@ def _annotate_registered_courses(
         )
 
 
-def _annotate_recommendations(recommendations: list[RecommendedCourse]) -> None:
-    """Stamp is_registered and is_coming_soon onto each recommendation's course.
+def _annotate_completed_courses(courses: list[Course]) -> None:
+    """Stamp the complete listing status onto each finished course.
 
-    Recommendations are by definition not yet registered. A recommended course
-    can still be coming-soon, and the dashboard renders it through the same
-    dispatch-card seam, so stamp is_coming_soon here too. The dashboard
-    coming-soon card is a plain detail link (no express-interest CTA), so no
-    per-course interest lookup is needed here.
+    ``get_completed_courses`` only returns courses with a ``completed_time``, so
+    every course here is complete regardless of visibility or progress.
+    """
+    for course in courses:
+        setattr(  # noqa: B010
+            course,
+            "listing_status",
+            derive_listing_status(
+                is_registered=True,
+                is_coming_soon=False,
+                is_complete=True,
+                progress_percentage=100,
+            ),
+        )
+
+
+def _annotate_recommendations(recommendations: list[RecommendedCourse]) -> None:
+    """Stamp is_registered and the listing status onto each recommendation's course.
+
+    Recommendations are by definition not yet registered, so the status is
+    coming_soon (coming-soon courses) or not_registered. The dashboard renders
+    both through the same course_card.html, a plain detail link with no
+    express-interest CTA, so no per-course interest lookup is needed here.
     """
     for rec in recommendations:
         setattr(rec.collection, "is_registered", False)  # noqa: B010
         setattr(  # noqa: B010
             rec.collection,
-            "is_coming_soon",
-            is_coming_soon_for_display(rec.collection),
+            "listing_status",
+            derive_listing_status(
+                is_registered=False,
+                is_coming_soon=is_coming_soon_for_display(rec.collection),
+                is_complete=False,
+                progress_percentage=0,
+            ),
         )
 
 
@@ -204,8 +243,13 @@ def _available_courses(
         stamp_course_access_badge(course, badge=backend.get_access_badge(course=course))
         setattr(  # noqa: B010
             course,
-            "is_coming_soon",
-            is_coming_soon_for_display(course),
+            "listing_status",
+            derive_listing_status(
+                is_registered=False,
+                is_coming_soon=is_coming_soon_for_display(course),
+                is_complete=False,
+                progress_percentage=0,
+            ),
         )
         available_courses.append(course)
         if len(available_courses) == 3:
@@ -233,6 +277,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 
     if is_auth:
         _annotate_registered_courses(registered_courses, request.user, backend)
+        _annotate_completed_courses(completed_courses)
         _annotate_recommendations(recommended_courses)
 
     excluded_ids = (

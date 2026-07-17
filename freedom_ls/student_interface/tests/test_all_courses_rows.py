@@ -2,7 +2,7 @@
 
 These assert on the markup the all_courses page produces for each
 registration state: status labels, preview/link affordances, progress-bar
-presence and aria-valuenow, and decorative status icons. The context-level
+presence and value, and decorative status icons. The context-level
 status/annotation logic is covered in ``test_all_courses_view``.
 """
 
@@ -133,10 +133,15 @@ def test_all_courses_registered_zero_percent_row_links_to_first_item(
 
 
 @pytest.mark.django_db
-def test_all_courses_registered_zero_percent_row_has_aria_valuenow_zero(
+def test_all_courses_registered_zero_percent_row_has_progress_value_zero(
     mock_site_context, courses, logged_in_client
 ):
-    """A registered-0% row renders a progress bar with aria-valuenow='0'."""
+    """A registered-0% row renders a progress bar reporting value='0'.
+
+    The shared <c-course-progress-bar> uses a native <progress>, which exposes
+    its value to assistive tech via the value attribute (implicit progressbar
+    role) rather than an explicit aria-valuenow.
+    """
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = logged_in_client(user)
@@ -145,7 +150,8 @@ def test_all_courses_registered_zero_percent_row_has_aria_valuenow_zero(
     assert response.status_code == 200
 
     body = response.content.decode()
-    assert 'aria-valuenow="0"' in body
+    assert "<progress" in body
+    assert 'value="0"' in body
 
 
 @pytest.mark.django_db
@@ -172,10 +178,14 @@ def test_all_courses_in_progress_row_links_to_first_item(
 
 
 @pytest.mark.django_db
-def test_all_courses_in_progress_row_has_aria_valuenow_above_zero(
+def test_all_courses_in_progress_row_has_progress_value_above_zero(
     mock_site_context, courses, logged_in_client
 ):
-    """An in-progress row renders a progress bar with aria-valuenow > 0."""
+    """An in-progress row renders a progress bar reporting its percentage as value.
+
+    The shared <c-course-progress-bar> uses a native <progress>, whose value
+    attribute carries the percentage to assistive tech.
+    """
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     CourseProgressFactory(
@@ -187,7 +197,8 @@ def test_all_courses_in_progress_row_has_aria_valuenow_above_zero(
     assert response.status_code == 200
 
     body = response.content.decode()
-    assert 'aria-valuenow="55"' in body
+    assert "<progress" in body
+    assert 'value="55"' in body
 
 
 @pytest.mark.django_db
@@ -352,7 +363,7 @@ def test_all_courses_not_registered_row_has_details_link(
 @pytest.mark.django_db
 def test_all_courses_coming_soon_row_has_details_link(mock_site_context):
     """A coming-soon row renders an explicit "Details" link alongside the
-    "Coming soon" chip, in addition to the stretched title link."""
+    "Coming soon" status eyebrow, in addition to the stretched title link."""
     course = _coming_soon_course(slug="cs-row", title="Coming Soon Row Course")
     client = Client()
 
