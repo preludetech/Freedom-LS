@@ -1,6 +1,6 @@
 # Webhooks
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-07-17_
 
 ## Summary
 
@@ -94,6 +94,8 @@ Each delivery attempt is recorded as a `WebhookDelivery` row containing:
 - `last_response_error_message`
 
 `WebhookDelivery` records are read-only in the admin, with a manual retry action available.
+
+A given event is delivered to a given endpoint at most once. In production, webhook dispatch runs on a durable background worker that guarantees at-least-once execution, so the dispatch job can be redelivered; the delivery is idempotent per event-and-endpoint, so a redelivered job does not send the webhook a second time. Manual retries and the admin test-send action operate on their own delivery records and are unaffected. See [deployment](./deployment.md) for the background-task backend.
 
 ## Admin Controls
 
