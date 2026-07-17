@@ -7,6 +7,14 @@ metadata:
 
 `uv run python manage.py qa_create_rich_dashboard_student [SITE_NAME]` (default `DemoDev`). Command file: `freedom_ls/qa_helpers/management/commands/qa_create_rich_dashboard_student.py`. Idempotent.
 
+PREREQUISITE (fails otherwise with `Course '...' not found on site 'DemoDev'. Available: []`): the 3 demo courses must first be loaded via `content_save` (see [[reference_demo_content_loader]]). On a fresh DB run all three:
+`content_save "demo_content/functionality_demo_end_with_topic" DemoDev`
+`content_save "demo_content/functionality_demo_end_with_quiz" DemoDev`
+`content_save "demo_content/functionality_demo_content_widgets" DemoDev`
+(dir→slug: `_end_with_topic`→`functionality-demo-show-end-with-topic`, `_end_with_quiz`→`functionality-demo-show-end-with-quiz`, `_content_widgets`→`content-widgets-demo-reference`). Demo `course.md` files have no `slug:` field — slug derives from title.
+
+Shell import gotcha: models live under `freedom_ls.*` (e.g. `from freedom_ls.accounts.models import User`), NOT bare `accounts.*`. `RecommendedCourse` and `UserCourseRegistration` FK to the course is named `collection`, not `course` (CourseProgress uses `course`).
+
 Seeds login-ready student `demodev_s1@email.com` (password == email, verified+primary EmailAddress) so the student dashboard shows all three sections populated:
 - In progress: `functionality-demo-show-end-with-topic` at 43% (items 1-3 of 7 complete, no completed_time).
 - Completed: `functionality-demo-show-end-with-quiz` at 100% with completed_time set (every topic + both QUIZ forms done). The course-finish page is reachable.
