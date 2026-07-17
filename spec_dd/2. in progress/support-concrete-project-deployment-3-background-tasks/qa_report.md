@@ -3,194 +3,128 @@
 **Date:** 2026-07-17
 **Branch:** `support-concrete-project-deployment-3-background-tasks`
 **Site:** DemoDev (dev forced via `FORCE_SITE_NAME`)
-**Tooling:** Playwright MCP, desktop 1920×1080. Webhook capture target: dummy `http://localhost:9999/webhook`
-(deliveries record as `failed`), plus a temporary local `200`-returning listener for the Part B success-path checks.
+**Test plan:** `3. frontend_qa.md`
+**Tooling:** Playwright MCP (desktop 1920×1080), read-only `manage.py shell` for ground-truth counts, `fls:qa-data-helper` for test data, `fls:sdd-worker` for one root-cause investigation.
 
-## Overall result: ✅ PASS — no defects found in the feature under test
+## Result
 
-The durable-backend change (production defaults to `django_tasks_db.DatabaseBackend` with an out-of-process
-`db_worker`) and the `WebhookDelivery` idempotency guard behave as designed. Every user-facing flow
-(signup, course registration, course completion) produces exactly **one event and one delivery**; the admin
-surfaces are intact; the durable backend drives delivery out-of-process via a visible task queue and never
-drops queued work.
+**No defects were found in the change under test** (production default → durable `django-tasks-db` `DatabaseBackend` + `db_worker`, plus the `WebhookDelivery` idempotency guard).
 
-No bugs were found. One adversarial sub-check (A3 application-gated) is **not executable in the dev
-environment** for a configuration reason (documented below), and mobile/tablet passes are **not applicable**
-because the feature is Django-admin-only. A few plan-vs-implementation wording mismatches and two behavioural
-observations are recorded for the plan author — none are product defects.
+- Every user flow (signup, course registration, course completion) produces **exactly one** `WebhookEvent` and **exactly one** `WebhookDelivery` per `(event, endpoint)`; repeated/idempotent actions create **no duplicates**.
+- The durable backend's async path works: the request returns immediately, the task is durably queued, and the `db_worker` performs the delivery **out-of-process**. A queued task survives worker downtime and drains on restart.
+- The webhooks Django admin (endpoints / events / deliveries / send-test / retry / enable-disable) is intact under both `ImmediateBackend` (default dev) and the durable `DatabaseBackend`; the new unique constraint does not block send-test (fresh event) or retry (reuses the row).
 
----
+A handful of **deviations from the plan's wording** were observed. **None is a defect in this branch** — they are pre-existing behaviours, a dev-only preview override, expected protective behaviour, or loose wording in the plan. They are documented below so the plan can be tightened.
 
-## Results at a glance
-
-| Test | Result | Notes |
-|------|--------|-------|
-| **A1** Webhook admin surfaces (regression) | ✅ PASS | Checkboxes for event types, no Secret field on Add, Secret read-only after save, Failure count 0; events read-only w/ payload JSON; delivery columns Status + Attempt count; Send-Test + Retry + Enable/Disable all work. Wording notes below. |
-| **A2** Signup → `user.registered` | ✅ PASS | 1 event + 1 delivery; re-signup with same email creates no second account and no duplicate event. |
-| **A3** Course registration → `course.registered` | ✅ PASS (main + re-enrol) / ⚠️ 1 sub-check not executable | Free enrol → 1 event + 1 delivery; re-enrol → no duplicate. App-gated adversarial **cannot be exercised in dev** (see below). |
-| **A4** Course completion → `course.completed` | ✅ PASS | 1 event + 1 delivery; re-finishing an already-complete course is a no-op (no new event). |
-| **B1** Tasks admin surface exists | ✅ PASS | `Tasks Database Backend` → `Task Results` present, with By status / priority / queue filters. |
-| **B2** Delivery is asynchronous (worker-driven) | ✅ PASS | Completion enqueues `_dispatch_event_task`; worker drains it out-of-process; delivery transitions after the request returns. |
-| **B3** Single delivery per (event, endpoint) | ✅ PASS | No duplicate deliveries anywhere across all flows. |
-| **B4** Regression under durable backend | ✅ PASS | Send-Test still creates a fresh event+delivery; Retry still updates the existing row; neither trips the unique constraint. |
-| **B5** Worker not running → tasks queue, don't drop | ✅ PASS | With worker stopped the dispatch task sits `Ready` and nothing is delivered; starting the worker drains it and the delivery is created + delivered (`Success`, HTTP 200). |
-| **Mobile (Step 6) / Tablet (Step 7)** | N/A | Feature is Django-admin-only (no custom webhook/tasks frontend). Per plan guidance, admin surfaces are not responsive-tested. |
+Mobile (Step 6) and tablet (Step 7) testing was **not applicable**: the feature's entire UI surface is the Django admin (Unfold), and the plan directs skipping mobile/tablet for admin interfaces. The signup / course-detail / course-player pages used here are only flow *triggers* (pre-existing, unrelated frontend), not part of this change.
 
 ---
 
-## Part A — Default dev (`ImmediateBackend`)
+## Part A — default dev (`ImmediateBackend`): regression + synchronous flows
 
-### A1 — Admin surfaces (regression) ✅
+### Test A1 — Webhook admin surfaces (regression) — PASS (2 wording notes)
 
-- **Add endpoint form:** event types render as **checkboxes** (User registered / Course completed /
-  Course registered), no free-text, and the **Secret** field is not shown.
-  ![](screenshots/desktop_A1_add_endpoint_form.png)
-- **After save:** Secret is populated and **read-only**, Failure count is `0`.
-  ![](screenshots/desktop_A1_endpoint_secret_readonly.png)
-- **Events admin:** read-only (title "…to view", no Add button), payload JSON visible.
-  ![](screenshots/desktop_A1_event_detail_payload.png)
-- **Deliveries admin:** columns include **Status** and **Attempt count**; filters for **Status** and **Event type**.
-  ![](screenshots/desktop_A1_delivery_list_columns.png)
-- **Send Test:** creates a fresh event + delivery (delivery `failed` — nothing listening on :9999).
-  ![](screenshots/desktop_A1_send_test_result.png)
-- **Retry:** updates the existing row in place (Last attempt 2:17→2:18, Next retry set), **no duplicate row**.
-  ![](screenshots/desktop_A1_delivery_detail_after_retry.png)
-- **Disable / Enable bulk actions:** toggle `Is active` correctly.
-  ![](screenshots/desktop_A1_endpoint_disabled.png)
+- **Add-endpoint form:** event types render as **checkboxes** (User/Course registered, Course completed), the **Secret** field is **not** shown, Failure count 0. ![](screenshots/desktop_A1_add_endpoint_form.png)
+- **Saved endpoint:** Secret is populated and **read-only** (static text, not an input), Failure count 0, all three event types checked. ![](screenshots/desktop_A1_endpoint_secret_readonly.png)
+- **Events changelist:** read-only ("Select webhook event **to view**", no Add button), payload JSON visible on the detail. ![](screenshots/desktop_A1_event_detail_payload.png)
+- **Deliveries changelist:** columns include **Status** and **Attempt count** (plus Last status code, Last attempt at). ![](screenshots/desktop_A1_delivery_list_columns.png)
+- **Send test:** creates a fresh event + a delivery; delivery `failed` because nothing listens on the dummy `http://localhost:9999/webhook` (`Connection refused`). ![](screenshots/desktop_A1_send_test_result.png)
+- **Retry:** updates the **existing** delivery row (last-attempt time advanced) with **no duplicate row** and no unique-constraint error. ![](screenshots/desktop_A1_delivery_detail_after_retry.png)
+- **Disable / Enable bulk actions:** toggle `Is active` False→True correctly. ![](screenshots/desktop_A1_endpoint_disabled.png)
 
-**Plan-vs-implementation wording notes (not defects):**
-1. "Send test ping … action → Go" — the feature is implemented as an Unfold **detail-page button** ("Send Test",
-   `actions_detail`), not a changelist action. It works; the plan's "select the endpoint → action" wording is
-   slightly off.
-2. The test webhook is sent as a **real event type with a `"_test": true` flag** in the payload, not as a
-   literal `webhook.test` event type as the plan wording implies.
-3. **Endpoint filter:** `WebhookDeliveryAdmin.list_filter` is `["status", "endpoint", "event__event_type"]`, so
-   an endpoint filter **is** configured, but Django suppresses a related-field filter when only one related
-   object exists (`has_output()` needs >1 choice), so "By endpoint" does not render with a single endpoint. This
-   is standard Django behaviour, not a bug.
-4. **Retry attempt count:** on retry the row's `last_attempt_at` and `next_retry_at` advance (row updated in
-   place, no duplicate), but `attempt_count` stayed at `1` rather than incrementing. This satisfies the plan's
-   stated criteria (row updates, no duplicate) — noted only as an observation.
+**Wording note A1-i (not a defect):** the plan describes "Send test ping" as a changelist bulk action selected with "Go". In the implementation it is an Unfold **detail-page action** (`actions_detail`, `freedom_ls/webhooks/admin.py:73,126`) — a **"Send Test"** button on the endpoint's change page. Functionality is present and correct; only the described UI path differs.
 
-### A2 — Signup → `user.registered` ✅
+**Wording note A1-ii (not a defect):** the plan expects a literal `webhook.test` event. Send-Test actually creates an event of the **selected** real type (e.g. `course.registered`) with `"_test": true` in the payload — not a distinct `webhook.test` type. This is the current, consistent behaviour.
 
-Signed up `qa_signup_a2@email.com`, confirmed via Mailpit (verification is mandatory).
-![](screenshots/desktop_A2_verify_email_prompt.png)
+### Test A2 — Signup → `user.registered` — PASS
 
-Exactly one `user.registered` event and exactly one delivery were created.
-![](screenshots/desktop_A2_user_registered_delivery.png)
+- Signed up `webhook_signup_qa@example.com` via `/accounts/signup/`, confirmed via the Mailpit link. ![](screenshots/desktop_A2_verify_email_prompt.png) ![](screenshots/desktop_A2_registration_complete.png)
+- Exactly **one** `user.registered` event fired (at email-confirmation, 19:30:48) and exactly **one** delivery against the endpoint.
+- **Adversarial (re-signup, same email):** allauth's email-enumeration protection returned the identical "verify your email" page and sent an **"Account already exists"** email (confirmed in Mailpit) — **no** second account, **no** duplicate `user.registered`. ![](screenshots/desktop_A2_adversarial_resignup.png)
 
-**Adversarial (re-signup same email):** allauth returned the same "verify your email" page (account-enumeration
-prevention), created **no second account** (still a single `QASignup` user) and **no duplicate**
-`user.registered` event.
-![](screenshots/desktop_A2_adversarial_resignup.png)
+### Test A3 — Course registration → `course.registered` — PASS (see app-gated note)
 
-### A3 — Course registration → `course.registered` ✅ (main + re-enrol); ⚠️ app-gated sub-check not executable
+- As a fresh, unregistered student, the **free** course detail page shows "Enrol for free" → `/courses/<slug>/access/`. ![](screenshots/desktop_A3_free_course_detail.png) Enrolling routed into the player and fired exactly **one** `course.registered` + one delivery. ![](screenshots/desktop_A3_enrolled_course_player.png)
+- **Adversarial (re-enrol same course):** hitting `/access/` again just re-opened the player — registration is `get_or_create`, so **no** second `course.registered`.
+- **Adversarial (application-gated course):** see **Finding 2** — in default dev this cannot be exercised because of an intentional dev override. It was **re-run with the override disabled** and **passed** (Part B section): the app-gated course shows **"Apply now"**, `/access/` **redirects to the apply page**, and **no** `course.registered` fires.
 
-- Free/self-serve course (`qa-free-course-access-types`) shows an "Enrol for free" CTA → `/access/`; enrolling
-  routes into the course player and fires exactly one `course.registered` event + one delivery.
-  ![](screenshots/desktop_A3_free_course_detail.png)
-  ![](screenshots/desktop_A3_enrolled_course_player.png)
-- **Re-enrol** on the same course created **no** second `course.registered` (registration is `get_or_create`;
-  the event fires only on create).
-  ![](screenshots/desktop_A3_deliveries_one_per_event.png)
+### Test A4 — Course completion → `course.completed` — PASS
 
-**⚠️ App-gated adversarial not executable in dev.** The plan expects enrolling in an application-gated course to
-redirect to an apply page and fire **no** `course.registered`. In dev, `config/settings_dev.py` sets
-`OVERRIDE_COURSE_ACCESS_TO_FREE = True`, which makes `VisibilityEnforcingBackend` bypass all per-course gating
-and treat **every** course as free/self-register. As a result the student was taken straight into the app-gated
-course and a `course.registered` event fired. Investigation (code read) confirmed the gating code
-(`ApplicationCourseAccessBackend`) and the QA fixture (`qa_create_course_access_types`) are both correct — the
-scenario simply cannot be exercised while the dev override is on. The **webhook layer behaved correctly**: it
-fired `course.registered` because a genuine `UserCourseRegistration` was created.
-![](screenshots/desktop_A3_appgated_unexpected_event.png)
+- As the student, advanced to the final topic and clicked **"Finish Course"**, landing on `/courses/<slug>/finish/`. ![](screenshots/desktop_A4_course_finish_page.png) Exactly **one** `course.completed` + one delivery.
+- **Adversarial (re-finish already-complete course):** the player no longer shows a "Finish Course" button, and a direct re-POST of `mark_complete` was a no-op — **no** new `course.completed` event.
 
-### A4 — Course completion → `course.completed` ✅
+**Ground truth (read-only query) for A2–A4** — one event and one delivery each, no duplicates:
 
-Completed `qa-free-course-access-types` via "Finish Course" → landed on `/finish/`; exactly one
-`course.completed` event + one delivery.
-![](screenshots/desktop_A4_course_finish_page.png)
+| Flow | Event | Deliveries |
+|---|---|---|
+| `user.registered` (webhook_signup_qa) | 1 | 1 (failed — 9999 dead) |
+| `course.registered` (free course) | 1 | 1 (failed) |
+| `course.completed` (free course) | 1 | 1 (failed) |
 
-**Adversarial (re-finish already-complete course):** the completed course no longer offers a "Finish Course"
-button, and a direct re-POST of `mark_complete` was a no-op — **no** new `course.completed` event. All events
-have exactly one delivery each.
-![](screenshots/desktop_A4_all_deliveries_one_per_event.png)
+![](screenshots/desktop_A2A4_event_list_newest.png) ![](screenshots/desktop_A2A4_deliveries_one_per_event.png)
+
+All deliveries are `failed` only because the QA target `http://localhost:9999/webhook` has no listener (as the plan intends); the point verified here is that exactly one row is created and transitions.
 
 ---
 
-## Part B — Durable `DatabaseBackend` + `db_worker`
+## Part B — durable `DatabaseBackend` + `db_worker` (the change under test)
 
-Temporarily enabled by appending `TASKS = fls_defaults.DATABASE_TASKS` to `config/settings_dev.py`, migrating,
-restarting the server, and running `manage.py db_worker` in a second shell. **The override was reverted after
-testing** (dev is back on `ImmediateBackend`).
+Enabled by temporarily appending `TASKS = fls_defaults.DATABASE_TASKS` to `config/settings_dev.py`, `migrate` (no new migrations — tables already present), restart, and a second-shell `python manage.py db_worker`. **Reverted afterwards** (`git diff config/settings_dev.py` is now empty).
 
-### B1 — Tasks admin surface exists ✅
+### Test B1 — Tasks admin surface — PASS (1 note)
 
-`Tasks Database Backend` → `Task Results` is present with By status / By priority / By queue name filters.
-![](screenshots/desktop_B1_tasks_admin_surface.png)
+The **Task Results** admin (`/admin/django_tasks_database/dbtaskresult/`) lists `_dispatch_event_task` rows with state (Ready / Successful / …) and enqueued/started/finished timestamps. ![](screenshots/desktop_B1_tasks_admin_surface.png)
 
-**Note:** this admin section is registered under **both** backends (the `django_tasks_db` app is always in
-`INSTALLED_APPS` from base), so the plan's phrasing that it "did not exist under `ImmediateBackend`" is not
-strictly accurate — the section is visible under `ImmediateBackend` too, it just never has task rows because
-`ImmediateBackend` does not enqueue to the DB.
-![](screenshots/desktop_B1_admin_dashboard_tasks_section.png)
+**Note B1-i (not a defect):** the plan says this admin "did not exist under `ImmediateBackend`". In fact the admin surface is present whenever `django_tasks_db` is installed — and it **is** in `INSTALLED_APPS` in base settings, so it shows under `ImmediateBackend` too. What the durable backend actually adds is **real task rows** being created and executed (under `ImmediateBackend` the task runs inline and no queue row persists).
 
-### B2 — Delivery is asynchronous (worker-driven) ✅
+### Test B2 — Delivery is asynchronous (worker-driven) — PASS
 
-Drove a fresh course completion. The request returned immediately to `/finish/`; a `_dispatch_event_task` row
-appeared in the Tasks admin and was drained out-of-process by the worker (`Successful`), and the delivery
-transitioned (to `failed` against the dead :9999 target — the expected outcome for an unreachable target).
-This never happened in Part A, where `ImmediateBackend` produced no task rows.
-![](screenshots/desktop_B2_task_row_successful.png)
-![](screenshots/desktop_B2_delivery_transitioned.png)
+- With the worker running, driving enrolment enqueued a task that the worker drained **automatically, out-of-process** (`_dispatch_event_task` enqueued 19:46:21 → finished **Successful** 19:46:22).
+- Driving course completion **while the worker was stopped** created the event and returned the page **before any delivery ran**; the delivery was performed only when the worker later processed the task (request 19:50:10 → delivery created & attempted 19:52:13 on worker start). ![](screenshots/desktop_B2_delivery_created_by_worker.png)
 
-### B3 — Single delivery per (event, endpoint) ✅
+**Note B2-i / B5-i (architecture, not a defect):** the `WebhookDelivery(status="pending")` row is created **inside** the task body (`dispatch_event`, `freedom_ls/webhooks/events.py:56,78`), which runs in the worker. So under the durable backend, while the worker is down there is a **queued task but no delivery row yet** — the delivery row appears (briefly `pending`, then transitions) only when the worker runs the task. The plan's phrasing ("the `WebhookDelivery` stays `pending`" while the task is queued) reads as if the delivery row pre-exists; it does not. The guarantee the plan cares about — *request returns immediately, nothing is delivered until the worker runs, the task is not lost* — holds.
 
-Across every flow, each event has exactly one delivery — no duplicates. (Consistent with the automated
-`test_dispatch_event_is_idempotent`.)
+### Test B3 — Single delivery per `(event, endpoint)` — PASS
 
-### B4 — Regression under the durable backend ✅
+Every processed event produced exactly **one** `WebhookDelivery` for the `(event, endpoint)` pair (verified by query and by the delivery-list row count increasing by exactly one per drained task). No duplicates. (The at-least-once/redelivery dedup path is additionally covered by the automated `test_dispatch_event_is_idempotent`.)
 
-With the worker running, **Send Test** still creates a fresh event + delivery (delivered inline), and **Retry**
-still updates the existing row in place — neither trips the unique constraint.
-![](screenshots/desktop_B4_send_test_durable.png)
+### Test B4 — Regression under the durable backend — PASS
 
-### B5 — Worker not running → tasks queue, don't drop ✅
+Repeated the send-test and retry admin actions with the durable backend + worker running:
+- **Send Test** created a fresh event + delivery (synchronous preview), status `failed` (9999 dead). ![](screenshots/desktop_B4_send_test_durable.png)
+- **Retry** updated the existing delivery row (last-attempt advanced) with **no duplicate row** (row count 14 → 14) and no unique-constraint error.
 
-- Worker **stopped**, drove a `course.registered` flow: the dispatch task sits **`Ready`** (unprocessed) in the
-  Tasks admin and nothing is delivered.
-  ![](screenshots/desktop_B5_task_ready_worker_stopped.png)
-  ![](screenshots/desktop_B5_task_queued_clean.png)
-- Worker **started**: the queued task drains (`RUNNING`→`SUCCESSFUL`), the delivery is created and delivered
-  **`Success` (HTTP 200)** (verified against a temporary local listener).
-  ![](screenshots/desktop_B5_delivery_success_after_drain.png)
+### Test B5 — Worker not running → tasks queue, don't drop — PASS
 
-This demonstrates the hard operational dependency the change introduces: with the durable backend the worker
-**must** run or user-triggered webhooks stay queued (never dropped).
+- With the worker **stopped**, driving a flow left the task **Ready** (queued, unprocessed) in the Tasks admin and delivered nothing. ![](screenshots/desktop_B5_task_ready_worker_stopped.png)
+- **Starting** the worker drained the queued task (→ **Successful**) and produced the delivery (→ `failed`, 9999 dead). ![](screenshots/desktop_B5_task_drained_after_restart.png)
+
+This demonstrates the hard operational dependency the change introduces: with the durable backend the worker **must** run or user-triggered webhooks stay queued (they are not lost, and nothing is delivered until the worker runs).
 
 ---
 
-## Observations (not defects)
+## Findings / observations (all tangential — none is a defect in this branch)
 
-1. **Delivery-row creation timing under the durable backend.** The `WebhookDelivery` row is created by the
-   dispatch **task** (when the worker runs), not synchronously at event time. So with the worker stopped, the
-   delivery row does not yet exist — only the event and the queued task do. The plan's B5 wording ("the
-   `WebhookDelivery` stays pending") describes it as an already-existing pending row; in practice the row
-   appears only once the worker processes the task. Behaviourally equivalent (nothing is delivered, nothing is
-   dropped) — flagged only so the plan text matches reality.
+### Finding 1 — Delivery changelist is missing the "By endpoint" filter (pre-existing, minor)
 
-2. **Circuit breaker works (positive finding).** Because QA used a permanently-dead target (:9999), after 7
-   consecutive failed deliveries the endpoint's circuit breaker tripped (`disabled_at` set, `failure_count` 7),
-   and subsequent events produced **no** deliveries until a later successful delivery cleared it
-   (`failure_count`→0, `disabled_at`→cleared). This is correct, documented behaviour ("Circuit breaker state:
-   set when failure threshold is reached, cleared on successful delivery") — worth noting because it can
-   surprise a QA run that uses an unreachable target for many deliveries in a row.
+Test A1.3 expects filters for "Status / Endpoint / Event type". The rendered sidebar has **By status** and **By event type** only — **no "By endpoint"** — even though `WebhookDeliveryAdmin.list_filter = ["status", "endpoint", "event__event_type"]` includes `endpoint` (`freedom_ls/webhooks/admin.py:206`). The `endpoint` `RelatedFieldListFilter` does not render (confirmed absent from the DOM, not just visually hidden). **This branch does not touch `freedom_ls/webhooks/admin.py`** (`git log main..HEAD` on that file is empty), so it is **pre-existing and unrelated** to the durable-backend change. Flagged for awareness; out of scope for this spec.
 
-## Not tested / limitations
+### Finding 2 — App-gated adversarial can't run in default dev (intentional dev override, not a bug)
 
-- **A3 application-gated adversarial** — not executable in dev due to `OVERRIDE_COURSE_ACCESS_TO_FREE = True`
-  (see A3). Not a data gap (the fixture exists and is correct), so this was not routed to `fls:qa-data-helper`.
-  To exercise it, the dev override would need to be temporarily disabled — a possible note for the plan author.
-- **Mobile (Step 6) & Tablet (Step 7)** — not applicable; the feature is entirely Django admin (Unfold), which
-  per the plan guidance is not responsive-tested. The frontend flows used to *trigger* webhooks (signup,
-  enrol, finish) are pre-existing and unchanged by this feature.
+In default dev the application-gated course showed **"Enrol for free"** and `/access/` self-enrolled the learner (firing a `course.registered`) instead of redirecting to the apply page. Root cause (investigated by a subagent, and independently confirmed): `config/settings_dev.py:118-119` sets `OVERRIDE_COURSE_ACCESS_TO_FREE = True`, an intentional **dev/staging preview override** (from the already-shipped spec `spec_dd/3. done/2026-07-11_16:24_override_course_access_and_details_page/`) that makes `VisibilityEnforcingBackend` replace every course's decision with the free decision. Both web chokepoints (`course_detail` and `initiate_course_access` in `freedom_ls/student_interface/views.py`) correctly consult `get_course_access_backend().get_access(...)`; the earlier `shell` repro showed "Apply now" only because it bypassed the wrapper. Production is unaffected (base/prod default the override to `False`, guarded by system check `W001`). **`git log main..HEAD` confirms this branch touches none of `config/settings_dev.py`, `freedom_ls/course_access`, or `student_interface/views.py`.**
+
+Because the webhook itself fires correctly on a real registration, this override made a `course.registered` fire for the gated course — expected *given the override*, not a webhooks fault. To close the plan's check, the adversarial was **re-run with `OVERRIDE_COURSE_ACCESS_TO_FREE = False`** and **passed**: the gated course showed **"Apply now"** → `/applications/apply/...`, and `/access/` **redirected to the apply page with no registration and no `course.registered` event**. ![](screenshots/desktop_A3_appgated_apply_now.png) ![](screenshots/desktop_A3_appgated_apply_redirect.png) (Default-dev bypass, for the record: ![](screenshots/desktop_A3_appgated_bypass_player.png))
+
+**Suggestion for the plan:** note that Test A3's application-gated adversarial requires `OVERRIDE_COURSE_ACCESS_TO_FREE = False` in dev, or it silently self-enrols.
+
+### Finding 3 — Circuit breaker trips with the dead 9999 target (expected protective behaviour)
+
+Using the dummy dead target, deliveries always fail; after the failure threshold (~5–6) the endpoint's circuit breaker set `disabled_at` and **subsequent events produced no deliveries at all** (the tripped endpoint is skipped — the dispatch task completes "successfully" with nothing to deliver). This is correct protective behaviour, but it means QA with a permanently-dead target only yields a handful of deliveries before the breaker trips; re-enabling the endpoint (the Enable bulk action) clears it. Worth calling out in the plan so a mid-run "no new deliveries" is not mistaken for a bug. (Detailed root-cause notes were captured during the run and are folded into this report.)
+
+---
+
+## Test data & environment
+
+- Test data created via the **`fls:qa-data-helper`** agent: fresh pre-verified student `webhook_qa_student@email.com`, reused `qa-free-course-access-types` (1-topic free course) and `qa-application-gated-course-access-types` (application-gated). The `webhook_signup_qa@example.com` account created by Test A2's real signup was reused (registered for nothing) for the Part B / app-gated flows.
+- No tests were skipped for missing data.
+- Temporary `config/settings_dev.py` edits (durable `TASKS`, and `OVERRIDE_COURSE_ACCESS_TO_FREE = False` for the app-gated re-check) were **reverted** — working tree clean for that file. Dev server and `db_worker` were stopped.
