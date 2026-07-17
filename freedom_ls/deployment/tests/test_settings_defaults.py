@@ -4,35 +4,36 @@ from pathlib import Path
 
 import pytest
 
+from django.core.exceptions import ImproperlyConfigured
 from django.test import RequestFactory, override_settings
 
 from freedom_ls.deployment import settings_defaults
 
 
-def test_require_secret_key_missing_env_raises_key_error(
+def test_require_secret_key_missing_env_raises_improperly_configured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("SECRET_KEY", raising=False)
 
-    with pytest.raises(KeyError):
+    with pytest.raises(ImproperlyConfigured):
         settings_defaults.require_secret_key()
 
 
-def test_require_secret_key_empty_string_raises_key_error(
+def test_require_secret_key_empty_string_raises_improperly_configured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("SECRET_KEY", "")
 
-    with pytest.raises(KeyError):
+    with pytest.raises(ImproperlyConfigured):
         settings_defaults.require_secret_key()
 
 
-def test_require_secret_key_whitespace_only_raises_key_error(
+def test_require_secret_key_whitespace_only_raises_improperly_configured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("SECRET_KEY", " ")
 
-    with pytest.raises(KeyError):
+    with pytest.raises(ImproperlyConfigured):
         settings_defaults.require_secret_key()
 
 

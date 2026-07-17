@@ -1,15 +1,18 @@
 """Thin, pure module of deployment-settings primitives consumed by
 config/settings_prod.py.
 
-Flat constants and small functions only — no Django import at module top, so this is
-safe to import at settings-load time before the app registry is ready. Unit-tested in
-freedom_ls/deployment/tests/test_settings_defaults.py.
+Flat constants and small functions only. Only stdlib and django.core.exceptions at
+module top — nothing that touches the app registry — so this is safe to import at
+settings-load time before the registry is ready (matching freedom_ls/base/env.py).
+Unit-tested in freedom_ls/deployment/tests/test_settings_defaults.py.
 """
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 # Trustworthy only when production terminates TLS at a proxy that forwards
 # X-Forwarded-Proto: https on every request reaching this app. That requires all of:
@@ -34,7 +37,7 @@ CONN_HEALTH_CHECKS: bool = True
 
 
 def require_secret_key() -> str:
-    """Return SECRET_KEY from the environment, raising KeyError if
+    """Return SECRET_KEY from the environment, raising ImproperlyConfigured if
     unset/empty/whitespace-only.
 
     Fails fast during Gunicorn boot (visible crash-loop) instead of lazily on the
@@ -42,11 +45,14 @@ def require_secret_key() -> str:
     (e.g. " ") — truthy in Python but a functionally-broken key — is rejected too. A
     blank SECRET_KEY silently disables session/CSRF signing rather than raising, so
     catching it here is the only way to avoid a production deployment that looks up
-    but has no real security boundary.
+    but has no real security boundary. Raises ImproperlyConfigured (not a bare
+    KeyError) to match freedom_ls/base/env.py and give a clear boot traceback.
     """
-    key = os.environ["SECRET_KEY"].strip()
+    key = os.environ.get("SECRET_KEY", "").strip()
     if not key:
-        raise KeyError("SECRET_KEY")
+        raise ImproperlyConfigured(
+            "SECRET_KEY must be set to a non-empty value in production."
+        )
     return key
 
 
