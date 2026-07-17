@@ -23,7 +23,7 @@ research artifacts stay in this parent directory:
 |---|------|------|------------------|------------|
 | 1 | P0 prod settings + importable defaults | this repo | §5.1 A–F prod-settings fixes, delivered as importable `freedom_ls/deployment/settings_defaults.py` primitives | — (foundational) |
 | 2 | P1 importable health module | this repo | `freedom_ls/health/` with liveness (no deps) + readiness (DB); `django-health-check`; pre-wired `SECURE_REDIRECT_EXEMPT` | Spec 1 (§5.1-A) |
-| 3 | Background-tasks reconciliation | this repo | opt-in `django-tasks-db` primitive + doc fix; shipped default stays `ImmediateBackend` | Spec 1 (§5.1-C removes the TODO) |
+| 3 | Background-tasks: durable prod default | this repo | production defaults to `django-tasks-db` `DatabaseBackend` (settings primitive + dependency + `django_tasks_db` app + `WebhookDelivery` idempotency guard + docs); base/dev/tests stay `ImmediateBackend` | Spec 1 (`settings_defaults.py`) |
 | 4 | Remove standalone path, document concrete-only | this repo | delete nginx/standalone artifacts; concrete-only deployment docs | Spec 1 (loose); doc-rewrite pairs with Spec 5 |
 | 5 | P3 deployment scaffolding | **template repo** | Dockerfile, compose, Caddyfile, entrypoint, `.env.example`, GHCR CI, Ansible/backups/Sentry, worker profile, template `settings_prod.py` migration | Specs 1, 2, 3 |
 
@@ -46,8 +46,10 @@ Spec 1 ─┼── Spec 3 (tasks) ───┼── Spec 5 (template scaffoldi
     best written **alongside/after Spec 5**, even though the *artifact removals* can happen right
     after Spec 1.
 - **Spec 5 last.** It consumes Spec 1 (`settings_defaults`, proxy header, `DB_SSLMODE`, log-cap
-  pairing), Spec 2 (readiness endpoint; keeps `/health/*` off the public vhost), and Spec 3 (opt-in
-  `django-tasks-db` for the `worker` profile).
+  pairing), Spec 2 (readiness endpoint; keeps `/health/*` off the public vhost), and Spec 3 (the
+  durable `django-tasks-db` `DatabaseBackend` is now the **production default**, so Spec 5's
+  `db_worker` container + `prune_db_task_results` job ship **enabled by default** — the worker is a
+  hard dependency of the shipped default, not an opt-in profile).
 
 ## Pairing constraints (do not land one half without the other)
 
@@ -72,8 +74,8 @@ defaults importable.
 - **Reusable deploy *artifacts*** → `freedom-ls-concrete-template` (Spec 5), synced via
   `/fls:sdd:update_template_repo`.
 - **Reusable *code* primitives** → `freedom_ls` itself (Specs 1–3), so they are imported, not
-  copy-pasted. The tasks backend is an importable primitive projects *may* enable; the shipped
-  default stays `ImmediateBackend`.
+  copy-pasted. The durable tasks backend is an importable primitive that is now the **production
+  default** (`config/settings_prod.py` assigns it); base/dev/tests keep `ImmediateBackend`.
 
 ### Propagation step on every P0 landing (idea §8)
 Landing a P0 fix in the reference `config/` + template only patches *future* projects. **Every P0
