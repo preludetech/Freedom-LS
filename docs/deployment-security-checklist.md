@@ -19,7 +19,10 @@ Use this checklist before every production deployment to ensure the system is pr
 - [ ] Database user has only the minimum required privileges
 - [ ] Database password is strong (32+ characters, randomly generated)
 - [ ] Database is not publicly accessible (bound to private network only)
-- [ ] Database connections use SSL/TLS encryption
+- [ ] Database connections use SSL/TLS encryption (external/managed databases only — for
+      the same-host containerised Postgres this project ships with, the load-bearing
+      control is not publishing port 5432 to the host, not `sslmode`; see Firewall Rules
+      below)
 - [ ] Database backups are encrypted
 
 ## 3. TLS Configuration
@@ -139,6 +142,8 @@ All required environment variables must be set in production. Never hardcode cre
 | `DB_PASSWORD` | PostgreSQL database password. Must be strong and randomly generated. |
 | `DB_HOST` | PostgreSQL host address. |
 | `DB_PORT` | PostgreSQL port (default: `5432`). |
+| `DB_SSLMODE` | libpq `sslmode` (default: `prefer`). Use `require`/`verify-full` for external/managed databases. |
+| `DB_CONN_MAX_AGE` | Persistent connection lifetime in seconds (default: `60`). Recommended 60-300s; never unlimited. |
 
 ### HSTS
 

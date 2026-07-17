@@ -193,9 +193,10 @@ Items a concrete dev config should contain — see the exclusions table below fo
 ### `settings_prod.py`
 
 - [ ] Extends `settings_base` via `from .settings_base import *`
-- [ ] `SECRET_KEY = os.getenv("SECRET_KEY", "")`
+- [ ] `SECRET_KEY = fls_defaults.require_secret_key()` — hard-fails at import if `SECRET_KEY` is missing/empty rather than silently disabling session/CSRF signing
 - [ ] `HOST_DOMAIN = os.environ["HOST_DOMAIN"]` (hard failure if missing)
 - [ ] `SECURE_SSL_REDIRECT = True`
+- [ ] `SECURE_PROXY_SSL_HEADER = fls_defaults.SECURE_PROXY_SSL_HEADER`
 - [ ] HSTS settings (`SECURE_HSTS_SECONDS`, `SECURE_HSTS_INCLUDE_SUBDOMAINS`, `SECURE_HSTS_PRELOAD`)
 - [ ] Secure cookies: `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SESSION_COOKIE_HTTPONLY`, etc.
 - [ ] `SECURE_CONTENT_TYPE_NOSNIFF = True`, `SECURE_REFERRER_POLICY`, `SECURE_CROSS_ORIGIN_OPENER_POLICY`
