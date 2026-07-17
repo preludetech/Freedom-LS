@@ -29,7 +29,8 @@ from django.urls import Resolver404, resolve, reverse
 
 EXEMPT_URL_NAMES: frozenset[str] = frozenset(
     {
-        "health_check",
+        "health:liveness",
+        "health:readiness",
         "account_login",
         "account_logout",
         "account_signup",

@@ -178,7 +178,7 @@ def test_health_path_exempt(mock_site_context, site):
     client = Client()
     client.force_login(user)
 
-    response = client.get("/health/")
+    response = client.get("/health/liveness/")
     assert response.status_code == 200
 
 

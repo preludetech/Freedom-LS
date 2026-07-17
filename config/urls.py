@@ -21,7 +21,6 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
-from django.http import JsonResponse
 from django.urls import include, path
 
 from config.sitemaps import CourseSitemap, StaticViewSitemap
@@ -30,11 +29,6 @@ from config.views import robots_txt
 # from ninja import NinjaAPI
 
 ADMIN_URL = os.environ.get("DJANGO_ADMIN_URL", "admin/")
-
-
-def health_check(request):
-    """Simple health check endpoint for Docker and load balancers."""
-    return JsonResponse({"status": "healthy"})
 
 
 # api = NinjaAPI()
@@ -49,7 +43,7 @@ _sitemaps = {
 }
 
 urlpatterns = [
-    path("health/", health_check, name="health_check"),
+    path("health/", include("freedom_ls.health.urls")),
     path(ADMIN_URL, admin.site.urls),
     # Robots and sitemap — registered before the student_interface catch-all
     path("robots.txt", robots_txt, name="robots_txt"),
