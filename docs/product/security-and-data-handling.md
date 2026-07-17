@@ -1,11 +1,12 @@
 # Security and Data Handling
 
-_Last updated: 2026-07-11_
+_Last updated: 2026-07-17_
 
 ## Summary
 
 - **Built:** All HTTP traffic is protected at the application layer: CSRF middleware, nh3 markdown sanitisation (Rust-based allowlist), clickjacking prevention (`X_FRAME_OPTIONS=SAMEORIGIN`), Argon2 password hashing, django-axes brute-force lockout, multi-site data isolation via `SiteAwareManager`, and SSRF-protected webhook delivery with Fernet-encrypted secrets.
 - **Built:** Dev-time security gates run on every commit via pre-commit hooks: detect-secrets, detect-private-key, bandit (medium+ severity), ruff, mypy, shellcheck, and merge-conflict/large-file/AST checks.
+- **Built:** Production settings trust the reverse proxy's forwarded HTTPS scheme, so the HTTPS redirect and HSTS header behave correctly behind a TLS-terminating proxy, and refuse to start if `SECRET_KEY` is missing or empty rather than booting with broken session/CSRF signing.
 - **Built:** Media files in object storage are private by default — served via time-limited signed URLs rather than public links, so application-gated course files do not leak from a guessed or shared link. Error tracking (Sentry) is wired but inactive until an operator supplies credentials, and defaults to **not** sending learner personal data with error events.
 - **Report-only:** Content Security Policy is currently in report-only mode (`SECURE_CSP_REPORT_ONLY`), not enforcing. HSTS is configurable but requires a staged rollout during deployment; it is not active by default.
 - **Not yet built:** 2FA/MFA, automated data-deletion tooling, data-subject-rights tooling, and a formal incident-response runbook do not exist in code. These are documented honestly in §4 and tracked in the [roadmap](./roadmap.md).
@@ -64,7 +65,7 @@ All markdown content is passed through the `nh3` sanitiser (Rust-based, memory-s
 
 ### HSTS (operational — staged rollout required)
 
-`SecurityMiddleware` supports HSTS via the `HSTS_SECONDS`, `HSTS_INCLUDE_SUBDOMAINS`, and `HSTS_PRELOAD` environment variables. These are not set to meaningful values by default; a staged rollout must be followed at deployment time to avoid locking users out during TLS certificate changes. The four-stage rollout procedure (1 hour → 1 week → 1 year → preload submission) is documented in [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §4.
+`SecurityMiddleware` supports HSTS via the `HSTS_SECONDS`, `HSTS_INCLUDE_SUBDOMAINS`, and `HSTS_PRELOAD` environment variables. These are not set to meaningful values by default; a staged rollout must be followed at deployment time to avoid locking users out during TLS certificate changes. The four-stage rollout procedure (1 hour → 1 week → 1 year → preload submission) is documented in [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §4. HSTS also depends on the application correctly recognising proxied requests as HTTPS, as described above under [Security middleware](#security-middleware) — without that, the header is inert behind a TLS-terminating proxy regardless of these values.
 
 ### Brute-force lockout
 
@@ -81,6 +82,10 @@ WhiteNoise middleware serves compressed, cache-busted static files directly from
 ### Security middleware
 
 `django.middleware.security.SecurityMiddleware` is the first middleware in the stack. It handles SSL redirects (when `SECURE_SSL_REDIRECT` is set), secure cookie flags, and the HSTS header based on environment variable configuration.
+
+Because production runs behind a reverse proxy that terminates TLS, FLS is configured to trust the proxy-forwarded HTTPS scheme, so the application correctly recognises proxied requests as secure. Without this, the HTTPS redirect could loop indefinitely and the HSTS header would never take effect, because Django would see every request — even ones that reached the proxy over HTTPS — as plain HTTP. This is safe because production terminates TLS at a trusted proxy under the hardening preconditions in the deployment security checklist; see [`../deployment-security-checklist.md`](../deployment-security-checklist.md) for those preconditions.
+
+**`SECRET_KEY` is required at boot.** Production refuses to start if `SECRET_KEY` is missing or empty — the application fails immediately at startup (a visible crash-loop) rather than booting and silently running with a broken signing key, which would compromise session and CSRF signing. This check only catches an absent or empty key; a present-but-weak key is separately flagged by Django's deployment checks, which already run in CI.
 
 ### Multi-site data isolation
 
@@ -120,7 +125,7 @@ No payment data, government ID, or biometric data is stored by FLS itself.
 
 ### Encryption in transit
 
-TLS is termination at the Caddy reverse proxy (or Cloudflare edge) using certificates from Let's Encrypt. `SecurityMiddleware` can enforce HTTPS redirect via `SECURE_SSL_REDIRECT`. Database connections use SSL/TLS as documented in the deployment checklist. All of this requires correct deployment configuration — see [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §3.
+TLS is termination at the Caddy reverse proxy (or Cloudflare edge) using certificates from Let's Encrypt. `SecurityMiddleware` can enforce HTTPS redirect via `SECURE_SSL_REDIRECT`. Database connection encryption is configurable via an environment variable and defaults to **disabled** for the shipped same-host containerised PostgreSQL, which does not run TLS; the modes that turn on database TLS (`require`/`verify-full`) are reserved for external or managed databases, where they should be used. For the shipped same-host topology, the control that actually matters is not publishing the database port to the host — not the SSL mode — see [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §3 for that control and for external/managed-database guidance. All of this requires correct deployment configuration.
 
 ### Error tracking and personal data (Sentry)
 

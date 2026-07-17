@@ -1,6 +1,6 @@
 # Deployment
 
-_Last updated: 2026-07-11_
+_Last updated: 2026-07-17_
 
 ## Summary
 
@@ -51,9 +51,9 @@ The planned pipeline uses a dedicated ed25519 SSH deploy key (stored in GitHub S
 
 ## Background Tasks
 
-Django 6's built-in task framework (`django.tasks`) is wired into the application. It is currently configured with `ImmediateBackend`, which runs tasks synchronously in the request/response cycle — there is a `TODO` in the production settings to swap in a durable backend before background tasks are used in production.
+Django 6's built-in task framework (`django.tasks`) is wired into the application. It is currently configured with `ImmediateBackend`, which runs tasks synchronously in the request/response cycle. This is now the deliberate, documented default shipped in production settings, not a placeholder awaiting a decision.
 
-The planned production setup uses the database-backed backend, with PostgreSQL as the task broker (no Celery, Redis, or separate message broker) and the worker running as a separate container (`python manage.py db_worker`). Neither the durable backend nor the worker container is configured yet.
+The planned production setup uses a durable, database-backed backend, with PostgreSQL as the task broker (no Celery, Redis, or separate message broker) and the worker running as a separate container (`python manage.py db_worker`). Neither the durable backend nor the worker container is configured yet.
 
 ## Application-Level Facts
 
@@ -64,7 +64,10 @@ The following are built into the application code and are always present regardl
 - **`/health/` endpoint** — used by Docker health checks and uptime monitoring tools.
 - **Sentry error tracking** — wired into the application and configured via the Sentry DSN environment variable. It is a no-op until that variable is supplied, so local/development and unconfigured deployments send nothing. Once configured it reports the deployment's environment name, release identifier, and a low default trace-sampling rate for cost control; attaching learner personal data to error reports is an explicit opt-in, off by default (see [security and data handling](./security-and-data-handling.md)). A staff-only verification endpoint lets an operator confirm a running deployment is actually reaching Sentry; it is inaccessible to anonymous or non-staff users.
 - **PostHog analytics** — a client-side analytics snippet is wired into the application and configured via environment variables (a project token and a region host, defaulting to the US region and overridable for the EU). If the project token is unset, the snippet does not render, so local/development deployments send no analytics by default.
-- **Environment-variable configuration** — all secrets and deployment-specific settings (SECRET_KEY, HOST_DOMAIN, DB credentials, email credentials, DJANGO_ADMIN_URL, object storage/R2, Sentry, PostHog) are provided via environment variables, each with a sensible in-repo default where one makes sense, so a deployment configures these services without copy-pasting settings code. No credentials are hardcoded.
+- **Environment-variable configuration** — all secrets and deployment-specific settings (SECRET_KEY, HOST_DOMAIN, DB credentials, `DB_SSLMODE`, `DB_CONN_MAX_AGE`, email credentials, DJANGO_ADMIN_URL, object storage/R2, Sentry, PostHog) are provided via environment variables, each with a sensible in-repo default where one makes sense, so a deployment configures these services without copy-pasting settings code. No credentials are hardcoded. `DB_SSLMODE` controls the database connection's SSL mode; it defaults to disabled for the shipped same-host containerised PostgreSQL (which has no TLS), with stricter modes reserved for external or managed databases — see [security and data handling](./security-and-data-handling.md) for the security posture. `DB_CONN_MAX_AGE` enables persistent database connections (recommended 60–300 seconds); connection health checks are on, so a stale connection left over from a database restart is recycled automatically rather than causing the next request to fail. A missing or empty `SECRET_KEY` fails the application at startup — a visible crash-loop — rather than booting successfully and only erroring on the first request that needs it.
+- **HTTPS detection behind a reverse proxy** — FLS's production settings trust the reverse proxy's forwarded HTTPS scheme, so when deployed behind a TLS-terminating reverse proxy the application correctly detects that an incoming request is secure. This is what makes the existing HTTPS redirect and HSTS settings behave correctly behind the proxy, rather than risking a redirect loop. See [security and data handling](./security-and-data-handling.md) for the trust preconditions this relies on.
+- **Container-friendly logging (capability; not yet the default in this repo)** — FLS's logging configuration is able to emit logs to stdout/stderr only, which is friendlier to container-based log collection than writing to files on disk. The reference production configuration shipped in this repository does not yet use that stdout-only mode: it still writes rotating log files under `logs/`, and the existing `logs/` bind mount is unchanged. Switching this repo's reference configuration to stdout-only is deferred until container-level log-size caps are added in later deployment work, so that moving to stdout doesn't just relocate the disk-fill risk onto uncapped container logs.
+- **Shared production-settings defaults, propagated by version bump** — the production-settings defaults FLS recommends (including the items above, such as the proxy HTTPS detection, the database connection options, and the required-`SECRET_KEY` check) are increasingly delivered as values a downstream project imports directly from FLS, rather than settings each downstream project has to copy and hand-edit into its own configuration. This means a future fix to one of these shared defaults lands once in FLS and reaches a downstream project on its next routine version update, instead of needing to be found and re-applied project by project.
 - **Tailwind build required at image-build time** — `npm run tailwind_build` must run during Docker image construction. `FLS_THEME` must be set at build time; it cannot be changed at runtime without a rebuild.
 
 ## Backups
