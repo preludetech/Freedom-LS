@@ -66,13 +66,13 @@ course.listing_status. No per-status dispatch or leaf templates here.
                 {% with heading="Available courses" %}
                     {% partial section-heading %}
                 {% endwith %}
-                <a href="{% url 'student_interface:courses' %}"
-                   class="inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium no-underline hover:text-primary-hover">
+                <c-button href="{% url 'student_interface:courses' %}"
+                          variant="link"
+                          size="small"
+                          icon_right="next"
+                          class="whitespace-nowrap">
                     Browse all courses
-                    <span aria-hidden="true">
-                        <c-icon name="next" class="size-4" />
-                    </span>
-                </a>
+                </c-button>
             </div>
             {% with courses=available_courses %}
                 {% partial course-grid %}

@@ -8,8 +8,9 @@ Standard fields land in standard places:
   icon + colour  -> <c-course-row-shell> accent panel (accent_slot_key, icon)
   status         -> eyebrow slot (course_status_eyebrow.html — the single place
                     status is ever shown; no duplicate chip/badge)
-  title + link   -> stretched title link (card_title_link.html), Details beside it
-  details        -> course_details_link.html
+  details        -> course_details_link.html, right-aligned inline with the
+                    status in the eyebrow slot (top-right of the row)
+  title + link   -> stretched title link (card_title_link.html)
   progress       -> footer slot (<c-course-progress-bar>), registered/in_progress only
 
 Title-link target by status:
@@ -39,23 +40,25 @@ icon_fallback, title, progress_percentage, access_badge) and user.
                     icon_fallback="{{ course.icon_fallback }}"
                     title="{{ course.title }}">
     <c-slot name="eyebrow">
-        {% if course.listing_status == "not_registered" %}
-            {% if user.is_authenticated %}
-                {% include "student_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
-            {% elif course.access_badge %}
-                <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
-            {% endif %}
-        {% else %}
-            {% include "student_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
-        {% endif %}
+        <div class="flex items-center justify-between gap-2">
+            <div>
+                {% if course.listing_status == "not_registered" %}
+                    {% if user.is_authenticated %}
+                        {% include "student_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
+                    {% elif course.access_badge %}
+                        <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
+                    {% endif %}
+                {% else %}
+                    {% include "student_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
+                {% endif %}
+            </div>
+            {% include "student_interface/partials/course_details_link.html" %}
+        </div>
     </c-slot>
 
-    <div class="flex items-center justify-between gap-2">
-        {% with url=title_url title=course.title %}
-            {% include "student_interface/partials/card_title_link.html" %}
-        {% endwith %}
-        {% include "student_interface/partials/course_details_link.html" %}
-    </div>
+    {% with url=title_url title=course.title %}
+        {% include "student_interface/partials/card_title_link.html" %}
+    {% endwith %}
 
     {% if course.listing_status == "registered" or course.listing_status == "in_progress" %}
         <c-slot name="footer">
