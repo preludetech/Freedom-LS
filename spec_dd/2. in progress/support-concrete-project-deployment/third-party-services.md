@@ -9,6 +9,9 @@ these accounts exist and reads their credentials from `.env`.
 > **Scope.** These are the *external* dependencies. The shipped stack itself (Gunicorn, WhiteNoise,
 > containerised `postgres:17`, Caddy) needs no external account. Consumed mostly by **Spec 5** (the
 > template scaffolding); a few values are also read by **Spec 1** settings and **Spec 2** health.
+> **Host provisioning (Ansible) and database backups are owned by a separate fleet ops repo**, not
+> Spec 5 — that repo manages the shared host (prod + staging on one VPS) and the off-box backups; the
+> VPS (§5) and off-box backup target (§6) accounts below are still required, just consumed there.
 
 > **Env-var contract.** For the PostHog / Sentry / R2 vars specifically, this repo's `.env.example`
 > is the authoritative, in-sync list — the two documents together form one contract.
@@ -23,7 +26,9 @@ these accounts exist and reads their credentials from `.env`.
   - **Firewall the origin to Cloudflare's IP ranges** so the proxy header can be trusted.
   - Scope Caddy's `trusted_proxies` to **Cloudflare's published IP ranges** — never `0.0.0.0/0`.
 - **Credentials / config produced:**
-  - `DOMAIN` (Caddy `{$DOMAIN}` substitution) — Spec 5 Caddyfile + Spec 1 host settings.
+  - `HOST_DOMAIN` (Caddy `{$HOST_DOMAIN}` substitution) — Spec 5 Caddyfile + Spec 1 host settings.
+    This is the **single** domain var both the prod settings and the Caddyfile read (Spec 5 §5.3);
+    there is no separate Caddy `DOMAIN`.
   - Cloudflare IP ranges → Caddy `trusted_proxies`; `CF-Connecting-IP` handling — Spec 5.
   - (Optional, if DNS is automated) a Cloudflare API token scoped to the zone.
 - **Consumed by:** Spec 1 (§5.1-A proxy-header preconditions), Spec 5 (§5.3 Caddyfile).
@@ -92,18 +97,20 @@ these accounts exist and reads their credentials from `.env`.
 - **Sign up for:** a single **VPS** from any provider (the shipped topology is single-host Docker
   Compose).
 - **Configure:** an **SSH key** for Ansible provisioning/hardening; DNS records at Cloudflare (see
-  §1) pointing at the VPS.
+  §1) pointing at the VPS. Both the prod and staging FLS instances run on this **same host**.
 - **Credentials produced:** SSH private key / host access for the Ansible control machine.
-- **Consumed by:** Spec 5 (§5.6 Ansible provisioning/hardening).
+- **Consumed by:** the **separate fleet ops repo** (Ansible provisioning/hardening) — out of scope for
+  Spec 5.
 
 ## 6. Off-box backup destination — required for prod
 
 - **Sign up for:** an **off-box storage target** for encrypted database backups (object storage, a
   second host, or a managed backup service).
 - **Configure:** credentials for the sync target; a **backup encryption key** (backups are
-  `pg_dump` + encrypted off-box sync).
+  `pg_dump` + encrypted off-box sync of **both** the prod and staging DBs on the shared host).
 - **Credentials produced:** backup-target credentials + backup encryption key/passphrase.
-- **Consumed by:** Spec 5 (§5.6 backups template).
+- **Consumed by:** the **separate fleet ops repo** (backup scheduling + off-box sync) — out of scope
+  for Spec 5.
 
 ## 7. PostgreSQL — usually **no** external account
 
@@ -117,7 +124,7 @@ these accounts exist and reads their credentials from `.env`.
 | Var / secret | Type | Source service | Consumed by |
 |---|---|---|---|
 | `SECRET_KEY` | per-deploy secret | generated (not a service) | Spec 1 (hard-fail if missing) |
-| `DOMAIN` | config | Cloudflare zone (§1) | Spec 1, Spec 5 (Caddy) |
+| `HOST_DOMAIN` | config | Cloudflare zone (§1) | Spec 1, Spec 5 (Caddy) |
 | `trusted_proxies` (CF ranges) | config | Cloudflare (§1) | Spec 5 (Caddy) |
 | `DB_SSLMODE` | config (`disable` default) | Postgres topology (§7) | Spec 1 |
 | `AWS_STORAGE_BUCKET_NAME` | config (on/off gate) | R2 / S3 (§2) | Spec 5, Spec 2 (opt-in) |
@@ -130,8 +137,8 @@ these accounts exist and reads their credentials from `.env`.
 | `POSTHOG_API_KEY` | public token | PostHog (§3a) | in-repo (`base.context_processors`) |
 | `POSTHOG_API_HOST` (`https://us.i.posthog.com` default) / `POSTHOG_UI_HOST` (optional) | config | PostHog (§3a) | in-repo (`base.context_processors`) |
 | `GITHUB_TOKEN` (`packages: write`) / GHCR pull cred | CI secret | GitHub/GHCR (§4) | Spec 5 |
-| VPS SSH key | operator secret | VPS (§5) | Spec 5 (Ansible) |
-| Backup target creds + backup encryption key | per-deploy secret | off-box target (§6) | Spec 5 (backups) |
+| VPS SSH key | operator secret | VPS (§5) | fleet ops repo (Ansible) |
+| Backup target creds + backup encryption key | per-deploy secret | off-box target (§6) | fleet ops repo (backups) |
 
 **Legend:** *per-deploy secret* = unique per environment, never committed (lives in `.env` / CI
 secrets); *config* = non-secret value documented in `.env.example`; *operator/CI secret* = held by
