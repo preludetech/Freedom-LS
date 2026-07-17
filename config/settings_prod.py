@@ -22,6 +22,7 @@ SECURE_SSL_REDIRECT = True
 # forwards X-Forwarded-Proto: https on every request reaching this app; the trust
 # preconditions live beside the primitive in settings_defaults.py.
 SECURE_PROXY_SSL_HEADER = fls_defaults.SECURE_PROXY_SSL_HEADER
+SECURE_REDIRECT_EXEMPT = fls_defaults.SECURE_REDIRECT_EXEMPT
 
 # --- HSTS (configurable rollout via env vars) ---
 SECURE_HSTS_SECONDS = int(os.environ.get("HSTS_SECONDS", "3600"))

@@ -35,6 +35,13 @@ SECURE_PROXY_SSL_HEADER: tuple[str, str] = ("HTTP_X_FORWARDED_PROTO", "https")
 CONN_MAX_AGE: int = 60
 CONN_HEALTH_CHECKS: bool = True
 
+# Path-prefix regexes exempt from SECURE_SSL_REDIRECT's 301→https. Internal probes
+# hit /health/… over plain HTTP (Docker healthcheck / smoke test); paired with the
+# proxy-header setting, a naive probe would otherwise read the 301 as unhealthy.
+# Exempting the prefix serves those paths plainly. Assigned in config/settings_prod.py
+# and kept greppable there rather than mutated invisibly from an AppConfig.
+SECURE_REDIRECT_EXEMPT: list[str] = [r"^health/"]
+
 
 def require_secret_key() -> str:
     """Return SECRET_KEY from the environment, raising ImproperlyConfigured if

@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 
 from django.core.exceptions import ImproperlyConfigured
+from django.http import HttpResponse
+from django.middleware.security import SecurityMiddleware
 from django.test import RequestFactory, override_settings
 
 from freedom_ls.deployment import settings_defaults
@@ -126,6 +128,35 @@ def test_secure_proxy_ssl_header_constant() -> None:
         "HTTP_X_FORWARDED_PROTO",
         "https",
     )
+
+
+def test_secure_redirect_exempt_constant() -> None:
+    assert settings_defaults.SECURE_REDIRECT_EXEMPT == [r"^health/"]
+
+
+@override_settings(
+    SECURE_SSL_REDIRECT=True,
+    SECURE_REDIRECT_EXEMPT=settings_defaults.SECURE_REDIRECT_EXEMPT,
+)
+def test_health_path_exempt_from_ssl_redirect() -> None:
+    middleware = SecurityMiddleware(lambda request: HttpResponse())
+
+    response = middleware.process_request(RequestFactory().get("/health/"))
+
+    assert response is None
+
+
+@override_settings(
+    SECURE_SSL_REDIRECT=True,
+    SECURE_REDIRECT_EXEMPT=settings_defaults.SECURE_REDIRECT_EXEMPT,
+)
+def test_non_health_path_still_redirected_to_https() -> None:
+    middleware = SecurityMiddleware(lambda request: HttpResponse())
+
+    response = middleware.process_request(RequestFactory().get("/dashboard/"))
+
+    assert response is not None
+    assert response.status_code == 301
 
 
 def test_conn_health_checks_constant_is_true() -> None:
