@@ -22,15 +22,13 @@ import pytest
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.db import OperationalError
-from django.db.migrations.recorder import MigrationRecorder
+from django.db.migrations.loader import MigrationLoader
+from django.db.migrations.state import ProjectState
 from django.test import override_settings
 from django.urls import NoReverseMatch
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-
-    from pytest_django.fixtures import DjangoDbBlocker
 
 from freedom_ls.contrib.conformance._registry import _DROPPED, drop
 from freedom_ls.contrib.conformance.test_migrations import (
@@ -88,7 +86,7 @@ def test_dropped_internal_probe_skips() -> None:
 
 
 def test_drop_does_not_exempt_contract_tier_probes() -> None:
-    drop("student_interface:courses")
+    drop("student_interface:removed_route")
     broken_contract_probe = _Probe(
         "freedom_ls.student_interface", "student_interface:removed_route", True
     )
@@ -105,23 +103,22 @@ def test_configured_backend_instantiates_raises_for_unimportable_backend() -> No
             probe_backend_instantiates()
 
 
-def test_migration_state_consistent_passes_on_clean_tree(
-    django_db_blocker: DjangoDbBlocker,
+def test_migration_state_consistent_passes_on_clean_tree() -> None:
+    probe_migration_state_consistent()
+
+
+def test_migration_state_consistent_detects_drift(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    probe_migration_state_consistent(django_db_blocker)
+    def _empty_project_state(
+        self: MigrationLoader, *args: object, **kwargs: object
+    ) -> ProjectState:
+        return ProjectState()
 
+    monkeypatch.setattr(MigrationLoader, "project_state", _empty_project_state)
 
-def test_migration_state_consistent_tolerates_unreachable_database(
-    django_db_blocker: DjangoDbBlocker, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    def _raise_operational_error(self: MigrationRecorder) -> None:
-        raise OperationalError("could not connect to server")
-
-    monkeypatch.setattr(
-        MigrationRecorder, "applied_migrations", _raise_operational_error
-    )
-
-    probe_migration_state_consistent(django_db_blocker)
+    with pytest.raises(AssertionError):
+        probe_migration_state_consistent()
 
 
 def test_active_theme_probe_fails_when_active_theme_missing_from_dirs(
