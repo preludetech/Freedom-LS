@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-07-11_
+_Last updated: 2026-07-17_
 
 ## Summary
 
@@ -27,7 +27,7 @@ The student dashboard serves as the home page at `/`. Its content branches on wh
 - **Recommended** — courses an administrator has surfaced for the learner.
 - **Completed** — courses the learner has finished.
 
-Each course card shows the course title, category, and progress percentage.
+Each course card shows the course title, category, and progress percentage, plus a low-emphasis "Details" link back to the course's [detail page](#course-detail-page). This link appears on every card in every state (in progress, completed, not yet registered, or coming soon) and on the anonymous "Available courses" grid, giving a consistent way back to the overview without competing with the card's primary action.
 
 When application-gated courses are in use, the authenticated dashboard also shows an **In-flight applications** panel listing any courses the learner has applied to but not yet been enrolled in, each linking to its status page. This panel is absent on installations offering only free courses.
 
@@ -43,7 +43,9 @@ Each entry shows an **access-model badge** ("Free" or "By application") so a vis
 
 ![Course catalogue with Free and By-application access badges](screenshots/learner_catalogue_access_badges.png)
 
-For authenticated learners, the listing additionally shows registration status (not registered, registered/in progress, or completed) and allows navigating directly to a registered course to resume. For anonymous visitors the "Not registered" status eyebrow is suppressed — the access badge serves as the at-a-glance signal instead. Card links point to the public course detail page for all visitors.
+For authenticated learners, the listing additionally shows registration status (not registered, registered/in progress, or completed) and allows navigating directly to a registered course to resume. For anonymous visitors the "Not registered" status eyebrow is suppressed — the access badge serves as the at-a-glance signal instead. Card links point to the public course detail page for all visitors. Every row also carries the same low-emphasis "Details" link that appears on dashboard cards — identical wording and destination — in every row state, so anonymous, registered, and signed-in-but-unregistered visitors alike have an explicit way to the detail page, not only via the row's primary link.
+
+![All-courses listing with a "Details" link on every row state](screenshots/learner_all_courses_details.png)
 
 A course set to "coming soon" also appears in this listing, clearly badged, but as a plain link to its detail page rather than a course card with a registration action — there is no enrol, apply, or express-interest control on the listing itself. A "hidden" course does not appear in this listing at all, unless the learner is already registered for it. See [Course Visibility](#course-visibility-coming-soon--hidden).
 
@@ -157,7 +159,7 @@ Access type is configured per course through the content-loading pipeline; see [
 
 ![Course player](screenshots/learner_course_player.png)
 
-The course player displays one content item at a time.
+The course player displays one content item at a time. The breadcrumb trail starts with the course title; clicking it takes the learner to the course's [detail page](#course-detail-page) rather than back to the first lesson, giving a one-click route out of the player to the overview at any point. Because that detail page's URL is itself the shareable link, this is also how a learner shares the course — FLS ships no separate share control.
 
 ### Sequential Item Unlock
 
