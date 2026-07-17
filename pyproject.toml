@@ -176,6 +176,8 @@ fixable = ["ALL"]
 "manage.py" = ["DJ001", "DJ008"]
 # Tests — allow assert, unusual naming (e.g. camelCase test methods), assert True/False, and hardcoded passwords
 "**/tests/**/*.py" = ["S101", "N802", "N806", "B011", "S106"]
+# Conformance suite — shipped as production code but pytest-style test functions
+"freedom_ls/contrib/conformance/**" = ["S101", "N802", "N806", "B011", "S106"]
 # Plugin validator tests — additionally allow subprocess usage (S404, S603) and print (T20)
 "fls-content-plugin/validate/tests/*.py" = ["S101", "N802", "N806", "B011", "S106", "S404", "S603"]
 # Plugin validator CLI shim — allow print() calls (the __main__ entry point is a CLI tool)
