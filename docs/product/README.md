@@ -41,7 +41,7 @@ The target deployment runs on **Vultr Johannesburg**, which holds **ISO/IEC 2700
 
 | Doc | Description |
 |---|---|
-| [Deployment](./deployment.md) | V1 architecture: Vultr Johannesburg VPS, Docker Compose (Caddy + Gunicorn + PostgreSQL), Cloudflare free tier, Ansible provisioning, GitHub Actions CI/CD, `django-tasks` DatabaseBackend (no Celery/Redis at launch), and `pg_dump` + Backblaze B2 backup strategy (partially automated). |
+| [Deployment](./deployment.md) | V1 architecture: Vultr Johannesburg VPS, Docker Compose (Caddy + Gunicorn + PostgreSQL), Cloudflare free tier, Ansible provisioning, GitHub Actions CI/CD, `django-tasks-db` `DatabaseBackend` as the production task backend (ORM/Postgres, no Celery/Redis, requires a running `db_worker` process), and `pg_dump` + Backblaze B2 backup strategy (partially automated). |
 
 ## Roadmap
 

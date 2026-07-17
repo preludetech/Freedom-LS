@@ -38,9 +38,15 @@ This is the V1 production architecture, shipped by the template repo's Caddy/Com
 
 ## Background Tasks
 
-Django 6's built-in task framework (`django.tasks`) is wired into the application. It is currently configured with `ImmediateBackend`, which runs tasks synchronously in the request/response cycle. This is now the deliberate, documented default shipped in production settings, not a placeholder awaiting a decision.
+Django 6's built-in task framework (`django.tasks`) is wired into the application. The shipped production default is a durable, database-backed backend — `django-tasks-db`'s `DatabaseBackend`, pinned to `==0.12.0`. Tasks are stored as rows in PostgreSQL via the ORM: no Celery, Redis, or separate message broker, and tasks are visible and inspectable in the Django admin.
 
-The planned production setup uses a durable, database-backed backend, with PostgreSQL as the task broker (no Celery, Redis, or separate message broker) and the worker running as a separate container (`python manage.py db_worker`). Neither the durable backend nor the worker container is configured yet.
+Dev and test environments keep Django's `ImmediateBackend`, which runs tasks synchronously in the request/response cycle. This split is deliberate, not a placeholder: it keeps the whole test suite running tasks inline with no worker process required, while production gets an out-of-process, at-least-once backend.
+
+The durable backend is a hard operational dependency: an enqueued task sits in the database until a worker picks it up. **`python manage.py db_worker` is a required production process** — without it running, background work (currently webhook delivery) is accepted but never executes. Run it as its own long-lived process or container. Never rely on the `DEBUG` autoreload path to keep it alive in production; that path is for local development only.
+
+Because the durable backend delivers at-least-once, a task can be redelivered. Task producers are written to be idempotent under redelivery — a webhook, for example, is not re-sent to the same endpoint for the same event on a redelivered attempt.
+
+A task-results table left unpruned grows without bound; on a small VPS that eventually becomes a disk problem. The `prune_db_task_results` retention job ships alongside the worker for exactly this reason and should be scheduled (cron or equivalent) rather than left as a manual chore.
 
 ## Application-Level Facts
 
