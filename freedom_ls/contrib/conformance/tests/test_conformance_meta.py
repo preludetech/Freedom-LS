@@ -15,6 +15,9 @@ table under this file's node IDs.
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 import pytest
 
 from django.conf import settings
@@ -23,6 +26,11 @@ from django.db import OperationalError
 from django.db.migrations.recorder import MigrationRecorder
 from django.test import override_settings
 from django.urls import NoReverseMatch
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from pytest_django.fixtures import DjangoDbBlocker
 
 from freedom_ls.contrib.conformance._registry import _DROPPED, drop
 from freedom_ls.contrib.conformance.test_migrations import (
@@ -44,12 +52,12 @@ pytestmark = pytest.mark.fls_internal
 
 
 @pytest.fixture(autouse=True)
-def _reset_dropped_probes():
+def _reset_dropped_probes() -> Iterator[None]:
     yield
     _DROPPED.clear()
 
 
-def test_namespace_probe_fails_for_unresolvable_viewname():
+def test_namespace_probe_fails_for_unresolvable_viewname() -> None:
     broken = _Probe(
         "freedom_ls.student_interface", "student_interface:does_not_exist", True
     )
@@ -58,7 +66,7 @@ def test_namespace_probe_fails_for_unresolvable_viewname():
         probe_namespace_reverses(broken)
 
 
-def test_namespace_probe_skips_when_its_app_is_not_installed():
+def test_namespace_probe_skips_when_its_app_is_not_installed() -> None:
     remaining_apps = [
         app for app in settings.INSTALLED_APPS if app != "freedom_ls.student_interface"
     ]
@@ -71,7 +79,7 @@ def test_namespace_probe_skips_when_its_app_is_not_installed():
         probe_namespace_reverses(probe)
 
 
-def test_dropped_internal_probe_skips():
+def test_dropped_internal_probe_skips() -> None:
     drop("student_interface:courses")
     probe = _Probe("freedom_ls.student_interface", "student_interface:courses", False)
 
@@ -79,7 +87,7 @@ def test_dropped_internal_probe_skips():
         probe_namespace_reverses(probe)
 
 
-def test_drop_does_not_exempt_contract_tier_probes():
+def test_drop_does_not_exempt_contract_tier_probes() -> None:
     drop("student_interface:courses")
     broken_contract_probe = _Probe(
         "freedom_ls.student_interface", "student_interface:removed_route", True
@@ -89,7 +97,7 @@ def test_drop_does_not_exempt_contract_tier_probes():
         probe_namespace_reverses(broken_contract_probe)
 
 
-def test_configured_backend_instantiates_raises_for_unimportable_backend():
+def test_configured_backend_instantiates_raises_for_unimportable_backend() -> None:
     with override_settings(COURSE_ACCESS_BACKEND="does.not.Exist"):
         get_course_access_backend.cache_clear()
 
@@ -97,14 +105,16 @@ def test_configured_backend_instantiates_raises_for_unimportable_backend():
             probe_backend_instantiates()
 
 
-def test_migration_state_consistent_passes_on_clean_tree(django_db_blocker):
+def test_migration_state_consistent_passes_on_clean_tree(
+    django_db_blocker: DjangoDbBlocker,
+) -> None:
     probe_migration_state_consistent(django_db_blocker)
 
 
 def test_migration_state_consistent_tolerates_unreachable_database(
-    django_db_blocker, monkeypatch
-):
-    def _raise_operational_error(self):
+    django_db_blocker: DjangoDbBlocker, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _raise_operational_error(self: MigrationRecorder) -> None:
         raise OperationalError("could not connect to server")
 
     monkeypatch.setattr(
@@ -114,7 +124,9 @@ def test_migration_state_consistent_tolerates_unreachable_database(
     probe_migration_state_consistent(django_db_blocker)
 
 
-def test_active_theme_probe_fails_when_active_theme_missing_from_dirs(tmp_path):
+def test_active_theme_probe_fails_when_active_theme_missing_from_dirs(
+    tmp_path: Path,
+) -> None:
     empty_themes_dir = tmp_path / "themes"
     empty_themes_dir.mkdir()
 
