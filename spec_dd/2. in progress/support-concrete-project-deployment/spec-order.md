@@ -25,7 +25,7 @@ research artifacts stay in this parent directory:
 | 2 | P1 importable health module | this repo | `freedom_ls/health/` with liveness (no deps) + readiness (DB); `django-health-check`; pre-wired `SECURE_REDIRECT_EXEMPT` | Spec 1 (§5.1-A) |
 | 3 | Background-tasks: durable prod default | this repo | production defaults to `django-tasks-db` `DatabaseBackend` (settings primitive + dependency + `django_tasks_db` app + `WebhookDelivery` idempotency guard + docs); base/dev/tests stay `ImmediateBackend` | Spec 1 (`settings_defaults.py`) |
 | 4 | Remove standalone path, document concrete-only | this repo | delete nginx/standalone artifacts; concrete-only deployment docs | Spec 1 (loose); doc-rewrite pairs with Spec 5 |
-| 5 | P3 deployment scaffolding | **template repo** | Dockerfile, compose, Caddyfile, entrypoint, `.env.example`, GHCR CI, Ansible/backups/Sentry, worker profile, template `settings_prod.py` migration | Specs 1, 2, 3 |
+| 5 | P3 deployment scaffolding | **template repo** | Dockerfile, compose, Caddyfile, entrypoint, `.env.example`, GHCR CI, Sentry wiring, worker (enabled by default), template `settings_prod.py` migration. **Ansible + backups are out of scope — owned by a separate fleet ops repo** | Specs 1, 2, 3 |
 
 ## Ordering & parallelism
 
