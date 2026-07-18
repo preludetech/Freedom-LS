@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from django.conf import settings
+from django.apps import apps
 
 __all__ = ["test_configured_backend_instantiates"]
 
@@ -20,9 +20,7 @@ _COURSE_ACCESS_BACKEND_CONSUMERS: tuple[str, ...] = (
 
 
 def test_configured_backend_instantiates() -> None:
-    if not any(
-        app in settings.INSTALLED_APPS for app in _COURSE_ACCESS_BACKEND_CONSUMERS
-    ):
+    if not any(apps.is_installed(app) for app in _COURSE_ACCESS_BACKEND_CONSUMERS):
         pytest.skip("no COURSE_ACCESS_BACKEND consumer installed")
     from freedom_ls.course_access.backends import CourseAccessBackend
     from freedom_ls.course_access.loader import get_course_access_backend

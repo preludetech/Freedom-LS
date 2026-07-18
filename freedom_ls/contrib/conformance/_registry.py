@@ -7,7 +7,7 @@ other FLS code depends on.
 
 from __future__ import annotations
 
-from django.conf import settings
+from django.apps import apps
 
 _DROPPED: set[str] = set()
 
@@ -26,4 +26,4 @@ def _is_dropped(probe_id: str) -> bool:
 
 
 def _app_installed(app_label_dotted: str) -> bool:
-    return app_label_dotted in settings.INSTALLED_APPS
+    return apps.is_installed(app_label_dotted)

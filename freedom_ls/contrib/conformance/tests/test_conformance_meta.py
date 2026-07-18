@@ -77,6 +77,19 @@ def test_namespace_probe_skips_when_its_app_is_not_installed() -> None:
         probe_namespace_reverses(probe)
 
 
+def test_namespace_probe_treats_appconfig_path_install_as_installed() -> None:
+    apps_via_config_path = [
+        "freedom_ls.student_interface.apps.StudentInterfaceConfig"
+        if app == "freedom_ls.student_interface"
+        else app
+        for app in settings.INSTALLED_APPS
+    ]
+    probe = _Probe("freedom_ls.student_interface", "student_interface:dashboard", True)
+
+    with override_settings(INSTALLED_APPS=apps_via_config_path):
+        probe_namespace_reverses(probe)
+
+
 def test_dropped_internal_probe_skips() -> None:
     drop("student_interface:courses")
     probe = _Probe("freedom_ls.student_interface", "student_interface:courses", False)
