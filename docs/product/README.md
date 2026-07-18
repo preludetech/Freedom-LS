@@ -1,6 +1,6 @@
 # Freedom LS — Product Documentation
 
-_Last updated: 2026-07-01_
+_Last updated: 2026-07-18_
 
 ## Security Posture
 
@@ -35,7 +35,7 @@ The target deployment runs on **Vultr Johannesburg**, which holds **ISO/IEC 2700
 
 | Doc | Description |
 |---|---|
-| [Configuration and Extension](./configuration-and-extension.md) | Branding settings, three-tier theming (CSS tokens → cotton slots → whole-file shadowing), two bundled themes, pluggable icon set, and a host-project extension model with full template and component override capability. |
+| [Configuration and Extension](./configuration-and-extension.md) | Branding settings, three-tier theming (CSS tokens → cotton slots → whole-file shadowing), two bundled themes, pluggable icon set, a host-project extension model with full template and component override capability, and an opt-in conformance suite for verifying a downstream's FLS wiring. |
 
 ## Deployment
 

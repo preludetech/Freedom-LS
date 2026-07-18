@@ -1,6 +1,6 @@
 # Deployment
 
-_Last updated: 2026-07-17_
+_Last updated: 2026-07-18_
 
 ## Summary
 
@@ -113,3 +113,5 @@ Sector-specific requirements (financial institutions, government entities) may i
 FLS is never deployed standalone. A production deployment is a **concrete project** — a downstream repository that installs `freedom_ls` as a git submodule and supplies its own settings, content, and deployment scaffolding.
 
 The canonical starting point is the template repo, `git@github.com:preludetech/freedom-ls-concrete-template.git` — a GitHub template repository you clone to start a new concrete project. A concrete project deploys from that repo's Caddy/Docker Compose scaffolding, following its own README for the step-by-step.
+
+Before deploying, a concrete project should run the FLS conformance suite against its own settings as a pre-launch check that it has wired FLS up correctly — see [configuration and extension](./configuration-and-extension.md) for what it covers.

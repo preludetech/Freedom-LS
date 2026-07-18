@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-07-11_
+_Last updated: 2026-07-18_
 
 ## Summary
 
@@ -9,6 +9,7 @@ _Last updated: 2026-07-11_
 - Two bundled themes ship with FLS (`default`, `first_class`); the active theme is selected by the `FLS_THEME` setting at Tailwind build time and runtime.
 - The icon set is pluggable via `FREEDOM_LS_ICON_SET`; the only currently implemented set is `heroicons`.
 - FLS is designed to be installed into a host Django project; downstream apps, templates, and cotton components take priority over FLS defaults, and additional cotton components can be registered as markdown widgets.
+- An opt-in conformance suite (`freedom_ls.contrib.conformance`) lets a downstream project verify its own FLS integration is wired correctly, checking only the pieces it has chosen to keep.
 
 ## Branding Settings
 
@@ -76,6 +77,8 @@ Access configuration is authored per course in the content-loading pipeline. For
 
 A companion setting, `COURSE_ACCESS_CONFIG_VALIDATOR`, names the validator used to check each course's access configuration at content-load time. A custom backend that introduces its own configuration keys swaps this setting to point at its own validator; in most deployments it does not need to be set.
 
+A downstream project can confirm this setting is wired correctly, without a live request, using the conformance suite (see [Conformance Suite (Verifying a Downstream's Wiring)](#conformance-suite-verifying-a-downstreams-wiring)).
+
 Course **visibility** (published, coming soon, or hidden) is layered on top of the access backend and is orthogonal to it: a course's access type (free vs. application-gated) and its visibility are independent concerns that compose freely. Visibility is enforced uniformly across every backend — the free backend, the application-gated backend, and any future custom backend a deployment adds — with no per-backend configuration and no way to bypass or opt out of it; a new access backend added via `COURSE_ACCESS_BACKEND` automatically honours coming-soon and hidden without any extra work. Visibility is also independent of `COURSE_ACCESS_CONFIG_VALIDATOR`: it is not part of `access_config` and is not subject to access-configuration validation, so the two remain separate pipelines. For the learner-facing effect of each visibility state, see [learner experience](./learner-experience.md); for how visibility is authored on a course, see [content editing workflow](./content-editing-workflow.md).
 
 ## Preview Overrides for Course Visibility and Access (Dev/Staging Only)
@@ -95,6 +98,23 @@ FLS is designed to be installed into an existing Django project using `git submo
 - **Cotton component registration.** Downstream projects can register additional cotton component tags by adding entries to `MARKDOWN_ALLOWED_TAGS` in settings. Registered tags become available as markdown widgets in content authored for that installation.
 
 This model means FLS is not a black-box package; the host project has full override capability at every layer.
+
+## Conformance Suite (Verifying a Downstream's Wiring)
+
+Because FLS is designed to be installed, extended, and partially overridden, a downstream project can get its settings and URL wiring wrong in ways that pass Django's own configuration checks yet still fail for a learner at runtime — a required setting left unset, or a URL include quietly missing. FLS addresses this with a conformance suite: an importable module, `freedom_ls.contrib.conformance`, that a downstream project brings into its own test suite to answer one question — "have I wired FLS up correctly?"
+
+The suite is opt-in rather than automatic: a downstream chooses to import it into its own tests, so it never runs unannounced in a project that hasn't asked for it. FLS is its own first user of the suite, so it is proven green against FLS's own reference configuration before any downstream relies on it.
+
+The suite is built around the same override philosophy as the rest of FLS. It checks only the seams a downstream project actually chose to keep. If a downstream removes an FLS app entirely, that app's checks are skipped rather than failed. If a downstream keeps an app but customises one of its own internal pages, that individual check can be turned off, while the checks covering routes that other parts of FLS depend on continue to enforce that the integration hasn't silently broken.
+
+At a product level, the suite confirms that:
+
+- FLS's page and feature wiring reverses correctly, including the sitemap and robots wiring every deployment is expected to provide.
+- The configured course-access backend actually loads and can be created, not just that a setting for it exists.
+- The active visual theme and icon set resolve to real, usable assets.
+- The database schema and the code's data model are in step, with no pending changes that were never turned into a migration.
+
+The checks are fast and require no database connection or network access, so they are cheap enough to run as part of a downstream's ordinary test run.
 
 ## Per-Site Signup Policy and Additional Registration Forms
 
