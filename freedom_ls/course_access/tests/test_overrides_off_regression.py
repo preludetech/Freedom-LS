@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import pytest
 
-from django.conf import settings
 from django.test import override_settings
 from django.urls import reverse
 
@@ -21,6 +20,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_access.backends import AccessBadge
 from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.tests.app_guards import app_not_installed
 
 APPLICATION_BACKEND = (
     "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend"
@@ -72,7 +72,7 @@ class TestOverridesOffRegression:
         assert decision.can_self_register is False
 
     @pytest.mark.skipif(
-        "freedom_ls.course_applications" not in settings.INSTALLED_APPS,
+        app_not_installed("freedom_ls.course_applications"),
         reason="course_applications not installed",
     )
     @override_settings(

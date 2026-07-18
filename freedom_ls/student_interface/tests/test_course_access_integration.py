@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import pytest
 
-from django.conf import settings
 from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -25,8 +24,9 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.tests.app_guards import app_not_installed
 
-if "freedom_ls.course_applications" not in settings.INSTALLED_APPS:
+if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory
