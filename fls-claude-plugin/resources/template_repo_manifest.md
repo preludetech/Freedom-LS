@@ -206,7 +206,7 @@ Items a concrete dev config should contain — see the exclusions table below fo
 - [ ] `STORAGES` dict: whitenoise for staticfiles, S3 or filesystem for default
 - [ ] Email settings (`EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, etc.) from env vars
 - [ ] `ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"`
-- [ ] Logging configuration (console + rotating file handlers for `django`, `django.request`, `django.security`, `freedom_ls`)
+- [ ] Logging configuration — `LOGGING = fls_defaults.build_logging_config()` (stdout/console handlers only, no rotating files; the container `json-file` log driver caps size/rotation)
 
 ### `urls.py`
 
