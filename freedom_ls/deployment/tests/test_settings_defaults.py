@@ -48,6 +48,41 @@ def test_require_secret_key_returns_value_when_set(
     assert settings_defaults.require_secret_key() == "a-real-secret"
 
 
+def test_require_webhook_encryption_salt_missing_env_raises_improperly_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("WEBHOOK_ENCRYPTION_SALT", raising=False)
+
+    with pytest.raises(ImproperlyConfigured):
+        settings_defaults.require_webhook_encryption_salt()
+
+
+def test_require_webhook_encryption_salt_empty_string_raises_improperly_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "")
+
+    with pytest.raises(ImproperlyConfigured):
+        settings_defaults.require_webhook_encryption_salt()
+
+
+def test_require_webhook_encryption_salt_whitespace_only_raises_improperly_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", " ")
+
+    with pytest.raises(ImproperlyConfigured):
+        settings_defaults.require_webhook_encryption_salt()
+
+
+def test_require_webhook_encryption_salt_returns_value_when_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "a-real-salt")
+
+    assert settings_defaults.require_webhook_encryption_salt() == "a-real-salt"
+
+
 def test_database_ssl_options_prefer() -> None:
     assert settings_defaults.database_ssl_options("prefer") == {"sslmode": "prefer"}
 
@@ -182,6 +217,7 @@ def test_prod_settings_uses_database_task_backend(
 ) -> None:
     monkeypatch.setenv("HOST_DOMAIN", "example.test")
     monkeypatch.setenv("SECRET_KEY", "test-secret-key")
+    monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "test-webhook-salt")
 
     prod = importlib.reload(importlib.import_module("config.settings_prod"))
 

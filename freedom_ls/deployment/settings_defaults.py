@@ -71,6 +71,22 @@ def require_secret_key() -> str:
     return key
 
 
+def require_webhook_encryption_salt() -> str:
+    """Return WEBHOOK_ENCRYPTION_SALT from the environment, raising
+    ImproperlyConfigured if unset/empty/whitespace-only.
+
+    In production the dev fallback (a hardcoded deterministic salt in
+    settings_base.py) silently weakens webhook-secret Fernet encryption, so this
+    fails fast at settings-import time instead of shipping the insecure salt.
+    """
+    salt = os.environ.get("WEBHOOK_ENCRYPTION_SALT", "").strip()
+    if not salt:
+        raise ImproperlyConfigured(
+            "WEBHOOK_ENCRYPTION_SALT must be set to a non-empty value in production."
+        )
+    return salt
+
+
 def database_ssl_options(sslmode: str) -> dict[str, str]:
     """Return the DATABASES OPTIONS dict for a libpq sslmode, e.g. {"sslmode": "prefer"}.
 

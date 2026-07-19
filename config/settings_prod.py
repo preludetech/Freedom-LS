@@ -53,6 +53,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 5_242_880  # 5 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5_242_880  # 5 MB
 
 SECRET_KEY = fls_defaults.require_secret_key()
+SALT_KEY = fls_defaults.require_webhook_encryption_salt()
 
 # Explicitly typed so the OPTIONS/CONN_MAX_AGE/CONN_HEALTH_CHECKS values added below
 # (not all plain strings) type-check as assignments into the same dict.

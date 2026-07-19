@@ -63,6 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SECRET_KEY: ci-dummy-key-that-is-long-enough-for-django-deploy-check-validation  # pragma: allowlist secret
+      WEBHOOK_ENCRYPTION_SALT: ci-dummy-webhook-salt  # pragma: allowlist secret
       HOST_DOMAIN: example.com
       DB_NAME: ci
       DB_USER: ci
