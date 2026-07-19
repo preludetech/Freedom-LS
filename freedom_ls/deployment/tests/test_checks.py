@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+from django.core.checks import registry
 from django.test import override_settings
 
 from freedom_ls.deployment.checks import check_sentry_release_set_when_dsn_set
+
+
+def test_check_is_registered_via_app_ready() -> None:
+    # Guards against DeploymentAppConfig.ready() dropping the checks import: the
+    # direct-call tests below would stay green even if the check were never
+    # registered and so never ran on manage.py check / migrate.
+    assert check_sentry_release_set_when_dsn_set in registry.registry.registered_checks
 
 
 @override_settings(

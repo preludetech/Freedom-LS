@@ -224,6 +224,20 @@ def test_prod_settings_uses_database_task_backend(
     assert prod.TASKS["default"]["BACKEND"] == "django_tasks_db.DatabaseBackend"
 
 
+def test_prod_settings_load_raises_when_webhook_salt_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The require_webhook_encryption_salt() unit tests cover the primitive; this
+    # asserts settings_prod actually wires SALT_KEY to it, so removing that line
+    # would fail a test rather than silently ship the insecure dev-fallback salt.
+    monkeypatch.setenv("HOST_DOMAIN", "example.test")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key")
+    monkeypatch.delenv("WEBHOOK_ENCRYPTION_SALT", raising=False)
+
+    with pytest.raises(ImproperlyConfigured):
+        importlib.reload(importlib.import_module("config.settings_prod"))
+
+
 @override_settings(SECURE_PROXY_SSL_HEADER=settings_defaults.SECURE_PROXY_SSL_HEADER)
 def test_forwarded_https_header_makes_request_secure() -> None:
     request = RequestFactory().get("/", HTTP_X_FORWARDED_PROTO="https")
