@@ -60,7 +60,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 11. Upgrade notes
 
-- [ ] (cmd) Run `/update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
+- [x] (cmd) Run `/update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
 - [ ] (user) Review the upgrade notes
 
 ## 12. Template repo
