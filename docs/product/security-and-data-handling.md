@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-07-17_
+_Last updated: 2026-07-19_
 
 ## Summary
 
@@ -87,6 +87,8 @@ Because production runs behind a reverse proxy that terminates TLS, FLS is confi
 
 **`SECRET_KEY` is required at boot.** Production refuses to start if `SECRET_KEY` is missing or empty — the application fails immediately at startup (a visible crash-loop) rather than booting and silently running with a broken signing key, which would compromise session and CSRF signing. This check only catches an absent or empty key; a present-but-weak key is separately flagged by Django's deployment checks, which already run in CI.
 
+**`WEBHOOK_ENCRYPTION_SALT` is required at boot in production.** Production refuses to start if `WEBHOOK_ENCRYPTION_SALT` is missing or empty, failing immediately at startup (a visible crash-loop) — the same posture as the `SECRET_KEY` check above. Previously an unset salt fell back silently to a hardcoded development value, weakening the encryption of per-site webhook secrets; that fallback still applies in development and test, but can no longer reach production.
+
 ### Multi-site data isolation
 
 A single FLS installation can serve multiple sites (domains), each with fully isolated users, content, and settings. Isolation is automatic: `SiteAwareManager` filters every ORM query to the current site derived from the request thread-local. No cross-site data leakage is possible through the ORM. This is the canonical statement of the isolation guarantee; see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md) for full detail.
@@ -135,7 +137,7 @@ This is **off by default**: an operator must consciously opt in via a configurat
 
 ### Encryption at rest
 
-**Webhook secrets only:** Per-site webhook secrets are encrypted at rest using Fernet symmetric encryption via `django-fernet-encrypted-fields`. The encryption key is derived from `SECRET_KEY` plus a configurable `WEBHOOK_ENCRYPTION_SALT` environment variable.
+**Webhook secrets only:** Per-site webhook secrets are encrypted at rest using Fernet symmetric encryption via `django-fernet-encrypted-fields`. The encryption key is derived from `SECRET_KEY` plus a `WEBHOOK_ENCRYPTION_SALT` environment variable. In production this salt is required at boot, with no silent fallback — see [Security middleware](#security-middleware) above.
 
 **Database-level encryption:** FLS does not implement application-level encryption of database rows beyond webhook secrets. Encryption of the PostgreSQL data volume is provider-dependent (the host's disk encryption, or a containerised volume with host-level encryption). Do not overstate this: there is no transparent database encryption built into FLS.
 

@@ -1,12 +1,12 @@
 # Webhooks
 
-_Last updated: 2026-07-17_
+_Last updated: 2026-07-19_
 
 ## Summary
 
 - Freedom LS fires outbound webhooks on three events: user registration, course completion, and course registration. Each delivery carries a signed, tamper-detectable envelope.
 - Webhook endpoints support HMAC-SHA256 signing (Standard Webhooks format) or custom authentication via templated headers.
-- Per-site webhook secrets are encrypted at rest using Fernet symmetric encryption (`django-fernet-encrypted-fields`). The encryption key is derived from `SECRET_KEY` plus a configurable salt (`WEBHOOK_ENCRYPTION_SALT`).
+- Per-site webhook secrets are encrypted at rest using Fernet symmetric encryption (`django-fernet-encrypted-fields`). The encryption key is derived from `SECRET_KEY` plus a configurable salt (`WEBHOOK_ENCRYPTION_SALT`, required in production).
 - SSRF protection is enforced in production: webhook URLs must use HTTPS and must not resolve to private, loopback, or link-local IP addresses.
 - Failed deliveries are retried with exponential back-off (up to 5 retries); a circuit breaker auto-disables an endpoint after repeated failures to protect downstream systems.
 
@@ -42,6 +42,8 @@ The HMAC is computed over the string `{webhook-id}.{webhook-timestamp}.{body}` u
 `WebhookSecret` records store named string values (e.g., API keys for third-party services) that can be referenced in body and header templates as `{{ secrets.my_key_name }}`. Secret values are stored using `EncryptedTextField` from `django-fernet-encrypted-fields`, which applies Fernet symmetric encryption before writing to the database.
 
 The encryption key is derived from Django's `SECRET_KEY` plus `SALT_KEY` (set from the `WEBHOOK_ENCRYPTION_SALT` environment variable in production) using PBKDF2. Key rotation is supported by Django's `SECRET_KEY_FALLBACKS` mechanism: old keys can decrypt existing ciphertext while new encryption uses the current key.
+
+**`WEBHOOK_ENCRYPTION_SALT` is required in production.** Production now fails fast at startup if it is unset, rather than silently falling back to a hardcoded, insecure development salt. Development and test environments keep the deterministic fallback. See [security and data handling](./security-and-data-handling.md) for the general boot-fail posture on required production configuration.
 
 Secrets are per-site: `WebhookSecret` has a `unique_together` constraint on `(site, name)`. A secret created on site A is not accessible to site B.
 
