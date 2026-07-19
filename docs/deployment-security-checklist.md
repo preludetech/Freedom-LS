@@ -122,6 +122,9 @@ Review and resolve all warnings. Common issues include:
 - `CSRF_COOKIE_SECURE` not set
 - `DEBUG` set to True
 
+`freedom_ls_deployment.W001` (`SENTRY_DSN` set but `SENTRY_RELEASE` blank) can be silenced via
+`SILENCED_SYSTEM_CHECKS` if release tracking is intentionally disabled for an environment.
+
 ## 10. Environment Variables
 
 All required environment variables must be set in production. Never hardcode credentials.
@@ -131,6 +134,7 @@ All required environment variables must be set in production. Never hardcode cre
 | Variable | Description |
 |---|---|
 | `SECRET_KEY` | Django secret key. Must be unique, random, and at least 50 characters. |
+| `WEBHOOK_ENCRYPTION_SALT` | Salt for webhook-secret Fernet encryption. Required in production — startup raises `ImproperlyConfigured` (crash-loops) when unset. |
 | `HOST_DOMAIN` | The production domain name (e.g., `example.com`). Used for `ALLOWED_HOSTS`. |
 
 ### Database
