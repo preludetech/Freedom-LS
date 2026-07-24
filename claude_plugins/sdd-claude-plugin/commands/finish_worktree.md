@@ -26,7 +26,12 @@ If there is a frontend_qa.md file for the specification this branch is for (insi
 
 # Step 3: Tear down any per-worktree resources
 
-If this project provisions per-worktree resources when a worktree is created (e.g. a per-branch dev database), run its teardown step now. That teardown is project-specific and lives outside the `sdd` plugin — skip this step if the project has no such step.
+The teardown step (e.g. dropping a per-branch dev database) is project-specific and configured, not hard-coded into the `sdd` plugin.
+
+Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists — its values take precedence). Under the **Worktree Scripts** section, look at the **Teardown script** value:
+
+- If **Teardown script** is a non-blank path, run that script now.
+- If it is blank, or the config file / section is absent, skip this step — this project has no per-worktree teardown step.
 
 # Step 4: Update the todo list
 

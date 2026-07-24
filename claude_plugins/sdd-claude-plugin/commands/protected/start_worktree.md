@@ -39,10 +39,15 @@ git worktree add <spec-folder-name>
 
 ## Step 3: Prepare the new worktree for development
 
-If this project has a per-worktree setup step (e.g. installing dependencies, creating a per-branch dev database, running migrations, loading demo data), run it now from inside the new worktree. That setup is project-specific and lives outside the `sdd` plugin — skip this step if the project has no such step.
+The per-worktree setup step (e.g. installing dependencies, creating a per-branch dev database, running migrations, loading demo data) is project-specific and configured, not hard-coded into the `sdd` plugin.
+
+Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists — its values take precedence). Under the **Worktree Scripts** section, look at the **Setup script** value:
+
+- If **Setup script** is a non-blank path, run that script from inside the new worktree.
+- If it is blank, or the config file / section is absent, skip this step — this project has no per-worktree setup step.
 
 ```bash
-cd <spec-folder-path>   # then run the project's worktree-setup step, if any
+cd <spec-folder-path>   # then run the configured Setup script, if any
 ```
 
 ## Step 4: Report back
