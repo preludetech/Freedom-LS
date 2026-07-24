@@ -1,0 +1,5 @@
+{
+  "name": "fls-dev",
+  "version": "1.0.0",
+  "description": "FreedomLS product-specific development tooling: multi-tenant/site-aware conventions, registration, markdown content, admin, and downstream-distribution workflows"
+}
