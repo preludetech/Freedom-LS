@@ -35,8 +35,8 @@
       "WebFetch",
       "WebSearch",
       "Bash(grep *)",
-      "Bash(.claude/fls-dev/scripts/fetch_pr_comments.sh *)",
-      "Bash(.claude/fls-dev/scripts/kill_runserver.sh:*)",
+      "Bash(.claude/ds/scripts/fetch_pr_comments.sh *)",
+      "Bash(.claude/ds/scripts/kill_runserver.sh:*)",
       "Bash(git rm *)",
       "Bash(git grep *)",
       "Bash(.claude/fls-dev/scripts/dev_db_delete.sh:*)",
@@ -74,15 +74,6 @@
             "type": "command",
             "if": "Read(.env*)",
             "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"${f##*/}\" in .env.example) ;; .env|.env.*) printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Reading .env secret files is blocked; only .env.example may be read.\"}}' ;; esac"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash(git commit:*)",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ruff check . && uv run mypy . && uv run pytest --tb=short -q"
           }
         ]
       }

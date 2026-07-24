@@ -69,7 +69,7 @@ themes/
 uv.lock
 ```
 
-Additionally, after first setup: `templates/` (for Tier-3 template overrides, ships a `.gitkeep`), `static/` (for project static assets; `static/vendor/` holds the built `tailwind.output.css`, which is gitignored), and `logs/` exist locally. The machine-specific `.claude/fls/config.local.md` is also created locally and gitignored.
+Additionally, after first setup: `templates/` (for Tier-3 template overrides, ships a `.gitkeep`), `static/` (for project static assets; `static/vendor/` holds the built `tailwind.output.css`, which is gitignored), and `logs/` exist locally. The machine-specific `.claude/fls-dev/config.local.md` is also created locally and gitignored.
 
 ---
 

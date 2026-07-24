@@ -88,11 +88,11 @@ Skip this step if the feature has no visible UI changes (e.g. a backend-only or 
 ### 4a: Find a free port and start the dev server
 
 ```bash
-PORT=$(.claude/fls/scripts/find_available_port.sh)
+PORT=$(.claude/ds/scripts/find_available_port.sh)
 uv run python manage.py runserver $PORT
 ```
 
-Read `.claude/fls/config.md` for admin credentials. Base URL: `http://127.0.0.1:$PORT/`.
+Read `.claude/fls-dev/config.md` for admin credentials. Base URL: `http://127.0.0.1:$PORT/`.
 
 ### 4b: Confirm the branch badge
 
@@ -115,7 +115,7 @@ All screenshots must land under the 1024 KB pre-commit large-file limit.
 ### 4e: Kill the dev server
 
 ```bash
-.claude/fls/scripts/kill_runserver.sh $PORT
+.claude/ds/scripts/kill_runserver.sh $PORT
 ```
 
 Run this even if step 4c or 4d failed.

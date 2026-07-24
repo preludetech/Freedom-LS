@@ -7,7 +7,7 @@
 FLS_PATH="."
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 PROJECT_ROOT="$SCRIPT_DIR/../../.."
-PLUGIN_DIR="$PROJECT_ROOT/$FLS_PATH/fls-claude-plugin"
+PLUGIN_DIR="$PROJECT_ROOT/$FLS_PATH/claude_plugins/fls-dev-claude-plugin"
 
 # === FLS base setup ===
 "$PLUGIN_DIR/scripts/db_recreate.sh" "$@"

@@ -1,3 +1,3 @@
 #!/bin/sh
 
-./.claude/fls/scripts/install_dev.sh
+./.claude/fls-dev/scripts/install_dev.sh
