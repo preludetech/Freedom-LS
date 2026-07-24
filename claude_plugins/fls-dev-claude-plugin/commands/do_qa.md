@@ -3,7 +3,7 @@ description: Execute a frontend QA test plan using Playwright MCP
 allowed-tools: Read, Write, Glob, Bash, Agent, mcp__playwright*
 ---
 
-Act like a human QA expert. Execute the given test plan. This command runs at **depth 0**, so its `fls:qa-data-helper` delegation and the Step 5 exploration spawn are legal. See the `claude-code-authoring` skill for the model behind this.
+Act like a human QA expert. Execute the given test plan. This command runs at **depth 0**, so its `fls-dev:qa-data-helper` delegation and the Step 5 exploration spawn are legal. See the `claude-code-authoring` skill for the model behind this.
 
 # Useful info
 
@@ -17,18 +17,18 @@ Act like a human QA expert. Execute the given test plan. This command runs at **
 These two rules apply at **every** step (Desktop, Mobile, Tablet) — stated once here; later steps refer back to them.
 
 1. **You MUST use Playwright MCP.** If you can't use it, then: explain why, explain how to fix the error, and **do not continue with the tests**. Before doing anything else, use Playwright to open the base url and make sure it works.
-2. **Test data is created by the `fls:qa-data-helper` agent — NOT by you.** If a test cannot be executed because the dev database lacks the required data (e.g. a paginator can't be exercised because there aren't enough rows, a panel can't be tested because no instance of the relevant model exists, a flow can't be walked because a user/cohort/course is missing), you MUST delegate to the **`fls:qa-data-helper`** agent via the `Agent` tool.
+2. **Test data is created by the `fls-dev:qa-data-helper` agent — NOT by you.** If a test cannot be executed because the dev database lacks the required data (e.g. a paginator can't be exercised because there aren't enough rows, a panel can't be tested because no instance of the relevant model exists, a flow can't be walked because a user/cohort/course is missing), you MUST delegate to the **`fls-dev:qa-data-helper`** agent via the `Agent` tool.
 
    Do NOT:
    - Run `manage.py shell` yourself to create data
    - Run ad-hoc ORM scripts yourself to create data
-   - Mark a test as `PARTIAL` / `N/A` / `NOT EXECUTED` because of missing data without first invoking `fls:qa-data-helper` to fix the gap
-   - Skip a test that `fls:qa-data-helper` could unblock
+   - Mark a test as `PARTIAL` / `N/A` / `NOT EXECUTED` because of missing data without first invoking `fls-dev:qa-data-helper` to fix the gap
+   - Skip a test that `fls-dev:qa-data-helper` could unblock
 
    Do:
-   - Spawn the `fls:qa-data-helper` agent and tell it exactly what data shape you need (entity counts, relationships, which Site, which fixtures it should attach to)
+   - Spawn the `fls-dev:qa-data-helper` agent and tell it exactly what data shape you need (entity counts, relationships, which Site, which fixtures it should attach to)
    - Wait for it to confirm the data exists, then re-attempt the test
-   - Only mark a test PARTIAL / skipped if `fls:qa-data-helper` itself reports the scenario is impossible to set up
+   - Only mark a test PARTIAL / skipped if `fls-dev:qa-data-helper` itself reports the scenario is impossible to set up
 
 # Instructions
 
@@ -76,9 +76,9 @@ Set the browser to a desktop resolution of 1920x1080.
 
 Take screenshots of relevant functionality and put them in a "screenshots" directory in this current directory (alongside the test plan file). Name screenshots with this pattern: `desktop_<test-id>_<short-description>.png` (e.g. `desktop_1.1_cohort_list.png`).
 
-If anything unrelated to the current feature under test seems out of place or broken, spawn **one `fls:sdd-worker`** to explore it (non-interactive; it returns a structured `status`/`reason`). This is a single ad-hoc probe — no scratch-file resume is needed — but it follows the "one subagent per unit + structured return" shape so no fan-out site is left ad-hoc.
+If anything unrelated to the current feature under test seems out of place or broken, spawn **one `sdd:sdd-worker`** to explore it (non-interactive; it returns a structured `status`/`reason`). This is a single ad-hoc probe — no scratch-file resume is needed — but it follows the "one subagent per unit + structured return" shape so no fan-out site is left ad-hoc.
 
-If you are unable to run a test due to missing or incorrect data, follow rule 2 in the CRITICAL section above: delegate to `fls:qa-data-helper` rather than creating the data yourself or skipping the test.
+If you are unable to run a test due to missing or incorrect data, follow rule 2 in the CRITICAL section above: delegate to `fls-dev:qa-data-helper` rather than creating the data yourself or skipping the test.
 
 ## Step 6: Mobile testing
 
@@ -138,10 +138,10 @@ Kill the development server you started:
 
 ## Step 11: Update the todo list
 
-Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+Invoke the helper at `claude_plugins/sdd-claude-plugin/commands/protected/update_todo.md` with:
 
 - `<todo-path>`: the `todo.md` in the spec directory (same directory as `qa_report.md`)
-- `tick:"Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls:qa-data-helper` agent)"`
+- `tick:"Run `/do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)"`
 - For each failing test recorded in `qa_report.md`, pass one `add:"QA|user + cmd|Fix QA bug: <short title from the report> (TDD — failing test first, then fix)"`.
-- For each test that was skipped because of missing data, pass one `add:"QA|cmd|Use the `fls:qa-data-helper` agent to create missing data for <short description>, then re-run `/do_qa`"`.
+- For each test that was skipped because of missing data, pass one `add:"QA|cmd|Use the `fls-dev:qa-data-helper` agent to create missing data for <short description>, then re-run `/do_qa`"`.
 - If no bugs were found and no tests were skipped, omit `add:`.

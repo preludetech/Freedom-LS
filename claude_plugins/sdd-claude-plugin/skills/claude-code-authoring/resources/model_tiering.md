@@ -8,9 +8,9 @@ Anthropic's cost guidance: *"For simple subagent tasks, specify `model: haiku`."
 Source: https://code.claude.com/docs/en/sub-agents · https://code.claude.com/docs/en/costs
 
 ## Default tiers for SDD
-- **Haiku** (`fls:sdd-mechanic`, + low/medium `effort`): test runs, git commits, todo ticking, file
+- **Haiku** (`sdd:sdd-mechanic`, + low/medium `effort`): test runs, git commits, todo ticking, file
   moves, worktree housekeeping — well-scoped, low-reasoning, tool-driven.
-- **Sonnet** (`fls:sdd-worker`): non-interactive fan-out units (research, review dimensions, scans).
+- **Sonnet** (`sdd:sdd-worker`): non-interactive fan-out units (research, review dimensions, scans).
 - **Session model (depth 0):** interactive authoring/review commands (spec/plan/review) — so run the
   session itself on a strong model.
 - Caveat: if a "mechanical" step must interpret an ambiguous failure, keep that judgement at depth 0

@@ -19,7 +19,7 @@ git diff main --name-only | grep -qE \
 
 ## Step 2: Draft the plugin update (fan-out — on a match only)
 
-Spawn **one `fls:sdd-worker`** to read only the changed authoring-relevant files, identify exactly what changed, and draft scoped edits. Pass in the prompt:
+Spawn **one `sdd:sdd-worker`** to read only the changed authoring-relevant files, identify exactly what changed, and draft scoped edits. Pass in the prompt:
 
 - The list of changed authoring-relevant file paths from Step 1.
 - Instruction to read those files and identify exactly what changed (new/removed/modified: content types, frontmatter fields, widget tags, `MARKDOWN_ALLOWED_TAGS` entries, `ADMONITION_TYPES` keys, convention examples in `demo_content/`).
@@ -53,9 +53,9 @@ rm -rf .sdd-work/
 
 ## Step 4: Tick the todo
 
-Delegate the todo tick to `fls:sdd-mechanic`. Spawn the mechanic with this instruction:
+Delegate the todo tick to `sdd:sdd-mechanic`. Spawn the mechanic with this instruction:
 
-> Read the helper file at `fls-claude-plugin/commands/sdd/protected/update_todo.md` and follow its steps with:
+> Read the helper file at `claude_plugins/sdd-claude-plugin/commands/protected/update_todo.md` and follow its steps with:
 > - `<todo-path>`: the `todo.md` in the spec directory for the current feature
 > - `tick:"Run \`/update_claude_plugin_fls_content\` to sync the course-author plugin if authoring functionality changed"`
 

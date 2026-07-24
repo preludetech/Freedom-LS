@@ -37,7 +37,7 @@ This command runs at **depth 0** and fans work out to sub-agents.
 1. **Declare inputs up front.** Gather any user input the phase needs now, via `AskUserQuestion`. Bake the answers into each worker prompt. Subagents don't have access to `AskUserQuestion`.
 2. **One output path per unit.** Durable artifacts keep their real names; intermediate outputs go in `.sdd-work/` inside the spec directory, named `<doc>.md`.
 3. **Resume scan.** Skip any unit whose output file already exists and ends with `status: ok`; spawn only missing/not-ok units.
-4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "fls:sdd-worker"`. Pass the exact output path and the baked-in inputs. Never one worker looping over the batch.
+4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "sdd:sdd-worker"`. Pass the exact output path and the baked-in inputs. Never one worker looping over the batch.
 5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include the prior error); `blocked` → gather the listed `needs` via `AskUserQuestion`, then re-spawn a fresh worker with the original brief + answers.
 6. **Synthesis is a separate step** — read the output *files* (pass paths, never dump contents into the prompt) and apply edits to the real docs.
 7. **Clean up on success.** Delete `.sdd-work/` once all edits are applied.
@@ -52,7 +52,7 @@ If the spec or plan path is ambiguous, use `AskUserQuestion` to confirm which fe
 
 ## Step 2: Draft updates (fan-out)
 
-Apply the fan-out recipe: one `fls:sdd-worker` **per affected doc**, each writing its draft to `.sdd-work/<doc>.md` (e.g. `.sdd-work/authentication.md`). Resume = skip units whose scratch file already ends `status: ok`.
+Apply the fan-out recipe: one `sdd:sdd-worker` **per affected doc**, each writing its draft to `.sdd-work/<doc>.md` (e.g. `.sdd-work/authentication.md`). Resume = skip units whose scratch file already ends `status: ok`.
 
 For each worker, bake in:
 
@@ -100,7 +100,7 @@ Navigate to `http://127.0.0.1:$PORT/` using Playwright MCP. Look for the `debug-
 
 ### 4c: Capture screenshots
 
-Use Playwright MCP tools (`browser_navigate`, `browser_snapshot`, `browser_take_screenshot`, `browser_click`, etc.) to capture the updated UI. Use the **DemoDev** site and demo content for seed data — if required data is missing, delegate to the `fls:qa-data-helper` agent rather than creating data yourself.
+Use Playwright MCP tools (`browser_navigate`, `browser_snapshot`, `browser_take_screenshot`, `browser_click`, etc.) to capture the updated UI. Use the **DemoDev** site and demo content for seed data — if required data is missing, delegate to the `fls-dev:qa-data-helper` agent rather than creating data yourself.
 
 Save screenshots into `docs/product/screenshots/` with descriptive names (e.g. `learner_dashboard.png`, `educator_cohort_progress_matrix.png`).
 
@@ -140,9 +140,9 @@ rm -rf .sdd-work/
 
 ## Step 6: Tick the todo
 
-Delegate the todo tick to `fls:sdd-mechanic`. Spawn the mechanic with this instruction:
+Delegate the todo tick to `sdd:sdd-mechanic`. Spawn the mechanic with this instruction:
 
-> Read the helper file at `fls-claude-plugin/commands/sdd/protected/update_todo.md` and follow its steps with:
+> Read the helper file at `claude_plugins/sdd-claude-plugin/commands/protected/update_todo.md` and follow its steps with:
 > - `<todo-path>`: the `todo.md` in the spec directory for the current feature
 > - `tick:"Run \`/update_product_docs\` to update docs/product/ for this feature"`
 

@@ -19,8 +19,8 @@ feature.
    the spec directory, named `<phase>_<unit-id>.md`. *(Pattern A2.)*
 3. **Resume scan (before spawning).** For each unit, if its output file exists **and** ends with
    `status: ok`, skip it. Spawn only missing/not-ok units. *(Pattern A3 — `todo.md` is the manifest.)*
-4. **One subagent per unit**, in parallel, via the `Agent` tool (`subagent_type: "fls:sdd-worker"`,
-   or `"fls:sdd-mechanic"` for mechanical units). Pass the exact output path and baked-in inputs.
+4. **One subagent per unit**, in parallel, via the `Agent` tool (`subagent_type: "sdd:sdd-worker"`,
+   or `"sdd:sdd-mechanic"` for mechanical units). Pass the exact output path and baked-in inputs.
    **Never one worker looping over the whole batch** — a sibling's failure must not lose others'
    work. *(Pattern A1.)*
 5. **Collect structured returns** and act per `status`:
