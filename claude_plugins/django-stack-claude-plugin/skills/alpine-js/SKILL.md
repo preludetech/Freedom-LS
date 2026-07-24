@@ -3,7 +3,7 @@ name: alpine-js
 description: How to use Alpine.js for client-side interactivity. Use when adding interactive behaviour to templates such as toggles, dropdowns, modals, expand/collapse, dismissible elements, or any client-side state.
 ---
 
-# Alpine.js Usage (CSP Build)
+# Alpine.js Usage
 
 ## When to use
 
@@ -12,19 +12,20 @@ Use this skill when:
 - Working with `x-data`, `x-show`, `x-on`, `x-bind`, `x-cloak`, `x-transition`, or `x-collapse`
 - Deciding whether behaviour should be Alpine.js vs HTMX vs vanilla JS
 
+## Alpine build: CSP or standard?
+
+This project may use the **CSP-compatible build** of Alpine.js (`@alpinejs/csp`), which forbids inline JavaScript expressions in directives (all logic must live in `Alpine.data()` registrations). Whether it does is a project config setting.
+
+**Before writing any Alpine**, read the project's dev config file (`.claude/ds/config.md` by default) and look at **Alpine.js → CSP build**:
+
+- **`enabled`** (also the default when the file, section, or key is absent): you MUST read `${CLAUDE_PLUGIN_ROOT}/resources/alpine_csp_build.md` and follow its restrictions — no inline expressions, every component registered via `Alpine.data()`.
+- **`disabled`**: the standard Alpine build is in use and inline expressions are allowed. Skip that resource file; the patterns below still apply, but you are not restricted to registered components.
+
+The registered-`Alpine.data()` style shown throughout this skill is valid in both builds and is the recommended clean approach regardless.
+
 ## Setup
 
-This project uses the **CSP-compatible build** of Alpine.js (`@alpinejs/csp`), which does NOT support inline JavaScript expressions in directives. All Alpine components must be registered via `Alpine.data()` in a separate JS file.
-
-Scripts loaded in `_base.html`:
-
-```html
-<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.15.8/dist/cdn.min.js"></script>
-<script defer src="{% static 'base/js/alpine-components.js' %}"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.15.8/dist/cdn.min.js"></script>
-```
-
-**Order matters:** `alpine-components.js` loads BEFORE the Alpine CSP script so that `Alpine.data()` registrations are available when Alpine initialises.
+Alpine.js and its Collapse plugin are loaded via CDN in `_base.html`, alongside the per-app `alpine-components.js` files that hold `Alpine.data()` registrations. (The exact build and the script-tag load order for the CSP build are covered in `${CLAUDE_PLUGIN_ROOT}/resources/alpine_csp_build.md`.)
 
 ### Installed plugins
 
@@ -37,31 +38,6 @@ Scripts loaded in `_base.html`:
 Do not add other plugins without explicit approval.
 
 ## Core Principles
-
-### CSP build: no inline expressions
-
-The `@alpinejs/csp` build forbids inline JavaScript in Alpine directives. This means:
-
-**NOT allowed** (will silently fail):
-```html
-<!-- WRONG: inline expression in x-data -->
-<div x-data="{ open: false }">
-
-<!-- WRONG: inline expression in @click -->
-<button @click="open = !open">
-
-<!-- WRONG: inline ternary in :class -->
-<div :class="open ? 'w-64' : ''">
-```
-
-**Correct approach:** reference a registered component name in `x-data`, and call methods defined in that component:
-```html
-<!-- RIGHT: reference registered component -->
-<div x-data="myComponent">
-    <button x-on:click="toggle">Toggle</button>
-    <div x-bind:class="widthClass">...</div>
-</div>
-```
 
 ### All components registered via Alpine.data()
 
@@ -326,41 +302,20 @@ Since `<c-icon>` is server-rendered, toggle icons with `x-show` on wrapper `<spa
 
 **Important:** `x-show` with a simple property reference (no expression) works in the CSP build. The CSP restriction applies to expressions like ternaries, assignments, and function calls in directive values — simple property references and method names are allowed.
 
-## What works in CSP build directives
-
-| Directive | Allowed value | Example |
-|-----------|--------------|---------|
-| `x-data` | Registered component name (string) | `x-data="sidebarComponent"` |
-| `x-show` | Property name | `x-show="open"` |
-| `x-show` | Negated property | `x-show="!open"` |
-| `x-on:click` | Method name | `x-on:click="toggle"` |
-| `x-bind:class` | Method name (returns string) | `x-bind:class="widthClass"` |
-| `x-bind:style` | Method name (returns object) | `x-bind:style="badgeStyle"` |
-| `x-bind:aria-expanded` | Property name | `x-bind:aria-expanded="open"` |
-| `x-model` | Property name | `x-model="searchQuery"` |
-| `x-transition` | CSS classes (not JS) | `x-transition:enter="ease-out duration-300"` |
-
-| Directive | NOT allowed | Why |
-|-----------|------------|-----|
-| `x-data` | `x-data="{ open: false }"` | Inline object expression |
-| `x-on:click` | `@click="open = !open"` | Inline assignment |
-| `x-bind:class` | `:class="open ? 'w-64' : ''"` | Inline ternary |
-| `x-init` | `x-init="setTimeout(..."` | Inline function call |
-
 ## Rules
 
-1. **No inline expressions** -- all logic goes in `Alpine.data()` registrations in `alpine-components.js`, never inline in templates
-2. **Register all components** -- every `x-data` value must correspond to an `Alpine.data()` registration
-3. **Register components in the owning app** -- register components in the `alpine-components.js` of the app that owns the component. There are multiple alpine-components.js files -- one per app that needs client-side interactivity.
-4. **No $persist** -- use manual `localStorage` in `init()` + `$watch()` instead
-5. **Pass data via data attributes** -- use `data-*` attributes + `this.$el.dataset` in `init()` to pass Django template values to Alpine
-6. **Limited plugins** -- only Collapse is installed; do not add other plugins without approval
-7. **Always add transitions** -- use `x-transition` when showing/hiding elements
-8. **Use x-cloak** -- on any element hidden by default to prevent FOUC
-9. **Clean up listeners** -- if `init()` adds event listeners or observers, add a `destroy()` to remove them
-10. **Prefer x-on:click.away** -- for closing dropdowns/menus on outside click
-11. **Prefer x-on:keydown.escape.window** -- for closing overlays on Escape key
-12. **Icons with Alpine** -- if icons are server-rendered (e.g. a `<c-icon>` cotton component), toggle them with `x-show` on wrapper `<span>` elements rather than swapping the icon markup on the client
+When the CSP build is enabled (see "Alpine build: CSP or standard?" above), the additional restrictions in `${CLAUDE_PLUGIN_ROOT}/resources/alpine_csp_build.md` also apply — no inline expressions, and every `x-data` must map to a registered `Alpine.data()` component.
+
+1. **Register components in the owning app** -- register components in the `alpine-components.js` of the app that owns the component. There are multiple alpine-components.js files -- one per app that needs client-side interactivity.
+2. **No $persist** -- use manual `localStorage` in `init()` + `$watch()` instead
+3. **Pass data via data attributes** -- use `data-*` attributes + `this.$el.dataset` in `init()` to pass Django template values to Alpine
+4. **Limited plugins** -- only Collapse is installed; do not add other plugins without approval
+5. **Always add transitions** -- use `x-transition` when showing/hiding elements
+6. **Use x-cloak** -- on any element hidden by default to prevent FOUC
+7. **Clean up listeners** -- if `init()` adds event listeners or observers, add a `destroy()` to remove them
+8. **Prefer x-on:click.away** -- for closing dropdowns/menus on outside click
+9. **Prefer x-on:keydown.escape.window** -- for closing overlays on Escape key
+10. **Icons with Alpine** -- if icons are server-rendered (e.g. a `<c-icon>` cotton component), toggle them with `x-show` on wrapper `<span>` elements rather than swapping the icon markup on the client
 
 # IMPORTANT
 
