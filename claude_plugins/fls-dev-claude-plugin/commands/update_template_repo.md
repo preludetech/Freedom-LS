@@ -21,12 +21,12 @@ The spec directory is the directory that contains `1. spec.md` (and usually `2. 
 
 ## Step 2: Resolve the template repo path from local config
 
-The template repo path is machine-specific, so it lives in the gitignored local config file `.claude/fls/config.local.md` (see the `## Template Repo` section).
+The template repo path is machine-specific, so it lives in the gitignored local config file `.claude/fls-dev/config.local.md` (see the `## Template Repo` section).
 
-1. Read `.claude/fls/config.local.md`.
+1. Read `.claude/fls-dev/config.local.md`.
 2. Find the `Template repo path:` entry and take its value.
 3. If the entry is missing or blank, **stop** and tell the user:
-   > No template repo path is configured. Add it under a `## Template Repo` section in `.claude/fls/config.local.md`:
+   > No template repo path is configured. Add it under a `## Template Repo` section in `.claude/fls-dev/config.local.md`:
    > ```
    > ## Template Repo
    > - Template repo path: /absolute/path/to/your/template-repo
