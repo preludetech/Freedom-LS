@@ -29,7 +29,9 @@ tailwind.active_theme.css
 
 # Claude
 .claude/settings.local.json
-.claude/fls/config.local.md
+.claude/ds/config.local.md
+.claude/fls-dev/config.local.md
+.claude/sdd/config.local.md
 
 
 *.log

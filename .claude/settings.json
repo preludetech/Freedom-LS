@@ -28,16 +28,18 @@
       "Bash(gh pr:*)",
       "Bash(ls:*)",
       "Bash(npm run tailwind_build:*)",
-      "mcp__plugin_fls_playwright__*",
-      "Skill(fls:*)",
+      "mcp__plugin_ds_playwright__*",
+      "Skill(ds:*)",
+      "Skill(fls-dev:*)",
+      "Skill(sdd:*)",
       "WebFetch",
       "WebSearch",
       "Bash(grep *)",
-      "Bash(.claude/fls/scripts/fetch_pr_comments.sh *)",
-      "Bash(.claude/fls/scripts/kill_runserver.sh:*)",
+      "Bash(.claude/fls-dev/scripts/fetch_pr_comments.sh *)",
+      "Bash(.claude/fls-dev/scripts/kill_runserver.sh:*)",
       "Bash(git rm *)",
       "Bash(git grep *)",
-      "Bash(.claude/fls/scripts/dev_db_delete.sh:*)",
+      "Bash(.claude/fls-dev/scripts/dev_db_delete.sh:*)",
       "Bash(git ls-files *)",
       "Bash(git rev-parse *)",
       "Bash(git mv *)",
@@ -59,7 +61,9 @@
     ]
   },
   "enabledPlugins": {
-    "fls": true
+    "ds": true,
+    "fls-dev": true,
+    "sdd": true
   },
   "hooks": {
     "PreToolUse": [
@@ -72,6 +76,15 @@
             "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"${f##*/}\" in .env.example) ;; .env|.env.*) printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Reading .env secret files is blocked; only .env.example may be read.\"}}' ;; esac"
           }
         ]
+      },
+      {
+        "matcher": "Bash(git commit:*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ruff check . && uv run mypy . && uv run pytest --tb=short -q"
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -79,7 +92,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -n \"$FLS_PLUGIN\" ] || printf '%s' '{\"systemMessage\":\"\\n\\n============================================================\\n\\n   !!!  FLS PLUGIN NOT LOADED  !!!\\n\\n============================================================\\n\\n   YOUR SESSION WILL NOT WORK CORRECTLY.\\n\\n   FIX:\\n     1. Quit Claude (press Ctrl+C twice)\\n     2. Run:  ./claude.sh\\n        NOT:  claude\\n\\n============================================================\\n\\n\",\"continue\":false}'"
+            "command": "[ -n \"$CLAUDE_PLUGINS_LOADED\" ] || printf '%s' '{\"systemMessage\":\"\\n\\n============================================================\\n\\n   !!!  PLUGINS NOT LOADED  !!!\\n\\n============================================================\\n\\n   YOUR SESSION WILL NOT WORK CORRECTLY.\\n\\n   FIX:\\n     1. Quit Claude (press Ctrl+C twice)\\n     2. Run:  ./claude.sh\\n        NOT:  claude\\n\\n============================================================\\n\\n\",\"continue\":false}'"
           }
         ]
       }
