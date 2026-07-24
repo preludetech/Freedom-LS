@@ -62,7 +62,7 @@ If the marker is anything other than `(user)` or `(cmd)`, stop and tell the user
 
 Only reach this step if the user confirmed they completed a `(user)` item.
 
-Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+Invoke the helper at `claude_plugins/sdd-claude-plugin/commands/protected/update_todo.md` with:
 
 - `<todo-path>`: the absolute path to the `todo.md` you read in Step 2.
 - `tick:"<exact item text minus the `- [ ]` prefix>"`

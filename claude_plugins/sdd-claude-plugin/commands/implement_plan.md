@@ -25,14 +25,14 @@ Split the plan's tasks into batches of related steps. Each batch should be a coh
 
 **Resume scan (before spawning):** scan `git log` for existing `[batch N]` commits and **skip completed batches**. Only spawn batches whose marker commit is missing.
 
-For each remaining batch, spawn **one implementation sub-agent** via the `Agent` tool with `subagent_type: "general-purpose"` (it needs Bash/Edit breadth that `fls:sdd-worker` lacks), and pass the per-spawn `model: "sonnet"` parameter so non-interactive batch work runs on a mid-tier model rather than the session model. (The user can override to `model: "opus"` per spawn — or set `CLAUDE_CODE_SUBAGENT_MODEL` — if a batch needs heavier reasoning.) Each batch sub-agent does the following:
+For each remaining batch, spawn **one implementation sub-agent** via the `Agent` tool with `subagent_type: "general-purpose"` (it needs Bash/Edit breadth that `sdd:sdd-worker` lacks), and pass the per-spawn `model: "sonnet"` parameter so non-interactive batch work runs on a mid-tier model rather than the session model. (The user can override to `model: "opus"` per spawn — or set `CLAUDE_CODE_SUBAGENT_MODEL` — if a batch needs heavier reasoning.) Each batch sub-agent does the following:
 
 1. Implement each step in the batch exactly as written in the plan
 2. Run any verifications the plan specifies after each step
 3. After all steps are done, run `uv run pytest` — all tests must pass
 4. **As its final step, make the `[batch N] <summary>` git commit itself** with `uv run git commit` (it has `Bash`; the `uv run` prefix is required so the project's pre-commit hooks fire — see `CLAUDE.md`), then return a structured status (`status: ok|failed|blocked` · `reason:`).
 
-Committing inside the worker keeps the work and its completion marker **atomic**: a crash between "work done" and "marker written" can't leave an uncommitted batch that the resume scan would wrongly re-run over a dirty tree. (This is the one place a worker commits its own work instead of delegating the commit to `fls:sdd-mechanic` — the atomic-resume guarantee outweighs tiering that single commit down to Haiku.)
+Committing inside the worker keeps the work and its completion marker **atomic**: a crash between "work done" and "marker written" can't leave an uncommitted batch that the resume scan would wrongly re-run over a dirty tree. (This is the one place a worker commits its own work instead of delegating the commit to `sdd:sdd-mechanic` — the atomic-resume guarantee outweighs tiering that single commit down to Haiku.)
 
 After a batch returns, act on its status:
 - `ok` → verify the `[batch N]` commit exists, then move to the next batch.
@@ -48,10 +48,10 @@ If there is a `3. frontend_qa.md` file, do **not** run it, and ignore any plan s
 
 After all batches are complete:
 
-1. Run `uv run pytest` via `fls:sdd-mechanic` to confirm everything passes
+1. Run `uv run pytest` via `sdd:sdd-mechanic` to confirm everything passes
 2. Check each success criterion from the plan — is it met?
 3. If any criterion is unmet: fix it with a sub-agent (`subagent_type: "general-purpose"`, per-spawn `model: "sonnet"` — the same tier as the batch sub-agents, since fixes need Bash/Edit breadth), then repeat from step 1
-4. Once everything passes: make the final commit via `fls:sdd-mechanic`
+4. Once everything passes: make the final commit via `sdd:sdd-mechanic`
 
 ## When to Stop and Ask
 
@@ -69,7 +69,7 @@ Never start implementation on main/master branch without explicit user consent.
 
 ## Step 4: Update the todo list
 
-Delegate to `fls:sdd-mechanic`: invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd-claude-plugin/commands/protected/update_todo.md` with:
 
 - `<todo-path>`: the `todo.md` in the spec directory
 - `tick:"Run `/implement_plan` to execute the implementation plan"`

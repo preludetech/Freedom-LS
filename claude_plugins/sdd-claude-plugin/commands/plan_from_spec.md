@@ -21,7 +21,7 @@ This command runs at **depth 0** and fans work out to sub-agents. See the `claud
 1. **Declare inputs up front.** Gather any user input the phase needs now, via `AskUserQuestion`. Bake the answers into each worker prompt.
 2. **One output path per unit.** Durable artifacts keep their real names (e.g. `research_<topic>.md`); intermediate outputs go in `.sdd-work/` inside the spec directory, named `<phase>_<unit-id>.md`.
 3. **Resume scan.** Skip any unit whose output file already exists and ends with `status: ok`; spawn only missing/not-ok units.
-4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "fls:sdd-worker"` (or `"fls:sdd-mechanic"` for mechanical units). Pass the exact output path and the baked-in inputs. Never one worker looping over the batch.
+4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "sdd:sdd-worker"` (or `"sdd:sdd-mechanic"` for mechanical units). Pass the exact output path and the baked-in inputs. Never one worker looping over the batch.
 5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include the prior error); `blocked` → gather the listed `needs` via `AskUserQuestion`, then re-spawn a fresh worker with the original brief + answers (pointing it at any partial file).
 6. **Synthesis is a separate step** — read the output *files* (pass paths, never dump contents into the prompt) and produce the artifact; it can be retried without re-running workers.
 7. **Clean up on success.** Delete `.sdd-work/` once the phase artifact is finalised. Durable artifacts are not deleted; an abandoned `.sdd-work/` from an interrupted run is intentional (it makes resume cheap).
@@ -42,7 +42,7 @@ Write the plan document.
 
 # Step 4: Skills/MCP scan (fan-out)
 
-Spawn **one `fls:sdd-worker`** that scans the available skills and MCPs and writes `.sdd-work/plan_skill_scan.md` (atomically, with a `status:` footer). Then fold the result into the plan: update it to say what skills and MCPs should be used where. (Single unit, but file-based + structured so it is resumable/retryable per the recipe.)
+Spawn **one `sdd:sdd-worker`** that scans the available skills and MCPs and writes `.sdd-work/plan_skill_scan.md` (atomically, with a `status:` footer). Then fold the result into the plan: update it to say what skills and MCPs should be used where. (Single unit, but file-based + structured so it is resumable/retryable per the recipe.)
 
 # Step 5
 
@@ -74,7 +74,7 @@ IMPORTANT: We will be generating a webserver port at random. we wont be using po
 
 # Step 6: Review the plan (fan-out)
 
-The review dimensions below become **one `fls:sdd-worker` per dimension**, each writing `.sdd-work/plan_review_<dim>.md` (structured status). Apply resume/retry/blocked per the recipe. Then read the findings (files, not dumped contents) and edit `2. plan.md` accordingly. Dimensions:
+The review dimensions below become **one `sdd:sdd-worker` per dimension**, each writing `.sdd-work/plan_review_<dim>.md` (structured status). Apply resume/retry/blocked per the recipe. Then read the findings (files, not dumped contents) and edit `2. plan.md` accordingly. Dimensions:
 
 - All the success criteria will be met by the plan in place
 - No step in the plan contradicts any skill
@@ -90,7 +90,7 @@ Delete the `.sdd-work/` scratch directory once `2. plan.md` and any `3. frontend
 
 # Step 8: Update the todo list
 
-Invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+Invoke the helper at `claude_plugins/sdd-claude-plugin/commands/protected/update_todo.md` with:
 
 - `<todo-path>`: the `todo.md` in the same directory as the spec file
 - `tick:"Run `/plan_from_spec` to generate the implementation plan and QA plan"`

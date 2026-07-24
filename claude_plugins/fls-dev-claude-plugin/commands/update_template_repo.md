@@ -82,9 +82,9 @@ After editing, run `git -C <path> status --short` and `git -C <path> diff` and i
 
 ## Step 6: Tick the todo
 
-Delegate the todo tick to `fls:sdd-mechanic`. Spawn the mechanic with this instruction:
+Delegate the todo tick to `sdd:sdd-mechanic`. Spawn the mechanic with this instruction:
 
-> Read the helper file at `fls-claude-plugin/commands/sdd/protected/update_todo.md` and follow its steps with:
+> Read the helper file at `claude_plugins/sdd-claude-plugin/commands/protected/update_todo.md` and follow its steps with:
 > - `<todo-path>`: the `todo.md` in the spec directory for the current feature
 > - `tick:"Run \`/update_template_repo\` to update the template repo for new projects"`
 

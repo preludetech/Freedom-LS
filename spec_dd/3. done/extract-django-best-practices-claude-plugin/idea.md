@@ -1,5 +1,7 @@
 # Idea: Extract reusable Django stack conventions into a new Claude plugin
 
+> **Superseded** by `spec_dd/2. in progress/split-claude-plugin/1. spec.md`, which splits the monolithic plugin into `ds`/`fls-dev`/`sdd` (the `ds` plugin subsumes this idea's generic Django-stack extraction).
+
 ## Problem
 
 The `fls-claude-plugin` directory currently mixes two different concerns:

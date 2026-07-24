@@ -74,7 +74,7 @@ Run `/do_qa` to execute the QA plan.
 
 ### Reacting to the QA report
 
-- If tests were skipped because of missing data or fixtures, create the needed test data (the `fls:qa-data-helper` agent is designed for this).
+- If tests were skipped because of missing data or fixtures, create the needed test data (the `fls-dev:qa-data-helper` agent is designed for this).
 - If bugs were detected, fix them using TDD — write a failing test that reproduces the bug, then implement the fix. *(A dedicated bugfix command is still TODO.)*
 - If QA fixes change code significantly, re-run `/security-review`.
 
@@ -106,7 +106,7 @@ The command reads `upgrade_notes.md` and the actual diff to decide whether any t
 
 ## Step 9: Sync the course-author plugin (if authoring functionality changed)
 
-Run `/update_claude_plugin_fls_content`. The command runs a single `git diff main --name-only | grep` over authoring-relevant paths (content-engine schema, cotton templates, widget allowlist settings, management commands, demo content) — if nothing matched, it ticks its box and exits immediately at zero LLM cost. If something matched, it fans out one `fls:sdd-worker` to read only the changed authoring-relevant files, drafts scoped edits to the `fls-content` reference skills and the bundled validator, applies them (re-applying both the Django-icon stub and the standalone CLI shim when the validator source changed), and cleans up scratch files on completion.
+Run `/update_claude_plugin_fls_content`. The command runs a single `git diff main --name-only | grep` over authoring-relevant paths (content-engine schema, cotton templates, widget allowlist settings, management commands, demo content) — if nothing matched, it ticks its box and exits immediately at zero LLM cost. If something matched, it fans out one `sdd:sdd-worker` to read only the changed authoring-relevant files, drafts scoped edits to the `fls-content` reference skills and the bundled validator, applies them (re-applying both the Django-icon stub and the standalone CLI shim when the validator source changed), and cleans up scratch files on completion.
 
 ## Step 10: Ship it
 
@@ -120,7 +120,7 @@ Run `/update_claude_plugin_fls_content`. The command runs a single `git diff mai
 
 1. **`/clear` before `/sdd:next`.** `/sdd:next` runs the next command **on the main thread (depth 0)** — it no longer isolates the step in a fresh agent. So run `/clear` first to keep the previous step's context from leaking in. This is a deliberate trade-off: we lose automatic context isolation, and in return commands can legally fan out (research/review) again — fan-out is only allowed at depth 0 — and the workflow costs fewer tokens.
 
-2. **Model tiering & the override knob.** Defaults: mechanical work (test runs, commits, file moves, todo ticking) → the `fls:sdd-mechanic` agent (Haiku); non-interactive fan-out (research topics, review dimensions, scans) → the `fls:sdd-worker` agent (Sonnet); interactive authoring/review commands run at depth 0 on the **user's session model** (so run the session on a strong model). To change a step's model, **edit the relevant agent file's `model:` frontmatter** (`claude_plugins/sdd-claude-plugin/agents/sdd-mechanic.md`, `sdd-worker.md`). The env var `CLAUDE_CODE_SUBAGENT_MODEL` can force one model for **all** subagents in a pinch — but it **overrides every per-agent `model:` frontmatter**, so it must be left **unset (or `inherit`)** for normal tiered operation.
+2. **Model tiering & the override knob.** Defaults: mechanical work (test runs, commits, file moves, todo ticking) → the `sdd:sdd-mechanic` agent (Haiku); non-interactive fan-out (research topics, review dimensions, scans) → the `sdd:sdd-worker` agent (Sonnet); interactive authoring/review commands run at depth 0 on the **user's session model** (so run the session on a strong model). To change a step's model, **edit the relevant agent file's `model:` frontmatter** (`claude_plugins/sdd-claude-plugin/agents/sdd-mechanic.md`, `sdd-worker.md`). The env var `CLAUDE_CODE_SUBAGENT_MODEL` can force one model for **all** subagents in a pinch — but it **overrides every per-agent `model:` frontmatter**, so it must be left **unset (or `inherit`)** for normal tiered operation.
 
 3. **Aliases vs pinned IDs.** The agents use aliases (`haiku`/`sonnet`) for readability. A user who wants frozen, reproducible automation can pin dated IDs (e.g. `claude-haiku-4-5`) in the agent files instead.
 
@@ -132,7 +132,7 @@ Run `/update_claude_plugin_fls_content`. The command runs a single `git diff mai
 
 ## The `todo.md` checklist
 
-`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above. Each SDD command ticks off its own box (and adds follow-up tasks where relevant) by invoking the protected helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` as its final step. You don't run this helper yourself — the other commands call it for you.
+`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above. Each SDD command ticks off its own box (and adds follow-up tasks where relevant) by invoking the protected helper at `claude_plugins/sdd-claude-plugin/commands/protected/update_todo.md` as its final step. You don't run this helper yourself — the other commands call it for you.
 
 ---
 

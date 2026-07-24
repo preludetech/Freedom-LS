@@ -16,7 +16,7 @@ This command runs at **depth 0** and fans work out to sub-agents. See the `claud
 1. **Declare inputs up front.** Gather any user input the phase needs now, via `AskUserQuestion`. Bake the answers into each worker prompt.
 2. **One output path per unit.** Durable artifacts keep their real names (e.g. `research_<topic>.md`); intermediate outputs go in `.sdd-work/` inside the spec directory, named `<phase>_<unit-id>.md`.
 3. **Resume scan.** Skip any unit whose output file already exists and ends with `status: ok`; spawn only missing/not-ok units.
-4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "fls:sdd-worker"` (or `"fls:sdd-mechanic"` for mechanical units). Pass the exact output path and the baked-in inputs. Never one worker looping over the batch.
+4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "sdd:sdd-worker"` (or `"sdd:sdd-mechanic"` for mechanical units). Pass the exact output path and the baked-in inputs. Never one worker looping over the batch.
 5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include the prior error); `blocked` → gather the listed `needs` via `AskUserQuestion`, then re-spawn a fresh worker with the original brief + answers (pointing it at any partial file).
 6. **Synthesis is a separate step** — read the output *files* (pass paths, never dump contents into the prompt) and produce the artifact; it can be retried without re-running workers.
 7. **Clean up on success.** Delete `.sdd-work/` once the phase artifact is finalised. Durable artifacts are not deleted; an abandoned `.sdd-work/` from an interrupted run is intentional (it makes resume cheap).
@@ -43,7 +43,7 @@ Do not try to review the plan without the diagram — the whole point is to diff
 
 # Step 2: Delegate the parse + scan (fan-out)
 
-Spawn **one `fls:sdd-worker`** to parse the approved graph and identify the cross-app edges the plan would introduce, writing its findings to `.sdd-work/plan_structure_findings.md` (atomically, with a `status:` footer). Apply resume/retry/blocked per the recipe. The worker's brief:
+Spawn **one `sdd:sdd-worker`** to parse the approved graph and identify the cross-app edges the plan would introduce, writing its findings to `.sdd-work/plan_structure_findings.md` (atomically, with a `status:` footer). Apply resume/retry/blocked per the recipe. The worker's brief:
 
 ## Scan specification (the worker's brief)
 
@@ -100,7 +100,7 @@ Delete the `.sdd-work/` scratch directory once the review is complete (recipe st
 
 # Step 6: Update the todo list
 
-Delegate to `fls:sdd-mechanic`: invoke the helper at `fls-claude-plugin/commands/sdd/protected/update_todo.md` with:
+Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd-claude-plugin/commands/protected/update_todo.md` with:
 
 - `<todo-path>`: the `todo.md` in the same directory as `2. plan.md`.
 - `tick:"Run `/plan_structure_review` to check for new cross-app dependencies"`

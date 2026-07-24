@@ -96,9 +96,9 @@ Keep the prose short and actionable. If there is genuinely nothing for downstrea
 
 ## Step 4: Tick the todo
 
-Delegate the todo tick to `fls:sdd-mechanic`. Spawn the mechanic with this instruction:
+Delegate the todo tick to `sdd:sdd-mechanic`. Spawn the mechanic with this instruction:
 
-> Read the helper file at `fls-claude-plugin/commands/sdd/protected/update_todo.md` and follow its steps with:
+> Read the helper file at `claude_plugins/sdd-claude-plugin/commands/protected/update_todo.md` and follow its steps with:
 > - `<todo-path>`: the `todo.md` in the spec directory for the current feature
 > - `tick:"Run \`/update_upgrade_notes\` to author the structured upgrade_notes.md for downstream projects"`
 
