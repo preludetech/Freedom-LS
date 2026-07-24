@@ -6,7 +6,7 @@ allowed-tools: Read, Grep, Glob
 
 # Alpine.js (FreedomLS overlay)
 
-Read `Skill(ds:alpine-js)` first for the generic CSP-build Alpine conventions. This overlay adds **only** the FreedomLS component inventory and the icon cross-reference.
+Read `Skill(ds:alpine-js)` first for the generic Alpine conventions (its CSP-build restrictions apply only when configured). This overlay adds **only** the FreedomLS component inventory and the icon cross-reference.
 
 ## Existing components
 
