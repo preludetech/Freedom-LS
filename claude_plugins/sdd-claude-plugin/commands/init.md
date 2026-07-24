@@ -58,15 +58,18 @@ section: the worktree helpers (`protected/start_worktree.md`, `finish_worktree.m
 per-worktree setup/teardown scripts to run. Everything else in this dir exists for parity with the other
 plugins and to hold any future workflow settings.
 
+**Do not prompt the user for these values.** Write the file with blank defaults and tell the user where it
+is so they can fill it in themselves.
+
 1. Ensure the `.claude/sdd/` directory exists (create it if missing).
 2. If `.claude/sdd/config.md` does **not** exist, write it with:
    - a short note that the `sdd` workflow is enabled for this project and that product-specific SDD steps
      and dev credentials live in `.claude/fls-dev/` (written by `/fls-dev:init`), not here;
-   - a `## Worktree Scripts` section. Prompt the user for a **Setup script** path (run when a worktree is
-     created — dependency install, per-branch dev DB, migrations, seed data) and a **Teardown script**
-     path (run when a worktree is finished — e.g. dropping the per-branch dev DB). Both paths are relative
-     to the project root and each **defaults to blank** (= "this project has no such step"). Use the
-     canonical shape below so the reader helpers can find the values:
+   - a `## Worktree Scripts` section carrying a **Setup script** path (run when a worktree is created —
+     dependency install, per-branch dev DB, migrations, seed data) and a **Teardown script** path (run
+     when a worktree is finished — e.g. dropping the per-branch dev DB). Both paths are relative to the
+     project root and each is written **blank** by default (= "this project has no such step"); the user
+     fills them in afterwards. Use the canonical shape below so the reader helpers can find the values:
 
      ```markdown
      # SDD Plugin Configuration
@@ -78,24 +81,28 @@ plugins and to hold any future workflow settings.
 
      Paths are relative to the project root. Leave a value blank if this project has no such step.
 
-     - Setup script: <path or blank>
-     - Teardown script: <path or blank>
+     - Setup script:
+     - Teardown script:
      ```
+
+   After writing, tell the user the config lives at `.claude/sdd/config.md` and that they should fill in
+   the Setup and Teardown script paths themselves (leaving either blank if this project has no such step).
 3. If it already exists, add the `## Worktree Scripts` section and either key (`Setup script`,
    `Teardown script`) only if missing, using the blank default. Preserve every existing value, comment,
    and ordering; never re-prompt for options already present.
 
-## Step 3: Determine the FLS path (reuse the shared value; do not re-prompt if already set)
+## Step 3: Determine the FLS path (do not prompt — reuse the shared value or default)
 
-`claude_plugins/` lives under the FLS checkout. The three inits agree on one path; whichever runs first
-asks and the others reuse it.
+`FLS_PATH` is the relative path from the project root to whichever checkout holds `claude_plugins/`. The
+three inits agree on one path; whichever runs first sets it and the others reuse it. **Do not prompt the
+user for it.**
 
-1. If a root `claude.sh` already exists, read its `FLS_PATH="…"` value and reuse it (do not re-prompt).
-2. Otherwise, ask the user for the relative path from the project root to the FLS checkout (e.g.
-   `submodules/Freedom-LS`; default `.` for FLS itself, where the plugins live at `./claude_plugins/`).
-   Note that `/ds:init` will bake this into `claude.sh`.
+1. If a root `claude.sh` already exists, read its `FLS_PATH="…"` value and reuse it.
+2. Otherwise default to `.` (the common case, where the project root itself holds `./claude_plugins/`).
+   `/ds:init` bakes this into `claude.sh`.
 3. Validate that `<fls_path>/claude_plugins/sdd-claude-plugin/` exists — this confirms the `sdd` plugin
-   path. If it doesn't, stop and report the bad path.
+   path. If it doesn't, stop and tell the user to run `/ds:init` (which owns `claude.sh`) or set
+   `FLS_PATH` there to the relative path of the checkout that holds `claude_plugins/`, then re-run.
 
 ## Step 4: Update `.gitignore`
 
@@ -126,4 +133,5 @@ Run these checks and report results:
    if not, that the user has been told to run `/ds:init`.
 7. Report any issues found.
 
-Print a summary of everything that was done.
+Print a summary of everything that was done. In the summary, explicitly point the user at
+`.claude/sdd/config.md` and tell them to fill in the Worktree Scripts Setup and Teardown paths themselves.

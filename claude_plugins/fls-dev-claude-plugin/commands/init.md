@@ -47,13 +47,15 @@ The product plugin was renamed `fls` → `fls-dev`, so a project set up by an ol
 
 ## Step 3: Create or extend `.claude/fls-dev/config.md`
 
+**Do not prompt the user for these values.** The template already carries sensible dev defaults; write it
+verbatim and tell the user where it is so they can fill it in themselves.
+
 1. Ensure the `.claude/fls-dev/` directory exists (create it if missing — it should already exist if Step 1 migrated a legacy dir).
-2. If `.claude/fls-dev/config.md` does **not** exist:
-   - Ask the user for:
-     - Dev admin email (default: `demodev@email.com`)
-     - Dev admin password (default: `demodev@email.com`)
-     - Base URL (default: `http://127.0.0.1:8000`)
-   - Generate `.claude/fls-dev/config.md` from `${CLAUDE_PLUGIN_ROOT}/templates/fls.md`, substituting the user's values.
+2. If `.claude/fls-dev/config.md` does **not** exist, create it by copying `${CLAUDE_PLUGIN_ROOT}/templates/fls.md`
+   verbatim. It ships with the defaults dev admin email `demodev@email.com`, dev admin password
+   `demodev@email.com`, and base URL `http://127.0.0.1:8000`. Then tell the user the config lives at
+   `.claude/fls-dev/config.md` and that they should review and edit the dev credentials and base URL to
+   match this project — the defaults are only a starting point.
 3. If `.claude/fls-dev/config.md` already exists, extend it instead of skipping:
    - Compare it against `${CLAUDE_PLUGIN_ROOT}/templates/fls.md`.
    - Add any section or key the template defines but the existing file lacks, using the template's default value — do **not** re-prompt the user for options the file already carries.
@@ -77,13 +79,18 @@ This file carries machine-specific overrides, including the `## Template Repo` s
 2. If `.claude/fls-dev/config.local.md` is not already listed, add it.
 3. Leave the shared `.claude/settings.local.json` line to `/ds:init` — do not add or remove it here.
 
-## Step 6: Determine FLS path
+## Step 6: Determine FLS path (do not prompt)
 
-1. Ask the user for the relative path from the project root to FLS (e.g., `submodules/Freedom-LS`).
-   - Default: `.` (for FLS itself, where the plugin is at `./claude_plugins/fls-dev-claude-plugin/`).
-   - For concrete implementations, this is typically `submodules/Freedom-LS`.
-2. Validate that `<fls_path>/claude_plugins/fls-dev-claude-plugin/` exists.
-3. Store this path for use in wrapper script generation. (If `/ds:init` already asked for and persisted this path, reuse it rather than re-prompting.)
+`FLS_PATH` is the relative path from the project root to whichever checkout holds `claude_plugins/`; it is
+baked into the wrapper scripts so they can locate the plugin dir at runtime. **Do not prompt the user for it.**
+
+1. If a root `claude.sh` already exists (written by `/ds:init`), read its `FLS_PATH="…"` value and reuse it.
+2. Otherwise default to `.` (the common case, where the project root itself holds `./claude_plugins/`).
+   For concrete implementations the checkout is typically at `submodules/Freedom-LS`.
+3. Validate that `<fls_path>/claude_plugins/fls-dev-claude-plugin/` exists. If it does not, do not guess —
+   stop and tell the user to run `/ds:init` (which owns `claude.sh`) or set `FLS_PATH` there to the
+   relative path of the checkout that holds `claude_plugins/`, then re-run.
+4. Store this path for use in wrapper script generation.
 
 ## Step 7: Generate the `fls-dev` wrapper scripts
 
@@ -115,4 +122,6 @@ Run these checks and report results:
 6. Confirm wrapper scripts have the correct `FLS_PATH` (not `__FLS_PATH__`).
 7. Report any issues found, including any `ds`-owned shared artifact flagged in Step 8.
 
-Print a summary of everything that was done.
+Print a summary of everything that was done. In the summary, explicitly point the user at
+`.claude/fls-dev/config.md` and tell them to fill in the dev credentials and base URL themselves, and at
+`.claude/fls-dev/config.local.md` for the optional template-repo path.

@@ -60,28 +60,41 @@ Each operation is additive or create-when-absent, with the one deliberate except
 
 ## Step 2: Create or extend `.claude/ds/config.md`
 
-`ds` needs little per-project config. Store the dev-site base URL the `ds:use-playwright` skill reads.
+`ds` needs little per-project config. Store the dev-site base URL the `ds:use-playwright` skill reads,
+and the Alpine.js CSP-build flag the `ds:alpine-js` skill reads.
+
+**Do not prompt the user for these values.** Write the file with the documented defaults and tell the
+user where it is so they can fill it in themselves.
 
 1. Ensure the `.claude/ds/` directory exists (create it if missing).
-2. If `.claude/ds/config.md` does **not** exist:
-   - Ask the user for the dev base URL (default `http://127.0.0.1:8000`).
-   - Write `.claude/ds/config.md` recording that base URL. (Product-specific config — dev credentials,
-     the template-repo path — is written by the `fls-dev` init into `.claude/fls-dev/config.md`, not here.)
-3. If it already exists, add any missing key using the default, preserving every existing value and
-   comment; never re-prompt for options already present.
+2. If `.claude/ds/config.md` does **not** exist, write it with the defaults:
+   - the dev base URL `http://127.0.0.1:8000` under a `## Project Settings` section;
+   - the Alpine.js CSP-build flag under a `## Alpine.js` section as `- CSP build: enabled`. `enabled`
+     is the safe default the `ds:alpine-js` skill assumes.
+   (Product-specific config — dev credentials, the template-repo path — is written by the `fls-dev`
+   init into `.claude/fls-dev/config.md`, not here.)
+3. If it already exists, add any missing key using the default (including the `## Alpine.js` section
+   with `- CSP build: enabled` if absent), preserving every existing value and comment; never re-prompt
+   for options already present.
+4. Tell the user the config lives at `.claude/ds/config.md` and that they should review and edit the
+   base URL and the Alpine CSP-build flag to match this project — the defaults are only a starting point.
 
-## Step 3: Determine the FLS path (ask once, persist for the other inits)
+## Step 3: Determine the FLS path (do not prompt — default and persist for the other inits)
 
-`claude_plugins/` lives under the FLS checkout. The three inits must agree on one path; whichever runs
-first asks and the others reuse it.
+`FLS_PATH` is the relative path from the project root to whichever checkout holds `claude_plugins/`; it
+is baked into `claude.sh` and the wrapper scripts so they can locate the plugin dir at runtime. The three
+inits must agree on one path; whichever runs first sets it and the others reuse it. **Do not prompt the
+user for it.**
 
-1. If a root `claude.sh` already exists, read its `FLS_PATH="…"` value and reuse it (do not re-prompt).
-2. Otherwise ask the user for the relative path from the project root to the FLS checkout (e.g.
-   `submodules/Freedom-LS`). Default `.` (for FLS itself, where the plugins live at
-   `./claude_plugins/`).
-3. Validate that `<fls_path>/claude_plugins/django-stack-claude-plugin/` exists.
+1. If a root `claude.sh` already exists, read its `FLS_PATH="…"` value and reuse it.
+2. Otherwise default to `.` (the common case, where the project root itself holds `./claude_plugins/`).
+3. Validate that `<fls_path>/claude_plugins/django-stack-claude-plugin/` exists. If it does not, do not
+   guess — stop and tell the user to set `FLS_PATH` in `claude.sh` to the relative path of the checkout
+   that holds `claude_plugins/` (e.g. `submodules/Freedom-LS`), then re-run.
 4. Store this path for the wrapper-script generation below (it is baked into `claude.sh` as `FLS_PATH`,
-   which is where the `fls-dev` and `sdd` inits read it back).
+   which is where the `fls-dev` and `sdd` inits read it back). If the default `.` is used but this project
+   holds `claude_plugins/` somewhere else (e.g. a submodule), the user edits `FLS_PATH` in `claude.sh`
+   afterwards — surface this in the final summary.
 
 ## Step 4: Generate the shared launcher and `ds` wrapper scripts
 
@@ -140,6 +153,11 @@ Run these checks and report results:
    `$FLS_PLUGIN`).
 6. Confirm wrapper scripts have the resolved `FLS_PATH` (not `__FLS_PATH__`).
 7. Confirm `CLAUDE.md` no longer contains the legacy `FLS_PLUGIN` line.
-8. Report any issues found.
+8. Confirm `.claude/ds/config.md` contains a `## Alpine.js` section with a `CSP build` value
+   (`enabled` or `disabled`).
+9. Report any issues found.
 
-Print a summary of everything that was done.
+Print a summary of everything that was done. In the summary, explicitly point the user at
+`.claude/ds/config.md` and tell them to fill in the base URL and Alpine CSP-build flag themselves. If the
+FLS path defaulted to `.`, also tell them to edit `FLS_PATH` in `claude.sh` if this project holds
+`claude_plugins/` somewhere other than the project root (e.g. a submodule).
