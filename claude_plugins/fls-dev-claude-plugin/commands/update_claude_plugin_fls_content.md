@@ -3,7 +3,7 @@ description: Sync the fls-content course-author plugin if this SDD run touched F
 allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Agent
 ---
 
-Sync the `fls-content-plugin/` course-author Claude Code plugin to reflect any changes to FLS authoring functionality made by this SDD run. This command is a **fast no-op** when nothing authoring-relevant changed.
+Sync the `claude_plugins/fls-content-plugin/` course-author Claude Code plugin to reflect any changes to FLS authoring functionality made by this SDD run. This command is a **fast no-op** when nothing authoring-relevant changed.
 
 ## Step 1: Detect authoring-relevant changes (zero-token)
 
@@ -24,8 +24,8 @@ Spawn **one `fls:sdd-worker`** to read only the changed authoring-relevant files
 - The list of changed authoring-relevant file paths from Step 1.
 - Instruction to read those files and identify exactly what changed (new/removed/modified: content types, frontmatter fields, widget tags, `MARKDOWN_ALLOWED_TAGS` entries, `ADMONITION_TYPES` keys, convention examples in `demo_content/`).
 - Instruction to produce a concrete, scoped set of edits to:
-  - (a) the `fls-content` **reference skills** under `fls-content-plugin/skills/` — kept shallow and author-facing; edit only the sections corresponding to changed files.
-  - (b) the **bundled validator** under `fls-content-plugin/validate/` — when `schema.py` or `validate.py` changed, detail what re-sync is required.
+  - (a) the `fls-content` **reference skills** under `claude_plugins/fls-content-plugin/skills/` — kept shallow and author-facing; edit only the sections corresponding to changed files.
+  - (b) the **bundled validator** under `claude_plugins/fls-content-plugin/validate/` — when `schema.py` or `validate.py` changed, detail what re-sync is required.
 - Instruction to base every statement on the actual file contents, not inference.
 - Instruction to write its output to `.sdd-work/fls_content_sync.md` and end the file with `status: ok` on success, `status: failed` + `reason:` on failure, or `status: blocked` + `needs:` if inputs are unclear.
 
@@ -37,7 +37,7 @@ Apply the standard resume/retry/blocked recipe:
 
 ## Step 3: Apply the edits (depth-0 synthesis)
 
-Read `.sdd-work/fls_content_sync.md` by path. Apply the drafted edits to the relevant `fls-content-plugin/` files:
+Read `.sdd-work/fls_content_sync.md` by path. Apply the drafted edits to the relevant `claude_plugins/fls-content-plugin/` files:
 
 - Use `Edit` for targeted section updates; use `Write` only if a file is new.
 - **When `schema.py` or `validate.py` changed:** re-copy the trimmed validator from the FLS source and **re-apply both patches** (per D3.1 in the implementation plan):
