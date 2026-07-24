@@ -53,15 +53,37 @@ Each operation is additive or create-when-absent.
 
 ## Step 2: Create or extend `.claude/sdd/config.md`
 
-`sdd` needs little per-project config; the config dir exists mainly for parity with the other plugins and
-to hold any future workflow settings.
+`sdd` needs little per-project config. The one thing it *does* read at runtime is the **Worktree Scripts**
+section: the worktree helpers (`protected/start_worktree.md`, `finish_worktree.md`) look here for the
+per-worktree setup/teardown scripts to run. Everything else in this dir exists for parity with the other
+plugins and to hold any future workflow settings.
 
 1. Ensure the `.claude/sdd/` directory exists (create it if missing).
-2. If `.claude/sdd/config.md` does **not** exist, write a short `.claude/sdd/config.md` noting that the
-   `sdd` workflow is enabled for this project and that product-specific SDD steps and dev credentials
-   live in `.claude/fls-dev/` (written by `/fls-dev:init`), not here.
-3. If it already exists, add any missing key using the default, preserving every existing value and
-   comment; never re-prompt for options already present.
+2. If `.claude/sdd/config.md` does **not** exist, write it with:
+   - a short note that the `sdd` workflow is enabled for this project and that product-specific SDD steps
+     and dev credentials live in `.claude/fls-dev/` (written by `/fls-dev:init`), not here;
+   - a `## Worktree Scripts` section. Prompt the user for a **Setup script** path (run when a worktree is
+     created — dependency install, per-branch dev DB, migrations, seed data) and a **Teardown script**
+     path (run when a worktree is finished — e.g. dropping the per-branch dev DB). Both paths are relative
+     to the project root and each **defaults to blank** (= "this project has no such step"). Use the
+     canonical shape below so the reader helpers can find the values:
+
+     ```markdown
+     # SDD Plugin Configuration
+
+     The spec-driven-development (sdd) workflow is enabled for this project. Product-specific SDD steps
+     and dev credentials live in `.claude/fls-dev/` (written by `/fls-dev:init`), not here.
+
+     ## Worktree Scripts
+
+     Paths are relative to the project root. Leave a value blank if this project has no such step.
+
+     - Setup script: <path or blank>
+     - Teardown script: <path or blank>
+     ```
+3. If it already exists, add the `## Worktree Scripts` section and either key (`Setup script`,
+   `Teardown script`) only if missing, using the blank default. Preserve every existing value, comment,
+   and ordering; never re-prompt for options already present.
 
 ## Step 3: Determine the FLS path (reuse the shared value; do not re-prompt if already set)
 
@@ -96,7 +118,8 @@ Run these checks and report results:
 
 1. Confirm `sdd` is in `enabledPlugins` in `.claude/settings.json`.
 2. Confirm `Skill(sdd:*)` is in `permissions.allow`.
-3. Confirm `.claude/sdd/config.md` exists.
+3. Confirm `.claude/sdd/config.md` exists and contains a `## Worktree Scripts` section with both the
+   `Setup script` and `Teardown script` keys (blank values are valid).
 4. Confirm `.claude/sdd/config.local.md` is listed in `.gitignore`.
 5. Confirm `<fls_path>/claude_plugins/sdd-claude-plugin/` exists.
 6. Confirm the `ds`-owned shared artifacts (root `claude.sh`, the `SessionStart` hook) are present — and
