@@ -24,9 +24,9 @@ If there is a frontend_qa.md file for the specification this branch is for (insi
 - say whether you think it would be useful to run the frontend_qa again or not
 - only if you think the frontend_qa should be run again, ask the user for confirmation before moving forward
 
-# Step 3
+# Step 3: Tear down any per-worktree resources
 
-Call `.claude/fls/scripts/dev_db_delete.sh`
+If this project provisions per-worktree resources when a worktree is created (e.g. a per-branch dev database), run its teardown step now. That teardown is project-specific and lives outside the `sdd` plugin — skip this step if the project has no such step.
 
 # Step 4: Update the todo list
 
