@@ -13,7 +13,7 @@ Figure out which spec we're working with, in this order:
 2. Otherwise, look at the current branch name and try to match it to a directory inside `spec_dd/` (usually under `spec_dd/2. in progress/`).
 3. If still ambiguous, list candidate directories under `spec_dd/` and ask the user which one.
 
-The target file is `todo.md` inside that directory. If it does not exist, the next step is `/sdd:start`: resolve `fls-claude-plugin/commands/sdd/start.md` and **run its steps inline** on the main thread (its mechanical work runs via this command's `Agent` tool — see Step 3). Then re-read `todo.md` and continue with Step 2.
+The target file is `todo.md` inside that directory. If it does not exist, the next step is `/sdd:start`: resolve `claude_plugins/sdd-claude-plugin/commands/start.md` and **run its steps inline** on the main thread (its mechanical work runs via this command's `Agent` tool — see Step 3). Then re-read `todo.md` and continue with Step 2.
 
 ## Step 2: Read the todo.md and find the next unchecked item
 
@@ -38,19 +38,19 @@ This is a manual task. Ask the user, in a single short message, whether they hav
 
 This is a slash command task. You run it **inline at depth 0** — read the command file and follow its steps yourself on the main thread (do **not** wrap it in a fresh subagent). Because you run at depth 0, any worker/mechanic fan-out the command calls for executes via **your own `Agent` tool**.
 
-1. Extract the slash command name from the item text (e.g. `/spec_from_idea`, `/plan_from_spec`, `/threat-model`, `/do_qa`).
-2. Resolve the command file with a two-directory search:
+1. Extract the fully-namespaced slash command from the item text (e.g. `/sdd:spec_from_idea`, `/sdd:plan_from_spec`, `/ds:threat-model`, `/fls-dev:do_qa`). The generated `todo.md` always writes each command with its owning-plugin prefix.
+2. Resolve the command file with a deterministic **keep-prefix → owning-plugin** map. Split the command on its first `:` into the plugin prefix and the command name, then look up the plugin's commands directory:
    ```
-   name = strip_leading("/sdd:", "/", extracted_command_name)   # e.g. "threat-model", "do_qa"
-   candidates = [
-     "fls-claude-plugin/commands/sdd/{name}.md",
-     "fls-claude-plugin/commands/{name}.md",
-   ]
-   target = first candidate that exists
-   if none exist: stop, tell the user the checklist references command "{name}" that resolves to no
-                  file in either fls-claude-plugin/commands/sdd/ or fls-claude-plugin/commands/.
+   prefix, name = split_once(command, ":")   # "/sdd:do_qa" -> ("sdd", "do_qa")
+   dir = { "sdd":     "claude_plugins/sdd-claude-plugin/commands/",
+           "fls-dev":  "claude_plugins/fls-dev-claude-plugin/commands/",
+           "ds":      "claude_plugins/django-stack-claude-plugin/commands/" }[prefix]
+   target = dir + name + ".md"
+   if prefix is not a key of the map, or target does not exist:
+       stop and tell the user the checklist references command "{command}" that resolves to no
+       command file — the prefix must be one of sdd / fls-dev / ds and the file must exist.
    ```
-   This makes the top-level commands (`/threat-model`, `/security-review`, `/address_pr_review`) resolve alongside the `sdd/` commands.
+   This is deterministic — no directory probing, no prefix-stripping, no collision risk.
 3. Read the resolved file in full and **follow its steps inline at depth 0**. You already know the `todo.md` path and the spec directory from Steps 1–2, and any argument the user passed to `/sdd:next` — use them so the command doesn't re-discover them. The command ticks its own box via the `update_todo` helper when it finishes.
 4. When the command's steps are done, relay a short summary of the result to the user (see Step 5).
 
