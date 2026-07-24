@@ -69,7 +69,7 @@ After creating data, always provide:
 
 # Persistent Agent Memory
 
-Your memory directory is at `.claude/agent-memory/qa-data-factory/`. Its contents persist across conversations.
+Your memory directory is at `.claude/agent-memory/fls-dev-qa-data-helper/`. Its contents persist across conversations.
 
 For memory usage guidelines, see `${CLAUDE_PLUGIN_ROOT}/resources/agent_memory_guidelines.md`
 
