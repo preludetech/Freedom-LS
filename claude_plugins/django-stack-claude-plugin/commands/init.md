@@ -5,31 +5,37 @@ allowed-tools: Read, Write, Edit, Bash, Glob
 
 # Initialize the django-stack (ds) Plugin
 
-Set up the `ds` Claude Code plugin for this project, and — because `ds` is the **primary init owner** —
-set up the shared, multi-plugin artifacts that all of the dev plugins depend on.
+Set up the `ds` Claude Code plugin for this project. `ds` is a portable Django-stack plugin — it carries
+zero product-specific knowledge and depends on no other plugin. This command wires `ds` into an existing
+project and creates the generic launcher/hook/gitignore artifacts a project needs to load Claude Code
+plugins at all — but only when they are missing.
 
 ## Scope
 
-`ds:init` is **plugin-bootstrap only.** It wires the Claude Code plugins into an existing project. It
+`ds:init` is **plugin-bootstrap only.** It wires the `ds` plugin into an existing project. It
 does NOT scaffold Django project structure (`config/`, `pyproject.toml`, Tailwind config, a `CLAUDE.md`
-skeleton) — those come from the template repo. Run `ds:init` after the project already exists.
+skeleton) — those come from the project template. Run `ds:init` after the project already exists.
 
-`ds` is the **primary init owner** for artifacts shared across `ds`, `fls-dev`, and `sdd`:
+`ds:init` writes only its **own** slice — the `django-stack` `enabledPlugins` key, `ds` permissions, the
+`.claude/ds/` config dir, and the `ds` wrapper scripts. Alongside that it creates a few **generic,
+plugin-neutral** artifacts a Claude Code project needs regardless of which plugins are installed, and only
+when they are absent:
 
-- the root **`claude.sh`** launcher (all three `--plugin-dir` flags + `$CLAUDE_PLUGINS_LOADED`),
+- the root **`claude.sh`** launcher (starting with the `django-stack` `--plugin-dir` flag +
+  `$CLAUDE_PLUGINS_LOADED`),
 - the **`SessionStart`** hook in `.claude/settings.json`,
 - the `.claude/settings.local.json` line in **`.gitignore`**.
 
-The `fls-dev` and `sdd` init commands detect these and skip them — `ds:init` writes them. Each of the three
-inits merges only **its own** `enabledPlugins` key and permissions, and writes only its own
-`.claude/<plugin>/` config dir.
+`claude.sh` is a shared file: `ds:init` ensures **its own** `--plugin-dir` line is present and never
+touches any other `--plugin-dir` line. If additional plugins are installed, each of their inits adds its
+own line the same way.
 
 ## Hard requirements — do not regress
 
 Each operation is additive or create-when-absent, with the one deliberate exception noted for `hooks`.
 
 - **`.claude/settings.json`** — merge, don't replace. Add missing `allow`/`deny` entries, add
-  `"django-stack": true` to `enabledPlugins` (only this key — never touch `fls-dev`/`sdd` keys), and
+  `"django-stack": true` to `enabledPlugins` (only this key — never touch other plugins' keys), and
   merge the `SessionStart` hook. Never replace the whole file, and never touch `allow`/`deny`/
   `enabledPlugins` entries that already exist. **Exception:** the `hooks` section is plugin-owned — only
   `SessionStart` is permitted there (see Step 1 and validation).
@@ -38,8 +44,10 @@ Each operation is additive or create-when-absent, with the one deliberate except
   file already has).
 - **`.gitignore`** — append missing entries only. Never remove or reorder existing lines.
 - **Wrapper scripts** (`claude.sh` at the project root; the others under `.claude/ds/scripts/`) — copy
-  the template, substitute `__FLS_PATH__`, and mark executable **only when the destination file does not
-  yet exist**. If a script is already present, skip it (but still run the sentinel migration in Step 6).
+  the template, substitute `__PLUGINS_ROOT__`, and mark executable **only when the destination file does
+  not yet exist**. If a script is already present, skip it (but still run the sentinel migration in
+  Step 6). `claude.sh` is the one shared file: when it already exists, ensure the `django-stack`
+  `--plugin-dir` line is present without disturbing any other line.
 
 ## Step 1: Merge recommended permissions into `.claude/settings.json`
 
@@ -71,73 +79,78 @@ user where it is so they can fill it in themselves.
    - the dev base URL `http://127.0.0.1:8000` under a `## Project Settings` section;
    - the Alpine.js CSP-build flag under a `## Alpine.js` section as `- CSP build: enabled`. `enabled`
      is the safe default the `ds:alpine-js` skill assumes.
-   (Product-specific config — dev credentials, the template-repo path — is written by the `fls-dev`
-   init into `.claude/fls-dev/config.md`, not here.)
 3. If it already exists, add any missing key using the default (including the `## Alpine.js` section
    with `- CSP build: enabled` if absent), preserving every existing value and comment; never re-prompt
    for options already present.
 4. Tell the user the config lives at `.claude/ds/config.md` and that they should review and edit the
    base URL and the Alpine CSP-build flag to match this project — the defaults are only a starting point.
 
-## Step 3: Determine the FLS path (do not prompt — default and persist for the other inits)
+## Step 3: Determine `PLUGINS_ROOT` (do not prompt)
 
-`FLS_PATH` is the relative path from the project root to whichever checkout holds `claude_plugins/`; it
-is baked into `claude.sh` and the wrapper scripts so they can locate the plugin dir at runtime. The three
-inits must agree on one path; whichever runs first sets it and the others reuse it. **Do not prompt the
-user for it.**
+`PLUGINS_ROOT` is the relative path from the project root to whichever checkout holds `claude_plugins/`;
+it is baked into `claude.sh` and the wrapper scripts so they can locate the plugin dir at runtime.
+**Do not prompt the user for it.**
 
-1. If a root `claude.sh` already exists, read its `FLS_PATH="…"` value and reuse it.
+1. If a root `claude.sh` already exists, read its `PLUGINS_ROOT="…"` value and reuse it.
 2. Otherwise default to `.` (the common case, where the project root itself holds `./claude_plugins/`).
-3. Validate that `<fls_path>/claude_plugins/django-stack-claude-plugin/` exists. If it does not, do not
-   guess — stop and tell the user to set `FLS_PATH` in `claude.sh` to the relative path of the checkout
-   that holds `claude_plugins/` (e.g. `submodules/Freedom-LS`), then re-run.
-4. Store this path for the wrapper-script generation below (it is baked into `claude.sh` as `FLS_PATH`,
-   which is where the `fls-dev` and `sdd` inits read it back). If the default `.` is used but this project
-   holds `claude_plugins/` somewhere else (e.g. a submodule), the user edits `FLS_PATH` in `claude.sh`
-   afterwards — surface this in the final summary.
+3. Validate that `<PLUGINS_ROOT>/claude_plugins/django-stack-claude-plugin/` exists. If it does not, do
+   not guess — stop and tell the user to set `PLUGINS_ROOT` in `claude.sh` to the relative path of the
+   checkout that holds `claude_plugins/`, then re-run.
+4. Store this path for the wrapper-script generation below (it is baked into `claude.sh` as
+   `PLUGINS_ROOT`). If the default `.` is used but this project holds `claude_plugins/` somewhere else
+   (e.g. a submodule), the user edits `PLUGINS_ROOT` in `claude.sh` afterwards — surface this in the
+   final summary.
 
-## Step 4: Generate the shared launcher and `ds` wrapper scripts
+## Step 4: Generate the launcher and `ds` wrapper scripts
 
-1. Install the root launcher: if `claude.sh` does **not** exist at the project root, copy
-   `${CLAUDE_PLUGIN_ROOT}/templates/wrapper_scripts/claude.sh`, replace `__FLS_PATH__` with the Step 3
-   path, and make it executable. (If it already exists, leave it — Step 6 migrates it in place.)
+1. Install the root launcher:
+   - If `claude.sh` does **not** exist at the project root, copy
+     `${CLAUDE_PLUGIN_ROOT}/templates/wrapper_scripts/claude.sh`, replace `__PLUGINS_ROOT__` with the
+     Step 3 path, and make it executable.
+   - If it already exists, leave the file in place but ensure the `django-stack` `--plugin-dir` line is
+     present: if no line pointing at `claude_plugins/django-stack-claude-plugin` is found, insert one
+     (matching the template's form, with the resolved `PLUGINS_ROOT`) immediately above the `"$@"` line.
+     Do not touch any other `--plugin-dir` line. (Step 6 also migrates an existing launcher in place.)
 2. Ensure `.claude/ds/scripts/` exists.
 3. For each remaining template in `${CLAUDE_PLUGIN_ROOT}/templates/wrapper_scripts/` (`find_available_port.sh`,
    `db_clear.sh`, `kill_runserver.sh`, `fetch_pr_comments.sh`): if a script of that name does not yet
-   exist under `.claude/ds/scripts/`, copy it there, replace `__FLS_PATH__`, and make it executable.
+   exist under `.claude/ds/scripts/`, copy it there, replace `__PLUGINS_ROOT__`, and make it executable.
    Skip any that already exist.
 
 ## Step 5: Update `.gitignore`
 
 1. Read `.gitignore`.
 2. If `.claude/ds/config.local.md` is not already listed, add it.
-3. If `.claude/settings.local.json` is not already listed, add it (this line is `ds`-owned; the other
-   inits skip it).
+3. If `.claude/settings.local.json` is not already listed, add it.
 
-## Step 6: Sentinel migration — rewrite `$FLS_PLUGIN` → `$CLAUDE_PLUGINS_LOADED`
+## Step 6: Sentinel and variable migration in an existing launcher
 
-A plain additive merge cannot rename a sentinel already baked into an existing project. Actively detect
-and rewrite it (mirroring the earlier "clean up legacy `CLAUDE.md` line" precedent). Run this even when
-Step 1/Step 4 skipped an existing file.
+A plain additive merge cannot rename a sentinel or variable already baked into an existing project.
+Actively detect and rewrite them (mirroring the "clean up legacy `CLAUDE.md` line" precedent in Step 7).
+Run this even when Step 1/Step 4 skipped an existing file.
 
-1. **Root `claude.sh`:** if it references the old sentinel or the old single-plugin launcher line:
+1. **Root `claude.sh`:** if it references an old sentinel or variable name:
    - Rewrite every `FLS_PLUGIN=1` / `$FLS_PLUGIN` occurrence to `CLAUDE_PLUGINS_LOADED=1` /
      `$CLAUDE_PLUGINS_LOADED`.
-   - If the launcher still has a single `--plugin-dir` flag pointing at the old pre-split monolith
-     plugin directory, replace that whole invocation with the three-plugin form from
-     `${CLAUDE_PLUGIN_ROOT}/templates/wrapper_scripts/claude.sh` (`django-stack`, `fls-dev`, `sdd` —
-     not `fls-content`).
-2. **`.claude/settings.json`:** in the `SessionStart` hook, rewrite `$FLS_PLUGIN` → `$CLAUDE_PLUGINS_LOADED`
+   - Rewrite every `FLS_PATH=` / `$FLS_PATH` occurrence to `PLUGINS_ROOT=` / `$PLUGINS_ROOT`.
+   - If the launcher still has a `--plugin-dir` flag pointing at a pre-split monolith plugin directory,
+     replace **that one line** with the `django-stack` `--plugin-dir` line from
+     `${CLAUDE_PLUGIN_ROOT}/templates/wrapper_scripts/claude.sh` (with the resolved `PLUGINS_ROOT`).
+     Leave every other `--plugin-dir` line alone — other installed plugins own theirs.
+2. **`.claude/ds/scripts/*.sh`:** rewrite any `FLS_PATH=` / `$FLS_PATH` occurrence to `PLUGINS_ROOT=` /
+   `$PLUGINS_ROOT` in existing wrapper scripts.
+3. **`.claude/settings.json`:** in the `SessionStart` hook, rewrite `$FLS_PLUGIN` → `$CLAUDE_PLUGINS_LOADED`
    and reword any "FLS PLUGIN NOT LOADED" message to the plugin-neutral wording in the template.
-3. Report each rewrite made.
+4. Report each rewrite made.
 
 ## Step 7: Clean up legacy CLAUDE.md plugin check
 
-Earlier init versions prepended a `CLAUDE.md` line asking Claude to check `$FLS_PLUGIN` each session;
-the `SessionStart` hook replaces it.
+Earlier init versions prepended a `CLAUDE.md` line asking Claude to check a plugin-loaded sentinel each
+session; the `SessionStart` hook replaces it.
 
 1. Read `CLAUDE.md` at the project root (if it exists).
-2. If it starts with a line mentioning `FLS_PLUGIN`, remove that line and the blank line following it.
+2. If it starts with a line mentioning `FLS_PLUGIN` or `CLAUDE_PLUGINS_LOADED`, remove that line and the
+   blank line following it.
 3. Otherwise skip.
 
 ## Step 8: Validate the setup
@@ -145,19 +158,18 @@ the `SessionStart` hook replaces it.
 Run these checks and report results:
 
 1. Confirm `django-stack` is in `enabledPlugins` in `.claude/settings.json`.
-2. Confirm `claude.sh` exists at the project root, is executable, and its launch line uses
-   `CLAUDE_PLUGINS_LOADED=1` with three `--plugin-dir` flags.
+2. Confirm `claude.sh` exists at the project root, is executable, uses `CLAUDE_PLUGINS_LOADED=1`, and has
+   the `django-stack` `--plugin-dir` line.
 3. Confirm the `ds` wrapper scripts exist under `.claude/ds/scripts/` and are executable.
 4. Confirm hook scripts in the plugin (`scripts/hooks/*.sh`) are executable.
-5. Confirm the `SessionStart` hook in `.claude/settings.json` checks `$CLAUDE_PLUGINS_LOADED` (not
-   `$FLS_PLUGIN`).
-6. Confirm wrapper scripts have the resolved `FLS_PATH` (not `__FLS_PATH__`).
-7. Confirm `CLAUDE.md` no longer contains the legacy `FLS_PLUGIN` line.
+5. Confirm the `SessionStart` hook in `.claude/settings.json` checks `$CLAUDE_PLUGINS_LOADED`.
+6. Confirm wrapper scripts have the resolved `PLUGINS_ROOT` (not `__PLUGINS_ROOT__`).
+7. Confirm `CLAUDE.md` no longer contains a legacy plugin-check line.
 8. Confirm `.claude/ds/config.md` contains a `## Alpine.js` section with a `CSP build` value
    (`enabled` or `disabled`).
 9. Report any issues found.
 
 Print a summary of everything that was done. In the summary, explicitly point the user at
 `.claude/ds/config.md` and tell them to fill in the base URL and Alpine CSP-build flag themselves. If the
-FLS path defaulted to `.`, also tell them to edit `FLS_PATH` in `claude.sh` if this project holds
+plugins root defaulted to `.`, also tell them to edit `PLUGINS_ROOT` in `claude.sh` if this project holds
 `claude_plugins/` somewhere other than the project root (e.g. a submodule).

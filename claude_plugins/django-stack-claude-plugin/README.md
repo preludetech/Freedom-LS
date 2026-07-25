@@ -2,9 +2,9 @@
 
 Portable Django-stack conventions for Claude Code. Everything here helps *any* project on this stack —
 Python 3.13+, Django 6.x, PostgreSQL, HTMX, Tailwind, and optionally Cotton / Alpine / Playwright — and
-carries **zero FreedomLS (FLS) domain knowledge**. Product-specific conventions (multi-tenant /
-site-aware models, registration, markdown content, brand, etc.) live in the separate `fls-dev` plugin,
-which keeps thin overlay skills that reference the `ds` skills here.
+carries **zero product-specific domain knowledge** and depends on no other plugin. Product-specific
+conventions (multi-tenant / site-aware models, registration, markdown content, brand, etc.) belong in a
+separate downstream plugin that layers thin overlay skills on top of the `ds` skills here.
 
 Manifest name: `ds`. Namespace: `/ds:*`, `Skill(ds:*)`.
 
@@ -19,10 +19,12 @@ Top level: `init`, `commit`, `app_map`, `catchup`, `make_github_issue`, `rebase_
 `security-review`, `threat-model`, `placeholder_page`.
 `periodic/`: `README`, `dependabot_prs`.
 
-`/ds:init` is the **primary init** — besides wiring up `ds` itself, it owns the shared multi-plugin
-artifacts (the root `claude.sh` launcher with all three `--plugin-dir` flags + `$CLAUDE_PLUGINS_LOADED`,
-the `SessionStart` hook, and the `.gitignore` `settings.local.json` line). The `fls-dev` and `sdd` inits
-detect-and-skip those.
+`/ds:init` wires up `ds` and, when they are missing, creates the generic plugin-neutral artifacts any
+Claude Code project needs: a root `claude.sh` launcher (starting with the `django-stack` `--plugin-dir`
+flag + `$CLAUDE_PLUGINS_LOADED`), the `SessionStart` hook, and the `.gitignore` `settings.local.json`
+line. `claude.sh` is a shared file — `ds:init` only ensures its own `--plugin-dir` line and leaves any
+other plugin's line untouched, so if other plugins are installed their inits add their own lines the
+same way.
 
 ### Agents (1)
 `code-reviewer` — a generic Python/Django/HTMX reviewer. Its persistent memory lives at the unprefixed
@@ -35,13 +37,13 @@ detect-and-skip those.
 
 ### Resources (7)
 `admin_interface`, `factory_boy`, `frontend_styling`, `templates_and_cotton`, `testing`,
-`playwright-testing`, `agent_memory_guidelines` (a copy — the canonical home is the `sdd` plugin; it is
-duplicated here because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and `code-reviewer` reads it).
+`playwright-testing`, `agent_memory_guidelines` (a self-contained copy — duplicated here because
+`${CLAUDE_PLUGIN_ROOT}` is per-plugin and `code-reviewer` reads it).
 
 ### Hooks & configs
-`hooks/hooks.json` (ruff-fix + bandit on edit; a security guard on Bash/Write/Edit — the FLS pytest
-pre-commit runner is intentionally **not** here), `.mcp.json` (Playwright MCP server), `.lsp.json`
-(Pyright).
+`hooks/hooks.json` (ruff-fix + bandit on edit; a security guard on Bash/Write/Edit — any
+product-specific pytest pre-commit runner is intentionally **not** here), `.mcp.json` (Playwright MCP
+server), `.lsp.json` (Pyright).
 
 ### Templates
 `ds:init` ships `templates/settings.json` (the generic permission baseline + the `SessionStart` hook)

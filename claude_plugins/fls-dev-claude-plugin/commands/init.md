@@ -11,7 +11,7 @@ Set up the `fls-dev` Claude Code plugin for this project.
 
 `/fls-dev:init` is **plugin-bootstrap only.** It wires the `fls-dev` plugin into an existing project. It does NOT scaffold Django project structure — `config/`, `pyproject.toml`, Tailwind config, a `CLAUDE.md` skeleton, or a `.claude/settings.json` from scratch. Those come from the template repo. Run `/fls-dev:init` after the project already exists.
 
-`/fls-dev:init` owns **only the `fls-dev` slice** of project setup: its `enabledPlugins` key, its own permissions, its `.claude/fls-dev/` config dir, and its own dev/DB wrapper scripts. The genuinely shared, multi-plugin artifacts — the project-root `claude.sh` launcher, the `SessionStart` hook, the `$CLAUDE_PLUGINS_LOADED` sentinel migration, and the `.claude/settings.local.json` line in `.gitignore` — are owned by the **`ds` primary init** (`/ds:init`). This command **detects and skips** them so the two inits do not fight over the same lines. Run `/ds:init` to set those up.
+`/fls-dev:init` owns **only the `fls-dev` slice** of project setup: its `enabledPlugins` key, its own permissions, its `.claude/fls-dev/` config dir, and its own dev/DB wrapper scripts. Into the shared project-root `claude.sh` launcher it adds **only its own** `--plugin-dir` line for `fls-dev` (see Step 7); it never touches another plugin's line. The generic, plugin-neutral artifacts a Claude Code project needs — the `claude.sh` skeleton itself, the `SessionStart` hook, and the `.claude/settings.local.json` line in `.gitignore` — are created by `/ds:init`. This command **detects and reports** whether those exist and, if `claude.sh` is missing, tells the user to run `/ds:init` first.
 
 ## Hard requirements — do not regress
 
@@ -20,7 +20,7 @@ These behaviours must be preserved in every future edit to this command. Each op
 - **`.claude/settings.json`** — merge, don't replace. Add missing `fls-dev`-owned `allow`/`deny` entries, add `"fls-dev": true` to `enabledPlugins`. Never replace the whole file, never touch `allow`/`deny`/`enabledPlugins` entries that already exist, and never touch the `hooks` section (the `SessionStart` hook is `ds`-owned — leave it alone).
 - **`.claude/fls-dev/config.md` and `.claude/fls-dev/config.local.md`** — create when absent, otherwise extend. If a file already exists, add any configuration option the template defines but the file lacks (new sections/keys), using the template's default. Preserve every existing value, comment, and ordering. Never overwrite or delete existing config, and never re-prompt the user for options the file already has.
 - **`.gitignore`** — append only the `fls-dev`-owned line (`.claude/fls-dev/config.local.md`). Never remove or reorder existing lines, and leave the `ds`-owned `.claude/settings.local.json` line to `/ds:init`.
-- **Wrapper scripts** (the `fls-dev` dev/DB scripts under `.claude/fls-dev/scripts/`) — copy the template, substitute `__FLS_PATH__`, and mark executable **only when the destination file does not yet exist**. If a script is already present, skip it without modification. The project-root `claude.sh` launcher is `ds`-owned — do not generate it here.
+- **Wrapper scripts** (the `fls-dev` dev/DB scripts under `.claude/fls-dev/scripts/`) — copy the template, substitute `__PLUGINS_ROOT__`, and mark executable **only when the destination file does not yet exist**. If a script is already present, skip it without modification. The project-root `claude.sh` skeleton is created by `/ds:init`; this command only ensures its own `--plugin-dir` line inside it (Step 7).
 
 ## Step 1: Migrate any legacy `.claude/fls/` config dir to `.claude/fls-dev/`
 
@@ -79,36 +79,52 @@ This file carries machine-specific overrides, including the `## Template Repo` s
 2. If `.claude/fls-dev/config.local.md` is not already listed, add it.
 3. Leave the shared `.claude/settings.local.json` line to `/ds:init` — do not add or remove it here.
 
-## Step 6: Determine FLS path (do not prompt)
+## Step 6: Determine `PLUGINS_ROOT` (do not prompt)
 
-`FLS_PATH` is the relative path from the project root to whichever checkout holds `claude_plugins/`; it is
-baked into the wrapper scripts so they can locate the plugin dir at runtime. **Do not prompt the user for it.**
+`PLUGINS_ROOT` is the relative path from the project root to whichever checkout holds `claude_plugins/`;
+it is baked into the wrapper scripts so they can locate the plugin dir at runtime. **Do not prompt the
+user for it.**
 
-1. If a root `claude.sh` already exists (written by `/ds:init`), read its `FLS_PATH="…"` value and reuse it.
+1. If a root `claude.sh` already exists (created by `/ds:init`), read its `PLUGINS_ROOT="…"` value and
+   reuse it.
 2. Otherwise default to `.` (the common case, where the project root itself holds `./claude_plugins/`).
    For concrete implementations the checkout is typically at `submodules/Freedom-LS`.
-3. Validate that `<fls_path>/claude_plugins/fls-dev-claude-plugin/` exists. If it does not, do not guess —
-   stop and tell the user to run `/ds:init` (which owns `claude.sh`) or set `FLS_PATH` there to the
-   relative path of the checkout that holds `claude_plugins/`, then re-run.
-4. Store this path for use in wrapper script generation.
+3. Validate that `<PLUGINS_ROOT>/claude_plugins/fls-dev-claude-plugin/` exists. If it does not, do not
+   guess — stop and tell the user to run `/ds:init` (which creates `claude.sh`) or set `PLUGINS_ROOT`
+   there to the relative path of the checkout that holds `claude_plugins/`, then re-run.
+4. Store this path for use in wrapper script generation and the launcher line below.
 
-## Step 7: Generate the `fls-dev` wrapper scripts
+## Step 7: Generate the `fls-dev` wrapper scripts and add the launcher line
 
-The `fls-dev` dev/DB wrapper scripts install under `.claude/fls-dev/scripts/` (create this directory if missing). The project-root `claude.sh` launcher is **`ds`-owned** — do not generate it here.
+### 7a. Wrapper scripts
+
+The `fls-dev` dev/DB wrapper scripts install under `.claude/fls-dev/scripts/` (create this directory if missing).
 
 For each wrapper script template in `${CLAUDE_PLUGIN_ROOT}/templates/wrapper_scripts/`:
 1. Set the destination to `.claude/fls-dev/scripts/`.
 2. Check if a script with that name already exists at the destination.
 3. If it exists, **skip it** (never overwrite existing scripts).
-4. If it doesn't exist, copy the template to the destination, replace `__FLS_PATH__` with the path from Step 6, and make it executable.
+4. If it doesn't exist, copy the template to the destination, replace `__PLUGINS_ROOT__` with the path from Step 6, and make it executable.
 
-## Step 8: Shared-artifact check (detect and defer to `/ds:init`)
+### 7b. Ensure the `fls-dev` `--plugin-dir` line in `claude.sh`
 
-Do **not** create or rewrite these here — they are `ds`-owned. Detect their state and report so the user knows whether to run `/ds:init`:
+The project-root `claude.sh` is a shared file. `fls-dev:init` adds **only its own** line and never touches another plugin's `--plugin-dir` line.
 
-1. Confirm the project-root `claude.sh` launcher exists and passes `--plugin-dir` for `fls-dev`. If it is missing or does not load `fls-dev`, note that `/ds:init` must be run.
-2. Confirm `.claude/settings.json` has a `SessionStart` hook checking `$CLAUDE_PLUGINS_LOADED`. If it still checks the legacy `$FLS_PLUGIN`, note that `/ds:init` performs the sentinel migration.
-3. Confirm `.claude/settings.local.json` is listed in `.gitignore`. If not, note that `/ds:init` adds it.
+1. If `claude.sh` does **not** exist at the project root, do not create it here — the skeleton is `ds`-owned. Tell the user to run `/ds:init` first, then re-run `/fls-dev:init`.
+2. If `claude.sh` exists, look for a `--plugin-dir` line pointing at `claude_plugins/fls-dev-claude-plugin`. If it is absent, insert one immediately above the `"$@"` line, matching the form of the existing `--plugin-dir` lines and using the Step 6 `PLUGINS_ROOT` value:
+
+   ```bash
+     --plugin-dir "$SCRIPT_DIR/$PLUGINS_ROOT/claude_plugins/fls-dev-claude-plugin" \
+   ```
+
+3. If the line is already present, leave it — never duplicate it.
+
+## Step 8: Generic shared-artifact check (detect and defer to `/ds:init`)
+
+The generic, plugin-neutral artifacts are created by `/ds:init`. Do **not** create or rewrite them here — detect their state and report so the user knows whether to run `/ds:init`:
+
+1. Confirm `.claude/settings.json` has a `SessionStart` hook checking `$CLAUDE_PLUGINS_LOADED`. If it still checks a legacy sentinel or is missing, note that `/ds:init` creates and migrates it.
+2. Confirm `.claude/settings.local.json` is listed in `.gitignore`. If not, note that `/ds:init` adds it.
 
 ## Step 9: Validate the setup
 
@@ -119,8 +135,9 @@ Run these checks and report results:
 3. Confirm the `fls-dev` wrapper scripts exist under `.claude/fls-dev/scripts/` and are executable.
 4. Confirm no `.claude/fls/` config dir remains (the legacy dir was migrated in Step 1).
 5. Confirm `.claude/settings.json` contains the `fls-dev` `allow` entries (`Skill(fls-dev:*)`, `Bash(.claude/fls-dev/scripts/*.sh:*)`) and no lingering `Bash(.claude/fls/scripts/*.sh:*)` entry.
-6. Confirm wrapper scripts have the correct `FLS_PATH` (not `__FLS_PATH__`).
-7. Report any issues found, including any `ds`-owned shared artifact flagged in Step 8.
+6. Confirm wrapper scripts have the resolved `PLUGINS_ROOT` (not `__PLUGINS_ROOT__`).
+7. Confirm `claude.sh` contains the `fls-dev` `--plugin-dir` line (or that the user was told to run `/ds:init` first because `claude.sh` is missing).
+8. Report any issues found, including any generic shared artifact flagged in Step 8.
 
 Print a summary of everything that was done. In the summary, explicitly point the user at
 `.claude/fls-dev/config.md` and tell them to fill in the dev credentials and base URL themselves, and at
