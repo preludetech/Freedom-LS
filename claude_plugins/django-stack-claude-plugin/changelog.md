@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-07-28 — Cotton is the top of the reuse ladder
+
+- **`resources/frontend_styling.md`'s Critical Rule now starts at cotton.** The ordered list ran
+  read-the-stylesheets → cotton → component class → utilities, so the reuse ladder's top rung sat at
+  position 2. It is now a three-item ladder — cotton, component class, utilities — and item 1 says
+  outright that a component the project has already built for the job is the thing to use, not
+  something to re-derive inline.
+  - _Why:_ a reader skimming a numbered list treats item 1 as the primary instruction. The one thing
+    that should be checked first was the one thing that wasn't first.
+- **Reading the stylesheets is a precondition, not a list item.** It has its own emphatic section
+  immediately above the list; it is now a clause in the list's lead-in rather than a restatement of
+  that section.
+  - _Why:_ same "say each thing once" pass as the entry below — a rule stated twice within fifteen
+    lines reads as two rules.
+
 ## 2026-07-28 — `alpine-js` routes, the build files own the mechanics
 
 - **`skills/alpine-js/SKILL.md` no longer contains CSP-build content.** The file claimed "everything

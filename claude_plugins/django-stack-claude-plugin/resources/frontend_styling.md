@@ -18,15 +18,16 @@ the CLI's `-i` flag.)
 
 ## Critical Rule
 
-**ALWAYS reuse existing UI building blocks before writing new styling.** In order:
+**ALWAYS reuse existing UI building blocks before writing new styling.** With the stylesheets above
+already read, work down this list in order:
 
-1. Read the project's stylesheets (above) so you know which tokens and component classes exist.
-2. Look for an existing **cotton component** (`<c-*>`) that already does what you need — search the
-   project's `templates/cotton/` (project-level and app-local).
-3. Look for a **component class** in the `@layer components` blocks you just read (`.btn`, `.card`, and
+1. Look for an existing **cotton component** (`<c-*>`) — search the project's `templates/cotton/`
+   (project-level and app-local). **If the project has already built a component that does the job,
+   use it.** Don't re-derive its markup inline.
+2. Look for a **component class** in the `@layer components` blocks you just read (`.btn`, `.card`, and
    the like). These already wire up their own colour and hover handling, so prefer them over
    re-deriving that styling inline.
-4. Only then reach for raw utilities — and keep them for styling that is genuinely one-off: layout,
+3. Only then reach for raw utilities — and keep them for styling that is genuinely one-off: layout,
    spacing, positioning, anything specific to a single page. When a utility pattern starts repeating,
    promote it to a cotton component or a component class.
 
