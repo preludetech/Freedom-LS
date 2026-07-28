@@ -200,8 +200,8 @@ See the `ds:alpine-js` skill (and `alpine_csp_build.md` / `alpine_no_csp.md`) fo
 1. **Check location** - `<app>/templates/<app_name>/`
 2. **Check existing templates** - Follow established patterns
 3. **Check available components** - `ls templates/cotton/ */templates/cotton/` (project-level + app-local)
-4. **Check reusable styles** - reuse existing cotton components; if the project has a
-   `tailwind.components.css`, check it too (`cat tailwind.components.css`)
+4. **Read the project's stylesheets** - the Tailwind entry file plus everything it `@import`s; they
+   hold the design tokens, base styles, and any component classes you should be reusing
 5. **Write template** - Extend `_base.html`, use existing components
 6. **Build CSS** - `npm run tailwind_build`
 
@@ -215,8 +215,8 @@ See the `ds:alpine-js` skill (and `alpine_csp_build.md` / `alpine_no_csp.md`) fo
 
 ## Key Rules
 
-1. **Reuse before styling** - use existing cotton components (and `tailwind.components.css` classes if
-   the project has that file) before writing raw utilities
+1. **Reuse before styling** - use existing cotton components and the component classes declared in the
+   project's stylesheets before writing raw utilities
 2. **Don't duplicate base styles** - Typography/forms are pre-styled
 3. **Don't create cotton components for one-off use** - Use partials
 4. **Don't hardcode URLs** - Use `{% url %}` tag

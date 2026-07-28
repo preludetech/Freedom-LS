@@ -16,16 +16,20 @@ Use this skill when:
 
 ## Key Rules
 
-- **Read the theme before you style.** Open the project's Tailwind entry stylesheet (commonly
-  `tailwind.input.css`), follow its `@import`s, and read the `@theme {}` blocks. Those declarations are
-  the only design tokens that exist in this project — never assume a token name from another codebase.
-  Style with the tokens you actually found; don't hard-code hex values or reach for raw palette
-  utilities (`bg-blue-600`) where the theme names a token for the job.
+- **Read the project's stylesheets before you style — always.** Open the Tailwind entry stylesheet
+  (named by the `-i` flag in `package.json`'s tailwind script; commonly `tailwind.input.css`) and follow
+  its project `@import`s. Those files hold everything you need: the `@theme {}` design tokens, any
+  `@layer base` element styling, and any CSS component classes. A project may split them across several
+  imported files or keep them all inline — read what the entry file actually pulls in rather than
+  looking for a particular filename.
+- **Style only with what you found.** The tokens and classes in those stylesheets are the only ones
+  that exist — never assume a name from another codebase. Don't hard-code hex values or reach for raw
+  palette utilities (`bg-blue-600`) where the project names a token for the job.
+- Reuse before you write: check the project's existing cotton components (`<c-*>`) and the component
+  classes in its stylesheets before adding new styling.
 - Use Tailwind utility classes exclusively — no custom CSS unless absolutely necessary
 - Run `npm run tailwind_build` after adding new Tailwind classes that aren't already in use
 - Use the project's spacing scale consistently
 - Mobile-first responsive design: start with mobile, add `md:` and `lg:` breakpoints
-- Reuse before you write: check the project's existing cotton components (`<c-*>`) and, **if the
-  project has one**, its `tailwind.components.css` component classes, before adding new styling.
 
 For full details and examples, see `${CLAUDE_PLUGIN_ROOT}/resources/frontend_styling.md`.

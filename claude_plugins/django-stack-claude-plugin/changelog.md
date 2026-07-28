@@ -1,6 +1,23 @@
 # Changelog
 
-## 2026-07-28 — Split the admin resource so only the relevant file loads
+## 2026-07-28 — Read the Tailwind entry file; stop special-casing `tailwind.components.css`
+
+- **The mandatory step is now "read the Tailwind entry stylesheet and every project file it
+  `@import`s"**, stated once in `resources/frontend_styling.md` and referenced from the Critical Rule,
+  Design Tokens, Base Styles, and Usage Rules sections. The entry file is located from `package.json`'s
+  tailwind script (`-i` flag) rather than by assuming a filename, and the `@import "tailwindcss"`
+  library import is explicitly excluded from the walk.
+- **`tailwind.components.css` is no longer a step.** It went from 8 references — most of them a
+  conditional `cat`, hedged with "if the project has one" — to 2 purely descriptive mentions ("a file
+  often named…"). Same substitution in `skills/frontend-styling/SKILL.md` and the two spots in
+  `resources/templates_and_cotton.md`.
+  - _Why:_ the file is a convention, not a guarantee, so every reference needed a hedge, and a reader
+    who found no such file was left unsure whether something was missing. Worse, singling it out
+    implied the entry file and that one file were all that mattered: in this repo the entry stylesheet
+    imports **five** project stylesheets, so three of them — including base styles — were invisible to
+    anyone following the old instruction. Following the imports is both unconditional and strictly more
+    thorough. A project with everything inline (like the second consumer project) simply finds one file
+    and stops, with no missing-file caveat and no dead step.
 
 - **`resources/admin_interface.md` → three self-contained files**, one per configuration:
   `admin_standard.md` (plain Django admin), `admin_unfold.md` (django-unfold theme), and

@@ -4,36 +4,47 @@
 
 - Build: `npm run tailwind_build`
 - Watch: `npm run tailwind_watch`
-- Entry / theme stylesheet: the project's Tailwind entry file (commonly `tailwind.input.css`) — holds
-  the `@theme {}` tokens, `@source` globs, and base styles.
-- Component classes (**optional**): some projects keep reusable CSS component classes in a
-  `tailwind.components.css`. Many projects instead express reusable UI as **django-cotton components**
-  (`<c-button>`, `<c-card>`, …) and have no such file — both approaches are valid.
+
+### Read the project's stylesheets first — always
+
+**Before styling anything, read the project's Tailwind entry stylesheet and every project file it
+`@import`s.** That set of files *is* this project's CSS: its design tokens, its base styles, and any
+component classes it defines. Nothing else is authoritative, and nothing may be assumed without it.
+
+1. Find the entry file from `package.json` → the `tailwind_build` / `tailwind_watch` script, which
+   names it with the CLI's `-i` flag (commonly `./tailwind.input.css`).
+2. Read it, then follow its **project** `@import`s — the relative paths. `@import "tailwindcss"` is the
+   library itself, not a project file; don't chase it.
+
+How much this turns up varies by project, and both shapes are normal:
+
+- Some projects split their CSS across several imported files — theme tokens in one, base styles in
+  another, reusable component classes in another (a file often named `tailwind.components.css`).
+- Others keep everything inline in the entry file and import no project files at all.
+
+Read what the entry file actually pulls in. Don't go looking for a particular filename, and don't
+conclude anything is missing when a project doesn't have one.
 
 ## Critical Rule
 
 **ALWAYS reuse existing UI building blocks before writing new styling.** In order:
 
-1. Look for an existing **cotton component** (`<c-*>`) that already does what you need — search the
+1. Read the project's stylesheets (above) so you know which tokens and component classes exist.
+2. Look for an existing **cotton component** (`<c-*>`) that already does what you need — search the
    project's `templates/cotton/` (project-level and/or app-level).
-2. **If the project has a `tailwind.components.css`**, check it for a matching component class
-   (`cat tailwind.components.css`).
-3. Only then reach for raw utility classes.
-
-If the project has neither a matching component nor a `tailwind.components.css`, that is fine — use
-utilities, and promote a repeated pattern into a cotton component (or a `tailwind.components.css` class
-if the project uses that pattern).
+3. Look for a **component class** in the stylesheets you just read (`.btn`, `.card`, and the like).
+4. Only then reach for raw utility classes — and when a utility pattern starts repeating, promote it
+   to whichever reuse mechanism this project already uses.
 
 ## Design Tokens — read the theme, never assume it
 
 **Every project defines its own tokens. Read them from the code before you style anything — do not
 assume a token exists because it is a common name.**
 
-1. Open the project's Tailwind entry stylesheet and follow its `@import`s. The `@theme {}` blocks you
-   find are the authoritative list of tokens.
-2. Tailwind v4 generates the utility classes from those declarations: a `--color-<name>` custom
-   property yields `bg-<name>`, `text-<name>`, `border-<name>`, `ring-<name>`, and so on.
-3. Style using **only** the tokens declared there.
+The `@theme {}` blocks in the stylesheets you read above are the authoritative list of tokens. Tailwind
+v4 generates the utility classes from those declarations: a `--color-<name>` custom property yields
+`bg-<name>`, `text-<name>`, `border-<name>`, `ring-<name>`, and so on. Style using **only** the tokens
+declared there.
 
 Rules that hold whatever the theme is named:
 
@@ -50,40 +61,42 @@ Rules that hold whatever the theme is named:
 - **Prefer semantic tokens over raw palette tokens** when the theme offers both, so a re-skin only
   touches the theme CSS.
 
-Where the project provides reusable components — cotton components (`<c-button>`) or, if present,
-`tailwind.components.css` classes (`.btn-primary`) — those already wire up their own colour and hover
-handling, so prefer them over re-deriving the styling inline.
+Reusable building blocks — cotton components (`<c-button>`) and component classes (`.btn-primary`) —
+already wire up their own colour and hover handling, so prefer them over re-deriving the styling
+inline.
 
 ## Base Styles
 
-Many projects style typography and form controls once, in an `@layer base` block in the theme, so
-element selectors (`h1`–`h4`, `a`, `ul`/`ol`, `input`, `textarea`, `select`, `label`) already look
-right with no classes on them.
+Many projects style typography and form controls once, in an `@layer base` block, so element selectors
+(`h1`–`h4`, `a`, `ul`/`ol`, `input`, `textarea`, `select`, `label`) already look right with no classes
+on them. That block may live in the entry stylesheet or in one of the files it imports — you will have
+seen it while reading them.
 
-Check the theme for such a block. Where it exists, **don't duplicate it in your markup** — adding
-`text-4xl font-bold` to an `<h1>` that is already sized fights the theme and drifts out of sync with
-it.
+Where such a block exists, **don't duplicate it in your markup** — adding `text-4xl font-bold` to an
+`<h1>` that is already sized fights the stylesheet and drifts out of sync with it.
 
 ## Reusable Components
 
-Projects express reusable UI in one (or both) of two ways — check what this project actually uses:
+Projects express reusable UI in one (or both) of two ways — use whichever this project actually has:
 
-- **django-cotton components** (`templates/cotton/`): `<c-button>`, `<c-card>`, … Prefer these when
-  the project has a cotton component library.
-- **`tailwind.components.css` classes** (only if the project has this file): typically `.btn`,
-  `.btn-primary`, `.surface`, form components, etc.
+- **django-cotton components** (`templates/cotton/`): `<c-button>`, `<c-card>`, … Prefer these when the
+  project has a cotton component library.
+- **CSS component classes** declared in the project's stylesheets: typically `.btn`, `.btn-primary`,
+  `.surface`, form components. Projects that keep these in a dedicated imported file often name it
+  `tailwind.components.css`; others declare them inline in the entry stylesheet.
 
 ## Usage Rules
 
-1. **Read the theme first** — the `@theme {}` blocks reachable from the Tailwind entry stylesheet are
-   the only tokens that exist. Never style from a remembered token name.
-2. **Reuse first** — check existing cotton components, then `tailwind.components.css` (if present),
+1. **Read the project's stylesheets first** — the entry file plus everything it imports. The `@theme {}`
+   tokens and component classes you find there are the only ones that exist. Never style from a
+   remembered token or class name.
+2. **Reuse first** — check existing cotton components, then the component classes in those stylesheets,
    before writing raw utilities.
-3. **Rely on base styles where the theme defines them** - Don't add `text-4xl font-bold` to an `<h1>`
-   the theme already sizes
+3. **Rely on base styles where the stylesheets define them** - Don't add `text-4xl font-bold` to an
+   `<h1>` that is already sized
 4. **Inline classes only for unique styling** - Layout, spacing, positioning
-5. **Keep it DRY** - Repeated patterns → promote to a cotton component (or a `tailwind.components.css`
-   class if the project uses that approach).
+5. **Keep it DRY** - Repeated patterns → promote to whichever reuse mechanism this project already uses
+   (a cotton component, or a component class in its stylesheets).
 6. **Keep it cohesive** - Styles that only appear once, or that are specific to a single page or
    location, should stay inline. Only promote things that are likely to be reused.
 
@@ -99,7 +112,7 @@ Projects express reusable UI in one (or both) of two ways — check what this pr
 ```html
 <h1>Title</h1>
 <c-button variant="primary">Click</c-button>
-<!-- or, in a project that uses tailwind.components.css: <button class="btn btn-primary">Click</button> -->
+<!-- or, where the project defines component classes: <button class="btn btn-primary">Click</button> -->
 ```
 
 Component and variant names are the project's, not the plugin's — `<c-button variant="primary">` above
