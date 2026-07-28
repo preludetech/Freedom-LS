@@ -7,23 +7,14 @@
 
 ### Read the project's stylesheets first — always
 
-**Before styling anything, read the project's Tailwind entry stylesheet and every project file it
-`@import`s.** That set of files *is* this project's CSS: its design tokens, its base styles, and any
-component classes it defines. Nothing else is authoritative, and nothing may be assumed without it.
+**Read `./tailwind.input.css` and every project file it `@import`s before you style anything.** That
+set of files *is* this project's CSS: its design tokens, its base styles, and any component classes it
+defines. Nothing else is authoritative, and nothing may be assumed without it.
 
-1. Find the entry file from `package.json` → the `tailwind_build` / `tailwind_watch` script, which
-   names it with the CLI's `-i` flag (commonly `./tailwind.input.css`).
-2. Read it, then follow its **project** `@import`s — the relative paths. `@import "tailwindcss"` is the
-   library itself, not a project file; don't chase it.
+`@import "tailwindcss"` is the library, not a project file — don't chase it. Follow the relative paths.
 
-How much this turns up varies by project, and both shapes are normal:
-
-- Some projects split their CSS across several imported files — theme tokens in one, base styles in
-  another, reusable component classes in another (a file often named `tailwind.components.css`).
-- Others keep everything inline in the entry file and import no project files at all.
-
-Read what the entry file actually pulls in. Don't go looking for a particular filename, and don't
-conclude anything is missing when a project doesn't have one.
+(If a project has no `tailwind.input.css`, its `package.json` tailwind script names the entry file with
+the CLI's `-i` flag.)
 
 ## Critical Rule
 
@@ -31,10 +22,13 @@ conclude anything is missing when a project doesn't have one.
 
 1. Read the project's stylesheets (above) so you know which tokens and component classes exist.
 2. Look for an existing **cotton component** (`<c-*>`) that already does what you need — search the
-   project's `templates/cotton/` (project-level and/or app-level).
-3. Look for a **component class** in the stylesheets you just read (`.btn`, `.card`, and the like).
-4. Only then reach for raw utility classes — and when a utility pattern starts repeating, promote it
-   to whichever reuse mechanism this project already uses.
+   project's `templates/cotton/` (project-level and app-local).
+3. Look for a **component class** in the `@layer components` blocks you just read (`.btn`, `.card`, and
+   the like). These already wire up their own colour and hover handling, so prefer them over
+   re-deriving that styling inline.
+4. Only then reach for raw utilities — and keep them for styling that is genuinely one-off: layout,
+   spacing, positioning, anything specific to a single page. When a utility pattern starts repeating,
+   promote it to a cotton component or a component class.
 
 ## Design Tokens — read the theme, never assume it
 
@@ -61,44 +55,25 @@ Rules that hold whatever the theme is named:
 - **Prefer semantic tokens over raw palette tokens** when the theme offers both, so a re-skin only
   touches the theme CSS.
 
-Reusable building blocks — cotton components (`<c-button>`) and component classes (`.btn-primary`) —
-already wire up their own colour and hover handling, so prefer them over re-deriving the styling
-inline.
+## Where new CSS goes — the layer convention
 
-## Base Styles
+Tailwind v4 declares `@layer theme, base, components, utilities;`. Every rule you add goes in one of
+them:
 
-Many projects style typography and form controls once, in an `@layer base` block, so element selectors
-(`h1`–`h4`, `a`, `ul`/`ol`, `input`, `textarea`, `select`, `label`) already look right with no classes
-on them. That block may live in the entry stylesheet or in one of the files it imports — you will have
-seen it while reading them.
+| What you're adding | Where it goes |
+|---|---|
+| A design token | `@theme { }` — or `@theme inline { }` when the alias must resolve at use time |
+| Element-selector styling (`h1`–`h4`, `a`, `ul`/`ol`, `input`, `textarea`, `select`, `label`, `html`/`body` resets, `[x-cloak]`) | `@layer base { }` |
+| A reusable multi-use class (`.btn`, `.card`, `.surface`) | `@layer components { }` |
+| A new custom utility | `@utility name { }` — v4's directive; it lands in the `utilities` layer automatically |
 
-Where such a block exists, **don't duplicate it in your markup** — adding `text-4xl font-bold` to an
-`<h1>` that is already sized fights the stylesheet and drifts out of sync with it.
+**Never write an unlayered rule.** In the CSS cascade, unlayered declarations beat every layered one,
+so a bare `h1 { font-size: 3rem }` outside a layer overrides `text-2xl` on that heading and no class in
+the markup can win. Layering it as `base` keeps utilities on top, which is the whole point.
 
-## Reusable Components
-
-Projects express reusable UI in one (or both) of two ways — use whichever this project actually has:
-
-- **django-cotton components** (`templates/cotton/`): `<c-button>`, `<c-card>`, … Prefer these when the
-  project has a cotton component library.
-- **CSS component classes** declared in the project's stylesheets: typically `.btn`, `.btn-primary`,
-  `.surface`, form components. Projects that keep these in a dedicated imported file often name it
-  `tailwind.components.css`; others declare them inline in the entry stylesheet.
-
-## Usage Rules
-
-1. **Read the project's stylesheets first** — the entry file plus everything it imports. The `@theme {}`
-   tokens and component classes you find there are the only ones that exist. Never style from a
-   remembered token or class name.
-2. **Reuse first** — check existing cotton components, then the component classes in those stylesheets,
-   before writing raw utilities.
-3. **Rely on base styles where the stylesheets define them** - Don't add `text-4xl font-bold` to an
-   `<h1>` that is already sized
-4. **Inline classes only for unique styling** - Layout, spacing, positioning
-5. **Keep it DRY** - Repeated patterns → promote to whichever reuse mechanism this project already uses
-   (a cotton component, or a component class in its stylesheets).
-6. **Keep it cohesive** - Styles that only appear once, or that are specific to a single page or
-   location, should stay inline. Only promote things that are likely to be reused.
+The corollary for markup: because base styles already size and colour the elements, **don't restate
+them** — adding `text-4xl font-bold` to an `<h1>` the base layer already sizes fights the stylesheet
+and drifts out of sync with it.
 
 ## Example
 

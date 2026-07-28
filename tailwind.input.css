@@ -26,7 +26,7 @@
  * Single-use dialog, kept out of the reusable-primitives file above. */
 @import "./tailwind.picture_spotlight.css";
 
-/* Active theme — generated each build by `scripts/write-active-theme.mjs`
+/* Active theme — generated each build by `manage.py write_active_theme_css`
  * keyed on the `FLS_THEME` env var. When FLS_THEME=default this re-imports
  * the same baseline (no-op on cascade); for any other slug the active theme's
  * token redeclarations win. */

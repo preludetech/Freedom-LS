@@ -136,62 +136,35 @@ Inline partials are a Django 6+ built-in feature (`{% partialdef %}` / `{% parti
 
 **Note:** Use `{% with %}` to pass context, NOT `{% partial "name" foo=bar %}`
 
-## HTMX Integration
+**Naming:** use kebab-case for `{% partialdef %}` blocks (e.g. `{% partialdef view-detail-button %}`).
 
-HTMX loaded globally. CSRF token set in `_base.html` via `hx-headers`. Do not add CSRF tokens to individual requests.
+## HTMX
 
-### View Conventions
+Loaded globally, and used for every interaction that needs the server — fetching data, submitting
+forms, swapping in re-rendered partials. (Use Alpine instead for state that never leaves the browser.)
 
-- Prefix view functions returning partials with `partial_` (e.g., `partial_comment_list`, `partial_article_row`)
-- Return standard `render(request, template, context)` — no special HTMX response classes needed
-- Return HTTP 422 for HTMX validation errors
-
-### Partialdef Naming
-
-- Use kebab-case names for `{% partialdef %}` blocks (e.g., `{% partialdef view-detail-button %}`)
-
-### Common Patterns
-
-```django
-<!-- Load on page load -->
-<div hx-get="{% url 'app:endpoint' %}" hx-trigger="load"></div>
-
-<!-- Form submission -->
-<form hx-post="{% url 'app:submit' %}" hx-target="#result">
-    <c-button type="submit">Submit</c-button>
-</form>
-
-<!-- Click to load -->
-<c-button hx-get="{% url 'app:more' %}" hx-target="#content">
-    Load More
-</c-button>
-```
+**Follow the `ds:htmx` skill before writing any HTMX.** It owns the view conventions, the global CSRF
+setup, the attribute patterns, and the loading-indicator mechanics; writing them from memory tends to
+duplicate the CSRF token or swap the wrong target.
 
 ## Alpine.js
 
-Loaded globally for reactive components. **The exact syntax depends on the project's Alpine build** —
-read `.claude/ds/config.md` → `## Alpine.js` → `CSP build` and follow the `ds:alpine-js` skill:
+Loaded globally, and used for client-side state that never touches the server — toggles, dropdowns,
+modals, expand/collapse, dismissible elements. (Use HTMX instead whenever the interaction needs data
+from the server.)
 
-- **CSP build `disabled`** (standard build) — inline expressions are allowed:
+**Follow the `ds:alpine-js` skill before writing any Alpine.** The valid syntax depends on which
+Alpine build the project uses, so writing it from memory will produce markup that silently does
+nothing.
 
-  ```django
-  <div x-data="{ open: false }">
-      <c-button @click="open = !open">Toggle</c-button>
-      <div x-show="open">Content</div>
-  </div>
-  ```
+## Styling
 
-- **CSP build `enabled`** (default) — inline expressions are forbidden; reference a registered
-  `Alpine.data()` component instead:
+Templates are styled with Tailwind against the project's own design tokens and component classes.
+Those names are project-specific and live in the project's stylesheets, so markup styled from memory
+reaches for classes that don't exist.
 
-  ```django
-  <div x-data="toggle">
-      <c-button x-on:click="toggle">Toggle</c-button>
-      <div x-show="open">Content</div>
-  </div>
-  ```
-
-See the `ds:alpine-js` skill (and `alpine_csp_build.md` / `alpine_no_csp.md`) for the full rules.
+**Follow the `ds:frontend-styling` skill for anything that touches how a template looks** — it owns
+which stylesheets to read, how to reuse what's already there, and how to build CSS.
 
 ## Workflow
 
@@ -200,10 +173,8 @@ See the `ds:alpine-js` skill (and `alpine_csp_build.md` / `alpine_no_csp.md`) fo
 1. **Check location** - `<app>/templates/<app_name>/`
 2. **Check existing templates** - Follow established patterns
 3. **Check available components** - `ls templates/cotton/ */templates/cotton/` (project-level + app-local)
-4. **Read the project's stylesheets** - the Tailwind entry file plus everything it `@import`s; they
-   hold the design tokens, base styles, and any component classes you should be reusing
-5. **Write template** - Extend `_base.html`, use existing components
-6. **Build CSS** - `npm run tailwind_build`
+4. **Write template** - Extend `_base.html`, use existing components
+5. **Style it** - per the `ds:frontend-styling` skill
 
 ### Editing Templates
 
@@ -215,9 +186,7 @@ See the `ds:alpine-js` skill (and `alpine_csp_build.md` / `alpine_no_csp.md`) fo
 
 ## Key Rules
 
-1. **Reuse before styling** - use existing cotton components and the component classes declared in the
-   project's stylesheets before writing raw utilities
-2. **Don't duplicate base styles** - Typography/forms are pre-styled
-3. **Don't create cotton components for one-off use** - Use partials
-4. **Don't hardcode URLs** - Use `{% url %}` tag
-5. **Don't skip app namespacing** - Page templates in `<app_name>/` subdirectory
+1. **Don't create cotton components for one-off use** - Use partials
+2. **Don't hardcode URLs** - Use `{% url %}` tag
+3. **Don't skip app namespacing** - Page templates in `<app_name>/` subdirectory
+4. **Don't style from memory** - follow the `ds:frontend-styling` skill

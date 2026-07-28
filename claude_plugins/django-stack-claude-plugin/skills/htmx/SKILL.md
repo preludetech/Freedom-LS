@@ -162,7 +162,7 @@ button component) or as a pair of CSS utility classes — **check what exists be
 nothing exists, the underlying mechanism is:
 
 ```css
-/* in the project's Tailwind entry or components stylesheet */
+/* in @layer components, in a stylesheet imported by tailwind.input.css */
 .htmx-request .htmx-hide-on-request { display: none; }
 .htmx-show-on-request { display: none; }
 .htmx-request .htmx-show-on-request { display: inline; }

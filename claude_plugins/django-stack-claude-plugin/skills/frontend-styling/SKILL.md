@@ -16,15 +16,17 @@ Use this skill when:
 
 ## Key Rules
 
-- **Read the project's stylesheets before you style — always.** Open the Tailwind entry stylesheet
-  (named by the `-i` flag in `package.json`'s tailwind script; commonly `tailwind.input.css`) and follow
-  its project `@import`s. Those files hold everything you need: the `@theme {}` design tokens, any
-  `@layer base` element styling, and any CSS component classes. A project may split them across several
-  imported files or keep them all inline — read what the entry file actually pulls in rather than
-  looking for a particular filename.
+- **Read the project's stylesheets before you style — always.** Open `./tailwind.input.css` and follow
+  its project `@import`s (`@import "tailwindcss"` is the library — don't chase it). Those files hold
+  everything you need: the `@theme {}` design tokens, the `@layer base` element styling, and the CSS
+  component classes.
 - **Style only with what you found.** The tokens and classes in those stylesheets are the only ones
   that exist — never assume a name from another codebase. Don't hard-code hex values or reach for raw
   palette utilities (`bg-blue-600`) where the project names a token for the job.
+- **Every rule you add goes in a layer** — `@theme {}` for tokens, `@layer base {}` for element
+  selectors, `@layer components {}` for reusable classes, `@utility` for a new utility. Never write an
+  unlayered rule: unlayered CSS beats every layered rule in the cascade, so it silently overrides the
+  utility classes in your markup.
 - Reuse before you write: check the project's existing cotton components (`<c-*>`) and the component
   classes in its stylesheets before adding new styling.
 - Use Tailwind utility classes exclusively — no custom CSS unless absolutely necessary

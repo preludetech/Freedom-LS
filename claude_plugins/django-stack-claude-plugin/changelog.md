@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-07-28 — Name the entry file, state the layer convention, say each thing once
+
+- **`tailwind.input.css` is named outright.** The instruction was a two-step lookup — open
+  `package.json`, find the `tailwind_build` script, read its `-i` flag — for a filename that is
+  `./tailwind.input.css` on every project on this stack. It is now "read `./tailwind.input.css` and
+  every project file it `@import`s", with a single parenthetical fallback for a project that names its
+  entry file differently.
+  - _Why:_ a procedure for discovering a constant is three steps of ceremony before any styling work
+    starts. Naming it costs one clause of portability and saves the lookup every time.
+- **`## Base Styles` → `## Where new CSS goes — the layer convention`.** The old section described what
+  "many projects" do with `@layer base`; it never said where to put a *new* rule. It is now a table:
+  tokens → `@theme {}`, element selectors → `@layer base {}`, reusable classes → `@layer components {}`,
+  new utilities → `@utility`. Plus the rule that makes it non-negotiable: **never write an unlayered
+  rule.**
+  - _Why:_ this is not a style preference. Tailwind v4 declares `@layer theme, base, components,
+    utilities;`, and in the CSS cascade unlayered declarations beat every layered one — so a bare
+    `h1 { font-size: 3rem }` written outside a layer silently overrides `text-2xl` on that heading and
+    no class in the markup can win. Unlayered CSS is a bug, and the doc now says so.
+- **The reuse order is stated once instead of four times.** "Cotton component → component class → raw
+  utility" appeared in the Critical Rule, again in the Design Tokens closer, again as
+  `## Reusable Components`, and again in `## Usage Rules` (itself a recap of every section above it).
+  `## Reusable Components` and `## Usage Rules` are deleted; their unique content — the
+  `@layer components` home for component classes, utilities-are-for-one-off-styling, and
+  promote-when-repeating — folded into Critical Rule steps 3 and 4.
+  - _Why:_ four wordings of one rule is four chances to drift apart, and the two deleted sections were
+    where the surviving hedges lived ("one (or both) of two ways", "whichever this project actually
+    has", "often named…"). The resource drops ~30 lines and every claim now has exactly one owner.
+- **Echo sites aligned**: `skills/frontend-styling/SKILL.md` (entry file named, layer rule added),
+  `resources/templates_and_cotton.md` (workflow step 4 and Key Rule 1), `skills/htmx/SKILL.md` (the
+  `.htmx-request` snippet now says which layer it belongs in), `skills/alpine-js/SKILL.md` (`[x-cloak]`
+  goes in `@layer base`).
+
 ## 2026-07-28 — One name for browser tests: `playwright`
 
 - **Browser tests live under `tests/playwright/`**, matching the `@pytest.mark.playwright` marker.
@@ -20,9 +52,9 @@
 
 - **The mandatory step is now "read the Tailwind entry stylesheet and every project file it
   `@import`s"**, stated once in `resources/frontend_styling.md` and referenced from the Critical Rule,
-  Design Tokens, Base Styles, and Usage Rules sections. The entry file is located from `package.json`'s
-  tailwind script (`-i` flag) rather than by assuming a filename, and the `@import "tailwindcss"`
-  library import is explicitly excluded from the walk.
+  Design Tokens, Base Styles, and Usage Rules sections. The `@import "tailwindcss"` library import is
+  explicitly excluded from the walk. (Superseded below: the entry file is now named outright rather
+  than looked up via `package.json`'s `-i` flag.)
 - **`tailwind.components.css` is no longer a step.** It went from 8 references — most of them a
   conditional `cat`, hedged with "if the project has one" — to 2 purely descriptive mentions ("a file
   often named…"). Same substitution in `skills/frontend-styling/SKILL.md` and the two spots in

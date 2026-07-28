@@ -231,7 +231,7 @@ Use `x-cloak` on elements that should be hidden on initial page load to prevent 
 ```
 
 `x-cloak` only works if the stylesheet defines `[x-cloak] { display: none !important; }` — check the
-project's base CSS and add the rule if it's missing.
+`@layer base` blocks in the project's stylesheets and, if the rule is missing, add it there.
 
 ### Expand/collapse with x-collapse (requires `@alpinejs/collapse`)
 
