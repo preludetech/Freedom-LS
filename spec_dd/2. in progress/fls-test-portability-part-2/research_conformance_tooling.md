@@ -442,7 +442,7 @@ creates the thing it describes, not an afterthought.
   `contrib` is just another subpackage of `freedom_ls`.
 - **Never let it get swept into FLS's own coverage/collection.** FLS's own
   `pyproject.toml` currently sets `testpaths = ["freedom_ls", "tests",
-  "fls-content-plugin"]`, so anything under `freedom_ls/contrib/conformance/`
+  "fls-content"]`, so anything under `freedom_ls/contrib/conformance/`
   with a `test_*.py` filename **will** be collected and run by FLS's *own*
   `uv run pytest` too (that's fine and desirable — FLS should run its own
   conformance suite against its own dev settings as a smoke test that the

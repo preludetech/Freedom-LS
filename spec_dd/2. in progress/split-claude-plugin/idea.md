@@ -3,7 +3,7 @@
 The plugin at `fls-claude-plugin/` currently mixes three separable concerns: portable Django-stack
 best practices, FreedomLS-product-specific conventions, and a generic spec-driven-development (SDD)
 workflow. Split it into separate plugins so the portable parts can be reused in unrelated projects,
-and gather all plugins (including the existing `fls-content-plugin`) under a new top-level
+and gather all plugins (including the existing `fls-content`) under a new top-level
 `claude_plugins/` directory.
 
 > This is a refactor of Claude Code plugin *authoring* artifacts (commands, skills, agents, hooks,
@@ -24,10 +24,10 @@ truth. The one deliberate change from it: the portable Django plugin is named **
 
 ```
 claude_plugins/
-  django-stack-claude-plugin/    # name: "ds"   — portable Django/stack conventions
+  django-stack/    # name: "ds"   — portable Django/stack conventions
   fls-claude-plugin/             # name: "fls"  — FreedomLS-product-specific
-  sdd-claude-plugin/             # name: "sdd"  — portable spec-driven-development workflow
-  fls-content-plugin/            # name: "fls-content" — course-authoring (moved from repo root)
+  sdd/             # name: "sdd"  — portable spec-driven-development workflow
+  fls-content/            # name: "fls-content" — course-authoring (moved from repo root)
 ```
 
 ## The plugins
@@ -132,7 +132,7 @@ fully namespaced** so each step names its owning plugin (`/sdd:improve_idea`, `/
 ## Directory layout (decided)
 
 Each plugin's commands and skills live **directly at the plugin root — no extra grouping
-subdirectory**. The `sdd` plugin uses flat `commands/*.md` (e.g. `sdd-claude-plugin/commands/start.md`,
+subdirectory**. The `sdd` plugin uses flat `commands/*.md` (e.g. `sdd/commands/start.md`,
 `…/improve_idea.md`), not `commands/sdd/*.md`: the plugin name already supplies the `sdd` namespace,
 so the old `sdd/` folder is redundant. This also settles the namespacing question — a flat `start.md`
 in a plugin named `sdd` is invoked as `/sdd:start` unambiguously (no `/fls:sdd:start` double-segment).
@@ -146,9 +146,9 @@ Fully namespacing the todo lines (above) also resolves how `next.md` finds each 
 `fls-claude-plugin/commands/` directories — which would guess wrong across three plugins and risk
 name collisions. Instead, **keep the prefix and map it to the owning plugin's commands directory**:
 
-- `sdd:` → `claude_plugins/sdd-claude-plugin/commands/`
+- `sdd:` → `claude_plugins/sdd/commands/`
 - `fls:` → `claude_plugins/fls-claude-plugin/commands/`
-- `ds:`  → `claude_plugins/django-stack-claude-plugin/commands/`
+- `ds:`  → `claude_plugins/django-stack/commands/`
 
 Deterministic, no probing. The map is a hardcoded within-repo lookup (fine — `${CLAUDE_PLUGIN_ROOT}`
 only points at `next.md`'s own plugin, and cross-repo portability is deferred). This is a small

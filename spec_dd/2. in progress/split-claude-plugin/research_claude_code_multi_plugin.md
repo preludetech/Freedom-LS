@@ -29,7 +29,7 @@ live, cited inline). Target: Claude Code 2.1.x, per the repo's own
     than an active gate. This has no bearing on whether the split works, but it means **the plugin
     count/paths that matter today are entirely determined by `claude.sh`'s `--plugin-dir`
     argument(s)**, not by `.claude/settings.json`.
-- **A second plugin exists in the repo but is not loaded here**: `fls-content-plugin/`
+- **A second plugin exists in the repo but is not loaded here**: `fls-content/`
   (`"name": "fls-content"`) is authored in this monorepo but is meant for *external* content-author
   repos, distributed later via a marketplace (see `spec_dd/1. next/content-plugin-distribution/idea.md`).
   It has no entry in `.claude/settings.json` and is not passed to `--plugin-dir` anywhere in this
@@ -46,12 +46,12 @@ live, cited inline). Target: Claude Code 2.1.x, per the repo's own
 
 ### Is there a `marketplace.json` today?
 
-**No.** Neither `fls-claude-plugin/` nor `fls-content-plugin/` has a
+**No.** Neither `fls-claude-plugin/` nor `fls-content/` has a
 `.claude-plugin/marketplace.json` anywhere in this repo today. Both plugins are discovered by two
 different *non-marketplace* mechanisms:
 
 - `fls-claude-plugin` → `--plugin-dir` (session-scoped CLI flag), as above.
-- `fls-content-plugin` → not loaded in this repo at all; its distribution plan (still "next", not
+- `fls-content` → not loaded in this repo at all; its distribution plan (still "next", not
   built) is a **separate** marketplace repo/catalog that content-author repos add with
   `/plugin marketplace add` ([content-plugin-distribution/idea.md](../../1.%20next/content-plugin-distribution/idea.md)).
 
@@ -74,9 +74,9 @@ So for this repo, splitting into up to three plugins under `claude_plugins/` mea
 (and the generated wrapper template) becomes:
 
 ```bash
-claude --plugin-dir "$SCRIPT_DIR/claude_plugins/django-stack-claude-plugin" \
+claude --plugin-dir "$SCRIPT_DIR/claude_plugins/django-stack" \
        --plugin-dir "$SCRIPT_DIR/claude_plugins/fls-claude-plugin" \
-       --plugin-dir "$SCRIPT_DIR/claude_plugins/sdd-claude-plugin" \
+       --plugin-dir "$SCRIPT_DIR/claude_plugins/sdd" \
        "$@"
 ```
 
@@ -89,7 +89,7 @@ produces needs its own `--plugin-dir` entry, or it silently isn't loaded and eve
 anything already installed/enabled via marketplaces, and (per the plugin guide) *"When a
 `--plugin-dir` plugin has the same name as an installed marketplace plugin, the local copy takes
 precedence for that session"* — irrelevant here since nothing is marketplace-installed today, but
-worth knowing if the project later also adds a marketplace for `fls-content-plugin`.
+worth knowing if the project later also adds a marketplace for `fls-content`.
 
 ### What `enabledPlugins` entries actually key on
 
@@ -224,7 +224,7 @@ These are **not** governed by Claude Code's plugin-namespacing rules at all — 
 strings in markdown files, resolved by whatever `cwd` the reading tool call happens to run from
 (the project root, since these are absolute-from-repo-root paths). **Every one of these literal
 paths must be rewritten** to include the new `claude_plugins/` prefix (and the plugin's possibly
-new directory name, e.g. `sdd-claude-plugin/` if the SDD commands move out) as part of the split —
+new directory name, e.g. `sdd/` if the SDD commands move out) as part of the split —
 this is unrelated to `${CLAUDE_PLUGIN_ROOT}` and won't be fixed by using that variable, because
 these are cross-file references *between command files*, not "a file referencing its own plugin's
 resources" (see next section for why `${CLAUDE_PLUGIN_ROOT}` doesn't help here).
@@ -241,8 +241,8 @@ Consequences for the split:
 1. **A hook, MCP server, or LSP server declared in plugin A can never use `${CLAUDE_PLUGIN_ROOT}`
    to reach a script/binary that lives in plugin B.** If `django-stack`'s `hooks.json` needs
    `ruff_fix.sh`, that script must physically live inside `django-stack`'s own directory tree
-   (e.g. `claude_plugins/django-stack-claude-plugin/scripts/hooks/ruff_fix.sh`), not be referenced
-   via a relative `../` path into `fls-claude-plugin/` or `sdd-claude-plugin/`. This repo's four
+   (e.g. `claude_plugins/django-stack/scripts/hooks/ruff_fix.sh`), not be referenced
+   via a relative `../` path into `fls-claude-plugin/` or `sdd/`. This repo's four
    hooks (`ruff_fix.sh`, `post-edit-bandit.sh`, security-guard.sh`, the `git commit` test runner)
    are currently all colocated under one plugin's `scripts/hooks/`; the split (per
    `extract-django-best-practices-claude-plugin/idea.md`'s already-made decision) moves three of
@@ -301,7 +301,7 @@ Enumerated, with before/after for the concrete split (`fls` → possibly `django
 | `enabledPlugins` key (marketplace) | `<plugin-name>@<marketplace-name>` | n/a — no marketplace | only relevant if/when `django-stack`/`sdd` are marketplace-distributed |
 | `enabledPlugins` key (bare, `--plugin-dir`/local) | bare `<plugin-name>` (functionally inert per §1, but documented) | `{"fls": true}` | `{"django-stack": true, "fls": true, "sdd": true}` |
 | Permission-rule prefixes in `.claude/settings.json` | `Skill(<plugin-name>:*)`, `mcp__plugin_<plugin-name>_<server>__*` | `"Skill(fls:*)"`, `"mcp__plugin_fls_playwright__*"` | needs a `"Skill(django-stack:*)"` and/or `"Skill(sdd:*)"` entry added, and the playwright MCP permission entry renamed if that server moves |
-| Directory name on disk | **Independent of `name`** — directory name and manifest `name` need not match (confirmed by the earlier `extract-django-best-practices` research: *"This is independent of the directory name on disk... the folder can be `django-constitution-claude-plugin/`... while the manifest sets `name: "dc"`"*) | `fls-claude-plugin/` ↔ `name: "fls"` | `claude_plugins/django-stack-claude-plugin/` could set `name: "django-stack"` (or a shorter alias) — **this choice is entirely the author's**; nothing in Claude Code ties them together |
+| Directory name on disk | **Independent of `name`** — directory name and manifest `name` need not match (confirmed by the earlier `extract-django-best-practices` research: *"This is independent of the directory name on disk... the folder can be `django-constitution-claude-plugin/`... while the manifest sets `name: "dc"`"*) | `fls-claude-plugin/` ↔ `name: "fls"` | `claude_plugins/django-stack/` could set `name: "django-stack"` (or a shorter alias) — **this choice is entirely the author's**; nothing in Claude Code ties them together |
 | `claude plugin tag` release tags (only if marketplace + dependency versioning adopted) | `{plugin-name}--v{version}` | n/a | only relevant if `plugin.json`'s `dependencies` field / semver pinning is adopted (see §4 caveat) |
 
 **Everything in this table is driven purely by the `name` field in each plugin's
@@ -371,9 +371,9 @@ occurrence in the table above has to be re-grepped-and-replaced on a rename.
    `--plugin-dir`-only wiring only works *inside this repo* (or any repo that clones/vendors the
    plugin directory and points a launcher at it). Making `django-stack` genuinely reusable
    elsewhere implies either (a) every consuming project also runs a `--plugin-dir`-style launcher
-   pointed at a copy/submodule/subtree of `claude_plugins/django-stack-claude-plugin/`, or (b)
+   pointed at a copy/submodule/subtree of `claude_plugins/django-stack/`, or (b)
    publishing it via a marketplace (`git-subdir` source pointing at
-   `claude_plugins/django-stack-claude-plugin` inside this monorepo, mirroring the
+   `claude_plugins/django-stack` inside this monorepo, mirroring the
    `content-plugin-distribution/idea.md` pattern already chosen for `fls-content`). This is a
    distribution decision the split's plan phase should make explicit, not an automatic consequence
    of moving files into `claude_plugins/`.
@@ -406,7 +406,7 @@ occurrence in the table above has to be re-grepped-and-replaced on a rename.
 
 - This repo (read directly): `fls-claude-plugin/skills/claude-code-authoring/SKILL.md` +
   `resources/{subagents,fanout_recipe,model_tiering,interactive_cli}.md`;
-  `fls-claude-plugin/.claude-plugin/plugin.json`; `fls-content-plugin/.claude-plugin/plugin.json`;
+  `fls-claude-plugin/.claude-plugin/plugin.json`; `fls-content/.claude-plugin/plugin.json`;
   `fls-claude-plugin/.mcp.json`; `fls-claude-plugin/.lsp.json`; `fls-claude-plugin/hooks/hooks.json`;
   `.claude/settings.json`; `claude.sh`; `fls-claude-plugin/templates/{settings.json,wrapper_scripts/claude.sh}`;
   `fls-claude-plugin/commands/{init.md,sdd/*.md}`; `fls-claude-plugin/agents/*.md`;

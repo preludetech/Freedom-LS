@@ -2,7 +2,7 @@
 
 ## Problem
 
-`fls-content-plugin/` is a self-contained Claude Code plugin (`.claude-plugin/plugin.json`,
+`claude_plugins/fls-content/` is a self-contained Claude Code plugin (`.claude-plugin/plugin.json`,
 name `fls-content`). It bundles the course-authoring commands (`init`, `format-content`,
 `validate-content`), skills (content-types, conventions, markdown-conversion,
 widget-reference), the `content-formatter` agent, and a Python validator (`validate/`).
@@ -43,7 +43,7 @@ point at a *separate repo* or even *a subdirectory of a separate repo*. Supporte
 |---|---|
 | `"./plugins/x"` | a path inside the marketplace repo (vendored copy) |
 | `{source: "github", repo: "owner/x"}` | a separate GitHub repo (whole repo is the plugin) |
-| `{source: "git-subdir", url: "...", path: "fls-content-plugin"}` | a subdirectory of a separate repo |
+| `{source: "git-subdir", url: "...", path: "claude_plugins/fls-content"}` | a subdirectory of a separate repo |
 | `{source: "url", url: "..."}` / `{source: "npm", ...}` | any git host / npm package |
 
 So the marketplace repo can be a **pure catalog** — just `marketplace.json` + docs — with each
@@ -79,7 +79,7 @@ Submodule-vs-subtree was never the real question — **access** is. For each plu
 
 > **Will content authors be granted read access to the `preludetech/Freedom-LS` monorepo?**
 
-- **Yes** → pure-catalog marketplace, `git-subdir` pointing straight at `fls-content-plugin/`
+- **Yes** → pure-catalog marketplace, `git-subdir` pointing straight at `claude_plugins/fls-content/`
   (and at future plugin directories). No subtree, no submodule, no sync job at all. By far the
   simplest, and it scales to N plugins trivially.
 - **No** → the marketplace is still a thin catalog, but each private-monorepo plugin needs a
@@ -93,7 +93,7 @@ monorepo into its own standalone, consumer-readable repo while preserving its hi
 
 ```
 # in the monorepo:
-git subtree split --prefix=fls-content-plugin -b dist/fls-content
+git subtree split --prefix=claude_plugins/fls-content -b dist/fls-content
 git push <dist-repo> dist/fls-content:main
 ```
 

@@ -21,7 +21,7 @@ counterpart to that idea, not a restatement of it.
 DJANGO_SETTINGS_MODULE = "config.settings_dev"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 env = ["DJANGO_ALLOW_ASYNC_UNSAFE = True"]
-testpaths = ["freedom_ls", "tests", "fls-content-plugin"]
+testpaths = ["freedom_ls", "tests", "fls-content"]
 addopts = "--strict-markers -m 'not ci_only' --disable-socket --allow-hosts=127.0.0.1,::1 --cov --cov-branch --cov-report=term-missing --cov-fail-under=73 --tracing=retain-on-failure --screenshot=only-on-failure"
 markers = [
     "playwright: marks tests that use playwright for browser automation",
@@ -31,7 +31,7 @@ markers = [
 
 Key observations:
 
-- **`testpaths = ["freedom_ls", "tests", "fls-content-plugin"]`** — FLS's own
+- **`testpaths = ["freedom_ls", "tests", "fls-content"]`** — FLS's own
   tests live **inside the `freedom_ls` package itself** (`freedom_ls/<app>/tests/`),
   not in a top-level `tests/` dir that could be excluded independently. This is
   the root packaging cause of the portability problem: a downstream that embeds
@@ -143,7 +143,7 @@ code) for `pytest.mark.*`, `importorskip`, `apps.is_installed`, `pytest.skip`,
   proposing the same idiom for a messaging app) — i.e. this idiom has never
   actually been implemented in FLS yet, anywhere.
 - The only `pytest.skip` calls in shipped code are in
-  `fls-content-plugin/validate/tests/test_validator.py` (skips when `uv` is
+  `fls-content/validate/tests/test_validator.py` (skips when `uv` is
   not on `PATH` — an environment-capability skip, unrelated to optional-app
   collection).
 - `pytest.skip("blocked on #NNN")` is a **documented convention** (from the

@@ -7,10 +7,10 @@ would break, silently go stale, or need updating as a result — organized so a 
 each row into a concrete edit.
 
 Methodology: whole-repo `Grep` (not scoped to `fls-claude-plugin/`) for `fls-claude-plugin`,
-`fls-content-plugin`, `fls:`, `plugin_fls`, `$FLS_PLUGIN`/`FLS_PLUGIN=`, `CLAUDE_PLUGIN_ROOT`, plus
+`fls-content`, `fls:`, `plugin_fls`, `$FLS_PLUGIN`/`FLS_PLUGIN=`, `CLAUDE_PLUGIN_ROOT`, plus
 targeted reads of `.claude/settings.json`, `fls-claude-plugin/templates/*`, `commands/init.md`,
 `hooks/hooks.json`, `.mcp.json`, `.lsp.json`, `pyproject.toml`, `.gitignore`, root `README.md`, and
-the sibling `fls-content-plugin/`.
+the sibling `fls-content/`.
 
 ---
 
@@ -56,8 +56,8 @@ the sibling `fls-content-plugin/`.
    directory check (`<fls_path>/fls-claude-plugin/`), and one `claude.sh` wrapper. A split needs either
    three separate `init` commands (one per plugin) or one command taught to loop over multiple
    plugins/roots — this is real design work, not a find-and-replace.
-7. **Whether `fls-content-plugin` also moves under `claude_plugins/` is undecided** — the idea text
-   only names `django-stack`/`fls`/`sdd`. `fls-content-plugin` is today a fully independent sibling
+7. **Whether `fls-content` also moves under `claude_plugins/` is undecided** — the idea text
+   only names `django-stack`/`fls`/`sdd`. `fls-content` is today a fully independent sibling
    plugin (own `plugin.json` name `fls-content`, own `/fls-content:init` etc.) with only a one-way,
    file-copy sync relationship to `fls-claude-plugin` (see §7). Flagged for a human decision, not
    resolved here.
@@ -342,11 +342,11 @@ currently written assuming **exactly one plugin**:
   (pointing at `fls-claude-plugin`) — there is no marketplace/registry layer; each plugin is loaded by
   direct filesystem path.
 - `fls-claude-plugin/.claude-plugin/plugin.json` → `{"name": "fls", "version": "1.0.0", ...}`
-- `fls-content-plugin/.claude-plugin/plugin.json` → `{"name": "fls-content", "version": "1.0.0", ...}`
+- `fls-content/.claude-plugin/plugin.json` → `{"name": "fls-content", "version": "1.0.0", ...}`
   (loaded independently — not via the same `claude.sh`; no wiring found in this repo's root `claude.sh`
-  that loads `fls-content-plugin` at all, meaning **it currently isn't loaded when running FLS's own
+  that loads `fls-content` at all, meaning **it currently isn't loaded when running FLS's own
   `./claude.sh`** — it must be loaded some other way, e.g. by whoever authors course content directly
-  passing `--plugin-dir fls-content-plugin`, or manually. This is itself worth confirming, independent
+  passing `--plugin-dir fls-content`, or manually. This is itself worth confirming, independent
   of the split.)
 
 **Change needed:** moving to `claude_plugins/django-stack/`, `claude_plugins/fls/`,
@@ -364,9 +364,9 @@ currently written assuming **exactly one plugin**:
 
 ## 6. Docs & specs mentioning the plugin by path or name
 
-- Root `README.md` — **no matches** for `fls-claude-plugin`, `fls-content-plugin`, or `claude_plugins`
+- Root `README.md` — **no matches** for `fls-claude-plugin`, `fls-content`, or `claude_plugins`
   (confirmed by direct grep of the file). No change needed there.
-- `docs/` — **no matches** for `fls-claude-plugin` or `fls-content-plugin` anywhere under `docs/`
+- `docs/` — **no matches** for `fls-claude-plugin` or `fls-content` anywhere under `docs/`
   (confirmed by grep scoped to that directory). No change needed there.
 - `spec_dd/` — 177 files match `fls-claude-plugin` and 211 files match `fls:` (see §2a breakdown).
   Overwhelmingly these are `spec_dd/3. done/**` historical records that should be left untouched (they
@@ -392,44 +392,44 @@ currently written assuming **exactly one plugin**:
     `django-stack` plugin**. This needs reconciling by a human — either this idea supersedes that one,
     or the two should be merged/sequenced, before planning proceeds.
   - `spec_dd/1. next/content-plugin-distribution/idea.md` — a queued idea about distributing
-    `fls-content-plugin` separately; relevant context for the §7 open question about whether
-    `fls-content-plugin` also relocates.
+    `fls-content` separately; relevant context for the §7 open question about whether
+    `fls-content` also relocates.
 - `fls-claude-plugin/README.md`, `fls-claude-plugin/commands/**/README.md` (root, `concrete/`,
   `periodic/`, `sdd/`) — self-describing docs; content will need updating in place as part of whichever
   plugin each ends up in (already covered file-by-file in §1/§2).
 
 ---
 
-## 7. The sibling `fls-content-plugin` — open question, not decided here
+## 7. The sibling `fls-content` — open question, not decided here
 
 Findings, not a decision:
 
-- `fls-content-plugin/` is a **fully separate, independently-versioned plugin** today: own
+- `fls-content/` is a **fully separate, independently-versioned plugin** today: own
   `.claude-plugin/plugin.json` (`"name": "fls-content"`), own `/fls-content:init`,
   `/fls-content:format-content`, `/fls-content:validate-content` commands, own skills
   (`fls-content:content-types`, `fls-content:widget-reference`, `fls-content:markdown-conversion`,
-  `fls-content:conventions`), own bundled Python validator (`fls-content-plugin/validate/`).
+  `fls-content:conventions`), own bundled Python validator (`fls-content/validate/`).
 - The **only** coupling to `fls-claude-plugin` is a **one-way, file-copy sync**, not a runtime
   dependency: `fls-claude-plugin/commands/sdd/update_claude_plugin_fls_content.md` is an SDD workflow
   step (Step 9, run via `/update_claude_plugin_fls_content`) that fans out one `fls:sdd-worker` to copy
   changes from `freedom_ls/content_engine/{schema,validate}.py` into
-  `fls-content-plugin/validate/{schema,validate}.py` (each bundled file's top comment says `# Bundled
+  `fls-content/validate/{schema,validate}.py` (each bundled file's top comment says `# Bundled
   from freedom_ls/content_engine/... — re-sync via /update_claude_plugin_fls_content`) and to update
-  `fls-content-plugin`'s reference skills when authoring functionality changes. There is a corresponding
+  `fls-content`'s reference skills when authoring functionality changes. There is a corresponding
   `.claude/agent-memory/fls-code-reviewer/project_fls_content_plugin.md` memory file documenting the
   exact re-apply patches needed on each re-sync (Django-icon stub, standalone CLI shim).
-- `fls-content-plugin` is **not loaded by this repo's own root `claude.sh`** (which only passes
+- `fls-content` is **not loaded by this repo's own root `claude.sh`** (which only passes
   `--plugin-dir fls-claude-plugin`) — confirming it's used independently (e.g. by course-authoring
   repos), not as part of the same session as the dev-facing plugin.
 - The idea text (`spec_dd/2. in progress/split-claude-plugin/idea.md`) names only
   `django-stack`/`fls`/`sdd` as the target plugins and says "Put all the plugins into a new directory
-  called `claude_plugins/`" without mentioning `fls-content-plugin`.
+  called `claude_plugins/`" without mentioning `fls-content`.
 
 **Open question for the human (not decided here):** does `claude_plugins/` become the new home for
-*all* plugins in this repo (i.e. `fls-content-plugin` also moves to `claude_plugins/fls-content/`), or
+*all* plugins in this repo (i.e. `fls-content` also moves to `claude_plugins/fls-content/`), or
 does it stay at the repo root as it is today, sitting alongside the new `claude_plugins/` directory? If
 it moves, the `update_claude_plugin_fls_content.md` sync command's hardcoded output path
-(`fls-content-plugin/validate/...`) needs updating too, and the command's own name
+(`fls-content/validate/...`) needs updating too, and the command's own name
 (`update_claude_plugin_fls_content`) — which literally embeds "claude_plugin_fls_content" — becomes an
 odd fossil either way and may be worth renaming as part of this same piece of work (flagging, not
 deciding).
