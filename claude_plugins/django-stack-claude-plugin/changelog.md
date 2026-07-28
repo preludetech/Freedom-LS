@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-07-28 — `alpine-js` routes, the build files own the mechanics
+
+- **`skills/alpine-js/SKILL.md` no longer contains CSP-build content.** The file claimed "everything
+  below this line is build-agnostic" and then spent 250 lines on the CSP form: a full
+  `Alpine.data()` registration example, the per-app `alpine-components.js` convention, and a `## Patterns`
+  section that opened "all patterns below use the registered-component form". The registration section
+  and every JS-shaped pattern (`data-*` passing, `localStorage` + `$watch`, simple toggle, computed
+  classes, auto-dismiss, `matchMedia`, click-away/escape) are gone from the skill.
+  - _Why:_ under `CSP build: disabled` that guidance is not merely irrelevant, it is the wrong idiom —
+    a reader routed to `alpine_no_csp.md` was still being shown mandatory registration by the file that
+    routed them. A build flag either partitions the guidance or it doesn't.
+- **What stays in the skill is what is byte-for-byte identical under both builds**: transitions
+  (CSS classes), `x-cloak`, the `x-collapse` plugin gate, icon toggling via wrapper `<span>`s, the
+  `_base.html` plugin check, and Alpine-vs-HTMX. Every surviving code block contains only CSS class
+  strings, bare property references (`x-show="open"`), or directive modifiers. The `x-collapse` example
+  lost its `x-data="expandablePanel"` / `x-on:click="toggleExpanded"` wrapper, and rules 6–8 now state
+  the requirement (clean up listeners, `click.away`, `keydown.escape.window`) without a build-shaped
+  example.
+- **Two dangling cross-references are fixed.** `alpine_csp_build.md` and `alpine_no_csp.md` both told
+  the reader to go back to "the main skill's Registering components section" for the shape — a
+  reference that no longer resolves, and shouldn't have: the shape now appears in each build file,
+  phrased for that build (mandatory under CSP; one of four promote-from-inline triggers under standard).
+  - _Why:_ README already promised these resources are mutually exclusive and self-contained. They now
+    are — each is readable start to finish with the other two absent.
+- **`alpine_no_csp.md` gained the standard-build forms it never had**: inline toggle, inline ternary
+  classes, template values interpolated into `x-data` (with `data-*` + `$el.dataset` as the rule for
+  anything string-valued or per-loop-item), and `x-init="setTimeout(…)"` for auto-dismiss — the exact
+  construct `alpine_csp_build.md` lists as forbidden.
+- **Echo site**: `fls-dev-claude-plugin/skills/alpine-js/SKILL.md` line 9 said the ds skill's
+  "CSP-build restrictions apply only when configured"; the ds skill no longer carries any, so it now
+  points through to the build resource file. Resource count is unchanged at 11 — no new files.
+
 ## 2026-07-28 — Name the entry file, state the layer convention, say each thing once
 
 - **`tailwind.input.css` is named outright.** The instruction was a two-step lookup — open
