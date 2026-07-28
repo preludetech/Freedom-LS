@@ -13,6 +13,7 @@
       "Bash(find:*)",
       "Bash(uv run pytest:*)",
       "mcp__playwright__*",
+      "mcp__plugin_ds_playwright__*",
       "mcp__ide__getDiagnostics",
       "Bash(ls:*)",
       "Bash(npm run tailwind_build)",

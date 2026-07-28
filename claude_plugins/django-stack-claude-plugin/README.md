@@ -8,6 +8,21 @@ separate downstream plugin that layers thin overlay skills on top of the `ds` sk
 
 Manifest name: `ds`. Namespace: `/ds:*`, `Skill(ds:*)`.
 
+## Per-project config
+
+Where projects legitimately differ, `ds` reads `.claude/ds/config.md` (created by `/ds:init` with
+portable defaults) rather than hard-coding a choice:
+
+| Section → key | Values (default) | Read by |
+|---|---|---|
+| `## Project Settings` → `Dev base URL` | any URL (`http://127.0.0.1:8000`) | `ds:use-playwright` |
+| `## Alpine.js` → `CSP build` | `enabled` (default) / `disabled` | `ds:alpine-js` |
+| `## Admin` → `Admin theme` | `standard` (default) / `unfold` | `ds:admin-interface` |
+| `## Admin` → `Object permissions (django-guardian)` | `disabled` (default) / `enabled` | `ds:admin-interface` |
+
+Everything else `ds` needs — design tokens, cotton components, Alpine plugins, template layout — is read
+from the project's own code at the point of use, never assumed.
+
 ## What's inside (counted from disk)
 
 ### Skills (9)
@@ -35,10 +50,10 @@ same way.
 `kill_runserver.sh`, plus the hook scripts under `scripts/hooks/` (`ruff_fix.sh`,
 `post-edit-bandit.sh`, `security-guard.sh`).
 
-### Resources (7)
-`admin_interface`, `factory_boy`, `frontend_styling`, `templates_and_cotton`, `testing`,
-`playwright-testing`, `agent_memory_guidelines` (a self-contained copy — duplicated here because
-`${CLAUDE_PLUGIN_ROOT}` is per-plugin and `code-reviewer` reads it).
+### Resources (9)
+`admin_interface`, `alpine_csp_build`, `alpine_no_csp`, `factory_boy`, `frontend_styling`,
+`templates_and_cotton`, `testing`, `playwright-testing`, `agent_memory_guidelines` (a self-contained
+copy — duplicated here because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and `code-reviewer` reads it).
 
 ### Hooks & configs
 `hooks/hooks.json` (ruff-fix + bandit on edit; a security guard on Bash/Write/Edit — any

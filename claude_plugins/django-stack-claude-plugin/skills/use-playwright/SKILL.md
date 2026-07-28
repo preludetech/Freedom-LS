@@ -1,7 +1,6 @@
 ---
 name: use-playwright
 description: Use Playwright MCP to interactively browse, inspect, and interact with the running dev site. Use when the user asks you to look at a page, check how something looks, click through a flow, fill in forms, or debug UI issues in the browser.
-allowed-tools: mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_hover, mcp__playwright__browser_press_key, mcp__playwright__browser_select_option, mcp__playwright__browser_drag, mcp__playwright__browser_evaluate, mcp__playwright__browser_wait_for, mcp__playwright__browser_navigate_back, mcp__playwright__browser_tabs, mcp__playwright__browser_console_messages, mcp__playwright__browser_network_requests, mcp__playwright__browser_close, mcp__playwright__browser_resize, mcp__playwright__browser_handle_dialog, mcp__playwright__browser_file_upload, mcp__playwright__browser_run_code, mcp__playwright__browser_install
 ---
 
 # Use Playwright MCP
@@ -20,6 +19,15 @@ Use this skill when:
 ## Connection Details
 
 Read the project's dev-site config file (`.claude/ds/config.md` by default) for the base URL and login credentials before using this skill.
+
+## Tool names
+
+`ds` ships the Playwright MCP server in its own `.mcp.json`, so its tools are exposed under the
+plugin-namespaced prefix `mcp__plugin_ds_playwright__*` (e.g.
+`mcp__plugin_ds_playwright__browser_snapshot`). A project that *also* declares a `playwright` server in
+a root `.mcp.json` gets the same tools a second time under the plain `mcp__playwright__*` prefix. Either
+works — use whichever prefix is present in your available tools. The tool names in this file are written
+without a prefix for that reason.
 
 ## Key Rules
 

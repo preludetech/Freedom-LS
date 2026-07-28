@@ -3,7 +3,7 @@
 ## When to Use Playwright
 
 Use Playwright for:
-- **User flows** - Login, enrollment, course navigation
+- **User flows** - Login, checkout, multi-step navigation
 - **HTMX interactions** - Dynamic updates, partial swaps
 - **JavaScript behavior** - Alpine.js interactions, modals
 - **Integration across pages** - Multi-step processes
@@ -40,7 +40,7 @@ playwright install
 
 # Run tests
 pytest tests/e2e/
-pytest tests/e2e/test_enrollment.py
+pytest tests/e2e/test_comment_flow.py
 ```
 
 ## Test Structure
@@ -53,14 +53,14 @@ from django.urls import reverse
 from playwright.sync_api import expect
 
 @pytest.mark.playwright
-def test_user_enrollment_flow(page, live_server):
-    """User can enroll in a course."""
-    url = reverse("courses:list")
+def test_user_comment_flow(page, live_server):
+    """User can post a comment on an article."""
+    url = reverse("articles:list")
     page.goto(f"{live_server.url}{url}")
 
-    page.get_by_role("button", name="Enroll").click()
+    page.get_by_role("button", name="Post").click()
 
-    expect(page.get_by_text("Enrolled")).to_be_visible()
+    expect(page.get_by_text("Comment posted")).to_be_visible()
 ```
 
 ## Best Practices
@@ -88,9 +88,9 @@ def test_user_enrollment_flow(page, live_server):
 ```python
 # GOOD — semantic, survives refactors
 page.get_by_role("button", name="Submit").click()
-page.get_by_label("Email").fill("student@example.test")
+page.get_by_label("Email").fill("user@example.test")
 expect(page.get_by_text("Welcome back")).to_be_visible()
-page.get_by_test_id("course-card-3").click()
+page.get_by_test_id("article-card-3").click()
 
 # BAD — couples the test to the current markup
 page.click('.form > .btn-submit')
@@ -162,10 +162,10 @@ def authed_storage_state(live_server, browser):
     try:
         page = context.new_page()
         page.goto(f"{live_server.url}{reverse('accounts:login')}")
-        page.get_by_label("Email").fill("student@example.test")
+        page.get_by_label("Email").fill("user@example.test")
         page.get_by_label("Password").fill("test-password-not-real")
         page.get_by_role("button", name="Sign in").click()
-        expect(page).to_have_url(f"{live_server.url}{reverse('dashboard:home')}")
+        expect(page).to_have_url(f"{live_server.url}{reverse('home')}")
         state = context.storage_state()
     finally:
         context.close()
@@ -190,8 +190,8 @@ def authed_page(browser, authed_storage_state):
 tests/
 └── e2e/
     ├── conftest.py          # Playwright fixtures
-    ├── test_enrollment.py   # Enrollment flows
-    └── test_course_nav.py   # Course navigation
+    ├── test_comment_flow.py  # Comment-posting flows
+    └── test_article_nav.py   # Article navigation
 ```
 
 ## Key Differences from Pytest

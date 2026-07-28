@@ -14,6 +14,11 @@ HTMX is loaded globally in `_base.html`. CSRF is handled globally via `hx-header
 
 Never add CSRF tokens to individual HTMX requests.
 
+**On the `<c-*>` tags in the examples below:** they are illustrative placeholders for whatever
+components this project defines — `ds` does not ship a component library and guarantees no component
+name. Check `templates/cotton/` (project-level and app-local) for what actually exists, and fall back
+to plain HTML elements where it doesn't.
+
 ## View Conventions
 
 ### Detecting HTMX Requests
@@ -27,9 +32,9 @@ is_htmx = request.headers.get("HX-Request") == "true"
 Use standard `render()` by default:
 
 ```python
-def partial_course_toc(request, slug):
+def partial_comment_list(request, slug):
     # ...
-    return render(request, "app/partials/course_toc.html", context)
+    return render(request, "app/partials/comment_list.html", context)
 ```
 
 Use `render_to_string()` only when composing HTML strings into a larger response (e.g., panel systems that assemble multiple partials):
@@ -52,7 +57,7 @@ def render(self, request, ...) -> str:
 
 ### Naming
 
-Prefix view functions/methods returning HTMX partials with `partial_` (e.g., `partial_course_toc`, `partial_list_courses`).
+Prefix view functions/methods returning HTMX partials with `partial_` (e.g., `partial_comment_list`, `partial_article_row`).
 
 ### HTTP Status Codes
 
@@ -127,27 +132,41 @@ Use `hx-boost="false"` on links that should do full-page navigation (e.g., admin
 
 ## Loading Indicators
 
+HTMX drives loading state with two classes it applies itself, no JavaScript required:
+
+- `.htmx-request` is added to the element issuing the request (or to the element named by
+  `hx-indicator`) for the duration of that request.
+- `.htmx-indicator` marks an element that should only be visible while a request is in flight — HTMX's
+  own stylesheet gives it `opacity: 0` and raises it to `opacity: 1` under `.htmx-request`.
+
 ### Standalone Loading Indicator
 
-Use `hx-indicator` with the `<c-loading-indicator>` component:
+Point `hx-indicator` at the element that should show the spinner:
 
 ```html
 <div hx-get="{% url 'app:data' %}"
      hx-trigger="load"
      hx-indicator="#loader">
-    <c-loading-indicator id="loader" message="Loading data..." />
+    <span id="loader" class="htmx-indicator">Loading data…</span>
 </div>
 ```
 
+**If the project has a loading-indicator component, use it instead of hand-rolling one** — check
+`templates/cotton/` (project-level and app-local) before writing the markup above.
+
 ### Inline Button Loading State
 
-Use the button component's `loading` prop with CSS utility classes:
+For a button that swaps its label while submitting, toggle two spans on the `.htmx-request` state. The
+project may already express this as a component prop (e.g. a `loading` / `loading_text` prop on its
+button component) or as a pair of CSS utility classes — **check what exists before adding either.** If
+nothing exists, the underlying mechanism is:
 
-```html
-<c-button type="submit" loading loading_text="Saving...">Save</c-button>
+```css
+/* in the project's Tailwind entry or components stylesheet */
+.htmx-request .htmx-hide-on-request { display: none; }
+.htmx-show-on-request { display: none; }
+.htmx-request .htmx-show-on-request { display: inline; }
 ```
-
-The CSS classes `.htmx-hide-on-request` and `.htmx-show-on-request` toggle visibility during HTMX requests (defined in `tailwind.components.css`).
 
 ## Separation of Concerns
 

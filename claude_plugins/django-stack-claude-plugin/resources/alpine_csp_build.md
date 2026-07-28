@@ -1,20 +1,24 @@
 # Alpine.js CSP build restrictions
 
-This project uses the **CSP-compatible build** of Alpine.js (`@alpinejs/csp`), which does NOT
-support inline JavaScript expressions in directives. All Alpine components must be registered via
-`Alpine.data()` in a separate JS file. The restrictions below apply — read this before writing any
-Alpine.
+This file applies when `.claude/ds/config.md` → `## Alpine.js` → `CSP build` is **`enabled`** (also the
+default when the file, section, or key is absent). The project uses the **CSP-compatible build** of
+Alpine.js (`@alpinejs/csp`), which does NOT support inline JavaScript expressions in directives — all
+Alpine components must be registered via `Alpine.data()` in a separate JS file. (If CSP is `disabled`
+instead, ignore this file and follow `alpine_no_csp.md`.)
 
 ## Scripts loaded in `_base.html`
 
 ```html
+<!-- any Alpine plugins the project uses, e.g. @alpinejs/collapse -->
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.15.8/dist/cdn.min.js"></script>
-<script defer src="{% static 'base/js/alpine-components.js' %}"></script>
+<!-- one per app that registers components; path is whatever the project's static layout is -->
+<script defer src="{% static '<app>/js/alpine-components.js' %}"></script>
+<!-- Alpine CSP build itself, LAST -->
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.15.8/dist/cdn.min.js"></script>
 ```
 
-**Order matters:** `alpine-components.js` loads BEFORE the Alpine CSP script so that `Alpine.data()`
-registrations are available when Alpine initialises.
+**Order matters:** every `alpine-components.js` loads BEFORE the Alpine CSP script so that
+`Alpine.data()` registrations are available when Alpine initialises.
 
 ## No inline expressions
 
@@ -44,7 +48,7 @@ that component:
 
 Every `x-data` value MUST correspond to an `Alpine.data()` registration in the owning app's
 `alpine-components.js` — an unregistered component name silently fails. See the main skill's
-"All components registered via Alpine.data()" section for the registration shape.
+"Registering components with Alpine.data()" section for the registration shape.
 
 ## What works in CSP build directives
 

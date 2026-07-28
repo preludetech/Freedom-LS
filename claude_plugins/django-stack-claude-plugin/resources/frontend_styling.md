@@ -4,100 +4,106 @@
 
 - Build: `npm run tailwind_build`
 - Watch: `npm run tailwind_watch`
-- Component classes: `tailwind.components.css`
+- Entry / theme stylesheet: the project's Tailwind entry file (commonly `tailwind.input.css`) — holds
+  the `@theme {}` tokens, `@source` globs, and base styles.
+- Component classes (**optional**): some projects keep reusable CSS component classes in a
+  `tailwind.components.css`. Many projects instead express reusable UI as **django-cotton components**
+  (`<c-button>`, `<c-card>`, …) and have no such file — both approaches are valid.
 
 ## Critical Rule
 
-**ALWAYS check `tailwind.components.css` before writing Tailwind classes**
+**ALWAYS reuse existing UI building blocks before writing new styling.** In order:
 
-```bash
-cat tailwind.components.css
-```
+1. Look for an existing **cotton component** (`<c-*>`) that already does what you need — search the
+   project's `templates/cotton/` (project-level and/or app-level).
+2. **If the project has a `tailwind.components.css`**, check it for a matching component class
+   (`cat tailwind.components.css`).
+3. Only then reach for raw utility classes.
 
-## Design Token Reference
+If the project has neither a matching component nor a `tailwind.components.css`, that is fine — use
+utilities, and promote a repeated pattern into a cotton component (or a `tailwind.components.css` class
+if the project uses that pattern).
 
-Define role tokens as CSS custom properties in an `@theme {}` block in your Tailwind entry / theme CSS. The `@theme {}` block declares every `--color-*` custom property; Tailwind v4 generates the matching utility classes (`bg-<role>`, `text-<role>`, `border-<role>`, etc.) automatically.
+## Design Tokens — read the theme, never assume it
 
-Prefer semantic **role** tokens (`primary`, `surface`, `error`, …) over raw palette values so a re-skin only touches the theme CSS. A representative role-token set:
+**Every project defines its own tokens. Read them from the code before you style anything — do not
+assume a token exists because it is a common name.**
 
-### Role Token List
+1. Open the project's Tailwind entry stylesheet and follow its `@import`s. The `@theme {}` blocks you
+   find are the authoritative list of tokens.
+2. Tailwind v4 generates the utility classes from those declarations: a `--color-<name>` custom
+   property yields `bg-<name>`, `text-<name>`, `border-<name>`, `ring-<name>`, and so on.
+3. Style using **only** the tokens declared there.
 
-| Token | Tailwind utility prefix | Purpose |
-|---|---|---|
-| `primary` | `bg-primary`, `text-primary` | Brand primary colour; buttons, links, key actions |
-| `on-primary` | `text-on-primary` | Text/icons on a `bg-primary` background |
-| `secondary` | `bg-secondary`, `text-secondary` | Secondary actions, subdued UI |
-| `on-secondary` | `text-on-secondary` | Text/icons on a `bg-secondary` background |
-| `accent` | `bg-accent`, `text-accent` | Highlights, call-outs, decorative touches |
-| `on-accent` | `text-on-accent` | Text/icons on a `bg-accent` background |
-| `success` | `bg-success`, `text-success` | Positive states, completion |
-| `on-success` | `text-on-success` | Text/icons on a `bg-success` background |
-| `warning` | `bg-warning`, `text-warning` | Non-critical alerts |
-| `on-warning` | `text-on-warning` | Text/icons on a `bg-warning` background |
-| `error` | `bg-error`, `text-error` | Errors, destructive actions |
-| `on-error` | `text-on-error` | Text/icons on a `bg-error` background |
-| `info` | `bg-info`, `text-info` | Informational states |
-| `on-info` | `text-on-info` | Text/icons on a `bg-info` background |
-| `surface` | `bg-surface` | Primary surface (e.g. cards, panels) |
-| `surface-2` | `bg-surface-2` | Off-white secondary surface, table header, disabled inputs |
-| `on-surface` | `text-on-surface` | Default body text colour; use on `surface` and `surface-2` |
-| `border` | `border-border` | Default stroke for inputs, cards, table rows |
-| `muted` | `text-muted` | Secondary/subdued text (labels, captions, footer text) |
-| `focus-ring` | `ring-focus-ring` | Focus ring; `@theme inline` alias for `primary` |
+Rules that hold whatever the theme is named:
 
-**Rule: always use `text-on-X` when a coloured background is set.** For example, `bg-primary` must be paired with `text-on-primary`. The `on-*` tokens are tuned for WCAG AA contrast; hand-coding hex values risks failures.
+- **Never invent a token.** A utility built from an undeclared token silently produces no styling. If
+  nothing in the theme fits, that is a design question — ask rather than guessing a name.
+- **Never hard-code a colour**: no hex values, and no raw palette utilities (`bg-blue-600`,
+  `text-slate-400`) where the theme declares a semantic token for the same job. Raw palette values
+  bypass the theme and survive a re-skin, which is exactly what you don't want.
+- **Respect the theme's foreground/background pairings.** If the theme declares a foreground token
+  intended for a particular background, use that declared pairing on any coloured background instead
+  of picking a text colour by eye — such pairings usually carry the project's contrast guarantees.
+- **Use the theme's own state variants.** If it declares hover/focus/active variants, apply them.
+  Where it doesn't, don't fake one with `hover:brightness-*` or a hard-coded hex.
+- **Prefer semantic tokens over raw palette tokens** when the theme offers both, so a re-skin only
+  touches the theme CSS.
 
-### Hover tokens
+Where the project provides reusable components — cotton components (`<c-button>`) or, if present,
+`tailwind.components.css` classes (`.btn-primary`) — those already wire up their own colour and hover
+handling, so prefer them over re-deriving the styling inline.
 
-Each role has a matching `*-hover` token (`--color-primary-hover`, `--color-error-hover`, etc.). These are auto-derived via `color-mix()` in `theme.css` so sparse themes that only override the base role token still get a coherent hover automatically. Use the generated utility classes:
+## Base Styles
 
-```html
-<button class="btn btn-primary">…</button>
-<!-- .btn-primary applies hover:bg-primary-hover from tailwind.components.css -->
-```
+Many projects style typography and form controls once, in an `@layer base` block in the theme, so
+element selectors (`h1`–`h4`, `a`, `ul`/`ol`, `input`, `textarea`, `select`, `label`) already look
+right with no classes on them.
 
-Component classes in `tailwind.components.css` already wire up hover; apply them rather than adding raw hover utilities in templates. When you do need a custom hover, use `hover:bg-*-hover` (e.g. `hover:bg-accent-hover`), never hard-coded hex or a `hover:brightness-*` filter.
+Check the theme for such a block. Where it exists, **don't duplicate it in your markup** — adding
+`text-4xl font-bold` to an `<h1>` that is already sized fights the theme and drifts out of sync with
+it.
 
-**Note:** Tokens marked `*-bold` do not exist and must not be used — there is no such series in the token contract.
+## Reusable Components
 
-## Base Styles (Auto-Applied)
+Projects express reusable UI in one (or both) of two ways — check what this project actually uses:
 
-Typography and forms have automatic styling via `@layer base`:
-- `h1-h4` - Pre-sized
-- `a` - link styling
-- `ul`, `ol` - List styling
-- `input`, `textarea`, `select`, `label` - Form styling
-
-**Don't duplicate these in your markup**
-
-## Component Classes
-
-Available in `tailwind.components.css`:
-- `.btn`, `.btn-primary`, `.btn-error` - Buttons
-- `.surface` - Cards/panels
-- Form components
+- **django-cotton components** (`templates/cotton/`): `<c-button>`, `<c-card>`, … Prefer these when
+  the project has a cotton component library.
+- **`tailwind.components.css` classes** (only if the project has this file): typically `.btn`,
+  `.btn-primary`, `.surface`, form components, etc.
 
 ## Usage Rules
 
-1. **Check `tailwind.components.css` first** - Use component classes when available
-2. **Rely on base styles** - Don't add `text-4xl font-bold` to `<h1>`
-3. **Inline classes only for unique styling** - Layout, spacing, positioning
-4. **Keep it DRY** - Repeated patterns → add to `tailwind.components.css`
-5. **Keep it cohesive** - Styles that only appear once, or that are specific to a single page or location should be inline. Only use `tailwind.components.css` for things that are likely to be reused.
+1. **Read the theme first** — the `@theme {}` blocks reachable from the Tailwind entry stylesheet are
+   the only tokens that exist. Never style from a remembered token name.
+2. **Reuse first** — check existing cotton components, then `tailwind.components.css` (if present),
+   before writing raw utilities.
+3. **Rely on base styles where the theme defines them** - Don't add `text-4xl font-bold` to an `<h1>`
+   the theme already sizes
+4. **Inline classes only for unique styling** - Layout, spacing, positioning
+5. **Keep it DRY** - Repeated patterns → promote to a cotton component (or a `tailwind.components.css`
+   class if the project uses that approach).
+6. **Keep it cohesive** - Styles that only appear once, or that are specific to a single page or
+   location, should stay inline. Only promote things that are likely to be reused.
 
 ## Example
 
-**BAD:**
+**BAD** — re-states base styles and hard-codes a palette colour the theme doesn't own:
 ```html
 <h1 class="text-4xl font-bold">Title</h1>
 <button class="px-6 py-2 bg-blue-600...">Click</button>
 ```
 
-**GOOD:**
+**GOOD** — reuse the project's own building block:
 ```html
 <h1>Title</h1>
-<button class="btn btn-primary">Click</button>
+<c-button variant="primary">Click</c-button>
+<!-- or, in a project that uses tailwind.components.css: <button class="btn btn-primary">Click</button> -->
 ```
+
+Component and variant names are the project's, not the plugin's — `<c-button variant="primary">` above
+is illustrative. Use whatever this project's component library actually defines.
 
 ## IMPORTANT
 

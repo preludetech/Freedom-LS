@@ -152,7 +152,7 @@ HEADER: str = """# App Structure
 
 This file is the authoritative picture of inter-app dependencies in this project. It is **generated** by running `/app_map`.
 
-Treat it as the source of truth for what cross-app imports are allowed. Any implementation plan that introduces a new edge must flag the change via `/plan_structure_review` and get approval before code is written.
+Treat it as the source of truth for what cross-app imports are allowed. Any implementation plan that introduces a new cross-app edge should be called out and approved before code is written.
 
 - **Solid arrows** — runtime imports (one app imports from another outside of tests).
 - **Dashed arrows** — test-only imports (cross-app fixtures or helpers).

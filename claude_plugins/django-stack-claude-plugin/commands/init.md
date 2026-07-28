@@ -69,7 +69,8 @@ Each operation is additive or create-when-absent, with the one deliberate except
 ## Step 2: Create or extend `.claude/ds/config.md`
 
 `ds` needs little per-project config. Store the dev-site base URL the `ds:use-playwright` skill reads,
-and the Alpine.js CSP-build flag the `ds:alpine-js` skill reads.
+the Alpine.js CSP-build flag the `ds:alpine-js` skill reads, and the admin flags the
+`ds:admin-interface` skill reads.
 
 **Do not prompt the user for these values.** Write the file with the documented defaults and tell the
 user where it is so they can fill it in themselves.
@@ -79,11 +80,15 @@ user where it is so they can fill it in themselves.
    - the dev base URL `http://127.0.0.1:8000` under a `## Project Settings` section;
    - the Alpine.js CSP-build flag under a `## Alpine.js` section as `- CSP build: enabled`. `enabled`
      is the safe default the `ds:alpine-js` skill assumes.
+   - the admin flags under an `## Admin` section as `- Admin theme: standard` and
+     `- Object permissions (django-guardian): disabled`. These portable defaults keep `ds` on plain
+     Django admin with no extra dependencies; the `ds:admin-interface` skill reads them.
 3. If it already exists, add any missing key using the default (including the `## Alpine.js` section
-   with `- CSP build: enabled` if absent), preserving every existing value and comment; never re-prompt
-   for options already present.
+   with `- CSP build: enabled`, and the `## Admin` section with the two admin flags, if absent),
+   preserving every existing value and comment; never re-prompt for options already present.
 4. Tell the user the config lives at `.claude/ds/config.md` and that they should review and edit the
-   base URL and the Alpine CSP-build flag to match this project — the defaults are only a starting point.
+   base URL, the Alpine CSP-build flag, and the admin flags to match this project — the defaults are
+   only a starting point.
 
 ## Step 3: Determine `PLUGINS_ROOT` (do not prompt)
 
@@ -167,9 +172,14 @@ Run these checks and report results:
 7. Confirm `CLAUDE.md` no longer contains a legacy plugin-check line.
 8. Confirm `.claude/ds/config.md` contains a `## Alpine.js` section with a `CSP build` value
    (`enabled` or `disabled`).
-9. Report any issues found.
+9. Confirm `.claude/ds/config.md` contains an `## Admin` section with both an `Admin theme` value
+   (`standard` or `unfold`) and an `Object permissions (django-guardian)` value (`enabled` or
+   `disabled`).
+10. Report any issues found.
 
 Print a summary of everything that was done. In the summary, explicitly point the user at
-`.claude/ds/config.md` and tell them to fill in the base URL and Alpine CSP-build flag themselves. If the
-plugins root defaulted to `.`, also tell them to edit `PLUGINS_ROOT` in `claude.sh` if this project holds
-`claude_plugins/` somewhere other than the project root (e.g. a submodule).
+`.claude/ds/config.md` and tell them to fill in the base URL, the Alpine CSP-build flag, and the two
+admin flags themselves — the defaults assume plain Django admin with no django-guardian, which is wrong
+for any project already using django-unfold or object permissions. If the plugins root defaulted to `.`,
+also tell them to edit `PLUGINS_ROOT` in `claude.sh` if this project holds `claude_plugins/` somewhere
+other than the project root (e.g. a submodule).

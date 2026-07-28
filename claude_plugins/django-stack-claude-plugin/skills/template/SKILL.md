@@ -19,7 +19,8 @@ Use this Skill when:
 ## Key Rules
 
 - Pages: `<app>/templates/<app>/<page>.html` — always extend `_base.html`
-- Cotton components: `<app>/templates/cotton/<name>.html` — use `<c-vars>` with defaults
+- Cotton components: project-level `templates/cotton/<name>.html` for shared/design-system components,
+  or `<app>/templates/cotton/<name>.html` for app-specific ones — use `<c-vars>` with defaults
 - Partials: `<app>/templates/<app>/partials/<name>.html`
 - Use `{% partialdef %}` with kebab-case names for inline partials
 - Don't hardcode URLs — use `{% url 'app:name' %}`

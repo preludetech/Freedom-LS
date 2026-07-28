@@ -11,7 +11,7 @@ This Skill helps write end-to-end tests for browser-required behavior.
 ## When to Use This Skill
 
 Use this Skill when:
-- **Testing user flows** - Login, enrollment, multi-step processes
+- **Testing user flows** - Login, checkout, multi-step processes
 - **Testing HTMX interactions** - Dynamic updates, partial swaps
 - **Testing JavaScript behavior** - Alpine.js, modals, interactive elements
 - **Integration testing across pages** - Navigation, full user journeys

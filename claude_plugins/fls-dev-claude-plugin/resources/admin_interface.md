@@ -1,6 +1,6 @@
 # Admin interface — FreedomLS addendum
 
-This addendum extends the generic `ds` `admin_interface.md` resource (pulled in by `Skill(ds:admin-interface)`). It adds the mandatory `SiteAwareModelAdmin` base and site-field handling. Read the `ds` resource first for the generic Unfold `ModelAdmin` patterns.
+This addendum extends the generic `ds` `admin_interface.md` resource (pulled in by `Skill(ds:admin-interface)`). It adds the mandatory `SiteAwareModelAdmin` base and site-field handling. Read the `ds` resource first for the generic `ModelAdmin` patterns — FLS configures `Admin theme: unfold` and `Object permissions (django-guardian): enabled` in `.claude/ds/config.md`, so follow the `ds` resource's Unfold and django-guardian sections.
 
 ## Site-aware models
 

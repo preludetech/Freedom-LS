@@ -3,7 +3,7 @@ description: Generate or refresh docs/app_structure.md — a mermaid diagram of 
 allowed-tools: Read, Bash
 ---
 
-This command regenerates `docs/app_structure.md`, the authoritative picture of inter-app dependencies in this project. The file is both documentation for human readers and the source of truth that `/plan_structure_review` compares implementation plans against.
+This command regenerates `docs/app_structure.md`, the authoritative picture of inter-app dependencies in this project. The file serves as both documentation for human readers and a reference for reviewing whether an implementation plan introduces new cross-app dependencies.
 
 The diagram is generated deterministically from `ast` — it reflects what the code actually imports, not what we wish it imported. If the output surprises you, the code is what's wrong.
 

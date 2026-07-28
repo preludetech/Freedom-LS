@@ -5,17 +5,28 @@
 ```
 <app>/templates/
 ├── <app_name>/         # Page templates (app-namespaced)
-├── cotton/             # Cotton components
-└── partials/           # Template partials
+│   └── partials/       # Template partials (also app-namespaced)
+└── cotton/             # Cotton components (app-specific)
+
+templates/              # project-level template dir (on TEMPLATES['DIRS'])
+├── cotton/             # Shared / design-system cotton components
+└── _base.html          # Base template
 ```
 
-**Base template:** `<base_app>/templates/_base.html`
+**Cotton components can live in either place** — django-cotton discovers `templates/cotton/` on any
+template-loader path. Use a **project-level `templates/cotton/`** for shared, design-system components
+used across apps (e.g. `<c-button>`, `<c-card>`), and an **app-local `<app>/templates/cotton/`** for
+components specific to one app. Follow whichever layout the project already uses.
+
+**Base template:** `_base.html`, typically at the project-level `templates/_base.html` (or a base
+app's `templates/`).
 
 ## Naming Conventions
 
 - **Pages:** `<app>/templates/<app_name>/<page>.html`
-- **Cotton components:** `<app>/templates/cotton/<component>.html`
-- **Partials:** `<app>/templates/partials/<partial>.html`
+- **Cotton components:** `templates/cotton/<component>.html` (shared) or
+  `<app>/templates/cotton/<component>.html` (app-specific)
+- **Partials:** `<app>/templates/<app_name>/partials/<partial>.html`
 
 ## Standard Page Template
 
@@ -47,7 +58,8 @@ Reusable UI components using `<c-component-name>` syntax.
 
 ### Creating a Component
 
-**Location:** `<app>/templates/cotton/<name>.html`
+**Location:** `templates/cotton/<name>.html` for a shared/design-system component, or
+`<app>/templates/cotton/<name>.html` for an app-specific one.
 
 ```django
 <c-vars
@@ -75,6 +87,11 @@ Usage:
 <c-modal id="confirm" title="Confirm">Are you sure?</c-modal>
 ```
 
+**These names are illustrative.** `ds` ships no component library and guarantees no component name —
+`<c-button>`, `<c-loading-indicator>` and `<c-modal>` are just plausible examples. List what this
+project actually defines (`ls templates/cotton/ */templates/cotton/`) before using any of them, and use
+plain HTML where there is no component.
+
 ### Best Practices
 
 1. Define all props in `<c-vars>` with defaults
@@ -87,11 +104,13 @@ Usage:
 
 ### Separate Files
 
-**Location:** `<app>/templates/partials/<name>.html`
+**Location:** `<app>/templates/<app_name>/partials/<name>.html` — namespace partials under the app
+directory just like pages, so two apps can each have a `header.html` without colliding on the loader
+path.
 
 ```django
 <!-- Include in template -->
-{% include "partials/header.html" %}
+{% include "<app_name>/partials/header.html" %}
 
 <!-- Load via HTMX -->
 <div hx-get="{% url 'app:partial' %}" hx-trigger="load"></div>
@@ -123,13 +142,13 @@ HTMX loaded globally. CSRF token set in `_base.html` via `hx-headers`. Do not ad
 
 ### View Conventions
 
-- Prefix view functions returning partials with `partial_` (e.g., `partial_course_toc`, `partial_list_courses`)
+- Prefix view functions returning partials with `partial_` (e.g., `partial_comment_list`, `partial_article_row`)
 - Return standard `render(request, template, context)` — no special HTMX response classes needed
 - Return HTTP 422 for HTMX validation errors
 
 ### Partialdef Naming
 
-- Use kebab-case names for `{% partialdef %}` blocks (e.g., `{% partialdef view-course-button %}`)
+- Use kebab-case names for `{% partialdef %}` blocks (e.g., `{% partialdef view-detail-button %}`)
 
 ### Common Patterns
 
@@ -150,14 +169,29 @@ HTMX loaded globally. CSRF token set in `_base.html` via `hx-headers`. Do not ad
 
 ## Alpine.js
 
-Loaded globally for reactive components.
+Loaded globally for reactive components. **The exact syntax depends on the project's Alpine build** —
+read `.claude/ds/config.md` → `## Alpine.js` → `CSP build` and follow the `ds:alpine-js` skill:
 
-```django
-<div x-data="{ open: false }">
-    <c-button @click="open = !open">Toggle</c-button>
-    <div x-show="open">Content</div>
-</div>
-```
+- **CSP build `disabled`** (standard build) — inline expressions are allowed:
+
+  ```django
+  <div x-data="{ open: false }">
+      <c-button @click="open = !open">Toggle</c-button>
+      <div x-show="open">Content</div>
+  </div>
+  ```
+
+- **CSP build `enabled`** (default) — inline expressions are forbidden; reference a registered
+  `Alpine.data()` component instead:
+
+  ```django
+  <div x-data="toggle">
+      <c-button x-on:click="toggle">Toggle</c-button>
+      <div x-show="open">Content</div>
+  </div>
+  ```
+
+See the `ds:alpine-js` skill (and `alpine_csp_build.md` / `alpine_no_csp.md`) for the full rules.
 
 ## Workflow
 
@@ -165,8 +199,9 @@ Loaded globally for reactive components.
 
 1. **Check location** - `<app>/templates/<app_name>/`
 2. **Check existing templates** - Follow established patterns
-3. **Check available components** - `ls */templates/cotton/`
-4. **Check Tailwind classes** - `cat tailwind.components.css`
+3. **Check available components** - `ls templates/cotton/ */templates/cotton/` (project-level + app-local)
+4. **Check reusable styles** - reuse existing cotton components; if the project has a
+   `tailwind.components.css`, check it too (`cat tailwind.components.css`)
 5. **Write template** - Extend `_base.html`, use existing components
 6. **Build CSS** - `npm run tailwind_build`
 
@@ -180,8 +215,9 @@ Loaded globally for reactive components.
 
 ## Key Rules
 
-1. **Don't check `tailwind.components.css` first** - Use component classes
+1. **Reuse before styling** - use existing cotton components (and `tailwind.components.css` classes if
+   the project has that file) before writing raw utilities
 2. **Don't duplicate base styles** - Typography/forms are pre-styled
 3. **Don't create cotton components for one-off use** - Use partials
 4. **Don't hardcode URLs** - Use `{% url %}` tag
-5. **Don't skip app namespacing** - Templates in `<app_name>/` subdirectory
+5. **Don't skip app namespacing** - Page templates in `<app_name>/` subdirectory
