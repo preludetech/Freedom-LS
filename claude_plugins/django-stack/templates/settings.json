@@ -30,7 +30,7 @@
     ]
   },
   "enabledPlugins": {
-    "django-stack": true
+    "ds": true
   },
   "hooks": {
     "SessionStart": [

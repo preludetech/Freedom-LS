@@ -16,7 +16,7 @@ plugins at all — but only when they are missing.
 does NOT scaffold Django project structure (`config/`, `pyproject.toml`, Tailwind config, a `CLAUDE.md`
 skeleton) — those come from the project template. Run `ds:init` after the project already exists.
 
-`ds:init` writes only its **own** slice — the `django-stack` `enabledPlugins` key, `ds` permissions, the
+`ds:init` writes only its **own** slice — the `ds` `enabledPlugins` key, `ds` permissions, the
 `.claude/ds/` config dir, and the `ds` wrapper scripts. Alongside that it creates a few **generic,
 plugin-neutral** artifacts a Claude Code project needs regardless of which plugins are installed, and only
 when they are absent:
@@ -35,7 +35,7 @@ own line the same way.
 Each operation is additive or create-when-absent, with the one deliberate exception noted for `hooks`.
 
 - **`.claude/settings.json`** — merge, don't replace. Add missing `allow`/`deny` entries, add
-  `"django-stack": true` to `enabledPlugins` (only this key — never touch other plugins' keys), and
+  `"ds": true` to `enabledPlugins` (only this key — never touch other plugins' keys), and
   merge the `SessionStart` hook. Never replace the whole file, and never touch `allow`/`deny`/
   `enabledPlugins` entries that already exist. **Exception:** the `hooks` section is plugin-owned — only
   `SessionStart` is permitted there (see Step 1 and validation).
@@ -56,14 +56,14 @@ Each operation is additive or create-when-absent, with the one deliberate except
    - Read and parse the existing permissions.
    - Add any missing `allow` rules (don't duplicate existing ones).
    - Add any missing `deny` rules (don't duplicate existing ones).
-   - Add `"django-stack": true` to `enabledPlugins` (create the key if it doesn't exist). Do **not**
+   - Add `"ds": true` to `enabledPlugins` (create the key if it doesn't exist). Do **not**
      add or remove other plugins' keys.
    - Merge the `SessionStart` hook from the template into the existing `hooks` section (create `hooks`
      if missing, add `SessionStart` if missing, append the command if an equivalent one isn't already
      there). Leave other hook events alone if another tool owns them.
    - Write the updated file.
 3. If `.claude/settings.json` doesn't exist: create it from the template (it already carries
-   `enabledPlugins: {"django-stack": true}` and the `SessionStart` hook).
+   `enabledPlugins: {"ds": true}` and the `SessionStart` hook).
 4. Report what was added/changed.
 
 ## Step 2: Create or extend `.claude/ds/config.md`
@@ -162,7 +162,7 @@ session; the `SessionStart` hook replaces it.
 
 Run these checks and report results:
 
-1. Confirm `django-stack` is in `enabledPlugins` in `.claude/settings.json`.
+1. Confirm `ds` is in `enabledPlugins` in `.claude/settings.json`.
 2. Confirm `claude.sh` exists at the project root, is executable, uses `CLAUDE_PLUGINS_LOADED=1`, and has
    the `django-stack` `--plugin-dir` line.
 3. Confirm the `ds` wrapper scripts exist under `.claude/ds/scripts/` and are executable.

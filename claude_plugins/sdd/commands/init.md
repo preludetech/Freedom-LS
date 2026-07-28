@@ -31,7 +31,7 @@ If `claude.sh` is missing, do **not** create it here — tell the user to run `/
 Each operation is additive or create-when-absent.
 
 - **`.claude/settings.json`** — merge, don't replace. Add the `sdd` permission (`Skill(sdd:*)`) if
-  missing and add `"sdd": true` to `enabledPlugins` (only this key — never touch `django-stack`/`fls-dev`
+  missing and add `"sdd": true` to `enabledPlugins` (only this key — never touch `ds`/`fls-dev`
   keys, and never touch the `hooks` section — the `SessionStart` hook is `ds`-owned).
 - **`.claude/sdd/config.md`** — create when absent, otherwise extend (add any key the default defines
   but the file lacks; preserve every existing value, comment, and ordering; never re-prompt for options

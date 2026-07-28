@@ -6,7 +6,13 @@ carries **zero product-specific domain knowledge** and depends on no other plugi
 conventions (multi-tenant / site-aware models, registration, markdown content, brand, etc.) belong in a
 separate downstream plugin that layers thin overlay skills on top of the `ds` skills here.
 
-Manifest name: `ds`. Namespace: `/ds:*`, `Skill(ds:*)`.
+Manifest name: `ds`. Namespace: `/ds:*`, `Skill(ds:*)`. `enabledPlugins` key: `ds`.
+
+> This is the only plugin here whose directory (`django-stack/`) differs from its manifest name
+> (`ds`). Every identifier Claude Code derives — the skill/command namespace, the agent prefix, the
+> `mcp__plugin_ds_playwright__*` tool names, and the `enabledPlugins` key — comes from the **manifest
+> name**, never the directory. Use `django-stack` only in filesystem paths (`--plugin-dir`,
+> `claude_plugins/django-stack/`).
 
 ## Per-project config
 
