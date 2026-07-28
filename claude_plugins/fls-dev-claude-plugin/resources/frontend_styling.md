@@ -1,56 +1,81 @@
 # Frontend styling — FreedomLS addendum
 
-This addendum extends the generic `ds` `frontend_styling.md` resource (pulled in by `Skill(ds:frontend-styling)`). The `ds` resource stays token-agnostic — it tells you to read whatever theme the project defines. This file is that answer for FreedomLS: the theme paths and the canonical role-token contract they implement. Read the `ds` resource first.
+This addendum extends the generic `ds` `frontend_styling.md` resource (pulled in by `Skill(ds:frontend-styling)`). The `ds` resource stays token-agnostic — it tells you to read whatever theme the project defines, and how to style once you have. This file is only *what FLS defines*: where the stylesheets are, and the token contract they implement. Read the `ds` resource for the rules.
 
-## FLS theme paths
+## Where FLS's stylesheets are
 
-All role tokens are defined in the active theme's `theme.css`:
+`tailwind.input.css` is the entry file. Its project `@import`s are:
+
+| File | Holds |
+|---|---|
+| `freedom_ls/themes/default/static/themes/default/theme.css` | The default theme's tokens — the always-on baseline |
+| `tailwind.components.css` | Reusable component classes (`.btn`, `.surface`, …) plus the `@layer base` element styling |
+| `tailwind.base_interface.css` | Single-use side-panel layout for `_base_interface.html` |
+| `tailwind.picture_spotlight.css` | Single-use `<dialog>` animation for `cotton/picture.html` |
+| `tailwind.active_theme.css` | **Generated, gitignored.** Written each build by `manage.py write_active_theme_css`, which resolves `FLS_THEME` through Django settings and re-imports that theme's `theme.css`. When `FLS_THEME=default` it re-imports the baseline (a no-op on the cascade); for any other slug the active theme's redeclarations win. |
+
+So a theme's real token values are in its own file, not in the generated one:
 
 ```
 freedom_ls/themes/<slug>/static/themes/<slug>/theme.css
 ```
 
-For the built-in default theme this is:
+Shipped slugs are `default` and `first_class`. `FLS_THEMES_DIRS` in `config/settings_base.py` is the Django-side list; the `@source`/`@import` paths in `tailwind.input.css` are hardcoded to mirror it because the Tailwind CLI cannot read Django settings.
 
-```
-freedom_ls/themes/default/static/themes/default/theme.css
-```
+Themes are sparse: a theme ships only the tokens it overrides, and the rest fall through to `default`. `default/theme.css` is therefore the full contract; an active theme's file shows you only the deltas.
 
-Themes are sparse: a theme ships only the tokens it overrides, and the rest fall through to the default theme. The list below is the contract every FLS theme implements — treat it as the set you may style with, and still open the active theme's `theme.css` when you need a token's actual value.
+## The FLS role-token contract
 
-## FLS role-token list
+Role tokens live in the `--color-<role>` namespace. Each `X` has an `on-X` partner: the foreground tuned for WCAG AA on a `bg-X` background.
 
-Role tokens are CSS custom properties declared in an `@theme {}` block; Tailwind v4 generates the matching utility classes (`bg-<role>`, `text-<role>`, `border-<role>`, etc.) automatically. Prefer semantic role tokens over raw palette values so a re-skin only touches the theme CSS.
-
-| Token | Tailwind utility prefix | Purpose |
+| Token | Utility prefix | Purpose |
 |---|---|---|
-| `primary` | `bg-primary`, `text-primary` | Brand primary colour; buttons, links, key actions |
-| `on-primary` | `text-on-primary` | Text/icons on a `bg-primary` background |
-| `secondary` | `bg-secondary`, `text-secondary` | Secondary actions, subdued UI |
-| `on-secondary` | `text-on-secondary` | Text/icons on a `bg-secondary` background |
-| `accent` | `bg-accent`, `text-accent` | Highlights, call-outs, decorative touches |
-| `on-accent` | `text-on-accent` | Text/icons on a `bg-accent` background |
-| `success` | `bg-success`, `text-success` | Positive states, completion |
-| `on-success` | `text-on-success` | Text/icons on a `bg-success` background |
-| `warning` | `bg-warning`, `text-warning` | Non-critical alerts |
-| `on-warning` | `text-on-warning` | Text/icons on a `bg-warning` background |
-| `error` | `bg-error`, `text-error` | Errors, destructive actions |
-| `on-error` | `text-on-error` | Text/icons on a `bg-error` background |
-| `info` | `bg-info`, `text-info` | Informational states |
-| `on-info` | `text-on-info` | Text/icons on a `bg-info` background |
-| `surface` | `bg-surface` | Primary surface (e.g. cards, panels) |
-| `surface-2` | `bg-surface-2` | Off-white secondary surface, table header, disabled inputs |
-| `on-surface` | `text-on-surface` | Default body text colour; use on `surface` and `surface-2` |
+| `primary` / `on-primary` | `bg-primary`, `text-on-primary` | Brand primary; buttons, links, key actions |
+| `secondary` / `on-secondary` | `bg-secondary`, `text-on-secondary` | Secondary actions, subdued UI |
+| `accent` / `on-accent` | `bg-accent`, `text-on-accent` | Highlights, call-outs, decorative touches |
+| `success` / `on-success` | `bg-success`, `text-on-success` | Positive states, completion |
+| `warning` / `on-warning` | `bg-warning`, `text-on-warning` | Non-critical alerts |
+| `error` / `on-error` | `bg-error`, `text-on-error` | Errors, destructive actions |
+| `info` / `on-info` | `bg-info`, `text-on-info` | Informational states |
+| `success-light` / `warning-light` / `error-light` / `info-light` | `bg-error-light` | Near-white status tints for chips and alert backgrounds |
+| `on-success-light` / `on-warning-light` / `on-error-light` / `on-info-light` | `text-on-error-light` | Foregrounds for those tints — the plain `on-*` whites are illegible against a near-white background |
+| `success-soft` | `bg-success-soft` | Completion-badge tint on the course card |
+| `surface` | `bg-surface` | Primary surface (cards, panels) |
+| `surface-2` | `bg-surface-2` | Secondary surface: table headers, disabled inputs |
+| `on-surface` | `text-on-surface` | Default body text; used on both `surface` and `surface-2` |
 | `border` | `border-border` | Default stroke for inputs, cards, table rows |
-| `muted` | `text-muted` | Secondary/subdued text (labels, captions, footer text) |
-| `focus-ring` | `ring-focus-ring` | Focus ring; `@theme inline` alias for `primary` |
+| `muted` | `text-muted` | Secondary text: labels, captions, footer |
+| `focus-ring` | `ring-focus-ring` | Focus ring; `@theme inline` alias of `primary` |
 
-**Rule: always use `text-on-X` when a coloured background is set.** For example, `bg-primary` must be paired with `text-on-primary`. The `on-*` tokens are tuned for WCAG AA contrast; hand-coding hex values risks failures.
+### Component-tier tokens
 
-### Hover tokens
+These exist so a theme can reshape one region without redeclaring the brand roles. Each is an `@theme inline` alias that defaults to the role token in brackets.
 
-Each role has a matching `*-hover` token (`--color-primary-hover`, `--color-error-hover`, etc.). These are auto-derived via `color-mix()` in `theme.css`, so sparse themes that only override the base role token still get a coherent hover automatically.
+| Token | Utility prefix | Defaults to |
+|---|---|---|
+| `header` / `on-header` | `bg-header`, `text-on-header` | `primary` / `on-primary` |
+| `header-action` / `on-header-action` | `bg-header-action` | `primary` / `on-primary` |
+| `sidepanel` | `bg-sidepanel` | `surface` — the docked/overlay nav in `_base_interface.html` |
 
-Component classes in `tailwind.components.css` already wire up hover; apply them rather than adding raw hover utilities in templates. When you do need a custom hover, use `hover:bg-*-hover` (e.g. `hover:bg-accent-hover`), never a hard-coded hex or a `hover:brightness-*` filter.
+### Shape and type
 
-**Note:** Tokens marked `*-bold` do not exist and must not be used — there is no such series in the token contract.
+FLS declares these under `--fls-*` and aliases them into Tailwind's slots via `@theme inline`, so a theme overrides the FLS value without re-declaring the Tailwind contract.
+
+| FLS token | Tailwind slot | Utility |
+|---|---|---|
+| `--fls-radius-sm` / `-md` / `-lg` / `-pill` | `--radius-*` | `rounded-md`, `rounded-pill` |
+| `--fls-font-sans` / `-display` / `-mono` | `--font-*` | `font-sans`, `font-display`, `font-mono` |
+
+### Tokens consumed by component classes, not utilities
+
+`--fls-card-radius`, `--fls-card-hero-height`, `--fls-card-padding`, and the `--fls-course-accent-*` series (five gradient slots, mapping 1:1 to `freedom_ls.content_engine.course_accent.PALETTE`) are read by the `.course-accent-N` and card rules in `tailwind.components.css`. They generate no utility classes. Themes rebrand course cards by overriding the `-from`/`-to`/`-icon` stops; the `-gradient` and `-soft` composites follow automatically. A theme may also set `--fls-course-accent-pattern` (all slots) or `--fls-course-accent-N-pattern` (one slot) to composite a texture layer above the gradient.
+
+## Hover tokens
+
+The seven coloured roles — `primary`, `secondary`, `accent`, `success`, `warning`, `error`, `info` — each have a `*-hover` token (`hover:bg-accent-hover`). They are auto-derived in `theme.css` via `color-mix()` against `--fls-hover-mix-color` (default `white`) at `--fls-hover-mix-amount` (default `12%`), so a sparse theme that overrides only the base role still gets a coherent hover, and a dark theme inverts the whole series by setting `--fls-hover-mix-color: black`. Any single `*-hover` token can be overridden with an explicit value where the auto-mix is wrong.
+
+`surface`, `surface-2`, `on-surface`, `border`, `muted`, and `focus-ring` have **no** hover variant.
+
+## Tokens that do not exist
+
+There is no `*-bold` series in any FLS theme. A `bg-primary-bold`-style utility resolves to nothing.
