@@ -50,8 +50,9 @@ setup and teardown.
 ### Resources (11)
 
 FLS-specific: `email_templates`, `template_repo_manifest`, `markdown_content`, `multi_tenant`.
-FLS delta addenda (extend the matching `ds` resource): `admin_interface`, `factory_boy`,
-`frontend_styling`, `templates_and_cotton`, `testing`, `playwright-testing`.
+FLS delta addenda (extend the matching `ds` resource): `admin_interface` (extends `ds`'s
+`admin_unfold` + `admin_guardian`, the pair FLS's config selects), `factory_boy`, `frontend_styling`,
+`templates_and_cotton`, `testing`, `playwright-testing`.
 `agent_memory_guidelines` (a copy — the canonical home is the `sdd` plugin; duplicated here because
 `${CLAUDE_PLUGIN_ROOT}` is per-plugin and `qa-data-helper` reads it).
 

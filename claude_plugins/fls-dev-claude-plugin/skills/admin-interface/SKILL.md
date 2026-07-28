@@ -6,7 +6,7 @@ allowed-tools: Read, Grep, Glob
 
 # Admin interface (FreedomLS overlay)
 
-Read `Skill(ds:admin-interface)` first for the generic admin configuration. That skill is theme-configurable; FLS sets `Admin theme: unfold` and `Object permissions (django-guardian): enabled` in `.claude/ds/config.md`, so its Unfold and django-guardian sections are the ones that apply here. This overlay adds **only** the FreedomLS site-aware requirement.
+Read `Skill(ds:admin-interface)` first for the generic admin configuration. That skill routes to one resource per theme; FLS sets `Admin theme: unfold` and `Object permissions (django-guardian): enabled` in `.claude/ds/config.md`, so the files that apply here are the `ds` plugin's `admin_unfold.md` and `admin_guardian.md` — never `admin_standard.md`. This overlay adds **only** the FreedomLS site-aware requirement.
 
 For full FLS patterns and examples, see `${CLAUDE_PLUGIN_ROOT}/resources/admin_interface.md`.
 

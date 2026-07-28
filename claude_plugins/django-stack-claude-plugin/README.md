@@ -50,10 +50,16 @@ same way.
 `kill_runserver.sh`, plus the hook scripts under `scripts/hooks/` (`ruff_fix.sh`,
 `post-edit-bandit.sh`, `security-guard.sh`).
 
-### Resources (9)
-`admin_interface`, `alpine_csp_build`, `alpine_no_csp`, `factory_boy`, `frontend_styling`,
-`templates_and_cotton`, `testing`, `playwright-testing`, `agent_memory_guidelines` (a self-contained
-copy — duplicated here because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and `code-reviewer` reads it).
+### Resources (11)
+`admin_standard`, `admin_unfold`, `admin_guardian`, `alpine_csp_build`, `alpine_no_csp`, `factory_boy`,
+`frontend_styling`, `templates_and_cotton`, `testing`, `playwright-testing`, `agent_memory_guidelines`
+(a self-contained copy — duplicated here because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and
+`code-reviewer` reads it).
+
+Config-driven resources come in mutually-exclusive sets, and the owning skill routes to exactly one:
+`admin_standard` **or** `admin_unfold` (plus `admin_guardian` only when enabled), and
+`alpine_csp_build` **or** `alpine_no_csp`. Each file is self-contained so a project never loads
+guidance for a setup it doesn't have.
 
 ### Hooks & configs
 `hooks/hooks.json` (ruff-fix + bandit on edit; a security guard on Bash/Write/Edit — any

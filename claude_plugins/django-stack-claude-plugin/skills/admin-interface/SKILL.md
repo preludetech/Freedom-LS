@@ -13,29 +13,39 @@ Use this skill when:
 - Adding admin inlines for related models
 - Configuring admin theme customizations
 
-## Read the project config first
+## Read the project config, then load one theme file
 
-This skill is configurable. Before writing admin code, read `.claude/ds/config.md` → `## Admin`:
+This skill is configurable. **Before writing admin code, read `.claude/ds/config.md` → `## Admin`** and
+load only the file(s) that config selects — the patterns differ by theme, so reading the wrong one
+produces admin classes that don't render.
 
-- **Admin theme** — `standard` (plain Django admin, the portable default) or `unfold`
-  (django-unfold theme). If the key is missing, assume `standard`.
-- **Object permissions (django-guardian)** — `enabled` or `disabled` (default `disabled`).
-  Only use `GuardedModelAdmin` when this is `enabled`.
+### 1. Theme — read exactly one of these
 
-Match the code you write to whatever the project already uses — if existing admin classes import
-from `django.contrib`, stay on standard admin even if you're unsure.
+| `Admin theme` | Read |
+|---|---|
+| **`standard`** (also the default when the file, section, or key is absent) | `${CLAUDE_PLUGIN_ROOT}/resources/admin_standard.md` |
+| **`unfold`** | `${CLAUDE_PLUGIN_ROOT}/resources/admin_unfold.md` |
 
-## Key Rules
+Each theme file is self-contained — base classes, common patterns, and rules. Don't read both.
+
+### 2. Object permissions — read only if enabled
+
+| `Object permissions (django-guardian)` | Read |
+|---|---|
+| **`disabled`** (default) | nothing — never use `GuardedModelAdmin` |
+| **`enabled`** | `${CLAUDE_PLUGIN_ROOT}/resources/admin_guardian.md`, in addition to the theme file |
+
+### Sanity check against the code
+
+Config should match reality, but the code wins: if existing admin classes import from
+`django.contrib.admin` while the config says `unfold` (or vice versa), follow the existing code and
+tell the user the config looks stale.
+
+## Key Rules (both themes)
 
 - Register with the `@admin.register(Model)` decorator.
-- **Standard theme** (default): base classes come from `django.contrib.admin`
-  (`admin.ModelAdmin`, `admin.TabularInline`, `admin.StackedInline`).
-- **Unfold theme**: base classes come from `unfold.admin` (`ModelAdmin`, `TabularInline`,
-  `StackedInline`) — not Django's — so they pick up the Unfold styling.
+- Inherit from the base classes your theme file specifies — this is the one thing the themes disagree
+  on, and getting it wrong fails silently (the page renders unstyled rather than erroring).
 - Use `autocomplete_fields` for ForeignKey/M2M to avoid loading all options.
 - Use `readonly_fields` for auto-generated fields (slug, timestamps).
 - Use `fieldsets` to organize complex forms.
-- Use `GuardedModelAdmin` (django-guardian) for object-level permissions **only when guardian is
-  enabled** in the config.
-
-For full patterns and examples for both themes, see `${CLAUDE_PLUGIN_ROOT}/resources/admin_interface.md`.

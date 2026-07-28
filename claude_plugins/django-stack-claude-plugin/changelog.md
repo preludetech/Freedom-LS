@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-07-28 — Split the admin resource so only the relevant file loads
+
+- **`resources/admin_interface.md` → three self-contained files**, one per configuration:
+  `admin_standard.md` (plain Django admin), `admin_unfold.md` (django-unfold theme), and
+  `admin_guardian.md` (object permissions). `skills/admin-interface/SKILL.md` became a router: read
+  `.claude/ds/config.md` → `## Admin`, load **exactly one** theme file, and add the guardian file only
+  when guardian is `enabled`.
+  - _Why:_ the single file made every project read all three configurations — including the two it
+    doesn't use — to find the one that applies. Worse, the shared "Common Patterns" section was written
+    in standard-admin imports with a note telling Unfold projects to mentally substitute
+    `unfold.admin`; that kind of indirection gets half-applied, and a wrong base class here fails
+    silently (the page renders unstyled rather than raising). Each theme file now spells out its own
+    imports throughout, so there is nothing to substitute. The duplication between the two theme files
+    is deliberate: they are alternatives, never read together.
+  - `admin_guardian.md` also picked up the concrete options for the Unfold/guardian MRO clash, which
+    the old file only mentioned as a one-line caveat.
+- `README.md` resource inventory updated (9 → 11) and now notes which resource sets are
+  mutually exclusive (`admin_standard` **or** `admin_unfold`; `alpine_csp_build` **or**
+  `alpine_no_csp`).
+- Downstream: `fls-dev`'s admin overlay and README now point at `admin_unfold.md` + `admin_guardian.md`
+  specifically, since that is the pair FLS's config selects.
+
 ## 2026-07-28 — Portability pass, part 2 (review follow-up)
 
 Reviewing part 1 against **both** consumer projects surfaced assumptions the first pass missed, one
