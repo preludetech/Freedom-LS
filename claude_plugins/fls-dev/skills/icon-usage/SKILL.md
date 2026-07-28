@@ -1,5 +1,5 @@
 ---
-name: using-icons
+name: icon-usage
 description: Use this skill when making use of any icons in any part of the frontend.
 allowed-tools: Read, Grep, Glob
 ---

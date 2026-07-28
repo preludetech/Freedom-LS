@@ -42,10 +42,13 @@ commands spawn `sdd`-plugin agents.
 `qa-data-helper` — creates QA test data with factory_boy factories. Its persistent memory lives at
 `.claude/agent-memory/fls-dev-qa-data-helper/`.
 
-### Scripts (4)
+### Scripts (6)
 
 `dev_db_delete.sh`, `dev_db_init.sh`, `db_recreate.sh`, `install_dev.sh` — per-branch dev/test database
 setup and teardown.
+`qa_cleanup.sh`, `compress_screenshots.py` — QA-run artifact cleanup and screenshot compression. They
+live here rather than in `sdd` because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and their only callers are
+the `fls-dev` commands `do_qa` and `update_product_docs`.
 
 ### Resources (11)
 

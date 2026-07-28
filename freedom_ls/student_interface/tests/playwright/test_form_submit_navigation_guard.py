@@ -1,7 +1,7 @@
 import pytest
 from playwright.sync_api import Page, expect
 
-from conftest import course_with_single_question_form, reverse_url
+from ..conftest import course_with_single_question_form, reverse_url
 
 # Dispatches a cancelable beforeunload and reports whether the runner's guard
 # called preventDefault on it (i.e. whether the browser would show the native

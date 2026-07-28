@@ -43,9 +43,6 @@ bare-repo/worktree mechanics (the FLS per-branch-database delta lives in an `fls
 `update-claude-project-settings` — audits `.claude/settings.json` and promotes useful permissions from
 `.claude/settings.local.json`.
 
-### Scripts (2)
-`compress_screenshots.py`, `qa_cleanup.sh`.
-
 ### Resources (1)
 `agent_memory_guidelines` — the canonical home for this generic guideline (it is also duplicated into
 `ds` and `fls-dev` because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and the agents that read it live in

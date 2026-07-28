@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-# This is the nearest `conftest` module for the playwright tests in this
-# package, so it shadows the top-level one for their
-# `from conftest import reverse_url` imports. Re-export the helper so those
-# imports keep resolving to it.
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+
+# Re-exported so tests in this package can pull it from the nearest conftest
+# alongside the fixtures below, rather than importing from two places.
 from freedom_ls.conftest import reverse_url
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,

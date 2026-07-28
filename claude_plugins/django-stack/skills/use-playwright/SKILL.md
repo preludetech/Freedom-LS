@@ -25,9 +25,9 @@ Read the project's dev-site config file (`.claude/ds/config.md` by default) for 
 `ds` ships the Playwright MCP server in its own `.mcp.json`, so its tools are exposed under the
 plugin-namespaced prefix `mcp__plugin_ds_playwright__*` (e.g.
 `mcp__plugin_ds_playwright__browser_snapshot`). A project that *also* declares a `playwright` server in
-a root `.mcp.json` gets the same tools a second time under the plain `mcp__playwright__*` prefix. Either
-works — use whichever prefix is present in your available tools. The tool names in this file are written
-without a prefix for that reason.
+its own root `.mcp.json` starts the server twice and gets the same tools again under the plain
+`mcp__playwright__*` prefix — drop the root declaration and rely on the one `ds` ships. The tool names
+in this file are written without a prefix, so use whichever prefix is present in your available tools.
 
 ## Key Rules
 

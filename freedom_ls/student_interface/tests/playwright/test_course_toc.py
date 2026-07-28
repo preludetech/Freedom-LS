@@ -3,7 +3,6 @@ import re
 import pytest
 from playwright.sync_api import Page, expect
 
-from conftest import reverse_url
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
@@ -15,6 +14,8 @@ from freedom_ls.student_interface.templatetags.course_storage_keys import (
     course_part_storage_key,
 )
 from freedom_ls.student_management.factories import UserCourseRegistrationFactory
+
+from ..conftest import reverse_url
 
 
 @pytest.mark.playwright

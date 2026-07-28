@@ -75,3 +75,10 @@
 - QA commands pass `site=` explicitly since mock_site_context isn't active outside tests
 - Deadline factories use `content_item` param (excluded) to set nullable GenericFK fields
 - `course.items.create(child=...)` pattern still used in some test files (GenericRelation manager)
+
+## Topic Files
+- [project_panel_framework.md](project_panel_framework.md) — Panel framework architecture: views.py dispatch, OOB patterns, Alpine components
+- [project_admonition_widgets.md](project_admonition_widgets.md) — Admonition/flashcard/accordion widgets: ADMONITION_TYPES registry, icon resolution, callout migration
+- [project_markdown_widget_pipeline.md](project_markdown_widget_pipeline.md) — render_markdown order, why cotton output is trusted, the `{% markdown slot %}` re-sanitise gotcha
+- [project_fls_content_plugin.md](project_fls_content_plugin.md) — Bundled Django-free validator; ruff/mypy/`uv --no-project` gotchas for `claude_plugins/fls-content/`
+- [icon_aria_gotcha.md](icon_aria_gotcha.md) — Why `aria_label=""` does not make an icon decorative

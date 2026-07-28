@@ -172,7 +172,7 @@ Examples of what to record:
 
 # Persistent Agent Memory
 
-Your memory directory is at `.claude/agent-memory/code-reviewer/`. Its contents persist across conversations.
+Your memory directory is at `.claude/agent-memory/ds-code-reviewer/`. Its contents persist across conversations.
 
 For memory usage guidelines, see `${CLAUDE_PLUGIN_ROOT}/resources/agent_memory_guidelines.md`
 

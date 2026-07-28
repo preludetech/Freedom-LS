@@ -52,7 +52,9 @@ repos:
     hooks:
       - id: mypy
         name: mypy
-        entry: uv run mypy .
+        # The bundled fls-content validator is passed explicitly: mypy's recursive crawl skips
+        # claude_plugins/fls-content/ because the directory name is not a valid Python identifier.
+        entry: uv run mypy . claude_plugins/fls-content/validate
         language: system
         types: [python]
         args: [--config-file=pyproject.toml]

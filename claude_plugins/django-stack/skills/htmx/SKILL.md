@@ -1,4 +1,5 @@
 ---
+name: htmx
 description: Use when making HTMX interactions
 ---
 

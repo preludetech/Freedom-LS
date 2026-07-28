@@ -10,7 +10,6 @@ image-spotlight feature.
 import pytest
 from playwright.sync_api import Page, expect
 
-from conftest import reverse_url
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
@@ -19,6 +18,8 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.student_management.factories import UserCourseRegistrationFactory
+
+from ..conftest import reverse_url
 
 
 def _build_picture_page(

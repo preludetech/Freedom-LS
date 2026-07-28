@@ -9,7 +9,6 @@ import pytest
 from django.urls import reverse
 from django.utils import timezone
 
-from conftest import course_with_form, register_user_for_course
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     FormFactory,
@@ -21,6 +20,8 @@ from freedom_ls.content_engine.models import FormStrategy
 from freedom_ls.student_interface.utils import count_form_questions
 from freedom_ls.student_progress.factories import FormProgressFactory
 from freedom_ls.student_progress.models import FormProgress
+
+from .conftest import course_with_form, register_user_for_course
 
 # ---------------------------------------------------------------------------
 # Helpers

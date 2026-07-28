@@ -1,7 +1,6 @@
 import pytest
 from playwright.sync_api import Page, expect
 
-from conftest import reverse_url
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
@@ -10,6 +9,8 @@ from freedom_ls.content_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
+
+from ..conftest import reverse_url
 
 
 @pytest.mark.playwright
