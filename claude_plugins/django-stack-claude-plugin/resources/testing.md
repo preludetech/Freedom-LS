@@ -161,7 +161,7 @@ def test_action_swaps_counter_oob(client):
     assert 'id="like-count"' in body
 ```
 
-At the unit-test level the response is raw bytes, so OOB assertions are necessarily string-based — they confirm the markup is *emitted*, not that the browser actually swapped it. Match the literal `hx-swap-oob` value the view sets (`"true"`, `"innerHTML"`, `"outerHTML"`, etc.). For an end-to-end check that the swap reaches the DOM, use a Playwright test (see `${CLAUDE_PLUGIN_ROOT}/resources/playwright-testing.md`).
+At the unit-test level the response is raw bytes, so OOB assertions are necessarily string-based — they confirm the markup is *emitted*, not that the browser actually swapped it. Match the literal `hx-swap-oob` value the view sets (`"true"`, `"innerHTML"`, `"outerHTML"`, etc.). To check that the swap actually reaches the DOM, use a Playwright test (see `${CLAUDE_PLUGIN_ROOT}/resources/playwright-testing.md`).
 
 ### Auth-bypass anti-pattern
 
@@ -248,7 +248,7 @@ The default `@pytest.mark.django_db` runs each test inside a transaction that is
 Use `transaction=True` **only** when the test genuinely needs:
 - `transaction.on_commit(...)` callbacks to fire (e.g. webhook event delivery).
 - `select_for_update` semantics inside the test.
-- Cross-connection visibility (e.g. Playwright e2e tests where the browser runs in a separate process and must see committed data).
+- Cross-connection visibility (e.g. Playwright tests where the browser runs in a separate process and must see committed data).
 
 When `transaction=True` is used, **add a one-line comment** on the marker explaining the reason. Example:
 
@@ -264,7 +264,7 @@ If you are tempted to add `transaction=True` for any other reason (it makes a fl
 Register every custom marker in `pyproject.toml`'s `[tool.pytest.ini_options]` `markers = [...]` — with `--strict-markers` on, an unregistered marker is a hard collection error.
 
 - **Unmarked (default) = portable.** Contract/unit tests that pass under any settings, theme, or installed-app list. Most tests belong here — this is the set a downstream consumer of a reusable app can run.
-- **`playwright`** — browser-dependent; needs a running server (`live_server`) and a real browser. See the `ds:playwright-tests` skill. Lives under per-app `tests/e2e/` dirs.
+- **`playwright`** — browser-dependent; needs a running server (`live_server`) and a real browser. See the `ds:playwright-tests` skill. Lives under per-app `tests/playwright/` dirs.
 
 When a test genuinely depends on repo-only, non-distributed fixture data (something excluded from the packaged distribution), mark it with a project-specific marker so a downstream consumer can exclude it — and prefer decoupling the test from that data first (pin the input or assert the contract; see "Don't assert hardcoded config values" below).
 

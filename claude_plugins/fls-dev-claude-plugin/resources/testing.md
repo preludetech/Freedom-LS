@@ -31,7 +31,7 @@ Where the generic resource uses `myapp` / `articles` / `subscriptions`, FLS's co
 ## Marker taxonomy — full FLS version
 
 - **Unmarked (default) = portable** — the downstream-valuable contract/unit set.
-- **`playwright`** — browser-dependent; the browser set a downstream excludes. Lives under per-app `tests/e2e/` dirs. See `Skill(fls-dev:playwright-tests)`.
+- **`playwright`** — browser-dependent; the browser set a downstream excludes. Lives under per-app `tests/playwright/` dirs. See `Skill(fls-dev:playwright-tests)`.
 - **`fls_internal`** — only valid under FLS's own settings, theme, branding, or demo content. Reach for it when a test's assertion is inherently tied to FLS's own repo state (e.g. a shipped `demo_content/` file excluded from the packaged distribution) — not merely because the test asserts an FLS-default value it could instead assert as a contract.
 - **`ci_only`** — existing slow / real-time tests, excluded from FLS's own default run too.
 

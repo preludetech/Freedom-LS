@@ -1,4 +1,4 @@
-# Playwright E2E Testing
+# Playwright Testing
 
 ## When to Use Playwright
 
@@ -25,9 +25,7 @@ For unit-level HTMX patterns (header simulation, `HX-Trigger` assertions, 422 va
 
 ## Portability: the `playwright` marker is the browser set a downstream excludes
 
-Every browser test is marked `@pytest.mark.playwright` and lives under `tests/e2e/`. Together these are the browser-dependent set a concrete downstream project cannot run headless-plain (no `live_server` + real browser to drive, and `pytest-socket` blocks outbound sockets by default). The marker is the only thing a downstream needs in order to exclude it.
-
-**No marker rename.** `playwright` is the one stable name for this set — it is not renamed to `e2e` (there is no separate `e2e` marker). Keep marking every new browser test `@pytest.mark.playwright` under `tests/e2e/`.
+Every browser test is marked `@pytest.mark.playwright` and lives under `tests/playwright/`. Together these are the browser-dependent set a concrete downstream project cannot run headless-plain (no `live_server` + real browser to drive, and `pytest-socket` blocks outbound sockets by default). The marker is the only thing a downstream needs in order to exclude it — so mark every browser test, without exception.
 
 For how the `playwright` marker sits alongside any other project-specific markers and the exact selection a downstream runs, see the `ds:testing` skill's marker guidance.
 
@@ -39,8 +37,8 @@ uv add --dev playwright
 playwright install
 
 # Run tests
-pytest tests/e2e/
-pytest tests/e2e/test_comment_flow.py
+pytest tests/playwright/
+pytest tests/playwright/test_comment_flow.py
 ```
 
 ## Test Structure
@@ -188,8 +186,8 @@ def authed_page(browser, authed_storage_state):
 
 ```
 tests/
-└── e2e/
-    ├── conftest.py          # Playwright fixtures
+└── playwright/
+    ├── conftest.py           # Playwright fixtures
     ├── test_comment_flow.py  # Comment-posting flows
     └── test_article_nav.py   # Article navigation
 ```

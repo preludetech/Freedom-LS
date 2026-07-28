@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-07-28 — One name for browser tests: `playwright`
+
+- **Browser tests live under `tests/playwright/`**, matching the `@pytest.mark.playwright` marker.
+  Previously the marker said `playwright` and the directory said `e2e`, so the docs carried a paragraph
+  explaining that the marker is *not* renamed to `e2e` and that no `e2e` marker exists. That paragraph
+  is deleted along with every other `e2e` mention: `resources/playwright-testing.md` (title, portability
+  section, commands, directory tree), `skills/playwright-tests/SKILL.md`, `skills/testing/SKILL.md`, and
+  `resources/testing.md`.
+  - _Why:_ two names for one concept meant the docs had to keep reconciling them. Fixing the
+    disagreement removes the need to describe it — the name is the name.
+  - `E2E` survives in exactly one place: the `playwright-tests` skill `description`, whose job is to
+    match the words a user might type. It documents no convention.
+- The "keep the marker and don't rename it" instruction became "mark every browser test, without
+  exception" — the same portability guarantee stated as a rule about what to do rather than a rule
+  about naming.
+
 ## 2026-07-28 — Read the Tailwind entry file; stop special-casing `tailwind.components.css`
 
 - **The mandatory step is now "read the Tailwind entry stylesheet and every project file it

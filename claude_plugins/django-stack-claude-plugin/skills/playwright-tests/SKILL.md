@@ -1,12 +1,12 @@
 ---
 name: playwright-tests
-description: Write Playwright E2E tests for user flows and browser interactions. Use when testing HTMX, user journeys, or when the user mentions E2E, Playwright, or browser testing.
+description: Write Playwright tests for user flows and browser interactions. Use when testing HTMX, user journeys, or when the user mentions Playwright, browser testing, or E2E.
 allowed-tools: Read, Grep, Glob
 ---
 
-# Playwright E2E Testing
+# Playwright Testing
 
-This Skill helps write end-to-end tests for browser-required behavior.
+This Skill helps write browser tests for behavior that needs a real browser.
 
 ## When to Use This Skill
 
@@ -15,7 +15,7 @@ Use this Skill when:
 - **Testing HTMX interactions** - Dynamic updates, partial swaps
 - **Testing JavaScript behavior** - Alpine.js, modals, interactive elements
 - **Integration testing across pages** - Navigation, full user journeys
-- **User mentions "E2E", "Playwright", "browser testing", "end-to-end"**
+- **User asks for a browser test** — however they phrase it
 - **Visual verification needed** - Layout, responsive behavior
 
 ## Key Rules
@@ -26,8 +26,8 @@ Use this Skill when:
 - Use `reverse()` for URLs, never hardcode
 - Use `expect(locator).to_be_visible()` and similar `expect()` matchers — they auto-wait and surface better failure messages than `wait_for_selector` / `is_visible`.
 - Locator priority: `get_by_role` → `get_by_label` → `get_by_text` → `get_by_test_id` → CSS as a last resort.
-- Test location: `tests/e2e/`
-- Keep every browser test under the `@pytest.mark.playwright` marker (all under `tests/e2e/`) and don't rename it — a consumer that can't run a real browser excludes exactly this set. See the Portability note in the resource file and the `ds:testing` skill's marker guidance.
+- Test location: `tests/playwright/`
+- Mark every browser test `@pytest.mark.playwright`, without exception — a consumer that can't run a real browser excludes exactly this set. See the Portability note in the resource file and the `ds:testing` skill's marker guidance.
 
 ## Best practices
 

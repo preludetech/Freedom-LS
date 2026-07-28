@@ -86,7 +86,7 @@ class StubCreateAction(CreateInstanceAction):
     def has_permission(
         self, request: HttpRequest, instance: Model | None = None
     ) -> bool:
-        # Stub: always allow in tests so the create button appears in e2e tests
+        # Stub: always allow in tests so the create button appears in playwright tests
         # without needing login. Permission enforcement is tested separately in
         # test_panel_actions.py using its own StubCreateAction.
         return True

@@ -31,7 +31,7 @@ This skill helps implement features and fix bugs using Test-Driven Development, 
 See:
 - `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` — full patterns, examples, TDD workflow, red flags
 - `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md` — factory patterns
-- The `ds:playwright-tests` skill for browser / E2E tests
+- The `ds:playwright-tests` skill for browser tests
 - The `ds:htmx` skill for production-side HTMX rules
 
 ## Best practices
