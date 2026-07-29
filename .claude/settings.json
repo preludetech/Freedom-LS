@@ -44,11 +44,9 @@
       "Bash(git mv *)",
       "Bash(chmod +x *)",
       "Bash(GIT_EDITOR=true git rebase --continue)",
-      "Bash(rm -f .sdd-work/*)",
-      "Bash(rmdir .sdd-work)",
+      "Bash(rm -rf .sdd-work/)",
       "Bash(git branch *)",
-      "Bash(git remote *)",
-      "Bash(jobs)"
+      "Bash(git remote *)"
     ],
     "deny": [
       "Write(config/settings_prod.py)",
