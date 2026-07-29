@@ -45,7 +45,8 @@ Claude Code project needs: a root `claude.sh` launcher (starting with the `djang
 flag + `$CLAUDE_PLUGINS_LOADED`), the `SessionStart` hook, and the `.gitignore` `settings.local.json`
 line. `claude.sh` is a shared file — `ds:init` only ensures its own `--plugin-dir` line and leaves any
 other plugin's line untouched, so if other plugins are installed their inits add their own lines the
-same way.
+same way. It also migrates artifacts an older init baked in: the `$FLS_PLUGIN` sentinel, the
+`FLS_PATH` variable, and pre-split header comments in `.claude/ds/scripts/*.sh`.
 
 ### Agents (1)
 `code-reviewer` — a generic Python/Django/HTMX reviewer. Its persistent memory lives at

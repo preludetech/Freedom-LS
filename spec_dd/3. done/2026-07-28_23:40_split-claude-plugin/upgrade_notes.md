@@ -67,8 +67,9 @@ Consequences for a downstream project:
 
 1. **Run the three inits, in this order** — `/ds:init`, then `/fls-dev:init`, then `/sdd:init`.
    Between them they migrate most of the above automatically: the `$FLS_PLUGIN` →
-   `$CLAUDE_PLUGINS_LOADED` sentinel, `FLS_PATH` → `PLUGINS_ROOT`, the old monolith `--plugin-dir`
-   line, the `.claude/fls/` → `.claude/fls-dev/` directory rename, the
+   `$CLAUDE_PLUGINS_LOADED` sentinel, `FLS_PATH` → `PLUGINS_ROOT` (in `claude.sh` **and** in every
+   pre-existing wrapper script, along with those scripts' `fls:init`-era header comments), the old
+   monolith `--plugin-dir` line, the `.claude/fls/` → `.claude/fls-dev/` directory rename, the
    `Bash(.claude/fls/scripts/*.sh:*)` permission literals, and the per-plugin `--plugin-dir` lines,
    config dirs, wrapper scripts and `.gitignore` entries. `/ds:init` must run first because it owns
    the shared `claude.sh` skeleton and the `SessionStart` hook.
@@ -78,10 +79,14 @@ Consequences for a downstream project:
    - `.claude/settings.json` — delete `"fls": true` from `enabledPlugins`, delete `Skill(fls:*)`, and
      delete `mcp__plugin_fls_playwright__*` (the inits add the new keys but do not remove the old).
    - `.gitignore` — delete the stale `.claude/fls/config.local.md` line.
-   - `.claude/fls-dev/scripts/` — the directory rename carries the four *generic* wrappers
-     (`find_available_port.sh`, `db_clear.sh`, `kill_runserver.sh`, `fetch_pr_comments.sh`) across
-     with it, while `/ds:init` writes fresh copies under `.claude/ds/scripts/`. Delete the four
-     duplicates from `.claude/fls-dev/scripts/`.
+   - `.claude/fls-dev/scripts/` — usually nothing to do. `/fls-dev:init` relocates the four *generic*
+     wrappers (`find_available_port.sh`, `db_clear.sh`, `kill_runserver.sh`, `fetch_pr_comments.sh`)
+     that the directory rename drags across: each is moved into `.claude/ds/scripts/` when absent
+     there, and deleted when `/ds:init` already wrote an un-customised copy. It stops short in exactly
+     one case — your copy has extra lines under `# === Project-specific setup ===` *and*
+     `.claude/ds/scripts/` already holds that script. It then reports the file rather than touching
+     it, and you move those lines into `.claude/ds/scripts/<name>.sh` yourself before deleting the
+     `.claude/fls-dev/` copy.
 
 3. **Rename your agent-memory directories** if you have them, to preserve accumulated memory:
    `git mv .claude/agent-memory/code-reviewer .claude/agent-memory/ds-code-reviewer` and
@@ -105,7 +110,10 @@ Consequences for a downstream project:
 
 6. **Verify** by quitting Claude and relaunching with `./claude.sh`. If the `SessionStart` hook stops
    the session, the sentinel migration did not land — check `claude.sh` sets
-   `CLAUDE_PLUGINS_LOADED=1`. Then confirm `/plugin` lists `ds`, `fls-dev`, and `sdd`.
+   `CLAUDE_PLUGINS_LOADED=1`. Then confirm `/plugin` lists `ds`, `fls-dev`, and `sdd`. Finally, check
+   by eye that `.claude/fls-dev/scripts/` holds only the four dev/DB wrappers (`dev_db_init.sh`,
+   `dev_db_delete.sh`, `db_recreate.sh`, `install_dev.sh`) and that no wrapper script anywhere under
+   `.claude/` still says `FLS_PATH` — both are invariants the inits assert.
 
 No `manage.py migrate`, no Tailwind rebuild, no `uv sync`, and no `npm install` are needed — nothing
 in this change touches models, Tailwind sources that affect output, or dependencies.
