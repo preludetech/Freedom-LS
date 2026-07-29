@@ -46,7 +46,11 @@
       "Bash(GIT_EDITOR=true git rebase --continue)",
       "Bash(rm -rf .sdd-work/)",
       "Bash(git branch *)",
-      "Bash(git remote *)"
+      "Bash(git remote *)",
+      "Bash(.claude/ds/scripts/*.sh:*)",
+      "Bash(npm run tailwind_build)",
+      "Bash(sleep 3 && curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:*)",
+      "Bash(.claude/fls-dev/scripts/*.sh:*)"
     ],
     "deny": [
       "Write(config/settings_prod.py)",
@@ -54,7 +58,8 @@
       "Bash(git push --force:*)",
       "Read(**/*.pem)",
       "Read(**/*.key)",
-      "Read(.env)"
+      "Read(.env)",
+      "Read(.env.*)"
     ]
   },
   "enabledPlugins": {

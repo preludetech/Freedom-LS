@@ -22,6 +22,8 @@ portable defaults) rather than hard-coding a choice:
 | Section → key | Values (default) | Read by |
 |---|---|---|
 | `## Project Settings` → `Dev base URL` | any URL (`http://127.0.0.1:8000`) | `ds:use-playwright` |
+| `## Dev Credentials` → `Admin email` | any email (blank) | `ds:use-playwright` |
+| `## Dev Credentials` → `Admin password` | any string (blank) | `ds:use-playwright` |
 | `## Alpine.js` → `CSP build` | `enabled` (default) / `disabled` | `ds:alpine-js` |
 | `## Admin` → `Admin theme` | `standard` (default) / `unfold` | `ds:admin-interface` |
 | `## Admin` → `Object permissions (django-guardian)` | `disabled` (default) / `enabled` | `ds:admin-interface` |
@@ -58,11 +60,14 @@ host project's own reviewer memory (the same convention `fls-dev` uses for `fls-
 `kill_runserver.sh`, plus the hook scripts under `scripts/hooks/` (`ruff_fix.sh`,
 `post-edit-bandit.sh`, `security-guard.sh`).
 
-### Resources (11)
+### Resources (13)
 `admin_standard`, `admin_unfold`, `admin_guardian`, `alpine_csp_build`, `alpine_no_csp`, `factory_boy`,
 `frontend_styling`, `templates_and_cotton`, `testing`, `playwright-testing`, `agent_memory_guidelines`
 (a self-contained copy — duplicated here because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and
-`code-reviewer` reads it).
+`code-reviewer` reads it), plus `launcher_editing` and `wrapper_script_migration` — the two procedures
+`/ds:init` follows, duplicated into each plugin that edits `claude.sh` or ships wrapper scripts, for
+the same per-plugin-root reason. Apart from a parameter table at the top, the copies are identical;
+diff them when you change one.
 
 Config-driven resources come in mutually-exclusive sets, and the owning skill routes to exactly one:
 `admin_standard` **or** `admin_unfold` (plus `admin_guardian` only when enabled), and

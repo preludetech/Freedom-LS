@@ -34,10 +34,13 @@ Top level: `init`, `do_qa`, `plan_security_review`, `plan_structure_review`,
 `/fls-dev:init` wires up only the `fls-dev` slice (its `enabledPlugins` key, its permissions, the
 `.claude/fls-dev/` config dir, and its dev/DB wrapper scripts) and detect-and-skips the `ds`-owned
 shared artifacts (root `claude.sh`, `SessionStart` hook, `.gitignore` `settings.local.json` line). It
-also migrates a legacy `.claude/fls/` config dir to `.claude/fls-dev/`, relocates the four `ds`-owned
-generic wrappers that rename drags along into `.claude/ds/scripts/` (preserving any project-specific
-customisation), and rewrites `FLS_PATH` → `PLUGINS_ROOT` plus the `fls`-era header comments in any
-pre-existing wrapper script. The FLS-specific SDD-step commands spawn `sdd`-plugin agents.
+also migrates a legacy `.claude/fls/` config dir **per file** — moving what has no counterpart,
+deleting only byte-identical duplicates, and preserving both sides of any conflict as a `.legacy`
+copy rather than merging. `ds`-owned wrappers the legacy dir carried are relocated to
+`.claude/ds/scripts/` without editing their contents, and `FLS_PATH` → `PLUGINS_ROOT` plus the
+`fls`-era header comments are rewritten in this plugin's own wrappers. `/ds:init` must run first —
+preflight enforces it, and nothing is written until every check passes. The FLS-specific SDD-step
+commands spawn `sdd`-plugin agents.
 
 ### Agents (1)
 

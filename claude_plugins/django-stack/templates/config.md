@@ -1,5 +1,8 @@
 # django-stack (ds) Plugin Configuration
 
+Written by `/ds:init` with portable defaults. Review and edit every value — these are a starting
+point, not a description of this project.
+
 ## Project Settings
 
 - Dev base URL: http://127.0.0.1:8000
@@ -15,9 +18,10 @@ takes precedence over this file.
 - Admin password:
 
 ## Alpine.js
+
 - CSP build: enabled
 
 ## Admin
 
-- Admin theme: unfold
-- Object permissions (django-guardian): enabled
+- Admin theme: standard
+- Object permissions (django-guardian): disabled

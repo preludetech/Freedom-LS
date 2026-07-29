@@ -65,7 +65,10 @@ Consequences for a downstream project:
 
 ## Manual steps
 
-1. **Run the three inits, in this order** — `/ds:init`, then `/fls-dev:init`, then `/sdd:init`.
+1. **Run the three inits, in this order** — `/ds:init`, then `/fls-dev:init`, then `/sdd:init`. The
+   order is enforced, not just advised: `/fls-dev:init` and `/sdd:init` refuse to run until `/ds:init`
+   has, and they refuse **before writing anything**, so a wrong-order attempt leaves the project
+   byte-for-byte untouched. All three are idempotent — re-running them changes nothing.
    Between them they migrate most of the above automatically: the `$FLS_PLUGIN` →
    `$CLAUDE_PLUGINS_LOADED` sentinel, `FLS_PATH` → `PLUGINS_ROOT` (in `claude.sh` **and** in every
    pre-existing wrapper script, along with those scripts' `fls:init`-era header comments), the old
@@ -79,14 +82,13 @@ Consequences for a downstream project:
    - `.claude/settings.json` — delete `"fls": true` from `enabledPlugins`, delete `Skill(fls:*)`, and
      delete `mcp__plugin_fls_playwright__*` (the inits add the new keys but do not remove the old).
    - `.gitignore` — delete the stale `.claude/fls/config.local.md` line.
-   - `.claude/fls-dev/scripts/` — usually nothing to do. `/fls-dev:init` relocates the four *generic*
-     wrappers (`find_available_port.sh`, `db_clear.sh`, `kill_runserver.sh`, `fetch_pr_comments.sh`)
-     that the directory rename drags across: each is moved into `.claude/ds/scripts/` when absent
-     there, and deleted when `/ds:init` already wrote an un-customised copy. It stops short in exactly
-     one case — your copy has extra lines under `# === Project-specific setup ===` *and*
-     `.claude/ds/scripts/` already holds that script. It then reports the file rather than touching
-     it, and you move those lines into `.claude/ds/scripts/<name>.sh` yourself before deleting the
-     `.claude/fls-dev/` copy.
+   - `.claude/fls/` — usually nothing to do. `/fls-dev:init` migrates it **per file**, never as a
+     directory: a file with no counterpart moves to `.claude/fls-dev/`; a byte-identical duplicate is
+     deleted; a file that differs is left alone with a gitignored `.legacy` copy preserved beside the
+     new one for you to reconcile. Wrappers belonging to `ds` go straight to `.claude/ds/scripts/`,
+     and anything carrying your own edits is kept and reported rather than moved or deleted. Whatever
+     survives is listed as an outstanding action with a per-file reason — work through that list, then
+     the leftover `.claude/fls/` can be removed.
 
 3. **Rename your agent-memory directories** if you have them, to preserve accumulated memory:
    `git mv .claude/agent-memory/code-reviewer .claude/agent-memory/ds-code-reviewer` and

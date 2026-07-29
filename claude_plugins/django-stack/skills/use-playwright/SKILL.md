@@ -18,7 +18,18 @@ Use this skill when:
 
 ## Connection Details
 
-Read the project's dev-site config file (`.claude/ds/config.md` by default) for the base URL and login credentials before using this skill.
+Read the project's dev-site config file (`.claude/ds/config.md` by default) before using this skill.
+If `.claude/ds/config.local.md` exists it carries machine-specific overrides and takes precedence.
+
+| Value | Section → key |
+|---|---|
+| Base URL | `## Project Settings` → `Dev base URL` |
+| Login email | `## Dev Credentials` → `Admin email` |
+| Login password | `## Dev Credentials` → `Admin password` |
+
+The credential keys ship **blank** — `ds` carries no product knowledge, so it cannot invent a login.
+A blank value means "this dev site needs no login, or the user has not recorded one": proceed without
+signing in, and ask the user only if you hit a login wall.
 
 ## Tool names
 
