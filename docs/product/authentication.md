@@ -47,7 +47,7 @@ This is the canonical description of the consent trail; other docs link here. Ho
 
 **Email-enumeration prevention.** Responses do not distinguish "email not registered" from "password incorrect", so the login and reset flows cannot be used to discover which addresses have accounts.
 
-Note that development settings deliberately relax password validation and rate limiting; both are active in production. See [security and data handling](./security-and-data-handling.md).
+Development settings deliberately relax exactly two of these: the password validators are emptied and the signup/login rate limits are switched off. Both are active in production. The brute-force lockout is not relaxed — it applies in development too. See [security and data handling](./security-and-data-handling.md).
 
 ## Sessions
 

@@ -7,7 +7,7 @@ _Last updated: 2026-08-05_
 - Educators use a single-page HTMX panel with three sections: Cohorts, Users, and Courses.
 - The cohort detail view includes a course-progress matrix showing completion, quiz scores, pass/fail, and deadlines for every student and course item.
 - The Courses list shows each course's visibility and an interest count, with drill-down to the interested students. Visibility is read-only here.
-- **Access control has a known gap** — cohort listings are permission-filtered, but detail pages are not. See [Access Control](#access-control).
+- **Access control has a known gap** — the Cohorts and Users listings are permission-filtered, but no detail page is, and the Courses list is not filtered at all. Reads only; writes are gated. See [Access Control](#access-control).
 - **Limits:** cohort membership, course registration, and deadline management are admin-only. There is no messaging capability.
 
 ## Panel Interface
@@ -24,13 +24,15 @@ The educator interface is a single-page application. Navigation within it is HTM
 
 ### Users
 
-Lists users who belong to at least one cohort the educator has permission on, showing name, email, and cohort memberships.
+Lists users who belong to at least one cohort the educator has permission on, showing name, email, and cohort memberships. The *listing* is filtered this way; an individual user's detail page is not — see [Access Control](#access-control).
 
 ### Courses
 
 ![Educator courses list with visibility and interest count](screenshots/educator_course_visibility.png)
 
 Lists all courses with their active student and cohort counts. Each course shows its **visibility** — published, coming soon, or hidden — so educators and admins see every course regardless of state; visibility filtering only ever applies to learners, never to educator or admin views.
+
+Unlike the Cohorts and Users lists, this list carries **no permission filter at all** — it is every course on the site, hidden ones included. See [Access Control](#access-control).
 
 Each course also shows an **interest count**: the number of learners who have expressed interest through the coming-soon waitlist. The count and its drill-down are shown for every course, not only coming-soon ones, so a course that has since launched still shows the demand it attracted.
 
@@ -50,9 +52,14 @@ The Course Progress tab on a cohort detail page shows a paginated matrix of stud
 
 Educators are granted object-level permission on specific cohorts by an administrator in the Django admin. The educator interface itself has no permission-management UI.
 
-**What is enforced.** Cohort and user *listings* are filtered to the cohorts the educator has been granted, so an educator's lists show only their own cohorts and the students in them.
+**What is enforced.** Two things. The Cohorts and Users *listings* are filtered to the cohorts the educator has been granted, so an educator's lists show only their own cohorts and the students in them. And every *write* — creating, renaming, or deleting a cohort — checks the object-level permission before it runs.
 
-**Known gap — detail pages are not permission-checked.** Cohort *detail* pages, including the course-progress matrix, do not re-check the object-level permission. The only gate on the interface as a whole is that the visitor be logged in. Any authenticated user on the site who navigates directly to a cohort detail URL can view that cohort and its progress data, whether or not they have been granted permission on it. This is a genuine authorisation gap, not a design decision, and it is tracked in the [roadmap](./roadmap.md).
+**Known gap — reads are not permission-checked.** The only gate on the interface as a whole is that the visitor be logged in. Beyond the two listings above, nothing checks whether the visitor has been granted anything:
+
+- **No detail page is permission-checked.** Cohort, user, and course detail pages are all fetched by identifier alone. Any authenticated user on the site who navigates directly to one can read it — for a cohort, that includes the full course-progress matrix: student names, email addresses, completion state, quiz scores, and deadlines.
+- **The Courses list is not filtered at all.** It shows every course on the site, including courses authored as `hidden`, which learners cannot otherwise discover.
+
+**Scope of the gap.** This is a read and disclosure defect. Write actions remain gated, so it is not a route to modifying or deleting another educator's data. It is a genuine authorisation gap, not a design decision, and it is tracked in the [roadmap](./roadmap.md).
 
 **Site isolation is unaffected.** All educator interface queries remain scoped to the current site, so nothing here crosses a tenant boundary. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
 

@@ -7,18 +7,22 @@ _Last updated: 2026-08-05_
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
 - **Half-built:** course applications (apply flow built; review/approval and authored form not built), role-based access control (built but not wired into access decisions), xAPI (non-functional stub), site-aware user groups (drafted, disabled).
 - **Not built:** 2FA/MFA, educator-interface management actions, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, and data-retention/data-subject-rights tooling.
-- **Known defect:** educator cohort detail pages are not permission-checked.
+- **Known defect:** the educator interface does not permission-check reads — no detail page is checked, and the Courses list is unfiltered.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
-## Educator Detail-Page Authorisation Gap
+## Educator Interface Authorisation Gap
 
 **Status: Known defect — not yet fixed.**
 
-Cohort listings in the educator interface are filtered by the per-cohort permission an administrator grants, but cohort *detail* pages — including the course-progress matrix — do not re-check that permission. The interface as a whole requires only that the visitor be logged in, so any authenticated user on the site who navigates directly to a cohort detail URL can view that cohort's students and their progress data.
+The educator interface filters its Cohorts and Users listings by the per-cohort permission an administrator grants, and it checks that permission on every write. It checks nothing on reads beyond those two listings. Because being logged in is the only gate on the interface as a whole, any authenticated user on the site can navigate directly to a URL and read:
 
-Site isolation is unaffected: the gap is within a single tenant, never across tenants.
+- **Any cohort's detail page**, including the course-progress matrix — student names, email addresses, completion state, quiz scores, and deadlines.
+- **Any individual user's detail page.**
+- **Every course on the site**, including courses authored as hidden. The Courses list carries no permission filter at all, unlike the other two listings.
 
-The fix is to apply the same object-level permission check on detail views that already governs the listings. See [educator interface](./educator-interface.md).
+Reads only — create, rename, and delete actions do check the object-level permission, so this is a disclosure defect rather than a route to modifying data. Site isolation is unaffected: the gap is within a single tenant, never across tenants.
+
+The fix is to apply object-level permission checks on the detail views and a permission filter on the Courses list, matching what already governs the Cohorts and Users listings. See [educator interface](./educator-interface.md#access-control).
 
 ## Course Applications
 

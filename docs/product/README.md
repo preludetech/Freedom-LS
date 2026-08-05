@@ -6,8 +6,9 @@ High-level product documentation for evaluators, operators, and downstream integ
 
 Each document labels its claims by actual state — built, operational (needs deployment configuration), or not yet built. Anything incomplete is collected in the [roadmap](./roadmap.md).
 
-**Two things worth knowing up front:**
+**Three things worth knowing up front:**
 
+- **There is an open authorisation defect.** The educator interface does not permission-check reads: any authenticated user on a site can read any cohort's progress data, any user's detail page, and the full course list, by URL. Writes are gated and site isolation is unaffected. Not fixed. See [educator interface](./educator-interface.md#access-control).
 - **FLS is not certified** under ISO 27001 or any other framework. The target host (Vultr Johannesburg) is ISO/IEC 27001:2022 certified, which covers the physical and hypervisor layers only — the operator owns everything above. See [security and data handling](./security-and-data-handling.md).
 - **FLS is never deployed standalone.** A production deployment is a downstream project that installs FLS as a submodule. See [deployment](./deployment.md).
 
@@ -19,7 +20,7 @@ Each document labels its claims by actual state — built, operational (needs de
 | [Authentication](./authentication.md) | Email-only login with mandatory verification, per-site signup policy with optional extra registration forms, hardened password and lockout policy, and an append-only legal-consent audit trail. No MFA. |
 | [Learner Experience](./learner-experience.md) | Public catalogue and course pages, personalised dashboard, self-enrolment or application, coming-soon and hidden course visibility with an express-interest waitlist, sequential unlock with resume, multi-page forms, quiz feedback, and deadlines. |
 | [Learner Tracking](./learner-tracking.md) | Per-item completion, quiz attempts and scores, course progress percentage, and a resume pointer. No time-on-task and no score export. |
-| [Educator Interface](./educator-interface.md) | Single-page panel with cohort, user, and course views, plus a course-progress matrix. Read and monitoring only — and with a known authorisation gap on detail pages. |
+| [Educator Interface](./educator-interface.md) | Single-page panel with cohort, user, and course views, plus a course-progress matrix. Read and monitoring only — and with a known authorisation gap: reads are not permission-checked. |
 | [Admin Interface](./admin-interface.md) | Django admin enhanced with Unfold, a configurable admin path, per-cohort educator permission grants, read-only consent records, and a webhook test-send action. |
 | [Webhooks](./webhooks.md) | Outbound events for registration, course registration, and course completion, with HMAC signing, encrypted per-site secrets, templated payloads, SSRF protection, retries, and a circuit breaker. |
 
@@ -41,4 +42,4 @@ Each document labels its claims by actual state — built, operational (needs de
 
 | Doc | Description |
 |---|---|
-| [Roadmap](./roadmap.md) | Everything not yet complete: the educator detail-page authorisation gap, application review, notifications, MFA, RBAC wiring, per-request media access control, data-retention tooling, xAPI, and enforcing CSP. |
+| [Roadmap](./roadmap.md) | Everything not yet complete: the educator interface authorisation gap, application review, notifications, MFA, RBAC wiring, per-request media access control, data-retention tooling, xAPI, and enforcing CSP. |

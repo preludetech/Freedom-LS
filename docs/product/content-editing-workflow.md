@@ -108,6 +108,7 @@ These widgets are available inside Markdown content:
 | `c-image-grid` | Multi-column image grid |
 | `c-table` | Accessible table wrapper |
 | `c-code-block` | Syntax-highlighted code block |
+| `c-slot` | Fills a named slot inside a widget that declares one (`name`) — this is how `c-flashcard`'s front and back are supplied |
 
 Admonition types default to note, tip, important, warning, danger, key takeaways, and checklist, and are configurable per deployment — as is the widget list itself. See [configuration and extension](./configuration-and-extension.md).
 

@@ -11,6 +11,7 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 - **Built:** Production trusts a TLS-terminating reverse proxy's forwarded scheme, so the HTTPS redirect and HSTS behave correctly behind it — and refuses to start at all if `SECRET_KEY` or `WEBHOOK_ENCRYPTION_SALT` is missing.
 - **Built:** Media in object storage is private by default, served via time-limited signed links rather than permanently public URLs. Error tracking is wired but inactive until an operator supplies credentials, and omits learner personal data by default.
 - **Report-only:** Content Security Policy runs in report-only mode — violations are reported, not blocked. HSTS is configurable but needs a staged rollout at deployment time; it is not meaningfully on by default.
+- **Known defect:** the educator interface does not permission-check reads. Any authenticated user on a site can read any cohort's progress data, any user's detail page, and the full course list, by URL. Writes are gated and site isolation is unaffected. See [educator interface authorisation](#educator-interface-authorisation-known-defect).
 - **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, and per-request access-controlled media downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
 - **Infrastructure:** The target deployment uses Vultr Johannesburg (ISO 27001:2022 certified). Vultr's certification covers physical and hypervisor layers; the operator owns everything above. See [shared responsibility](#infrastructure-and-shared-responsibility).
 
@@ -28,17 +29,35 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 
 ## Runtime Application Security
 
+### Educator Interface Authorisation (known defect)
+
+The educator interface grants educators object-level permission on specific cohorts, and filters its Cohorts and Users listings by those grants. It does not check them anywhere else.
+
+Being logged in is the only gate on the interface as a whole. Consequently any authenticated user on a site can, by navigating directly to a URL, read any cohort detail page and its course-progress matrix (student names, email addresses, completion state, quiz scores, deadlines), any individual user's detail page, and a list of every course on the site including ones authored as hidden.
+
+Three things bound the impact, and none of them excuse it:
+
+- **Reads only.** Create, rename, and delete actions do check the object-level permission, so this is not a route to modifying another educator's data.
+- **Within a tenant.** Every query is still site-scoped, so the gap never crosses a site boundary. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
+- **Authenticated only.** An anonymous visitor cannot reach any of it.
+
+It remains a genuine authorisation defect affecting learner personal data and learning records. It is not fixed, and it is documented here rather than omitted. Full detail is in [educator interface](./educator-interface.md#access-control); the fix is tracked in the [roadmap](./roadmap.md).
+
 **CSRF protection (built).** Active on all state-changing requests. HTMX requests carry the CSRF token via a global attribute on the page body, so every HTMX partial request is covered without per-view work.
 
 **Content sanitisation (built).** All authored Markdown is sanitised against a strict allowlist before rendering, using a Rust-based, memory-safe sanitiser. Only explicitly permitted content-widget tags and their declared attributes survive; all other HTML is stripped. This is the control that prevents stored XSS from authored content.
 
 **Content Security Policy (report-only — not enforcing).** A policy is configured and violations are reported, but nothing is blocked. The policy permits same-origin sources for most directives, allows inline scripts and styles (currently required by the HTMX and Alpine.js usage in templates), and restricts framing to same-origin plus YouTube. Enforcing mode has not been enabled — doing so requires refactoring the inline script and style usage first. Tracked in the [roadmap](./roadmap.md).
 
-**Clickjacking (built).** Production sends `X-Frame-Options: DENY`, so FLS pages cannot be framed by any site, including itself. Development uses `SAMEORIGIN` so locally-served PDF previews can be framed; in production those files are served from object storage on a separate origin.
+**Clickjacking (built in FLS's reference production settings).** FLS's own production settings send `X-Frame-Options: DENY`, so pages cannot be framed by any site, including themselves. The shared base default is `SAMEORIGIN`, so that locally-served PDF previews can be framed in development; in production those files are served from object storage on a separate origin.
 
-**Password hashing and strength (built).** Argon2 is the primary hasher, with older algorithms retained only so existing passwords can be migrated on next login. Passwords must be at least 10 characters and are rejected if they are numeric-only, on the common-password list, or too similar to the user's own details. Note that development settings disable these validators; they are active in production.
+Note the seam: `DENY` lives in FLS's production settings module, not in the defaults a downstream project imports. Because FLS is [never deployed standalone](./deployment.md), the deployed artifact is a concrete project, and that project must carry the production value forward — inheriting the base settings alone leaves it on `SAMEORIGIN`. The same applies to the other production-only headers and cookie flags. Verify with Django's `check --deploy` against the concrete project's own settings.
 
-**Brute-force lockout (built).** Five failed login attempts trigger a one-hour lockout, which resets on a successful login. The lockout applies independently by IP address and by username — either reaching the limit locks. Rate limiting is disabled in development settings.
+**Password hashing and strength (built).** Argon2 is the primary hasher, with older algorithms retained only so existing passwords can be migrated on next login. Passwords must be at least 10 characters and are rejected if they are numeric-only, on the common-password list, or too similar to the user's own details.
+
+**Brute-force lockout (built).** Five failed login attempts trigger a one-hour lockout, which resets on a successful login. The lockout applies independently by IP address and by username — either reaching the limit locks. This is configured in the shared base settings, so it is active in every environment, development included.
+
+**What development does relax.** Two things, and only these two: the password validators are emptied, and the signup/login rate limits are switched off. Both are active in production. The brute-force lockout above is not among them.
 
 **Static file serving (built).** Compressed, cache-busted static files are served directly from the application, removing a class of misconfigured-file-server vulnerabilities.
 
