@@ -1,50 +1,44 @@
 # Freedom LS — Product Documentation
 
-_Last updated: 2026-07-18_
+_Last updated: 2026-08-05_
 
-## Security Posture
+High-level product documentation for evaluators, operators, and downstream integrators: what Freedom LS does and what can be configured. It is not developer or API reference.
 
-Freedom LS applies security hardening at multiple layers: Argon2 password hashing, django-axes brute-force lockout (5 failures → 1-hour cooldown), SSRF-protected outbound webhooks with Fernet-encrypted per-site secrets, automatic site isolation on every ORM query via `SiteAwareManager`, and pre-commit security gates (detect-secrets, detect-private-key, bandit, ruff, mypy) that run on every commit. Content Security Policy is currently configured in report-only mode, not enforcing. There is no 2FA/MFA at this time; see the [roadmap](./roadmap.md).
+Each document labels its claims by actual state — built, operational (needs deployment configuration), or not yet built. Anything incomplete is collected in the [roadmap](./roadmap.md).
 
-## Infrastructure and Certification
+**Two things worth knowing up front:**
 
-The target deployment runs on **Vultr Johannesburg**, which holds **ISO/IEC 27001:2022** certification (plus SOC 2+ Type II, PCI-DSS, ISO 27017/27018). The Johannesburg point of presence keeps data in South Africa, which simplifies POPIA compliance argumentation — a practical advantage, not a legal mandate. **Freedom LS itself is not ISO 27001 certified** (or certified under any other framework). ISO 27001 operates on a shared-responsibility model: Vultr's certification covers physical data centre, hardware, network backbone, and hypervisor; the FLS operator owns OS hardening, access control, TLS configuration, encrypted backups, logging, incident response, and ISMS documentation. Details are in [security and data handling](./security-and-data-handling.md) and [deployment](./deployment.md).
-
----
+- **FLS is not certified** under ISO 27001 or any other framework. The target host (Vultr Johannesburg) is ISO/IEC 27001:2022 certified, which covers the physical and hypervisor layers only — the operator owns everything above. See [security and data handling](./security-and-data-handling.md).
+- **FLS is never deployed standalone.** A production deployment is a downstream project that installs FLS as a submodule. See [deployment](./deployment.md).
 
 ## Product Features
 
 | Doc | Description |
 |---|---|
-| [Content Editing Workflow](./content-editing-workflow.md) | Git-backed Markdown/YAML authoring with Pydantic validation, idempotent upsert by UUID, a four-stage render pipeline (python-markdown → nh3 → cotton → Django), and a tamper-evident legal-document consent audit trail. |
-| [Authentication](./authentication.md) | Email-only login with mandatory verification, per-site signup policy, Argon2 hashing, django-axes lockout, email-enumeration prevention, append-only `LegalConsent` records, and a separate API-client token system. |
-| [Learner Experience](./learner-experience.md) | Personalised dashboard, course detail with outcomes and difficulty, self-registration, coming-soon/hidden course visibility with an express-interest waitlist, sequential item unlock with resume, multi-page forms, quiz feedback, and hard/soft deadline enforcement. |
-| [Learner Tracking](./learner-tracking.md) | Per-item completion records (`TopicProgress`, `FormProgress`, `QuestionAnswer`), course progress percentage with auto-recalculation, and a resume pointer; no time-on-task or score export. |
-| [Educator Interface](./educator-interface.md) | Single-page HTMX panel with cohort, user, and course views; course-progress matrix (completion, quiz scores, deadlines); course visibility and coming-soon interest counts with drill-down to interested students; access restricted to permissioned cohorts via django-guardian. Membership and deadline management are admin-only. |
-| [Admin Interface](./admin-interface.md) | Django admin enhanced with Unfold; configurable admin URL; django-guardian object-level permissions for cohort grants; read-only `LegalConsent`; webhook test-send action. |
-| [Webhooks](./webhooks.md) | Outbound events (`user.registered`, `course.completed`, `course.registered`) with HMAC-SHA256 signing, Fernet-encrypted per-site secrets, Jinja2 body/header templates, SSRF protection, retry with exponential back-off, and circuit breaker. |
+| [Content Editing Workflow](./content-editing-workflow.md) | Git-backed Markdown/YAML authoring, validated and loaded by a CLI command; a sanitising render pipeline; content widgets; and version-tracked legal documents. No browser-based editor. |
+| [Authentication](./authentication.md) | Email-only login with mandatory verification, per-site signup policy with optional extra registration forms, hardened password and lockout policy, and an append-only legal-consent audit trail. No MFA. |
+| [Learner Experience](./learner-experience.md) | Public catalogue and course pages, personalised dashboard, self-enrolment or application, coming-soon and hidden course visibility with an express-interest waitlist, sequential unlock with resume, multi-page forms, quiz feedback, and deadlines. |
+| [Learner Tracking](./learner-tracking.md) | Per-item completion, quiz attempts and scores, course progress percentage, and a resume pointer. No time-on-task and no score export. |
+| [Educator Interface](./educator-interface.md) | Single-page panel with cohort, user, and course views, plus a course-progress matrix. Read and monitoring only — and with a known authorisation gap on detail pages. |
+| [Admin Interface](./admin-interface.md) | Django admin enhanced with Unfold, a configurable admin path, per-cohort educator permission grants, read-only consent records, and a webhook test-send action. |
+| [Webhooks](./webhooks.md) | Outbound events for registration, course registration, and course completion, with HMAC signing, encrypted per-site secrets, templated payloads, SSRF protection, retries, and a circuit breaker. |
 
 ## Security & Data
 
 | Doc | Description |
 |---|---|
-| [Multi-Tenancy and Isolation](./multi-tenancy-and-isolation.md) | One installation, multiple sites: `SiteAwareModel` and `SiteAwareManager` automatically scope every ORM query to the current site; users, content, progress, cohorts, webhooks, and secrets are fully isolated between tenants. |
-| [Security and Data Handling](./security-and-data-handling.md) | Cross-cutting reviewer doc covering dev-time controls, runtime application security, personal data collected, encryption in transit and at rest, incident response and data-deletion gaps, and the ISO 27001 shared-responsibility split. |
+| [Multi-Tenancy and Isolation](./multi-tenancy-and-isolation.md) | One installation, many sites. Every request's database queries are scoped automatically to the site matching its host; users, content, progress, cohorts, and webhooks are isolated between tenants. |
+| [Security and Data Handling](./security-and-data-handling.md) | The reviewer document: development and runtime controls, personal data collected, encryption in transit and at rest, the gaps in incident response and data deletion, and the ISO 27001 shared-responsibility split. |
 
-## Configuration
-
-| Doc | Description |
-|---|---|
-| [Configuration and Extension](./configuration-and-extension.md) | Branding settings, three-tier theming (CSS tokens → cotton slots → whole-file shadowing), two bundled themes, pluggable icon set, a host-project extension model with full template and component override capability, and an opt-in conformance suite for verifying a downstream's FLS wiring. |
-
-## Deployment
+## Configuration and Deployment
 
 | Doc | Description |
 |---|---|
-| [Deployment](./deployment.md) | V1 architecture: Vultr Johannesburg VPS, Docker Compose (Caddy + Gunicorn + PostgreSQL), Cloudflare free tier, Ansible provisioning, GitHub Actions CI/CD, `django-tasks-db` `DatabaseBackend` as the production task backend (ORM/Postgres, no Celery/Redis, requires a running `db_worker` process), and `pg_dump` + Backblaze B2 backup strategy (partially automated). |
+| [Configuration and Extension](./configuration-and-extension.md) | Branding, three-tier theming, two bundled themes and four icon sets, pluggable course-access backends, the host-project override model, and an opt-in conformance suite for verifying a downstream's wiring. |
+| [Deployment](./deployment.md) | V1 architecture — Vultr Johannesburg VPS, Docker Compose with Caddy, Gunicorn, and PostgreSQL. Database-backed background tasks requiring a worker process, object storage for media, health probes, and a partially automated backup strategy. |
 
 ## Roadmap
 
 | Doc | Description |
 |---|---|
-| [Roadmap](./roadmap.md) | Features not yet complete: 2FA/MFA (not built), RBAC role system (infrastructure exists, not wired into access control), xAPI (placeholder stub only), `SiteGroup` (commented out), and educator-interface management gaps. |
+| [Roadmap](./roadmap.md) | Everything not yet complete: the educator detail-page authorisation gap, application review, notifications, MFA, RBAC wiring, per-request media access control, data-retention tooling, xAPI, and enforcing CSP. |

@@ -1,206 +1,144 @@
 # Security and Data Handling
 
-_Last updated: 2026-07-19_
+_Last updated: 2026-08-05_
+
+This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
 ## Summary
 
-- **Built:** All HTTP traffic is protected at the application layer: CSRF middleware, nh3 markdown sanitisation (Rust-based allowlist), clickjacking prevention (`X_FRAME_OPTIONS=SAMEORIGIN`), Argon2 password hashing, django-axes brute-force lockout, multi-site data isolation via `SiteAwareManager`, and SSRF-protected webhook delivery with Fernet-encrypted secrets.
-- **Built:** Dev-time security gates run on every commit via pre-commit hooks: detect-secrets, detect-private-key, bandit (medium+ severity), ruff, mypy, shellcheck, and merge-conflict/large-file/AST checks.
-- **Built:** Production settings trust the reverse proxy's forwarded HTTPS scheme, so the HTTPS redirect and HSTS header behave correctly behind a TLS-terminating proxy, and refuse to start if `SECRET_KEY` is missing or empty rather than booting with broken session/CSRF signing.
-- **Built:** Media files in object storage are private by default — served via time-limited signed URLs rather than public links, so application-gated course files do not leak from a guessed or shared link. Error tracking (Sentry) is wired but inactive until an operator supplies credentials, and defaults to **not** sending learner personal data with error events.
-- **Report-only:** Content Security Policy is currently in report-only mode (`SECURE_CSP_REPORT_ONLY`), not enforcing. HSTS is configurable but requires a staged rollout during deployment; it is not active by default.
-- **Not yet built:** 2FA/MFA, automated data-deletion tooling, data-subject-rights tooling, and a formal incident-response runbook do not exist in code. These are documented honestly in §4 and tracked in the [roadmap](./roadmap.md).
-- **Not yet built:** A per-request access-controlled media gate (re-checking course access on every file download) — signed URLs are time-limited but not access-checked per request, so anyone holding a live URL can fetch the file until it expires. Automated scrubbing of personal data from error-tracking events is likewise absent — opting into sending personal data to Sentry sends it unredacted.
-- **Infrastructure:** The target deployment uses Vultr Johannesburg (ISO 27001:2022 certified). Vultr's certification covers physical and hypervisor layers; the FLS operator owns OS hardening, access control, logging, backups, and ISMS documentation. See §5 for the shared-responsibility split.
+- **Built:** CSRF protection on all requests including HTMX partials; strict allowlist sanitisation of all authored content; clickjacking prevention; Argon2 password hashing; brute-force lockout; automatic multi-site data isolation; SSRF-checked outbound webhooks with encrypted per-site secrets.
+- **Built:** Security gates run on every commit — secret and private-key detection, a Python security linter, linting, formatting, type checking, and shell linting. CI additionally runs dependency and static-analysis scans plus Django's own deployment checks.
+- **Built:** Production trusts a TLS-terminating reverse proxy's forwarded scheme, so the HTTPS redirect and HSTS behave correctly behind it — and refuses to start at all if `SECRET_KEY` or `WEBHOOK_ENCRYPTION_SALT` is missing.
+- **Built:** Media in object storage is private by default, served via time-limited signed links rather than permanently public URLs. Error tracking is wired but inactive until an operator supplies credentials, and omits learner personal data by default.
+- **Report-only:** Content Security Policy runs in report-only mode — violations are reported, not blocked. HSTS is configurable but needs a staged rollout at deployment time; it is not meaningfully on by default.
+- **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, and per-request access-controlled media downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
+- **Infrastructure:** The target deployment uses Vultr Johannesburg (ISO 27001:2022 certified). Vultr's certification covers physical and hypervisor layers; the operator owns everything above. See [shared responsibility](#infrastructure-and-shared-responsibility).
 
 ---
 
-## Development-time controls
+## Development-time Controls
 
-### Pre-commit hooks (built)
+**Pre-commit gates (built).** Every commit runs secret detection against a maintained baseline, private-key detection, a Python security linter at medium-and-above severity, linting and formatting, project-wide static type checking, shell linting, and file-hygiene checks including a 1 MB limit on added files. The authoritative list is `.pre-commit-config.yaml`.
 
-Every commit triggers the following checks, sourced directly from `.pre-commit-config.yaml`:
+**CI (built).** Pull requests run the test suite plus a security workflow covering static security analysis, dependency vulnerability auditing, and pattern-based scanning — and a job that runs Django's own `check --deploy` against the production settings, failing on warnings. This catches a weak or misconfigured production setting before it ships.
 
-| Hook | Purpose |
-|---|---|
-| `detect-secrets` (Yelp v1.5.0, baseline-checked) | Blocks accidental credential commits |
-| `detect-private-key` | Blocks private key file commits |
-| `bandit` (`-ll`, excludes `./tests`) | Python security linter, medium-and-above severity |
-| `ruff-check --fix` + `ruff-format` | Linting and formatting |
-| `mypy` (full project, `--config-file=pyproject.toml`) | Static type checking |
-| `shellcheck` | Shell script linting |
-| `check-merge-conflict` | Blocks unresolved merge markers |
-| `check-added-large-files` (max 1024 KB) | Prevents large binary blobs |
-| `check-ast` | Validates Python syntax |
-| `debug-statements` | Blocks accidental `pdb`/`breakpoint()` |
-| `trailing-whitespace`, `end-of-file-fixer`, `check-yaml`, `check-toml` | File hygiene |
-
-### GitHub security features (operational — requires configuration)
-
-Branch protection, Dependabot vulnerability alerts, secret scanning, and CodeQL are covered by the deployment security checklist. See [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §12 — this document does not duplicate that checklist.
+**GitHub platform features (operational).** Branch protection, Dependabot alerts, secret scanning, and CodeQL are configuration, not code. See [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §12 — not duplicated here.
 
 ---
 
-## Runtime application security
+## Runtime Application Security
 
-All controls below are **built** unless labelled otherwise.
+**CSRF protection (built).** Active on all state-changing requests. HTMX requests carry the CSRF token via a global attribute on the page body, so every HTMX partial request is covered without per-view work.
 
-### CSRF protection
+**Content sanitisation (built).** All authored Markdown is sanitised against a strict allowlist before rendering, using a Rust-based, memory-safe sanitiser. Only explicitly permitted content-widget tags and their declared attributes survive; all other HTML is stripped. This is the control that prevents stored XSS from authored content.
 
-`CsrfViewMiddleware` is active in the middleware stack. HTMX requests include the CSRF token via a global `hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'` attribute on the `<body>` element, so all HTMX partial requests are covered without per-view decoration.
+**Content Security Policy (report-only — not enforcing).** A policy is configured and violations are reported, but nothing is blocked. The policy permits same-origin sources for most directives, allows inline scripts and styles (currently required by the HTMX and Alpine.js usage in templates), and restricts framing to same-origin plus YouTube. Enforcing mode has not been enabled — doing so requires refactoring the inline script and style usage first. Tracked in the [roadmap](./roadmap.md).
 
-### Content Security Policy (report-only — not enforcing)
+**Clickjacking (built).** Production sends `X-Frame-Options: DENY`, so FLS pages cannot be framed by any site, including itself. Development uses `SAMEORIGIN` so locally-served PDF previews can be framed; in production those files are served from object storage on a separate origin.
 
-`django.middleware.csp.ContentSecurityPolicyMiddleware` is in the middleware stack. The policy is configured via `SECURE_CSP_REPORT_ONLY`, which means violations are reported but not blocked. The current policy permits `self` for most directives, `unsafe-inline` for scripts and styles (required by HTMX/Alpine.js inline usage), and restricts `frame-src` to `self`, `youtube.com`, and `youtube-nocookie.com`.
+**Password hashing and strength (built).** Argon2 is the primary hasher, with older algorithms retained only so existing passwords can be migrated on next login. Passwords must be at least 10 characters and are rejected if they are numeric-only, on the common-password list, or too similar to the user's own details. Note that development settings disable these validators; they are active in production.
 
-Enforcing mode (`SECURE_CSP`) has not been enabled. Removing `unsafe-inline` requires a refactor of inline script/style usage; this is tracked in the [roadmap](./roadmap.md).
+**Brute-force lockout (built).** Five failed login attempts trigger a one-hour lockout, which resets on a successful login. The lockout applies independently by IP address and by username — either reaching the limit locks. Rate limiting is disabled in development settings.
 
-### Markdown XSS sanitisation
+**Static file serving (built).** Compressed, cache-busted static files are served directly from the application, removing a class of misconfigured-file-server vulnerabilities.
 
-All markdown content is passed through the `nh3` sanitiser (Rust-based, memory-safe) before rendering. nh3 applies a strict allowlist defined in `MARKDOWN_ALLOWED_TAGS` — only explicitly permitted cotton component tags and their declared attributes pass through. All other HTML is stripped. This prevents stored XSS from authored content.
+**HTTPS behind a proxy (built).** Production runs behind a TLS-terminating reverse proxy and is configured to trust its forwarded scheme, so the application correctly recognises proxied requests as secure. Without this the HTTPS redirect could loop and HSTS would never take effect, because every request would look like plain HTTP. This is safe only under the proxy-hardening preconditions in [`../deployment-security-checklist.md`](../deployment-security-checklist.md).
 
-### Clickjacking
+**HSTS (operational — staged rollout required).** HSTS duration, subdomain inclusion, and preloading are configurable by environment variable, but are not set to meaningful values by default. A staged rollout must be followed at deployment time to avoid locking users out during certificate changes; the procedure is in [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §4.
 
-`XFrameOptionsMiddleware` sets `X-Frame-Options: SAMEORIGIN` on every response. This value is deliberate: PDF embed widgets require same-origin framing, so `DENY` is not used.
+**Required configuration fails fast (built).** Production refuses to start — a visible crash-loop rather than a silent misconfiguration — if `SECRET_KEY` is missing or empty, or if `WEBHOOK_ENCRYPTION_SALT` is unset. The latter previously fell back to a hardcoded development value, silently weakening webhook secret encryption; that fallback still applies in development and test but can no longer reach production. Both checks catch absence only; a present-but-weak key is caught separately by the deployment checks that run in CI.
 
-### HSTS (operational — staged rollout required)
+**Multi-site data isolation (built).** A single installation can serve multiple sites with fully isolated users, content, and settings. Isolation is automatic — every database query made while serving a request is scoped to the site matching that request's host. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md) for the canonical guarantee.
 
-`SecurityMiddleware` supports HSTS via the `HSTS_SECONDS`, `HSTS_INCLUDE_SUBDOMAINS`, and `HSTS_PRELOAD` environment variables. These are not set to meaningful values by default; a staged rollout must be followed at deployment time to avoid locking users out during TLS certificate changes. The four-stage rollout procedure (1 hour → 1 week → 1 year → preload submission) is documented in [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §4. HSTS also depends on the application correctly recognising proxied requests as HTTPS, as described above under [Security middleware](#security-middleware) — without that, the header is inert behind a TLS-terminating proxy regardless of these values.
+**Webhook controls (built).** Outbound webhooks are HMAC-signed or authenticated via templated headers, with per-site secrets encrypted at rest. In production, target URLs must be HTTPS and must not resolve to private, loopback, or link-local addresses. See [webhooks](./webhooks.md) for the full control set and the known DNS-rebinding limitation.
 
-### Brute-force lockout
+### Media File Access Control (built, with a stated limitation)
 
-django-axes is configured with `AXES_FAILURE_LIMIT = 5` and `AXES_COOLOFF_TIME = 1` (1 hour). After five failed login attempts from the same IP address or username, the account is locked for one hour. Lockout state resets on successful login (`AXES_RESET_ON_SUCCESS = True`). `AxesStandaloneBackend` is registered in `AUTHENTICATION_BACKENDS`.
+Course pages are access-controlled: a learner must be authorised before FLS renders a link to a course's files. Historically the files themselves — PDFs, videos, images — were not, because links pointed straight at storage.
 
-### Password hashing
+When object storage is configured, this is closed at the storage layer: files are private by default and every link is a time-limited signed URL, so files are neither publicly discoverable nor permanently reachable from a leaked link.
 
-Argon2 is the primary password hasher (`PASSWORD_HASHERS` first entry: `Argon2PasswordHasher`). PBKDF2, PBKDF2SHA1, and BCryptSHA256 are retained as fallback hashers for password migration. Minimum password length is 10 characters; common-password and numeric-only checks are enforced via `AUTH_PASSWORD_VALIDATORS`.
-
-### Static file serving
-
-WhiteNoise middleware serves compressed, cache-busted static files directly from Django without a separate file server. This removes a class of misconfigured file-server vulnerabilities.
-
-### Security middleware
-
-`django.middleware.security.SecurityMiddleware` is the first middleware in the stack. It handles SSL redirects (when `SECURE_SSL_REDIRECT` is set), secure cookie flags, and the HSTS header based on environment variable configuration.
-
-Because production runs behind a reverse proxy that terminates TLS, FLS is configured to trust the proxy-forwarded HTTPS scheme, so the application correctly recognises proxied requests as secure. Without this, the HTTPS redirect could loop indefinitely and the HSTS header would never take effect, because Django would see every request — even ones that reached the proxy over HTTPS — as plain HTTP. This is safe because production terminates TLS at a trusted proxy under the hardening preconditions in the deployment security checklist; see [`../deployment-security-checklist.md`](../deployment-security-checklist.md) for those preconditions.
-
-**`SECRET_KEY` is required at boot.** Production refuses to start if `SECRET_KEY` is missing or empty — the application fails immediately at startup (a visible crash-loop) rather than booting and silently running with a broken signing key, which would compromise session and CSRF signing. This check only catches an absent or empty key; a present-but-weak key is separately flagged by Django's deployment checks, which already run in CI.
-
-**`WEBHOOK_ENCRYPTION_SALT` is required at boot in production.** Production refuses to start if `WEBHOOK_ENCRYPTION_SALT` is missing or empty, failing immediately at startup (a visible crash-loop) — the same posture as the `SECRET_KEY` check above. Previously an unset salt fell back silently to a hardcoded development value, weakening the encryption of per-site webhook secrets; that fallback still applies in development and test, but can no longer reach production.
-
-### Multi-site data isolation
-
-A single FLS installation can serve multiple sites (domains), each with fully isolated users, content, and settings. Isolation is automatic: `SiteAwareManager` filters every ORM query to the current site derived from the request thread-local. No cross-site data leakage is possible through the ORM. This is the canonical statement of the isolation guarantee; see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md) for full detail.
-
-### Webhook controls
-
-Outbound webhooks use HMAC signing or custom auth headers. Per-site secrets are encrypted at rest using Fernet (`django-fernet-encrypted-fields`). In production mode, webhook target URLs are validated against an SSRF allowlist — only HTTPS URLs resolving to public IP addresses are permitted; private/loopback addresses are blocked. See [webhooks](./webhooks.md) for the full control set.
-
-### Media file access control (built, with a stated limitation)
-
-Course pages are access-controlled: a learner must be authorised to view a course before FLS renders a link to its content. Historically the files themselves — PDFs, videos, images — were not: once a file's URL was known it could be fetched directly regardless of course access, because file links pointed straight at storage rather than passing through a permission check on every download.
-
-When object storage is configured for a deployment, this gap is closed at the storage layer: files are private by default and every file link is a signed URL valid for a limited time (one hour, by default). This prevents files from being publicly discoverable or permanently accessible from a leaked link. Public, edge-cacheable serving remains available for deployments that deliberately opt into it (for example, to put large media behind a CDN), but that is an explicit choice, not the default.
-
-**Stated limitation:** this is storage-layer privacy, not per-request access control. FLS does not re-check whether a specific learner is still authorised for a specific file at the moment it is downloaded — a signed link, once issued, works for anyone who has it until it expires. The stronger control (routing every file download through the same access check used for course pages) is not yet built; see the [roadmap](./roadmap.md). When object storage is not configured, media is served from local disk without this signing — that mode is intended for development only. See [deployment](./deployment.md) for how object storage is configured.
+**Limitation:** this is storage-layer privacy, not per-request access control. FLS does not re-check whether a specific learner is still authorised at the moment a file is fetched — a signed link works for anyone holding it until it expires. Routing downloads through the same access check used for course pages is **not yet built**; see the [roadmap](./roadmap.md). Without object storage, media is served from local disk with no signing at all — that mode is for development only. See [deployment](./deployment.md) for configuration.
 
 ---
 
-## Data handling (current-state, honest)
+## Data Handling
 
-### Personal data collected
+### Personal Data Collected
 
-The following personal data is stored in the PostgreSQL database:
+FLS stores, in its PostgreSQL database:
 
-| Data | Model | Location |
-|---|---|---|
-| Email address | `User` | `freedom_ls_accounts_user` |
-| First name, last name | `User` | `freedom_ls_accounts_user` |
-| Hashed password (Argon2) | `User` | `freedom_ls_accounts_user` |
-| IP address at consent time | `LegalConsent` | `freedom_ls_accounts_legalconsent` |
-| Legal consent record (document type, version, git hash, timestamp, IP, consent method) | `LegalConsent` | `freedom_ls_accounts_legalconsent` |
-| Course progress, quiz answers | `CourseProgress`, `FormProgress`, `QuestionAnswer`, `TopicProgress` | `freedom_ls_student_progress_*` |
-| Webhook delivery logs (may contain user data in payload) | `WebhookDelivery`, `WebhookEvent` | `freedom_ls_webhooks_*` |
+- Email address, first name, and last name.
+- Hashed password (Argon2).
+- Legal consent records — which document and version was accepted, when, from what IP address, and by what method.
+- Learning activity — course progress, quiz answers, and scores.
+- Webhook delivery logs, which may contain user data inside the delivered payload.
 
-No payment data, government ID, or biometric data is stored by FLS itself.
+No payment data, government ID, or biometric data is stored by FLS.
 
-### Encryption in transit
+### Encryption in Transit
 
-TLS is termination at the Caddy reverse proxy (or Cloudflare edge) using certificates from Let's Encrypt. `SecurityMiddleware` can enforce HTTPS redirect via `SECURE_SSL_REDIRECT`. Database connection encryption is configurable via an environment variable and defaults to **disabled** for the shipped same-host containerised PostgreSQL, which does not run TLS; the modes that turn on database TLS (`require`/`verify-full`) are reserved for external or managed databases, where they should be used. For the shipped same-host topology, the control that actually matters is not publishing the database port to the host — not the SSL mode — see [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §3 for that control and for external/managed-database guidance. All of this requires correct deployment configuration.
+TLS terminates at the reverse proxy (or the CDN edge) using Let's Encrypt certificates, and the application can enforce an HTTPS redirect. Database connection encryption is configurable and defaults to *preferred* — encrypted if the server offers it, plaintext otherwise — which suits the shipped same-host containerised PostgreSQL, since it does not run TLS. Strict modes that require or verify TLS are intended for external or managed databases and should be used there. For the shipped topology the control that actually matters is not publishing the database port to the host; see [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §3.
 
-### Error tracking and personal data (Sentry)
+### Encryption at Rest
 
-FLS can report application errors to Sentry, an external error-tracking service, once an operator supplies credentials; it does nothing until then. Because FLS holds learner personal data (name, email, course activity), an error report can incidentally include that data — for example the email of the learner who triggered the error, or the contents of the request that caused it.
+**Webhook secrets only.** Per-site webhook secrets are encrypted with Fernet symmetric encryption, keyed from `SECRET_KEY` plus a required production salt. This is the only application-level encryption at rest in FLS.
 
-This is **off by default**: an operator must consciously opt in via a configuration flag before personal data is attached to error reports. Left at its default, error reports omit personal data. Automated redaction of personal data from error events before they reach Sentry is **not yet built** — so a deployment that opts into sending it should treat Sentry as a place where that data now lives, with no scrubbing safety net. See [deployment](./deployment.md) for how Sentry is configured.
+**Database-level.** FLS implements no transparent database encryption. Encryption of the PostgreSQL data volume is provider- or host-dependent. Do not overstate this.
 
-### Encryption at rest
+**Backups.** Encrypting database dumps before offsite sync is an operational requirement covered in [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §6. No backup scripts ship with FLS.
 
-**Webhook secrets only:** Per-site webhook secrets are encrypted at rest using Fernet symmetric encryption via `django-fernet-encrypted-fields`. The encryption key is derived from `SECRET_KEY` plus a `WEBHOOK_ENCRYPTION_SALT` environment variable. In production this salt is required at boot, with no silent fallback — see [Security middleware](#security-middleware) above.
+### Error Tracking and Personal Data
 
-**Database-level encryption:** FLS does not implement application-level encryption of database rows beyond webhook secrets. Encryption of the PostgreSQL data volume is provider-dependent (the host's disk encryption, or a containerised volume with host-level encryption). Do not overstate this: there is no transparent database encryption built into FLS.
+FLS can report application errors to Sentry once an operator supplies credentials; until then it does nothing. Because FLS holds learner personal data, an error report can incidentally include it — the email of the learner who triggered the error, or the contents of the offending request.
 
-**Backup encryption:** Encrypting `pg_dump` backups before offsite sync is an operational requirement covered in [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §6. No backup scripts are shipped with FLS.
+This is **off by default**: attaching personal data to error reports requires a deliberate opt-in. Left at its default, reports omit it. Automated redaction before events leave the application is **not yet built**, so a deployment that opts in should treat Sentry as a place that data now lives, with no scrubbing safety net. See [deployment](./deployment.md) for configuration.
 
-### Consent audit trail
+### Consent Audit Trail
 
-Every terms/privacy acceptance is recorded as an append-only `LegalConsent` row tying the consent to the exact git blob hash of the document version accepted, which makes the record tamper-evident. This is the closest thing FLS has to a personal-data processing record. The full field list and append-only guarantees are owned by [authentication](./authentication.md) — see it for detail.
+Every acceptance of a legal document is recorded as an append-only record tied to the exact committed version of the document accepted, which makes it tamper-evident. This is the closest thing FLS has to a personal-data processing record. Owned by [authentication](./authentication.md) — see it for detail.
 
-### Incident response (not yet built)
+### Incident Response (not yet built)
 
-No formal incident-response runbook, breach notification templates, or automated alerting for data events exists in the codebase. POPIA requires prompt notification to the Information Regulator in the event of a breach. Implementing a written incident-response plan is an operator responsibility, not something FLS ships. This is tracked in the [roadmap](./roadmap.md).
+No incident-response runbook, breach-notification templates, or automated alerting for data events exist in the codebase. POPIA requires prompt notification to the Information Regulator following a breach. A written plan is an operator responsibility, not something FLS ships. See the [roadmap](./roadmap.md).
 
-### Data retention and deletion (not yet built)
+### Retention, Deletion, and Data-Subject Rights (not yet built)
 
-There is no automated data-retention policy or scheduled deletion tooling in FLS. Deletion of user data is a manual database or Django admin operation (hard delete). The Django admin does not restrict delete permissions on user records beyond standard Django permission checks. Building automated retention/deletion tooling is tracked in the [roadmap](./roadmap.md).
-
-### Data-subject rights tooling (not yet built)
-
-FLS provides no built-in tooling for subject-access requests, right-to-erasure workflows, or data-portability exports. These are operational responsibilities for the FLS operator. Roadmap item: see [roadmap](./roadmap.md).
+There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. Deleting user data is a manual database or admin operation (hard delete), and the admin does not restrict delete permissions on user records beyond standard Django permission checks. All of this is operator responsibility today. See the [roadmap](./roadmap.md).
 
 ---
 
-## Infrastructure and shared responsibility
+## Infrastructure and Shared Responsibility
 
-The target deployment runs on **Vultr Johannesburg** (ISO/IEC 27001:2022 certified). ISO 27001 operates on a shared-responsibility model.
+The target deployment runs on **Vultr Johannesburg** (ISO/IEC 27001:2022 certified). ISO 27001 operates on a shared-responsibility model. **Freedom LS itself is not certified under ISO 27001 or any other framework.**
 
-### What Vultr's certification covers
+**Vultr's certification covers** the physical data centre (access control, CCTV, environmental), hardware maintenance and disposal, the network backbone and hypervisor layer, and Vultr's own staff and operational procedures.
 
-Vultr's ISO 27001:2022 certification covers the physical and infrastructure layers:
-
-- Physical data centre security (access controls, CCTV, environmental)
-- Hardware maintenance and disposal
-- Network backbone and hypervisor/virtualisation layer
-- Vultr's own operational procedures and staff controls
-
-### What the FLS operator owns
-
-The operator (the organisation deploying FLS) owns security in the cloud. Each area is labelled by current state:
+**The operator owns everything above that.** Current state of each area:
 
 | Responsibility area | Status |
 |---|---|
-| OS hardening (SSH key-only, fail2ban, UFW, unattended updates, root login disabled) | Operational — documented in checklist; not automated |
-| TLS encryption (Caddy, Let's Encrypt, HTTPS redirect) | Built — Caddy in deployment architecture; requires correct env configuration |
-| Encrypted backups (GPG before offsite sync to Backblaze B2) | Planned — strategy in playbook; no automation scripts ship with FLS |
-| PostgreSQL SSL connections | Operational — documented in checklist; connection string configuration required |
-| Access control (MFA on admin access, least privilege) | Operational — checklist item; MFA on infrastructure access is not automated |
+| OS hardening (SSH key-only, fail2ban, firewall, unattended updates, no root login) | Operational — documented in the checklist; not automated |
+| TLS encryption and HTTPS redirect | Built — reverse proxy in the deployment architecture; requires correct configuration |
+| Encrypted backups before offsite sync | Planned — strategy defined; no automation ships with FLS |
+| Database SSL connections | Operational — connection configuration required; see above |
+| Access control (MFA on infrastructure, least privilege) | Operational — checklist item; not automated |
 | Centralised logging and failed-login alerting | Not yet built — no logging pipeline is configured by FLS |
-| Backup and disaster recovery (documented schedule, tested restores, defined RTO/RPO) | Planned — strategy defined; restore testing and formal RTO/RPO are not yet documented |
-| Incident response plan | Not yet built — operator responsibility; no runbook ships with FLS |
-| Change management | Operational — Git-based PR workflow provides a documented audit trail of all code and config changes |
-| Vulnerability management (Trivy container scanning, Dependabot, periodic OWASP ZAP) | Operational — Dependabot and secret scanning documented in checklist; Trivy and ZAP are not automated |
-| ISMS documentation (Information Security Policy, Risk Assessment, Statement of Applicability) | Not yet built — operator responsibility |
+| Backup and disaster recovery (schedule, tested restores, RTO/RPO) | Planned — restore testing and formal RTO/RPO not yet documented |
+| Incident response plan | Not yet built — no runbook ships with FLS |
+| Change management | Operational — the Git/PR workflow provides an audit trail of code and config changes |
+| Vulnerability management | Operational — dependency scanning and static analysis run in CI; container image scanning and periodic penetration testing are not automated |
+| ISMS documentation (policy, risk assessment, statement of applicability) | Not yet built — operator responsibility |
 
 See [deployment](./deployment.md) for the full V1 architecture.
 
-### POPIA data residency
+## POPIA Data Residency
 
-South Africa's Protection of Personal Information Act (POPIA) does not impose a blanket data residency requirement. Cross-border transfers are permitted where adequate protection exists. Hosting on Vultr Johannesburg keeps personal data in South Africa, which simplifies compliance argumentation and aligns with the June 2024 National Policy on Data and Cloud. This is a **practical advantage**, not a legal mandate — unless FLS is deployed by a financial institution or government entity with sector-specific local-hosting requirements.
+South Africa's Protection of Personal Information Act does not impose a blanket data-residency requirement; cross-border transfers are permitted where adequate protection exists. Hosting on Vultr Johannesburg keeps personal data in South Africa, which simplifies compliance argumentation and aligns with the June 2024 National Policy on Data and Cloud. This is a **practical advantage, not a legal mandate** — unless FLS is deployed by a financial institution or government entity with sector-specific local-hosting obligations.
 
 ---
 
 ## References
 
-- [`../deployment-security-checklist.md`](../deployment-security-checklist.md) — pre-deployment checklist covering server hardening, TLS, HSTS rollout, firewall rules, backup encryption, log management, monitoring, GitHub security features, and environment variables. Referenced throughout this document; not duplicated here.
-- [Deployment](./deployment.md) — V1 architecture (Vultr JNB, Docker Compose, Caddy, Gunicorn, PostgreSQL, Cloudflare, Ansible, GitHub Actions).
+- [`../deployment-security-checklist.md`](../deployment-security-checklist.md) — pre-deployment checklist covering server hardening, TLS, HSTS rollout, firewall rules, backup encryption, log management, monitoring, GitHub security features, and environment variables. Referenced throughout; not duplicated here.
+- [Deployment](./deployment.md) — the V1 architecture.

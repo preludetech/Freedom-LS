@@ -1,71 +1,67 @@
 # Educator Interface
 
-_Last updated: 2026-07-01_
+_Last updated: 2026-08-05_
 
 ## Summary
 
-- Educators access a single-page HTMX panel interface with three sections: Cohorts, Users, and Courses.
-- Object-level access control via django-guardian ensures educators see only the cohorts they have been explicitly granted permission on; no cross-cohort data leakage is possible through the interface.
-- The cohort detail view includes a course-progress matrix showing completion status, quiz scores, pass/fail, and deadlines for every student × course-item combination.
-- Courses carry a visibility state (published / coming soon / hidden); the Courses list shows each course's visibility and, for coming-soon courses, an interest count with drill-down to the interested students. Visibility itself is read-only in the interface — see [content editing workflow](./content-editing-workflow.md) for how it's set.
-- **Limits:** cohort membership management, course registration, and deadline-setting are admin-only operations — they cannot be performed from the educator interface. There is no messaging capability.
+- Educators use a single-page HTMX panel with three sections: Cohorts, Users, and Courses.
+- The cohort detail view includes a course-progress matrix showing completion, quiz scores, pass/fail, and deadlines for every student and course item.
+- The Courses list shows each course's visibility and an interest count, with drill-down to the interested students. Visibility is read-only here.
+- **Access control has a known gap** — cohort listings are permission-filtered, but detail pages are not. See [Access Control](#access-control).
+- **Limits:** cohort membership, course registration, and deadline management are admin-only. There is no messaging capability.
 
 ## Panel Interface
 
 ![Educator panel](screenshots/educator_panel.png)
 
-The educator interface is served at `educator_interface:interface` as a single-page application. All navigation within the interface is HTMX-driven: clicking a section or item updates the main panel and the sidebar without a full page reload. The underlying panel framework also handles out-of-band (OOB) updates to the sidebar and breadcrumb.
-
-The interface has three top-level sections:
+The educator interface is a single-page application. Navigation within it is HTMX-driven: selecting a section or item updates the main panel, sidebar, and breadcrumb without a full page reload.
 
 ### Cohorts
 
-- **List view** — shows each permissioned cohort with its student count and the courses the cohort is registered for.
-- **Detail view** — shows the cohort name (editable inline), the list of student members, and the list of registered courses. Create and delete cohort actions are available.
-- **Course Progress tab** — the course-progress matrix (see below).
+- **List view** — each cohort the educator has permission on, with its student count and registered courses.
+- **Detail view** — cohort name (editable inline), student members, and registered courses. Cohorts can be created and deleted.
+- **Course Progress tab** — the [progress matrix](#course-progress-matrix).
 
 ### Users
 
-Lists users who are members of at least one cohort the educator has permission on. Each user entry shows name, email address, and their cohort memberships. Educators cannot see users outside their permissioned cohorts.
+Lists users who belong to at least one cohort the educator has permission on, showing name, email, and cohort memberships.
 
 ### Courses
 
 ![Educator courses list with visibility and interest count](screenshots/educator_course_visibility.png)
 
-Lists all courses with the count of active students and cohorts. Each course also shows its **visibility** — published, coming soon, or hidden — so educators and admins can see every course regardless of state; visibility filtering only ever applies to learners, never to the educator or admin querysets. For courses that are coming soon, the list also shows an **interest count**: the number of learners who have expressed interest via the coming-soon waitlist, giving educators a demand signal for what to launch next.
+Lists all courses with their active student and cohort counts. Each course shows its **visibility** — published, coming soon, or hidden — so educators and admins see every course regardless of state; visibility filtering only ever applies to learners, never to educator or admin views.
+
+Each course also shows an **interest count**: the number of learners who have expressed interest through the coming-soon waitlist. The count and its drill-down are shown for every course, not only coming-soon ones, so a course that has since launched still shows the demand it attracted.
 
 ![Interested-students drill-down panel](screenshots/educator_interest_panel.png)
 
-The course detail view shows the course title and category, the cohorts registered for the course, any direct (non-cohort) student registrations, and — for coming-soon courses — a drill-down panel listing the interested students by name and the date they expressed interest, making the waitlist actionable. Interest counts and the drill-down are scoped to the current site, consistent with the rest of the interface.
+The course detail view shows the title and category, the cohorts registered for the course, any direct non-cohort registrations, and a drill-down panel listing interested students by name with the date they expressed interest — making the waitlist actionable. All of it is scoped to the current site.
 
-Visibility itself is **read-only** here and in the Django admin — it cannot be changed from either interface. Visibility is set solely in the course content front-matter and takes effect when the course is (re-)imported; see [content editing workflow](./content-editing-workflow.md) for how educators/authors flip a course between published, coming soon, and hidden. The learner-facing experience of coming-soon and hidden courses (badging, the "I'm interested" affordance, hidden-course 404 behaviour) is covered in [learner experience](./learner-experience.md).
+Visibility is **read-only** here and in the Django admin. It is set solely in the course's content frontmatter and takes effect on import — see [content editing workflow](./content-editing-workflow.md). The learner-facing experience of coming-soon and hidden courses is covered in [learner experience](./learner-experience.md).
 
 ## Course-Progress Matrix
 
 ![Cohort progress matrix](screenshots/educator_cohort_progress_matrix.png)
 
-The Course Progress tab on a cohort detail page presents a paginated matrix of students (rows) × course items (columns). Each cell shows:
-
-- Completion status (complete / in progress / not started).
-- Quiz score and pass/fail outcome for form-type items.
-- Deadline for the item, with an overdue indicator if the deadline has passed and the item is not complete.
-
-Both cohort-level deadlines and per-student deadline overrides are visible in the matrix.
+The Course Progress tab on a cohort detail page shows a paginated matrix of students (rows) against course items (columns). Each cell shows completion status (complete / in progress / not started), the quiz score and pass/fail outcome for form items, and the item's deadline with an overdue indicator where the deadline has passed and the item is not complete. Both cohort-level deadlines and per-student overrides are visible.
 
 ## Access Control
 
-The educator interface uses **django-guardian** object-level permissions. An educator sees a cohort only if they have the `view_cohort` permission granted on that specific `Cohort` object. This is checked via `get_objects_for_user` in every cohort list and detail view.
+Educators are granted object-level permission on specific cohorts by an administrator in the Django admin. The educator interface itself has no permission-management UI.
 
-Granting and revoking cohort permissions is performed in the Django admin by an administrator. The educator interface itself has no permission-management UI.
+**What is enforced.** Cohort and user *listings* are filtered to the cohorts the educator has been granted, so an educator's lists show only their own cohorts and the students in them.
 
-Site-level isolation applies: the educator interface queries are scoped to the current site. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md) for the full isolation model.
+**Known gap — detail pages are not permission-checked.** Cohort *detail* pages, including the course-progress matrix, do not re-check the object-level permission. The only gate on the interface as a whole is that the visitor be logged in. Any authenticated user on the site who navigates directly to a cohort detail URL can view that cohort and its progress data, whether or not they have been granted permission on it. This is a genuine authorisation gap, not a design decision, and it is tracked in the [roadmap](./roadmap.md).
+
+**Site isolation is unaffected.** All educator interface queries remain scoped to the current site, so nothing here crosses a tenant boundary. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
 
 ## Limits
 
-The following operations are **admin-only** and cannot be performed from the educator interface:
+These operations are **admin-only** and cannot be performed from the educator interface:
 
-- **Adding or removing students from a cohort** — cohort membership is managed in the Django admin.
-- **Registering a cohort for a course** — course registration (cohort or individual) is managed in the Django admin.
-- **Setting or modifying deadlines** — cohort deadlines, per-student deadlines, and deadline overrides are all set in the Django admin.
+- **Cohort membership** — adding or removing students.
+- **Course registration** — registering a cohort or an individual student for a course.
+- **Deadlines** — cohort deadlines, per-student deadlines, and overrides.
 
-**There is no messaging capability.** Educators cannot send messages or emails to students from the educator interface.
+**There is no messaging capability.** Educators cannot send messages or emails to students from FLS.

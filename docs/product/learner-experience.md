@@ -1,15 +1,15 @@
 # Learner Experience
 
-_Last updated: 2026-07-17_
+_Last updated: 2026-08-05_
 
 ## Summary
 
-- Anonymous (logged-out) visitors can browse the home page, the course catalogue, and individual course detail pages without creating an account. Login is required only at the committing action (enrolment or application). The three personalised dashboard sections (In Progress, Recommended, Completed) are shown only to authenticated learners; anonymous visitors see a value-proposition hero and a discovery section instead.
+- Anonymous (logged-out) visitors can browse the home page, the course catalogue, and individual course detail pages without creating an account. Login is required only at the committing action (enrolment or application). The three personalised dashboard sections (In Progress, Recommended Courses, Learning History) are shown only to authenticated learners; anonymous visitors see a value-proposition hero and a discovery section instead.
 - Each course listing entry shows an **access-model badge** (Free / By application) so a visitor can tell the access model before clicking through. Each course displays learning outcomes, difficulty, estimated duration, and a description; the acquisition CTA wording is action-forward: free courses show "Enrol for free", application-gated courses show "Apply now" (or "View my application" for a returning applicant).
 - Independently of access type, a course also has a visibility state — published, coming soon, or hidden — that governs whether it's discoverable and enrollable; see [Course Visibility](#course-visibility-coming-soon--hidden) below.
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
-- Hard deadlines lock uncompleted content after expiry; soft deadlines show an overdue indicator without locking.
+- Hard deadlines lock uncompleted content after expiry; soft deadlines are shown to the learner but never lock anything.
 
 ## Dashboard
 
@@ -17,15 +17,15 @@ _Last updated: 2026-07-17_
 
 The student dashboard serves as the home page at `/`. Its content branches on whether the visitor is authenticated.
 
-**Anonymous visitors** see a value-proposition hero (a short headline, subtext, and a single "Browse all courses" CTA) at the top of the page, followed by the **Available courses** discovery section showing a sample of courses on the site. The personalised sections — the "Welcome back" greeting, In Progress, Recommended, Learning History, and any backend panels — are not shown. They are omitted entirely rather than shown as "sign in to see this" placeholders.
+**Anonymous visitors** see a value-proposition hero (a short headline, subtext, and a single "Browse all courses" CTA) at the top of the page, followed by the **Available courses** discovery section showing a sample of courses on the site. The personalised sections — the "Welcome back" greeting, In Progress, Recommended Courses, Learning History, and any backend panels — are not shown. They are omitted entirely rather than shown as "sign in to see this" placeholders.
 
 ![Anonymous home page with value-proposition hero and course discovery](screenshots/learner_home_anonymous.png)
 
 **Authenticated learners** see the personalised greeting and three sections:
 
-- **In progress** — courses the learner has started but not completed, ordered by recent activity.
-- **Recommended** — courses an administrator has surfaced for the learner.
-- **Completed** — courses the learner has finished.
+- **In Progress** — courses the learner has started but not completed, ordered by recent activity.
+- **Recommended Courses** — courses an administrator has surfaced for the learner.
+- **Learning History** — courses the learner has finished.
 
 Each course card shows the course title, category, and progress percentage, plus a low-emphasis "Details" link back to the course's [detail page](#course-detail-page). This link appears on every card in every state (in progress, completed, not yet registered, or coming soon) and on the anonymous "Available courses" grid, giving a consistent way back to the overview without competing with the card's primary action.
 
@@ -92,7 +92,7 @@ Visibility is set per course in the course's content file and takes effect on im
 The course detail page is publicly accessible. Anonymous visitors and authenticated learners alike can view:
 
 - **Learning outcomes** — a list of what the learner will achieve.
-- **Difficulty** — one of: beginner, intermediate, advanced, all levels.
+- **Difficulty** — one of: beginner, intermediate, advanced, all levels (authored as `all_levels`).
 - **Estimated duration** — a human-readable estimate of how long the course takes.
 - **Description** — full course markdown description.
 - **Access-model signal** — the "Enrolment" stat near the CTA shows "Free · open" for free courses and "By application" for application-gated courses.
@@ -197,9 +197,9 @@ When every item in a course is complete, the learner reaches a finish page and t
 
 ## Deadlines
 
-Deadlines are set by administrators (cohort-level or per-student) and are read-only from the learner's perspective.
+Deadlines are set by administrators (cohort-level or per-student) and are read-only from the learner's perspective. Applicable deadline dates appear as colour-coded badges against items in the course contents.
 
-- **Hard deadline** — if the deadline has expired and the item is not yet complete, the item is locked. A lock icon is shown and the learner cannot access the item.
-- **Soft deadline** — the deadline is shown as overdue without locking the item. The learner can still access and complete the content.
+- **Hard deadline** — once expired, an incomplete item is locked. A lock icon is shown and the learner cannot open it. Completed items are never locked.
+- **Soft deadline** — shown to the learner but never locks anything; the content stays accessible and completable past the date. Note there is no explicit "overdue" state on the learner's side — overdue highlighting appears only in the educator's [progress matrix](./educator-interface.md#course-progress-matrix).
 
-The most permissive deadline governs when both a cohort deadline and a per-student override apply. The deadline feature can be disabled site-wide via the `DEADLINES_ACTIVE` setting.
+Where both a cohort deadline and a per-student override apply, the most permissive — the latest — governs. Deadlines can be disabled site-wide via the `DEADLINES_ACTIVE` setting.

@@ -1,18 +1,18 @@
 # Deployment
 
-_Last updated: 2026-07-19_
+_Last updated: 2026-08-05_
 
 ## Summary
 
-- The target production architecture is a single Vultr Johannesburg VPS running Docker Compose: a reverse proxy with automatic HTTPS + Gunicorn + Django 6 + containerised PostgreSQL. A concrete project deploys from the [template repo](#deploying-a-concrete-submodule-based-project), whose Compose stack uses Caddy for that reverse proxy.
-- Vultr's Johannesburg data centre is ISO/IEC 27001:2022 certified and provides a South African point of presence — a practical advantage for POPIA data-residency arguments, not a legal mandate.
-- The deploy pipeline's build step is built: the template repo ships a GitHub Actions workflow that builds the application image and pushes a per-commit, SHA-tagged image to GHCR — the deploy/rollback unit. What remains not yet built is Ansible VPS provisioning/hardening and the SSH-pull step that deploys a tagged image onto the VPS. This FLS repo itself still ships only test and security-scanning CI; the build-and-push workflow lives in the template repo, alongside the rest of the deploy scaffolding (see [Deploying a concrete (submodule-based) project](#deploying-a-concrete-submodule-based-project)).
-- Backup strategy is `pg_dump` cron + encrypted offsite sync to Backblaze B2. Parts of this strategy are not yet automated — see below.
-- Scale estimates for Phase 1 are approximately 50–200 concurrent users and up to ~1,000 registered students. These are estimates based on typical Gunicorn configurations; they have not been load-tested.
+- The target production architecture is a single Vultr Johannesburg VPS running Docker Compose: a reverse proxy with automatic HTTPS, Gunicorn, Django 6, and containerised PostgreSQL.
+- FLS is never deployed standalone — a production deployment is a **concrete project** built from the template repo, which owns the Compose and reverse-proxy scaffolding.
+- The build step is built: the template repo ships CI that builds and pushes a per-commit, SHA-tagged image. VPS provisioning and the deploy step are **not yet built**.
+- Backups are a defined strategy, not an automated system.
+- Scale figures are estimates from typical Gunicorn configurations. They have **not** been load-tested.
 
 ## Target Architecture
 
-This is the V1 production architecture, shipped by the template repo's Caddy/Compose scaffolding.
+The V1 production architecture, shipped by the template repo's scaffolding:
 
 ```
 [Cloudflare CDN/WAF — free tier]        (planned)
@@ -22,58 +22,57 @@ This is the V1 production architecture, shipped by the template repo's Caddy/Com
         → PostgreSQL (containerised, named Docker volume)
 ```
 
-**Components:**
-
 - **Vultr Johannesburg VPS** — Regular Performance (4 vCPU, 8 GB RAM, 160 GB SSD, ~$40/month) or High Performance NVMe (~$48/month). Vultr holds ISO/IEC 27001:2022, SOC 2+ Type II, PCI-DSS, and ISO 27017/27018 certifications.
-- **Caddy** — the reverse proxy, handling TLS certificate acquisition and renewal automatically via Let's Encrypt to eliminate manual Certbot management.
-- **Gunicorn** — WSGI server running the Django application. Recommended configuration for a 4-core VPS: 5 workers (`gthread` class, 2 threads, `preload_app=True`).
-- **PostgreSQL** — containerised in Docker Compose, data persisted in a named Docker volume (never a bind mount).
-- **Cloudflare free tier** — CDN, WAF, and DDoS mitigation in front of the VPS.
+- **Caddy** — reverse proxy, acquiring and renewing TLS certificates automatically, eliminating manual certificate management.
+- **Gunicorn** — recommended for a 4-core VPS: 5 workers, threaded worker class, 2 threads, preloaded app.
+- **PostgreSQL** — containerised, data in a named Docker volume (never a bind mount).
+- **Cloudflare free tier** — CDN, WAF, and DDoS mitigation in front of the VPS. Planned, not yet in place.
 
-## Provisioning and Configuration Management
+## Provisioning and CI/CD
 
-- **Ansible** is the planned provisioning approach for the VPS: OS hardening (SSH key-only access, UFW firewall, fail2ban, unattended security updates, disabled root login), Docker installation, and initial service setup. No Ansible playbooks exist in this repository yet — this is specced deployment work, not built.
-- **Terraform** is deferred to Phase 2 when managing multiple servers. Vultr has an official Terraform provider ready when needed.
-- The intent is for all infrastructure configuration to be version-controlled, so the Ansible + Docker Compose approach gives a git-auditable change history — every infrastructure change tracked via PR, consistent with ISO 27001 change-management requirements.
+**Built:** the template repo ships a GitHub Actions workflow that builds the application image and pushes a per-commit, SHA-tagged image to GHCR — that image is the deploy and rollback unit. This FLS repo itself ships only test and security CI; the build-and-push workflow lives in the template repo alongside the rest of the deploy scaffolding.
+
+**Not yet built:** Ansible provisioning and OS hardening (SSH key-only access, firewall, fail2ban, unattended security updates, disabled root login), and the step that pulls a tagged image onto the VPS. No playbooks exist in this repository — this is specced work, not shipped work.
+
+**Deferred:** Terraform, until Phase 2 brings multiple servers into play. Vultr has an official provider ready when needed.
+
+The intent is that all infrastructure configuration is version-controlled, giving a git-auditable change history — every infrastructure change tracked via PR, consistent with ISO 27001 change-management expectations.
 
 ## Background Tasks
 
-Django 6's built-in task framework is wired into the application. The shipped production default is a durable, database-backed backend — the `django-tasks-db` package, pinned to `==0.12.0` — which stores tasks as rows in PostgreSQL via the ORM: no Celery, Redis, or separate message broker. Enqueued tasks are visible and inspectable in the Django admin.
+Django 6's built-in task framework is wired in. Production uses a durable, database-backed backend that stores tasks as rows in PostgreSQL — no Celery, Redis, or separate broker — and enqueued tasks are inspectable in the Django admin. Dev and test instead run tasks synchronously inside the request cycle, so the whole test suite runs without a worker process.
 
-Dev and test environments instead run tasks synchronously inside the request/response cycle. This split is deliberate, not a placeholder: it keeps the whole test suite running tasks inline with no worker process required, while production gets an out-of-process, at-least-once backend.
+**`python manage.py db_worker` is a required production process.** An enqueued task sits in the database until a worker picks it up; without one running, background work — currently webhook delivery — is accepted but never executes. Run it as its own long-lived process or container.
 
-The durable backend is a hard operational dependency: an enqueued task sits in the database until a worker picks it up. **`python manage.py db_worker` is a required production process** — without it running, background work (currently webhook delivery) is accepted but never executes. Run it as its own long-lived process or container, never via the `DEBUG` autoreload path, which is for local development only.
+Delivery is at-least-once, so a task can be redelivered. Task producers are idempotent under redelivery: a webhook is not sent twice for the same event and endpoint. See [webhooks](./webhooks.md).
 
-Because the durable backend delivers at-least-once, a task can be redelivered. Task producers are idempotent under redelivery — a webhook is not re-sent to the same endpoint for the same event on a redelivered attempt (see [webhooks](./webhooks.md)).
+The task-results table grows without bound if left alone, which eventually becomes a disk problem on a small VPS. Schedule the `prune_db_task_results` retention job rather than leaving it as a manual chore.
 
-A task-results table left unpruned grows without bound; on a small VPS that eventually becomes a disk problem. The `prune_db_task_results` retention job ships alongside the worker for exactly this reason and should be scheduled (cron or equivalent) rather than left as a manual chore.
+## Application-Level Capabilities
 
-## Application-Level Facts
+Built into the application and present regardless of deployment configuration:
 
-The following are built into the application code and are always present regardless of deployment configuration:
+- **Static files** — served compressed and cache-busted directly from the application. No separate static file server needed.
+- **Object storage for media** — media is served from S3-compatible object storage (Cloudflare R2), enabled by setting the storage bucket environment variable; without it, media falls back to local filesystem storage. Media is **private by default**, with time-limited signed links rather than permanently public URLs. See [security and data handling](./security-and-data-handling.md).
+- **Health probes** — `/health/liveness/` and `/health/readiness/`, available with no configuration. Liveness only confirms the process can serve a request and checks no dependency, so a transient database problem cannot trigger a restart loop. Readiness checks database connectivity and returns a non-200 when it is unreachable, making it the probe that container health checks and load balancers should poll to gate traffic; a setting lets an operator add further checks. Applied migrations are deliberately excluded — that belongs in a deploy-time smoke test, not a polled probe. Health paths are exempt from the HTTPS redirect, so a plain-HTTP internal probe behind a TLS-terminating proxy is served rather than mistaken for unhealthy.
+- **Error tracking (Sentry)** — configured by supplying a DSN, and a complete no-op until one is set, so development and unconfigured deployments send nothing. Once configured it tags events with the deployment's environment and release. Attaching learner personal data is an explicit opt-in, off by default. A staff-only endpoint lets an operator confirm a running deployment is actually reaching Sentry. If a DSN is set but the release identifier is left blank, a non-blocking deployment warning surfaces at boot and in CI, so untagged events are caught rather than quietly degrading release tracking.
+- **Analytics (PostHog)** — a client-side snippet configured by project token and region host. With no token set the snippet does not render, so development deployments send nothing.
+- **Environment-variable configuration** — all secrets and deployment-specific settings are supplied by environment variable, with sensible in-repo defaults where one makes sense, so a deployment configures these services without copy-pasting settings code. No credentials are hardcoded. Database connection SSL mode is configurable and defaults to *preferred*, which suits the shipped same-host containerised PostgreSQL; stricter modes are for external or managed databases. Persistent database connections are enabled with health checking, so a connection left stale by a database restart is recycled rather than failing the next request. A missing `SECRET_KEY` — or a missing `WEBHOOK_ENCRYPTION_SALT` — fails the application at startup as a visible crash-loop rather than booting into a silently broken state. See [security and data handling](./security-and-data-handling.md).
+- **HTTPS detection behind a reverse proxy** — production trusts the proxy's forwarded scheme, so requests that reached the proxy over HTTPS are correctly recognised as secure. This is what makes the HTTPS redirect and HSTS work behind a proxy instead of looping. See [security and data handling](./security-and-data-handling.md) for the trust preconditions.
+- **Shared production defaults** — the production settings FLS recommends are increasingly delivered as values a downstream project imports directly from FLS rather than copies. A fix to one of these lands once in FLS and reaches downstream projects on their next routine version update, instead of needing to be re-applied project by project.
+- **Tailwind build at image-build time** — `npm run tailwind_build` must run during image construction, and `FLS_THEME` must be set at build time. It cannot be changed at runtime without a rebuild.
 
-- **Whitenoise** — serves compressed, cache-busted static files directly from Django/Gunicorn. No separate static file server is required.
-- **S3-compatible media storage (Cloudflare R2)** — media files are served from S3-compatible object storage (Cloudflare R2), enabled by setting the storage bucket environment variable; without it, media falls back to local filesystem storage. Media is **private by default** — links are time-limited signed URLs rather than permanently public, so application-gated course files aren't exposed to anyone who obtains a link. See [security and data handling](./security-and-data-handling.md) for the rationale behind private-by-default media.
-- **`/health/liveness/` and `/health/readiness/` endpoints** — two probes, importable from FLS with no configuration required out of the box. Liveness only confirms the process can serve a request and checks no dependency, so a temporary database issue won't trigger a container restart loop; readiness checks database connectivity by default and returns a non-200 status when the database is unreachable, so it is the probe Docker health checks and load balancers should poll to gate traffic. A project setting lets an operator add further readiness checks, such as cache or object storage, on top of the database check. Applied-migrations are deliberately not part of readiness — that check belongs in a deploy-time smoke test, not a polled probe. Health paths are also exempt from the HTTPS redirect by default, so a plain-HTTP internal probe behind a TLS-terminating reverse proxy is served directly rather than mistaken for unhealthy.
-- **Sentry error tracking** — wired into the application and configured via the Sentry DSN environment variable. It is a no-op until that variable is supplied, so local/development and unconfigured deployments send nothing. Once configured it reports the deployment's environment name, release identifier, and a low default trace-sampling rate for cost control; attaching learner personal data to error reports is an explicit opt-in, off by default (see [security and data handling](./security-and-data-handling.md)). A staff-only verification endpoint lets an operator confirm a running deployment is actually reaching Sentry; it is inaccessible to anonymous or non-staff users. If Sentry is configured (a DSN is set) but the release identifier is left blank, a deployment-check warning surfaces at boot and in CI, so a deploy whose Sentry events would otherwise go silently untagged (regressions un-tied to a release) is caught early instead of degrading unnoticed; the warning never blocks the app and is silenceable for deployments that deliberately don't track releases.
-- **PostHog analytics** — a client-side analytics snippet is wired into the application and configured via environment variables (a project token and a region host, defaulting to the US region and overridable for the EU). If the project token is unset, the snippet does not render, so local/development deployments send no analytics by default.
-- **Environment-variable configuration** — all secrets and deployment-specific settings (SECRET_KEY, HOST_DOMAIN, DB credentials, `DB_SSLMODE`, `DB_CONN_MAX_AGE`, email credentials, DJANGO_ADMIN_URL, object storage/R2, Sentry, PostHog) are provided via environment variables, each with a sensible in-repo default where one makes sense, so a deployment configures these services without copy-pasting settings code. No credentials are hardcoded. `DB_SSLMODE` controls the database connection's SSL mode; it defaults to disabled for the shipped same-host containerised PostgreSQL (which has no TLS), with stricter modes reserved for external or managed databases — see [security and data handling](./security-and-data-handling.md) for the security posture. `DB_CONN_MAX_AGE` enables persistent database connections (recommended 60–300 seconds); connection health checks are on, so a stale connection left over from a database restart is recycled automatically rather than causing the next request to fail. A missing or empty `SECRET_KEY` fails the application at startup — a visible crash-loop — rather than booting successfully and only erroring on the first request that needs it. `WEBHOOK_ENCRYPTION_SALT` is likewise required in production and fails the application at startup the same way when unset, rather than silently falling back to an insecure development default — see [security and data handling](./security-and-data-handling.md) for the rationale.
-- **HTTPS detection behind a reverse proxy** — FLS's production settings trust the reverse proxy's forwarded HTTPS scheme, so when deployed behind a TLS-terminating reverse proxy the application correctly detects that an incoming request is secure. This is what makes the existing HTTPS redirect and HSTS settings behave correctly behind the proxy, rather than risking a redirect loop. See [security and data handling](./security-and-data-handling.md) for the trust preconditions this relies on.
-- **Container-friendly logging** — FLS's logging configuration emits logs to stdout/stderr only, which is friendlier to container-based log collection than writing to files on disk. This is now the default in the template repo's reference production configuration: it writes no rotating log files and mounts no `logs/` directory. The template's Docker Compose stack pairs this with per-service capped container logging on every service, so moving to stdout doesn't relocate the earlier disk-fill risk onto uncapped container logs — that risk is now handled at the container-log-driver level.
-- **Shared production-settings defaults, propagated by version bump** — the production-settings defaults FLS recommends (including the items above, such as the proxy HTTPS detection, the database connection options, and the required-`SECRET_KEY` check) are increasingly delivered as values a downstream project imports directly from FLS, rather than settings each downstream project has to copy and hand-edit into its own configuration. This means a future fix to one of these shared defaults lands once in FLS and reaches a downstream project on its next routine version update, instead of needing to be found and re-applied project by project.
-- **Tailwind build required at image-build time** — `npm run tailwind_build` must run during Docker image construction. `FLS_THEME` must be set at build time; it cannot be changed at runtime without a rebuild.
+**Logging.** The application's logging helper defaults to stdout/stderr only, which suits container log collection. This repo's own production settings currently opt out of that default and additionally write rotating log files to disk — an in-code comment marks that as temporary, pending container-level log size caps. The template repo's reference configuration pairs stdout logging with per-service capped container logging, so the disk-fill risk is handled at the log-driver level rather than relocated.
 
 ## Backups
 
-**Strategy (partially automated):** `pg_dump` runs on a cron schedule to produce database dumps. Dumps are encrypted and synced offsite to Backblaze B2 (approximately $0.005/GB).
+**Strategy (partially automated).** `pg_dump` on a cron schedule, with dumps encrypted and synced offsite to Backblaze B2 (~$0.005/GB).
 
-**Current state:** The backup strategy is defined. Automated scheduling and tested restore procedures are not yet fully implemented. Until automated backup runs and restore drills are confirmed, treat backup as a documented strategy, not a fully operational automated system.
-
-A recovery time objective (RTO) and recovery point objective (RPO) have not been formally defined or tested.
+**Current state.** The strategy is defined; automated scheduling and tested restore procedures are not. No backup scripts ship with FLS. Until automated runs and restore drills are confirmed, treat backup as a documented strategy, not an operational system. RTO and RPO have not been formally defined or tested.
 
 ## Scale Estimates
 
-These are estimates based on the Gunicorn configuration described above and typical Django/PostgreSQL performance characteristics. They have **not been validated by load testing**.
+Estimates from the Gunicorn configuration above and typical Django/PostgreSQL characteristics. **Not validated by load testing.**
 
 | Phase | Estimated capacity | Rough cost |
 |---|---|---|
@@ -81,37 +80,35 @@ These are estimates based on the Gunicorn configuration described above and typi
 | Phase 2 — separate DB | ~500+ concurrent, ~5,000–10,000 students | ~$60–108/month |
 | Phase 3 — horizontal scaling | ~1,000+ concurrent, multiple tenants | ~$150–250/month |
 
-Scaling to Phase 2 is triggered by monitoring data (CPU consistently above 70% at peak, or DB data exceeding 50 GB), not by a fixed calendar date.
+Moving to Phase 2 is triggered by monitoring data — CPU consistently above 70% at peak, or database size past 50 GB — not by a calendar date.
 
-## ISO 27001 Shared Responsibility
+## Operator Responsibilities
 
-Vultr's ISO 27001:2022 certification covers the physical data centre, hardware, network backbone, hypervisor, and Vultr's own operational procedures. It does not cover the application or OS layer.
+Vultr's ISO 27001:2022 certification covers the physical data centre, hardware, network backbone, hypervisor, and Vultr's own procedures. It does not cover the OS or the application. The operator owns:
 
-The FLS operator (you) owns:
+- OS hardening — planned via Ansible, not yet built.
+- TLS encryption — terminates at the reverse proxy in the template-repo stack.
+- Encrypted backups — not yet automated.
+- Database SSL configuration.
+- Access control — deploy key, limited sudo.
+- Logging and monitoring — Sentry error tracking is built in and activates once a DSN is configured (a free-tier account suffices). External uptime and availability monitoring is not set up and no monitoring tool is wired into the application or infrastructure.
+- Incident response — a documented plan is required and not yet written.
+- Change management — the git/PR workflow provides this.
+- Vulnerability management — dependency updates via Dependabot, plus CI security scanning and Django deployment checks. Container image scanning is not set up.
+- ISMS documentation — required for certification; not yet produced.
 
-- OS hardening (planned via Ansible)
-- TLS encryption (terminates at Caddy in the template-repo stack)
-- Encrypted backups (GPG before B2 sync — not yet automated)
-- PostgreSQL SSL connections
-- Access control (deploy key, limited sudo)
-- Logging and monitoring (Sentry error tracking is built in and activates once a DSN is configured — a free-tier Sentry account is sufficient. External uptime/availability monitoring is an operator responsibility and is not yet set up; no monitoring tool is wired into the application or infrastructure.)
-- Incident response (documented plan required; not yet written)
-- Change management (git/PR workflow provides this)
-- Vulnerability management (Dependabot for dependency updates via `.github/dependabot.yml`, plus CI security scanning with Bandit, pip-audit, and Semgrep in `.github/workflows/security.yml`). Container image scanning is not yet set up.
-- ISMS documentation (required for ISO 27001 certification; not yet produced)
-
-For the full shared-responsibility breakdown and security hardening details, see [security and data handling](./security-and-data-handling.md).
+The full breakdown is in [security and data handling](./security-and-data-handling.md).
 
 ## POPIA Data Residency
 
-Hosting on Vultr Johannesburg keeps data in South Africa. South Africa's Protection of Personal Information Act (POPIA) does not impose a blanket data-residency requirement, so this is a practical advantage for compliance argumentation, not a legal mandate. It does simplify the cross-border transfer analysis and aligns with the June 2024 National Policy on Data and Cloud.
+Hosting on Vultr Johannesburg keeps data in South Africa. POPIA imposes no blanket data-residency requirement, so this is a practical advantage for compliance argumentation, not a legal mandate — though it does simplify the cross-border transfer analysis and aligns with the June 2024 National Policy on Data and Cloud.
 
-Sector-specific requirements (financial institutions, government entities) may impose stricter local hosting obligations — verify with legal counsel for those deployments.
+Sector-specific requirements (financial institutions, government entities) may impose stricter local-hosting obligations; verify with legal counsel for those deployments.
 
-## Deploying a concrete (submodule-based) project
+## Deploying a Concrete Project
 
 FLS is never deployed standalone. A production deployment is a **concrete project** — a downstream repository that installs `freedom_ls` as a git submodule and supplies its own settings, content, and deployment scaffolding.
 
-The canonical starting point is the template repo, `git@github.com:preludetech/freedom-ls-concrete-template.git` — a GitHub template repository you clone to start a new concrete project. A concrete project deploys from that repo's Caddy/Docker Compose scaffolding, following its own README for the step-by-step.
+The starting point is the template repo, `git@github.com:preludetech/freedom-ls-concrete-template.git`, a GitHub template repository you clone to begin a new project. It carries the Caddy and Docker Compose scaffolding and its own README for the step-by-step.
 
-Before deploying, a concrete project should run the FLS conformance suite against its own settings as a pre-launch check that it has wired FLS up correctly — see [configuration and extension](./configuration-and-extension.md) for what it covers.
+Before deploying, run the FLS conformance suite against the concrete project's own settings as a pre-launch check — see [configuration and extension](./configuration-and-extension.md).

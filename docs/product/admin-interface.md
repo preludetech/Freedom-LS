@@ -1,35 +1,33 @@
 # Admin Interface
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-08-05_
 
 ## Summary
 
-- Django admin is enhanced with the Unfold UI framework for an improved administrative experience.
-- Object-level permissions via django-guardian allow cohort access to be granted per educator.
-- The admin URL is configurable via the `DJANGO_ADMIN_URL` environment variable, enabling obscured or custom paths in production.
-- `LegalConsent` records are fully read-only in the admin — they cannot be added, changed, or deleted through the interface.
-- Webhook endpoints include a test-send action for verifying configuration without triggering a real event.
+- The Django admin is enhanced with the Unfold UI framework, preserving all standard Django admin behaviour.
+- Administrators grant educators access to specific cohorts through per-object permissions.
+- The admin path is configurable via `DJANGO_ADMIN_URL`, so production can move it off the default location.
+- Legal consent records are fully read-only — they cannot be added, changed, or deleted.
+- Webhook endpoints have a test-send action for verifying configuration without waiting for a real event.
 
-## Unfold Admin Framework
+## Unfold
 
-The admin uses [Unfold](https://github.com/unfoldadmin/django-unfold) as a drop-in enhancement over Django's standard admin. Unfold must be listed before `django.contrib.admin` in `INSTALLED_APPS`. It provides an enhanced layout while preserving all standard Django admin behaviour.
+The admin uses [Unfold](https://github.com/unfoldadmin/django-unfold) as a drop-in enhancement over Django's standard admin. It provides an improved layout while leaving standard admin behaviour intact.
 
-All site-scoped admin classes extend `SiteAwareModelAdmin` (which itself re-exports Unfold's `ModelAdmin`). This ensures admin querysets are automatically filtered to the current site, consistent with the isolation model described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
+Site-scoped admin pages are automatically filtered to the current site, consistent with [multi-tenancy and isolation](./multi-tenancy-and-isolation.md). Unfold's branding customisation (site title, header colour, logo) is present in settings but commented out, so admin branding is not configured in a default installation.
 
-Note: the `UNFOLD` settings block for branding customisation (site title, header colour, logo) is present in `config/settings_base.py` but is commented out. Admin branding is not configured in a default installation.
+## Cohort Permissions
 
-## Object-Level Permissions (django-guardian)
-
-`django-guardian` is integrated via `unfold.contrib.guardian`. The `Cohort` admin class uses `GuardedModelAdmin`, which adds a per-object permissions tab to each cohort's admin detail page. Administrators use this tab to grant individual educators `view_cohort` permission on specific cohorts. The educator interface then enforces these permissions via `get_objects_for_user`.
+Each cohort's admin detail page carries a per-object permissions tab. Administrators use it to grant an individual educator view access to that specific cohort. The educator interface then filters its cohort and user listings by these grants — note the [known gap](./educator-interface.md#access-control) in how detail pages enforce them.
 
 ## Configurable Admin URL
 
-The admin is mounted at the path defined by the `DJANGO_ADMIN_URL` environment variable. Changing this value in production moves the admin to a non-default URL, reducing exposure to automated discovery. No code change is required.
+The admin is mounted at the path given by the `DJANGO_ADMIN_URL` environment variable. Changing it in production moves the admin off its default location, reducing exposure to automated discovery. No code change is required.
 
-## LegalConsent (Read-Only)
+## Read-Only Consent Records
 
-The `LegalConsent` model is registered in the admin as fully read-only. The admin class disables the add, change, and delete actions. This preserves the append-only integrity of the consent audit trail. The full description of `LegalConsent` and its fields is in [authentication](./authentication.md).
+Legal consent records are registered read-only: the admin disables add, change, and delete. This preserves the append-only integrity of the consent audit trail, described in [authentication](./authentication.md).
 
 ## Webhook Test-Send
 
-The `WebhookEndpoint` admin detail page exposes a custom action that sends a test payload to the configured endpoint URL. This allows administrators to verify that an endpoint is reachable and that authentication headers are correct before a live event triggers delivery. Webhook controls (HMAC signing, encrypted secrets, SSRF protection) are described in [webhooks](./webhooks.md).
+A webhook endpoint's admin detail page exposes an action that sends a test payload to the configured URL, so an administrator can confirm the endpoint is reachable and its authentication headers are correct before a live event triggers delivery. The full control set is in [webhooks](./webhooks.md).
