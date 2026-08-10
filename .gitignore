@@ -11,6 +11,9 @@ wheels/
 
 db.sqlite3
 
+# Rendered product documentation (built by docs/build_product_docx.py)
+docs/product/_build/
+
 # Environment files
 .env
 
