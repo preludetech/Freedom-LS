@@ -11,14 +11,14 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 2. Spec
 
 - [x] (cmd) Run `/sdd:spec_from_idea` to generate the spec
-- [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/sdd:spec_review` to sanity-check the spec
-- [ ] (user) Address any issues raised by the review
+- [x] (user) Review the spec carefully and edit where needed
+- [x] (cmd) Run `/sdd:spec_review` to sanity-check the spec
+- [x] (user) Address any issues raised by the review
 
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 6. Plan structure review
