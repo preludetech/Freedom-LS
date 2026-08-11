@@ -18,7 +18,7 @@
         Profile
     </c-button>
     {% if user.is_staff %}
-        <c-button dropdown="true" href="{% url 'educator_interface:interface' '' %}">
+        <c-button dropdown="true" href="{% url 'educator_interface:root' %}">
             Educator Interface
         </c-button>
         <c-button dropdown="true" href="/admin/" hx-boost="false">

@@ -68,7 +68,7 @@ FLS_NAMESPACE_PROBES: list[_Probe] = [
         "freedom_ls.educator_interface",
         "educator_interface:interface",
         True,
-        {"path_string": ""},
+        {"organisation_slug": "x", "path_string": ""},
     ),
     _Probe("freedom_ls.accounts", "accounts:account_profile", True),
     _Probe(

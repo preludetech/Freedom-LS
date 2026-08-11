@@ -91,6 +91,11 @@ def test_course_table_renders_visibility_and_interest_columns(
     CourseInterestFactory(course=course, user=UserFactory())
 
     request = site_aware_request.get("/")
+    # The Title/Cohorts columns link into educator_interface:interface,
+    # which now requires an organisation_slug kwarg. Real requests get this
+    # from the interface() view before dispatch; set it directly here since
+    # the table is rendered standalone.
+    request.panel_url_kwargs = {"organisation_slug": "test-org"}
     html = CourseDataTable.render(request)
 
     assert "Coming soon" in html
@@ -122,6 +127,9 @@ def test_interest_panel_lists_only_users_interested_in_this_course(
     panel = CourseInterestPanel(course)
     request = site_aware_request.get("/")
     request.user = educator
+    # The name columns link into educator_interface:interface, which now
+    # requires an organisation_slug kwarg — see the render test above.
+    request.panel_url_kwargs = {"organisation_slug": "test-org"}
     content = panel.get_content(request)
 
     assert "Interested" in content
@@ -139,6 +147,9 @@ def test_interest_panel_shows_interest_timestamp(mock_site_context, site_aware_r
     panel = CourseInterestPanel(course)
     request = site_aware_request.get("/")
     request.user = educator
+    # The name columns link into educator_interface:interface, which now
+    # requires an organisation_slug kwarg — see the render test above.
+    request.panel_url_kwargs = {"organisation_slug": "test-org"}
     content = panel.get_content(request)
 
     assert str(interest.created_at.year) in content
