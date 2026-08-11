@@ -69,6 +69,13 @@ BASE_ROLES = SiteRolesConfig(
             assignment_scope=SCOPE_OBJECT,
             lti_role=None,
             description="Access to every cohort and registration within an organisation.",
+            # FUTURE: letting this role manage cohorts takes an object-aware permission
+            # check in panel_framework, not extra permission strings here. Two things
+            # block the string-only route: CreateInstanceAction checks add_cohort at
+            # model level with no object, and guardian's backend denies every objectless
+            # check; and permissions are filtered to the target object's content type as
+            # they sync into guardian, so a role assigned on an Organisation can only
+            # ever grant freedom_ls_organisations.* permissions.
             permissions=frozenset({"freedom_ls_organisations.view_organisation"}),
         ),
         # --- Placeholder roles (no permissions exist yet) ---
