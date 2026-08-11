@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.models import Course, Form, Topic
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -150,7 +151,9 @@ def command(
         cohort = Cohort.objects.get(name=cohort_name, site=site)
         click.secho(f"Cohort '{cohort_name}' already exists, reusing it", fg="yellow")
     except Cohort.DoesNotExist:
-        cohort = CohortFactory(name=cohort_name, site=site)
+        cohort = CohortFactory(
+            name=cohort_name, site=site, organisation=get_default_organisation(site)
+        )
         click.secho(f"Created cohort '{cohort_name}'", fg="green")
 
     # Register cohort for course

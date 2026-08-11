@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
 from freedom_ls.student_management.models import (
     Cohort,
@@ -28,6 +29,7 @@ class CohortFactory(SiteAwareFactory):
     class Meta:
         model = Cohort
 
+    organisation = factory.SubFactory(OrganisationFactory)
     name = factory.Sequence(lambda n: f"Cohort {n}")
 
 
@@ -47,6 +49,7 @@ class UserCourseRegistrationFactory(SiteAwareFactory):
     class Meta:
         model = UserCourseRegistration
 
+    organisation = factory.SubFactory(OrganisationFactory)
     user = factory.SubFactory(UserFactory)
     collection = factory.SubFactory(CourseFactory)
     is_active = True

@@ -40,6 +40,7 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.content_engine.models import Course, DifficultyLevel, Topic
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.student_management.models import UserCourseRegistration
 from freedom_ls.student_progress.factories import (
     CourseProgressFactory,
@@ -243,7 +244,10 @@ def _enroll_in_progress(
         user=user,
         collection=course,
         site=site,
-        defaults={"is_active": True},
+        defaults={
+            "is_active": True,
+            "organisation": get_default_organisation(site),
+        },
     )
     # Mark one topic complete so the course shows as "in progress".
     # NOTE: TopicProgress uses `complete_time` (FormProgress uses `completed_time`).

@@ -14,12 +14,17 @@ User = get_user_model()
 
 
 class Cohort(SiteAwareModel):
+    organisation = models.ForeignKey(
+        "freedom_ls_organisations.Organisation",
+        on_delete=models.PROTECT,
+    )
     name = models.CharField(_("name"), max_length=150)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["site_id", "name"], name="unique_cohort_name_per_site"
+                fields=["site_id", "organisation", "name"],
+                name="unique_cohort_name_per_site",
             )
         ]
 
@@ -46,6 +51,10 @@ class CohortMembership(SiteAwareModel):
 class UserCourseRegistration(SiteAwareModel):
     """Individual user registration for a course."""
 
+    organisation = models.ForeignKey(
+        "freedom_ls_organisations.Organisation",
+        on_delete=models.PROTECT,
+    )
     collection = models.ForeignKey(
         "freedom_ls_content_engine.Course",
         on_delete=models.CASCADE,
@@ -58,7 +67,7 @@ class UserCourseRegistration(SiteAwareModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["site_id", "collection", "user"],
+                fields=["site_id", "organisation", "collection", "user"],
                 name="unique_user_course_registration",
             )
         ]

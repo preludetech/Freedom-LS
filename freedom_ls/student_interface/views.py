@@ -5,6 +5,7 @@ import uuid
 from typing import TYPE_CHECKING, cast
 
 from django.contrib.auth.decorators import login_required
+from django.contrib.sites.models import Site
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -26,6 +27,8 @@ from freedom_ls.course_access.overrides import (
 )
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.queries import stamp_interest
+from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.site_aware_models.models import get_cached_site
 from freedom_ls.student_management.config import config
 from freedom_ls.student_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.student_management.models import (
@@ -536,11 +539,21 @@ def initiate_course_access(request, course_slug):
             else redirect("student_interface:course_detail", course_slug=course_slug)
         )
 
-    # Create the course registration directly with user
+    # Create the course registration directly with user. No organisation is in
+    # scope for a self-service registration, so it lands on the Site's own
+    # Organisation — guaranteed to exist by the backfill migration and the
+    # post_save receiver that keeps every Site carrying one.
     UserCourseRegistration.objects.get_or_create(
         user=request.user,
         collection=course,
-        defaults={"is_active": True},
+        defaults={
+            "is_active": True,
+            # get_cached_site's RequestSite branch only applies with the Sites
+            # framework absent, which FLS always has installed.
+            "organisation": get_default_organisation(
+                cast(Site, get_cached_site(request))
+            ),
+        },
     )
 
     # Delete any existing RecommendedCourse for this user and course

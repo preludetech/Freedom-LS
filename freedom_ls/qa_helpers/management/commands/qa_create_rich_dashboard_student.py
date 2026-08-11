@@ -27,6 +27,7 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, Form, Topic
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.student_management.factories import (
     RecommendedCourseFactory,
     UserCourseRegistrationFactory,
@@ -98,7 +99,12 @@ def _register(user: User, course: Course, site: Site) -> None:
     if not UserCourseRegistration.objects.filter(
         user=user, collection=course, site=site
     ).exists():
-        UserCourseRegistrationFactory(user=user, collection=course, site=site)
+        UserCourseRegistrationFactory(
+            user=user,
+            collection=course,
+            site=site,
+            organisation=get_default_organisation(site),
+        )
 
 
 def _ensure_course_progress_row(user: User, course: Course, site: Site) -> None:

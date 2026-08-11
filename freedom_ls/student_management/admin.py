@@ -41,6 +41,7 @@ class CohortCourseRegistrationInline(TabularInline):
 class CohortAdmin(GuardedSiteAwareModelAdmin):
     list_display = ["name"]
     search_fields = ["name"]
+    autocomplete_fields = ["organisation"]
     inlines = [CohortMembershipInline, CohortCourseRegistrationInline]
     # @claude: GuardedSiteAwareModelAdmin combines Unfold's ModelAdmin with
     # guardian's GuardedModelAdmin. The admin_guardian resource warns this pairing
@@ -70,12 +71,12 @@ class UserCourseRegistrationAdmin(SiteAwareModelAdmin):
         "user__last_name",
         "collection__title",
     ]
-    autocomplete_fields = ["user", "collection"]
+    autocomplete_fields = ["organisation", "user", "collection"]
     readonly_fields = ["registered_at"]
     inlines = [StudentDeadlineInline]
 
     fieldsets = (
-        (None, {"fields": ("user", "collection", "is_active")}),
+        (None, {"fields": ("organisation", "user", "collection", "is_active")}),
         ("Timestamps", {"fields": ("registered_at",), "classes": ("collapse",)}),
     )
 

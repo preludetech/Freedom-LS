@@ -1,0 +1,65 @@
+"""Seed two Organisations for QA of the switcher and logo/monogram rendering.
+
+Creates (idempotently) two Organisations on the given site, in addition to
+the site's own default Organisation:
+
+1. "RPAS Training" — carries a logo, so the logo rendering path is exercised.
+2. "Northside Academy" — no logo, so the monogram fallback is exercised.
+
+Usage:
+    uv run python manage.py qa_create_organisations
+    uv run python manage.py qa_create_organisations --site-name DemoDev
+"""
+
+from pathlib import Path
+
+import djclick as click
+
+from django.contrib.sites.models import Site
+from django.core.files import File
+from django.utils.text import slugify
+
+from freedom_ls.organisations.models import Organisation
+from freedom_ls.site_aware_models.slugs import get_unique_slug
+
+LOGO_PATH = Path(__file__).resolve().parent.parent.parent / "fixtures" / "RT-logo.webp"
+
+WITH_LOGO_NAME = "RPAS Training"
+WITHOUT_LOGO_NAME = "Northside Academy"
+
+
+def _ensure_organisation(site: Site, name: str) -> tuple[Organisation, bool]:
+    organisation, created = Organisation.objects.get_or_create(
+        site=site,
+        name=name,
+        defaults={"slug": get_unique_slug(Organisation, site, slugify(name))},
+    )
+    return organisation, created
+
+
+@click.command()
+@click.argument("site_name", default="DemoDev")
+def command(site_name: str) -> None:
+    """Seed two QA Organisations on SITE_NAME (default: DemoDev)."""
+    try:
+        site = Site.objects.get(name=site_name)
+    except Site.DoesNotExist as e:
+        available = list(Site.objects.values_list("name", flat=True))
+        raise click.ClickException(
+            f"Site '{site_name}' not found. Available: {available}"
+        ) from e
+
+    with_logo, created = _ensure_organisation(site, WITH_LOGO_NAME)
+    if not with_logo.logo:
+        with LOGO_PATH.open("rb") as fh:
+            with_logo.logo.save(LOGO_PATH.name, File(fh), save=True)
+    verb = "Created" if created else "Reused"
+    click.secho(f"{verb} organisation '{WITH_LOGO_NAME}' (has logo)", fg="green")
+
+    without_logo, created = _ensure_organisation(site, WITHOUT_LOGO_NAME)
+    verb = "Created" if created else "Reused"
+    click.secho(
+        f"{verb} organisation '{WITHOUT_LOGO_NAME}' "
+        f"(no logo — initials {without_logo.initials!r})",
+        fg="green",
+    )
