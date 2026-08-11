@@ -1,9 +1,11 @@
-from guardian.admin import GuardedModelAdmin
 from unfold.admin import TabularInline
 
 from django.contrib import admin
 
-from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+from freedom_ls.site_aware_models.admin import (
+    GuardedSiteAwareModelAdmin,
+    SiteAwareModelAdmin,
+)
 
 from .models import (
     Cohort,
@@ -36,12 +38,16 @@ class CohortCourseRegistrationInline(TabularInline):
 
 
 @admin.register(Cohort)
-class CohortAdmin(GuardedModelAdmin):
+class CohortAdmin(GuardedSiteAwareModelAdmin):
     list_display = ["name"]
     search_fields = ["name"]
     inlines = [CohortMembershipInline, CohortCourseRegistrationInline]
-    # @claude: We need a base class that extends from Guarded model admin and excludes the site (like SiteAwareModelAdmin).
-    # implement it and then update docs/admin_interface.md
+    # @claude: GuardedSiteAwareModelAdmin combines Unfold's ModelAdmin with
+    # guardian's GuardedModelAdmin. The admin_guardian resource warns this pairing
+    # isn't guaranteed by either package (overlapping templates/hooks) — someone
+    # needs to manually load this model's guardian object-permissions page in the
+    # browser and confirm it renders correctly under the unfold theme before this
+    # comment can be removed.
 
 
 class StudentDeadlineInline(TabularInline):

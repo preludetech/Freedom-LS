@@ -1,0 +1,32 @@
+"""Tests for GuardedSiteAwareModelAdmin."""
+
+import pytest
+
+from django.contrib import admin
+from django.test import RequestFactory
+
+from freedom_ls.site_aware_models.admin import GuardedSiteAwareModelAdmin
+from freedom_ls.student_management.models import Cohort
+
+
+@pytest.fixture
+def admin_instance() -> GuardedSiteAwareModelAdmin:
+    return GuardedSiteAwareModelAdmin(Cohort, admin.site)
+
+
+@pytest.mark.django_db
+class TestGuardedSiteAwareModelAdmin:
+    def test_site_field_excluded_from_generated_form(
+        self, admin_instance: GuardedSiteAwareModelAdmin
+    ) -> None:
+        request = RequestFactory().get("/")
+        form_class = admin_instance.get_form(request)
+
+        assert "site" not in form_class.base_fields
+
+    def test_exposes_guardian_object_permissions_url_name(
+        self, admin_instance: GuardedSiteAwareModelAdmin
+    ) -> None:
+        url_names = {pattern.name for pattern in admin_instance.get_urls()}
+
+        assert "freedom_ls_student_management_cohort_permissions" in url_names
