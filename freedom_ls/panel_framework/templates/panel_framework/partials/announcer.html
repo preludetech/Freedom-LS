@@ -1,9 +1,9 @@
-{% comment %}Live-region announcement, swapped out-of-band into the persistent
-#scope-announcer element so a screen reader picks up the update — that
-element must stay outside #main-content and never be replaced wholesale, or
-some screen readers miss the re-inserted region.{% endcomment %}
-<div id="scope-announcer"
-     class="sr-only"
-     aria-live="polite"
-     aria-atomic="true"
-     {% if oob %}hx-swap-oob="true"{% endif %}>{{ message }}</div>
+{% comment %}Live-region announcement for the persistent #scope-announcer element.
+
+The innerHTML swap style updates that element's *contents* and leaves the element
+itself in place. An outerHTML swap (plain hx-swap-oob="true") would replace it, and
+some screen readers never announce a live region that was torn down and rebuilt.
+
+htmx strips this carrier div for every swap style other than outerHTML, so it holds
+no id and no aria attributes — the persistent element owns those.{% endcomment %}
+<div hx-swap-oob="innerHTML:#scope-announcer">{{ message }}</div>

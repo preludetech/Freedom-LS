@@ -85,8 +85,8 @@ class TestSwitchOnAListPage:
         response = _switch(client, _interface_url(organisation_b.slug, "cohorts"))
 
         content = response.content.decode()
-        assert 'id="scope-announcer"' in content
-        assert 'hx-swap-oob="true"' in content
+        assert 'hx-swap-oob="innerHTML:#scope-announcer"' in content
+        assert 'id="scope-announcer"' not in content
         assert "Now viewing Org B" in content
 
     def test_switch_response_carries_the_updated_switcher_label(self, logged_in_client):

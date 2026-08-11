@@ -152,9 +152,27 @@ class TestHtmxNavigation:
             url_name=URL_NAME,
         )
         content = response.content.decode()
-        assert 'id="scope-announcer"' in content
-        assert 'hx-swap-oob="true"' in content
+        assert 'hx-swap-oob="innerHTML:#scope-announcer"' in content
         assert "Now viewing Acme" in content
+
+    def test_announcer_fragment_never_carries_the_live_regions_own_id(
+        self, mock_site_context: None
+    ) -> None:
+        """The fragment must update the live region's contents, never replace the
+        region itself: an id of its own would make this an outerHTML swap, and a
+        torn-down-and-rebuilt live region goes unannounced by some screen readers.
+        """
+        request = _make_request(is_htmx=True, hx_target="main-content")
+        request.panel_announcement = "Now viewing Acme"
+        response = panel_framework_view(
+            config=CONFIG,
+            request=request,
+            path_string="stubs",
+            template_name=TEMPLATE,
+            url_name=URL_NAME,
+        )
+        content = response.content.decode()
+        assert 'id="scope-announcer"' not in content
 
     def test_htmx_navigation_omits_announcer_when_unset(
         self, mock_site_context: None
@@ -169,7 +187,7 @@ class TestHtmxNavigation:
             url_name=URL_NAME,
         )
         content = response.content.decode()
-        assert 'id="scope-announcer"' not in content
+        assert "scope-announcer" not in content
 
     def test_htmx_navigation_includes_extra_oob_fragments_when_set(
         self, mock_site_context: None
