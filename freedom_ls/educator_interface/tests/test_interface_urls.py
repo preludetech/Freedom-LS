@@ -6,6 +6,8 @@ still resolves.
 
 from __future__ import annotations
 
+from uuid import uuid4
+
 import pytest
 
 from django.contrib.sessions.backends.db import SessionStore
@@ -238,3 +240,47 @@ class TestSmokeNoReverseMatch:
         assert list_response.status_code == 200
         assert detail_response.status_code == 200
         assert panel_response.status_code == 200
+
+
+def _interface_url(organisation_slug: str, path_string: str) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={"organisation_slug": organisation_slug, "path_string": path_string},
+    )
+
+
+@pytest.mark.django_db
+class TestDetailSegmentThatIsNotAUuid:
+    """A segment where a detail view expects a pk is whatever the visitor
+    typed, so a guessed URL such as cohorts/create has to come back as a
+    plain 404 rather than an error page."""
+
+    @pytest.fixture
+    def organisation_and_client(self, logged_in_client):
+        organisation = OrganisationFactory()
+        user = UserFactory(staff=True)
+        assign_object_role(user, organisation, "organisation_staff")
+        return organisation, logged_in_client(user)
+
+    @pytest.mark.parametrize("segment", ["create", "new", "__create"])
+    def test_non_uuid_segment_404s(self, organisation_and_client, segment):
+        organisation, client = organisation_and_client
+
+        response = client.get(_interface_url(organisation.slug, f"cohorts/{segment}"))
+
+        assert response.status_code == 404
+
+    def test_well_formed_uuid_for_a_missing_cohort_404s(self, organisation_and_client):
+        organisation, client = organisation_and_client
+
+        response = client.get(_interface_url(organisation.slug, f"cohorts/{uuid4()}"))
+
+        assert response.status_code == 404
+
+    def test_real_cohort_id_still_resolves(self, organisation_and_client):
+        organisation, client = organisation_and_client
+        cohort = CohortFactory(organisation=organisation, name="Resolvable Cohort")
+
+        response = client.get(_interface_url(organisation.slug, f"cohorts/{cohort.pk}"))
+
+        assert response.status_code == 200

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.core.exceptions import ValidationError
 from django.db.models import Model
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -213,7 +214,15 @@ class ListViewConfig:
     def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:
         if cls.model is None or cls.instance_view is None:
             raise ValueError(f"{cls.__name__} must define model and instance_view")
-        instance = get_object_or_404(cls.model, pk=pk)
+        # pk is a raw, visitor-supplied URL segment and these models have UUID
+        # primary keys, so anything that isn't a well-formed UUID fails in the
+        # field rather than the query: get_object_or_404 only turns
+        # DoesNotExist into Http404, and a ValidationError would escape as a
+        # 500. A guessed or mistyped URL is a missing page, not a server error.
+        try:
+            instance = get_object_or_404(cls.model, pk=pk)
+        except ValidationError as err:
+            raise Http404(f"'{pk}' is not a valid identifier") from err
         cls.check_access(request, instance)
         return cls.instance_view(instance)
 
