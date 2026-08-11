@@ -776,14 +776,20 @@ class CreateCohortAction(CreateInstanceAction):
     form_title = "Create Cohort"
     action_name = "create_cohort"
 
-    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+    def get_form(
+        self, request: HttpRequest, instance: Model | None = None
+    ) -> forms.ModelForm:
         # The organisation is not a user choice — CohortForm never exposes
         # the field — so it comes from the URL the request already resolved
-        # and authorised, not from anything the form submitted.
+        # and authorised, not from anything the form submitted. It is attached
+        # here rather than in form_valid because the per-organisation
+        # uniqueness constraint can only be checked while cleaning if the
+        # instance already carries its organisation.
+        form = super().get_form(request, instance)
         organisation = cast(_OrganisationScopedRequest, request).organisation
         cast(Cohort, form.instance).organisation = organisation
         self._organisation_slug = organisation.slug
-        return super().form_valid(request, form)
+        return form
 
     def get_success_url(self, instance: Model) -> str:
         return reverse(
