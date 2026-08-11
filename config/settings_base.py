@@ -105,6 +105,7 @@ INSTALLED_APPS = [
     "freedom_ls.markdown_rendering",
     "freedom_ls.content_engine",
     "freedom_ls.accounts",
+    "freedom_ls.organisations",
     "freedom_ls.student_management",
     "freedom_ls.student_progress",
     "freedom_ls.site_aware_models",
