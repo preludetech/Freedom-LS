@@ -35,6 +35,7 @@ from freedom_ls.student_management.models import (
     RecommendedCourse,
     UserCourseRegistration,
 )
+from freedom_ls.student_management.queries import organisation_for_learner_course
 from freedom_ls.student_progress.models import (
     CourseProgress,
     FormProgress,
@@ -681,6 +682,9 @@ def _player_chrome_context(
         if user.is_authenticated
         else None
     )
+    course_organisation = (
+        organisation_for_learner_course(user, course) if user.is_authenticated else None
+    )
     current_part = get_item_part(course, current_item)
 
     # The breadcrumb part crumb links to the part's first viewable item. Resolve
@@ -705,6 +709,7 @@ def _player_chrome_context(
         "current_part": current_part,
         "current_part_index": current_part_index,
         "course_progress": course_progress,
+        "course_organisation": course_organisation,
         "item_title": current_item.title,
         "index": index,
     }

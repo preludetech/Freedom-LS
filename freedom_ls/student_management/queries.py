@@ -68,9 +68,38 @@ def latest_registration(user: User, course: Course) -> UserCourseRegistration | 
 
     return (
         UserCourseRegistration.objects.filter(user=user, collection=course)
+        .select_related("organisation")
         .order_by("-is_active", "-registered_at")
         .first()
     )
+
+
+def organisation_for_learner_course(user: User, course: Course) -> Organisation | None:
+    """The organisation a learner is studying this course through.
+
+    Cohort registration wins over an individual one. CohortCourseRegistration
+    has no organisation FK of its own, so it is reached through the cohort.
+    Where a learner holds two individual registrations for one course through
+    two organisations, latest_registration's tiebreak picks one.
+
+    One query per path, with select_related — never one per render.
+    """
+    from freedom_ls.student_management.models import CohortCourseRegistration
+
+    cohort_registration: CohortCourseRegistration | None = (
+        CohortCourseRegistration.objects.filter(
+            collection=course,
+            cohort__cohortmembership__user=user,
+            is_active=True,
+        )
+        .select_related("cohort__organisation")
+        .first()
+    )
+    if cohort_registration is not None:
+        return cohort_registration.cohort.organisation
+
+    registration = latest_registration(user, course)
+    return registration.organisation if registration is not None else None
 
 
 def organisations_accessible_to(user: RequestUser) -> QuerySet[Organisation]:

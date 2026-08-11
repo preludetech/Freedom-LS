@@ -27,6 +27,19 @@ def _disable_force_site_name(settings):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_media_root(settings, tmp_path):
+    """Redirect MEDIA_ROOT to a per-test tmp dir.
+
+    Without this, every test that saves a file (an organisation logo, for
+    example) writes into the real working-tree media/ directory. upload_to
+    keys on a fresh UUID pk, so those files are never overwritten and never
+    cleaned up — media/ is gitignored, so the growth is invisible until the
+    disk fills up.
+    """
+    settings.MEDIA_ROOT = tmp_path
+
+
+@pytest.fixture(autouse=True)
 def _disable_preview_overrides(settings):
     """Force both course-access preview overrides off by default.
 
