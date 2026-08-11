@@ -1,0 +1,7 @@
+{% comment %}
+This is only used in the tests — a stand-in for a hosting app's own
+request.panel_extra_oob fragment (e.g. an organisation switcher), so the
+generic mechanism can be tested without panel_framework depending on any
+app that actually uses it.
+{% endcomment %}
+<div id="test-extra-oob-fragment" {% if oob %}hx-swap-oob="true"{% endif %}>extra fragment content</div>

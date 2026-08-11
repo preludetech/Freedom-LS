@@ -5,6 +5,7 @@ from typing import TypedDict, cast
 from uuid import UUID
 
 from django import forms
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.core.paginator import Page, Paginator
@@ -86,6 +87,10 @@ class _OrganisationScopedRequest(HttpRequest):
 
     organisation: Organisation
     panel_url_kwargs: dict[str, str]
+    accessible_organisations: list[Organisation]
+    path_string: str
+    panel_announcement: str
+    panel_extra_oob: list[str]
 
 
 class FormProgressData(TypedDict):
@@ -1157,16 +1162,69 @@ def interface(
     scoped_request = cast(_OrganisationScopedRequest, request)
     scoped_request.organisation = organisation
     scoped_request.panel_url_kwargs = {"organisation_slug": organisation.slug}
+    scoped_request.accessible_organisations = list(
+        organisations_accessible_to(request.user)
+    )
+    scoped_request.path_string = path_string
+    # Rendered into the same OOB bundle panel_framework already assembles
+    # for breadcrumbs/sidebar/title/announcer (panel_framework/views.py) —
+    # on every navigation, not only a switch, because the switcher's
+    # per-organisation links embed the current path_string, which changes
+    # on every navigation and would otherwise go stale the moment the user
+    # moves to a different section without switching organisation.
+    scoped_request.panel_extra_oob = [
+        "educator_interface/partials/organisation_switcher.html"
+    ]
     # Guarded so the session store is only written when the value actually
     # changes — an unconditional assignment would mark the session dirty on
     # every educator page load.
     if request.session.get(LAST_ORGANISATION_SESSION_KEY) != organisation.slug:
         request.session[LAST_ORGANISATION_SESSION_KEY] = organisation.slug
 
-    return panel_framework_view(
-        config=interface_config,
-        request=scoped_request,
-        path_string=path_string,
-        template_name="educator_interface/interface.html",
-        url_name="educator_interface:interface",
-    )
+    is_switch = request.headers.get("X-Organisation-Switch") == "true"
+    if is_switch:
+        scoped_request.panel_announcement = f"Now viewing {organisation.name}"
+
+    try:
+        response = panel_framework_view(
+            config=interface_config,
+            request=scoped_request,
+            path_string=path_string,
+            template_name="educator_interface/interface.html",
+            url_name="educator_interface:interface",
+        )
+    except OrganisationScopeDenied:
+        # Only a switch request gets the softened "wrong organisation"
+        # reply — every other 404 from path resolution (unknown segment,
+        # missing tab/panel/action, deleted object) must still propagate,
+        # switch header or not.
+        if not is_switch:
+            raise
+        section = path_string.split("/", 1)[0]
+        section_model = interface_config[section].model
+        # authorise_instance only ever raises OrganisationScopeDenied from a
+        # config with a real model — get_instance_view (panel_framework/
+        # views.py) requires one to resolve the detail view in the first
+        # place — so this is an internal-consistency check, not a real
+        # runtime path.
+        if section_model is None:
+            raise Http404 from None
+        label = section_model._meta.verbose_name
+        messages.info(
+            request,
+            f"Switched to {organisation.name} — that {label} isn't in this organisation",
+        )
+        scoped_request.path_string = section
+        response = panel_framework_view(
+            config=interface_config,
+            request=scoped_request,
+            path_string=section,
+            template_name="educator_interface/interface.html",
+            url_name="educator_interface:interface",
+        )
+        response["HX-Push-Url"] = reverse(
+            "educator_interface:interface",
+            kwargs={"organisation_slug": organisation.slug, "path_string": section},
+        )
+
+    return response

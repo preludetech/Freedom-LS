@@ -8,6 +8,7 @@
 {% block sidebar_storage_key %}sidebar-educator{% endblock sidebar_storage_key %}
 
 {% block sidebar_content %}
+    {% include "educator_interface/partials/organisation_switcher.html" %}
     {% include "panel_framework/partials/sidebar_nav.html" %}
 {% endblock sidebar_content %}
 
@@ -21,4 +22,5 @@
     <c-page flush="true">
         {% include "panel_framework/partials/main_content.html" %}
     </c-page>
+    <div id="scope-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 {% endblock content %}

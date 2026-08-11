@@ -171,6 +171,40 @@ class TestHtmxNavigation:
         content = response.content.decode()
         assert 'id="scope-announcer"' not in content
 
+    def test_htmx_navigation_includes_extra_oob_fragments_when_set(
+        self, mock_site_context: None
+    ) -> None:
+        """A hosting view's request.panel_extra_oob renders each named
+        template into the same OOB bundle, with no context of its own."""
+        request = _make_request(is_htmx=True, hx_target="main-content")
+        request.panel_extra_oob = ["panel_framework/test_extra_oob_fragment.html"]
+        response = panel_framework_view(
+            config=CONFIG,
+            request=request,
+            path_string="stubs",
+            template_name=TEMPLATE,
+            url_name=URL_NAME,
+        )
+        content = response.content.decode()
+        assert 'id="test-extra-oob-fragment"' in content
+        assert 'hx-swap-oob="true"' in content
+        assert "extra fragment content" in content
+
+    def test_htmx_navigation_omits_extra_oob_fragments_when_unset(
+        self, mock_site_context: None
+    ) -> None:
+        """No request.panel_extra_oob attribute means no extra fragment at all."""
+        request = _make_request(is_htmx=True, hx_target="main-content")
+        response = panel_framework_view(
+            config=CONFIG,
+            request=request,
+            path_string="stubs",
+            template_name=TEMPLATE,
+            url_name=URL_NAME,
+        )
+        content = response.content.decode()
+        assert 'id="test-extra-oob-fragment"' not in content
+
     def test_htmx_navigation_threads_extra_url_kwargs_into_reversed_urls(
         self, mock_site_context: None
     ) -> None:

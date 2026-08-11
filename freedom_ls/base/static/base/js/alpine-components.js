@@ -95,6 +95,15 @@ document.addEventListener("alpine:init", () => {
         },
         init() {
             this.$watch("open", () => this.positionMenu());
+            // Options that hx-get into a target outside this dropdown (e.g.
+            // the organisation switcher, whose options swap #main-content
+            // while the dropdown itself lives in the sidebar) leave the
+            // panel visually open after the swap — nothing else closes it.
+            // Every other dropdown option navigates away or reloads the
+            // page, so this is a no-op for them.
+            this.$el.addEventListener("htmx:afterRequest", () => {
+                this.close();
+            });
         },
     }));
 

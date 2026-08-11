@@ -679,13 +679,30 @@ def panel_framework_view(
                 request=request,
             )
 
+        # A hosting view can also register extra OOB fragments to render
+        # into this same bundle, named only — panel_framework passes no
+        # context of its own, so a fragment must source everything it needs
+        # (typically from `request`) itself, the same way the announcer's
+        # message does. This is how a hosting app adds its own OOB chrome
+        # (e.g. an organisation switcher) without panel_framework knowing
+        # that app exists.
+        extra_oob_html = "".join(
+            render_to_string(template_name, {"oob": True}, request=request)
+            for template_name in getattr(request, "panel_extra_oob", [])
+        )
+
         # TODO: Fix or figure out if we should worry
         # Semgrep Finding: python.django.security.audit.xss.direct-use-of-httpresponse.direct-use-of-httpresponse
         # Detected data rendered directly to the end user via 'HttpResponse' or a similar object. This bypasses Django's built-in cross-site scripting (XSS) defenses and could result in an XSS vulnerability. Use Django's template engine to safely render HTML.
         # Semgrep OSS
 
         return HttpResponse(
-            main_html + breadcrumb_html + sidebar_html + title_html + announcer_html
+            main_html
+            + breadcrumb_html
+            + sidebar_html
+            + title_html
+            + announcer_html
+            + extra_oob_html
         )
 
     context = {
