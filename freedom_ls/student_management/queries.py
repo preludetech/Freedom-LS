@@ -1,15 +1,19 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
+
+from guardian.shortcuts import get_objects_for_user
 
 from django.db.models import Exists, OuterRef, Q
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+    from django.db.models import QuerySet
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
-    from freedom_ls.student_management.models import UserCourseRegistration
+    from freedom_ls.organisations.models import Organisation
+    from freedom_ls.student_management.models import Cohort, UserCourseRegistration
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
 
@@ -67,3 +71,86 @@ def latest_registration(user: User, course: Course) -> UserCourseRegistration | 
         .order_by("-is_active", "-registered_at")
         .first()
     )
+
+
+def organisations_accessible_to(user: RequestUser) -> QuerySet[Organisation]:
+    """Organisations this user may enter.
+
+    Union of two paths: an organisation role, or a per-cohort guardian grant
+    on any cohort inside the organisation. The second half is load-bearing —
+    without it, an educator holding only per-cohort grants would have no way
+    to reach an organisation-scoped interface at all, no matter how many
+    cohorts they hold a grant on.
+    """
+    from freedom_ls.organisations.models import Organisation
+    from freedom_ls.student_management.models import Cohort
+
+    if not user.is_authenticated:
+        return Organisation.objects.none()
+
+    by_role = get_objects_for_user(
+        user, "freedom_ls_organisations.view_organisation", klass=Organisation
+    )
+    granted_cohorts = get_objects_for_user(user, "view_cohort", klass=Cohort)
+    return Organisation.objects.filter(
+        Q(pk__in=by_role.values("pk"))
+        | Q(pk__in=granted_cohorts.values("organisation_id"))
+    ).order_by("name")
+
+
+def cohorts_visible_to(
+    user: RequestUser, organisation: Organisation
+) -> QuerySet[Cohort]:
+    """Cohorts within this organisation visible to this user: every cohort
+    for an organisation-role holder, otherwise only the ones carrying a
+    per-cohort guardian grant.
+
+    This is the explicit join guardian cannot express on its own.
+    sync_user_object_permissions filters a role's permissions down to the
+    ones matching the *target object's* content type
+    (role_based_permissions/utils.py), so a role assigned on an Organisation
+    can only ever sync freedom_ls_organisations.* permissions onto guardian —
+    never freedom_ls_student_management.view_cohort. "An organisation role
+    grants every cohort inside it" is therefore performed here, in Python,
+    rather than by widening what guardian syncs.
+    """
+    from freedom_ls.student_management.models import Cohort
+
+    if not user.is_authenticated:
+        return Cohort.objects.none()
+
+    within = Cohort.objects.filter(organisation=organisation)
+    # is_authenticated guard above excludes AnonymousUser too (its
+    # is_authenticated is a hardcoded False), so this is a real User.
+    if cast("User", user).has_perm(
+        "freedom_ls_organisations.view_organisation", organisation
+    ):
+        return within
+    return within.filter(
+        pk__in=get_objects_for_user(user, "view_cohort", klass=Cohort).values("pk")
+    )
+
+
+def users_visible_to(user: RequestUser, organisation: Organisation) -> QuerySet[User]:
+    """Users this person may see within an organisation.
+
+    Built on cohorts_visible_to — cohort visibility is never re-derived here.
+    Members of visible cohorts, plus, for an organisation-role holder only,
+    learners who hold an individual registration in the organisation and
+    belong to no cohort at all. A per-cohort guardian grant says nothing
+    about people outside that cohort, so widening it to cover individual
+    learners would hand a cohort-scoped educator the whole organisation's
+    roster of individually-registered learners; only an organisation-role
+    holder sees both.
+    """
+    from freedom_ls.accounts.models import User
+
+    if not user.is_authenticated:
+        return User.objects.none()
+
+    visible = Q(cohortmembership__cohort__in=cohorts_visible_to(user, organisation))
+    if cast("User", user).has_perm(
+        "freedom_ls_organisations.view_organisation", organisation
+    ):
+        visible |= Q(usercourseregistration__organisation=organisation)
+    return User.objects.filter(visible).distinct()

@@ -14,11 +14,12 @@ class TestBaseRoles:
         assert missing == set(), f"Permissions not in registry: {missing}"
 
     def test_all_expected_roles_exist(self) -> None:
-        """All 6 expected roles are defined."""
+        """All 7 expected roles are defined."""
         expected = {
             "site_admin",
             "instructor",
             "ta",
+            "organisation_staff",
             "system_admin",
             "student",
             "observer",
@@ -41,6 +42,17 @@ class TestBaseRoles:
         """ta inherits from instructor — permissions must be a subset."""
         assert BASE_ROLES["ta"].permissions.issubset(
             BASE_ROLES["instructor"].permissions
+        )
+
+    def test_organisation_staff_display_name(self) -> None:
+        """organisation_staff has correct display_name."""
+        assert BASE_ROLES["organisation_staff"].display_name == "Organisation Staff"
+
+    def test_organisation_staff_has_view_organisation(self) -> None:
+        """organisation_staff includes view_organisation permission."""
+        assert (
+            "freedom_ls_organisations.view_organisation"
+            in BASE_ROLES["organisation_staff"].permissions
         )
 
     def test_system_admin_display_name(self) -> None:

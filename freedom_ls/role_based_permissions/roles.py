@@ -64,6 +64,13 @@ BASE_ROLES = SiteRolesConfig(
                 }
             ),
         ),
+        "organisation_staff": Role(
+            display_name="Organisation Staff",
+            assignment_scope=SCOPE_OBJECT,
+            lti_role=None,
+            description="Access to every cohort and registration within an organisation.",
+            permissions=frozenset({"freedom_ls_organisations.view_organisation"}),
+        ),
         # --- Placeholder roles (no permissions exist yet) ---
         # These roles are defined for completeness but have empty permission
         # sets until the relevant features are built.
