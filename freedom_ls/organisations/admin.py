@@ -7,11 +7,13 @@ from freedom_ls.site_aware_models.admin import GuardedSiteAwareModelAdmin
 from freedom_ls.site_aware_models.models import get_cached_site
 from freedom_ls.site_aware_models.slugs import get_unique_slug
 
+from .forms import OrganisationAdminForm
 from .models import Organisation
 
 
 @admin.register(Organisation)
 class OrganisationAdmin(GuardedSiteAwareModelAdmin):
+    form = OrganisationAdminForm
     list_display = ["name", "slug"]
     search_fields = ["name"]
     readonly_fields = ["slug"]
