@@ -17,10 +17,12 @@
     <c-button dropdown="true" href="{% url 'accounts:account_profile' %}">
         Profile
     </c-button>
-    {% if user.is_staff %}
+    {% if can_access_educator_interface %}
         <c-button dropdown="true" href="{% url 'educator_interface:root' %}">
             Educator Interface
         </c-button>
+    {% endif %}
+    {% if user.is_staff %}
         <c-button dropdown="true" href="/admin/" hx-boost="false">
             Admin Panel
         </c-button>

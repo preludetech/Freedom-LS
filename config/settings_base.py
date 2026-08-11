@@ -186,6 +186,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "freedom_ls.site_aware_models.context_processors.site_config",
                 "freedom_ls.accounts.context_processors.signup_policy",
+                "freedom_ls.student_management.context_processors.can_access_educator_interface",
                 "freedom_ls.deployment.context_processors.posthog_config",
                 "django.template.context_processors.csp",
             ],
