@@ -16,6 +16,10 @@
     {% include "panel_framework/partials/breadcrumbs.html" %}
 {% endblock breadcrumbs %}
 
+{# Single-line so no whitespace leaks into the rendered <title>. The same partial #}
+{# feeds the OOB fragment on HTMX navigation, so both paths read identically. #}
+{% block head_title %}{% include "panel_framework/partials/document_title.html#document-title" %}{% endblock head_title %}
+
 {% block page_title %}{% include "partials/page_title.html" with page_title=heading %}{% endblock page_title %}
 
 {% block content %}

@@ -675,6 +675,16 @@ def panel_framework_view(
             request=request,
         )
 
+        # The browser tab, as opposed to the on-page <hgroup> above. htmx
+        # applies a root-level <title> in a partial response to
+        # document.title, so navigation keeps the tab in step without a
+        # full page load.
+        document_title_html = render_to_string(
+            "panel_framework/partials/document_title.html",
+            {"heading": heading},
+            request=request,
+        )
+
         # A hosting view can set this before dispatch to announce something
         # to screen-reader users after a navigation swap (e.g. a scope
         # change) without moving focus. Optional, so most responses render
@@ -710,6 +720,7 @@ def panel_framework_view(
             + breadcrumb_html
             + sidebar_html
             + title_html
+            + document_title_html
             + announcer_html
             + extra_oob_html
         )
