@@ -39,10 +39,20 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
-- [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
+- [x] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [x] (user + cmd) Fix QA bug: Duplicate Organisation name returns a 500 IntegrityError instead of a validation error (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Duplicate cohort name in an organisation returns a 500 with no user feedback (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Non-UUID cohort id segment returns a 500 ValidationError instead of a 404 (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: `#scope-announcer` live region is destroyed and recreated on every switch (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Educator Interface header link gated on `is_staff`, hidden from organisation educators (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Switcher trigger is last in the tab order and arrow keys do not move between options (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: `organisation_staff` cannot create or delete cohorts, so QA §6 is not performable by its named persona (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Mobile/tablet nav drawer stays open after switching organisation (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Educator interface pages render an empty `<title>` (TDD — failing test first, then fix)
+- [ ] (cmd) Use the `fls-dev:qa-data-helper` agent to create missing data for QA §7.6 (learner in the player with no registration), then re-run `/fls-dev:do_qa`
 
 ## 10. Product documentation
 
@@ -51,7 +61,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 11. Upgrade notes
 
-- [ ] (cmd) Run `/fls-dev:update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
+- [x] (cmd) Run `/fls-dev:update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
 - [ ] (user) Review the upgrade notes
 
 ## 12. Template repo

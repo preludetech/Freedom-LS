@@ -7,13 +7,43 @@ Viewports exercised: desktop 1920×1080, mobile 375×812, tablet 768×1024.
 
 **Headline:** the feature's core promises hold. Cross-organisation isolation is airtight, the switcher
 never lets the chrome disagree with the data, and the legacy-educator upgrade path (§5) — the check that
-would have locked every existing educator out — passes completely. The defects found are three
+would have locked every existing educator out — passes completely. The defects found were three
 **500s where a validation error or a 404 belongs**, one **accessibility regression in the live region**,
 and one **navigation gap that leaves organisation educators with no link into the interface they can use**.
 Entry 7 below is not a defect: it is a discrepancy between the spec and the test plan, since resolved in
 the spec's favour, and is kept only for the record.
 
+The entries below are preserved as written at the time of testing. See **Resolution** for what each one
+became — including two the report got wrong.
+
 Test data was created by the `fls-dev:qa-data-helper` agent.
+
+---
+
+## Resolution
+
+Every entry below has since been actioned. Each fix was written test-first and committed on its own.
+
+| Entry | Outcome | Commit |
+| --- | --- | --- |
+| 1 Duplicate Organisation name → 500 | fixed | `50c8ed37` |
+| 2 Duplicate cohort name → 500, no feedback | fixed | `84dff010` |
+| 3 Non-UUID cohort id → 500 | fixed | `b3145e7f` |
+| 4 `#scope-announcer` destroyed and recreated | fixed | `2c2e5bff` |
+| 5 No educator-interface link for organisation educators | fixed | `35803484` |
+| 6 Switcher keyboard behaviour | **partly a mis-reading** — see the entry | `1ef830da` |
+| 7 `organisation_staff` cannot create cohorts | not a defect; test plan corrected | `3c8c1026` |
+| 8 Mobile/tablet drawer stays open after a switch | fixed | `facb0b91` |
+| 9 Empty `<title>` on educator pages | fixed | `3054d6ff` |
+
+Two of these turned out to differ from what the report first concluded, both recorded in place below:
+entry 6's tab-order finding was an artefact of how the measurement was taken, and entry 2 had a second
+cause the report did not reach.
+
+Two minor observations noted further down were also actioned: the open switcher now marks the current
+organisation for sighted users (`1ef830da`), and a `.txt` upload now names the allowed formats
+(`50c8ed37`). The touch-target sizing and the `default`-theme chip contrast were left alone — both
+pre-existing and out of scope.
 
 ---
 
@@ -122,24 +152,35 @@ Where the link *is* shown it works correctly (`/educator/` → redirect, no `NoR
 
 ---
 
-### 6. The switcher trigger is last in the tab order, not first
+### 6. Switcher keyboard behaviour — the tab-order half was a mis-reading
 
 **Test:** §3.9 steps 2, 5–6 · **Persona:** `org.educator@example.com`
 
-- **Expected:** the switcher trigger receives a visible focus ring **before** the section nav.
-- **Actual:** tabbing from the top of the document reaches
-  `Cohorts → Users → Courses → Year 10 Science → Year 9 Maths → FirstClass → user menu → **Switch
-  organisation** → (wraps)`. The control that sits visually at the very top of the left panel is the last
-  thing a keyboard user reaches.
+**The tab order was never wrong.** Re-measured at 1920×1080, the real order is
+`FirstClass logo → user menu → Switch organisation → Cohorts → Users → Courses → main content` — the
+switcher does sit before the section nav, exactly as §3.9 step 2 expects. `Shift+Tab` from the switcher
+lands on the user menu, which confirms it directly.
 
-Secondary: **arrow keys do not move focus between the menu options** once the menu is open (focus stays
-on the trigger). `Tab` does move between them, so keyboard-only operation still completes the whole flow —
-verified end to end: focus trigger → `Enter` → `Tab` → `Enter` on Northside switches successfully. But
-`role="menu"` implies arrow-key support, and its absence is a rough edge.
+The original reading came from where the measurement started. The sidebar is an open `<dialog>`, so the
+browser runs the dialog focusing steps on load and `document.activeElement` is **already** the switcher
+trigger before the tester presses anything. The first `Tab` therefore leaves it for "Cohorts", and the
+switcher only reappears after wrapping — producing the observed sequence, which is the correct cycle
+entered one step late. Worth knowing for future QA: calling `blur()` does not reset Chrome's sequential
+focus navigation starting point either, so it reproduces the same misleading cycle. Only a fresh page
+load does.
 
-Everything else in §3.9 passes: `aria-haspopup="menu"`, `aria-expanded` toggling correctly,
-`role="menuitemradio"` with `aria-checked` true/false on the right items, and `Escape` closing the menu
-and returning focus to the trigger.
+Two genuine defects were found in the same area and both are fixed:
+
+- **The `menuitemradio` roles were orphaned.** There was no `role="menu"` anywhere in the codebase, so
+  the options had no owning menu. The dropdown panel is now the menu and is named from its trigger, and
+  the shared dropdown's own items declare `role="menuitem"`.
+- **Arrow keys did not move focus.** Up, Down, Home and End now move between options, and opening from
+  the keyboard lands on the currently-checked one. `Tab` still steps through them, so the flow that
+  already worked keeps working.
+
+Everything else in §3.9 passed as originally reported: `aria-haspopup="menu"`, `aria-expanded` toggling
+correctly, `role="menuitemradio"` with `aria-checked` true/false on the right items, and `Escape` closing
+the menu and returning focus to the trigger.
 
 ---
 
