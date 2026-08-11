@@ -94,7 +94,7 @@ def test_keyboard_switch_updates_aria_checked_announcer_and_switcher_label(
     org_a_option = page.get_by_role("menuitemradio", name="Org A")
     org_b_option = page.get_by_role("menuitemradio", name="Org B")
     expect(org_a_option).to_be_visible()
-    page.keyboard.press("Tab")
+    # Opening from the keyboard puts focus straight on the checked option.
     expect(org_a_option).to_be_focused()
     page.keyboard.press("Tab")
     expect(org_b_option).to_be_focused()

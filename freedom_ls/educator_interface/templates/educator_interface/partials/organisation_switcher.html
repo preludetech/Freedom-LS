@@ -28,8 +28,18 @@ from request.path.
                             hx-target="#main-content"
                             hx-push-url="true"
                             hx-swap="outerHTML"
-                            class="block w-full text-left px-4 py-2 text-sm text-muted hover:bg-surface-2 transition-colors cursor-pointer">
-                        {{ organisation.name }}
+                            class="flex w-full items-start gap-2 text-left px-3 py-2 text-sm text-muted hover:bg-surface-2 transition-colors cursor-pointer">
+                        {% comment %}
+                        The indicator span is present on every option so the
+                        names stay aligned, and is aria-hidden because
+                        aria-checked already carries the state.
+                        {% endcomment %}
+                        <span class="size-4 shrink-0 mt-0.5 text-primary" aria-hidden="true">
+                            {% if organisation.pk == current_organisation.pk %}
+                                <c-icon name="check" class="size-4" />
+                            {% endif %}
+                        </span>
+                        <span class="min-w-0 flex-1">{{ organisation.name }}</span>
                     </button>
                 {% endfor %}
             </c-dropdown-menu>

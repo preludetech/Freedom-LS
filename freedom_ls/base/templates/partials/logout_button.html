@@ -1,8 +1,14 @@
 {% url 'account_logout' as logout_url_ %}
 {% if logout_url_ %}
-    <form method="post" action="{{logout_url_}}">
+    <form method="post"
+          action="{{logout_url_}}"
+          {% if dropdown %}role="none"{% endif %}>
         {% csrf_token %}
         {% if dropdown %}
+            {% comment %}
+            The form is only a POST carrier here — role="none" above keeps it
+            out of the way so the button is owned directly by the menu.
+            {% endcomment %}
             <c-button type="submit" dropdown="true">Sign Out</c-button>
         {% else %}
             <c-button type="submit">Sign Out</c-button>

@@ -60,11 +60,77 @@ document.addEventListener("alpine:init", () => {
     // Dropdown menu component (cotton/dropdown-menu.html)
     Alpine.data("dropdownMenu", () => ({
         open: false,
-        toggle() {
-            this.open = !this.open;
+        toggle(event) {
+            if (this.open) {
+                this.close();
+                return;
+            }
+            this.open = true;
+            // A click synthesised by Enter or Space carries detail 0. Only a
+            // keyboard open moves focus into the menu; a pointer open leaves
+            // focus on the trigger so the pointer stays in charge.
+            if (event && event.detail === 0) {
+                this.focusInitialItem();
+            }
+        },
+        openFromTrigger() {
+            this.open = true;
+            this.focusInitialItem();
         },
         close() {
             this.open = false;
+        },
+        // Menu items keep their natural tab stop, so Tab still walks the menu
+        // in DOM order; the arrow keys are an addition to that, not a
+        // replacement for it.
+        menuItems() {
+            const panel = this.$refs.menuPanel;
+            if (!panel) return [];
+            const items = panel.querySelectorAll(
+                '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]'
+            );
+            return Array.from(items).filter((item) => !item.disabled);
+        },
+        focusInitialItem() {
+            const items = this.menuItems();
+            if (items.length === 0) return;
+            const checked = items.find(
+                (item) => item.getAttribute("aria-checked") === "true"
+            );
+            const trigger = this.$refs.menuButton;
+            // x-show only reveals the panel on the next tick; a hidden element
+            // cannot take focus. By then the user may already have tabbed on,
+            // so only take focus if it is still sitting on the trigger.
+            this.$nextTick(() => {
+                if (document.activeElement !== trigger) return;
+                (checked || items[0]).focus();
+            });
+        },
+        focusFirstItem() {
+            const items = this.menuItems();
+            if (items.length > 0) items[0].focus();
+        },
+        focusLastItem() {
+            const items = this.menuItems();
+            if (items.length > 0) items[items.length - 1].focus();
+        },
+        focusNextItem() {
+            this.moveFocus(1);
+        },
+        focusPreviousItem() {
+            this.moveFocus(-1);
+        },
+        moveFocus(step) {
+            const items = this.menuItems();
+            if (items.length === 0) return;
+            const current = items.indexOf(document.activeElement);
+            if (current === -1) {
+                // Focus is still on the trigger: enter the menu from the end
+                // the arrow points at.
+                (step > 0 ? items[0] : items[items.length - 1]).focus();
+                return;
+            }
+            items[(current + step + items.length) % items.length].focus();
         },
         onEscape() {
             if (!this.open) return;
