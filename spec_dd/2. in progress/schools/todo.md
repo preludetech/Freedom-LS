@@ -23,8 +23,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 6. Plan structure review
 
-- [ ] (cmd) Run `/fls-dev:plan_structure_review` to check for new cross-app dependencies
-- [ ] (user) Address any structure concerns raised in the plan
+- [x] (cmd) Run `/fls-dev:plan_structure_review` to check for new cross-app dependencies
+- [x] (user) Address any structure concerns raised in the plan
+- [x] (user) Resolve structure concern: student_interface --> organisations edge for get_default_organisation (plan §0.1)
 
 ## 7. Implementation
 
