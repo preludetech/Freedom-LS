@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 from django.test import RequestFactory
 
@@ -112,6 +112,13 @@ class StubListConfigWithModel(ListViewConfig):
     instance_view = StubInstanceView
     list_view = StubDataTable
 
+    @classmethod
+    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
+        # This config goes through the base get_instance_view for real, so it
+        # inherits deny-by-default. Permissive here because this test exercises
+        # OOB sidebar rendering, not authorisation rules.
+        return None
+
 
 FULL_CONFIG: dict[str, type[ListViewConfig]] = {
     "stubs": StubListConfigWithModel,
@@ -132,6 +139,9 @@ class TestOobSidebarWithInstance:
             HTTP_HX_TARGET="main-content",
         )
         request.user = make_staff_user()
+        # check_access's fail-closed prologue requires a resolved scope;
+        # panel_framework treats this generically and never inspects it.
+        request.organisation = object()
         response = panel_framework_view(
             config=FULL_CONFIG,
             request=request,

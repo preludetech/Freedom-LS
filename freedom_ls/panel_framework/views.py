@@ -166,6 +166,11 @@ class ListViewConfig:
     url_name: str = ""
     menu_label: str = ""
 
+    #: Set to a short reason string on a config that deliberately does not
+    #: authorise its detail views yet. Introspectable, so a test can assert
+    #: every exemption is declared rather than accidental.
+    check_access_exempt_reason: str | None = None
+
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
         return []
@@ -178,10 +183,38 @@ class ListViewConfig:
         return None
 
     @classmethod
-    def get_instance_view(cls, pk: str) -> InstanceView:
+    def check_access(cls, request: HttpRequest, instance: Model) -> None:
+        """Entry point for detail-view authorisation. Do not override —
+        override authorise_instance instead.
+
+        Runs a fail-closed prologue before any subclass code runs: a request
+        with no authenticated user or no resolved scope is denied here, so a
+        subclass overriding authorise_instance can never turn that denial
+        into an AttributeError by dereferencing either.
+        """
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            raise Http404
+        if getattr(request, "organisation", None) is None:
+            raise Http404
+        cls.authorise_instance(request, instance)
+
+    @classmethod
+    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
+        """Raise Http404 unless this request may see this instance.
+
+        Deny by default: a config that does not override this cannot serve
+        detail views at all, so a new config that forgets to consider
+        authorisation fails closed instead of leaking.
+        """
+        raise Http404
+
+    @classmethod
+    def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:
         if cls.model is None or cls.instance_view is None:
             raise ValueError(f"{cls.__name__} must define model and instance_view")
         instance = get_object_or_404(cls.model, pk=pk)
+        cls.check_access(request, instance)
         return cls.instance_view(instance)
 
     @classmethod
@@ -316,7 +349,7 @@ def _resolve_path(
         elif isinstance(current, PanelGetter):
             current = current[part]
         elif isinstance(current, type) and issubclass(current, ListViewConfig):
-            current = current.get_instance_view(part)
+            current = current.get_instance_view(effective_request, part)
         else:
             raise Http404(f"Cannot resolve path segment '{part}'")
         i += 1
@@ -474,8 +507,10 @@ def _build_menu_items(
     url_name: str,
     active_section: str = "",
     current_instance: Model | None = None,
+    extra_url_kwargs: dict[str, str] | None = None,
 ) -> list[dict[str, str | bool]]:
     """Build the sidebar menu items from the config."""
+    extra_url_kwargs = extra_url_kwargs or {}
     items: list[dict[str, str | bool]] = []
     for conf in config.values():
         is_active = conf.url_name == active_section
@@ -483,7 +518,10 @@ def _build_menu_items(
             instance_label = str(current_instance)
             instance_url = reverse(
                 url_name,
-                kwargs={"path_string": f"{conf.url_name}/{current_instance.pk}"},
+                kwargs={
+                    "path_string": f"{conf.url_name}/{current_instance.pk}",
+                    **extra_url_kwargs,
+                },
             )
             expanded = True
         else:
@@ -492,7 +530,10 @@ def _build_menu_items(
             expanded = False
         item: dict[str, str | bool] = {
             "label": conf.menu_label,
-            "url": reverse(url_name, kwargs={"path_string": conf.url_name}),
+            "url": reverse(
+                url_name,
+                kwargs={"path_string": conf.url_name, **extra_url_kwargs},
+            ),
             "active": is_active,
             "expanded": expanded,
             "instance_label": instance_label,
@@ -507,6 +548,7 @@ def _build_breadcrumbs(
     config: dict[str, type[ListViewConfig]],
     url_name: str,
     current_instance: Model | None = None,
+    extra_url_kwargs: dict[str, str] | None = None,
 ) -> list[dict[str, str]]:
     """Build hierarchy-based breadcrumbs.
 
@@ -517,6 +559,7 @@ def _build_breadcrumbs(
     as instance pages — the tab name is not added as a breadcrumb because
     the active tab is already indicated by the tab bar UI.
     """
+    extra_url_kwargs = extra_url_kwargs or {}
     crumbs: list[dict[str, str]] = []
 
     if not parts:
@@ -529,7 +572,10 @@ def _build_breadcrumbs(
 
         if len(parts) >= 2 and current_instance is not None:
             # Instance page: section gets a url, instance is current page
-            section_crumb["url"] = reverse(url_name, kwargs={"path_string": parts[0]})
+            section_crumb["url"] = reverse(
+                url_name,
+                kwargs={"path_string": parts[0], **extra_url_kwargs},
+            )
             crumbs.append(section_crumb)
             crumbs.append({"label": str(current_instance)})
         else:
@@ -560,6 +606,10 @@ def panel_framework_view(
     hx_target = request.headers.get("HX-Target", "")
     is_navigation = is_htmx and hx_target == "main-content"
     base_url = request.path
+    # Extra reverse() kwargs a hosting view needs on every panel_framework URL
+    # (e.g. a scope segment). Read once here so every reverse() call below —
+    # menu items, breadcrumbs — stays in sync without a per-call-site fix.
+    extra_url_kwargs: dict[str, str] = getattr(request, "panel_url_kwargs", {})
 
     current_instance: Model | None = None
 
@@ -585,8 +635,11 @@ def panel_framework_view(
         url_name,
         active_section=parts[0] if parts else "",
         current_instance=current_instance,
+        extra_url_kwargs=extra_url_kwargs,
     )
-    breadcrumbs = _build_breadcrumbs(parts, config, url_name, current_instance)
+    breadcrumbs = _build_breadcrumbs(
+        parts, config, url_name, current_instance, extra_url_kwargs=extra_url_kwargs
+    )
 
     if is_navigation:
         main_html = render_to_string(
@@ -613,12 +666,27 @@ def panel_framework_view(
             request=request,
         )
 
+        # A hosting view can set this before dispatch to announce something
+        # to screen-reader users after a navigation swap (e.g. a scope
+        # change) without moving focus. Optional, so most responses render
+        # nothing extra here.
+        announcer_html = ""
+        announcement = getattr(request, "panel_announcement", None)
+        if announcement:
+            announcer_html = render_to_string(
+                "panel_framework/partials/announcer.html",
+                {"message": announcement, "oob": True},
+                request=request,
+            )
+
         # TODO: Fix or figure out if we should worry
         # Semgrep Finding: python.django.security.audit.xss.direct-use-of-httpresponse.direct-use-of-httpresponse
         # Detected data rendered directly to the end user via 'HttpResponse' or a similar object. This bypasses Django's built-in cross-site scripting (XSS) defenses and could result in an XSS vulnerability. Use Django's template engine to safely render HTML.
         # Semgrep OSS
 
-        return HttpResponse(main_html + breadcrumb_html + sidebar_html + title_html)
+        return HttpResponse(
+            main_html + breadcrumb_html + sidebar_html + title_html + announcer_html
+        )
 
     context = {
         "menu_items": menu_items,

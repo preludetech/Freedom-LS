@@ -1,0 +1,9 @@
+{% comment %}Live-region announcement, swapped out-of-band into the persistent
+#scope-announcer element so a screen reader picks up the update — that
+element must stay outside #main-content and never be replaced wholesale, or
+some screen readers miss the re-inserted region.{% endcomment %}
+<div id="scope-announcer"
+     class="sr-only"
+     aria-live="polite"
+     aria-atomic="true"
+     {% if oob %}hx-swap-oob="true"{% endif %}>{{ message }}</div>

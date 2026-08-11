@@ -137,3 +137,52 @@ class TestHtmxNavigation:
         # navigation it is swapped in via the OOB #page-title fragment.
         assert 'id="page-title"' in content
         assert "Stubs" in content
+
+    def test_htmx_navigation_includes_announcer_when_set(
+        self, mock_site_context: None
+    ) -> None:
+        """A hosting view's request.panel_announcement renders into the OOB announcer fragment."""
+        request = _make_request(is_htmx=True, hx_target="main-content")
+        request.panel_announcement = "Now viewing Acme"
+        response = panel_framework_view(
+            config=CONFIG,
+            request=request,
+            path_string="stubs",
+            template_name=TEMPLATE,
+            url_name=URL_NAME,
+        )
+        content = response.content.decode()
+        assert 'id="scope-announcer"' in content
+        assert 'hx-swap-oob="true"' in content
+        assert "Now viewing Acme" in content
+
+    def test_htmx_navigation_omits_announcer_when_unset(
+        self, mock_site_context: None
+    ) -> None:
+        """No request.panel_announcement attribute means no announcer fragment at all."""
+        request = _make_request(is_htmx=True, hx_target="main-content")
+        response = panel_framework_view(
+            config=CONFIG,
+            request=request,
+            path_string="stubs",
+            template_name=TEMPLATE,
+            url_name=URL_NAME,
+        )
+        content = response.content.decode()
+        assert 'id="scope-announcer"' not in content
+
+    def test_htmx_navigation_threads_extra_url_kwargs_into_reversed_urls(
+        self, mock_site_context: None
+    ) -> None:
+        """request.panel_url_kwargs reaches the sidebar and breadcrumb reverse() calls."""
+        request = _make_request(is_htmx=True, hx_target="main-content")
+        request.panel_url_kwargs = {"extra": "acme"}
+        response = panel_framework_view(
+            config=CONFIG,
+            request=request,
+            path_string="stubs",
+            template_name=TEMPLATE,
+            url_name="panel_framework_test:scoped_interface",
+        )
+        content = response.content.decode()
+        assert "/test-panel/scoped/acme/stubs" in content

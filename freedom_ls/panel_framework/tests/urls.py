@@ -28,5 +28,13 @@ def _framework_view(request: HttpRequest, path_string: str = "") -> HttpResponse
 
 urlpatterns = [
     re_path(r"^framework/(?P<path_string>.*)$", _framework_view, name="framework"),
+    # Exists only so tests can prove request.panel_url_kwargs reaches reverse()
+    # calls: a second, generic kwarg alongside path_string. Not hit by any
+    # dispatch in these tests, only reversed.
+    re_path(
+        r"^scoped/(?P<extra>[\w-]+)/(?P<path_string>.*)$",
+        _stub_view,
+        name="scoped_interface",
+    ),
     re_path(r"^(?P<path_string>.*)$", _stub_view, name="interface"),
 ]

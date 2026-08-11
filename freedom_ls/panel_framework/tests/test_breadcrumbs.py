@@ -62,6 +62,24 @@ class TestBuildBreadcrumbs:
         assert crumbs == []
 
     @pytest.mark.django_db
+    def test_extra_url_kwargs_merge_into_section_crumb_url(
+        self, mock_site_context: None
+    ) -> None:
+        """A hosting view's extra reverse() kwargs land in the section crumb's URL."""
+        instance = _make_stub(name="Test Cohort")
+        crumbs = _build_breadcrumbs(
+            ["cohorts", str(instance.pk)],
+            CONFIG,
+            "panel_framework_test:scoped_interface",
+            current_instance=instance,
+            extra_url_kwargs={"extra": "acme"},
+        )
+        assert crumbs[0] == {
+            "label": "Cohorts",
+            "url": "/test-panel/scoped/acme/cohorts",
+        }
+
+    @pytest.mark.django_db
     def test_tab_page_shows_instance_as_current(self, mock_site_context: None) -> None:
         """Tab paths (3 parts) produce the same crumbs as instance pages."""
         instance = _make_stub(name="Tab Test")

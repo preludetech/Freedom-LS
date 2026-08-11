@@ -137,7 +137,15 @@ class StubListConfig(ListViewConfig):
         return [StubCreateAction()]
 
     @classmethod
-    def get_instance_view(cls, pk: str) -> InstanceView:
+    def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:
         instance: Model = get_object_or_404(_stub_model(), pk=pk)
         assert cls.instance_view is not None
         return cls.instance_view(instance)
+
+    @classmethod
+    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
+        # get_instance_view above is a full override and never calls
+        # check_access, so this never actually runs. Declared anyway so this
+        # stub does not start relying on deny-by-default if that override is
+        # ever simplified away.
+        return None
