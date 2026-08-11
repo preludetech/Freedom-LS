@@ -410,6 +410,7 @@ document.addEventListener("alpine:init", () => {
         _popstateHandler: null,
         _historyPushed: false,
         _closingFromPopstate: false,
+        _closingForHtmxNav: false,
         triggerEl: null,
         init() {
             this.dialog = this.$refs.panelDialog;
@@ -433,9 +434,12 @@ document.addEventListener("alpine:init", () => {
                 if (this.triggerEl) this.triggerEl.focus();
                 if (this._historyPushed) {
                     this._historyPushed = false;
-                    if (!this._closingFromPopstate) history.back();
+                    if (!this._closingFromPopstate && !this._closingForHtmxNav) {
+                        history.back();
+                    }
                     this._closingFromPopstate = false;
                 }
+                this._closingForHtmxNav = false;
             });
             this.dialog.addEventListener("click", (event) => {
                 if (!this.isMobile) return;
@@ -466,6 +470,28 @@ document.addEventListener("alpine:init", () => {
                 }
                 event.preventDefault();
                 window.location.replace(link.href);
+            });
+
+            // A control inside the sheet that navigates over htmx rather than
+            // by link (the organisation switcher's option buttons) never
+            // reaches the link branch above, so nothing else dismisses the
+            // sheet and it is left covering the content it just loaded.
+            // Closing as the request goes out also means the page htmx caches
+            // for Back is snapshotted with the sheet already shut.
+            //
+            // The history entry pushed on open is deliberately left in place.
+            // htmx stamps the current entry as its own and caches the outgoing
+            // page against it immediately before pushing the new URL, and that
+            // entry is what makes Back restore this page. Unwinding it first
+            // (history.back() races the in-flight request, and its popstate
+            // makes htmx swap the whole document out from under the pending
+            // swap) or collapsing htmx's push into a replace (which discards
+            // the entry htmx just anchored its snapshot to) both end with Back
+            // showing a URL the content no longer matches.
+            this.dialog.addEventListener("htmx:beforeRequest", () => {
+                if (!this.isMobile || !this.dialog.open) return;
+                this._closingForHtmxNav = true;
+                this.close();
             });
 
             // Back closes the modal sheet instead of navigating the page. The
