@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.student_management.deadline_utils import (
     get_effective_deadlines,
     is_item_locked_by_deadline,
@@ -151,6 +152,39 @@ def test_cohort_plus_individual_registration_shows_both(mock_site_context):
     assert len(result) == 2
     deadlines = {r.deadline for r in result}
     assert deadlines == {cohort_dt, student_dt}
+
+
+@pytest.mark.django_db
+def test_two_individual_registrations_through_different_organisations_show_both(
+    mock_site_context,
+):
+    """A learner registered for one course through two organisations sees
+    both registrations' deadlines, rather than raising on the extra row."""
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    reg_a = UserCourseRegistrationFactory(
+        user=user, collection=course, organisation=OrganisationFactory()
+    )
+    reg_b = UserCourseRegistrationFactory(
+        user=user, collection=course, organisation=OrganisationFactory()
+    )
+
+    dt_a = timezone.now() + timedelta(days=5)
+    dt_b = timezone.now() + timedelta(days=10)
+
+    StudentDeadlineFactory(
+        student_course_registration=reg_a, content_item=topic, deadline=dt_a
+    )
+    StudentDeadlineFactory(
+        student_course_registration=reg_b, content_item=topic, deadline=dt_b
+    )
+
+    result = get_effective_deadlines(user, course, content_item=topic)
+
+    assert len(result) == 2
+    deadlines = {r.deadline for r in result}
+    assert deadlines == {dt_a, dt_b}
 
 
 @pytest.mark.django_db

@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.student_management.factories import (
     RecommendedCourseFactory,
     UserCourseRegistrationFactory,
@@ -50,6 +51,29 @@ def test_dashboard_current_courses(mock_site_context, courses, logged_in_client)
     assert len(registered) == 1
     assert registered[0] == courses[0]
     assert courses[0].title in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_dashboard_dedupes_a_course_registered_through_two_organisations(
+    mock_site_context, courses, logged_in_client
+):
+    """A learner can hold two registrations for one course, one per
+    organisation. The dashboard still lists that course exactly once."""
+    user = UserFactory()
+    UserCourseRegistrationFactory(
+        user=user, collection=courses[0], organisation=OrganisationFactory()
+    )
+    UserCourseRegistrationFactory(
+        user=user, collection=courses[0], organisation=OrganisationFactory()
+    )
+    client = logged_in_client(user)
+
+    response = client.get(reverse("student_interface:dashboard"))
+
+    assert response.status_code == 200
+    registered = response.context["registered_courses"]
+    assert len(registered) == 1
+    assert registered[0] == courses[0]
 
 
 @pytest.mark.django_db

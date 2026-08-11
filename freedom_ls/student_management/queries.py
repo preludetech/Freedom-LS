@@ -8,6 +8,8 @@ if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 
     from freedom_ls.accounts.models import User
+    from freedom_ls.content_engine.models import Course
+    from freedom_ls.student_management.models import UserCourseRegistration
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
 
@@ -46,4 +48,22 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
             cohort__cohortmembership__user=user,
             is_active=True,
         )
+    )
+
+
+def latest_registration(user: User, course: Course) -> UserCourseRegistration | None:
+    """Most recent active registration, else most recent of any status.
+
+    A learner can hold more than one registration for the same course, one
+    per organisation. Callers that need a single row rather than the full
+    set order by ``(-is_active, -registered_at)`` in one query: a descending
+    boolean sorts every active row ahead of every inactive one, so recency
+    only breaks ties within whichever group is present.
+    """
+    from freedom_ls.student_management.models import UserCourseRegistration
+
+    return (
+        UserCourseRegistration.objects.filter(user=user, collection=course)
+        .order_by("-is_active", "-registered_at")
+        .first()
     )
