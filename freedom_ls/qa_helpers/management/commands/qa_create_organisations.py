@@ -1,10 +1,16 @@
 """Seed two Organisations for QA of the switcher and logo/monogram rendering.
 
+Superseded for a full QA pass by ``qa_create_organisation_scenarios``, which
+also seeds the cohorts and personas; this command remains as the smallest
+possible organisations-only seed.
+
 Creates (idempotently) two Organisations on the given site, in addition to
 the site's own default Organisation:
 
 1. "RPAS Training" — carries a logo, so the logo rendering path is exercised.
-2. "Northside Academy" — no logo, so the monogram fallback is exercised.
+2. "Northside" — no logo, so the monogram fallback is exercised. The short
+   name is deliberate: the monogram QA renames it to "Northside Academy" and
+   expects the initials to change from "NO" to "NA" while the slug stays put.
 
 Usage:
     uv run python manage.py qa_create_organisations
@@ -25,7 +31,7 @@ from freedom_ls.site_aware_models.slugs import get_unique_slug
 LOGO_PATH = Path(__file__).resolve().parent.parent.parent / "fixtures" / "RT-logo.webp"
 
 WITH_LOGO_NAME = "RPAS Training"
-WITHOUT_LOGO_NAME = "Northside Academy"
+WITHOUT_LOGO_NAME = "Northside"
 
 
 def _ensure_organisation(site: Site, name: str) -> tuple[Organisation, bool]:
