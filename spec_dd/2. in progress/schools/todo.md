@@ -52,7 +52,10 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user + cmd) Fix QA bug: `organisation_staff` cannot create or delete cohorts, so QA §6 is not performable by its named persona (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: Mobile/tablet nav drawer stays open after switching organisation (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: Educator interface pages render an empty `<title>` (TDD — failing test first, then fix)
-- [ ] (cmd) Use the `fls-dev:qa-data-helper` agent to create missing data for QA §7.6 (learner in the player with no registration), then re-run `/fls-dev:do_qa`
+- [x] (cmd) Use the `fls-dev:qa-data-helper` agent to create missing data for QA §7.6 (learner in the player with no registration), then re-run `/fls-dev:do_qa`
+- [ ] (user) Decide on QA §7.6: the player's "no organisation" branch is unreachable in the browser (the player redirects away without a registration, and every registration carries a non-nullable Organisation FK) — either drop the test from the plan, or suppress the Site's own default organisation in the co-branding chip
+- [ ] (user) Correct QA plan §6: Northside already has a seeded "Year 9 Maths", so step 3 as written must fail — use a fresh cohort name created in both organisations to prove the narrowed constraint
+- [ ] (user) Correct QA plan §7.3: switching `FLS_THEME` also requires `npm run tailwind_build`, or both themes render identically
 
 ## 10. Product documentation
 

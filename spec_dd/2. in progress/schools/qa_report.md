@@ -1,572 +1,417 @@
 # QA Report: Organisations
 
 Manual browser QA of `3. frontend_qa.md`, executed with Playwright MCP against
-`uv run python manage.py runserver 8877` on branch `schools` (debug-branch-badge confirmed `schools`).
+`uv run python manage.py runserver 8000` on branch `schools` (debug-branch-badge confirmed `schools`
+on every viewport).
 
 Viewports exercised: desktop 1920×1080, mobile 375×812, tablet 768×1024.
 
-**Headline:** the feature's core promises hold. Cross-organisation isolation is airtight, the switcher
-never lets the chrome disagree with the data, and the legacy-educator upgrade path (§5) — the check that
-would have locked every existing educator out — passes completely. The defects found were three
-**500s where a validation error or a 404 belongs**, one **accessibility regression in the live region**,
-and one **navigation gap that leaves organisation educators with no link into the interface they can use**.
-Entry 7 below is not a defect: it is a discrepancy between the spec and the test plan, since resolved in
-the spec's favour, and is kept only for the record.
+**Headline: no defects found.** Every section of the plan was executed and passed. All **nine** defects
+recorded in the previous QA run were re-tested specifically and are confirmed fixed — including the
+three 500s, the destroyed-and-recreated live region, the missing educator-interface link, the switcher
+keyboard behaviour, and the mobile drawer that stayed open after a switch.
 
-The entries below are preserved as written at the time of testing. See **Resolution** for what each one
-became — including two the report got wrong.
+The security-relevant sections are the strongest part of the feature. Cross-organisation isolation
+(§4) holds on lists, detail URLs and every HTMX partial shape (`__tabs`, `__panels`, `__actions`). The
+legacy-educator upgrade path (§5) — the check that would lock every existing educator out on upgrade —
+passes completely. The switcher never lets the chrome disagree with the data (§3.3–3.5), and the
+"wrong organisation" soft-landing fires *only* for a genuine organisation mismatch, even when a
+hand-forged request carries the switch header (§3.6).
 
-Test data was created by the `fls-dev:qa-data-helper` agent.
+One test, **§7.6, could not be performed** — not for want of data, but because the state it describes
+is unreachable through the browser. Details in *Not executed* below.
 
----
-
-## Resolution
-
-Every entry below has since been actioned. Each fix was written test-first and committed on its own.
-
-| Entry | Outcome | Commit |
-| --- | --- | --- |
-| 1 Duplicate Organisation name → 500 | fixed | `50c8ed37` |
-| 2 Duplicate cohort name → 500, no feedback | fixed | `84dff010` |
-| 3 Non-UUID cohort id → 500 | fixed | `b3145e7f` |
-| 4 `#scope-announcer` destroyed and recreated | fixed | `2c2e5bff` |
-| 5 No educator-interface link for organisation educators | fixed | `35803484` |
-| 6 Switcher keyboard behaviour | **partly a mis-reading** — see the entry | `1ef830da` |
-| 7 `organisation_staff` cannot create cohorts | not a defect; test plan corrected | `3c8c1026` |
-| 8 Mobile/tablet drawer stays open after a switch | fixed | `facb0b91` |
-| 9 Empty `<title>` on educator pages | fixed | `3054d6ff` |
-
-Two of these turned out to differ from what the report first concluded, both recorded in place below:
-entry 6's tab-order finding was an artefact of how the measurement was taken, and entry 2 had a second
-cause the report did not reach.
-
-Two minor observations noted further down were also actioned: the open switcher now marks the current
-organisation for sighted users (`1ef830da`), and a `.txt` upload now names the allowed formats
-(`50c8ed37`). The touch-target sizing and the `default`-theme chip contrast were left alone — both
-pre-existing and out of scope.
+Test data came from the previous run's `qa_create_organisation_scenarios` seeding; the two gaps found
+during this run were filled by the `fls-dev:qa-data-helper` agent.
 
 ---
 
 ## Failures
 
-### 1. Duplicate Organisation name returns a 500 IntegrityError, not a validation error
-
-**Test:** §1.4 · **Persona:** admin · **URL:** `/admin/freedom_ls_organisations/organisation/add/`
-
-Saving a second Organisation named exactly `Westbrook` crashes.
-
-- **Expected:** a validation error naming the uniqueness problem.
-- **Actual:** HTTP 500.
-  `IntegrityError: duplicate key value violates unique constraint "unique_organisation_name_per_site"`
-  `DETAIL: Key (site_id, name)=(3, Westbrook) already exists.`
-
-The constraint is enforced only at the database level. A Django `ModelForm` does not validate
-`Meta.constraints`, and `site` is excluded from the admin form, so nothing catches this before the INSERT.
-
-![](screenshots/desktop_1.4_duplicate_name_integrityerror.png)
+**None.** No test in the plan failed.
 
 ---
 
-### 2. Duplicate cohort name within an organisation returns a 500 — and the user sees nothing at all
+## Previous defects: re-verified
 
-**Test:** §6.7 · **Persona:** superuser · **URL:** `POST /educator/organisations/northside/cohorts/__actions/create_cohort`
+Each of these was re-tested directly rather than assumed.
 
-Creating a second `Year 10 Science` inside Northside fails with a 500. Because HTMX does not swap a
-non-2xx response, **the modal simply sits there with no message, no toast and no field error** — the
-user gets no feedback whatsoever that the save failed. The only trace is in the console:
-`Response Status Error Code 500 from …/__actions/create_cohort`.
-
-- **Expected:** a validation error, not a 500 (§6.7 names this explicitly).
-- **Actual:** HTTP 500 `IntegrityError`, silently swallowed by the UI.
-
-Same root cause as failure 1: a DB-level uniqueness constraint with no model- or form-level validation.
-
-![](screenshots/desktop_6.7_duplicate_cohort_no_feedback.png)
-
-Note the positive half of this test passed: creating `Year 10 Science` in Northside while RPAS Training
-already had one **worked**, which is the narrowed constraint doing its job (§6.3–6.5).
+| # | Previous defect | Result this run | Evidence |
+| --- | --- | --- | --- |
+| 1 | Duplicate Organisation name → 500 `IntegrityError` | **Fixed.** Field-level error: *"Organisation with this Site and Name already exists."* | ![](screenshots/desktop_1.4_duplicate_name_validation.png) |
+| 2 | Duplicate cohort name in an organisation → 500, no feedback | **Fixed.** Modal stays open with an inline error: *"Cohort with this Site, Organisation and Name already exists."* | ![](screenshots/desktop_6.7_duplicate_cohort_validation.png) |
+| 3 | Non-UUID cohort id segment → 500 `ValidationError` | **Fixed.** `/cohorts/not-a-uuid` returns a plain 404. | — |
+| 4 | `#scope-announcer` destroyed and recreated on every switch | **Fixed.** I tagged the live-region element with a JS property, performed a switch, and the *same* element survived (`sameElement: true`) with its text updated to "Now viewing Northside". | — |
+| 5 | Educator Interface header link hidden from organisation educators | **Fixed, and correctly scoped.** `org.educator` sees the link and it works; `no.access` (no educator rights) correctly does **not** see it, so nobody is offered a link into a 404. | — |
+| 6 | Switcher trigger last in tab order; arrow keys dead | **Fixed.** Third Tab from the top of the page lands on the switcher, *before* the section nav, with a visible focus ring. ArrowDown/ArrowUp move between options; Escape closes and returns focus to the trigger. | ![](screenshots/desktop_3.9_switcher_focus_ring.png) |
+| 7 | `organisation_staff` cannot create cohorts | Confirmed **not a defect** — view-by-design. §6 run as the superuser per the corrected plan. | — |
+| 8 | Mobile/tablet drawer stays open after a switch | **Fixed** at both 375px and 768px: the drawer is closed after the switch and the new organisation's data is on screen. | ![](screenshots/mobile_3.3_drawer_closed_after_switch.png) |
+| 9 | Empty `<title>` on educator pages | **Fixed.** e.g. `Cohorts — RPAS Training — DemoDev`. (See observation 4 for a lesser residual.) | — |
 
 ---
 
-### 3. A non-UUID cohort id in the URL returns a 500 instead of a 404
-
-**Test:** related to §3.6 · **URL:** `/educator/organisations/northside/cohorts/create` (any non-UUID segment)
-
-- **Expected:** a plain 404, as §3.6 requires for URLs that do not exist.
-- **Actual:** HTTP 500 `ValidationError: ['"create" is not a valid UUID.']`
-
-Also reproduced with `/cohorts/new` and `/cohorts/__create`. §3.6's own check passed —
-`/educator/organisations/northside/not-a-section` gives a clean 404 ("Unknown path segment") — so the gap
-is specifically the segment after `/cohorts/`, which is fed to a UUID lookup without being validated first.
-
-![](screenshots/desktop_6_bad_cohort_segment_500.png)
-
----
-
-### 4. `#scope-announcer` is destroyed and recreated on every switch
-
-**Test:** §3.9 step 15 · **Persona:** `org.educator@example.com`
-
-The live region is correctly placed **outside** `#main-content` (it lives at `#interface-main >
-#scope-announcer`, while `#main-content` is a nested descendant), so it survives the main swap. Its text
-updates correctly to "Now viewing Northside". But the element itself is replaced.
-
-- **Expected:** the text content changes and the element itself is not removed and re-added.
-- **Actual:** a `MutationObserver` on `#interface-main` records a `childList` **add** and a **remove** of
-  `#scope-announcer` on each switch. A `data-qa-tag` attribute set immediately before the switch is gone
-  afterwards, and node identity differs (`newNode === oldNode` is `false`).
-
-This is exactly the failure mode the test plan warns about: some screen readers do not announce a live
-region that is torn down and rebuilt. The out-of-band fragment needs to swap the announcer's *contents*
-rather than its `outerHTML`.
-
----
-
-### 5. Organisation educators get no link to the educator interface
-
-**Test:** §2.5 steps 8–9, §8.5 · **Personas:** `org.educator`, `single.org`, `legacy.educator`
-
-The header user menu offers "Educator Interface" **only** to `demodev@email.com` (superuser). Measured
-across every persona:
-
-| Persona | Can load `/educator/` | "Educator Interface" in user menu |
-| --- | --- | --- |
-| `org.educator@example.com` | yes | **no** |
-| `single.org@example.com` | yes | **no** |
-| `legacy.educator@example.com` | yes | **no** |
-| `no.access@example.com` | no (404) | no — correct |
-| `demodev@email.com` | yes | yes |
-
-- **Expected:** the link is present for users who can use the interface, and lands on `/educator/`.
-- **Actual:** every organisation-scoped educator must know and type the URL by hand.
-
-`freedom_ls/base/templates/partials/header_bar_user_menu.html:20` gates the link on
-`{% if user.is_staff %}`. That gate predates this branch, **but this branch edited those exact lines** —
-commit `fa7cfe3e` ("[batch 7] Scope educator URLs to an organisation…") changed
-`{% url 'educator_interface:interface' '' %}` to `{% url 'educator_interface:root' %}` and left the
-condition untouched — and the branch's own `upgrade_notes.md` states that `is_staff` no longer implies
-educator access. The interface's real gate is `organisations_accessible_to(user)`
-(`freedom_ls/student_management/queries.py:105`), which is the condition the template should use.
-
-Where the link *is* shown it works correctly (`/educator/` → redirect, no `NoReverseMatch`).
-
----
-
-### 6. Switcher keyboard behaviour — the tab-order half was a mis-reading
-
-**Test:** §3.9 steps 2, 5–6 · **Persona:** `org.educator@example.com`
-
-**The tab order was never wrong.** Re-measured at 1920×1080, the real order is
-`FirstClass logo → user menu → Switch organisation → Cohorts → Users → Courses → main content` — the
-switcher does sit before the section nav, exactly as §3.9 step 2 expects. `Shift+Tab` from the switcher
-lands on the user menu, which confirms it directly.
-
-The original reading came from where the measurement started. The sidebar is an open `<dialog>`, so the
-browser runs the dialog focusing steps on load and `document.activeElement` is **already** the switcher
-trigger before the tester presses anything. The first `Tab` therefore leaves it for "Cohorts", and the
-switcher only reappears after wrapping — producing the observed sequence, which is the correct cycle
-entered one step late. Worth knowing for future QA: calling `blur()` does not reset Chrome's sequential
-focus navigation starting point either, so it reproduces the same misleading cycle. Only a fresh page
-load does.
-
-Two genuine defects were found in the same area and both are fixed:
-
-- **The `menuitemradio` roles were orphaned.** There was no `role="menu"` anywhere in the codebase, so
-  the options had no owning menu. The dropdown panel is now the menu and is named from its trigger, and
-  the shared dropdown's own items declare `role="menuitem"`.
-- **Arrow keys did not move focus.** Up, Down, Home and End now move between options, and opening from
-  the keyboard lands on the currently-checked one. `Tab` still steps through them, so the flow that
-  already worked keeps working.
-
-Everything else in §3.9 passed as originally reported: `aria-haspopup="menu"`, `aria-expanded` toggling
-correctly, `role="menuitemradio"` with `aria-checked` true/false on the right items, and `Escape` closing
-the menu and returning focus to the trigger.
-
----
-
-### 7. RESOLVED — not a defect: the test plan named the wrong persona for §6
-
-**Test:** §6, §8.1 step 9 · **Persona:** `org.educator@example.com`
-
-§6 named `org.educator` as the persona who creates a cohort. That user has no "Create Cohort" button at
-all, in either organisation. Probing the endpoints directly as that user:
-
-| Request | Status |
-| --- | --- |
-| `GET …/northside/cohorts/__actions/create_cohort` | **403** |
-| `GET …/rpas-training/cohorts/<own-cohort>/__actions/delete` | **403** |
-| `GET`/`POST` `…/southgate/cohorts/__actions/create_cohort` | 404 — correct, and nothing was created |
-
-**Decision: the spec is right and the test plan was wrong.** `organisation_staff` is view-only by
-design — the spec gives it exactly `frozenset({"freedom_ls_organisations.view_organisation"})`, and
-`roles.py:67-73` implements that verbatim. §6 and §8.1(9) have been corrected to name the superuser,
-which is how they were actually executed (results under Passes). The 403s above are the intended
-behaviour of a view-only role, and isolation is intact throughout.
-
-Two code-level facts make it clear that adding permission strings to the role would not have been the
-fix either:
-
-- **No non-superuser can create a cohort today, whatever their role.**
-  `CreateInstanceAction.has_permission` (`panel_framework/actions.py:151-160`) calls
-  `request.user.has_perm(f"{app_label}.add_{model_name}")` with **no object**. Guardian's
-  `ObjectPermissionBackend` returns `False` for an objectless check, and the only other backend in
-  `AUTHENTICATION_BACKENDS` (`config/settings_base.py:274-279`) is `ModelBackend`, which reads Django
-  `Group`s and `user_permissions` — nothing outside the admin fieldsets and one test populates either.
-  So this gate is a broader limitation of the panel framework, not something specific to
-  `organisation_staff`.
-- **Cohort permissions on an object-scoped role could never reach guardian anyway.**
-  `sync_user_object_permissions` (`role_based_permissions/utils.py:140-189`) filters a role's
-  permissions through `_filter_perms_for_content_type` down to those whose content type matches the
-  *target object*. A role assigned on an Organisation can therefore only ever sync
-  `freedom_ls_organisations.*` permissions. The docstring of `cohorts_visible_to`
-  (`student_management/queries.py:130-145`) documents this deliberately and does the
-  organisation-to-cohort join in Python instead. The same applies to `site_admin`, which lists
-  `add_cohort`/`change_cohort`/`delete_cohort` (`roles.py:26-29`) but is `SCOPE_SITE` and so is synced
-  against a `Site` object — those three permissions never land in guardian either.
-
-Organisation-scoped cohort management is therefore a **future feature, not a regression**: it needs an
-object-aware permission check in `panel_framework`, not extra permission strings on a role. A
-`# FUTURE:` note recording this now sits beside the role in `roles.py`.
-
----
-
-### 8. Mobile/tablet: the navigation drawer stays open after switching organisation
-
-**Test:** extension of §3.3 step 5 to small screens
-
-On desktop the dropdown correctly closes after a switch. On mobile (375px) and tablet (768px) the switch
-succeeds — URL, switcher label, data and announcer all update — but the whole navigation drawer remains
-open over the newly-loaded content, which stays dimmed behind it. The user has to dismiss the drawer
-manually to see the organisation they just switched to.
-
-![](screenshots/mobile_3.3_after_switch.png)
-
----
-
-### 9. Educator interface pages have an empty `<title>`
-
-Every `/educator/…` page returns `document.title === ""`, so the browser tab and any bookmark are blank.
-Tangential to Organisations but consistent across all educator pages, including the newly
-organisation-scoped ones.
-
----
-
-## Not executed / partially executed
-
-### §7.6 — "No registration, no logo" cannot be reached
-
-`no.reg.learner@example.com` is redirected away from the player for **every** course. Verified live on
-three courses:
-
-| URL requested | Landed on |
-| --- | --- |
-| `/courses/standard-markdown-demo-finance/1/` | `/courses/standard-markdown-demo-finance/detail/` |
-| `/courses/content-widgets-demo-reference/1/` | `/courses/content-widgets-demo-reference/detail/` |
-| `/courses/functionality-demo-show-end-with-quiz/1/` | `/courses/functionality-demo-show-end-with-quiz/detail/` |
-
-Content access requires a registration, so "logged in, inside the player, with no registration" is a state
-the application does not produce. The `fls-dev:qa-data-helper` agent independently confirmed this cannot be
-set up with data alone — it would need a temporary code or access-backend change. The scenario may simply
-be moot rather than untested.
-
-### §7.3 — the second theme was verified by tokens, not by rendering
-
-The active theme is compiled into `static/vendor/tailwind.output.css`, so switching it requires
-`write_active_theme_css` plus a Tailwind rebuild — an asset change I did not make during QA.
-
-The `default` theme was verified live and the logo is clearly legible. For `first_class` I checked the
-theme tokens directly, which answers the actual concern (a chip that is only padding would let a
-transparent near-black mark vanish):
-
-| Theme | `--color-surface` (the chip) | `--color-sidepanel` (behind it) |
-| --- | --- | --- |
-| `default` | `#FFFFFF` | `#FFFFFF` |
-| `first_class` | `#F8F9FC` | `#FFFFFF` |
-
-The chip's computed background is `rgb(255, 255, 255)` at **alpha 1** with a 1px border — a genuinely
-opaque fill, not bare padding. Both themes give it a light opaque ground, so the mark reads on either.
-
-One deviation from §7.3 step 5: under `default` the chip background and the surrounding panel are *both*
-`#FFFFFF`, so the chip is not "visibly distinct from the surrounding" — only the 1px grey border separates
-them. Legibility of the mark itself is unaffected.
-
-### §7.8 — no N+1 observed, but not proven query-by-query
-
-Query counts on the player were stable and tracked outline size rather than the logo: 34 queries on item 1,
-34 on item 4 (4 outline items each), 40 on item 6 (5 outline items). Nothing suggests a per-outline-item
-organisation lookup. I could not extract the per-query SQL list from the Debug Toolbar panel to confirm
-exactly one `SELECT … FROM …_organisation`, and there is no pre-change baseline on this branch to compare
-against, so this is "no evidence of a regression" rather than a proof.
-
-### §4.3 — `__panels` URLs never appeared
-
-The seeded data produced `__tabs` and `__actions` partials but no `__panels` request on any page I visited.
-Both shapes that did appear were tested cross-organisation and 404 correctly (see Passes). `__panels`
-remains untested only because nothing emitted one.
-
----
-
-## Known behaviour, confirmed — not filed as bugs
-
-Per §9 of the test plan:
-
-- **The switcher closes on window scroll (§3.10).** Confirmed: `aria-expanded` goes `true` → `false` on
-  scroll. In practice this is mild at desktop sizes — the sidebar is short and the window rarely scrolls on
-  the list pages where you would use the switcher. It becomes noticeable only on a shortened viewport, where
-  the menu can vanish mid-reach. Inherited from `c-dropdown-menu` and tracked by an existing `@claude`
-  comment; not worked around.
-- **Courses shows the same list in every organisation (§8.2).** Confirmed, and the URL still carries the
-  Northside slug with the switcher correctly labelled.
-- **The outline logo is behind a dialog on small screens (§7.7).** Confirmed and working well — see below.
-
----
-
-## Passes
-
-### §1 Admin
-
-| Test | Result |
-| --- | --- |
-| 1.1 Organisation changelist renders with the **unfold** theme, Name + Slug columns | pass — sidebar, chrome and styling all correct; no plain-Django fallback |
-| 1.2 Add form shows Name + Logo, read-only Slug, **no Site field** | pass |
-| 1.3 Slug collision → `westbrook-2` | pass |
-| 1.4 Name uniqueness | **FAIL — see failure 1** |
-| 1.5 Rename does not change the slug | pass — "Westbrook Academy" kept slug `westbrook` |
-| 1.6 Delete unavailable | pass — no Delete button, no action dropdown at all, direct `/delete/` URL → **403** |
-| 1.7 Guardian object permissions | pass — page renders styled with a user lookup; granting `view_organisation` saved and persisted on reload |
-| 1.8 Logo happy path | pass — stored as `organisations/<uuid>.png`, no trace of the uploaded filename |
-| 1.9 Logo rejections | pass — all 9 cases, see below |
-
-![](screenshots/desktop_1.1_organisation_changelist.png)
-
-Every §1.9 rejection produced a field-level error and left the existing logo **unchanged**:
+## Section-by-section results
+
+### §1 Admin: organisation management — all pass
+
+- **1.1** Changelist renders with the full unfold theme (sidebar, admin chrome, styled controls) and shows
+  Name + Slug for RPAS Training, Northside and Southgate. No sign of a guardian/unfold MRO problem.
+  ![](screenshots/desktop_1.1_organisation_changelist.png)
+- **1.2** Add form shows **Name** and **Logo**, **no Site field**, and the **Slug** field is present and
+  read-only (renders as `-` before save). Saved `Eastvale` → slug `eastvale`.
+  ![](screenshots/desktop_1.2_add_organisation_form.png)
+- **1.3** `Eastvale.` (trailing stop) saved with slug `eastvale-2` — collision handled, no error.
+- **1.4** Duplicate `Eastvale` → validation error, no 500. *(previous defect 1)*
+- **1.5** Renamed `Eastvale` → `Eastvale Academy`; **slug stayed `eastvale`**.
+- **1.6** No Delete button on the change page; the changelist has **no actions dropdown and no row
+  checkboxes at all**; `.../<id>/delete/` returns **403**.
+  ![](screenshots/desktop_1.6_delete_403.png)
+- **1.7** Guardian object-permissions page renders styled, with the user lookup and existing grants
+  listed. Granted `view_organisation` to a test user; it persisted across reload.
+  ![](screenshots/desktop_1.7_object_permissions.png)
+- **1.8** Uploaded `RT-logo.webp` to Northside → stored as
+  `organisations/f0fdbf8d-1647-45c4-8bec-dc84c4bfa60a.webp`. **Id-based, no trace of `RT-logo`.**
+  Logo removed again afterwards so Northside is logo-less for §4/§7.5.
+  ![](screenshots/desktop_1.8_logo_uuid_filename.png)
+
+**1.9 — all eight rejection paths pass.** Every one produced a field-level error naming the actual
+problem *and* the actual limit, none saved, none produced a 500, and **Northside's existing logo was
+still intact after every rejection**.
 
 | Upload | Message |
 | --- | --- |
-| `.gif` | "File extension "gif" is not allowed. Allowed extensions are: png, jpg, jpeg, webp." + "Image format GIF is not supported…" |
-| `.bmp` | equivalent, naming BMP |
-| `.txt` | "Upload a valid image. The file you uploaded was either not an image or a corrupted image." |
-| real `.svg` as `.svg` | rejected |
-| **real `.svg` renamed `.png`** | **rejected** — the byte-level check works, not just the filename filter |
-| 5000×5000 PNG | "Image is too large (5000x5000px; maximum is 4000x4000px)." |
-| 1×1 PNG | "Image is too small (1x1px; minimum is 64x32px)." |
-| 11.5 MB PNG | "Image file is too large (11.5MB; maximum is 2MB)." |
-| truncated PNG | "Upload a valid image…" — no traceback |
+| `.gif` | *File extension "gif" is not allowed. Allowed extensions are: png, jpg, jpeg, webp.* + *Image format GIF is not supported. Use PNG, JPEG or WebP.* |
+| `.bmp` | *File extension "bmp" is not allowed…* + *Image format BMP is not supported…* |
+| `.txt` | *File is not a readable image. Use PNG, JPEG or WebP.* |
+| Real `.svg` as `.svg` | *File is not a readable image. Use PNG, JPEG or WebP.* |
+| **Real `.svg` renamed `.png`** | *File is not a readable image…* — **the byte-level check works**: the extension filter passed it and the content check caught it. |
+| 5000×5000 PNG | *Image is too large (5000x5000px; maximum is 4000x4000px).* |
+| 1×1 PNG | *Image is too small (1x1px; minimum is 64x32px).* |
+| 2.6 MiB PNG | *Image file is too large (2.6MB; maximum is 2MB).* |
+| Truncated PNG | *File is not a readable image. Use PNG, JPEG or WebP.* |
 
-![](screenshots/desktop_1.9_logo_rejection_dimensions.png)
+![](screenshots/desktop_1.9_svg_as_png_rejected.png)
 
-Minor note: the `.txt` case is caught by the image decoder rather than the extension validator, so its
-message does not name the allowed formats. It is still a clear field-level error and does not save.
+### §2 Educator interface: URLs and access — all pass
 
-### §2 Educator URLs and access — all pass
+- **2.1** `/educator/` redirected to `/educator/organisations/northside/cohorts` — a concrete slug.
+  ![](screenshots/desktop_2.1_educator_redirect_northside.png)
+- **2.2** Last organisation remembered (bare `/educator/` returned to Northside), **and re-authorised**:
+  logging in as `single.org` with `northside` still the remembered value landed on **RPAS Training**.
+- **2.3** `no.access@example.com` at `/educator/` → **404**. No 500, no empty shell, no redirect loop.
+- **2.4** Unknown slug, real-but-unauthorised slug (`southgate`), and an invalid slug (`Not A Slug!`)
+  all return **404** from the same view. See observation 3 for a DEBUG-only cosmetic difference.
+- **2.5** Every link keeps the organisation segment — cohort detail, Users, **Courses**, breadcrumbs,
+  a cohort link from inside the Users table, a user link from inside a cohort panel, and the header
+  user-menu link into `/educator/`. No `NoReverseMatch` anywhere.
+  ![](screenshots/desktop_2.5_cohort_detail_org_in_url.png)
+- **2.6** Back ×4 and Forward through Cohorts → cohort → Users → user each restored the correct
+  organisation *and* the matching content; deep-link reload re-rendered identically.
 
-- **2.1** `/educator/` → `/educator/organisations/northside/cohorts` (a concrete slug).
-- **2.2** `org.educator` returns to its remembered Northside; `single.org` lands on **RPAS Training**, not
-  the remembered Northside — the re-authorisation check passes.
-- **2.3** `no.access@example.com` → **404** (not a 500, not an empty interface, not a loop).
-- **2.4** unknown slug, real-but-unauthorised `southgate`, and invalid characters all → **404**. Both 404s
-  are genuine `Http404` responses rendered by the same handler; the only textual difference is inside
-  Django's DEBUG-only technical 404 page, which is not shown in production, so organisation names are not
-  enumerable.
-- **2.5** Every absolute `/educator/…` link on the cohorts list, cohort detail, users list and courses list
-  carries the organisation segment (the only exceptions are relative query-only links such as `?page=2` and
-  `?sort=first_name`, which resolve against the current URL and therefore keep it). All four pages load 200.
-- **2.6** Back ×4 and Forward ×4 through Cohorts → cohort → Users → user each returned the correct page with
-  the correct organisation and content; the URL and displayed data never disagreed. Reload on a deep page
-  re-rendered identically.
+### §3 The organisation switcher — all pass
 
-![](screenshots/desktop_2.1_educator_redirect_northside.png)
-
-### §3 The switcher
-
-- **3.1** Present at the top of the left panel, above the section nav, always naming the current
-  organisation — never a placeholder.
-- **3.2** `single.org` gets a **static `<span>`** in the same position (top 96px, above the nav at 140px):
-  no chevron, no button, `cursor: auto`. Clicking it does nothing — no menu, no navigation, **no console
-  errors**.
-- **3.3** Lists RPAS Training and Northside only; **Southgate never appears**. Switching reloads in place,
-  the URL becomes `/educator/organisations/northside/cohorts`, the list shows Northside's Year 9 Maths, the
-  dropdown **closes**, and reload keeps Northside. Critically, **the switcher's own label updates** in both
-  directions — the chrome-disagrees-with-data failure this feature exists to prevent does not occur.
-- **3.4** Switching from RPAS's "Year 9 Maths" detail (a name that exists in both organisations) lands on
-  the Northside cohorts list with the notice *"Switched to Northside — that cohort isn't in this
-  organisation"*. Label and data agree.
-- **3.5** From a cohort with no counterpart: no bare 404, lands on the Northside cohorts list, notice shown,
-  address bar is the list URL. **Back** returns to the RPAS cohort detail, correctly rendered. Repeating
-  from a **user** detail page behaves identically, with *"…that user isn't in this organisation"*.
-- **3.6** `/educator/organisations/northside/not-a-section` → plain **404** ("Unknown path segment"), with
-  **no** switch notice. The switch handler is not catching unrelated 404s.
-- **3.7** A foreign cohort id hand-pasted under Northside → plain **404**, no notice.
-- **3.8** Two tabs stayed independent throughout: tab A reloaded as RPAS Training while tab B was deep in a
-  Northside cohort; after switching tab A to Northside both tabs were independently correct. No session leak.
-- **3.9** DOM contract correct (see failure 6 for the two keyboard gaps).
-
-![](screenshots/desktop_3.3_switcher_open_no_southgate.png)
-![](screenshots/desktop_3.5_switch_notice_cohort_not_in_org.png)
-![](screenshots/desktop_3.2_single_org_static_label.png)
-
-Minor observation: the open dropdown does not visually mark the current organisation — `aria-checked` is
-set correctly, but there is no checkmark or highlight for sighted users.
+- **3.1** Present at the top of the left panel, above the section nav, naming **RPAS Training** on
+  every page (lists, Users, Courses, cohort detail). Never a placeholder.
+- **3.2** As `single.org`: **static text in the same position**, no button, no chevron,
+  `cursor: auto`; clicking it does nothing and logs no console error.
+  ![](screenshots/desktop_3.2_single_org_static_label.png)
+- **3.3** Menu lists exactly RPAS Training and Northside — **Southgate absent**. After switching: URL
+  becomes `/organisations/northside/cohorts`, **the switcher's own label updates**, the list shows
+  Northside's cohorts, **the dropdown panel closes**, and a reload stays on Northside. Verified in
+  both directions.
+  ![](screenshots/desktop_3.3_switcher_open_no_southgate.png)
+- **3.4** Switching from RPAS Training's "Year 9 Maths" detail lands on the Northside **cohorts list**
+  with the Northside label and Northside data. The label and data never disagreed at any point.
+- **3.5** The soft landing works and is announced: a toast reads *"Switched to Northside — that cohort
+  isn't in this organisation"*, the address bar shows the list URL, and **Back** returns to the
+  correctly-rendered RPAS Training cohort detail. Repeated from a **user** detail page: *"…that user
+  isn't in this organisation"*.
+  ![](screenshots/desktop_3.5_switch_toast_notice.png)
+- **3.6** **The switch does not disguise unrelated errors.** Beyond the plain address-bar case, I
+  forged requests carrying `X-Organisation-Switch: true`: a nonexistent section
+  (`/northside/not-a-section`) and a nonexistent object id both returned **404 with no "switched to"
+  notice**. Only a genuine cross-organisation mismatch gets the soft landing.
+- **3.7** A hand-pasted foreign cohort URL under Northside → plain **404**.
+- **3.8** Two tabs, two organisations: after tab B navigated inside Northside, reloading tab A still
+  showed **RPAS Training** and its cohorts — no session leak. Switching tab A to Northside then
+  reloading both left each tab independently correct.
+- **3.9** Keyboard-only operation completes the whole flow. ARIA verified in the DOM: trigger has
+  `aria-haspopup="menu"` and `aria-expanded` toggling `false`/`true`; each option is
+  `role="menuitemradio"` with `aria-checked="true"` on the current organisation and `"false"` on the
+  others; `<div id="scope-announcer" class="sr-only" aria-live="polite" aria-atomic="true">` exists
+  **outside `#main-content`** and, critically, **is not destroyed and recreated on a switch**.
+- **3.10** Confirmed: opening the menu and scrolling the window closes it (`aria-expanded` true → false
+  after a 250px scroll). Filed as known, not a bug — see *Known and not bugs*.
 
 ### §4 Cross-organisation isolation — all pass
 
-**4.1** Perfect mirror image, no overlap:
+- **4.1** RPAS Training's cohorts list shows only its own (Year 10 Science, Year 9 Maths); Northside's
+  same-named "Year 9 Maths" is a different object and does not appear. Users lists are **disjoint**:
+  RPAS Training shows Ada/Cara/Priya/Tom; Northside shows Neo/Nina/Sol. Mirror image confirmed.
+  ![](screenshots/desktop_4.1_rpas_cohorts_isolated.png)
+- **4.2** A Northside cohort id under `rpas-training` → 404. A Northside-only user id under
+  `rpas-training` → 404.
+- **4.3** Foreign HTMX partials **all 404**, verified for each shape:
+  `…/rpas-training/cohorts/<northside-id>/__tabs/details` → 404,
+  `…/__tabs/details/__panels/students` → 404,
+  `…/__actions/delete` → 404, while the correctly-scoped equivalents return 200.
+- **4.4** Southgate never appears in the switcher, and `/southgate/cohorts`, `/southgate/users` and
+  `/southgate/courses` all return 404.
 
-| | Cohorts | Users |
-| --- | --- | --- |
-| RPAS Training | Year 10 Science, Year 9 Maths | Ada Kruger, Cara Learner, Priya Naidoo, Tom Fischer |
-| Northside | Year 9 Maths (Northside's) | Neo Dlamini, Nina Botha, Sol Individual |
+### §5 The legacy-educator path — all pass
 
-Northside's identically-named "Year 9 Maths" never appears under RPAS Training, and no Northside-only
-learner leaks into the RPAS user list.
+This is the upgrade-safety check and it passes completely.
 
-**4.2 / 4.3 / 4.4** — every foreign or unauthorised request returned **404**:
+`legacy.educator@example.com` (no organisation role; one per-cohort guardian grant) at `/educator/`
+was redirected **into RPAS Training, not 404'd**. The Cohorts list showed **exactly "Year 9 Maths"** —
+the single cohort they hold a grant on, not all of RPAS Training's and not an empty list. That cohort's
+detail page loads; another RPAS Training cohort's detail URL returns **404**, so an organisation-less
+user gets no organisation-wide access. The switcher is **static text**. The Users list shows only
+Year 9 Maths members (Ada Kruger, who is only in Year 10 Science, is absent).
 
-| Request | Status |
-| --- | --- |
-| Northside cohort id under `rpas-training` | 404 |
-| Northside-only user id under `rpas-training` | 404 |
-| RPAS cohort id under `northside` | 404 |
-| RPAS-only user id under `northside` | 404 |
-| `…/northside/cohorts/<rpas-id>/__tabs/details` | 404 |
-| `…/rpas-training/cohorts/<northside-id>/__tabs/details` | 404 |
-| `…/rpas-training/cohorts/<northside-id>/__tabs/course-progress` | 404 |
-| `…/rpas-training/cohorts/<northside-id>/__actions/delete` | 404 |
-| `GET` + `POST` `…/southgate/cohorts/__actions/create_cohort` | 404 (nothing created) |
-| `…/southgate/cohorts`, `/users`, `/courses` | 404, 404, 404 |
+![](screenshots/desktop_5_legacy_educator_scoped.png)
 
-### §5 The legacy-educator path — passes completely
+### §6 Creating a cohort — pass (adapted; see observation 2)
 
-This is the upgrade-safety check, and it holds end to end for `legacy.educator@example.com` (no
-organisation role, one per-cohort `view_cohort` grant):
+- Create Cohort modal shows a **Name field and no organisation selector**.
+  ![](screenshots/desktop_6_create_cohort_modal.png)
+- **The narrowed uniqueness constraint works**: `Year 11 Physics` was created in Northside *and* in
+  RPAS Training — same name, same Site, different organisations, both saved.
+- A second `Year 11 Physics` **within** Northside produced a validation error, not a 500.
+- Creation lands on the new cohort's detail page under `/organisations/northside/`; the Northside
+  cohort does not appear in RPAS Training's list.
+- **Save and add another** worked: both resulting cohorts landed in Northside.
 
-| Step | Result |
-| --- | --- |
-| `/educator/` | **200**, redirected into RPAS Training — not a 404 |
-| Cohorts list | exactly **"Year 9 Maths"** — the one cohort they hold a grant on |
-| Granted cohort detail | 200 |
-| Ungranted RPAS cohort detail ("Year 10 Science") | **404** — no organisation-wide access |
-| Switcher | **static text** "RPAS Training" |
-| Users list | only the three members of Year 9 Maths |
+### §7 Student course player co-branding — pass (7.6 not performable)
 
-![](screenshots/desktop_5_legacy_educator_cohorts.png)
+- **7.1** RPAS Training's logo appears in the outline header between the course title and the progress
+  bar. It renders at **48×22px** inside a **128×32px opaque chip** (`background: rgb(255,255,255)`,
+  padding `4px 8px`, 1px border) — small, clearly secondary to the site header, and not a bare
+  transparent image. `alt="RPAS Training"`, **not inside a link**, `cursor: auto`.
+  ![](screenshots/desktop_7.1_player_org_logo_firstclass.png)
+- **7.2** Survives player navigation: after six Next/Previous moves, **exactly one** logo chip every
+  time — never two stacked, never lost.
+- **7.3** Checked on **both shipped themes**. On `default` (solid blue brand header) and on
+  `first_class` (white/frosted header, zero-padded TOC counters) the mark is clearly legible in both
+  cases. See observation 5 for a minor note on the chip's fill, and observation 8 for how the theme
+  must be switched.
+  ![](screenshots/desktop_7.3_first_class_theme_logo.png)
+- **7.4** **Width and height are capped.** With a real 3000×300 banner uploaded through the admin, the
+  image scaled to 110×22 inside the 128×32 chip; the outline header stayed 272px wide and the page had
+  **no horizontal overflow**. I also measured the 300×3000 crest shape against the same CSS
+  (`h-8 max-w-32` chip, `h-full w-auto max-w-full object-contain` image): it renders 2×22 — height
+  constrained, not stretched, header unchanged. `RT-logo.webp` restored afterwards.
+  ![](screenshots/desktop_7.4_wide_logo_capped.png)
+- **7.5** **Monogram fallback is correct in every case.** Northside (no logo) → **"NO"**;
+  renamed "Northside Academy" → **"NA"**; renamed "123" → a **generic icon** (an SVG with
+  `aria-label="unknown"`, inside the badge which carries `role="img" aria-label="123"`) — not an empty
+  box, not "12", no crash. Reference case: RPAS Training with its logo removed → **"RT"**. All render
+  as a 32×32 `rounded-full` badge matching the header user-initials badge. Northside restored to its
+  original name.
+  ![](screenshots/desktop_7.5_monogram_NO.png)
+  ![](screenshots/desktop_7.5_generic_icon_numeric_name.png)
+- **7.6** **Not performable** — see *Not executed*.
+- **7.7** At 375px the outline moves behind a bottom-sheet panel and the logo is no longer permanently
+  on screen (expected). Opening the panel shows the chip correctly sized with no overflow.
+  ![](screenshots/mobile_7.7_outline_panel_logo.png)
+- **7.8** **No N+1.** The player page ran 37 queries total, of which exactly **two** touch the
+  organisation table: one `SELECT` that reaches it via an `INNER JOIN` on the cohort-registration query
+  (this is the logo lookup), and one `SELECT 1 … WHERE site_id = 3 AND id IN (…)` existence check for
+  the header's educator-access link. Neither is repeated, and neither scales with the ~18-item outline.
 
-### §6 Creating a cohort (run as superuser — see entry 7)
+### §8 Regression sweep — all pass
 
-- **6.2** The modal shows a **Name field and no organisation selector**; the form posts to
-  `/educator/organisations/northside/cohorts/__actions/create_cohort`, so the organisation comes from the
-  URL. Pass.
-- **6.3–6.5** Creating `Year 10 Science` in Northside **succeeded** despite RPAS Training already having a
-  cohort of that name on the same Site — the narrowed constraint works — and landed on the new cohort's
-  detail page under `/organisations/northside/`. Pass.
-- **6.6–6.7** **FAIL — see failure 2.**
-- **6.8–6.9** The new cohort does **not** appear in RPAS Training's list. Pass.
-- **6.10–6.11** "Save and add another" kept the modal open with the name field cleared; both cohorts landed
-  in Northside and neither appeared in RPAS Training. Pass.
-
-![](screenshots/desktop_6.2_create_cohort_modal.png)
-
-### §7 Player co-branding
-
-- **7.1** The RPAS Training logo sits in the outline header between the course title and the progress bar,
-  rendered at 48×22 against a 66×32 site logo — clearly secondary. It is inside an opaque chip
-  (`bg-surface` + 1px border + padding), is **not** a link (`cursor: auto`, no ancestor `<a>`), and carries
-  `alt="RPAS Training"`.
-- **7.2** Exactly **one** chip in all ten states tested — five consecutive `Next` clicks (each an OOB
-  outline swap), four direct item loads and three browser `Back` steps. Never duplicated, never lost. The
-  current-item highlight moved correctly each time. (A "Previous" button does not exist on form-type items,
-  so the reverse direction was exercised via outline links and browser Back.)
-- **7.3** Pass — see the Not-executed section for the theme caveat.
-- **7.4** Width and height are capped:
-
-| Uploaded | Rendered | Chip | Outline header height | Horizontal scroll |
-| --- | --- | --- | --- | --- |
-| 3000×300 banner | 110×22 | 128×32 | 155px (unchanged) | none |
-| 300×3000 crest | 2×22 | 20×32 | 155px (unchanged) | none |
-
-  The header never grew, never overflowed and never pushed the progress bar off-screen.
-
-- **7.5** The monogram fallback is correct in every case:
-
-| Organisation name | Badge |
-| --- | --- |
-| `Northside` (no logo) | **"NO"** — single token, first two letters |
-| `Northside Academy` | **"NA"** — two tokens, first letter of each |
-| `123` | **generic icon** — an SVG, not an empty box, not "12", no crash |
-| `RPAS Training` with its logo removed | **"RT"** |
-
-  The badge is `inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface-2` — the same round
-  32px shape and weight as the header user-initials badge — and carries an `aria-label` naming the
-  organisation.
-
-- **7.6** Not reachable — see Not-executed.
-- **7.7** Pass. At 375px the outline moves behind a dialog and the logo is no longer permanently on screen
-  (expected and accepted). Opening "Open course outline" shows the chip correctly sized at 66×32, fully
-  inside the panel, with no overflow and no horizontal scrolling.
-- **7.8** No evidence of an N+1 — see Not-executed.
-
-![](screenshots/desktop_7.1_player_org_logo.png)
-![](screenshots/desktop_7.5_rt_monogram.png)
-![](screenshots/mobile_7.7_outline_panel_logo.png)
-
-### §8 Regression sweep
-
-- **8.1** Both cohort tabs load their panels. Search filters correctly (four users → one) with the
-  organisation intact. Sorting works and keeps the organisation. Pagination advances through the courses
-  list with the organisation and switcher label intact (the pagination links' `hx-get` carries the full
-  organisation-scoped URL). The delete instance action worked as a permitted user and redirected back to
-  that organisation's cohorts list with the cohort gone.
-- **8.2** Courses shows the identical list under both organisations, the URL keeps the Northside slug, and
-  the switcher still reads "Northside". Intended behaviour, confirmed.
-- **8.3** **Self-registration still works** — the most likely place the new mandatory organisation FK could
-  have broken an existing flow. "Enrol for free" registered the learner and dropped them straight into the
-  player at `/courses/qa-published-free-visibility/1/` with **no 500**. The outline header showed the
-  Site's own organisation as the **"DE"** monogram (`aria-label="DemoDev"`). Registering again was a clean
-  no-op — no duplicate error, no 500.
-- **8.4** Completing a topic moved progress 0% → 100%; the cohort learner's dashboard showed the in-progress
-  course at 22% under "In Progress" with the rest under "Available courses", and **no duplicates**.
-- **8.5** The header user menu opens and closes with `Escape` for every persona (see failure 5 for the
-  missing link).
-- **8.6** The Cohort change page renders with the unfold theme, shows an **Organisation** field and **no
-  Site field**, and keeps a working object-permissions link. A User course registration shows an
-  Organisation and saved without error.
-
-![](screenshots/desktop_8.3_self_registration_player.png)
-![](screenshots/desktop_8.4_learner_dashboard.png)
-
-### Mobile (375×812) and tablet (768×1024)
-
-No horizontal scrolling anywhere on either viewport, and no overflowing elements. The navigation collapses
-behind an "Open navigation panel" button; the switcher sits at the top of the drawer as a full-width
-control (343px on mobile, 736px on tablet) and switching works end to end — URL, label, data and announcer
-all update — apart from the drawer staying open afterwards (failure 8).
-
-![](screenshots/mobile_3.1_nav_drawer_switcher.png)
-![](screenshots/tablet_3.1_nav_drawer_switcher.png)
-
-Touch targets: most controls are comfortable, but cohort and user links inside the tables are roughly
-39–47 × 37px, under the 44×44 guideline. Pre-existing table styling rather than anything this feature
-introduced.
-
-**Breakpoint note:** the persistent desktop nav only appears at **≥1024px**. At 768px, 820px and 900px the
-interface uses the mobile hamburger drawer, so an iPad in portrait — and many tablets in landscape — get
-the mobile navigation rather than the desktop sidebar.
+- **8.1** Every tab on a cohort detail loads its panels; **search** on the Users list filters correctly
+  and keeps the organisation; **sorting** works and the sort links carry the organisation; **column
+  pagination** loads page 2 with the organisation intact in both the switcher and the `hx-get` URL. As
+  the superuser, the **delete** instance action worked and redirected to the Northside cohorts list —
+  sensible and within the organisation.
+  ![](screenshots/desktop_8.1_delete_confirm_dialog.png)
+- **8.2** Courses shows the **same list** in RPAS Training and Northside, the URL still carries the
+  organisation slug, and the switcher still renders and names the current organisation. Intended.
+- **8.3** **Self-registration still works** — this was the most likely place the new mandatory FK could
+  break an existing flow, and it does not. "Enrol for free" registered and dropped straight into the
+  player with no 500. The outline header showed the **"DE" monogram for `DemoDev`**, the Site's own
+  organisation, as the plan expects. Re-submitting the registration was a clean **no-op**: still
+  exactly one `UserCourseRegistration`, no duplicate error, no 500.
+- **8.4** Completed a topic (progress 0% → 33%) and a form (28% → 33%); the progress bar updated and the
+  org chip persisted. **Deadlines render** — amber badges on the course detail TOC (`10 Sep`
+  course-level, `25 Aug` item-level). The learner dashboard shows the same courses with **no
+  duplicates**.
+  ![](screenshots/desktop_8.4_deadlines_render.png)
+- **8.5** The header user menu opens and closes normally for every persona, and the educator link works
+  where shown — the shared dropdown component is unaffected by the switcher reusing it.
+  ![](screenshots/mobile_8.5_header_user_menu.png)
+- **8.6** Admin sanity: the Cohort changelist and change page render with the unfold theme, show an
+  **Organisation** field and **no Site field**; the guardian object-permissions link works from a
+  cohort; a User course registration shows an Organisation and saves without error.
 
 ---
 
-## Environment notes and QA residue
+## Responsive results
 
-- **A signup-policy gate was cleared to make testing possible.** DemoDev's
-  `SiteSignupPolicy.additional_registration_forms` still contained `PhoneNumberForm`, left over from
-  `qa_create_incomplete_registration_learner`. `RegistrationCompletionMiddleware` redirects every
-  authenticated non-superuser to the registration-completion page on any non-exempt URL, which would have
-  blocked all seven personas from reaching any educator or player page. The `fls-dev:qa-data-helper` agent
-  emptied that list; the policy row and `require_terms_acceptance=True` are untouched. **Re-run
-  `qa_create_incomplete_registration_learner` to restore it.**
-- **Data left behind in the dev database:** organisations `Westbrook Academy` (slug `westbrook`, with a test
-  logo) and `Westbrook.` (slug `westbrook-2`) from §1.2–1.5; Northside cohorts `Year 10 Science` and
-  `QA Saveadd One` from §6; and a registration for `no.reg.learner@example.com` on
-  `qa-published-free-visibility` from §8.3. RPAS Training's `RT-logo.webp` and Northside's no-logo state
-  were both restored after §7.4 and §7.5.
-- The seeding command the agent wrote is at
-  `freedom_ls/qa_helpers/management/commands/qa_create_organisation_scenarios.py`. Nothing was committed.
+### Mobile (375×812)
+
+Navigation, layout and the switcher all behave. The nav collapses to a bottom-sheet drawer with the
+switcher at the top, above the section nav — the same relative position as desktop. Opening the
+switcher inside the drawer shows both organisations with a **checkmark on the current one**. Selecting
+Northside switches the data **and closes the drawer** (previous defect 8).
+
+No page-level horizontal overflow anywhere. The wide course-progress table scrolls **inside its own
+container** (`overflow-x: auto`, 2031px of content in a 284px box) rather than pushing the page wide.
+Forms, tabs, pagination and the deadline banner all remain usable.
+
+![](screenshots/mobile_3.1_nav_drawer_switcher.png)
+![](screenshots/mobile_8.1_cohort_detail_table.png)
+
+### Tablet (768×1024)
+
+At 768px the tablet gets the **mobile drawer nav**, not the desktop sidebar. It works correctly: the
+drawer opens, the switcher menu opens within it and is comfortably sized, and switching closes the
+drawer. Tables, tabs and pagination render at a comfortable width with no overflow, and the Create
+Cohort modal renders at a sensible width rather than stretching edge to edge.
+
+Worth noting for the team (layout choice, not a defect): because the sidebar only appears at the `lg`
+breakpoint, a 768px tablet leaves a wide empty column on the right of list pages where the sidebar sits
+on desktop.
+
+![](screenshots/tablet_3.3_drawer_switcher_open.png)
+![](screenshots/tablet_8.1_cohort_detail.png)
+
+---
+
+## Not executed
+
+### §7.6 "No registration, no logo" — not performable in the browser
+
+I delegated this to the `fls-dev:qa-data-helper` agent rather than skipping it. The agent investigated
+and reported that **no test data can make this scenario reachable**, and I accept that conclusion:
+
+- `course_home` and `view_course_item` both redirect to the course detail page when
+  `get_access(...).can_access_content` is False, and `_free_access_decision` only sets it True when the
+  learner holds an active `UserCourseRegistration` or a `CohortCourseRegistration` via membership.
+  There is no staff/superuser bypass.
+- Both `UserCourseRegistration.organisation` and `Cohort.organisation` are **non-nullable**, and
+  self-service enrolment assigns the Site's default organisation.
+
+So `organisation_for_learner_course` can only return `None` when the learner holds zero registrations —
+exactly the state in which the player refuses to render. The `{% if course_organisation %}` false branch
+in `course_toc_header.html` is unreachable from the browser and is covered by a unit test only
+(`test_no_registration_returns_none`).
+
+The agent verified this empirically against the dev database for three courses: on un-registered
+courses the organisation genuinely resolved to `None`, but every request returned **302 → `/detail/`**.
+
+**This needs a decision, not test data** — either drop §7.6 from the plan, or change the player so the
+Site's own default organisation is suppressed in the chip (which would also create a genuine
+"no organisation" state). I have added a todo item for that decision rather than a data-creation item,
+because re-running the data helper would only reach the same conclusion.
+
+### Screen-reader confirmation (§3.9, final paragraph)
+
+No screen reader (NVDA/VoiceOver/Orca) is available in this environment, so the *audible* announcement
+was not confirmed. Everything a screen reader depends on was verified structurally instead: the live
+region exists, is `aria-live="polite" aria-atomic="true"`, sits outside the OOB-swapped region, updates
+its text on a switch, and — the part that actually breaks announcements — **is not destroyed and
+recreated**.
+
+### §7.3 step 6 (dark/light preference) — not applicable
+
+The application ships no dark/light preference. The only `prefers-color-scheme: dark` rules in the
+built stylesheet belong to the Django Debug Toolbar's own chrome, not to the FLS role tokens, and there
+is no theme toggle in the templates. There is nothing to check on each theme.
+
+---
+
+## Observations (none of these are defects)
+
+1. **Self-enrolled learners see a chip for the Site itself.** Because self-service enrolment assigns
+   `get_default_organisation(site)`, every self-registered learner gets a co-branding chip for the
+   Site's own organisation — `no.reg.learner` currently sees a **"DD" monogram for `DemoDev`**. The
+   test plan explicitly expects this at §8.3 step 4, so it is behaving as specified. It is flagged only
+   because it is the same root cause that makes §7.6 unreachable: if the intent of co-branding is
+   "show the *third-party* organisation the learner studies through", this fires on every self-enrolled
+   learner. Worth a product decision alongside §7.6.
+
+2. **§6 was adapted, and the adaptation is stronger than the literal steps.** The plan says to create
+   `Year 9 Maths` in Northside, but §0.4's own seed data already puts a `Year 9 Maths` in Northside, so
+   the literal step would correctly fail on within-organisation uniqueness. I used a fresh name
+   (`Year 11 Physics`) and created it in **both** organisations, which tests the narrowed constraint
+   directly rather than relying on RPAS Training's pre-existing row. Worth fixing in the plan text so
+   the next run isn't confused.
+
+3. **The two 404s in §2.4 differ, but only under `DEBUG=True`.** Django's technical 404 page shows
+   *"No Organisation matches the given query"* for the unknown slug and no exception message for the
+   real-but-unauthorised slug. Both raise `Http404` from the same view
+   (`educator_interface/views.py:1161` and `:1167`) and there is no custom 404 handler, so production
+   renders the identical page for both and organisation names are **not** enumerable. Noted only so a
+   future tester doesn't mistake the debug-page difference for a leak.
+
+4. **Educator *detail* pages have a vaguer `<title>` than list pages.** Lists give
+   `Cohorts — RPAS Training — DemoDev`, but a cohort or user detail page gives only
+   `RPAS Training — DemoDev` — no object name, no section. The empty-title defect is fixed; this is a
+   lesser residual that hurts tab-switching and browser history.
+
+5. **The logo chip reads as a bordered outline, not a filled chip.** On `first_class` the chip fill is
+   `rgb(248,249,252)` against a `rgb(255,255,255)` surround; on `default` it is `rgb(255,255,255)` on a
+   white surround. In both cases it is the 1px border, not the fill, that separates the chip from the
+   panel. The plan's §7.3 step 5 asks for a *visibly distinct* background. The mark itself is clearly
+   legible on both themes — the failure mode the test is really guarding against (a near-black logo
+   vanishing on a dark header) does not occur, because the outline header is light on both themes. The
+   previous run reached the same conclusion and left it alone as pre-existing.
+
+6. **Touch targets are 36px tall** on the switcher trigger and the section-nav links at 375px, below the
+   44px guideline. The switcher matches the existing nav links exactly, so this is house style rather
+   than anything this feature introduced — consistent with the previous run's finding.
+
+7. **Re-uploading a logo appends a random suffix**: RPAS Training's file is currently
+   `organisations/85fa884a-…-a4591d1da8d0_feUw24t.webp`. This is Django storage's collision avoidance
+   when the id-named file already exists, not a leak of the uploaded filename — §1.8's requirement
+   (no trace of `RT-logo`) is met. Cosmetic only, but it means the stored name is not always exactly
+   `<uuid>.<ext>` as the plan's wording implies.
+
+8. **Switching FLS themes needs a Tailwind rebuild, not just the env var.** Setting `FLS_THEME` and
+   restarting `runserver` changed nothing visually, because the theme's tokens are compiled into
+   `static/vendor/tailwind.output.css`. §7.3 only became testable after
+   `FLS_THEME=first_class npm run tailwind_build` (which runs `write_active_theme_css` first). Worth
+   adding to the plan's §7.3 so the next tester doesn't conclude the themes are identical. I rebuilt
+   back to `default` afterwards and confirmed the output file is byte-identical to how I found it
+   (same md5), and both build artifacts are untracked by git.
+
+---
+
+## Known and not bugs (as the plan requests)
+
+- **The switcher menu closes on window scroll (§3.10).** Confirmed. In this position — pinned at the
+  top of a sidebar that scrolls with the page — it is more disruptive than it is in the header user
+  menu: at any viewport short enough for the page to scroll, a user who nudges the wheel while reading
+  the organisation list loses the menu and must re-open it, and on a trackpad it is easy to trigger
+  accidentally. Reported here as feedback only; it is inherited from the shared `c-dropdown-menu` and
+  tracked by an existing `@claude` comment, so it is **not** filed as a switcher bug and I did not
+  work around it.
+- **The Courses tab shows the same list in every organisation (§8.2).** Confirmed and intended in this
+  cut; the URL still carries the organisation slug and the switcher still names it.
+- **The outline logo is hidden behind a dialog on small screens (§7.7).** Confirmed and accepted.
+- **Logo images re-fetch on each page load** rather than being cached — expected with signed media URLs.
+
+---
+
+## Test data notes
+
+QA data is on **Site 3 (`DemoDev`, `127.0.0.1:8000`)**, which is why the server was run on port 8000:
+the site-aware middleware resolves by host, and any other port falls back to Site 2, where none of the
+`org.educator`/`Northside`/`RPAS Training` fixtures exist.
+
+The `fls-dev:qa-data-helper` agent was used twice: once for §7.6 (which it established is not
+achievable — see *Not executed*), and once to create the missing deadline data for §8.4, where it
+pointed the existing `qa_create_soft_deadline` command at the Year 9 Maths cohort. It made no code
+changes. It flagged that `qa_create_soft_deadline` defaults `--days-from-now` to **-7** (an *overdue*
+deadline), so a positive value is needed for an upcoming one.
+
+Objects left behind by this run, in case they confuse a later run: organisations `Eastvale Academy`
+and `Eastvale.`; cohorts `Year 11 Physics` (in both Northside and RPAS Training) and `QA Saveadd Two`
+(Northside); a `view_organisation` grant for `demodev@email.com` on RPAS Training; a
+`UserCourseRegistration` for `cohort.learner` on "QA Free Course (Access Types)"; and completed topic
+and form progress for `cohort.learner`. `Westbrook Academy` and `Westbrook.` are left over from the
+previous run. Northside is back to its original name with no logo, and RPAS Training has `RT-logo.webp`
+restored.
