@@ -1,28 +1,42 @@
 # Roadmap
 
-_Last updated: 2026-08-05_
+_Last updated: 2026-08-11_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
 - **Half-built:** course applications (apply flow built; review/approval and authored form not built), role-based access control (built but not wired into access decisions), xAPI (non-functional stub), site-aware user groups (drafted, disabled).
-- **Not built:** 2FA/MFA, educator-interface management actions, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, and data-retention/data-subject-rights tooling.
-- **Known defect:** the educator interface does not permission-check reads — no detail page is checked, and the Courses list is unfiltered.
+- **Not built:** 2FA/MFA, educator-interface management actions, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, and the deliberately deferred organisation capabilities.
+- **Known defect:** the educator interface's Courses list is still unfiltered and course detail pages are still not permission-checked. Cohort and user detail pages are now checked.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
 ## Educator Interface Authorisation Gap
 
-**Status: Known defect — not yet fixed.**
+**Status: Partially fixed.**
 
-The educator interface filters its Cohorts and Users listings by the per-cohort permission an administrator grants, and it checks that permission on every write. It checks nothing on reads beyond those two listings. Because being logged in is the only gate on the interface as a whole, any authenticated user on the site can navigate directly to a URL and read:
+The educator interface's Cohorts and Users listings are filtered by permission, and their detail pages are now permission-checked and deny by default: a user without access gets "not found" rather than the underlying data. What remains unfixed:
 
-- **Any cohort's detail page**, including the course-progress matrix — student names, email addresses, completion state, quiz scores, and deadlines.
-- **Any individual user's detail page.**
-- **Every course on the site**, including courses authored as hidden. The Courses list carries no permission filter at all, unlike the other two listings.
+- **The Courses list is still entirely unfiltered** — every course on the site, including those authored as hidden, is visible to any authenticated user.
+- **Course detail pages are still not permission-checked.**
 
-Reads only — create, rename, and delete actions do check the object-level permission, so this is a disclosure defect rather than a route to modifying data. Site isolation is unaffected: the gap is within a single tenant, never across tenants.
+Reads only — create, rename, and delete actions have always checked object-level permission, so this remains a disclosure defect rather than a route to modifying data. Site isolation is unaffected: the gap is within a single tenant, never across tenants.
 
-The fix is to apply object-level permission checks on the detail views and a permission filter on the Courses list, matching what already governs the Cohorts and Users listings. See [educator interface](./educator-interface.md#access-control).
+The fix is a permission filter on the Courses list and a permission check on course detail pages, matching what now governs the Cohorts and Users sections. See [educator interface](./educator-interface.md#access-control).
+
+## Organisation Deferrals
+
+**Status: Not built — deliberate deferrals for this release.**
+
+Organisations shipped as a grouping layer between a site and its cohorts and registrations; see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations) for what an organisation is and where the isolation boundary actually sits. Several capabilities were deliberately left out rather than overlooked:
+
+- **No delete or merge** — an organisation cannot be removed or combined with another once created.
+- **No nested organisations** — the structure is flat, with no parent/child relationship.
+- **No organisation membership** — a learner's organisation is derived from their cohort or course registrations, not from a membership they hold.
+- **No per-organisation domain, subdomain, colours, or theme**, and no organisation branding in emails or certificates.
+- **The educator interface's Courses section is not organisation-scoped** — it shows the same list regardless of which organisation is selected. The separate, pre-existing filtering defect on that same list is covered above.
+- **The organisation switcher has no search, recents, or favourites** — it is a flat list.
+
+See [educator interface](./educator-interface.md#organisation-scope) and [admin interface](./admin-interface.md#organisation-management) for what is available today.
 
 ## Course Applications
 

@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-08-05_
+_Last updated: 2026-08-11_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -11,7 +11,7 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 - **Built:** Production trusts a TLS-terminating reverse proxy's forwarded scheme, so the HTTPS redirect and HSTS behave correctly behind it — and refuses to start at all if `SECRET_KEY` or `WEBHOOK_ENCRYPTION_SALT` is missing.
 - **Built:** Media in object storage is private by default, served via time-limited signed links rather than permanently public URLs. Error tracking is wired but inactive until an operator supplies credentials, and omits learner personal data by default.
 - **Report-only:** Content Security Policy runs in report-only mode — violations are reported, not blocked. HSTS is configurable but needs a staged rollout at deployment time; it is not meaningfully on by default.
-- **Known defect:** the educator interface does not permission-check reads. Any authenticated user on a site can read any cohort's progress data, any user's detail page, and the full course list, by URL. Writes are gated and site isolation is unaffected. See [educator interface authorisation](#educator-interface-authorisation-known-defect).
+- **Defect narrowed:** cohort and user detail pages in the educator interface are now permission-checked and deny by default. What remains is the Courses section — any authenticated user on a site can still read the full course list, hidden courses included, and any course detail page. Writes are gated and site isolation is unaffected. See [educator interface authorisation](#educator-interface-authorisation-narrowed-defect).
 - **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, and per-request access-controlled media downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
 - **Infrastructure:** The target deployment uses Vultr Johannesburg (ISO 27001:2022 certified). Vultr's certification covers physical and hypervisor layers; the operator owns everything above. See [shared responsibility](#infrastructure-and-shared-responsibility).
 
@@ -29,23 +29,25 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 
 ## Runtime Application Security
 
-### Educator Interface Authorisation (known defect)
+### Educator Interface Authorisation (narrowed defect)
 
-The educator interface grants educators object-level permission on specific cohorts, and filters its Cohorts and Users listings by those grants. It does not check them anywhere else.
+The educator interface grants educators permission on specific cohorts, or on a whole organisation. Its Cohorts and Users listings and their detail pages are now permission-checked and **deny by default**: a visitor without the right grant gets the same not-found response as a record that does not exist, so cohort, user, and organisation identifiers cannot be enumerated by guessing URLs.
 
-Being logged in is the only gate on the interface as a whole. Consequently any authenticated user on a site can, by navigating directly to a URL, read any cohort detail page and its course-progress matrix (student names, email addresses, completion state, quiz scores, deadlines), any individual user's detail page, and a list of every course on the site including ones authored as hidden.
+**What remains unfixed.** The Courses section is unchanged. Any authenticated user on a site still sees every course on it, including ones authored as hidden, and course detail pages are still not permission-checked.
 
-Three things bound the impact, and none of them excuse it:
+Three things bound the remaining impact, and none of them excuse it:
 
 - **Reads only.** Create, rename, and delete actions do check the object-level permission, so this is not a route to modifying another educator's data.
-- **Within a tenant.** Every query is still site-scoped, so the gap never crosses a site boundary. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
+- **Within a tenant.** Every query is still site-scoped, so the gap never crosses a site boundary. An organisation is a scoping layer inside that boundary, not a security boundary of its own — see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 - **Authenticated only.** An anonymous visitor cannot reach any of it.
 
-It remains a genuine authorisation defect affecting learner personal data and learning records. It is not fixed, and it is documented here rather than omitted. Full detail is in [educator interface](./educator-interface.md#access-control); the fix is tracked in the [roadmap](./roadmap.md).
+Detail-view authorisation across the educator panel now denies by default: a section that has not been given a real permission check cannot serve detail pages at all unless it explicitly opts out with a declared reason, and an automated test asserts every opt-out is declared. The Courses gap is therefore a tracked exception rather than an invisible one. Full detail is in [educator interface](./educator-interface.md#access-control); the remaining fix is tracked in the [roadmap](./roadmap.md).
 
 **CSRF protection (built).** Active on all state-changing requests. HTMX requests carry the CSRF token via a global attribute on the page body, so every HTMX partial request is covered without per-view work.
 
 **Content sanitisation (built).** All authored Markdown is sanitised against a strict allowlist before rendering, using a Rust-based, memory-safe sanitiser. Only explicitly permitted content-widget tags and their declared attributes survive; all other HTML is stripped. This is the control that prevents stored XSS from authored content.
+
+**Organisation logo upload validation (built).** Administrator-uploaded organisation logos are restricted to an allowlist of raster formats — PNG, JPEG, and WebP. The uploaded bytes are decoded and the real format asserted rather than the file extension trusted, so a disguised file is caught. SVG is deliberately excluded: it is XML rather than image data and can carry a script, a risk raster formats do not share. File-size and pixel-dimension limits apply, along with decompression-bomb protection, and the uploaded filename is never used to build the storage path. EXIF metadata is deliberately not stripped — the uploader is always an administrator and the asset is a corporate logo, not a personal photo, so the usual location-metadata concern does not apply. Note the scope: this validation covers organisation logos only. Course file assets, which are loaded from the content repository by an operator rather than uploaded through a browser, carry no equivalent check.
 
 **Content Security Policy (report-only — not enforcing).** A policy is configured and violations are reported, but nothing is blocked. The policy permits same-origin sources for most directives, allows inline scripts and styles (currently required by the HTMX and Alpine.js usage in templates), and restricts framing to same-origin plus YouTube. Enforcing mode has not been enabled — doing so requires refactoring the inline script and style usage first. Tracked in the [roadmap](./roadmap.md).
 
