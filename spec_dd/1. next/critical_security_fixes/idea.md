@@ -24,7 +24,7 @@ once one identifier is known, and cohort detail links leak identifiers.
 This is learner personal data and learning records. POPIA treats both as personal
 information.
 
-## The three defects
+## The defects
 
 **1. Detail views fetch by identifier with no permission check.**
 `freedom_ls/panel_framework/views.py:184` — `ListViewConfig.get_instance_view` does a bare
@@ -42,6 +42,16 @@ visibility filtering is deliberately learner-only, hidden courses are included.
 `freedom_ls/educator_interface/views.py:1037`. There is no check that the visitor is an
 educator at all — no group, role, or "has any cohort grant" test. Even with 1 and 2 fixed,
 every learner could still reach the interface shell and its empty listings.
+
+**4. `/tmp` is the first template search path.**
+`config/settings_base.py:167-170` sets `TEMPLATES[0]["DIRS"] = ["/tmp/lms_templates"]`, carrying
+`# noqa: S108  # nosec B108`. `settings_prod.py` does not override `TEMPLATES`, and
+`settings_dev.py:53` touches only `OPTIONS`. A world-writable directory searched *first* means
+any local user on the host can shadow any template and get code execution in the Django
+process. Unrelated to the educator interface — found while researching the template loader
+chain for `debt-panel-framework-tables-and-panel-api`. The suppression comments suggest a
+deliberate dev convenience that leaked into `settings_base`; worth confirming rather than
+assuming.
 
 ## What is NOT broken
 
