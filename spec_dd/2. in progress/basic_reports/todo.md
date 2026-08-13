@@ -32,8 +32,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 6. Plan structure review
 
-- [ ] (cmd) Run `/fls-dev:plan_structure_review` to check for new cross-app dependencies
+- [x] (cmd) Run `/fls-dev:plan_structure_review` to check for new cross-app dependencies
 - [ ] (user) Address any structure concerns raised in the plan
+- [ ] (user) Resolve structure concern: whether `reports --> base` (base.app_settings import) should be recorded in docs/app_structure.md
 
 ## 7. Implementation
 
