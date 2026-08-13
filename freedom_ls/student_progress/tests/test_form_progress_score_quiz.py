@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 
 from freedom_ls.accounts.factories import UserFactory
@@ -7,11 +9,16 @@ from freedom_ls.content_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
+from freedom_ls.content_engine.models import FormStrategy
 from freedom_ls.student_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
 )
-from freedom_ls.student_progress.models import FormProgress, QuestionAnswer
+from freedom_ls.student_progress.models import (
+    FormProgress,
+    QuestionAnswer,
+    evaluate_quiz_answers,
+)
 
 
 @pytest.mark.parametrize(
@@ -211,3 +218,372 @@ def test_score_quiz_includes_unanswered_questions_in_max_score(
     assert form_progress.scores is not None
     assert form_progress.scores["score"] == 1
     assert form_progress.scores["max_score"] == 3  # All 3 questions count toward max
+
+
+# Checkbox (multi-select) scoring: exact match, all-or-nothing.
+
+
+def _build_checkbox_question_two_of_four(form):
+    """Checkbox question with 2 correct options of 4, mirroring the qa_helpers fixture shape."""
+    page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
+    question = FormQuestionFactory(
+        form_page=page,
+        question="Select all prime numbers",
+        type="checkboxes",
+        order=0,
+    )
+    correct_option_1 = QuestionOptionFactory(
+        question=question, text="2", value="2", order=0, correct=True
+    )
+    correct_option_2 = QuestionOptionFactory(
+        question=question, text="3", value="3", order=1, correct=True
+    )
+    wrong_option_1 = QuestionOptionFactory(
+        question=question, text="4", value="4", order=2, correct=False
+    )
+    wrong_option_2 = QuestionOptionFactory(
+        question=question, text="6", value="6", order=3, correct=False
+    )
+    return question, correct_option_1, correct_option_2, wrong_option_1, wrong_option_2
+
+
+@pytest.mark.django_db
+def test_score_quiz_checkbox_exactly_correct_options_scores_one(mock_site_context):
+    """Ticking exactly the 2 correct options of 4 scores full marks."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    question, correct_1, correct_2, _wrong_1, _wrong_2 = (
+        _build_checkbox_question_two_of_four(form)
+    )
+
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question
+    )
+    answer.selected_options.add(correct_1, correct_2)
+
+    form_progress.score_quiz()
+
+    form_progress.refresh_from_db()
+    assert form_progress.scores is not None
+    assert form_progress.scores["score"] == 1
+    assert form_progress.scores["max_score"] == 1
+    assert form_progress.get_incorrect_quiz_answers() == []
+
+
+@pytest.mark.django_db
+def test_score_quiz_checkbox_ticking_all_four_scores_zero(mock_site_context):
+    """The headline bug: ticking every option (2 correct, 2 incorrect) must not score full marks."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    question, correct_1, correct_2, wrong_1, wrong_2 = (
+        _build_checkbox_question_two_of_four(form)
+    )
+
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question
+    )
+    answer.selected_options.add(correct_1, correct_2, wrong_1, wrong_2)
+
+    form_progress.score_quiz()
+
+    form_progress.refresh_from_db()
+    assert form_progress.scores is not None
+    assert form_progress.scores["score"] == 0
+    incorrect = form_progress.get_incorrect_quiz_answers()
+    assert [item["question"] for item in incorrect] == [question]
+
+
+@pytest.mark.django_db
+def test_score_quiz_checkbox_partial_correct_selection_scores_zero(mock_site_context):
+    """Ticking only 1 of the 2 correct options scores zero — no partial credit."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    question, correct_1, _correct_2, _wrong_1, _wrong_2 = (
+        _build_checkbox_question_two_of_four(form)
+    )
+
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question
+    )
+    answer.selected_options.add(correct_1)
+
+    form_progress.score_quiz()
+
+    form_progress.refresh_from_db()
+    assert form_progress.scores is not None
+    assert form_progress.scores["score"] == 0
+    incorrect = form_progress.get_incorrect_quiz_answers()
+    assert [item["question"] for item in incorrect] == [question]
+
+
+@pytest.mark.django_db
+def test_score_quiz_checkbox_correct_plus_incorrect_scores_zero(mock_site_context):
+    """Ticking both correct options plus one incorrect option scores zero."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    question, correct_1, correct_2, wrong_1, _wrong_2 = (
+        _build_checkbox_question_two_of_four(form)
+    )
+
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question
+    )
+    answer.selected_options.add(correct_1, correct_2, wrong_1)
+
+    form_progress.score_quiz()
+
+    form_progress.refresh_from_db()
+    assert form_progress.scores is not None
+    assert form_progress.scores["score"] == 0
+    incorrect = form_progress.get_incorrect_quiz_answers()
+    assert [item["question"] for item in incorrect] == [question]
+
+
+@pytest.mark.django_db
+def test_score_quiz_checkbox_nothing_selected_scores_zero(mock_site_context):
+    """A QuestionAnswer exists but has no selected options — scores zero."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    question, _correct_1, _correct_2, _wrong_1, _wrong_2 = (
+        _build_checkbox_question_two_of_four(form)
+    )
+
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    QuestionAnswerFactory(form_progress=form_progress, question=question)
+
+    form_progress.score_quiz()
+
+    form_progress.refresh_from_db()
+    assert form_progress.scores is not None
+    assert form_progress.scores["score"] == 0
+    incorrect = form_progress.get_incorrect_quiz_answers()
+    assert [item["question"] for item in incorrect] == [question]
+
+
+@pytest.mark.django_db
+def test_score_quiz_checkbox_correct_plus_null_correct_option_scores_one(
+    mock_site_context,
+):
+    """A `correct=None` option is neither required nor forbidden — selecting it alongside every
+    required option still scores full marks."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
+    question = FormQuestionFactory(
+        form_page=page,
+        question="Select all prime numbers",
+        type="checkboxes",
+        order=0,
+    )
+    correct_option = QuestionOptionFactory(
+        question=question, text="2", value="2", order=0, correct=True
+    )
+    null_option = QuestionOptionFactory(
+        question=question, text="unreviewed", value="3", order=1, correct=None
+    )
+
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question
+    )
+    answer.selected_options.add(correct_option, null_option)
+
+    form_progress.score_quiz()
+
+    form_progress.refresh_from_db()
+    assert form_progress.scores is not None
+    assert form_progress.scores["score"] == 1
+    assert form_progress.get_incorrect_quiz_answers() == []
+
+
+@pytest.mark.django_db
+def test_score_quiz_checkbox_only_null_correct_option_scores_zero(mock_site_context):
+    """Selecting only a `correct=None` option, without the required correct option, scores zero."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
+    question = FormQuestionFactory(
+        form_page=page,
+        question="Select all prime numbers",
+        type="checkboxes",
+        order=0,
+    )
+    QuestionOptionFactory(question=question, text="2", value="2", order=0, correct=True)
+    null_option = QuestionOptionFactory(
+        question=question, text="unreviewed", value="3", order=1, correct=None
+    )
+
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question
+    )
+    answer.selected_options.add(null_option)
+
+    form_progress.score_quiz()
+
+    form_progress.refresh_from_db()
+    assert form_progress.scores is not None
+    assert form_progress.scores["score"] == 0
+    incorrect = form_progress.get_incorrect_quiz_answers()
+    assert [item["question"] for item in incorrect] == [question]
+
+
+@pytest.mark.django_db
+def test_score_quiz_checkbox_no_correct_option_at_all_scores_zero(mock_site_context):
+    """A question with no option marked correct=True can never be answered correctly —
+    the regression guard against a naive set-equality rule scoring it correct."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
+    question = FormQuestionFactory(
+        form_page=page,
+        question="Unreviewed checkbox question",
+        type="checkboxes",
+        order=0,
+    )
+    option_1 = QuestionOptionFactory(
+        question=question, text="A", value="1", order=0, correct=False
+    )
+    option_2 = QuestionOptionFactory(
+        question=question, text="B", value="2", order=1, correct=None
+    )
+
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question
+    )
+    answer.selected_options.add(option_1, option_2)
+
+    form_progress.score_quiz()
+
+    form_progress.refresh_from_db()
+    assert form_progress.scores is not None
+    assert form_progress.scores["score"] == 0
+    incorrect = form_progress.get_incorrect_quiz_answers()
+    assert [item["question"] for item in incorrect] == [question]
+
+
+@pytest.mark.parametrize("question_type", ["short_text", "long_text"])
+@pytest.mark.django_db
+def test_score_quiz_free_text_question_scores_zero(mock_site_context, question_type):
+    """Free-text questions have no options at all, so they can never score correct."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
+    question = FormQuestionFactory(
+        form_page=page,
+        question="Describe your experience",
+        type=question_type,
+        order=0,
+    )
+
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question
+    )
+    answer.text_answer = "Some free text"
+    answer.save()
+
+    form_progress.score_quiz()
+
+    form_progress.refresh_from_db()
+    assert form_progress.scores is not None
+    assert form_progress.scores["score"] == 0
+    incorrect = form_progress.get_incorrect_quiz_answers()
+    assert [item["question"] for item in incorrect] == [question]
+
+
+# Bulk correctness helper: must classify each (attempt, question) pair identically to score_quiz().
+
+
+@pytest.mark.django_db
+def test_evaluate_quiz_answers_agrees_with_score_quiz_per_question(mock_site_context):
+    """evaluate_quiz_answers, fed the same selections score_quiz() saw, must agree question by
+    question — not just on the aggregate score."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
+
+    # Q1: ticks all four (2 correct, 2 incorrect) - should be incorrect.
+    question_1 = FormQuestionFactory(
+        form_page=page, question="Q1", type="checkboxes", order=0
+    )
+    q1_correct_1 = QuestionOptionFactory(
+        question=question_1, text="A", value="1", order=0, correct=True
+    )
+    q1_correct_2 = QuestionOptionFactory(
+        question=question_1, text="B", value="2", order=1, correct=True
+    )
+    q1_wrong_1 = QuestionOptionFactory(
+        question=question_1, text="C", value="3", order=2, correct=False
+    )
+    q1_wrong_2 = QuestionOptionFactory(
+        question=question_1, text="D", value="4", order=3, correct=False
+    )
+
+    # Q2: ticks exactly the correct option - should be correct.
+    question_2 = FormQuestionFactory(
+        form_page=page, question="Q2", type="checkboxes", order=1
+    )
+    q2_correct = QuestionOptionFactory(
+        question=question_2, text="A", value="1", order=0, correct=True
+    )
+    q2_wrong = QuestionOptionFactory(
+        question=question_2, text="B", value="2", order=1, correct=False
+    )
+
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    answer_1: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question_1
+    )
+    answer_1.selected_options.add(q1_correct_1, q1_correct_2, q1_wrong_1, q1_wrong_2)
+    answer_2: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question_2
+    )
+    answer_2.selected_options.add(q2_correct)
+
+    form_progress.score_quiz()
+    form_progress.refresh_from_db()
+    assert form_progress.scores == {"score": 1, "max_score": 2}
+
+    options_by_question = {
+        question_1.id: [q1_correct_1, q1_correct_2, q1_wrong_1, q1_wrong_2],
+        question_2.id: [q2_correct, q2_wrong],
+    }
+    answer_rows = [
+        (
+            form_progress.id,
+            question_1.id,
+            {q1_correct_1.id, q1_correct_2.id, q1_wrong_1.id, q1_wrong_2.id},
+        ),
+        (form_progress.id, question_2.id, {q2_correct.id}),
+    ]
+
+    result = evaluate_quiz_answers(answer_rows, options_by_question)
+
+    assert result == {
+        (form_progress.id, question_1.id): False,
+        (form_progress.id, question_2.id): True,
+    }
+
+
+@pytest.mark.django_db
+def test_evaluate_quiz_answers_issues_no_queries(
+    mock_site_context, django_assert_num_queries
+):
+    """The batched equivalent operates on pre-fetched data only — it must issue no queries."""
+    question = FormQuestionFactory(type="checkboxes")
+    correct_option = QuestionOptionFactory(question=question, correct=True)
+    wrong_option = QuestionOptionFactory(question=question, correct=False)
+    options_by_question = {question.id: [correct_option, wrong_option]}
+    attempt_id = uuid4()
+    answer_rows = [(attempt_id, question.id, {correct_option.id})]
+
+    with django_assert_num_queries(0):
+        result = evaluate_quiz_answers(answer_rows, options_by_question)
+
+    assert result == {(attempt_id, question.id): True}

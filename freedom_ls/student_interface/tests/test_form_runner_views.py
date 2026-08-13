@@ -18,7 +18,10 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import FormStrategy
 from freedom_ls.student_interface.utils import count_form_questions
-from freedom_ls.student_progress.factories import FormProgressFactory
+from freedom_ls.student_progress.factories import (
+    FormProgressFactory,
+    QuestionAnswerFactory,
+)
 from freedom_ls.student_progress.models import FormProgress
 
 from .conftest import course_with_form, register_user_for_course
@@ -744,6 +747,59 @@ def test_course_form_complete_no_percentage_for_non_quiz(mock_site_context, clie
     # `percentage`, so assert on the rendered quiz element rather than the
     # aggregated template context.
     assert b'data-testid="quiz-percentage"' not in response.content
+
+
+@pytest.mark.django_db
+def test_course_form_complete_renders_incorrect_checkbox_answer_with_every_selection(
+    mock_site_context, client
+):
+    """Regression test for the exact-match scoring fix: a student who ticks every option on
+    a checkbox question is now correctly marked wrong, and the incorrect-answers block
+    renders every option the student selected, not just the one that used to short-circuit
+    the old any-correct-option rule."""
+    user = UserFactory()
+    form = FormFactory(
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=70,
+        quiz_show_incorrect=True,
+    )
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+
+    page = FormPageFactory(form=form, order=0)
+    question = FormQuestionFactory(
+        form_page=page, type="checkboxes", order=0, question="Pick the primes"
+    )
+    correct_1 = QuestionOptionFactory(
+        question=question, text="2", correct=True, order=0
+    )
+    correct_2 = QuestionOptionFactory(
+        question=question, text="3", correct=True, order=1
+    )
+    wrong_1 = QuestionOptionFactory(question=question, text="4", correct=False, order=2)
+
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    answer = QuestionAnswerFactory(form_progress=form_progress, question=question)
+    answer.selected_options.add(correct_1, correct_2, wrong_1)
+    form_progress.complete()
+
+    client.force_login(user)
+    url = reverse(
+        "student_interface:course_form_complete",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert response.context["is_failed_quiz"] is True
+    incorrect_answers = response.context["incorrect_answers"]
+    assert [item["question"] for item in incorrect_answers] == [question]
+    assert set(incorrect_answers[0]["student_selected"]) == {
+        correct_1,
+        correct_2,
+        wrong_1,
+    }
+    assert b'data-testid="incorrect-answers-section"' in response.content
 
 
 # ---------------------------------------------------------------------------

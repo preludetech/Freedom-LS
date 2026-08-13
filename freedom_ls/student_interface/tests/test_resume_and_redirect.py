@@ -14,6 +14,8 @@ from freedom_ls.content_engine.factories import (
     CoursePartFactory,
     FormFactory,
     FormPageFactory,
+    FormQuestionFactory,
+    QuestionOptionFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy
@@ -24,6 +26,10 @@ from freedom_ls.student_interface.utils import (
     get_resume_index,
 )
 from freedom_ls.student_management.factories import UserCourseRegistrationFactory
+from freedom_ls.student_progress.factories import (
+    FormProgressFactory,
+    QuestionAnswerFactory,
+)
 from freedom_ls.student_progress.models import (
     CourseProgress,
     FormProgress,
@@ -502,6 +508,46 @@ def test_get_course_index_status_semantics_preserved(mock_site_context):
         "COMPLETE",
         "READY",
     ]
+
+
+@pytest.mark.django_db
+def test_checkbox_quiz_ticking_every_option_blocks_navigation_as_failed(
+    mock_site_context,
+):
+    """Regression test for the exact-match scoring fix: a checkbox quiz answered by
+    ticking every option used to score 100% and read COMPLETE; it must now read
+    FAILED and block progression via `next_status`."""
+    course = CourseFactory(title="Checkbox Course", slug="checkbox-course")
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course)
+
+    quiz = FormFactory(
+        title="Checkbox quiz",
+        slug="checkbox-quiz",
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=70,
+    )
+    topic_after = TopicFactory(
+        title="After the quiz", slug="after-the-quiz", content="x"
+    )
+    course.items.create(child=quiz, order=0)
+    course.items.create(child=topic_after, order=1)
+
+    page = FormPageFactory(form=quiz, order=0)
+    question = FormQuestionFactory(form_page=page, type="checkboxes", order=0)
+    correct_1 = QuestionOptionFactory(question=question, correct=True, order=0)
+    correct_2 = QuestionOptionFactory(question=question, correct=True, order=1)
+    wrong_1 = QuestionOptionFactory(question=question, correct=False, order=2)
+    wrong_2 = QuestionOptionFactory(question=question, correct=False, order=3)
+
+    form_progress = FormProgressFactory(user=user, form=quiz)
+    answer = QuestionAnswerFactory(form_progress=form_progress, question=question)
+    answer.selected_options.add(correct_1, correct_2, wrong_1, wrong_2)
+    form_progress.complete()
+
+    children = get_course_index(user=user, course=course, can_access_content=True)
+    statuses = [c["status"] for c in children]
+    assert statuses == ["FAILED", "BLOCKED"]
 
 
 @pytest.mark.django_db

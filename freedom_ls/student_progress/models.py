@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from typing import cast
+from uuid import UUID
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -121,6 +123,36 @@ class CourseItemProgress(SiteAwareModel):
             user = self.user
             update_course_progress_on_completion(user, content_item)
             self._original_completion_value = current_value
+
+
+def is_quiz_answer_correct(
+    selected_option_ids: set[UUID], options: Iterable[QuestionOption]
+) -> bool:
+    """Exact-match scoring: every correct option selected, no incorrect one.
+
+    `QuestionOption.correct` is nullable. `True` is required, `False` is forbidden,
+    `None` is neither - an option nobody marked up is not evidence either way.
+    A question with no correct option cannot be answered correctly; that keeps
+    free-text questions (which have no options at all) scoring zero, as they do today.
+    """
+    required = {o.id for o in options if o.correct is True}
+    forbidden = {o.id for o in options if o.correct is False}
+    if not required:
+        return False
+    return required <= selected_option_ids and not (selected_option_ids & forbidden)
+
+
+def evaluate_quiz_answers(
+    answer_rows: Iterable[tuple[UUID, UUID, set[UUID]]],
+    options_by_question: Mapping[UUID, list[QuestionOption]],
+) -> dict[tuple[UUID, UUID], bool]:
+    """Correctness for many (attempt, question) pairs from pre-fetched data. Issues no queries."""
+    return {
+        (form_progress_id, question_id): is_quiz_answer_correct(
+            selected_option_ids, options_by_question.get(question_id, [])
+        )
+        for form_progress_id, question_id, selected_option_ids in answer_rows
+    }
 
 
 class FormProgress(CourseItemProgress):
@@ -438,13 +470,11 @@ class FormProgress(CourseItemProgress):
                 # Check if user answered this question correctly
                 try:
                     answer = self.answers.get(question=question)
-                    selected_options = answer.selected_options.all()
-
-                    # Check if any selected option is marked as correct
-                    for option in selected_options:
-                        if option.correct:
-                            score += 1
-                            break  # Only count once per question
+                    selected_option_ids = {o.id for o in answer.selected_options.all()}
+                    if is_quiz_answer_correct(
+                        selected_option_ids, question.options.all()
+                    ):
+                        score += 1
 
                 except QuestionAnswer.DoesNotExist:
                     # Question not answered, contributes 0 to score
@@ -500,9 +530,12 @@ class FormProgress(CourseItemProgress):
                     continue
 
                 selected_options = list(answer.selected_options.all())
+                selected_option_ids = {o.id for o in selected_options}
 
                 # Check if the answer is correct
-                is_correct = any(option.correct for option in selected_options)
+                is_correct = is_quiz_answer_correct(
+                    selected_option_ids, question.options.all()
+                )
 
                 if not is_correct:
                     # Get the correct option(s)
