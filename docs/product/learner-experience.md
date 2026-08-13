@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-08-11_
+_Last updated: 2026-08-12_
 
 ## Summary
 
@@ -175,6 +175,8 @@ Courses can be divided into parts (chapters); the player shows part-level progre
 Returning to a course sends the learner straight back to the item they last viewed, so they never have to find their place.
 
 ### Organisation Co-Branding
+
+![Course player with an organisation logo below the course title](screenshots/learner_player_organisation_logo.png)
 
 If a learner is studying a course through an organisation — reached either through their cohort or through their own registration — that organisation's logo appears in the course outline header beside the course title, as a small, clearly secondary mark. If the organisation has no logo, an initials monogram derived from its name is shown instead; if its name has no usable letters, a generic icon.
 

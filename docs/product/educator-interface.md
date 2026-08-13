@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-08-11_
+_Last updated: 2026-08-12_
 
 ## Summary
 
@@ -50,6 +50,8 @@ The educator interface is scoped to one **organisation** at a time — a groupin
 The current organisation is part of every page's URL rather than being remembered in the session, so two browser tabs can sit on two different organisations at once, the back button behaves correctly, and any page can be linked to directly.
 
 A switcher at the top of the left sidebar always names the current organisation. Where an educator can reach more than one, the name opens a list to switch between them; where they can reach only one, the name is still shown, as static text.
+
+![Organisation switcher open in the educator sidebar](screenshots/educator_organisation_switcher.png)
 
 Switching on a list page reloads it for the newly selected organisation. Switching while viewing a cohort or user that does not belong to the newly selected organisation returns to the equivalent list with an inline notice rather than an error page.
 
