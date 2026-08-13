@@ -111,6 +111,7 @@ INSTALLED_APPS = [
     "freedom_ls.site_aware_models",
     "freedom_ls.panel_framework",
     "freedom_ls.educator_interface",
+    "freedom_ls.reports",
     "freedom_ls.role_based_permissions",
     #########
     # COURSE ACCESS
