@@ -1,6 +1,6 @@
 ---
 name: testing
-description: FreedomLS-specific extension of the ds:testing skill. Adds the site-aware mock_site_context fixture rule, the fls_internal/playwright/ci_only marker taxonomy for downstream distribution, and FLS collection-safety. Use alongside ds:testing when writing pytest tests in the FreedomLS repo.
+description: FreedomLS-specific extension of the ds:testing skill. Adds the site-aware mock_site_context fixture rule, the fls_internal/playwright/ci_only/weasyprint marker taxonomy for downstream distribution, and FLS collection-safety. Use alongside ds:testing when writing pytest tests in the FreedomLS repo.
 allowed-tools: Read, Grep, Glob
 ---
 
@@ -37,11 +37,12 @@ FreedomLS ships to downstream projects, so markers control which tests are *port
 - **`playwright`** — browser-dependent (see `Skill(fls-dev:playwright-tests)`); the browser set a downstream excludes.
 - **`fls_internal`** — only valid under FLS's own settings/theme/branding/demo content.
 - **`ci_only`** — existing slow / real-time tests (unchanged).
+- **`weasyprint`** — invokes WeasyPrint and needs Pango/cairo/gdk-pixbuf/HarfBuzz; excluded by default locally so contributors without those system libraries can still run the suite, but included in CI (where the libraries are installed) since CI's `-m "not playwright"` overrides the local `addopts` exclusion.
 
-FLS's own `uv run pytest` runs everything except `ci_only` (it *is* FLS regression testing). A concrete downstream project instead runs:
+FLS's own `uv run pytest` runs everything except `ci_only` and `weasyprint` (it *is* FLS regression testing, with CI supplying the system libraries needed to also run the `weasyprint` set). A concrete downstream project instead runs:
 
 ```bash
-uv run pytest -m "not playwright and not fls_internal and not ci_only"
+uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint"
 ```
 
 **Reach for `fls_internal` last.** Every test that stays portable is real integration signal for a downstream. Before marking a test `fls_internal`, de-brand it first (pin the input or assert the contract). Only mark it when it genuinely depends on FLS's own repo/brand/demo state (e.g. it reads `demo_content/`). Prefer a file-level `pytestmark = pytest.mark.fls_internal` only for wholly brand-coupled files; mark individual tests in mixed files.
