@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from django.test import override_settings
 
+from freedom_ls.reports.at_risk.loader import get_at_risk_rules
 from freedom_ls.reports.checks import (
+    check_at_risk_rules_module_configured,
     check_reports_storage_alias_configured,
     check_required_reports_settings,
     check_tailwind_bundle_resolvable,
@@ -69,5 +71,34 @@ class TestTailwindBundleCheck:
         )
 
         warnings = check_tailwind_bundle_resolvable()
+
+        assert warnings == []
+
+
+class TestAtRiskRulesModuleCheck:
+    def test_fires_when_module_cannot_be_imported(self) -> None:
+        get_at_risk_rules.cache_clear()
+        with override_settings(REPORTS_AT_RISK_RULES_MODULE="does.not.exist"):
+            warnings = check_at_risk_rules_module_configured()
+        get_at_risk_rules.cache_clear()
+
+        assert len(warnings) == 1
+        assert warnings[0].id == "freedom_ls_reports.W003"
+
+    def test_fires_when_module_exports_neither_rules_name(self) -> None:
+        get_at_risk_rules.cache_clear()
+        with override_settings(
+            REPORTS_AT_RISK_RULES_MODULE="freedom_ls.reports.config"
+        ):
+            warnings = check_at_risk_rules_module_configured()
+        get_at_risk_rules.cache_clear()
+
+        assert len(warnings) == 1
+        assert warnings[0].id == "freedom_ls_reports.W003"
+
+    def test_silent_when_module_resolves_to_a_rule_list(self) -> None:
+        get_at_risk_rules.cache_clear()
+        warnings = check_at_risk_rules_module_configured()
+        get_at_risk_rules.cache_clear()
 
         assert warnings == []
