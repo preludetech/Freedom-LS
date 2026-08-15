@@ -30,6 +30,10 @@ from freedom_ls.student_management.factories import (
 from freedom_ls.student_management.models import UserCourseRegistration
 from freedom_ls.student_management.queries import organisation_for_learner_course
 
+# The TOC header's course-title paragraph, used to prove the co-branding chip
+# renders above the title rather than below it.
+TOC_TITLE_MARKER = '<p class="text-lg font-semibold text-on-surface">'
+
 
 def _logo_upload(name: str = "logo.png") -> SimpleUploadedFile:
     buf = io.BytesIO()
@@ -143,9 +147,10 @@ class TestOrganisationForLearnerCourseQueryCount:
 @pytest.mark.django_db
 class TestCourseOrganisationChip:
     """The resolved organisation reaches the player's TOC header as a chip:
-    the logo when there is one, an initials monogram otherwise."""
+    the logo when there is one, an initials monogram otherwise, with the
+    organisation's name rendered as text beside it."""
 
-    def test_logo_renders_with_alt_naming_the_organisation(
+    def test_logo_renders_beside_the_organisation_name(
         self, mock_site_context, course_with_topic
     ):
         course = course_with_topic()
@@ -166,7 +171,11 @@ class TestCourseOrganisationChip:
         assert response.status_code == 200
         content = response.content.decode()
         assert organisation.logo.url in content
-        assert 'alt="Acme Corp"' in content
+        assert ">Acme Corp<" in content
+        # The visible name is the accessible name, so the mark is decorative.
+        assert 'alt=""' in content
+
+        assert content.index("Acme Corp") < content.index(TOC_TITLE_MARKER)
 
     def test_initials_monogram_renders_when_organisation_has_no_logo(
         self, mock_site_context, course_with_topic
@@ -188,4 +197,8 @@ class TestCourseOrganisationChip:
 
         content = response.content.decode()
         assert organisation.initials in content
-        assert 'aria-label="Beta School"' in content
+        assert ">Beta School<" in content
+        # The monogram repeats the visible name, so it is hidden from AT.
+        assert 'aria-hidden="true"' in content
+
+        assert content.index("Beta School") < content.index(TOC_TITLE_MARKER)

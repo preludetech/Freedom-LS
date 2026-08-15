@@ -15,11 +15,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='cohort',
             name='organisation',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, to='freedom_ls_organisations.organisation'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='freedom_ls_organisations.organisation'),
         ),
         migrations.AddField(
             model_name='usercourseregistration',
             name='organisation',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, to='freedom_ls_organisations.organisation'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='freedom_ls_organisations.organisation'),
         ),
     ]

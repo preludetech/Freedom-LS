@@ -1,6 +1,6 @@
 # Multi-Tenancy and Isolation
 
-_Last updated: 2026-08-11_
+_Last updated: 2026-08-15_
 
 ## Summary
 
@@ -57,7 +57,7 @@ This is the canonical statement of what an organisation is and is not; other doc
 - **Site-aware user groups are not available.** A site-scoped equivalent of Django's groups is drafted but not enabled; permissions are granted per user. See [roadmap](./roadmap.md).
 - **The cohort admin page is not site-filtered** the way other admin pages are. A `@claude` TODO in the code tracks this.
 - **Organisations cannot be deleted or merged**, and there is no nested (parent/child) organisation structure.
-- **No per-organisation domain, subdomain, colours, or theme.** All organisations on a site share the site's domain and branding; the only visual distinction is a small logo or initials monogram in the course player — see [learner experience](./learner-experience.md).
+- **No per-organisation domain, subdomain, colours, or theme.** All organisations on a site share the site's domain and branding; the only visual distinction is a small logo (or initials monogram) and name in the course player — see [learner experience](./learner-experience.md).
 - **No standalone organisation membership.** A learner's organisation is derived from their cohort or individual course registration, not from a membership record they hold.
 - **Courses, course interest, applications, and recommendations are not organisation-scoped** in this release — they remain shared across the whole site. See [roadmap](./roadmap.md).
 

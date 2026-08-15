@@ -24,10 +24,13 @@ This release adds **Organisation** — a scoping layer between `Site` and cohort
 remains the isolation boundary; an Organisation groups cohorts, registrations and staff access within
 one Site.
 
-Every existing Site gets one Organisation named after itself, created by the data migration, and all
-existing cohorts and registrations are backfilled into it. **If you never create a second
-Organisation, nothing about your data changes** — but several code-level contracts do, and they are
-listed below.
+Every Site carries one Organisation named after itself, created by a `post_save` receiver on `Site`
+and kept in step from then on. **If you never create a second Organisation, nothing about the shape
+of your data changes** — but several code-level contracts do, and they are listed below.
+
+**There is no backfill.** The migrations add `organisation` to `Cohort` and `UserCourseRegistration`
+as non-nullable in one step, which a database can only accept while both tables are empty. See
+"Upgrade steps" below before you migrate.
 
 ## Breaking changes
 
@@ -42,8 +45,8 @@ from freedom_ls.organisations.utils import get_default_organisation
 Cohort.objects.create(name="…", organisation=get_default_organisation(site))
 ```
 
-`get_default_organisation(site)` returns the Organisation named after the Site — the one the backfill
-created — which is the right answer wherever no organisation is otherwise in scope. Your own
+`get_default_organisation(site)` returns the Organisation named after the Site, which is the right
+answer wherever no organisation is otherwise in scope. Your own
 factories that build cohorts or registrations need the same addition (FLS's `CohortFactory` and
 `UserCourseRegistrationFactory` now carry an `OrganisationFactory` sub-factory).
 
@@ -138,16 +141,15 @@ not add one downstream without deciding what happens to the cohorts and registra
 2. **Install Pillow.** `pillow>=11.0` is a new base dependency (`ImageField` validation for logos).
    `uv sync` picks it up.
 
-3. **Run `uv run manage.py migrate`.** Five migrations apply in sequence: create `Organisation`, add
-   nullable FKs, backfill, validate, make the FKs non-nullable, then swap the constraints.
+3. **Run `uv run manage.py migrate`.** Three migrations apply in sequence: create `Organisation`, add
+   the `organisation` FKs as non-nullable, then swap the constraints.
 
-   - **Do not `--fake` the backfill migration** (`student_management/0015_backfill_organisation`).
-     Faking records it as applied without running it, and the not-null step then fails for real.
-   - **Do not roll back after go-live.** The backfill's reverse is a no-op, and rolling back far
-     enough drops the `organisation_id` columns and the `Organisation` table outright — there is
-     nothing to put back except a database restore.
-   - If migration `0016_validate_organisation_backfilled` raises, stop and investigate: it means a
-     row was left without an organisation. Do not re-run past it.
+   - **Your `Cohort` and `UserCourseRegistration` tables must be empty.** The FK is added
+     non-nullable with no default and there is no backfill, so the `ALTER TABLE` fails outright if
+     either table has rows. If you already have cohorts or registrations you care about, do not run
+     this upgrade — write your own backfill first, or ask before proceeding.
+   - **Do not roll back after go-live.** Rolling back far enough drops the `organisation_id` columns
+     and the `Organisation` table outright — there is nothing to put back except a database restore.
    - If you have modified `unique_cohort_name_per_site` or `unique_user_course_registration` outside
      FLS's own migrations, reconcile that first — `RemoveConstraint` addresses them **by name**.
 
@@ -169,12 +171,13 @@ not add one downstream without deciding what happens to the cohorts and registra
      must stay **outside** `#main-content` and must not be swapped wholesale, or screen readers miss
      the announcement.
    - `freedom_ls/student_interface/templates/student_interface/partials/course_toc_header.html` —
-     renders the learner's organisation logo (or initials) as a small chip above the progress bar.
+     renders the learner's organisation logo (or initials) and name as a small chip above the course
+     title.
 
 7. **Optional: create real Organisations.** Via the Django admin (`Organisations`): create, rename,
    upload a logo, and assign staff through guardian's object-permissions page using the
    `organisation_staff` role. Logos accept PNG/JPEG/WebP up to 2 MiB and 4000×4000px; they are served
    from your existing default media storage with the usual signed URLs — **no new storage alias,
    bucket policy or environment variable is needed.** Then set `Cohort.organisation` and
-   `UserCourseRegistration.organisation` on the rows that belong to them; everything backfilled to
-   the Site's own Organisation until you do.
+   `UserCourseRegistration.organisation` on the rows that belong to them; anything created against
+   the Site's own Organisation stays there until you move it.

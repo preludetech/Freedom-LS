@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('freedom_ls_content_engine', '0014_course_table_of_contents_in_development'),
         ('freedom_ls_organisations', '0001_initial'),
-        ('freedom_ls_student_management', '0017_alter_cohort_organisation_and_more'),
+        ('freedom_ls_student_management', '0014_cohort_organisation_and_more'),
         ('sites', '0002_alter_domain_unique'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
