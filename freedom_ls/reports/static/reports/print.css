@@ -1,0 +1,293 @@
+/* Hand-authored print stylesheet for the cohort progress report.
+
+WeasyPrint cannot consume the compiled Tailwind bundle (it produces invalid
+or ignored CSS for WeasyPrint's renderer), so this file is written by hand
+against the role tokens the bundle exposes as CSS custom properties. Those
+tokens are inlined separately as `theme_tokens`, ahead of this file, in
+report.html's <head>. Every colour reference below is `var(--color-...)` —
+no hex values, no brand/marketing colour names.
+
+Organised as: font faces, @page rules and shared leaf rules used by more
+than one section, then one comment-delimited block per section partial, in
+the same order as the includes in report.html. Each section's block only
+contains rules scoped under that section's own root class, so a section's
+styling can be read or changed without tracing what else it touches. */
+
+@font-face {
+  font-family: "DejaVu Sans";
+  src: url("fonts/DejaVuSans.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "DejaVu Sans";
+  src: url("fonts/DejaVuSans-Bold.ttf") format("truetype");
+  font-weight: bold;
+  font-style: normal;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 20mm 15mm;
+  @top-center {
+    content: element(student-name);
+    font-size: 9pt;
+    color: var(--color-muted);
+  }
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font-size: 9pt;
+    color: var(--color-muted);
+  }
+}
+
+@page landscape-table {
+  size: A4 landscape;
+  margin: 15mm;
+}
+
+.landscape-section {
+  page: landscape-table;
+}
+
+html,
+body {
+  font-family: "DejaVu Sans", sans-serif;
+  font-size: 10pt;
+  color: var(--color-on-surface);
+  background: var(--color-surface);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--color-on-surface);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  display: table-header-group;
+}
+
+tr {
+  break-inside: avoid;
+}
+
+th,
+td {
+  border: 0.5pt solid var(--color-border);
+  padding: 2pt 4pt;
+  text-align: left;
+  vertical-align: top;
+}
+
+/* Status glyphs are small badges: solid role fills with the paired on-*
+   foreground. Every status cell carries the number and the glyph together
+   so colour is never the only signal. */
+.status-glyph {
+  display: inline-block;
+  font-weight: bold;
+  padding: 0 2pt;
+  margin-right: 2pt;
+}
+.status-pass {
+  color: var(--color-on-success);
+  background: var(--color-success);
+}
+.status-fail {
+  color: var(--color-on-error);
+  background: var(--color-error);
+}
+.status-flag {
+  color: var(--color-on-warning);
+  background: var(--color-warning);
+}
+.status-progress {
+  color: var(--color-on-info);
+  background: var(--color-info);
+}
+.status-no-verdict {
+  color: var(--color-muted);
+}
+.status-na {
+  color: var(--color-muted);
+}
+
+/* Progress bars: nested divs, fixed-width outer and percentage-width
+   inner. No flexbox — WeasyPrint's flexbox support is not well tested. */
+.completion-bar-outer {
+  display: inline-block;
+  width: 60mm;
+  height: 4mm;
+  background: var(--color-surface-2);
+  border: 0.5pt solid var(--color-border);
+}
+.completion-bar-inner {
+  height: 100%;
+}
+.completion-bar-inner.status-pass {
+  background: var(--color-success);
+}
+.completion-bar-inner.status-fail {
+  background: var(--color-error);
+}
+.completion-bar-inner.status-progress {
+  background: var(--color-info);
+}
+.completion-bar-label {
+  margin-left: 3mm;
+}
+
+.flag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.flag-item {
+  margin-bottom: 1mm;
+}
+.flag-list-empty {
+  color: var(--color-muted);
+}
+
+.cap-disclosure {
+  font-style: italic;
+  color: var(--color-muted);
+}
+
+/* Bookmarks for the PDF outline. Unscoped to a section class because they
+   name elements that occur across the document (one per course, one per
+   student), matching the selectors WeasyPrint's spec requires. */
+h2.course-heading {
+  bookmark-level: 1;
+  bookmark-label: content();
+}
+h3.student-heading {
+  bookmark-level: 2;
+  bookmark-label: content();
+}
+
+/* ==== title_page.html ==== */
+.title-page {
+  break-after: page;
+}
+.title-page .course-list {
+  list-style: none;
+  padding: 0;
+}
+.title-page .inactive-marker {
+  color: var(--color-muted);
+}
+.title-page .caveat {
+  font-style: italic;
+  color: var(--color-muted);
+}
+
+/* ==== at_a_glance.html ==== */
+.at-a-glance {
+  break-after: page;
+}
+.at-a-glance .glance-stats {
+  list-style: none;
+  padding: 0;
+}
+.at-a-glance .attention-entry {
+  background: var(--color-warning-light);
+  color: var(--color-on-warning-light);
+  padding: 2mm 3mm;
+  margin-bottom: 2mm;
+}
+.at-a-glance .attention-link {
+  color: var(--color-on-warning-light);
+  font-weight: bold;
+}
+.at-a-glance .attention-link::after {
+  content: " (p. " target-counter(attr(href), page) ")";
+  font-weight: normal;
+}
+.at-a-glance .attention-list-empty {
+  color: var(--color-muted);
+}
+
+/* ==== contents.html ==== */
+.contents {
+  break-after: page;
+}
+.contents .toc {
+  list-style: none;
+  padding: 0;
+}
+.contents .toc li {
+  border-bottom: 0.5pt dotted var(--color-border);
+}
+.toc a::after {
+  content: target-counter(attr(href), page);
+  float: right;
+}
+
+/* ==== methodology.html ==== */
+.methodology {
+  break-after: page;
+}
+.methodology .legend {
+  list-style: none;
+  padding: 0;
+}
+
+/* ==== summary_tables.html ==== */
+.summary-tables .course-summary-table {
+  break-inside: avoid;
+  margin-bottom: 6mm;
+}
+.summary-tables .course-table tbody tr:nth-child(even) {
+  background: var(--color-surface-2);
+}
+.summary-tables .quiz-legend {
+  color: var(--color-muted);
+}
+.summary-tables .quiz-legend .legend-entry {
+  margin-right: 4mm;
+}
+.summary-tables .inactive-marker {
+  color: var(--color-muted);
+}
+
+/* ==== student_details.html ==== */
+.student-section {
+  break-before: page;
+}
+.student-section:first-of-type {
+  break-before: avoid;
+}
+.student-section > .student-name {
+  position: running(student-name);
+}
+.student-section .no-activity {
+  font-style: italic;
+  color: var(--color-muted);
+}
+.student-section .completed-items,
+.student-section .quiz-results,
+.student-section .wrong-answers {
+  padding-left: 5mm;
+}
+
+/* ==== confusions.html ==== */
+.quiz-confusion {
+  break-inside: avoid-page;
+  margin-bottom: 6mm;
+}
+.quiz-confusion .confusion-caution {
+  font-style: italic;
+  color: var(--color-muted);
+}
+.quiz-confusion .distractor {
+  display: inline-block;
+  margin-right: 3mm;
+}

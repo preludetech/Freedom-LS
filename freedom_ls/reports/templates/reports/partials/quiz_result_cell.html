@@ -1,0 +1,19 @@
+{% comment %}Required context: result (QuizResult | None). `—` when the student never attempted the quiz.{% endcomment %}
+<span class="quiz-result-cell">
+  {% if result is None %}
+  <span class="status-glyph status-na">—</span>
+  {% else %}
+  {% if result.passed is True %}
+  <span class="status-glyph status-pass">✓</span>
+  {% elif result.passed is False %}
+  <span class="status-glyph status-fail">✗</span>
+  {% else %}
+  <span class="status-glyph status-no-verdict">○</span>
+  {% endif %}
+  <span class="quiz-score">
+    {% if result.latest_score is not None and result.latest_max_score is not None %}{{ result.latest_score }}/{{ result.latest_max_score }}{% endif %}
+    {% if result.latest_percentage is not None %}({{ result.latest_percentage }}%){% endif %}
+  </span>
+  <span class="quiz-attempts">×{{ result.attempt_count }}</span>
+  {% endif %}
+</span>

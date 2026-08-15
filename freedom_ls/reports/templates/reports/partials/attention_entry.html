@@ -1,0 +1,5 @@
+{% comment %}Required context: student (StudentDetail). One flagged student's line in the at-a-glance attention list.{% endcomment %}
+<div class="attention-entry">
+  <a class="attention-link" href="#student-{{ student.user_id }}">{{ student.full_name }}</a>
+  {% include "reports/partials/flag_list.html" with flags=student.flags only %}
+</div>

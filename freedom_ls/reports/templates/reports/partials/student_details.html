@@ -1,0 +1,7 @@
+{% comment %}Required context: students (list[StudentDetail]), already alphabetical by surname.{% endcomment %}
+<section class="student-details">
+  <h2>Student details</h2>
+  {% for student in students %}
+  {% include "reports/partials/student_detail.html" with student=student only %}
+  {% endfor %}
+</section>

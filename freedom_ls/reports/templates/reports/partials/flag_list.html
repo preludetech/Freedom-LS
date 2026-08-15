@@ -1,0 +1,10 @@
+{% comment %}Required context: flags (list[AtRiskFlag]).{% endcomment %}
+{% if flags %}
+<ul class="flag-list">
+  {% for flag in flags %}
+  <li class="flag-item"><span class="status-glyph status-flag">▲</span><strong>{{ flag.label }}</strong> — {{ flag.reason }}</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="flag-list-empty"><span class="status-glyph status-na">—</span>No flags</p>
+{% endif %}

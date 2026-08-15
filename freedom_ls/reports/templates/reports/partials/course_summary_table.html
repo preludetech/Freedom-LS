@@ -1,0 +1,33 @@
+{% comment %}Required context: section (CourseSection). Emits course-{{ section.course_id }} — the only place that id is emitted.{% endcomment %}
+<div class="course-summary-table" id="course-{{ section.course_id }}">
+  <h2 class="course-heading">{{ section.title }}{% if not section.is_active %} <span class="inactive-marker">(inactive registration)</span>{% endif %}</h2>
+  {% if section.quizzes %}
+  <p class="quiz-legend">
+    {% for quiz in section.quizzes %}<span class="legend-entry">{{ quiz.abbreviation }} = {{ quiz.title }}</span>{% endfor %}
+  </p>
+  {% endif %}
+  <table class="course-table">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Completion</th>
+        <th>Last item completed</th>
+        {% for quiz in section.quizzes %}
+        <th>{{ quiz.abbreviation }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in section.student_rows %}
+      <tr>
+        <td>{{ row.full_name }}</td>
+        <td>{% include "reports/partials/completion_bar.html" with percentage=row.completion_percentage completed=row.completed_item_count total=row.total_item_count only %}</td>
+        <td>{% if row.last_completed_title %}{{ row.last_completed_title }} ({{ row.last_completed_at|date:"Y-m-d" }}){% else %}—{% endif %}</td>
+        {% for form_id, result in row.quiz_cells.items %}
+        <td>{% include "reports/partials/quiz_result_cell.html" with result=result only %}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

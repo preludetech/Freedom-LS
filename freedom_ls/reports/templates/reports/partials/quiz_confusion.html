@@ -1,0 +1,30 @@
+{% comment %}Required context: quiz (QuizColumn), block (ConfusionBlock). Emits confusions-{{ quiz.form_id }} — the only place that id is emitted.{% endcomment %}
+<div class="quiz-confusion" id="confusions-{{ quiz.form_id }}">
+  <h3>{{ quiz.title }}</h3>
+  <p class="confusion-caution">A high error rate can mean a hard-but-fair question, not a broken one.</p>
+  <table class="confusion-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Question</th>
+        <th>Wrong</th>
+        <th>Selected distractors</th>
+        <th>Correct answer</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for question in block.questions %}
+      <tr>
+        <td>{{ question.question_number }}</td>
+        <td>{{ question.question_text }}</td>
+        <td>{{ question.wrong_count }} of {{ question.respondent_count }} students</td>
+        <td>
+          {% for text, count in question.distractors %}<span class="distractor">{{ text }} ({{ count }})</span>{% endfor %}
+        </td>
+        <td>{{ question.correct_option_texts|join:", " }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% include "reports/partials/cap_disclosure.html" with shown=block.shown total=block.total noun="questions with at least one incorrect answer" only %}
+</div>

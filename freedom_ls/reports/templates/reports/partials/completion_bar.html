@@ -1,0 +1,10 @@
+{% comment %}Required context: percentage, completed, total.{% endcomment %}
+<span class="completion-bar-wrap">
+  <span class="completion-bar-outer"><span
+    class="completion-bar-inner {% if percentage == 100 %}status-pass{% elif percentage == 0 %}status-fail{% else %}status-progress{% endif %}"
+    style="width: {{ percentage }}%;"></span></span>
+  <span class="completion-bar-label">
+    {% if percentage == 100 %}<span class="status-glyph status-pass">✓</span>{% elif percentage == 0 %}<span class="status-glyph status-fail">✗</span>{% else %}<span class="status-glyph status-progress">●</span>{% endif %}
+    {{ percentage }}% ({{ completed }} of {{ total }})
+  </span>
+</span>

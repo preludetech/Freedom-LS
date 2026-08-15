@@ -1,0 +1,4 @@
+{% comment %}Required context: shown, total, noun. The only place a "shown of total" sentence is written — every cap in the report routes through here.{% endcomment %}
+{% if shown != total %}
+<p class="cap-disclosure">Showing {{ shown }} of {{ total }} {{ noun }}.</p>
+{% endif %}

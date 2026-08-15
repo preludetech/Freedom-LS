@@ -1,0 +1,7 @@
+{% comment %}Required context: courses (list[CourseSection]). Landscape wrapper for every course's wide table.{% endcomment %}
+<section class="summary-tables landscape-section">
+  <h2>Summary tables</h2>
+  {% for section in courses %}
+  {% include "reports/partials/course_summary_table.html" with section=section only %}
+  {% endfor %}
+</section>

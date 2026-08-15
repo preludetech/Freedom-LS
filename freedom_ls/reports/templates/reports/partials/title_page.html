@@ -1,0 +1,12 @@
+{% comment %}Required context: data (CohortReportData).{% endcomment %}
+<section class="title-page">
+  <h1>{{ data.cohort_name }} — Progress report</h1>
+  <p class="generated-meta">Generated {{ data.generated_at|date:"Y-m-d H:i T" }} by {{ data.requested_by_name|default:"the system" }}.</p>
+  <p class="caveat">Figures and cohort membership reflect the cohort's state at the moment this report was generated, and may not match its current state.</p>
+  <h2>Courses covered</h2>
+  <ul class="course-list">
+    {% for section in data.courses %}
+    <li>{{ section.title }}{% if not section.is_active %} <span class="inactive-marker">(inactive registration)</span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+</section>

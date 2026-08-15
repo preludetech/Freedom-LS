@@ -1,0 +1,21 @@
+{% comment %}Required context: data, attention (AttentionList). Attention entries and the disclosure both read only from `attention`, never re-deriving the flag list.{% endcomment %}
+<section class="at-a-glance">
+  <h2>At a glance</h2>
+  <ul class="glance-stats">
+    <li>Cohort size: {{ data.cohort_size }}</li>
+    <li>Median completion: {{ data.median_completion }}%</li>
+    <li>Not started: {{ data.not_started_count }}</li>
+    <li>Complete: {{ data.complete_count }}</li>
+  </ul>
+  <h3>Students needing attention</h3>
+  {% if attention.students %}
+  <div class="attention-list">
+    {% for student in attention.students %}
+    {% include "reports/partials/attention_entry.html" with student=student only %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="attention-list-empty">No students currently flagged.</p>
+  {% endif %}
+  {% include "reports/partials/cap_disclosure.html" with shown=attention.shown total=attention.total noun="students flagged" only %}
+</section>

@@ -1,0 +1,34 @@
+{% comment %}
+Required context: data (CohortReportData), theme_tokens (str), print_css (str).
+
+This is the document shell only — doctype, head, and one {% include %} per
+section in reading order. No loop, no {% if %}, no markup belonging to a
+section: adding, removing or reordering a section is an edit to this file
+alone, and changing what a section says never touches it.
+
+WeasyPrint source HTML, never served to a browser — no site base template,
+no cotton components.
+{% endcomment %}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ data.cohort_name }} — Progress report</title>
+{% comment %}theme_tokens and print_css are server-generated CSS strings — the
+extracted role-token block from the compiled Tailwind bundle and this app's
+own hand-authored stylesheet, never end-user input — so they are inlined
+with `safe` rather than escaped, which would otherwise turn `<` and `&` in
+selectors and content() rules into HTML entities and break the CSS.{% endcomment %}
+<style>{{ theme_tokens|safe }}</style>
+<style>{{ print_css|safe }}</style>
+</head>
+<body>
+{% include "reports/partials/title_page.html" with data=data only %}
+{% include "reports/partials/at_a_glance.html" with data=data attention=data.attention_list only %}
+{% include "reports/partials/contents.html" with data=data only %}
+{% include "reports/partials/methodology.html" only %}
+{% include "reports/partials/summary_tables.html" with courses=data.courses only %}
+{% include "reports/partials/student_details.html" with students=data.students only %}
+{% include "reports/partials/confusions.html" with courses=data.courses only %}
+</body>
+</html>

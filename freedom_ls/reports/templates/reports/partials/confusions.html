@@ -1,0 +1,13 @@
+{% comment %}Required context: courses (list[CourseSection]). One quiz_confusion.html per quiz whose ConfusionBlock is non-empty; a quiz with no incorrect answers at all is not shown.{% endcomment %}
+<section class="confusions">
+  <h2>Question-level confusions</h2>
+  {% for section in courses %}
+  {% for quiz in section.quizzes %}
+  {% for form_id, block in section.confusions_by_quiz.items %}
+  {% if form_id == quiz.form_id and block.total %}
+  {% include "reports/partials/quiz_confusion.html" with quiz=quiz block=block only %}
+  {% endif %}
+  {% endfor %}
+  {% endfor %}
+  {% endfor %}
+</section>

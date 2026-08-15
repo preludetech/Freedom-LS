@@ -1,0 +1,24 @@
+{% comment %}Required context: data (CohortReportData). Links only — every id it points at is emitted by exactly one other partial (course_summary_table.html, student_detail.html, quiz_confusion.html).{% endcomment %}
+<section class="contents">
+  <h2>Contents</h2>
+  <ul class="toc">
+    <li>Courses</li>
+    {% for section in data.courses %}
+    <li><a href="#course-{{ section.course_id }}">{{ section.title }}</a></li>
+    {% endfor %}
+    <li>Students</li>
+    {% for student in data.students %}
+    <li><a href="#student-{{ student.user_id }}">{{ student.full_name }}</a></li>
+    {% endfor %}
+    <li>Question-level confusions</li>
+    {% for section in data.courses %}
+    {% for quiz in section.quizzes %}
+    {% for form_id, block in section.confusions_by_quiz.items %}
+    {% if form_id == quiz.form_id and block.total %}
+    <li><a href="#confusions-{{ quiz.form_id }}">{{ quiz.title }}</a></li>
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+    {% endfor %}
+  </ul>
+</section>
