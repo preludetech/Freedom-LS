@@ -791,7 +791,7 @@ def test_course_form_complete_renders_incorrect_checkbox_answer_with_every_selec
     response = client.get(url)
 
     assert response.status_code == 200
-    assert response.context["is_failed_quiz"] is True
+    assert response.context["quiz_verdict"] == "failed"
     incorrect_answers = response.context["incorrect_answers"]
     assert [item["question"] for item in incorrect_answers] == [question]
     assert set(incorrect_answers[0]["student_selected"]) == {
@@ -800,6 +800,50 @@ def test_course_form_complete_renders_incorrect_checkbox_answer_with_every_selec
         wrong_1,
     }
     assert b'data-testid="incorrect-answers-section"' in response.content
+
+
+def _completed_quiz_results_page(client, *, score, max_score):
+    """Complete a quiz that HAS a pass mark of 70% and return the results page."""
+    user = UserFactory()
+    form = _make_quiz_form()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    FormProgressFactory(
+        user=user,
+        form=form,
+        completed_time=timezone.now(),
+        scores={"score": score, "max_score": max_score},
+    )
+    client.force_login(user)
+    return client.get(
+        reverse(
+            "student_interface:course_form_complete",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+
+@pytest.mark.django_db
+def test_results_page_with_pass_mark_shows_passed_banner(mock_site_context, client):
+    response = _completed_quiz_results_page(client, score=2, max_score=2)
+
+    assert response.context["quiz_verdict"] == "passed"
+    assert "Quiz passed!" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_results_page_with_pass_mark_shows_not_passed_banner(mock_site_context, client):
+    response = _completed_quiz_results_page(client, score=1, max_score=2)
+
+    assert response.context["quiz_verdict"] == "failed"
+    assert "Quiz not passed" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_results_page_with_failed_verdict_offers_a_retry(mock_site_context, client):
+    response = _completed_quiz_results_page(client, score=1, max_score=2)
+
+    assert "Retry quiz" in response.content.decode()
 
 
 # ---------------------------------------------------------------------------

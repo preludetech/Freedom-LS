@@ -264,6 +264,7 @@ document.addEventListener("alpine:init", () => {
         _formEl: null,
         _recompute: null,
         _onPageShow: null,
+        _onSubmit: null,
 
         init() {
             const base = parseInt(this.$el.dataset.answeredBase || "0", 10);
@@ -273,9 +274,15 @@ document.addEventListener("alpine:init", () => {
                 this.answeredCount = this._answeredBase + this._countAnsweredOnPage();
             };
             this._recompute();
+            // Intermediate pages advance through a native submit button, which the
+            // browser validates — except for checkbox groups, which it cannot.
+            this._onSubmit = (event) => {
+                if (this._revealMissingCheckboxGroups()) event.preventDefault();
+            };
             if (this._formEl) {
                 this._formEl.addEventListener("input", this._recompute);
                 this._formEl.addEventListener("change", this._recompute);
+                this._formEl.addEventListener("submit", this._onSubmit);
             }
 
             // Re-enable the Submit button if the page is restored from the
@@ -294,6 +301,7 @@ document.addEventListener("alpine:init", () => {
             if (this._formEl && this._recompute) {
                 this._formEl.removeEventListener("input", this._recompute);
                 this._formEl.removeEventListener("change", this._recompute);
+                this._formEl.removeEventListener("submit", this._onSubmit);
             }
             if (this._onPageShow) {
                 window.removeEventListener("pageshow", this._onPageShow);
@@ -327,6 +335,37 @@ document.addEventListener("alpine:init", () => {
             return count;
         },
 
+        // A required checkbox question is answered when at least one option in its
+        // group is ticked. `required` on each input would demand ALL of them, so
+        // the inputs carry data-required instead and the group is checked here.
+        // Reveals the per-question message on every offending group, scrolls to
+        // the first, and reports whether any group was missing.
+        _revealMissingCheckboxGroups() {
+            if (!this._formEl) return false;
+            const groups = {};
+            this._formEl
+                .querySelectorAll('input[type="checkbox"][data-required]')
+                .forEach((el) => {
+                    (groups[el.name] ||= []).push(el);
+                });
+            const missing = Object.values(groups).filter(
+                (els) => !els.some((el) => el.checked)
+            );
+            this._formEl
+                .querySelectorAll("[data-checkbox-required-message]")
+                .forEach((el) => { el.hidden = true; });
+            missing.forEach((els) => {
+                const message = els[0]
+                    .closest("fieldset")
+                    ?.querySelector("[data-checkbox-required-message]");
+                if (message) message.hidden = false;
+            });
+            if (missing.length > 0) {
+                missing[0][0].closest("fieldset")?.scrollIntoView({ block: "center" });
+            }
+            return missing.length > 0;
+        },
+
         openSubmitDialog(triggerEl) {
             // Enforce required answers before opening the submit dialog, matching
             // the intermediate-page "Next" buttons (real type=submit, which the
@@ -334,9 +373,14 @@ document.addEventListener("alpine:init", () => {
             // visible — surfaces the browser's validation UI on the offending
             // field, instead of after the modal backdrop has covered it.
             // reportValidity() only blocks on fields marked `required`, so
-            // optional/survey questions are unaffected.
+            // optional/survey questions are unaffected. This is the only gate on
+            // the dialog path: Submit calls formEl.submit(), which fires no
+            // submit event and skips HTML validation entirely.
             const form = this.$refs.pageForm;
             if (form && typeof form.reportValidity === "function" && !form.reportValidity()) {
+                return;
+            }
+            if (this._revealMissingCheckboxGroups()) {
                 return;
             }
             this._openDialog(triggerEl);

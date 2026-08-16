@@ -8,9 +8,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.db import models
+from django.http import QueryDict
 from django.utils import timezone
 
 from freedom_ls.content_engine.models import (
+    FREE_TEXT_QUESTION_TYPES,
     ContentCollectionItem,
     Course,
     CoursePart,
@@ -140,6 +142,28 @@ def is_quiz_answer_correct(
     if not required:
         return False
     return required <= selected_option_ids and not (selected_option_ids & forbidden)
+
+
+def submitted_option_ids(question: FormQuestion, post_data: QueryDict) -> list[str]:
+    """Option IDs submitted for a choice question, ignoring blank values."""
+    return [value for value in post_data.getlist(f"question_{question.id}") if value]
+
+
+def submitted_text_answer(question: FormQuestion, post_data: QueryDict) -> str:
+    """Trimmed text submitted for a free-text question."""
+    return post_data.get(f"question_{question.id}", "").strip()
+
+
+def has_submitted_answer(question: FormQuestion, post_data: QueryDict) -> bool:
+    """Whether `post_data` carries an answer to `question`.
+
+    Choice questions need at least one selected option, free-text questions need
+    non-blank text. This is what `FormQuestion.required` is measured against, and
+    what decides whether an answer row is stored at all.
+    """
+    if question.type in FREE_TEXT_QUESTION_TYPES:
+        return bool(submitted_text_answer(question, post_data))
+    return bool(submitted_option_ids(question, post_data))
 
 
 def evaluate_quiz_answers(
@@ -275,42 +299,28 @@ class FormProgress(CourseItemProgress):
                 pass
         return existing_answers
 
-    def save_answers(self, questions, post_data):
-        """
-        Save answers from POST data for the given questions.
-        Handles multiple_choice, checkboxes, short_text, and long_text question types.
+    def save_answers(
+        self, questions: Iterable[FormQuestion], post_data: QueryDict
+    ) -> None:
+        """Persist the answers in `post_data` for `questions`.
+
+        A question submitted with no answer stores no row, and loses any row from
+        an earlier visit: a blank row would count toward the runner's answered
+        tally and hide which questions are still outstanding.
         """
         for question in questions:
-            field_name = f"question_{question.id}"
+            if not has_submitted_answer(question, post_data):
+                self.answers.filter(question=question).delete()
+                continue
 
-            # Get or create the answer
             answer, _created = QuestionAnswer.objects.get_or_create(
                 form_progress=self, question=question, site=self.site
             )
-
-            # Handle different question types
-            if question.type == "multiple_choice":
-                # Get the selected option ID from POST
-                option_id = post_data.get(field_name)
-                if option_id:
-                    # Clear existing selections and set the new one
-                    answer.selected_options.clear()
-                    answer.selected_options.add(option_id)
-                    answer.save()
-
-            elif question.type == "checkboxes":
-                # Get all selected option IDs (can be multiple)
-                option_ids = post_data.getlist(field_name)
-                if option_ids:
-                    answer.selected_options.clear()
-                    answer.selected_options.add(*option_ids)
-                    answer.save()
-
-            elif question.type in ["short_text", "long_text"]:
-                # Get text answer
-                text_answer = post_data.get(field_name, "")
-                answer.text_answer = text_answer
-                answer.save()
+            if question.type in FREE_TEXT_QUESTION_TYPES:
+                answer.text_answer = submitted_text_answer(question, post_data)
+            else:
+                answer.selected_options.set(submitted_option_ids(question, post_data))
+            answer.save()
 
     def complete(self):
         """Mark the form as completed and calculate the final score (idempotent)."""
@@ -521,6 +531,13 @@ class FormProgress(CourseItemProgress):
                     continue
 
                 question = child
+
+                # A free-text question has no options, so there is nothing to
+                # show as either the selected or the correct answer — it would
+                # render as an empty review card. Such a question is not meant to
+                # appear in a scored quiz in the first place.
+                if question.type in FREE_TEXT_QUESTION_TYPES:
+                    continue
 
                 # Get the student's answer for this question
                 try:

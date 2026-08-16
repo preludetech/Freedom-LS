@@ -23,6 +23,14 @@ class QuestionType(models.TextChoices):
     LONG_TEXT = "long_text", _("Long Text")
 
 
+FREE_TEXT_QUESTION_TYPES = frozenset({QuestionType.SHORT_TEXT, QuestionType.LONG_TEXT})
+"""Question types answered with typed prose rather than a set of options.
+
+They carry no ``QuestionOption`` rows, so anything that reasons about selected
+or correct options has to treat them separately.
+"""
+
+
 class FormStrategy(models.TextChoices):
     """Form strategy enumeration."""
 

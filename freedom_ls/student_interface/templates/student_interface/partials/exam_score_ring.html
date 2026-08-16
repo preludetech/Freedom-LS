@@ -2,7 +2,8 @@
 Exam score ring partial — results screen (QUIZ only).
 SVG circle with stroke-dasharray/dashoffset computed from `percentage` (int, 0–100).
 Uses stroke="currentColor" under a token text colour wrapper.
-Context vars: percentage (int), is_failed_quiz (bool), scores (dict with .score/.max_score).
+Context vars: percentage (int), quiz_verdict ("passed"/"failed"/empty when the quiz
+has no pass mark), scores (dict with .score/.max_score).
 
 SVG geometry:
   radius = 54, circumference = 2 * pi * 54 ≈ 339.292
@@ -26,7 +27,7 @@ SVG geometry:
                     class="text-border"
                     stroke="currentColor" />
 
-            {% comment %}Fill circle — colour depends on pass/fail{% endcomment %}
+            {% comment %}Fill circle — colour depends on the verdict, neutral when there is none{% endcomment %}
             <circle cx="60"
                     cy="60"
                     r="54"
@@ -35,7 +36,7 @@ SVG geometry:
                     stroke-linecap="round"
                     stroke-dasharray="{{ circumference }}"
                     style="stroke-dashoffset: calc({{ circumference }} * (1 - {{ percentage }} / 100))"
-                    class="{% if is_failed_quiz %}text-error{% else %}text-success{% endif %} transition-all duration-700"
+                    class="{% if quiz_verdict == "failed" %}text-error{% elif quiz_verdict == "passed" %}text-success{% else %}text-secondary{% endif %} transition-all duration-700"
                     stroke="currentColor" />
 
         </svg>
@@ -43,7 +44,7 @@ SVG geometry:
         {% comment %}Percentage label centred in ring{% endcomment %}
         <div class="absolute inset-0 flex items-center justify-center">
             <div class="text-center">
-                <span class="text-2xl font-bold font-display {% if is_failed_quiz %}text-error{% else %}text-success{% endif %}"
+                <span class="text-2xl font-bold font-display {% if quiz_verdict == "failed" %}text-error{% elif quiz_verdict == "passed" %}text-success{% else %}text-secondary{% endif %}"
                       data-testid="quiz-percentage">
                     {{ percentage }}%
                 </span>

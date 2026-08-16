@@ -37,15 +37,19 @@ def courses(mock_site_context) -> list[Course]:
 
 
 def course_with_single_question_form(
-    course_title: str, course_slug: str, *, required: bool = False
+    course_title: str,
+    course_slug: str,
+    *,
+    required: bool = False,
+    question_type: str = "multiple_choice",
 ) -> Course:
-    """A course whose first item is a one-page, one-question multiple-choice form."""
+    """A course whose first item is a one-page, one-question choice form."""
     course: Course = CourseFactory(title=course_title, slug=course_slug)
     form = FormFactory(title=f"{course_title} Form")
     form_page = FormPageFactory(form=form, order=0, title="Only Page")
     question = FormQuestionFactory(
         form_page=form_page,
-        type="multiple_choice",
+        type=question_type,
         question="Pick one",
         required=required,
         order=0,

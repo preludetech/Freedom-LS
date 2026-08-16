@@ -77,23 +77,59 @@ def test_course_player_renders_for_completed_quiz_without_pass_mark(
     assert response.status_code == 200
 
 
+def _results_page(fixture, logged_in_client):
+    client = logged_in_client(fixture["user"])
+    return client.get(
+        reverse(
+            "student_interface:course_form_complete",
+            kwargs={"course_slug": fixture["course"].slug, "index": 1},
+        )
+    )
+
+
 @pytest.mark.django_db
 def test_results_page_renders_for_completed_quiz_without_pass_mark(
     completed_quiz_no_pass_mark, logged_in_client
 ):
-    client = logged_in_client(completed_quiz_no_pass_mark["user"])
-
-    response = client.get(
-        reverse(
-            "student_interface:course_form_complete",
-            kwargs={
-                "course_slug": completed_quiz_no_pass_mark["course"].slug,
-                "index": 1,
-            },
-        )
-    )
+    response = _results_page(completed_quiz_no_pass_mark, logged_in_client)
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_results_page_without_pass_mark_announces_no_verdict(
+    completed_quiz_no_pass_mark, logged_in_client
+):
+    """No pass mark means no bar to clear, so the page claims neither outcome."""
+    response = _results_page(completed_quiz_no_pass_mark, logged_in_client)
+
+    content = response.content.decode()
+    assert "Quiz passed" not in content
+    assert "Quiz not passed" not in content
+
+
+@pytest.mark.django_db
+def test_results_page_without_pass_mark_still_shows_the_score(
+    completed_quiz_no_pass_mark, logged_in_client
+):
+    """Dropping the verdict must not drop the score: 3 of 5 is still reported."""
+    response = _results_page(completed_quiz_no_pass_mark, logged_in_client)
+
+    content = response.content.decode()
+    assert response.context["percentage"] == 60
+    assert 'data-testid="quiz-score"' in content
+
+
+@pytest.mark.django_db
+def test_results_page_without_pass_mark_offers_continue_not_retry(
+    completed_quiz_no_pass_mark, logged_in_client
+):
+    """A quiz nobody can fail cannot be "retried" — the only action is to move on."""
+    response = _results_page(completed_quiz_no_pass_mark, logged_in_client)
+
+    content = response.content.decode()
+    assert "Retry quiz" not in content
+    assert "Continue" in content
 
 
 @pytest.mark.django_db

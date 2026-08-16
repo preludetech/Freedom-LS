@@ -17,6 +17,7 @@ from freedom_ls.content_engine.models import (
     Course,
     CourseVisibility,
     Form,
+    FormQuestion,
     FormStrategy,
     Topic,
 )
@@ -40,6 +41,7 @@ from freedom_ls.student_progress.models import (
     CourseProgress,
     FormProgress,
     TopicProgress,
+    has_submitted_answer,
 )
 
 from .utils import (
@@ -841,6 +843,15 @@ def form_start(request, course_slug, index):
     )
 
 
+def _unanswered_required_message(questions: list[FormQuestion]) -> str:
+    """Name the required questions the learner still has to answer."""
+    numbers = [str(question.question_number()) for question in questions]
+    if len(numbers) == 1:
+        return f"Question {numbers[0]} needs an answer before you can continue."
+    listed = f"{', '.join(numbers[:-1])} and {numbers[-1]}"
+    return f"Questions {listed} need answers before you can continue."
+
+
 @login_required
 def form_fill_page(request, course_slug, index, page_number):
     course = get_object_or_404(Course, slug=course_slug)
@@ -874,6 +885,10 @@ def form_fill_page(request, course_slug, index, page_number):
         else None
     )
 
+    # Set when a submission is rejected for missing required answers: the page is
+    # re-rendered carrying it instead of advancing or completing.
+    required_answers_error = ""
+
     if request.method == "POST":
         # No incomplete attempt to save into (e.g. it was finalised by a
         # submit-on-exit safety net, or the page was reached without starting).
@@ -885,20 +900,30 @@ def form_fill_page(request, course_slug, index, page_number):
                 index=index,
             )
 
-        # Process each question's answer
+        unanswered_required = [
+            question
+            for question in questions
+            if question.required and not has_submitted_answer(question, request.POST)
+        ]
+
+        # Save regardless, so a rejected submission does not throw away the
+        # answers the learner did give.
         form_progress.save_answers(questions, request.POST)
 
-        if next_page_url:
-            return redirect(next_page_url)
+        if not unanswered_required:
+            if next_page_url:
+                return redirect(next_page_url)
 
-        # Mark form as completed and calculate scores
-        form_progress.complete()
+            # Mark form as completed and calculate scores
+            form_progress.complete()
 
-        return redirect(
-            "student_interface:course_form_complete",
-            course_slug=course_slug,
-            index=index,
-        )
+            return redirect(
+                "student_interface:course_form_complete",
+                course_slug=course_slug,
+                index=index,
+            )
+
+        required_answers_error = _unanswered_required_message(unanswered_required)
 
     previous_page_url = (
         reverse(
@@ -994,9 +1019,16 @@ def form_fill_page(request, course_slug, index, page_number):
         "total_question_count": total_question_count,
         "submit_and_exit_url": submit_and_exit_url,
         "save_and_exit_url": save_and_exit_url,
+        "required_answers_error": required_answers_error,
     }
 
-    response = render(request, "student_interface/course_form_page.html", context)
+    # A rejected submission is a validation failure, not a fresh page view.
+    response = render(
+        request,
+        "student_interface/course_form_page.html",
+        context,
+        status=422 if required_answers_error else 200,
+    )
     # Runner pages must re-fetch on back-nav so the answered count is never stale.
     response["Cache-Control"] = "no-store"
     return response
@@ -1024,17 +1056,22 @@ def course_form_complete(request, course_slug, index):
     if form_progress:
         incorrect_answers = form_progress.get_incorrect_quiz_answers()
 
-    # Determine if this is a failed quiz
-    is_failed_quiz = False
-    if form_progress and form.strategy == FormStrategy.QUIZ:
-        with contextlib.suppress(ValueError):
-            is_failed_quiz = not form_progress.passed()
-
     # Only set for QUIZ forms; non-quiz forms do not have a numeric percentage.
     percentage = None
     if form_progress and form.strategy == FormStrategy.QUIZ:
         with contextlib.suppress(ValueError):
             percentage = form_progress.quiz_percentage()
+
+    # Three-state: "passed", "failed", or None for a quiz with no pass mark —
+    # there is no bar to clear, so the results page must claim neither outcome.
+    # The PDF report and the educator panel use the same guard.
+    quiz_verdict = None
+    if (
+        form_progress
+        and percentage is not None
+        and form.quiz_pass_percentage is not None
+    ):
+        quiz_verdict = "passed" if form_progress.passed() else "failed"
 
     # Calculate next URL for continue button
     total_viewable_items = len(viewable_items)
@@ -1064,7 +1101,7 @@ def course_form_complete(request, course_slug, index):
         "show_scores": True,
         "scores": form_progress.scores if form_progress else None,
         "incorrect_answers": incorrect_answers,
-        "is_failed_quiz": is_failed_quiz,
+        "quiz_verdict": quiz_verdict,
         "next_url": next_url,
         "retry_url": retry_url,
         # Player chrome (outline panel + breadcrumb).

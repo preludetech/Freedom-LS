@@ -470,7 +470,11 @@ def test_score_quiz_checkbox_no_correct_option_at_all_scores_zero(mock_site_cont
 @pytest.mark.parametrize("question_type", ["short_text", "long_text"])
 @pytest.mark.django_db
 def test_score_quiz_free_text_question_scores_zero(mock_site_context, question_type):
-    """Free-text questions have no options at all, so they can never score correct."""
+    """Free-text questions have no options at all, so they can never score correct.
+
+    They are still left out of the incorrect-answer review, which has nothing to
+    show for them — see test_quiz_free_text_questions.py.
+    """
     user = UserFactory()
     form = FormFactory(strategy=FormStrategy.QUIZ)
     page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
@@ -493,8 +497,7 @@ def test_score_quiz_free_text_question_scores_zero(mock_site_context, question_t
     form_progress.refresh_from_db()
     assert form_progress.scores is not None
     assert form_progress.scores["score"] == 0
-    incorrect = form_progress.get_incorrect_quiz_answers()
-    assert [item["question"] for item in incorrect] == [question]
+    assert form_progress.get_incorrect_quiz_answers() == []
 
 
 # Bulk correctness helper: must classify each (attempt, question) pair identically to score_quiz().

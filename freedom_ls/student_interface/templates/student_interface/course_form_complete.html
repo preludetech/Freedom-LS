@@ -9,15 +9,18 @@
 
             {% comment %}=== QUIZ RESULTS ==={% endcomment %}
 
-            {% comment %}Results banner (pass/fail){% endcomment %}
+            {% comment %}
+            Results banner. quiz_verdict is "passed", "failed", or empty for a
+            quiz with no pass mark — which gets a score and no verdict at all.
+            {% endcomment %}
             <div class="rounded-lg border bg-white overflow-hidden mb-8
-                        {% if is_failed_quiz %}border-error/30{% else %}border-success/30{% endif %}">
+                        {% if quiz_verdict == "failed" %}border-error/30{% elif quiz_verdict == "passed" %}border-success/30{% else %}border-border{% endif %}">
 
                 {% comment %}Coloured top accent strip{% endcomment %}
-                <div class="h-1.5 {% if is_failed_quiz %}bg-error{% else %}bg-success{% endif %}"></div>
+                <div class="h-1.5 {% if quiz_verdict == "failed" %}bg-error{% elif quiz_verdict == "passed" %}bg-success{% else %}bg-secondary{% endif %}"></div>
 
                 <div class="px-6 py-6 text-center space-y-2">
-                    {% if is_failed_quiz %}
+                    {% if quiz_verdict == "failed" %}
                         <c-icon name="error" class="size-10 text-error" />
                         <h1 class="font-display text-on-surface">
                             Quiz not passed
@@ -25,13 +28,22 @@
                         <p class="text-muted">
                             You need {{ form.quiz_pass_percentage }}% to pass. Review the material and try again.
                         </p>
-                    {% else %}
+                    {% elif quiz_verdict == "passed" %}
                         <c-icon name="success" class="size-10 text-success" />
                         <h1 class="font-display text-on-surface">
                             Quiz passed!
                         </h1>
                         <p class="text-muted">
                             Well done for completing <strong>{{ form.title }}</strong>.
+                        </p>
+                    {% else %}
+                        <c-icon name="complete" class="size-10 text-secondary" />
+                        <h1 class="font-display text-on-surface">
+                            Quiz complete
+                        </h1>
+                        <p class="text-muted">
+                            <strong>{{ form.title }}</strong> has no pass mark, so there is no
+                            pass or fail — here is how you scored.
                         </p>
                     {% endif %}
                 </div>
@@ -180,7 +192,7 @@
 
         {% comment %}=== NAVIGATION ==={% endcomment %}
         <div class="mt-8 flex flex-col sm:flex-row justify-center gap-3">
-            {% if is_failed_quiz %}
+            {% if quiz_verdict == "failed" %}
                 <c-button href="{{ retry_url }}" icon_left="retry">
                     Retry quiz
                 </c-button>
