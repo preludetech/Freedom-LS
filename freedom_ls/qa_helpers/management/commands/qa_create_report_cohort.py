@@ -1,0 +1,717 @@
+"""Build a cohort of N students with a controlled progress distribution.
+
+Written for the cohort progress report QA matrix, which needs cohorts of very
+different sizes whose students carry *genuinely scored* quiz attempts. The
+existing helpers cannot do this: ``qa_create_large_cohort`` leaves every student
+with zero progress, and ``qa_create_cohort_progress`` marks progress rows
+complete without any answers or scores, so every quiz column, at-risk flag and
+confusion tally in the report comes out empty.
+
+What the distribution is tuned for (see ``freedom_ls/reports/gather.py``):
+
+- Completion is recomputed from ``TopicProgress.complete_time`` /
+  ``FormProgress.completed_time``; ``CourseProgress.progress_percentage`` is
+  never read. Students are spread across a completion ladder so median
+  completion, "not started" and "complete" are all non-degenerate.
+- A quiz cell needs ``completed_time`` AND ``scores``, so attempts are completed
+  through ``FormProgress.complete()`` rather than by setting a timestamp.
+- ``--num-flagged`` is met by mixing all three base at-risk rules: students with
+  no rows at all (``no_activity``), students whose most recent pass-marked quiz
+  attempt fails (``failed_latest_quiz``), and students whose activity is
+  backdated past the 7-day window (``inactive``). Everyone else is kept
+  deliberately unflagged, so "No flags" sections exist to check too.
+- One student gets three completed attempts at the first quiz, all wrong on the
+  same question. Their own section counts every attempt ("3 times") while the
+  cohort confusion tally counts first attempts only -- the two are meant to
+  disagree.
+- Wrong answers rotate by student index so the distractor tables show a spread
+  of chosen options rather than one bar, and so that on a long quiz every
+  question picks up at least one wrong answer (which is what makes the
+  "showing worst 10 of N" cap disclosure appear).
+
+Usage:
+    uv run python manage.py qa_create_report_cohort \
+        --cohort-name "QA Report Standard Cohort" --num-students 9 \
+        --course-slug qa-report-medium-course --num-flagged 3
+"""
+
+import math
+from datetime import datetime, timedelta
+from typing import cast
+
+import djclick as click
+from allauth.account.models import EmailAddress
+from guardian.shortcuts import assign_perm
+
+from django.contrib.sites.models import Site
+from django.utils import timezone
+
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
+from freedom_ls.content_engine.models import (
+    Course,
+    Form,
+    FormQuestion,
+    FormStrategy,
+    QuestionOption,
+    QuestionType,
+    Topic,
+)
+from freedom_ls.student_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    CohortMembershipFactory,
+)
+from freedom_ls.student_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    CohortMembership,
+)
+from freedom_ls.student_progress.factories import (
+    CourseProgressFactory,
+    FormProgressFactory,
+    QuestionAnswerFactory,
+)
+from freedom_ls.student_progress.models import (
+    CourseProgress,
+    FormProgress,
+    QuestionAnswer,
+    TopicProgress,
+)
+
+# 40 distinct surnames: the report sorts students by surname, so creation order
+# and alphabetical order are deliberately different.
+SURNAMES = [
+    "Okonkwo",
+    "Delacroix",
+    "Bergström",
+    "Yusupova",
+    "Marchetti",
+    "Abara",
+    "Thibault",
+    "Nakamura",
+    "Ferreira",
+    "Grimsdóttir",
+    "Vasquez",
+    "Idowu",
+    "Petrov",
+    "Chaudhry",
+    "Wainwright",
+    "Espinoza",
+    "Bakalova",
+    "Ndlovu",
+    "Rasmussen",
+    "Quintero",
+    "Halloran",
+    "Sarkissian",
+    "Coetzee",
+    "Lindqvist",
+    "Mbeki",
+    "Fontaine",
+    "Ustinov",
+    "Achterberg",
+    "Whitfield",
+    "Jankowski",
+    "Ravindran",
+    "Solberg",
+    "Tanaka",
+    "Kowalczyk",
+    "Duarte",
+    "Ekwueme",
+    "Villalobos",
+    "Novotný",
+    "Zampieri",
+    "Hartigan",
+]
+
+FIRST_NAMES = [
+    "Amara",
+    "Theo",
+    "Sanne",
+    "Rustam",
+    "Giulia",
+    "Chidi",
+    "Margot",
+    "Haruki",
+    "Ines",
+    "Björn",
+    "Lucia",
+    "Femi",
+    "Katya",
+    "Zara",
+    "Rowan",
+    "Mateo",
+    "Nadia",
+    "Sipho",
+    "Freja",
+    "Camila",
+    "Declan",
+    "Anush",
+    "Willem",
+    "Elsa",
+    "Thabo",
+    "Colette",
+    "Dmitri",
+    "Joost",
+    "Harriet",
+    "Kasia",
+    "Anjali",
+    "Erik",
+    "Yuki",
+    "Piotr",
+    "Ines",
+    "Ngozi",
+    "Rafael",
+    "Tereza",
+    "Enzo",
+    "Niamh",
+]
+
+# Fraction of the course each unflagged student has completed. "started" means
+# one item opened but nothing completed: has_any_progress is True (so the
+# no_activity rule stays quiet) while completion is still 0%.
+LADDER: list[str | float] = ["started", 0.2, 0.4, 0.6, 0.8, 1.0]
+
+STATE_NORMAL = "normal"
+STATE_NO_ACTIVITY = "no_activity"
+STATE_FAILING = "failing"
+STATE_STALE = "stale"
+
+RECENT_DAYS_AGO = 2
+STALE_DAYS_AGO = 30
+ITEM_SPACING = timedelta(minutes=2)
+COURSE_SPACING = timedelta(hours=6)
+
+MULTI_ATTEMPT_COUNT = 3
+
+
+def _get_site(site_name: str) -> Site:
+    try:
+        return Site.objects.get(name=site_name)
+    except Site.DoesNotExist as e:
+        available = list(Site.objects.values_list("name", flat=True))
+        raise click.ClickException(
+            f"Site '{site_name}' not found. Available: {available}"
+        ) from e
+
+
+def _get_course(site: Site, slug: str) -> Course:
+    try:
+        return cast(Course, Course.objects.get(slug=slug, site=site))
+    except Course.DoesNotExist as e:
+        available = list(
+            Course.objects.filter(site=site).values_list("slug", flat=True)
+        )
+        raise click.ClickException(
+            f"Course '{slug}' not found on site '{site.name}'. Available: {available}"
+        ) from e
+
+
+def _get_or_create_user(
+    site: Site, email: str, first_name: str, last_name: str
+) -> User:
+    """A login-ready QA user (password == email), or an existing one made usable."""
+    existing: User | None = User.objects.filter(email=email).first()
+    if existing is None:
+        user = cast(
+            User,
+            UserFactory(
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                is_active=True,
+                password=email,
+                site=site,
+            ),
+        )
+    else:
+        user = existing
+        user.is_active = True
+        user.set_password(email)
+        user.save(update_fields=["is_active", "password"])
+    EmailAddress.objects.update_or_create(
+        user=user,
+        email=user.email,
+        defaults={"verified": True, "primary": True},
+    )
+    return user
+
+
+def _name_for(index: int) -> tuple[str, str]:
+    first = FIRST_NAMES[index % len(FIRST_NAMES)]
+    last = SURNAMES[index % len(SURNAMES)]
+    lap = index // len(SURNAMES)
+    return (first, last if lap == 0 else f"{last}-{lap + 1}")
+
+
+def _student_states(num_students: int, num_flagged: int) -> list[str]:
+    """One state per student; the flagged ones are the trailing indices."""
+    states = [STATE_NORMAL] * num_students
+    flavours = [STATE_NO_ACTIVITY, STATE_FAILING, STATE_STALE]
+    for n in range(min(num_flagged, num_students)):
+        states[num_students - 1 - n] = flavours[n % len(flavours)]
+    return states
+
+
+def _ladder_value(index: int, states: list[str]) -> str | float:
+    """Where on the completion ladder this student sits.
+
+    The ladder is stretched across the *unflagged* students rather than cycled
+    by index. Cycling silently starves small cohorts: a three-student cohort
+    would only ever sample the bottom three rungs, so nobody would reach a quiz
+    and the report's whole quiz and confusion apparatus would come out empty.
+    """
+    if states[index] == STATE_NO_ACTIVITY:
+        # Never read: this student gets no progress rows at all.
+        return LADDER[0]
+    if states[index] in (STATE_FAILING, STATE_STALE):
+        # Enough progress to have reached a quiz, still spread out.
+        return LADDER[2 + (index % (len(LADDER) - 2))]
+    normal_indices = [i for i, state in enumerate(states) if state == STATE_NORMAL]
+    if len(normal_indices) <= 1:
+        return LADDER[-1]
+    position = normal_indices.index(index)
+    rung = round(position * (len(LADDER) - 1) / (len(normal_indices) - 1))
+    return LADDER[rung]
+
+
+def _ensure_course_progress_row(user: User, course: Course, site: Site) -> None:
+    """Pre-create CourseProgress WITH a site.
+
+    Completing a Topic or Form triggers ``update_course_progress_on_completion``,
+    which calls ``CourseProgress.objects.update_or_create()`` without a site and
+    so violates the NOT NULL constraint unless the row already exists.
+    """
+    if not CourseProgress.objects.filter(user=user, course=course, site=site).exists():
+        CourseProgressFactory(user=user, course=course, site=site)
+
+
+def _max_wrong_for_pass(question_count: int, pass_percentage: int | None) -> int:
+    """Most questions a student can get wrong and still pass this quiz."""
+    if pass_percentage is None:
+        return max(0, question_count - 1)
+    needed = math.ceil(question_count * pass_percentage / 100)
+    return max(0, question_count - needed)
+
+
+def _wrong_orders(
+    question_count: int, student_index: int, quiz_index: int, wrong_count: int
+) -> set[int]:
+    """Which question orders this student gets wrong, rotated by student index.
+
+    Rotating rather than always failing question 1 is what gives the cohort
+    confusion section more than one question to rank, and what eventually gives
+    every question on a long quiz at least one wrong answer.
+    """
+    if question_count == 0 or wrong_count <= 0:
+        return set()
+    start = (student_index * 3 + quiz_index) % question_count
+    return {
+        (start + n) % question_count for n in range(min(wrong_count, question_count))
+    }
+
+
+def _choose_options(
+    question: FormQuestion,
+    options: list[QuestionOption],
+    answer_wrong: bool,
+    student_index: int,
+) -> list[QuestionOption]:
+    correct = [option for option in options if option.correct is True]
+    incorrect = [option for option in options if option.correct is not True]
+    if not answer_wrong:
+        return correct
+    if not incorrect:
+        # Nothing to pick that is wrong; selecting nothing still scores zero.
+        return []
+    distractor = incorrect[(student_index + question.order) % len(incorrect)]
+    is_checkbox = question.type == QuestionType.CHECKBOXES
+    if is_checkbox and student_index % 2 == 1:
+        # "Everything ticked" is wrong under exact-match scoring too, and it is
+        # the case the multi-select scoring fix exists to close.
+        return [*correct, distractor]
+    return [distractor]
+
+
+def _complete_attempt(
+    user: User,
+    form: Form,
+    site: Site,
+    questions: list[FormQuestion],
+    options_by_question: dict[str, list[QuestionOption]],
+    wrong_orders: set[int],
+    student_index: int,
+    started_at: datetime,
+    completed_at: datetime,
+) -> FormProgress:
+    """Create one genuinely scored, completed attempt at ``form``."""
+    attempt = cast(FormProgress, FormProgressFactory(user=user, form=form, site=site))
+    for question in questions:
+        options = options_by_question[str(question.id)]
+        if not options:
+            continue
+        chosen = _choose_options(
+            question, options, question.order in wrong_orders, student_index
+        )
+        answer = cast(
+            QuestionAnswer,
+            QuestionAnswerFactory(form_progress=attempt, question=question, site=site),
+        )
+        answer.selected_options.set(chosen)
+    attempt.complete()
+    # start_time is auto_now_add and complete() stamps completed_time with now(),
+    # so backdating has to happen after the save, via the queryset.
+    FormProgress.objects.filter(pk=attempt.pk).update(
+        start_time=started_at, completed_time=completed_at
+    )
+    attempt.refresh_from_db()
+    return attempt
+
+
+def _quiz_questions(
+    form: Form,
+) -> tuple[list[FormQuestion], dict[str, list[QuestionOption]]]:
+    questions = list(
+        FormQuestion.objects.filter(form_page__form=form)
+        .prefetch_related("options")
+        .order_by("form_page__order", "order")
+    )
+    options_by_question = {
+        str(question.id): list(question.options.order_by("order"))
+        for question in questions
+    }
+    return questions, options_by_question
+
+
+def _last_pass_marked_quiz_slot(items: list[Topic | Form], limit: int) -> int | None:
+    """Slot of the last pass-marked quiz within ``items[:limit]``, or None."""
+    for slot in range(min(limit, len(items)) - 1, -1, -1):
+        item = items[slot]
+        if (
+            isinstance(item, Form)
+            and item.strategy == FormStrategy.QUIZ
+            and item.quiz_pass_percentage is not None
+        ):
+            return slot
+    return None
+
+
+def _first_pass_marked_quiz_slot(items: list[Topic | Form]) -> int | None:
+    for slot, item in enumerate(items):
+        if (
+            isinstance(item, Form)
+            and item.strategy == FormStrategy.QUIZ
+            and item.quiz_pass_percentage is not None
+        ):
+            return slot
+    return None
+
+
+def _has_existing_progress(user: User, items: list[Topic | Form], site: Site) -> bool:
+    topic_ids = [item.id for item in items if isinstance(item, Topic)]
+    form_ids = [item.id for item in items if isinstance(item, Form)]
+    return (
+        TopicProgress.objects.filter(
+            user=user, topic_id__in=topic_ids, site=site
+        ).exists()
+        or FormProgress.objects.filter(
+            user=user, form_id__in=form_ids, site=site
+        ).exists()
+    )
+
+
+def _generate_course_progress(
+    user: User,
+    student_index: int,
+    state: str,
+    ladder_value: str | float,
+    course: Course,
+    course_index: int,
+    site: Site,
+    is_last_course: bool,
+    multi_attempt: bool,
+    now: datetime,
+) -> None:
+    """Create this student's progress rows for one course."""
+    items = cast(
+        "list[Topic | Form]",
+        [item for item in course.viewable_items() if isinstance(item, Topic | Form)],
+    )
+    if not items or state == STATE_NO_ACTIVITY:
+        return
+    if _has_existing_progress(user, items, site):
+        return
+
+    _ensure_course_progress_row(user, course, site)
+
+    days_ago = STALE_DAYS_AGO if state == STATE_STALE else RECENT_DAYS_AGO
+    base = now - timedelta(days=days_ago) + course_index * COURSE_SPACING
+
+    if ladder_value == "started":
+        # One item opened, nothing completed: has_any_progress True, 0% complete.
+        first = items[0]
+        if isinstance(first, Topic):
+            TopicProgress.objects.get_or_create(user=user, topic=first, site=site)
+        else:
+            FormProgressFactory(user=user, form=first, site=site)
+        return
+
+    fraction = cast(float, ladder_value)
+    completed_slots = max(1, round(fraction * len(items)))
+
+    failing_slot: int | None = None
+    if state == STATE_FAILING and is_last_course:
+        # The failed_latest_quiz rule reads the most recently completed quiz, so
+        # the student has to stop ON a pass-marked quiz for the flag to be the
+        # one this fixture is trying to produce.
+        failing_slot = _last_pass_marked_quiz_slot(items, completed_slots)
+        if failing_slot is None:
+            failing_slot = _first_pass_marked_quiz_slot(items)
+        if failing_slot is not None:
+            completed_slots = failing_slot + 1
+
+    quiz_index = 0
+    for slot in range(min(completed_slots, len(items))):
+        item = items[slot]
+        completed_at = base + slot * ITEM_SPACING
+        if isinstance(item, Topic):
+            TopicProgress.objects.update_or_create(
+                user=user,
+                topic=item,
+                site=site,
+                defaults={"complete_time": completed_at},
+            )
+            continue
+
+        if item.strategy != FormStrategy.QUIZ:
+            progress = cast(
+                FormProgress, FormProgressFactory(user=user, form=item, site=site)
+            )
+            progress.complete()
+            FormProgress.objects.filter(pk=progress.pk).update(
+                start_time=completed_at - ITEM_SPACING, completed_time=completed_at
+            )
+            continue
+
+        questions, options_by_question = _quiz_questions(item)
+        question_count = len(questions)
+        if slot == failing_slot:
+            needed = math.ceil(question_count * (item.quiz_pass_percentage or 50) / 100)
+            wrong_count = question_count - max(0, needed - 1)
+        else:
+            max_wrong = _max_wrong_for_pass(question_count, item.quiz_pass_percentage)
+            wrong_count = student_index % (max_wrong + 1)
+        wrong_orders = _wrong_orders(
+            question_count, student_index, quiz_index, wrong_count
+        )
+
+        attempts = MULTI_ATTEMPT_COUNT if (multi_attempt and quiz_index == 0) else 1
+        for attempt_number in range(attempts):
+            # Earlier attempts are pushed back in time so the first-attempt
+            # window function has a deterministic winner.
+            offset = (attempts - 1 - attempt_number) * timedelta(hours=1)
+            _complete_attempt(
+                user=user,
+                form=item,
+                site=site,
+                questions=questions,
+                options_by_question=options_by_question,
+                wrong_orders=wrong_orders,
+                student_index=student_index,
+                started_at=completed_at - offset - ITEM_SPACING,
+                completed_at=completed_at - offset,
+            )
+        quiz_index += 1
+
+
+def build_report_cohort(
+    site: Site,
+    cohort_name: str,
+    num_students: int,
+    course_slugs: tuple[str, ...],
+    inactive_course_slugs: tuple[str, ...],
+    num_flagged: int,
+    no_progress: bool,
+    email_prefix: str,
+    educator_email: str | None,
+) -> Cohort:
+    """Create or reuse the cohort, its members and their progress. Idempotent."""
+    now = timezone.now()
+
+    cohort = cast(
+        Cohort,
+        Cohort.objects.filter(name=cohort_name, site=site).first()
+        or CohortFactory(name=cohort_name, site=site),
+    )
+
+    for slug in (*course_slugs, *inactive_course_slugs):
+        course = _get_course(site, slug)
+        is_active = slug in course_slugs
+        registration = CohortCourseRegistration.objects.filter(
+            cohort=cohort, collection=course, site=site
+        ).first()
+        if registration is None:
+            CohortCourseRegistrationFactory(
+                cohort=cohort, collection=course, site=site, is_active=is_active
+            )
+        elif registration.is_active != is_active:
+            registration.is_active = is_active
+            registration.save(update_fields=["is_active"])
+
+    # Progress is generated for active and inactive registrations alike: the
+    # report sections an inactive course too, and it must not be empty.
+    courses = [
+        _get_course(site, slug) for slug in (*course_slugs, *inactive_course_slugs)
+    ]
+    states = _student_states(num_students, num_flagged)
+
+    # The multi-attempt student must be someone who completes the whole course,
+    # so the repeated quiz is NOT their most recent one and the extra attempts
+    # cannot be mistaken for a failed_latest_quiz flag.
+    multi_attempt_index: int | None = next(
+        (
+            index
+            for index, state in enumerate(states)
+            if state == STATE_NORMAL and _ladder_value(index, states) == 1.0
+        ),
+        None,
+    )
+
+    students: list[tuple[User, str]] = []
+    for index in range(num_students):
+        first_name, last_name = _name_for(index)
+        email = f"{email_prefix}-{index + 1:02d}@email.com"
+        student = _get_or_create_user(site, email, first_name, last_name)
+        if not CohortMembership.objects.filter(
+            user=student, cohort=cohort, site=site
+        ).exists():
+            CohortMembershipFactory(user=student, cohort=cohort, site=site)
+        students.append((student, states[index]))
+
+        if no_progress:
+            continue
+
+        state = states[index]
+        ladder_value = _ladder_value(index, states)
+        for course_index, course in enumerate(courses):
+            _generate_course_progress(
+                user=student,
+                student_index=index,
+                state=state,
+                ladder_value=ladder_value,
+                course=course,
+                course_index=course_index,
+                site=site,
+                is_last_course=course_index == len(courses) - 1,
+                multi_attempt=index == multi_attempt_index,
+                now=now,
+            )
+
+    if educator_email:
+        educator = _get_or_create_user(site, educator_email, "Quinn", "Reporter")
+        assign_perm("view_cohort", educator, cohort)
+
+    return cohort
+
+
+@click.command()
+@click.option(
+    "--site-name",
+    default="DemoDev",
+    help="Site name to create the data on (default: 'DemoDev').",
+)
+@click.option("--cohort-name", required=True, help="Name of the cohort to build.")
+@click.option(
+    "--num-students",
+    default=9,
+    type=int,
+    help="How many students to put in the cohort.",
+)
+@click.option(
+    "--course-slug",
+    multiple=True,
+    help="Course slug to register the cohort for (active). Repeatable.",
+)
+@click.option(
+    "--inactive-course-slug",
+    multiple=True,
+    help="Course slug registered with is_active=False. Repeatable.",
+)
+@click.option(
+    "--num-flagged",
+    default=0,
+    type=int,
+    help=(
+        "How many students should trip an at-risk rule. Cycles through "
+        "no-activity / failed-latest-quiz / inactive."
+    ),
+)
+@click.option(
+    "--no-progress",
+    is_flag=True,
+    default=False,
+    help="Create members with no progress rows at all.",
+)
+@click.option(
+    "--email-prefix",
+    default="qa-report-student",
+    help="Email stem; students are <prefix>-01@email.com upwards.",
+)
+@click.option(
+    "--educator-email",
+    default=None,
+    help="Optional educator to create and grant guardian 'view_cohort' on this cohort.",
+)
+def command(
+    site_name: str,
+    cohort_name: str,
+    num_students: int,
+    course_slug: tuple[str, ...],
+    inactive_course_slug: tuple[str, ...],
+    num_flagged: int,
+    no_progress: bool,
+    email_prefix: str,
+    educator_email: str | None,
+) -> None:
+    """Build a cohort with a controlled progress and at-risk distribution."""
+    site = _get_site(site_name)
+    cohort = build_report_cohort(
+        site=site,
+        cohort_name=cohort_name,
+        num_students=num_students,
+        course_slugs=course_slug,
+        inactive_course_slugs=inactive_course_slug,
+        num_flagged=num_flagged,
+        no_progress=no_progress,
+        email_prefix=email_prefix,
+        educator_email=educator_email,
+    )
+
+    registrations = list(
+        CohortCourseRegistration.objects.filter(
+            cohort=cohort, site=site
+        ).select_related("collection")
+    )
+    member_count = CohortMembership.objects.filter(cohort=cohort, site=site).count()
+
+    click.secho("\n--- QA report cohort ---", fg="cyan", bold=True)
+    click.secho(f"Site:     {site.name} ({site.domain})", fg="cyan")
+    click.secho(f"Cohort:   {cohort.name} (pk={cohort.pk})", fg="cyan", bold=True)
+    click.secho(f"Students: {member_count}", fg="cyan")
+    click.secho(
+        f"Logins:   {email_prefix}-NN@email.com (password == email)", fg="green"
+    )
+    for registration in registrations:
+        state = "active" if registration.is_active else "INACTIVE"
+        click.secho(
+            f"  course: {registration.collection.title} "
+            f"[{registration.collection.slug}] ({state})",
+            fg="green",
+        )
+    if educator_email:
+        click.secho(
+            f"Educator: {educator_email} / {educator_email} (view_cohort granted)",
+            fg="green",
+            bold=True,
+        )
+    click.secho(f"Panel:    /educator/cohorts/{cohort.pk}", fg="cyan")
