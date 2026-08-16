@@ -252,22 +252,28 @@ th.numeric {
 }
 
 /* Status glyphs. Every status cell carries its glyph and its number together,
-   so colour is never the only signal and the report survives greyscale. */
+   so colour is never the only signal and the report survives greyscale.
+
+   Drawn in the `on-*-light` foregrounds, never the solid role colours. A role
+   colour is meant to be a fill with its `on-*` partner laid over it; used as
+   ink on white it is a contrast failure, and the warning role in particular —
+   a pale yellow — all but disappears. The bars below still take the solid
+   fills, which is what those colours are for. */
 .status-glyph {
   font-weight: 700;
   margin-right: 2pt;
 }
 .status-pass {
-  color: var(--color-success);
+  color: var(--color-on-success-light);
 }
 .status-fail {
-  color: var(--color-error);
+  color: var(--color-on-error-light);
 }
 .status-flag {
-  color: var(--color-warning);
+  color: var(--color-on-warning-light);
 }
 .status-progress {
-  color: var(--color-info);
+  color: var(--color-on-info-light);
 }
 .status-no-verdict,
 .status-na {
