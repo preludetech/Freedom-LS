@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import posixpath
+
 from django.conf import settings
 from django.core.files.storage import InvalidStorageError, Storage, storages
 from django.db import models
@@ -82,7 +84,34 @@ class GeneratedReport(SiteAwareModel):
         ]
 
     def __str__(self) -> str:
-        return f"Report for cohort {self.cohort_id} ({self.status})"
+        # The delete-confirmation screens show only this string, so it has to
+        # name the cohort an admin is about to destroy a report for.
+        return f"Report for cohort {self.cohort} ({self.status})"
+
+
+def _delete_empty_report_directory(storage: Storage, directory: str) -> None:
+    """Remove the per-report directory once its only file is gone.
+
+    `report_upload_path` gives every report a directory of its own, so an
+    emptied one is dead weight. Not every backend has directories: the base
+    `Storage` API raises `NotImplementedError` for both `listdir` and `delete`,
+    and object stores synthesise a prefix that disappears with its last key.
+    Those and a concurrently removed directory are the only ways there can
+    legitimately be nothing to remove, so they are the only failures swallowed
+    here — anything else is a real storage fault and must surface.
+    """
+    if not directory:
+        return
+    try:
+        subdirectories, files = storage.listdir(directory)
+    except (NotImplementedError, FileNotFoundError):
+        return
+    if subdirectories or files:
+        return
+    try:
+        storage.delete(directory)
+    except NotImplementedError:
+        return
 
 
 @receiver(post_delete, sender=GeneratedReport)
@@ -95,5 +124,14 @@ def delete_report_file(
     row is still alive — this only cleans up on delete. Do not remove this
     TODO without implementing retention.
     """
-    if instance.file:
-        instance.file.delete(save=False)
+    if not instance.file:
+        return
+    # Read through a local: FieldFile.name is Optional, and the truthiness
+    # check above narrows the FieldFile, not the name it carries.
+    file_name = instance.file.name
+    if not file_name:
+        return
+    directory = posixpath.dirname(file_name)
+    storage = instance.file.storage
+    instance.file.delete(save=False)
+    _delete_empty_report_directory(storage, directory)

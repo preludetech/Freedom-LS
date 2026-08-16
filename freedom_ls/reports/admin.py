@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from guardian.shortcuts import get_objects_for_user
 from unfold.decorators import action as unfold_action
 
 from django.contrib import admin
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.urls import URLPattern, path, reverse
@@ -10,6 +12,7 @@ from django.utils.html import format_html
 
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+from freedom_ls.student_management.models import Cohort
 
 
 @admin.register(GeneratedReport)
@@ -35,6 +38,22 @@ class GeneratedReportAdmin(SiteAwareModelAdmin):
     ]
     actions_list = ["generate_report_action"]
 
+    def _visible_cohorts(self, request: HttpRequest) -> QuerySet[Cohort]:
+        """Model-level report permissions say nothing about which cohorts a
+        user may see; object-level view_cohort is what draws that line.
+        Guardian returns everything for a superuser, so they are unaffected.
+        """
+        return get_objects_for_user(request.user, "view_cohort", klass=Cohort)
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[GeneratedReport]:
+        # select_related here rather than only in list_select_related: the
+        # change and delete views look objects up through this queryset and
+        # render str(report), which reads the cohort name.
+        queryset: QuerySet[GeneratedReport] = super().get_queryset(request)
+        return queryset.select_related("cohort").filter(
+            cohort__in=self._visible_cohorts(request)
+        )
+
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
 
@@ -43,7 +62,31 @@ class GeneratedReportAdmin(SiteAwareModelAdmin):
     ) -> bool:
         return False
 
-    # delete stays available -- it is the only cleanup path in v1
+    def has_view_permission(
+        self, request: HttpRequest, obj: GeneratedReport | None = None
+    ) -> bool:
+        if not super().has_view_permission(request, obj):
+            return False
+        # Without an object this is the changelist, already scoped by
+        # get_queryset.
+        if obj is None:
+            return True
+        return request.user.has_perm(
+            "freedom_ls_student_management.view_cohort", obj.cohort
+        )
+
+    # delete stays available -- it is the only cleanup path in v1 -- but it must
+    # not become a way to reach or destroy another cohort's reports
+    def has_delete_permission(
+        self, request: HttpRequest, obj: GeneratedReport | None = None
+    ) -> bool:
+        if not super().has_delete_permission(request, obj):
+            return False
+        if obj is None:
+            return True
+        return request.user.has_perm(
+            "freedom_ls_student_management.view_cohort", obj.cohort
+        )
 
     @admin.display(description="Download")
     def download(self, obj: GeneratedReport) -> str:

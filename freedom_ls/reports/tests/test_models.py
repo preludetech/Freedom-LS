@@ -82,3 +82,27 @@ class TestReportUploadPath:
 
         with pytest.raises(ValueError, match="saved"):
             report_upload_path(unsaved, "cohort-report.pdf")
+
+
+@pytest.mark.django_db
+class TestGeneratedReportStr:
+    """The delete-confirmation screens are the only place an admin can check
+    what is about to be destroyed, and they show nothing but this string."""
+
+    def test_str_names_the_cohort(self, mock_site_context: object) -> None:
+        cohort = CohortFactory(name="Alpha Cohort")
+        report = GeneratedReportFactory(cohort=cohort)
+
+        assert "Alpha Cohort" in str(report)
+
+    def test_str_does_not_expose_the_cohort_uuid(
+        self, mock_site_context: object
+    ) -> None:
+        report = GeneratedReportFactory(cohort=CohortFactory(name="Alpha Cohort"))
+
+        assert str(report.cohort_id) not in str(report)
+
+    def test_str_keeps_the_status(self, mock_site_context: object) -> None:
+        report = GeneratedReportFactory(status=GeneratedReport.STATUS_READY)
+
+        assert GeneratedReport.STATUS_READY in str(report)
