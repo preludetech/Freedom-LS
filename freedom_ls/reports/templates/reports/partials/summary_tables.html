@@ -3,5 +3,7 @@
   <h2>Summary tables</h2>
   {% for section in courses %}
   {% include "reports/partials/course_summary_table.html" with section=section only %}
+  {% empty %}
+  <p class="empty-state">There are no course registrations to summarise.</p>
   {% endfor %}
 </section>

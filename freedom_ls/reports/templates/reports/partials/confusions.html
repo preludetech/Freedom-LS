@@ -1,13 +1,23 @@
-{% comment %}Required context: courses (list[CourseSection]). One quiz_confusion.html per quiz whose ConfusionBlock is non-empty; a quiz with no incorrect answers at all is not shown.{% endcomment %}
+{% comment %}Required context: courses (list[CourseSection]). One quiz_confusion.html per quiz whose ConfusionBlock is non-empty; a quiz with no incorrect answers at all is not shown.
+
+The empty span is a running element: print.css puts it in the running-header slot so this cohort-wide section does not inherit the last student's name from the section above.
+
+`cycle ... as ... silent` is the one way a Django template can carry a value out of a loop: the first tag binds `rendered_any` in this section's own scope and the one inside the loops rebinds that same binding rather than a per-iteration copy. Nothing else here can tell that the loops matched no quiz.{% endcomment %}
 <section class="confusions">
+  <span class="running-name-reset"></span>
   <h2>Question-level confusions</h2>
+  {% cycle "" as rendered_any silent %}
   {% for section in courses %}
   {% for quiz in section.quizzes %}
   {% for form_id, block in section.confusions_by_quiz.items %}
   {% if form_id == quiz.form_id and block.total %}
+  {% cycle "yes" as rendered_any silent %}
   {% include "reports/partials/quiz_confusion.html" with quiz=quiz block=block only %}
   {% endif %}
   {% endfor %}
   {% endfor %}
   {% endfor %}
+  {% if not rendered_any %}
+  <p class="empty-state">No quiz in this report has any incorrect answers to analyse.</p>
+  {% endif %}
 </section>

@@ -7,6 +7,7 @@ from uuid import UUID
 import pytest
 import time_machine
 
+from django.test import override_settings
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
@@ -421,6 +422,257 @@ def test_gathering_one_site_excludes_data_from_another_site(mock_site_context):
 
     assert [student.full_name for student in data.students] == ["Site Alpha"]
     assert [section.title for section in data.courses] == ["Site A Course"]
+
+
+def _build_cohort_with_quiz_titles(titles: list[str]) -> str:
+    """One cohort, one student, one course carrying a quiz per title, in order."""
+    cohort = CohortFactory()
+    CohortMembershipFactory(cohort=cohort, user=UserFactory())
+    course = CourseFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    for order, title in enumerate(titles):
+        quiz = FormFactory(title=title, strategy=FormStrategy.QUIZ)
+        _attach(course, quiz, order=order)
+    return str(cohort.id)
+
+
+class TestSummaryTableSplitting:
+    @override_settings(REPORTS_MAX_QUIZ_COLUMNS=11)
+    def test_sixteen_quizzes_split_into_two_tables_of_eleven_and_five(
+        self, mock_site_context
+    ):
+        cohort_id = _build_cohort_with_quiz_titles(
+            [f"Course Quiz {index:02d}" for index in range(1, 17)]
+        )
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        tables = data.courses[0].summary_tables
+        assert [len(table.quizzes) for table in tables] == [11, 5]
+
+    @override_settings(REPORTS_MAX_QUIZ_COLUMNS=11)
+    def test_only_the_first_table_of_a_split_is_not_continued(self, mock_site_context):
+        cohort_id = _build_cohort_with_quiz_titles(
+            [f"Course Quiz {index:02d}" for index in range(1, 17)]
+        )
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        tables = data.courses[0].summary_tables
+        assert [table.continued for table in tables] == [False, True]
+
+    @override_settings(REPORTS_MAX_QUIZ_COLUMNS=11)
+    def test_every_quiz_appears_in_exactly_one_summary_table(self, mock_site_context):
+        cohort_id = _build_cohort_with_quiz_titles(
+            [f"Course Quiz {index:02d}" for index in range(1, 17)]
+        )
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        section = data.courses[0]
+        placed = [
+            quiz.form_id for table in section.summary_tables for quiz in table.quizzes
+        ]
+        assert placed == [quiz.form_id for quiz in section.quizzes]
+        assert len(placed) == len(set(placed))
+
+    @override_settings(REPORTS_MAX_QUIZ_COLUMNS=11)
+    def test_quiz_count_exactly_at_the_budget_yields_one_table(self, mock_site_context):
+        cohort_id = _build_cohort_with_quiz_titles(
+            [f"Course Quiz {index:02d}" for index in range(1, 12)]
+        )
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        tables = data.courses[0].summary_tables
+        assert len(tables) == 1
+        assert len(tables[0].quizzes) == 11
+
+    def test_course_with_no_quizzes_still_yields_one_table(self, mock_site_context):
+        cohort = CohortFactory()
+        CohortMembershipFactory(cohort=cohort, user=UserFactory())
+        course = CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        _attach(course, TopicFactory())
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        tables = data.courses[0].summary_tables
+        assert len(tables) == 1
+        assert tables[0].quizzes == []
+        assert len(tables[0].rows) == 1
+
+    @override_settings(REPORTS_MAX_QUIZ_COLUMNS=11)
+    def test_split_tables_carry_a_cell_per_quiz_in_column_order(
+        self, mock_site_context
+    ):
+        cohort_id = _build_cohort_with_quiz_titles(
+            [f"Course Quiz {index:02d}" for index in range(1, 17)]
+        )
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        for table in data.courses[0].summary_tables:
+            for row in table.rows:
+                assert len(row.cells) == len(table.quizzes)
+
+
+class TestQuizAbbreviations:
+    def test_abbreviation_keeps_the_whole_trailing_number(self, mock_site_context):
+        cohort_id = _build_cohort_with_quiz_titles(
+            ["Voltage Quiz 01", "Hydrology Quiz 12", "Ratios Quiz 10"]
+        )
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        abbreviations = [quiz.abbreviation for quiz in data.courses[0].quizzes]
+        assert abbreviations == ["VQ01", "HQ12", "RQ10"]
+
+    def test_abbreviation_of_a_title_without_a_number(self, mock_site_context):
+        cohort_id = _build_cohort_with_quiz_titles(["Orbit Quiz"])
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        assert data.courses[0].quizzes[0].abbreviation == "OQ"
+
+    def test_abbreviation_of_a_single_word_title(self, mock_site_context):
+        cohort_id = _build_cohort_with_quiz_titles(["Orbits"])
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        assert data.courses[0].quizzes[0].abbreviation == "ORBI"
+
+    def test_colliding_abbreviations_are_disambiguated_within_a_course(
+        self, mock_site_context
+    ):
+        cohort_id = _build_cohort_with_quiz_titles(["Orbit Quiz", "Optics Quiz"])
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        abbreviations = [quiz.abbreviation for quiz in data.courses[0].quizzes]
+        assert len(set(abbreviations)) == 2
+        assert abbreviations[0] == "OQ"
+
+
+class TestStudentOrdering:
+    def _build_cohort_with_surnames(self, surnames: list[str]) -> str:
+        cohort = CohortFactory()
+        course = CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        _attach(course, TopicFactory())
+        for surname in surnames:
+            CohortMembershipFactory(
+                cohort=cohort, user=UserFactory(first_name="Sam", last_name=surname)
+            )
+        return str(cohort.id)
+
+    def test_summary_rows_are_alphabetical_by_surname(self, mock_site_context):
+        cohort_id = self._build_cohort_with_surnames(
+            ["Okonkwo", "Abara", "Nakamura", "Bergstrom"]
+        )
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        names = [row.full_name for row in data.courses[0].student_rows]
+        assert names == [
+            "Sam Abara",
+            "Sam Bergstrom",
+            "Sam Nakamura",
+            "Sam Okonkwo",
+        ]
+
+    def test_summary_row_order_matches_student_detail_order(self, mock_site_context):
+        cohort_id = self._build_cohort_with_surnames(
+            ["Okonkwo", "Abara", "Nakamura", "Bergstrom"]
+        )
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        assert [row.user_id for row in data.courses[0].student_rows] == [
+            detail.user_id for detail in data.students
+        ]
+
+    def test_summary_table_rows_follow_the_same_order(self, mock_site_context):
+        cohort_id = self._build_cohort_with_surnames(["Okonkwo", "Abara"])
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        table = data.courses[0].summary_tables[0]
+        assert [row.user_id for row in table.rows] == [
+            detail.user_id for detail in data.students
+        ]
+
+
+class TestRequestedByName:
+    def test_requested_by_name_reaches_the_report_data(self, mock_site_context):
+        cohort = CohortFactory()
+        CohortMembershipFactory(cohort=cohort, user=UserFactory())
+
+        data = gather_cohort_report_data(
+            str(cohort.id), mock_site_context.pk, requested_by_name="Ada Lovelace"
+        )
+
+        assert data.requested_by_name == "Ada Lovelace"
+
+    def test_requested_by_name_defaults_to_empty(self, mock_site_context):
+        cohort = CohortFactory()
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.requested_by_name == ""
+
+
+class TestWrongAnswersCarryQuizTitles:
+    def test_wrong_answers_are_a_list_of_titled_quizzes_in_course_order(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+        student = UserFactory()
+        CohortMembershipFactory(cohort=cohort, user=student)
+        course = CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+        for order, title in enumerate(["Voltage Quiz 01", "Erosion Quiz 02"]):
+            quiz = FormFactory(title=title, strategy=FormStrategy.QUIZ)
+            _attach(course, quiz, order=order)
+            page = FormPageFactory(form=quiz, order=0)
+            question = FormQuestionFactory(
+                form_page=page, type=QuestionType.MULTIPLE_CHOICE, order=0
+            )
+            QuestionOptionFactory(
+                question=question, text="Right", correct=True, order=0
+            )
+            wrong_option = QuestionOptionFactory(
+                question=question, text="Wrong", correct=False, order=1
+            )
+            attempt = FormProgressFactory(
+                user=student,
+                form=quiz,
+                completed_time=timezone.now(),
+                scores={"score": 0, "max_score": 1},
+            )
+            answer = QuestionAnswerFactory(form_progress=attempt, question=question)
+            answer.selected_options.add(wrong_option)
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        detail = data.students[0]
+        assert [block.title for block in detail.wrong_answers] == [
+            "Voltage Quiz 01",
+            "Erosion Quiz 02",
+        ]
+        assert all(block.answers for block in detail.wrong_answers)
+
+    def test_student_without_wrong_answers_has_an_empty_list(self, mock_site_context):
+        cohort = CohortFactory()
+        CohortMembershipFactory(cohort=cohort, user=UserFactory())
+        course = CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        _attach(course, TopicFactory())
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.students[0].wrong_answers == []
 
 
 def test_query_count_is_constant_across_student_and_question_scale(

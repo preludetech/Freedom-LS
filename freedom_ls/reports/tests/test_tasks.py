@@ -8,6 +8,7 @@ import pytest
 
 from django.test import override_settings
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.render import ReportRenderError
@@ -54,6 +55,44 @@ class TestGenerateCohortReportHappyPath:
 
         report.refresh_from_db()
         assert report.file.size > 0
+
+
+class TestGenerateCohortReportRequester:
+    def test_report_data_carries_the_requesters_display_name(
+        self, mock_site_context: object
+    ) -> None:
+        cohort = CohortFactory()
+        requester = UserFactory(first_name="Ada", last_name="Lovelace")
+        report = GeneratedReportFactory(
+            cohort=cohort,
+            requested_by=requester,
+            status=GeneratedReport.STATUS_PENDING,
+        )
+
+        with patch(
+            "freedom_ls.reports.tasks.render_report_pdf", return_value=FAKE_PDF_BYTES
+        ) as render:
+            generate_cohort_report(str(report.pk), report.site_id)
+
+        data = render.call_args.args[0]
+        assert data.requested_by_name == "Ada Lovelace"
+
+    def test_report_without_a_requester_still_generates(
+        self, mock_site_context: object
+    ) -> None:
+        cohort = CohortFactory()
+        report = GeneratedReportFactory(
+            cohort=cohort, requested_by=None, status=GeneratedReport.STATUS_PENDING
+        )
+
+        with patch(
+            "freedom_ls.reports.tasks.render_report_pdf", return_value=FAKE_PDF_BYTES
+        ) as render:
+            generate_cohort_report(str(report.pk), report.site_id)
+
+        report.refresh_from_db()
+        assert report.status == GeneratedReport.STATUS_READY
+        assert render.call_args.args[0].requested_by_name == ""
 
 
 class TestGenerateCohortReportRenderFailure:

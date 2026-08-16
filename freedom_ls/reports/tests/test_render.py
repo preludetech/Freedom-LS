@@ -21,7 +21,11 @@ from freedom_ls.reports.render import (
     build_report_html,
     extract_theme_tokens,
 )
-from freedom_ls.reports.tests.report_data_builders import _full_report_data
+from freedom_ls.reports.tests.report_data_builders import (
+    _cohort_report_data,
+    _course_section,
+    _full_report_data,
+)
 
 # Deliberately fake values, not the real bundle's hex codes -- this is a
 # controlled input mimicking the real bundle's shape (a nested `@layer theme {
@@ -127,3 +131,40 @@ class TestBuildReportHtml:
         html = build_report_html(_full_report_data())
 
         assert _dangling_anchor_links(html) == []
+
+    def test_requester_name_replaces_the_system_fallback(self) -> None:
+        html = build_report_html(_full_report_data())
+
+        assert "by Jamie Educator." in html
+        assert "by the system." not in html
+
+    def test_missing_requester_falls_back_to_the_system(self) -> None:
+        html = build_report_html(_cohort_report_data(requested_by_name=""))
+
+        assert "by the system." in html
+
+    def test_confusion_percentage_names_its_denominator(self) -> None:
+        html = build_report_html(_full_report_data())
+
+        assert "67% of 12 students" in html
+
+
+class TestDegenerateCohortEmptyStates:
+    def test_cohort_with_no_courses_states_so_on_the_title_page(self) -> None:
+        html = build_report_html(_cohort_report_data(courses=[]))
+
+        assert "No courses are registered to this cohort." in html
+
+    def test_cohort_with_no_courses_states_so_under_summary_tables(self) -> None:
+        html = build_report_html(_cohort_report_data(courses=[]))
+
+        assert "There are no course registrations to summarise." in html
+
+    def test_course_with_no_students_states_so_instead_of_a_bare_header_row(
+        self,
+    ) -> None:
+        data = _cohort_report_data(courses=[_course_section(title="Astronomy")])
+
+        html = build_report_html(data)
+
+        assert "This cohort has no students." in html

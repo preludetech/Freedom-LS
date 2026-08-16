@@ -1,6 +1,6 @@
 {% comment %}Required context: quiz (QuizColumn), block (ConfusionBlock). Emits confusions-{{ quiz.form_id }} — the only place that id is emitted.{% endcomment %}
 <div class="quiz-confusion" id="confusions-{{ quiz.form_id }}">
-  <h3>{{ quiz.title }}</h3>
+  <h3 class="confusion-heading">{{ quiz.title }}</h3>
   <p class="confusion-caution">A high error rate can mean a hard-but-fair question, not a broken one.</p>
   <table class="confusion-table">
     <thead>
@@ -17,7 +17,7 @@
       <tr>
         <td>{{ question.question_number }}</td>
         <td>{{ question.question_text }}</td>
-        <td>{% if question.show_percentage %}{{ question.wrong_percentage }}% of students{% else %}{{ question.wrong_count }} of {{ question.respondent_count }} students{% endif %}</td>
+        <td>{% if question.show_percentage %}{{ question.wrong_percentage }}% of {{ question.respondent_count }} students{% else %}{{ question.wrong_count }} of {{ question.respondent_count }} students{% endif %}</td>
         <td>
           {% for text, count in question.distractors %}<span class="distractor">{{ text }} ({{ count }})</span>{% endfor %}
         </td>

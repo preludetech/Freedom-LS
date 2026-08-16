@@ -29,7 +29,11 @@ def generate_cohort_report(report_id: str, site_id: int) -> None:
     here filters explicitly on `site_id` rather than relying on
     `SiteAwareManager`'s thread-local site.
     """
-    report = GeneratedReport.objects.filter(pk=report_id, site_id=site_id).first()
+    report = (
+        GeneratedReport.objects.filter(pk=report_id, site_id=site_id)
+        .select_related("requested_by")
+        .first()
+    )
     if report is None:
         return
 
@@ -38,7 +42,14 @@ def generate_cohort_report(report_id: str, site_id: int) -> None:
     report.save(update_fields=["status", "started_at"])
 
     try:
-        data = gather_cohort_report_data(str(report.cohort_id), site_id)
+        # requested_by is SET_NULL, so a report outlives the account that asked
+        # for it; the title page falls back to "the system" for that case.
+        requested_by_name = (
+            report.requested_by.display_name if report.requested_by else ""
+        )
+        data = gather_cohort_report_data(
+            str(report.cohort_id), site_id, requested_by_name=requested_by_name
+        )
         pdf_bytes = render_report_pdf(data)
         report.file.save("cohort-report.pdf", ContentFile(pdf_bytes), save=False)
         report.status = GeneratedReport.STATUS_READY

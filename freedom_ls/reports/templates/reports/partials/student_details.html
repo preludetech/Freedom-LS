@@ -3,5 +3,7 @@
   <h2>Student details</h2>
   {% for student in students %}
   {% include "reports/partials/student_detail.html" with student=student only %}
+  {% empty %}
+  <p class="empty-state">This cohort has no students, so there are no individual sections to show.</p>
   {% endfor %}
 </section>

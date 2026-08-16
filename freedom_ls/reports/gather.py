@@ -24,6 +24,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import (
+    FREE_TEXT_QUESTION_TYPES,
     Form,
     FormQuestion,
     FormStrategy,
@@ -51,8 +52,8 @@ MIN_RESPONDENTS_FOR_PERCENTAGE = 10
 
 # Free-text answers have no correctness concept at all, so they are excluded
 # from wrong-answer aggregation and the confusion tally entirely, not scored
-# wrong by default.
-FREE_TEXT_QUESTION_TYPES = frozenset({"short_text", "long_text"})
+# wrong by default. The set itself lives with QuestionType in content_engine,
+# so this module and the student results page cannot drift apart on it.
 
 
 class ReportTooLargeError(Exception):
@@ -108,6 +109,33 @@ class StudentRow:
 
 
 @dataclasses.dataclass(frozen=True)
+class SummaryRow:
+    user_id: int
+    full_name: str
+    completion_percentage: int
+    completed_item_count: int
+    total_item_count: int
+    last_completed_title: str | None
+    last_completed_at: datetime | None
+    # One entry per quiz in the owning SummaryTable, in the same order.
+    cells: list[QuizResult | None]
+
+
+@dataclasses.dataclass(frozen=True)
+class SummaryTable:
+    quizzes: list[QuizColumn]
+    rows: list[SummaryRow]
+    continued: bool
+
+
+@dataclasses.dataclass(frozen=True)
+class QuizWrongAnswers:
+    form_id: UUID
+    title: str
+    answers: list[WrongAnswer]
+
+
+@dataclasses.dataclass(frozen=True)
 class AtRiskFlag:
     rule_id: str
     label: str
@@ -127,7 +155,7 @@ class StudentDetail:
     has_any_progress: bool
     completed_items: list[CompletedItem]
     quiz_results: list[QuizResult]
-    wrong_answers_by_quiz: dict[UUID, list[WrongAnswer]]
+    wrong_answers: list[QuizWrongAnswers]
     # The single instant the whole report is evaluated against, carried on
     # every student so at-risk rules (freedom_ls.reports.at_risk.rules) never
     # call timezone.now() themselves — see AtRiskRule.evaluate().
@@ -171,6 +199,10 @@ class CourseSection:
     is_active: bool
     quizzes: list[QuizColumn]
     student_rows: list[StudentRow]
+    # `quizzes` chunked at config.REPORTS_MAX_QUIZ_COLUMNS, so a wide course
+    # splits across several tables instead of overflowing the landscape page.
+    # Always at least one table, even for a course with no quizzes at all.
+    summary_tables: list[SummaryTable]
     confusions_by_quiz: dict[UUID, ConfusionBlock]
 
 
@@ -189,11 +221,62 @@ class CohortReportData:
 
 
 def _abbreviate_quiz_title(title: str) -> str:
-    """Short column-header form of a quiz title; the legend under the table spells it out."""
+    """Short column-header form of a quiz title; the legend under the table spells it out.
+
+    A trailing numeric token is kept whole -- "Hydrology Quiz 12" is `HQ12`, not
+    `HQ1`; dropping a digit both loses the quiz number and invites collisions
+    between quizzes whose numbers share a leading digit.
+    """
     words = [word for word in title.split() if word]
-    if len(words) > 1:
-        return "".join(word[0] for word in words[:4]).upper()
-    return title[:4].upper()
+    if not words:
+        return ""
+    number = words[-1] if words[-1].isdigit() else ""
+    name_words = words[:-1] if number else words
+    if not name_words:
+        return number
+    if len(name_words) == 1 and not number:
+        return name_words[0][:4].upper()
+    initials = "".join(word[0] for word in name_words[:4]).upper()
+    return f"{initials}{number}"
+
+
+def _unique_abbreviations(titles: list[str]) -> list[str]:
+    """Abbreviations for one course's quizzes, disambiguated so no two collide."""
+    taken: set[str] = set()
+    abbreviations: list[str] = []
+    for title in titles:
+        base = _abbreviate_quiz_title(title)
+        abbreviation = base
+        suffix = 2
+        while abbreviation in taken:
+            abbreviation = f"{base}-{suffix}"
+            suffix += 1
+        taken.add(abbreviation)
+        abbreviations.append(abbreviation)
+    return abbreviations
+
+
+def _chunk_quiz_columns(
+    quizzes: list[QuizColumn], max_columns: int
+) -> list[list[QuizColumn]]:
+    """Split quiz columns into page-sized groups, always yielding at least one group.
+
+    A course with no quizzes still gets one (empty) group so its Student /
+    Completion / Last-item columns still render.
+    """
+    if not quizzes:
+        return [[]]
+    return [
+        quizzes[start : start + max_columns]
+        for start in range(0, len(quizzes), max_columns)
+    ]
+
+
+def _student_sort_key(user: User) -> tuple[str, str]:
+    """Surname-first ordering, falling back to the email when no surname is set."""
+    first_name = (user.first_name or "").strip()
+    last_name = (user.last_name or "").strip()
+    return (last_name or user.email, first_name)
 
 
 def _completion_counts(
@@ -315,7 +398,9 @@ def _quiz_result_for(
     )
 
 
-def gather_cohort_report_data(cohort_id: str, site_id: int) -> CohortReportData:
+def gather_cohort_report_data(
+    cohort_id: str, site_id: int, *, requested_by_name: str = ""
+) -> CohortReportData:
     """Assemble one cohort's report data with a fixed number of batched queries.
 
     No query runs inside a per-student or per-question loop — every id list is
@@ -338,7 +423,14 @@ def gather_cohort_report_data(cohort_id: str, site_id: int) -> CohortReportData:
         )
     )
     students_by_id: dict[int, User] = {m.user_id: m.user for m in memberships}
-    student_ids = list(students_by_id)
+    # One ordering, computed once, used for the summary tables and the
+    # per-student sections alike -- cohort membership query order would put the
+    # summary table out of step with the Contents page and the student
+    # sections, which are both alphabetical by surname.
+    sort_key_by_id: dict[int, tuple[str, str]] = {
+        user_id: _student_sort_key(user) for user_id, user in students_by_id.items()
+    }
+    student_ids = sorted(students_by_id, key=lambda user_id: sort_key_by_id[user_id])
 
     if len(student_ids) > config.REPORTS_MAX_STUDENTS:
         raise ReportTooLargeError(
@@ -357,6 +449,9 @@ def gather_cohort_report_data(cohort_id: str, site_id: int) -> CohortReportData:
     topic_ids: set[UUID] = set()
     form_ids: set[UUID] = set()
     quiz_form_ids: set[UUID] = set()
+    # The order quizzes appear in their courses, which is the order the summary
+    # table columns and a student's wrong-answer blocks both follow.
+    ordered_quiz_form_ids: list[UUID] = []
     for reg in registrations:
         items = [
             item
@@ -370,8 +465,9 @@ def gather_cohort_report_data(cohort_id: str, site_id: int) -> CohortReportData:
             else:
                 form_ids.add(item.id)
                 forms_by_id[item.id] = item
-                if item.strategy == FormStrategy.QUIZ:
+                if item.strategy == FormStrategy.QUIZ and item.id not in quiz_form_ids:
                     quiz_form_ids.add(item.id)
+                    ordered_quiz_form_ids.append(item.id)
 
     topic_progress_rows = TopicProgress.objects.filter(
         site_id=site_id, user_id__in=student_ids, topic_id__in=topic_ids
@@ -583,15 +679,20 @@ def gather_cohort_report_data(cohort_id: str, site_id: int) -> CohortReportData:
     for reg in registrations:
         course = reg.collection
         items = course_items[reg.collection_id]
-        quiz_columns = [
-            QuizColumn(
-                form_id=item.id,
-                title=item.title,
-                abbreviation=_abbreviate_quiz_title(item.title),
-                pass_percentage=item.quiz_pass_percentage,
-            )
+        quiz_forms = [
+            item
             for item in items
             if isinstance(item, Form) and item.strategy == FormStrategy.QUIZ
+        ]
+        abbreviations = _unique_abbreviations([form.title for form in quiz_forms])
+        quiz_columns = [
+            QuizColumn(
+                form_id=form.id,
+                title=form.title,
+                abbreviation=abbreviation,
+                pass_percentage=form.quiz_pass_percentage,
+            )
+            for form, abbreviation in zip(quiz_forms, abbreviations, strict=True)
         ]
 
         student_rows: list[StudentRow] = []
@@ -631,6 +732,29 @@ def gather_cohort_report_data(cohort_id: str, site_id: int) -> CohortReportData:
                 )
             )
 
+        summary_tables = [
+            SummaryTable(
+                quizzes=chunk,
+                rows=[
+                    SummaryRow(
+                        user_id=row.user_id,
+                        full_name=row.full_name,
+                        completion_percentage=row.completion_percentage,
+                        completed_item_count=row.completed_item_count,
+                        total_item_count=row.total_item_count,
+                        last_completed_title=row.last_completed_title,
+                        last_completed_at=row.last_completed_at,
+                        cells=[row.quiz_cells[column.form_id] for column in chunk],
+                    )
+                    for row in student_rows
+                ],
+                continued=index > 0,
+            )
+            for index, chunk in enumerate(
+                _chunk_quiz_columns(quiz_columns, config.REPORTS_MAX_QUIZ_COLUMNS)
+            )
+        ]
+
         course_sections.append(
             CourseSection(
                 course_id=course.id,
@@ -638,6 +762,7 @@ def gather_cohort_report_data(cohort_id: str, site_id: int) -> CohortReportData:
                 is_active=reg.is_active,
                 quizzes=quiz_columns,
                 student_rows=student_rows,
+                summary_tables=summary_tables,
                 confusions_by_quiz={
                     column.form_id: confusions_by_quiz.get(
                         column.form_id, ConfusionBlock(questions=[], shown=0, total=0)
@@ -684,14 +809,21 @@ def gather_cohort_report_data(cohort_id: str, site_id: int) -> CohortReportData:
             if result is not None
         ]
 
-        first_name = (user.first_name or "").strip()
-        last_name = (user.last_name or "").strip()
-        sort_key = (last_name or user.email, first_name)
+        wrong_answers_for_user = wrong_answers_by_user_quiz.get(user_id, {})
+        wrong_answers = [
+            QuizWrongAnswers(
+                form_id=form_id,
+                title=forms_by_id[form_id].title,
+                answers=wrong_answers_for_user[form_id],
+            )
+            for form_id in ordered_quiz_form_ids
+            if form_id in wrong_answers_for_user
+        ]
 
         detail = StudentDetail(
             user_id=user_id,
             full_name=user.display_name,
-            sort_key=sort_key,
+            sort_key=sort_key_by_id[user_id],
             completion_percentage=percentage,
             completed_item_count=completed_count,
             total_item_count=total_count,
@@ -700,7 +832,7 @@ def gather_cohort_report_data(cohort_id: str, site_id: int) -> CohortReportData:
             has_any_progress=user_id in users_with_any_progress,
             completed_items=completed_items,
             quiz_results=quiz_results,
-            wrong_answers_by_quiz=dict(wrong_answers_by_user_quiz.get(user_id, {})),
+            wrong_answers=wrong_answers,
             report_generated_at=now,
             flags=[],
         )
@@ -721,8 +853,6 @@ def gather_cohort_report_data(cohort_id: str, site_id: int) -> CohortReportData:
         ]
         student_details.append(dataclasses.replace(detail, flags=flags))
 
-    student_details.sort(key=lambda detail: detail.sort_key)
-
     flagged = sorted(
         (detail for detail in student_details if detail.flags),
         key=lambda detail: detail.completion_percentage,
@@ -734,15 +864,10 @@ def gather_cohort_report_data(cohort_id: str, site_id: int) -> CohortReportData:
 
     completion_values = [detail.completion_percentage for detail in student_details]
 
-    # TODO: requested_by_name is not populated here — gather_cohort_report_data
-    # only receives (cohort_id, site_id), with no requester identity. The
-    # trigger/task layer that calls this function must either thread the
-    # requester's display name through or populate this field itself before
-    # rendering. Do not delete this TODO until that wiring exists.
     return CohortReportData(
         cohort_name=cohort.name,
         generated_at=now,
-        requested_by_name="",
+        requested_by_name=requested_by_name,
         courses=course_sections,
         students=student_details,
         attention_list=attention_list,

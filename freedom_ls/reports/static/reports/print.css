@@ -45,6 +45,12 @@ styling can be read or changed without tracing what else it touches. */
 @page landscape-table {
   size: A4 landscape;
   margin: 15mm;
+  /* A bare `@page` selector matches every page, this one included, so the
+     student running header above is inherited here unless it is cleared. No
+     landscape page belongs to a single student. */
+  @top-center {
+    content: none;
+  }
 }
 
 .landscape-section {
@@ -119,17 +125,23 @@ td {
   color: var(--color-muted);
 }
 
-/* Progress bars: nested divs, fixed-width outer and percentage-width
-   inner. No flexbox — WeasyPrint's flexbox support is not well tested. */
+/* Progress bars: nested spans, fixed-width outer and percentage-width
+   inner. No flexbox — WeasyPrint's flexbox support is not well tested.
+   `line-height: 0` on the track stops the outer box's inherited line box
+   from pushing the fill off-centre inside its 4mm height. */
 .completion-bar-outer {
   display: inline-block;
   width: 60mm;
   height: 4mm;
+  line-height: 0;
   background: var(--color-surface-2);
   border: 0.5pt solid var(--color-border);
 }
+/* Width and height are ignored on an inline box, so the fill must be a block
+   for the percentage width to draw at all. */
 .completion-bar-inner {
-  height: 100%;
+  display: block;
+  height: 4mm;
 }
 .completion-bar-inner.status-pass {
   background: var(--color-success);
@@ -140,8 +152,11 @@ td {
 .completion-bar-inner.status-progress {
   background: var(--color-info);
 }
+/* Kept whole: inside a summary-table cell the label would otherwise break
+   after "(10 of" and spill the remainder outside the cell borders. */
 .completion-bar-label {
   margin-left: 3mm;
+  white-space: nowrap;
 }
 
 .flag-list {
@@ -161,14 +176,41 @@ td {
   color: var(--color-muted);
 }
 
-/* Bookmarks for the PDF outline. Unscoped to a section class because they
-   name elements that occur across the document (one per course, one per
-   student), matching the selectors WeasyPrint's spec requires. */
-h2.course-heading {
+/* Sentence a section prints in place of itself when it has nothing to show,
+   so a degenerate cohort reads as a stated fact rather than as a heading the
+   reader has to interpret. */
+.empty-state {
+  font-style: italic;
+  color: var(--color-muted);
+}
+
+/* Bookmarks for the PDF outline, which must mirror the printed contents
+   page. WeasyPrint's UA stylesheet bookmarks every h1-h6, which both lists
+   sub-headings the contents page does not (a student's "Completed items")
+   and repeats a running element's text once per page it is drawn on, so the
+   default is switched off wholesale and only the contents page's own entries
+   are named. Unscoped where the element occurs across the document (one per
+   course, one per student, one per quiz). */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  bookmark-level: none;
+}
+.at-a-glance > h2,
+.contents > h2,
+.methodology > h2,
+.summary-tables > h2,
+.student-details > h2,
+.confusions > h2 {
   bookmark-level: 1;
   bookmark-label: content();
 }
-h3.student-heading {
+h2.course-heading,
+h3.student-heading,
+h3.confusion-heading {
   bookmark-level: 2;
   bookmark-label: content();
 }
@@ -241,9 +283,20 @@ h3.student-heading {
 }
 
 /* ==== summary_tables.html ==== */
+/* Deliberately no `break-inside: avoid` here: a table taller than one page
+   would push the whole wrapper to a fresh page and strand the section's own
+   "Summary tables" heading on a blank one. The table splits cleanly instead,
+   repeating its header row via `thead { display: table-header-group }`. */
 .summary-tables .course-summary-table {
-  break-inside: avoid;
   margin-bottom: 6mm;
+}
+/* The 60mm default track is a fifth of a landscape page — far too wide for a
+   table cell that also carries its own label. */
+.summary-tables .completion-bar-outer {
+  width: 16mm;
+}
+.summary-tables .continuation-caption {
+  color: var(--color-muted);
 }
 .summary-tables .course-table tbody tr:nth-child(even) {
   background: var(--color-surface-2);
@@ -259,13 +312,23 @@ h3.student-heading {
 }
 
 /* ==== student_details.html ==== */
+/* The section before this one is landscape; without a break of its own the
+   whole section, heading and first student included, would start part way
+   down that landscape page. The first student is then held against the
+   heading so the heading is not left alone on the fresh page. */
+.student-details {
+  break-before: page;
+}
 .student-section {
   break-before: page;
 }
 .student-section:first-of-type {
   break-before: avoid;
 }
-.student-section > .student-name {
+/* A running element is redrawn on every page of its section, so it cannot
+   also be the heading — the heading's bookmark would be repeated once per
+   page. This carries the header name; the h3 beside it carries the bookmark. */
+.student-section > .student-running-name {
   position: running(student-name);
 }
 .student-section .no-activity {
@@ -279,9 +342,27 @@ h3.student-heading {
 }
 
 /* ==== confusions.html ==== */
+/* Cohort-wide, so it neither shares a page with one student's section nor
+   inherits that student's running header. Both halves are needed: the break
+   keeps the last student's name off this section's first page, which WeasyPrint
+   would otherwise take from the first running element on a shared page, and the
+   reset clears the name carried over onto the pages after it. */
+.confusions {
+  break-before: page;
+}
+.running-name-reset {
+  position: running(student-name);
+}
 .quiz-confusion {
   break-inside: avoid-page;
   margin-bottom: 6mm;
+}
+/* The first block already has a whole fresh page under the section heading, so
+   avoiding a break inside it can only push it off that page and strand the
+   heading on a blank one — and a block that big splits across pages anyway,
+   repeating its header row. Later blocks still keep themselves whole. */
+.confusions > .quiz-confusion:first-of-type {
+  break-inside: auto;
 }
 .quiz-confusion .confusion-caution {
   font-style: italic;

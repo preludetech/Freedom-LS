@@ -27,8 +27,12 @@ from freedom_ls.reports.gather import (
     QuizColumn,
     QuizConfusion,
     QuizResult,
+    QuizWrongAnswers,
     StudentDetail,
     StudentRow,
+    SummaryRow,
+    SummaryTable,
+    WrongAnswer,
 )
 
 GENERATED_AT = datetime(2026, 3, 15, 10, 30, tzinfo=UTC)
@@ -47,7 +51,7 @@ def _student_detail(**overrides: object) -> StudentDetail:
         "has_any_progress": False,
         "completed_items": [],
         "quiz_results": [],
-        "wrong_answers_by_quiz": {},
+        "wrong_answers": [],
         "report_generated_at": GENERATED_AT,
         "flags": [],
     }
@@ -55,13 +59,45 @@ def _student_detail(**overrides: object) -> StudentDetail:
     return StudentDetail(**defaults)
 
 
-def _course_section(**overrides: object) -> CourseSection:
+def _summary_row(row: StudentRow, quizzes: list[QuizColumn]) -> SummaryRow:
+    """The SummaryRow gather.py would derive from this StudentRow for `quizzes`."""
+    return SummaryRow(
+        user_id=row.user_id,
+        full_name=row.full_name,
+        completion_percentage=row.completion_percentage,
+        completed_item_count=row.completed_item_count,
+        total_item_count=row.total_item_count,
+        last_completed_title=row.last_completed_title,
+        last_completed_at=row.last_completed_at,
+        cells=[row.quiz_cells[quiz.form_id] for quiz in quizzes],
+    )
+
+
+def _course_section(
+    quizzes: list[QuizColumn] | None = None,
+    student_rows: list[StudentRow] | None = None,
+    **overrides: object,
+) -> CourseSection:
+    """A course section whose single summary table covers every quiz it declares.
+
+    Chunking a wide course across several tables is `gather`'s job and is
+    tested there; a partial only ever renders the tables it is handed.
+    """
+    quizzes = quizzes or []
+    student_rows = student_rows or []
     defaults: dict[str, object] = {
         "course_id": uuid4(),
         "title": "Course A",
         "is_active": True,
-        "quizzes": [],
-        "student_rows": [],
+        "quizzes": quizzes,
+        "student_rows": student_rows,
+        "summary_tables": [
+            SummaryTable(
+                quizzes=quizzes,
+                rows=[_summary_row(row, quizzes) for row in student_rows],
+                continued=False,
+            )
+        ],
         "confusions_by_quiz": {},
     }
     defaults.update(overrides)
@@ -231,6 +267,26 @@ class TestCompletionBar:
         )
 
         assert "✗" in html
+
+    def test_renders_no_course_items_instead_of_a_zero_denominator(self) -> None:
+        html = render_to_string(
+            "reports/partials/completion_bar.html",
+            {"percentage": 0, "completed": 0, "total": 0},
+        )
+
+        assert "No course items" in html
+        assert "0 of 0" not in html
+        assert "✗" not in html
+        assert "completion-bar-outer" not in html
+
+    def test_fill_carries_the_percentage_as_an_inline_width(self) -> None:
+        html = render_to_string(
+            "reports/partials/completion_bar.html",
+            {"percentage": 40, "completed": 2, "total": 5},
+        )
+
+        assert "completion-bar-inner" in html
+        assert "width: 40%" in html
 
 
 class TestAttentionEntry:
@@ -528,8 +584,86 @@ class TestStudentDetail:
 
         assert 'id="student-99"' in html
 
+    def test_running_header_name_is_a_separate_element_from_the_heading(self) -> None:
+        # The heading is the section's PDF bookmark and the span is the running
+        # header; one element cannot be both, because print.css redraws the
+        # running element on every page of the section and each redraw would
+        # bookmark the student again.
+        student = _student_detail(full_name="Robin Fox")
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert '<span class="student-running-name">Robin Fox</span>' in html
+        assert '<h3 class="student-heading">Robin Fox</h3>' in html
+
+    def test_wrong_answers_heading_names_its_quiz(self) -> None:
+        student = _student_detail(
+            has_any_progress=True,
+            wrong_answers=[
+                QuizWrongAnswers(
+                    form_id=uuid4(),
+                    title="Voltage Quiz",
+                    answers=[
+                        WrongAnswer(
+                            question_number=8,
+                            question_text="What is voltage?",
+                            times_wrong=2,
+                            selected_option_texts=["Option A"],
+                            correct_option_texts=["Option B"],
+                        )
+                    ],
+                ),
+                QuizWrongAnswers(
+                    form_id=uuid4(),
+                    title="Erosion Quiz",
+                    answers=[
+                        WrongAnswer(
+                            question_number=3,
+                            question_text="What is erosion?",
+                            times_wrong=1,
+                            selected_option_texts=["Option C"],
+                            correct_option_texts=["Option D"],
+                        )
+                    ],
+                ),
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert "Wrong answers — Voltage Quiz" in html
+        assert "Wrong answers — Erosion Quiz" in html
+        assert "Q8. What is voltage?" in html
+        assert "Q3. What is erosion?" in html
+
+    def test_omits_wrong_answers_block_for_a_quiz_with_no_wrong_answers(self) -> None:
+        student = _student_detail(
+            has_any_progress=True,
+            wrong_answers=[
+                QuizWrongAnswers(form_id=uuid4(), title="Clean Quiz", answers=[])
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert "Wrong answers" not in html
+
 
 class TestStudentDetails:
+    def test_states_the_situation_when_the_cohort_has_no_students(self) -> None:
+        html = render_to_string(
+            "reports/partials/student_details.html", {"students": []}
+        )
+
+        assert "no students" in html
+        assert "empty-state" in html
+
     def test_renders_one_block_per_student(self) -> None:
         students = [
             _student_detail(user_id=1, full_name="Ann Lee", sort_key=("Lee", "Ann")),
@@ -649,6 +783,78 @@ class TestConfusions:
         assert "Quiz Clean" not in html
         assert f'id="confusions-{quiz_with_confusion.form_id}"' in html
         assert f'id="confusions-{clean_quiz.form_id}"' not in html
+        assert "no incorrect answers to analyse" not in html
+
+    def test_states_the_situation_when_there_are_no_courses(self) -> None:
+        html = render_to_string("reports/partials/confusions.html", {"courses": []})
+
+        assert "No quiz in this report has any incorrect answers to analyse." in html
+
+    def test_states_the_situation_when_every_quiz_is_clean(self) -> None:
+        clean_quiz = QuizColumn(
+            form_id=uuid4(), title="Quiz Clean", abbreviation="QC", pass_percentage=50
+        )
+        section = _course_section(
+            quizzes=[clean_quiz],
+            confusions_by_quiz={
+                clean_quiz.form_id: ConfusionBlock(questions=[], shown=0, total=0)
+            },
+        )
+
+        html = render_to_string(
+            "reports/partials/confusions.html", {"courses": [section]}
+        )
+
+        assert "No quiz in this report has any incorrect answers to analyse." in html
+
+    def test_no_empty_state_when_a_later_course_has_confusions(self) -> None:
+        # The emptiness flag has to survive the loop that finds the match, not
+        # just the iteration it was set in.
+        clean_quiz = QuizColumn(
+            form_id=uuid4(), title="Quiz Clean", abbreviation="QC", pass_percentage=50
+        )
+        busy_quiz = QuizColumn(
+            form_id=uuid4(), title="Quiz Busy", abbreviation="QB", pass_percentage=50
+        )
+        confusion = QuizConfusion(
+            question_number=1,
+            question_text="Tricky?",
+            respondent_count=5,
+            wrong_count=3,
+            show_percentage=False,
+            wrong_percentage=None,
+            distractors=[],
+            correct_option_texts=["Right option"],
+        )
+        clean_section = _course_section(
+            title="Clean course",
+            quizzes=[clean_quiz],
+            confusions_by_quiz={
+                clean_quiz.form_id: ConfusionBlock(questions=[], shown=0, total=0)
+            },
+        )
+        busy_section = _course_section(
+            title="Busy course",
+            quizzes=[busy_quiz],
+            confusions_by_quiz={
+                busy_quiz.form_id: ConfusionBlock(
+                    questions=[confusion], shown=1, total=1
+                )
+            },
+        )
+
+        html = render_to_string(
+            "reports/partials/confusions.html",
+            {"courses": [clean_section, busy_section]},
+        )
+
+        assert "Tricky?" in html
+        assert "no incorrect answers to analyse" not in html
+
+    def test_emits_a_running_element_that_clears_the_student_header(self) -> None:
+        html = render_to_string("reports/partials/confusions.html", {"courses": []})
+
+        assert '<span class="running-name-reset">' in html
 
 
 class TestReportShell:

@@ -22,6 +22,8 @@ from freedom_ls.reports.gather import (
     QuizConfusion,
     StudentDetail,
     StudentRow,
+    SummaryRow,
+    SummaryTable,
 )
 
 GENERATED_AT = datetime(2026, 3, 15, 10, 30, tzinfo=UTC)
@@ -40,7 +42,7 @@ def _student_detail(**overrides: object) -> StudentDetail:
         "has_any_progress": False,
         "completed_items": [],
         "quiz_results": [],
-        "wrong_answers_by_quiz": {},
+        "wrong_answers": [],
         "report_generated_at": GENERATED_AT,
         "flags": [],
     }
@@ -55,10 +57,25 @@ def _course_section(**overrides: object) -> CourseSection:
         "is_active": True,
         "quizzes": [],
         "student_rows": [],
+        "summary_tables": [],
         "confusions_by_quiz": {},
     }
     defaults.update(overrides)
     return CourseSection(**defaults)
+
+
+def _summary_row(row: StudentRow, quizzes: list[QuizColumn]) -> SummaryRow:
+    """The SummaryRow gather.py would derive from this StudentRow for `quizzes`."""
+    return SummaryRow(
+        user_id=row.user_id,
+        full_name=row.full_name,
+        completion_percentage=row.completion_percentage,
+        completed_item_count=row.completed_item_count,
+        total_item_count=row.total_item_count,
+        last_completed_title=row.last_completed_title,
+        last_completed_at=row.last_completed_at,
+        cells=[row.quiz_cells[quiz.form_id] for quiz in quizzes],
+    )
 
 
 def _cohort_report_data(**overrides: object) -> CohortReportData:
@@ -120,9 +137,18 @@ def _full_report_data() -> CohortReportData:
         is_active=True,
         quizzes=[quiz],
         student_rows=[row],
+        summary_tables=[
+            SummaryTable(
+                quizzes=[quiz], rows=[_summary_row(row, [quiz])], continued=False
+            )
+        ],
         confusions_by_quiz={quiz.form_id: block},
     )
-    course_inactive = _course_section(title="Retired Course", is_active=False)
+    course_inactive = _course_section(
+        title="Retired Course",
+        is_active=False,
+        summary_tables=[SummaryTable(quizzes=[], rows=[], continued=False)],
+    )
 
     flagged_student = _student_detail(
         user_id=1, full_name="Ada Lovelace", sort_key=("Lovelace", "Ada"), flags=[flag]
