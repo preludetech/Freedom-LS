@@ -54,9 +54,30 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
 - [x] (user + cmd) Fix QA bug: quiz with no pass mark 500s the student results page, course player and dashboard (TDD — failing test first, then fix)
 - [ ] (user + cmd) Fix QA bug: free-text questions listed under "Review incorrect answers" with empty answer blocks (TDD — failing test first, then fix)
-- [ ] (cmd) Use the `fls-dev:qa-data-helper` agent to create missing data for demo content (QA 13 — no demo content is loaded in the dev database), then re-run `/fls-dev:do_qa`
-- [ ] (cmd) Use the `fls-dev:qa-data-helper` agent to create missing data for a multi-item course whose quiz is not the last item (QA 12.1 progression blocking), then re-run `/fls-dev:do_qa`
-- [ ] (cmd) Re-run `/fls-dev:do_qa` for QA 0–10.4 once Phase 5 (tasks/views/admin) is implemented — the entire report generation, PDF, permissions and failure-branch suite was unexecutable this run, and QA 7's column-budget sign-off is still outstanding
+- [x] (cmd) Use the `fls-dev:qa-data-helper` agent to create missing data for demo content (QA 13 — no demo content is loaded in the dev database), then re-run `/fls-dev:do_qa`
+- [x] (cmd) Use the `fls-dev:qa-data-helper` agent to create missing data for a multi-item course whose quiz is not the last item (QA 12.1 progression blocking), then re-run `/fls-dev:do_qa`
+- [x] (cmd) Re-run `/fls-dev:do_qa` for QA 0–10.4 once Phase 5 (tasks/views/admin) is implemented — the entire report generation, PDF, permissions and failure-branch suite was unexecutable this run, and QA 7's column-budget sign-off is still outstanding
+- [ ] (user + cmd) Fix QA bug: landscape summary table is clipped instead of splitting once quiz columns exceed the budget — real cap is 11 quiz columns / 14 total (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: completion bars never fill, so 0% and 100% render identically (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: restricted staff user sees every cohort's reports in the changelist and can open their detail pages (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: student detail sections do not start on a fresh page, bleeding portrait content onto the landscape summary page (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: running page header shows a student's name on the summary table and cohort confusions pages (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: PDF bookmarks/outline does not mirror the contents — one student missing, three duplicated (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: results page announces "Quiz passed!" for a quiz with no pass mark (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: report title page attributes every report to "the system" instead of the requesting user (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: empty-cohort and no-registrations reports render bare headings instead of stating the situation (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: summary table rows are not ordered alphabetically by surname (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: completion column content overflows its table cell (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: radio and checkbox options are visually indistinguishable in the quiz runner (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: per-student "Wrong answers" blocks are repeated with no quiz name, and options are redundantly suffixed "(correct)" (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: `GeneratedReport.__str__` prints the raw cohort UUID on delete confirmation screens (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: orphaned "Summary tables" heading left on an otherwise blank page (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: quiz column abbreviations truncate the quiz number ("Voltage Quiz 01" → "VQ0") (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: large-n confusion percentages omit the denominator (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: empty report directories left on disk after a report is deleted (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: required-question validation is not enforced on form submit (TDD — failing test first, then fix)
+- [ ] (user) Decide QA 7 sign-off: adjust the landscape column constant to the measured 11-quiz / 14-column budget, or implement table splitting
+- [ ] (user) Decide whether a failed quiz should count toward course completion percentage (observation 2 in the QA report)
 
 ## 10. Product documentation
 
