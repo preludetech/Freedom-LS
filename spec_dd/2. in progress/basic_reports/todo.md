@@ -78,6 +78,10 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user + cmd) Fix QA bug: required-question validation is not enforced on form submit (TDD — failing test first, then fix)
 - [x] (user) Decide QA 7 sign-off: adjust the landscape column constant to the measured 11-quiz / 14-column budget, or implement table splitting
 - [ ] (user) Decide whether a failed quiz should count toward course completion percentage (observation 2 in the QA report)
+- [x] (user + cmd) Redesign the report to the design in `design/`, and update the QA plan where the design deviates
+- [ ] (cmd) Re-run `/fls-dev:do_qa` for the redesigned report — QA 2, 3, 4, 5 and 6 all changed, and QA 2.1, 2.9, 2.10, 5.3 and 10.7 are new
+- [ ] (user) **Re-open the QA 7 sign-off.** `REPORTS_MAX_QUIZ_COLUMNS = 11` was measured against 10pt DejaVu Sans. The report is now set in Source Sans 3, which is narrower, and the summary table gained a "When" column — re-measure the budget on a real landscape page and adjust the default
+- [ ] (user) Re-run the greyscale print check (QA 6): the status glyphs now draw from Source Sans 3 rather than DejaVu, and several families are embedded
 
 ## 10. Product documentation
 
@@ -87,7 +91,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 11. Upgrade notes
 
 - [ ] (cmd) Run `/fls-dev:update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
-- [ ] (user) Review the upgrade notes
+- [ ] (user) Review the upgrade notes — they must cover the four new reports settings (`REPORTS_POWERED_BY_NAME`, `REPORTS_POWERED_BY_LOGO_STATIC_PATH`, `REPORTS_FONT_FACES` and the three font stacks), how a project rebrands the report's typography, and the `severity` attribute added to the at-risk rule protocol (read with a fallback, so an existing custom rule keeps working)
 
 ## 12. Template repo
 

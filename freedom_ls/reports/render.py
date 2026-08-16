@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 class ReportRenderError(Exception):
     """Raised for every render-time failure in this module.
 
-    The single exception type the Phase 5 task layer needs to catch, covering
+    The single exception type the task layer needs to catch, covering
     a missing/unresolvable static asset, a malformed theme bundle, and a
     document that reached outside its own trusted static assets.
     """

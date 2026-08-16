@@ -147,7 +147,12 @@ dev = [
 line-length = 88
 indent-width = 4
 target-version = "py313"
-extend-exclude = ["migrations", "staticfiles", "media"]
+# spec_dd/ holds specs, plans and design artefacts, not shipped code. A design
+# sample there is a throwaway sketch of a layout; linting or reformatting it
+# only churns a reference we are going to delete. force-exclude is what makes
+# the exclusion hold when pre-commit passes the file explicitly.
+extend-exclude = ["migrations", "staticfiles", "media", "spec_dd"]
+force-exclude = true
 src = ["."]
 
 [tool.ruff.lint]
