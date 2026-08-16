@@ -92,6 +92,11 @@ omit = [
     "*/tests/*",
     "*/conftest.py",
     "manage.py",
+    # qa_helpers is developer tooling: management commands that build fixtures
+    # in a dev database for manual QA, plus the toast preview views. None of it
+    # runs in production and none of it has tests, so counting it measures how
+    # much QA scaffolding exists rather than how well the product is covered.
+    "*/qa_helpers/*",
 ]
 
 [tool.coverage.report]
