@@ -30,6 +30,7 @@
       "Bash(ls:*)",
       "Bash(npm run tailwind_build:*)",
       "mcp__plugin_ds_playwright__*",
+      "mcp__playwright__*",
       "Skill(ds:*)",
       "Skill(fls-dev:*)",
       "Skill(sdd:*)",
