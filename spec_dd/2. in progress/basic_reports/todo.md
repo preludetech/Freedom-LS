@@ -38,7 +38,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 7. Implementation
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 
 ## 8. Code security review
@@ -52,7 +52,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: quiz with no pass mark 500s the student results page, course player and dashboard (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: quiz with no pass mark 500s the student results page, course player and dashboard (TDD — failing test first, then fix)
 - [ ] (user + cmd) Fix QA bug: free-text questions listed under "Review incorrect answers" with empty answer blocks (TDD — failing test first, then fix)
 - [ ] (cmd) Use the `fls-dev:qa-data-helper` agent to create missing data for demo content (QA 13 — no demo content is loaded in the dev database), then re-run `/fls-dev:do_qa`
 - [ ] (cmd) Use the `fls-dev:qa-data-helper` agent to create missing data for a multi-item course whose quiz is not the last item (QA 12.1 progression blocking), then re-run `/fls-dev:do_qa`
