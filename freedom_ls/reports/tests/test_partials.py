@@ -348,6 +348,7 @@ class TestContents:
             respondent_count=5,
             wrong_count=2,
             show_percentage=False,
+            wrong_percentage=None,
             distractors=[],
             correct_option_texts=["A"],
         )
@@ -553,6 +554,7 @@ class TestQuizConfusion:
             respondent_count=6,
             wrong_count=4,
             show_percentage=False,
+            wrong_percentage=None,
             distractors=[("Option B", 3)],
             correct_option_texts=["Option A"],
         )
@@ -569,6 +571,31 @@ class TestQuizConfusion:
         assert "%" not in html
         assert "Option A" in html
         assert "Option B (3)" in html
+
+    def test_renders_percentage_not_counts_when_show_percentage_true(self) -> None:
+        question = QuizConfusion(
+            question_number=1,
+            question_text="What is X?",
+            respondent_count=20,
+            wrong_count=15,
+            show_percentage=True,
+            wrong_percentage=75,
+            distractors=[("Option B", 12)],
+            correct_option_texts=["Option A"],
+        )
+        block = ConfusionBlock(questions=[question], shown=1, total=1)
+        quiz = QuizColumn(
+            form_id=uuid4(), title="Quiz 1", abbreviation="Q1", pass_percentage=50
+        )
+
+        html = render_to_string(
+            "reports/partials/quiz_confusion.html", {"quiz": quiz, "block": block}
+        )
+
+        assert "75%" in html
+        assert "15 of 20" not in html
+        assert "Option A" in html
+        assert "Option B (12)" in html
 
     def test_emits_confusion_anchor_id(self) -> None:
         quiz = QuizColumn(
@@ -600,6 +627,7 @@ class TestConfusions:
             respondent_count=5,
             wrong_count=3,
             show_percentage=False,
+            wrong_percentage=None,
             distractors=[("Wrong option", 2)],
             correct_option_texts=["Right option"],
         )

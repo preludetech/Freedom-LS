@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
 import pytest
 import time_machine
 
@@ -322,6 +324,70 @@ def test_correct_none_option_selected_counts_as_distractor(mock_site_context):
         for text, _ in confusion.distractors
     ]
     assert "Undecided" in distractor_texts
+
+
+def _build_quiz_with_wrong_answers(
+    *, respondent_count: int, wrong_count: int
+) -> tuple[str, UUID]:
+    """One quiz, one question; the first `wrong_count` first-attempt students answer
+    wrong, the rest answer correctly. Returns (cohort_id, quiz_id)."""
+    cohort = CohortFactory()
+    course = CourseFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    quiz = FormFactory(strategy=FormStrategy.QUIZ)
+    _attach(course, quiz)
+    page = FormPageFactory(form=quiz, order=0)
+    question = FormQuestionFactory(
+        form_page=page, type=QuestionType.MULTIPLE_CHOICE, order=0
+    )
+    correct_option = QuestionOptionFactory(
+        question=question, text="Right", correct=True, order=0
+    )
+    wrong_option = QuestionOptionFactory(
+        question=question, text="Wrong", correct=False, order=1
+    )
+
+    for i in range(respondent_count):
+        student = UserFactory()
+        CohortMembershipFactory(cohort=cohort, user=student)
+        attempt = FormProgressFactory(
+            user=student,
+            form=quiz,
+            completed_time=timezone.now(),
+            scores={"score": 0, "max_score": 1},
+        )
+        answer = QuestionAnswerFactory(form_progress=attempt, question=question)
+        answer.selected_options.add(wrong_option if i < wrong_count else correct_option)
+
+    return str(cohort.id), quiz.id
+
+
+def test_confusion_shows_plain_counts_below_respondent_threshold(mock_site_context):
+    cohort_id, quiz_id = _build_quiz_with_wrong_answers(
+        respondent_count=9, wrong_count=3
+    )
+
+    data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+    confusion = data.courses[0].confusions_by_quiz[quiz_id].questions[0]
+    assert confusion.respondent_count == 9
+    assert confusion.wrong_count == 3
+    assert confusion.show_percentage is False
+    assert confusion.wrong_percentage is None
+
+
+def test_confusion_shows_percentage_at_respondent_threshold(mock_site_context):
+    cohort_id, quiz_id = _build_quiz_with_wrong_answers(
+        respondent_count=10, wrong_count=3
+    )
+
+    data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+    confusion = data.courses[0].confusions_by_quiz[quiz_id].questions[0]
+    assert confusion.respondent_count == 10
+    assert confusion.wrong_count == 3
+    assert confusion.show_percentage is True
+    assert confusion.wrong_percentage == 30
 
 
 def test_gathering_one_site_excludes_data_from_another_site(mock_site_context):

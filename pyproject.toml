@@ -269,7 +269,7 @@ module = [
     "allauth.*", "djclick.*", "frontmatter.*",
     "markdown.*", "unfold.*", "factory.*", "django_cotton.*",
     "django_ace.*", "encrypted_fields.*", "django.tasks.*",
-    "premailer.*", "health_check.*",
+    "premailer.*", "health_check.*", "weasyprint.*",
     # Supplied at run time by `uv run --with pypandoc-binary`, not a project dependency.
     "pypandoc.*",
 ]

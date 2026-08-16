@@ -142,6 +142,10 @@ class QuizConfusion:
     respondent_count: int
     wrong_count: int
     show_percentage: bool
+    # Populated only when show_percentage is True, None otherwise -- keeping
+    # the threshold invariant in one place (gather_cohort_report_data) rather
+    # than leaving templates to compute a percentage themselves.
+    wrong_percentage: int | None
     distractors: list[tuple[str, int]]
     correct_option_texts: list[str]
 
@@ -552,18 +556,23 @@ def gather_cohort_report_data(cohort_id: str, site_id: int) -> CohortReportData:
             candidates.append((error_rate, question, wrong, respondents))
         candidates.sort(key=lambda candidate: candidate[0], reverse=True)
         shown_candidates = candidates[:CONFUSIONS_PER_QUIZ_MAX]
-        confusion_questions = [
-            QuizConfusion(
-                question_number=question_number_by_id[question.id],
-                question_text=question.question,
-                respondent_count=respondents,
-                wrong_count=wrong,
-                show_percentage=respondents >= MIN_RESPONDENTS_FOR_PERCENTAGE,
-                distractors=distractors_by_question.get(question.id, []),
-                correct_option_texts=correct_option_texts_by_question[question.id],
+        confusion_questions = []
+        for _, question, wrong, respondents in shown_candidates:
+            show_percentage = respondents >= MIN_RESPONDENTS_FOR_PERCENTAGE
+            confusion_questions.append(
+                QuizConfusion(
+                    question_number=question_number_by_id[question.id],
+                    question_text=question.question,
+                    respondent_count=respondents,
+                    wrong_count=wrong,
+                    show_percentage=show_percentage,
+                    wrong_percentage=round(wrong / respondents * 100)
+                    if show_percentage
+                    else None,
+                    distractors=distractors_by_question.get(question.id, []),
+                    correct_option_texts=correct_option_texts_by_question[question.id],
+                )
             )
-            for _, question, wrong, respondents in shown_candidates
-        ]
         confusions_by_quiz[form_id] = ConfusionBlock(
             questions=confusion_questions,
             shown=len(confusion_questions),

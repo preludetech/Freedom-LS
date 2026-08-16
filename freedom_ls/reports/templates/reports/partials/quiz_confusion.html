@@ -17,7 +17,7 @@
       <tr>
         <td>{{ question.question_number }}</td>
         <td>{{ question.question_text }}</td>
-        <td>{{ question.wrong_count }} of {{ question.respondent_count }} students</td>
+        <td>{% if question.show_percentage %}{{ question.wrong_percentage }}% of students{% else %}{{ question.wrong_count }} of {{ question.respondent_count }} students{% endif %}</td>
         <td>
           {% for text, count in question.distractors %}<span class="distractor">{{ text }} ({{ count }})</span>{% endfor %}
         </td>
