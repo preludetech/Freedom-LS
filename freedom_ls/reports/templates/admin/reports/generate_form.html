@@ -1,0 +1,35 @@
+{% extends "admin/base.html" %}
+
+{% block title %}
+    {{ title }}
+{% endblock %}
+{% block content %}
+    <h1>
+        {{ title }}
+    </h1>
+    <p>
+        Select a cohort and click "Generate" to start a new progress report. You will be
+        able to download it from the changelist once it is ready.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div style="margin: 1em 0;">
+            <label for="cohort">
+                <strong>Cohort:</strong>
+            </label>
+            <br />
+            <select name="cohort"
+                    id="cohort"
+                    style="padding: 0.5em;
+                           margin-top: 0.5em">
+                {% for cohort in cohorts %}<option value="{{ cohort.pk }}">{{ cohort.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div style="margin: 1em 0;">
+            <button type="submit">
+                Generate
+            </button>
+        </div>
+    </form>
+{% endblock %}
