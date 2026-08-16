@@ -1,39 +1,56 @@
-{% comment %}Required context: section (CourseSection). Emits course-{{ section.course_id }} — the only place that id is emitted.{% endcomment %}
+{% comment %}Required context: section (CourseSection). Emits course-{{ section.course_id }} — the only place that id is emitted.
+
+One column per quiz, deliberately: splitting each quiz into a score column and
+an attempts column would halve the number of quizzes a landscape page can carry,
+and the column budget is the constraint that decides whether a table splits.
+{% endcomment %}
 <div class="course-summary-table" id="course-{{ section.course_id }}">
   <h2 class="course-heading">{{ section.title }}{% if not section.is_active %} <span class="inactive-marker">(inactive registration)</span>{% endif %}</h2>
   {% if not section.student_rows %}
-  <p class="empty-state">This cohort has no students.</p>
+  <p class="empty-state">This cohort has no learners.</p>
   {% else %}
   {% for table in section.summary_tables %}
   {% if table.continued %}<p class="continuation-caption">{{ section.title }} (continued)</p>{% endif %}
-  {% if table.quizzes %}
-  <p class="quiz-legend">
-    {% for quiz in table.quizzes %}<span class="legend-entry">{{ quiz.abbreviation }} = {{ quiz.title }}</span>{% endfor %}
+  <p class="table-caption">
+    {% if table.quizzes %}
+    <span class="quiz-legend">{% for quiz in table.quizzes %}<span class="legend-entry">{{ quiz.abbreviation }} = {{ quiz.title }}</span>{% endfor %}</span>
+    {% endif %}
+    <span class="caption-note">Score is the latest attempt · ×n is the number of attempts · quiz columns follow course order.</span>
   </p>
-  {% endif %}
   <table class="course-table">
+    <colgroup>
+      <col class="col-learner">
+      {% if not table.continued %}
+      <col class="col-completion">
+      <col class="col-last-item">
+      <col class="col-when">
+      {% endif %}
+      {% for quiz in table.quizzes %}<col class="col-quiz">{% endfor %}
+    </colgroup>
     <thead>
       <tr>
-        <th>Student</th>
+        <th>Learner</th>
         {% if not table.continued %}
         <th>Completion</th>
         <th>Last item completed</th>
+        <th>When</th>
         {% endif %}
         {% for quiz in table.quizzes %}
-        <th>{{ quiz.abbreviation }}</th>
+        <th class="col-quiz-head">{{ quiz.abbreviation }}</th>
         {% endfor %}
       </tr>
     </thead>
     <tbody>
       {% for row in table.rows %}
       <tr>
-        <td>{{ row.full_name }}</td>
+        <td class="cell-learner">{{ row.full_name }}</td>
         {% if not table.continued %}
-        <td>{% include "reports/partials/completion_bar.html" with percentage=row.completion_percentage completed=row.completed_item_count total=row.total_item_count only %}</td>
-        <td>{% if row.last_completed_title %}{{ row.last_completed_title }} ({{ row.last_completed_at|date:"Y-m-d" }}){% else %}—{% endif %}</td>
+        <td class="cell-completion">{% include "reports/partials/completion_bar.html" with percentage=row.completion_percentage completed=row.completed_item_count total=row.total_item_count only %}</td>
+        <td class="cell-last-item">{% if row.last_completed_title %}{{ row.last_completed_title }}{% else %}—{% endif %}</td>
+        <td class="cell-when">{% if row.last_completed_at %}{{ row.last_completed_at|date:"j M Y" }}{% else %}—{% endif %}</td>
         {% endif %}
         {% for result in row.cells %}
-        <td>{% include "reports/partials/quiz_result_cell.html" with result=result only %}</td>
+        <td class="cell-quiz {% if result is None %}status-na-cell{% elif result.passed is True %}status-pass-cell{% elif result.passed is False %}status-fail-cell{% else %}status-no-verdict-cell{% endif %}">{% include "reports/partials/quiz_result_cell.html" with result=result only %}</td>
         {% endfor %}
       </tr>
       {% endfor %}

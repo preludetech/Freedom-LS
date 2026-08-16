@@ -2,7 +2,7 @@
 
 A real importable module, standing in for the kind of module a downstream
 project points REPORTS_AT_RISK_RULES_MODULE at: it extends BASE_AT_RISK_RULES
-with one extra rule and exports the result as AT_RISK_RULES.
+with extra rules and exports the result as AT_RISK_RULES.
 """
 
 from __future__ import annotations
@@ -22,4 +22,22 @@ class _FixtureExtraRule:
         return None
 
 
-AT_RISK_RULES: list[AtRiskRule] = [*BASE_AT_RISK_RULES, _FixtureExtraRule()]
+class _SeverityFreeRule:
+    """A rule as it would have been written before severity existed.
+
+    It declares no `severity`, and it always fires, so a test can see what
+    severity its flags are given.
+    """
+
+    id = "severity_free"
+    label = "Severity-free rule"
+
+    def evaluate(self, student: StudentDetailLike) -> str | None:
+        return "This rule always fires."
+
+
+AT_RISK_RULES: list[AtRiskRule] = [
+    *BASE_AT_RISK_RULES,
+    _FixtureExtraRule(),
+    _SeverityFreeRule(),
+]

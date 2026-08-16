@@ -21,6 +21,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy, QuestionType
+from freedom_ls.reports.at_risk.loader import get_at_risk_rules
 from freedom_ls.reports.gather import gather_cohort_report_data
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
@@ -685,3 +686,144 @@ def test_query_count_is_constant_across_student_and_question_scale(
     large_cohort_id = _build_cohort_with_quiz(student_count=6, question_count=6)
     with django_assert_num_queries(GATHER_QUERY_BOUND):
         gather_cohort_report_data(large_cohort_id, mock_site_context.pk)
+
+
+class TestQuizAttempts:
+    def test_attempts_are_chronological_and_agree_with_the_latest_figures(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+        student = UserFactory()
+        CohortMembershipFactory(cohort=cohort, user=student)
+        course = CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+        _attach(course, quiz)
+
+        with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
+            FormProgressFactory(
+                user=student,
+                form=quiz,
+                completed_time=timezone.now(),
+                scores={"score": 0, "max_score": 2},
+            )
+        with time_machine.travel("2026-01-02T00:00:00Z", tick=False):
+            FormProgressFactory(
+                user=student,
+                form=quiz,
+                completed_time=timezone.now(),
+                scores={"score": 1, "max_score": 2},
+            )
+        with time_machine.travel("2026-01-03T00:00:00Z", tick=False):
+            FormProgressFactory(
+                user=student,
+                form=quiz,
+                completed_time=timezone.now(),
+                scores={"score": 2, "max_score": 2},
+            )
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        result = data.students[0].quiz_results[0]
+        assert [attempt.attempt_number for attempt in result.attempts] == [1, 2, 3]
+        assert [attempt.percentage for attempt in result.attempts] == [0, 50, 100]
+        # The two views of the same rows cannot disagree.
+        assert len(result.attempts) == result.attempt_count
+        assert result.attempts[-1].percentage == result.latest_percentage
+        assert result.attempts[-1].passed == result.passed
+        assert result.attempts[-1].completed_at == result.completed_at
+
+    def test_an_incomplete_sitting_is_not_an_attempt(self, mock_site_context):
+        cohort = CohortFactory()
+        student = UserFactory()
+        CohortMembershipFactory(cohort=cohort, user=student)
+        course = CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+        _attach(course, quiz)
+        FormProgressFactory(
+            user=student,
+            form=quiz,
+            completed_time=timezone.now(),
+            scores={"score": 1, "max_score": 1},
+        )
+        FormProgressFactory(user=student, form=quiz, completed_time=None, scores={})
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        result = data.students[0].quiz_results[0]
+        assert len(result.attempts) == 1
+        assert result.attempt_count == 1
+
+
+class TestFlagSeverity:
+    def test_base_rules_carry_their_declared_severity(self, mock_site_context):
+        cohort = CohortFactory()
+        CohortMembershipFactory(cohort=cohort, user=UserFactory())
+        course = CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        _attach(course, TopicFactory())
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        flags = {flag.rule_id: flag.severity for flag in data.students[0].flags}
+        assert flags["no_activity"] == "error"
+
+    def test_a_rule_declaring_no_severity_falls_back_to_warning(
+        self, mock_site_context
+    ):
+        # A rule class written before severity existed must keep working.
+        get_at_risk_rules.cache_clear()
+        try:
+            with override_settings(
+                REPORTS_AT_RISK_RULES_MODULE=(
+                    "freedom_ls.reports.tests.at_risk_rules_fixture"
+                )
+            ):
+                cohort = CohortFactory()
+                CohortMembershipFactory(cohort=cohort, user=UserFactory())
+                course = CourseFactory()
+                CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+                _attach(course, TopicFactory())
+
+                data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+                severities = {
+                    flag.rule_id: flag.severity for flag in data.students[0].flags
+                }
+                assert severities["severity_free"] == "warning"
+        finally:
+            get_at_risk_rules.cache_clear()
+
+
+class TestSiteName:
+    def test_header_title_is_preferred_over_the_site_name(self, mock_site_context):
+        cohort = CohortFactory()
+
+        with override_settings(HEADER_TITLE="Bright Academy"):
+            data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.site_name == "Bright Academy"
+
+    def test_falls_back_to_the_site_row_when_no_header_title_is_set(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+
+        with override_settings(HEADER_TITLE=None):
+            data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.site_name == mock_site_context.name
+
+
+def test_query_count_gains_one_when_the_site_name_must_be_read(
+    mock_site_context, django_assert_num_queries
+):
+    # The only branch in gather that issues a query conditionally.
+    cohort_id = _build_cohort_with_quiz(student_count=2, question_count=2)
+
+    with (
+        override_settings(HEADER_TITLE=None),
+        django_assert_num_queries(GATHER_QUERY_BOUND + 1),
+    ):
+        gather_cohort_report_data(cohort_id, mock_site_context.pk)

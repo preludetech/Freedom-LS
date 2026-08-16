@@ -13,11 +13,15 @@ import re
 
 import pytest
 
+from django.test import override_settings
 from django.utils import timezone
 
 from freedom_ls.reports.render import (
     ReportRenderError,
     _extract_theme_tokens_from_css,
+    _find_static,
+    _restrictive_url_fetcher,
+    build_font_css,
     build_report_html,
     extract_theme_tokens,
 )
@@ -135,18 +139,18 @@ class TestBuildReportHtml:
     def test_requester_name_replaces_the_system_fallback(self) -> None:
         html = build_report_html(_full_report_data())
 
-        assert "by Jamie Educator." in html
-        assert "by the system." not in html
+        assert "Jamie Educator" in html
+        assert "the system" not in html
 
     def test_missing_requester_falls_back_to_the_system(self) -> None:
         html = build_report_html(_cohort_report_data(requested_by_name=""))
 
-        assert "by the system." in html
+        assert "the system" in html
 
     def test_confusion_percentage_names_its_denominator(self) -> None:
         html = build_report_html(_full_report_data())
 
-        assert "67% of 12 students" in html
+        assert "67% of 12 learners" in html
 
 
 class TestDegenerateCohortEmptyStates:
@@ -167,4 +171,140 @@ class TestDegenerateCohortEmptyStates:
 
         html = build_report_html(data)
 
-        assert "This cohort has no students." in html
+        assert "This cohort has no learners." in html
+
+
+class TestBuildFontCss:
+    def test_emits_one_font_face_rule_per_configured_face(self) -> None:
+        with override_settings(
+            REPORTS_FONT_FACES=[
+                {
+                    "family": "Test Face",
+                    "weight": "400",
+                    "style": "normal",
+                    "static_path": "reports/print.css",
+                },
+                {
+                    "family": "Test Face",
+                    "weight": "700",
+                    "style": "italic",
+                    "static_path": "reports/print.css",
+                },
+            ]
+        ):
+            css, paths = build_font_css()
+
+        assert css.count("@font-face") == 2
+        assert 'font-family: "Test Face"' in css
+        assert "font-weight: 700" in css
+        assert "font-style: italic" in css
+        # Two rules, one file: several weights of a variable face share a path.
+        assert len(paths) == 1
+
+    def test_src_urls_are_absolute_file_urls_for_the_returned_paths(self) -> None:
+        css, paths = build_font_css()
+
+        for path in paths:
+            assert f'url("{path.as_uri()}")' in css
+
+    def test_stack_settings_become_custom_properties(self) -> None:
+        with override_settings(
+            REPORTS_FONT_DISPLAY='"Display Face", sans-serif',
+            REPORTS_FONT_BODY='"Body Face", sans-serif',
+            REPORTS_FONT_MONO='"Mono Face", monospace',
+        ):
+            css, _ = build_font_css()
+
+        assert '--report-font-display: "Display Face", sans-serif;' in css
+        assert '--report-font-body: "Body Face", sans-serif;' in css
+        assert '--report-font-mono: "Mono Face", monospace;' in css
+
+    def test_unresolvable_face_raises_rather_than_substituting(self) -> None:
+        with (
+            override_settings(
+                REPORTS_FONT_FACES=[
+                    {
+                        "family": "Missing",
+                        "weight": "400",
+                        "style": "normal",
+                        "static_path": "reports/fonts/not-a-real-file.ttf",
+                    }
+                ]
+            ),
+            pytest.raises(ReportRenderError, match=re.escape("not-a-real-file.ttf")),
+        ):
+            build_font_css()
+
+
+class TestRestrictiveUrlFetcher:
+    def test_refuses_a_file_outside_the_allowlist(self) -> None:
+        weasyprint_urls = pytest.importorskip("weasyprint.urls")
+        allowed = _find_static("reports/print.css").resolve()
+        fetch = _restrictive_url_fetcher({allowed})
+        # A real, readable file in the same directory as an allowed one: a
+        # directory-wide trust would let this through.
+        sibling = allowed.parent / "fonts" / "DejaVuSans.ttf"
+
+        with pytest.raises(weasyprint_urls.FatalURLFetchingError):
+            fetch(sibling.as_uri())
+
+    def test_refuses_http_urls(self) -> None:
+        weasyprint_urls = pytest.importorskip("weasyprint.urls")
+        fetch = _restrictive_url_fetcher(set())
+
+        with pytest.raises(weasyprint_urls.FatalURLFetchingError):
+            fetch("https://example.invalid/logo.png")
+
+    def test_allows_an_allowlisted_file(self) -> None:
+        pytest.importorskip("weasyprint.urls")
+        allowed = _find_static("reports/print.css").resolve()
+        fetch = _restrictive_url_fetcher({allowed})
+
+        assert fetch(allowed.as_uri()) is not None
+
+
+class TestBrandingOnTheCover:
+    def test_site_logo_is_omitted_when_no_path_is_configured(self) -> None:
+        with override_settings(HEADER_LOGO_STATIC_PATH=None):
+            html = build_report_html(_full_report_data())
+
+        assert '<img class="cover-logo"' not in html
+
+    def test_site_logo_is_rendered_when_configured(self) -> None:
+        with override_settings(HEADER_LOGO_STATIC_PATH="reports/print.css"):
+            html = build_report_html(_full_report_data())
+
+        assert '<img class="cover-logo"' in html
+        assert "file://" in html
+
+    def test_configured_but_unresolvable_logo_raises(self) -> None:
+        with (
+            override_settings(HEADER_LOGO_STATIC_PATH="nowhere/missing-logo.png"),
+            pytest.raises(ReportRenderError, match=re.escape("missing-logo.png")),
+        ):
+            build_report_html(_full_report_data())
+
+    def test_powered_by_block_is_absent_when_the_name_is_unset(self) -> None:
+        html = build_report_html(_cohort_report_data(powered_by_name=None))
+
+        assert "Powered by" not in html
+
+    def test_powered_by_block_names_the_configured_platform(self) -> None:
+        html = build_report_html(_cohort_report_data(powered_by_name="Acme Learning"))
+
+        assert "Powered by Acme Learning" in html
+
+    def test_site_name_appears_on_the_cover_and_in_the_page_footer(self) -> None:
+        html = build_report_html(_cohort_report_data(site_name="Bright Academy"))
+
+        assert "Bright Academy" in html
+        assert "Bright Academy · Cohort progress report · Cohort A" in html
+
+
+class TestNoOptionLettersAnywhere:
+    def test_option_text_is_never_prefixed_with_a_letter(self) -> None:
+        # FLS does not letter a question's options, so labelling them in the
+        # report would invent an ordering the learner never saw.
+        html = build_report_html(_full_report_data())
+
+        assert not re.search(r">\s*[A-D]\s+[—-]\s+\w", html)

@@ -261,6 +261,18 @@ def _embedded_font_program(reader: PdfReader, base_font_suffix: str) -> bytes | 
     return None
 
 
+def _embedded_font_names(reader: PdfReader) -> set[str]:
+    names: set[str] = set()
+    for page in reader.pages:
+        resources = page.get("/Resources")
+        fonts = resources.get("/Font") if resources is not None else None
+        if fonts is None:
+            continue
+        for font_ref in fonts.values():
+            names.add(str(font_ref.get_object().get("/BaseFont", "")))
+    return names
+
+
 def _font_cmap_codepoints(font_program: bytes) -> set[int]:
     font = TTFont(io.BytesIO(font_program))
     codepoints: set[int] = set()
@@ -284,16 +296,13 @@ def _top_level_outline_titles(entries: OutlineType) -> list[str]:
 
 
 def _contents_page_text(reader: PdfReader) -> str:
-    # contents.html's <h2>Contents</h2> is immediately followed by the
-    # <li>Courses</li> subheading in document order -- a unique substring
-    # that survives extract_text(), unlike "Contents" alone (also the page
-    # title on the title page's generated-at line is not literally this
-    # string, but "Question-level confusions" appears twice in the document:
-    # once as a contents entry here and once as the section heading itself).
+    # contents.html's kicker sits immediately above its heading, and nothing
+    # else in the document carries that pair -- "Contents and definitions"
+    # alone would also match the running header of the section's later pages.
     return next(
         page.extract_text()
         for page in reader.pages
-        if "Contents\nCourses" in page.extract_text()
+        if "HOW TO READ THIS REPORT\nContents and definitions" in page.extract_text()
     )
 
 
@@ -330,7 +339,7 @@ def _confusions_section_page_texts(reader: PdfReader) -> list[str]:
     first = max(
         index
         for index, text in enumerate(texts)
-        if "Question-level confusions" in text.replace("\n", " ")
+        if "Quiz confusions across the cohort" in text.replace("\n", " ")
     )
     return texts[first:]
 
@@ -369,27 +378,37 @@ class TestRenderReportPdf:
 
         assert len(landscape_texts) == 1
         assert len(portrait_texts) >= 1
-        assert "Summary tables" in landscape_texts[0]
+        assert "Summary of learner progress" in landscape_texts[0]
 
-    def test_bundled_dejavu_font_is_embedded(self, report_pdf_bytes: bytes) -> None:
+    def test_brand_faces_are_embedded(self, report_pdf_bytes: bytes) -> None:
+        # Names, not files: which faces these are is a setting, and asserting
+        # the shipped default's filenames would be asserting configuration
+        # through the code under test.
         reader = _reader(report_pdf_bytes)
+        embedded = _embedded_font_names(reader)
 
-        font_program = _embedded_font_program(reader, "+DejaVu-Sans")
+        for family in ("Inter", "Source-Sans-3", "Source-Code-Pro"):
+            assert any(family in name for name in embedded), family
 
-        assert font_program is not None
-        assert len(font_program) > 0
-
-    def test_embedded_font_cmap_covers_status_glyph_codepoints(
+    def test_every_status_glyph_is_covered_by_an_embedded_font(
         self, report_pdf_bytes: bytes
     ) -> None:
+        # "A font is embedded" and "this font can draw these glyphs" are
+        # different claims, and a code point no embedded face carries is drawn
+        # as a hollow .notdef box -- invisible until somebody reads a printed
+        # report. Asserted over every embedded face rather than a named one:
+        # which faces the report uses is a setting, and WeasyPrint falls back
+        # per glyph, so the guarantee that matters is that the set of faces
+        # covers the vocabulary between them.
         reader = _reader(report_pdf_bytes)
-        # The status glyphs render bold (print.css: `.status-glyph { font-weight:
-        # bold; }`), so they are subset into the bold face, not the regular one.
-        font_program = _embedded_font_program(reader, "+DejaVu-Sans-Bold")
 
-        assert font_program is not None
-        codepoints = _font_cmap_codepoints(font_program)
-        assert set(STATUS_GLYPH_CODEPOINTS) <= codepoints
+        covered: set[int] = set()
+        for name in _embedded_font_names(reader):
+            program = _embedded_font_program(reader, name.split("+")[-1])
+            if program is not None:
+                covered |= _font_cmap_codepoints(program)
+
+        assert set(STATUS_GLYPH_CODEPOINTS) <= covered
 
     def test_outline_is_nonempty_and_names_document_sections(
         self, report_pdf_bytes: bytes
@@ -407,17 +426,17 @@ class TestRenderReportPdf:
     ) -> None:
         # WeasyPrint's UA stylesheet bookmarks every heading at its own depth,
         # so without print.css's `bookmark-level: none` reset the outline's top
-        # level is whatever the page happened to break on. These six are the
-        # sections report.html includes, in include order.
+        # level is whatever the page happened to break on. These are the
+        # sections report.html includes, in include order; the cover has no
+        # section heading and the methodology is part of the contents section.
         reader = _reader(report_pdf_bytes)
 
         assert _top_level_outline_titles(reader.outline) == [
-            "At a glance",
-            "Contents",
-            "How to read this report",
-            "Summary tables",
-            "Student details",
-            "Question-level confusions",
+            "Cohort at a glance",
+            "Contents and definitions",
+            "Summary of learner progress",
+            "Details per learner",
+            "Quiz confusions across the cohort",
         ]
 
     def test_outline_names_every_course_student_and_analysed_quiz_once(
@@ -440,11 +459,11 @@ class TestRenderReportPdf:
         reader = _reader(busy_report_pdf_bytes)
         titles = _flatten_outline_titles(reader.outline)
 
-        assert "Completed items" not in titles
-        assert "Quiz results" not in titles
+        assert "Items completed" not in titles
+        assert "Quiz attempts" not in titles
         assert "Courses covered" not in titles
         assert "Status legend" not in titles
-        assert "Students needing attention" not in titles
+        assert "Learners needing attention" not in titles
 
     def test_no_landscape_page_carries_student_detail_content(
         self, busy_report_pdf_bytes: bytes
@@ -453,7 +472,9 @@ class TestRenderReportPdf:
         landscape_texts = _landscape_page_texts(reader)
         portrait_text = "".join(_portrait_page_texts(reader))
 
-        for heading in ("Student details", "Completed items", "Quiz results"):
+        # Upper-cased because print.css sets .subhead in small caps -- the
+        # extracted text carries what was drawn, not what the template wrote.
+        for heading in ("Details per learner", "ITEMS COMPLETED", "QUIZ ATTEMPTS"):
             # Present in the document, so absence below is a real page-break
             # assertion rather than an assertion about a heading that never
             # renders in this fixture.
@@ -498,11 +519,11 @@ class TestRenderReportPdf:
         reader = _reader(busy_report_pdf_bytes)
         first_page_text = _confusions_section_page_texts(reader)[0]
 
-        assert "Question-level confusions" in first_page_text
+        assert "Quiz confusions across the cohort" in first_page_text
         # The section heading is the first thing on the page, not something
         # stranded alone on the page before it.
         assert "Orbit Quiz" in first_page_text
-        for heading in ("Student details", "Completed items", "Quiz results"):
+        for heading in ("Details per learner", "ITEMS COMPLETED", "QUIZ ATTEMPTS"):
             assert heading not in first_page_text
 
     def test_completion_bar_fill_is_drawn_at_its_declared_width(self) -> None:

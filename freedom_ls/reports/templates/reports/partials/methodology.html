@@ -1,22 +1,27 @@
-{% comment %}No context — static prose, the one partial with no data contract to break.{% endcomment %}
-<section class="methodology">
-  <h2>How to read this report</h2>
-  <ul>
-    <li>"Complete" is recomputed from progress records every time the report is generated, never read from a cached percentage — a cached value can drift from what a student has actually done.</li>
-    <li>A quiz score shown here is always the student's <strong>latest</strong> completed attempt, not their best or first.</li>
-    <li>Only completed attempts count as an attempt; an attempt started and abandoned is not counted or scored.</li>
-    <li>The question-level confusion tables further on analyse each student's <strong>first</strong> completed attempt at a quiz only, so a question's difficulty reflects how the cohort met it fresh, not how retries wore it down.</li>
-    <li>Multi-select (checkbox) scoring now requires every correct option to be selected and no incorrect one. A stored score for a checkbox question answered before this change can disagree with the wrong-answer detail shown below it; historical attempts are not rescored.</li>
-    <li>Activities and free-text questions carry no completion or correctness record in FLS, so they are excluded from both the completion figures and the question-level analysis.</li>
-    <li>This report covers only courses registered to the cohort as a whole. A course a student joined individually is not included.</li>
-  </ul>
+{% comment %}No context — static prose, the one partial with no data contract to break.
+
+Rendered inside contents.html rather than as a section of its own.
+{% endcomment %}
+<div class="methodology">
+  <h2>Definitions and method</h2>
+  <div class="definitions">
+    <p><strong>Complete.</strong> Recomputed from progress records every time the report is generated, never read from a cached percentage — a cached value can drift from what a learner has actually done.</p>
+    <p><strong>Quiz score.</strong> Always the learner's <strong>latest</strong> completed attempt, not their best or first.</p>
+    <p><strong>Attempt.</strong> Only completed attempts count; an attempt started and abandoned is neither counted nor scored.</p>
+    <p><strong>Cohort analysis.</strong> The question-level confusion tables analyse each learner's <strong>first</strong> completed attempt at a quiz only, so a question's difficulty reflects how the cohort met it fresh, not how retries wore it down.</p>
+    <p><strong>Multi-select scoring.</strong> Checkbox questions now require every correct option to be selected and no incorrect one. A stored score for a checkbox question answered before this change can disagree with the wrong-answer detail shown below it; historical attempts are not rescored.</p>
+    <p><strong>Pass marks.</strong> A quiz with no pass mark configured carries a score but no verdict — the learner sat it and the score is real, but nothing in the course says what counts as passing it.</p>
+    <p><strong>What is excluded.</strong> Activities and free-text questions carry no completion or correctness record in FLS, so they are excluded from both the completion figures and the question-level analysis.</p>
+    <p><strong>What is covered.</strong> Only courses registered to the cohort as a whole. A course a learner joined individually is not included.</p>
+  </div>
   <h3>Status legend</h3>
   <ul class="legend">
     <li><span class="status-glyph status-pass">✓</span>Quiz passed, or 100% complete.</li>
     <li><span class="status-glyph status-fail">✗</span>Quiz failed, or not started.</li>
-    <li><span class="status-glyph status-flag">▲</span>At-risk flag raised for this student.</li>
+    <li><span class="status-glyph status-flag">▲</span>At-risk flag raised for this learner.</li>
     <li><span class="status-glyph status-progress">●</span>In progress.</li>
     <li><span class="status-glyph status-no-verdict">○</span>Quiz attempted, but no pass mark is configured so no verdict can be given.</li>
     <li><span class="status-glyph status-na">—</span>Not applicable — never attempted, or nothing to show.</li>
   </ul>
-</section>
+  <p class="legend-note">Every status carries its glyph and its number as well as its colour, so the report stays readable printed in greyscale.</p>
+</div>

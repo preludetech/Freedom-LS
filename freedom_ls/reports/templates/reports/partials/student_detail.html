@@ -1,36 +1,103 @@
 {% comment %}Required context: student (StudentDetail). Emits student-{{ student.user_id }} — the only place that id is emitted — and carries the running header name.
 
-The name appears twice on purpose: print.css takes the span out of normal flow into the running header slot, so it is never drawn here, while the h3 stays in flow as the section's single heading and PDF bookmark.{% endcomment %}
+The name appears twice on purpose: print.css takes the span out of normal flow
+into the running header slot, so it is never drawn here, while the h3 stays in
+flow as the section's single heading and PDF bookmark.
+
+The severity class on the flags panel is taken from the first flag. The flags
+arrive in registry order and the base registry runs its two error rules ahead
+of its warning rule, so the first flag is the most serious one a learner has.
+{% endcomment %}
 <div class="student-section" id="student-{{ student.user_id }}">
   <span class="student-running-name">{{ student.full_name }}</span>
-  <h3 class="student-heading">{{ student.full_name }}</h3>
+  {% comment %}The floated last-activity note precedes the heading for the same
+  reason the at-a-glance count does: a float needs an open line box.{% endcomment %}
+  <div class="student-head">
+    {% if student.last_completed_at %}<span class="student-last-active">Last activity {{ student.last_completed_at|date:"j M Y" }}</span>{% endif %}
+    <h3 class="student-heading">{{ student.full_name }}</h3>
+  </div>
+
+  {% if student.flags %}
+  <div class="flags-panel flags-{{ student.flags.0.severity }}">
+    {% include "reports/partials/flag_list.html" with flags=student.flags only %}
+  </div>
+  {% else %}
   {% include "reports/partials/flag_list.html" with flags=student.flags only %}
+  {% endif %}
+
   {% include "reports/partials/completion_bar.html" with percentage=student.completion_percentage completed=student.completed_item_count total=student.total_item_count only %}
+
   {% if student.has_any_progress %}
   {% if student.completed_items %}
-  <h4>Completed items</h4>
-  <ul class="completed-items">
+  {% comment %}A list rather than a table so print.css can set it in two columns
+  — a course of thirty items is otherwise a page of near-empty lines. The date
+  precedes the title because it is floated right.{% endcomment %}
+  <p class="subhead">Items completed</p>
+  <ul class="items-list">
     {% for item in student.completed_items %}
-    <li>{{ item.title }}{% if item.is_quiz %} (quiz){% endif %} — {{ item.completed_at|date:"Y-m-d H:i" }}</li>
+    <li>
+      <span class="item-date">{{ item.completed_at|date:"j M Y" }}</span>
+      <span class="item-title">{{ item.title }}{% if item.is_quiz %} <span class="item-kind">(quiz)</span>{% endif %}</span>
+    </li>
     {% endfor %}
   </ul>
   {% endif %}
+
   {% if student.quiz_results %}
-  <h4>Quiz results</h4>
-  <ul class="quiz-results">
-    {% for result in student.quiz_results %}
-    <li>{{ result.title }}: {% include "reports/partials/quiz_result_cell.html" with result=result only %}</li>
-    {% endfor %}
-  </ul>
+  <p class="subhead">Quiz attempts <span class="subhead-note">every completed sitting, oldest first</span></p>
+  <table class="attempts-table">
+    <thead>
+      <tr>
+        <th>Quiz</th>
+        <th class="numeric">Attempt</th>
+        <th>Date</th>
+        <th class="numeric">Score</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for result in student.quiz_results %}
+      {% for attempt in result.attempts %}
+      <tr>
+        <td class="attempt-quiz">{{ result.title }}</td>
+        <td class="numeric">{{ attempt.attempt_number }}</td>
+        <td class="attempt-date">{{ attempt.completed_at|date:"j M Y" }}</td>
+        <td class="numeric {% if attempt.passed is True %}status-pass-cell{% elif attempt.passed is False %}status-fail-cell{% else %}status-no-verdict-cell{% endif %}">
+          {% if attempt.passed is True %}<span class="status-glyph status-pass">✓</span>{% elif attempt.passed is False %}<span class="status-glyph status-fail">✗</span>{% else %}<span class="status-glyph status-no-verdict">○</span>{% endif %}
+          {% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}
+          {% if attempt.score is not None and attempt.max_score is not None %}<span class="attempt-raw">{{ attempt.score }}/{{ attempt.max_score }}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      {% endfor %}
+    </tbody>
+  </table>
   {% endif %}
+
   {% for quiz in student.wrong_answers %}
   {% if quiz.answers %}
-  <h4>Wrong answers — {{ quiz.title }}</h4>
-  <ul class="wrong-answers">
-    {% for wrong in quiz.answers %}
-    <li>Q{{ wrong.question_number }}. {{ wrong.question_text }} — wrong {{ wrong.times_wrong }} time{{ wrong.times_wrong|pluralize }}. Selected: {{ wrong.selected_option_texts|join:", " }}. Correct: {{ wrong.correct_option_texts|join:", " }}.</li>
-    {% endfor %}
-  </ul>
+  <p class="subhead">Incorrect answers — {{ quiz.title }} <span class="subhead-note">across all attempts</span></p>
+  <table class="wrong-answers-table">
+    <thead>
+      <tr>
+        <th class="col-question-number">Q</th>
+        <th>Question</th>
+        <th class="numeric">Wrong</th>
+        <th>Answers given</th>
+        <th>Correct answer</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for wrong in quiz.answers %}
+      <tr>
+        <td class="col-question-number">Q{{ wrong.question_number }}</td>
+        <td>{{ wrong.question_text }}</td>
+        <td class="numeric">×{{ wrong.times_wrong }}</td>
+        <td>{% for text in wrong.selected_option_texts %}<span class="chip chip-error">{{ text }}</span>{% endfor %}</td>
+        <td>{% for text in wrong.correct_option_texts %}<span class="chip chip-success">{{ text }}</span>{% endfor %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
   {% endif %}
   {% endfor %}
   {% else %}

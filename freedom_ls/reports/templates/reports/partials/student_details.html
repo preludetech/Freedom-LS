@@ -1,9 +1,11 @@
 {% comment %}Required context: students (list[StudentDetail]), already alphabetical by surname.{% endcomment %}
-<section class="student-details">
-  <h2>Student details</h2>
+<section class="student-details report-section" id="details">
+  <p class="kicker">Section 2</p>
+  <h1>Details per learner</h1>
+  <p class="lede">One section per learner, alphabetical by surname. The flags shown here are the same rule results as the at-a-glance page — one evaluation, two views.</p>
   {% for student in students %}
   {% include "reports/partials/student_detail.html" with student=student only %}
   {% empty %}
-  <p class="empty-state">This cohort has no students, so there are no individual sections to show.</p>
+  <p class="empty-state">This cohort has no learners, so there are no individual sections to show.</p>
   {% endfor %}
 </section>

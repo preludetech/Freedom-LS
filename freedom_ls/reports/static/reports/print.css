@@ -4,51 +4,97 @@ WeasyPrint cannot consume the compiled Tailwind bundle (it produces invalid
 or ignored CSS for WeasyPrint's renderer), so this file is written by hand
 against the role tokens the bundle exposes as CSS custom properties. Those
 tokens are inlined separately as `theme_tokens`, ahead of this file, in
-report.html's <head>. Every colour reference below is `var(--color-...)` —
-no hex values, no brand/marketing colour names.
+report.html's <head>.
 
-Organised as: font faces, @page rules and shared leaf rules used by more
-than one section, then one comment-delimited block per section partial, in
-the same order as the includes in report.html. Each section's block only
-contains rules scoped under that section's own root class, so a section's
-styling can be read or changed without tracing what else it touches. */
+Two rules hold everywhere below, and both exist so a downstream project can
+rebrand the report without touching this file:
 
-@font-face {
-  font-family: "DejaVu Sans";
-  src: url("fonts/DejaVuSans.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-}
+  * Every colour is `var(--color-...)` — no hex values, no brand or
+    marketing colour names.
+  * Every typeface is `var(--report-font-...)` — no family names. The
+    @font-face rules and those three custom properties are generated from
+    settings by render.build_font_css() and inlined ahead of this file.
 
-@font-face {
-  font-family: "DejaVu Sans";
-  src: url("fonts/DejaVuSans-Bold.ttf") format("truetype");
-  font-weight: bold;
-  font-style: normal;
-}
+FLS's role tokens are a shorter list than a print design would ideally have:
+there is one muted grey, not two, and one border colour, not two. Hierarchy
+is therefore carried by size, weight, letter-spacing and rule thickness
+rather than by shades this theme does not define.
+
+Organised as: @page rules and page furniture, then the shared leaf rules used
+by more than one section, then one comment-delimited block per section
+partial, in the same order as the includes in report.html. Each section's
+block only contains rules scoped under that section's own root class, so a
+section's styling can be read or changed without tracing what else it
+touches. */
+
+/* ===================================================================
+   PAGE FURNITURE
+   =================================================================== */
 
 @page {
   size: A4 portrait;
-  margin: 20mm 15mm;
-  @top-center {
-    content: element(student-name);
-    font-size: 9pt;
+  margin: 18mm 15mm 16mm 15mm;
+  /* The section title, taken from each section's own h1 (see
+     .report-section > h1 below), so a reader who opens the report in the
+     middle knows which section they are in. */
+  @top-left {
+    content: string(sectionTitle);
+    font-family: var(--report-font-body);
+    font-size: 6.5pt;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
     color: var(--color-muted);
+  }
+  @top-right {
+    content: element(student-name);
+    font-family: var(--report-font-display);
+    font-size: 8pt;
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+  @bottom-left {
+    content: element(footer-identity);
   }
   @bottom-right {
     content: "Page " counter(page) " of " counter(pages);
-    font-size: 9pt;
+    font-family: var(--report-font-mono);
+    font-size: 7pt;
     color: var(--color-muted);
+  }
+}
+
+/* The cover carries its own branding and its own band; page furniture on top of
+   that would be furniture about itself.
+
+   Selected as the document's first page rather than by naming a page and
+   putting that name on .title-page. A named page would be a *change* of page
+   name part way down the document's first page, which starts a fresh page --
+   leaving the page before it blank, since the cover is the first thing in the
+   body. `:first` describes the same page without moving anything. */
+@page :first {
+  margin: 0;
+  @top-left {
+    content: none;
+  }
+  @top-right {
+    content: none;
+  }
+  @bottom-left {
+    content: none;
+  }
+  @bottom-right {
+    content: none;
   }
 }
 
 @page landscape-table {
   size: A4 landscape;
-  margin: 15mm;
+  margin: 14mm 14mm 16mm 14mm;
   /* A bare `@page` selector matches every page, this one included, so the
-     student running header above is inherited here unless it is cleared. No
-     landscape page belongs to a single student. */
-  @top-center {
+     learner running header above is inherited here unless it is cleared. No
+     landscape page belongs to a single learner. */
+  @top-right {
     content: none;
   }
 }
@@ -57,10 +103,30 @@ styling can be read or changed without tracing what else it touches. */
   page: landscape-table;
 }
 
+/* Block-level on purpose. As an inline element it is wrapped in an anonymous
+   block together with the whitespace around it, and that block occupies the
+   first page — pushing the full-height cover onto the second and leaving a
+   blank sheet in front of the report. */
+.footer-identity {
+  display: block;
+  position: running(footer-identity);
+  font-family: var(--report-font-body);
+  font-size: 7pt;
+  color: var(--color-muted);
+}
+.footer-powered::before {
+  content: " · ";
+}
+
+/* ===================================================================
+   BASE TYPE
+   =================================================================== */
+
 html,
 body {
-  font-family: "DejaVu Sans", sans-serif;
-  font-size: 10pt;
+  font-family: var(--report-font-body);
+  font-size: 9.5pt;
+  line-height: 1.5;
   color: var(--color-on-surface);
   background: var(--color-surface);
 }
@@ -69,8 +135,81 @@ h1,
 h2,
 h3,
 h4 {
+  font-family: var(--report-font-display);
   color: var(--color-on-surface);
 }
+
+.report-section > h1 {
+  font-size: 20pt;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 5pt;
+  string-set: sectionTitle content();
+}
+
+h2 {
+  font-size: 12.5pt;
+  font-weight: 600;
+  margin: 0 0 4pt;
+}
+
+h3 {
+  font-size: 10.5pt;
+  font-weight: 600;
+  margin: 0 0 4pt;
+}
+
+/* A heading is no use at the foot of a page with its content overleaf. */
+h1,
+h2,
+h3,
+.subhead {
+  break-after: avoid;
+}
+
+/* The small uppercase label above a section heading, and its counterpart
+   inside the cover's card. */
+.kicker,
+.overline {
+  font-family: var(--report-font-body);
+  font-size: 7pt;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin: 0 0 2pt;
+}
+
+.lede {
+  font-size: 9pt;
+  color: var(--color-muted);
+  max-width: 150mm;
+  margin: 0 0 10pt;
+}
+
+.subhead {
+  font-family: var(--report-font-body);
+  font-size: 7pt;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin: 8pt 0 2.5pt;
+}
+.subhead-note {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.numeric,
+.mono {
+  font-family: var(--report-font-mono);
+}
+
+/* ===================================================================
+   SHARED LEAF RULES
+   =================================================================== */
 
 table {
   width: 100%;
@@ -87,61 +226,139 @@ tr {
 
 th,
 td {
-  border: 0.5pt solid var(--color-border);
-  padding: 2pt 4pt;
   text-align: left;
   vertical-align: top;
+  padding: 3pt 5pt;
+  font-size: 8pt;
+  line-height: 1.35;
+  border-bottom: 0.5pt solid var(--color-border);
 }
 
-/* Status glyphs are small badges: solid role fills with the paired on-*
-   foreground. Every status cell carries the number and the glyph together
-   so colour is never the only signal. */
+thead th {
+  font-family: var(--report-font-body);
+  font-size: 6.5pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-muted);
+  background: var(--color-surface-2);
+  /* The one place a heavier rule stands in for a second border colour. */
+  border-bottom: 1pt solid var(--color-border);
+}
+
+td.numeric,
+th.numeric {
+  font-family: var(--report-font-mono);
+}
+
+/* Status glyphs. Every status cell carries its glyph and its number together,
+   so colour is never the only signal and the report survives greyscale. */
 .status-glyph {
-  display: inline-block;
-  font-weight: bold;
-  padding: 0 2pt;
+  font-weight: 700;
   margin-right: 2pt;
 }
 .status-pass {
-  color: var(--color-on-success);
-  background: var(--color-success);
+  color: var(--color-success);
 }
 .status-fail {
-  color: var(--color-on-error);
-  background: var(--color-error);
+  color: var(--color-error);
 }
 .status-flag {
-  color: var(--color-on-warning);
-  background: var(--color-warning);
+  color: var(--color-warning);
 }
 .status-progress {
-  color: var(--color-on-info);
-  background: var(--color-info);
+  color: var(--color-info);
 }
-.status-no-verdict {
-  color: var(--color-muted);
-}
+.status-no-verdict,
 .status-na {
   color: var(--color-muted);
 }
 
-/* Progress bars: nested spans, fixed-width outer and percentage-width
-   inner. No flexbox — WeasyPrint's flexbox support is not well tested.
-   `line-height: 0` on the track stops the outer box's inherited line box
-   from pushing the fill off-centre inside its 4mm height. */
-.completion-bar-outer {
+/* Whole-cell tints, applied after the row banding below so they win on a
+   banded row. The light tints carry their paired on-*-light foreground;
+   solid role fills are reserved for badges. */
+.status-pass-cell {
+  background: var(--color-success-light);
+  color: var(--color-on-success-light);
+}
+.status-fail-cell {
+  background: var(--color-error-light);
+  color: var(--color-on-error-light);
+}
+.status-no-verdict-cell,
+.status-na-cell {
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+}
+.status-pass-cell .status-pass,
+.status-fail-cell .status-fail,
+.status-no-verdict-cell .status-no-verdict {
+  color: inherit;
+}
+
+/* Badges: a solid role fill with its paired on-* foreground, small enough
+   that the pairing stays legible. Used for at-risk flags only. */
+.badge {
   display: inline-block;
-  width: 60mm;
-  height: 4mm;
+  font-family: var(--report-font-body);
+  font-size: 6.5pt;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.5pt 4pt;
+  margin-right: 4pt;
+}
+.badge-error {
+  background: var(--color-error);
+  color: var(--color-on-error);
+}
+.badge-warning {
+  background: var(--color-warning);
+  color: var(--color-on-warning);
+}
+.badge .status-glyph {
+  color: inherit;
+  margin-right: 2pt;
+}
+
+/* Chips: a light tint with its paired foreground, for a piece of quoted
+   content — an option a learner chose, or the one they should have. */
+.chip {
+  display: inline-block;
+  font-size: 7.4pt;
+  padding: 0.5pt 4pt;
+  margin: 0.5pt 2pt 0.5pt 0;
+}
+.chip-success {
+  background: var(--color-success-light);
+  color: var(--color-on-success-light);
+}
+.chip-error {
+  background: var(--color-error-light);
+  color: var(--color-on-error-light);
+}
+.chip-count {
+  font-family: var(--report-font-mono);
+  font-size: 6.8pt;
+}
+
+/* Progress bars: nested spans, fixed-width outer and percentage-width inner.
+   No flexbox — WeasyPrint's flexbox support is not well tested.
+   `line-height: 0` on the track stops the outer box's inherited line box
+   from pushing the fill off-centre inside its height. */
+.completion-bar-outer {
+  display: block;
+  width: 100%;
+  height: 2.5mm;
   line-height: 0;
   background: var(--color-surface-2);
-  border: 0.5pt solid var(--color-border);
+  margin-top: 1.2mm;
 }
 /* Width and height are ignored on an inline box, so the fill must be a block
    for the percentage width to draw at all. */
 .completion-bar-inner {
   display: block;
-  height: 4mm;
+  height: 2.5mm;
 }
 .completion-bar-inner.status-pass {
   background: var(--color-success);
@@ -150,13 +367,22 @@ td {
   background: var(--color-error);
 }
 .completion-bar-inner.status-progress {
-  background: var(--color-info);
+  background: var(--color-primary);
 }
 /* Kept whole: inside a summary-table cell the label would otherwise break
-   after "(10 of" and spill the remainder outside the cell borders. */
+   after "10 of" and spill the remainder outside the cell borders. */
 .completion-bar-label {
-  margin-left: 3mm;
   white-space: nowrap;
+}
+.completion-percentage {
+  font-family: var(--report-font-mono);
+  font-weight: 600;
+}
+.completion-ratio {
+  font-family: var(--report-font-mono);
+  font-size: 6.8pt;
+  color: var(--color-muted);
+  margin-left: 3pt;
 }
 
 .flag-list {
@@ -165,15 +391,19 @@ td {
   padding: 0;
 }
 .flag-item {
-  margin-bottom: 1mm;
+  font-size: 8.4pt;
+  margin-bottom: 1.2mm;
 }
 .flag-list-empty {
+  font-size: 8.4pt;
   color: var(--color-muted);
 }
 
 .cap-disclosure {
+  font-size: 7.8pt;
   font-style: italic;
   color: var(--color-muted);
+  margin-top: 4pt;
 }
 
 /* Sentence a section prints in place of itself when it has nothing to show,
@@ -184,13 +414,18 @@ td {
   color: var(--color-muted);
 }
 
+.inactive-marker {
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
 /* Bookmarks for the PDF outline, which must mirror the printed contents
    page. WeasyPrint's UA stylesheet bookmarks every h1-h6, which both lists
-   sub-headings the contents page does not (a student's "Completed items")
+   sub-headings the contents page does not (a learner's "Items completed")
    and repeats a running element's text once per page it is drawn on, so the
    default is switched off wholesale and only the contents page's own entries
    are named. Unscoped where the element occurs across the document (one per
-   course, one per student, one per quiz). */
+   course, one per learner, one per quiz). */
 h1,
 h2,
 h3,
@@ -199,12 +434,7 @@ h5,
 h6 {
   bookmark-level: none;
 }
-.at-a-glance > h2,
-.contents > h2,
-.methodology > h2,
-.summary-tables > h2,
-.student-details > h2,
-.confusions > h2 {
+.report-section > h1 {
   bookmark-level: 1;
   bookmark-label: content();
 }
@@ -217,41 +447,199 @@ h3.confusion-heading {
 
 /* ==== title_page.html ==== */
 .title-page {
-  break-after: page;
+  /* border-box so the 20mm padding comes out of the page rather than adding to
+     it -- otherwise the section is taller than the sheet and the band anchored
+     to its bottom edge falls off the end of it. */
+  box-sizing: border-box;
+  height: 297mm;
+  position: relative;
+  padding: 20mm 20mm 0;
+}
+/* The tenant's own identity, top right per the report's design brief. Both
+   parts are optional in the template, so neither may reserve space. */
+.title-page .cover-brand {
+  text-align: right;
+}
+.title-page .cover-logo {
+  max-height: 12mm;
+  max-width: 55mm;
+  vertical-align: middle;
+  margin-right: 4pt;
+}
+.title-page .cover-site {
+  font-family: var(--report-font-display);
+  font-size: 13pt;
+  font-weight: 700;
+  color: var(--color-primary);
+  vertical-align: middle;
+}
+.title-page .cover-accent {
+  height: 2.5pt;
+  width: 34pt;
+  background: var(--color-accent);
+  /* Sits under the identity it belongs to, which is set against the right
+     margin. */
+  margin: 8pt 0 0 auto;
+}
+.title-page .cover-body {
+  margin-top: 45mm;
+}
+.title-page .cover-title {
+  font-size: 30pt;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 4pt 0 14pt;
+  /* The cover has no running header, and this is not a section heading — it
+     must not become the string the following pages' headers are drawn from. */
+  string-set: none;
+}
+.title-page .cover-card {
+  background: var(--color-surface-2);
+  padding: 10pt 12pt;
+  width: 120mm;
+  margin-bottom: 12pt;
 }
 .title-page .course-list {
   list-style: none;
+  margin: 4pt 0 0;
   padding: 0;
 }
-.title-page .inactive-marker {
+.title-page .course-list li {
+  font-size: 9.5pt;
+  padding: 1.5pt 0;
+}
+.title-page .course-name {
+  font-weight: 600;
+}
+.title-page .course-scale {
   color: var(--color-muted);
 }
+.title-page .cover-meta {
+  font-family: var(--report-font-mono);
+  font-size: 8pt;
+  color: var(--color-on-surface);
+  margin: 0;
+}
+.title-page .cover-meta dt {
+  float: left;
+  clear: left;
+  width: 30mm;
+  font-size: 6.6pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  padding-top: 1.4pt;
+}
+.title-page .cover-meta dd {
+  margin: 0 0 2.5pt 30mm;
+}
 .title-page .caveat {
+  font-size: 8pt;
   font-style: italic;
   color: var(--color-muted);
+  margin-top: 10pt;
+  max-width: 120mm;
+}
+.title-page .cover-band {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 18mm;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  padding: 6mm 20mm 0;
+}
+.title-page .band-site {
+  font-family: var(--report-font-display);
+  font-size: 11pt;
+  font-weight: 700;
+}
+.title-page .band-powered {
+  float: right;
+  font-size: 8pt;
+}
+.title-page .band-logo {
+  max-height: 6mm;
+  max-width: 30mm;
+  vertical-align: middle;
+  margin-left: 4pt;
 }
 
 /* ==== at_a_glance.html ==== */
 .at-a-glance {
   break-after: page;
 }
+/* Four equal cards. A table rather than flex or grid: WeasyPrint's table
+   layout is its best-tested path, and four equal cells is what a table row
+   already is. */
 .at-a-glance .glance-stats {
-  list-style: none;
-  padding: 0;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 8pt 0;
+  margin: 6pt -8pt 14pt;
+}
+.at-a-glance .glance-stats td {
+  background: var(--color-surface-2);
+  border: none;
+  padding: 9pt 11pt;
+}
+.at-a-glance .stat-value {
+  display: block;
+  font-family: var(--report-font-display);
+  font-size: 21pt;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-primary);
+}
+.at-a-glance .stat-label {
+  display: block;
+  font-size: 7pt;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-top: 2pt;
+}
+.at-a-glance .attention-head {
+  margin-bottom: 5pt;
+}
+.at-a-glance .attention-count {
+  float: right;
+  font-family: var(--report-font-mono);
+  font-size: 7.2pt;
+  font-weight: 600;
+  background: var(--color-error);
+  color: var(--color-on-error);
+  padding: 1pt 5pt;
 }
 .at-a-glance .attention-entry {
-  background: var(--color-warning-light);
-  color: var(--color-on-warning-light);
-  padding: 2mm 3mm;
-  margin-bottom: 2mm;
+  border-bottom: 0.5pt solid var(--color-border);
+  padding: 6pt 0;
+  break-inside: avoid;
+}
+.at-a-glance .attention-entry:last-child {
+  border-bottom: none;
 }
 .at-a-glance .attention-link {
-  color: var(--color-on-warning-light);
-  font-weight: bold;
+  font-family: var(--report-font-display);
+  font-size: 10pt;
+  font-weight: 600;
+  color: var(--color-on-surface);
+  text-decoration: none;
 }
 .at-a-glance .attention-link::after {
-  content: " (p. " target-counter(attr(href), page) ")";
-  font-weight: normal;
+  content: " p. " target-counter(attr(href), page);
+  font-family: var(--report-font-mono);
+  font-size: 8pt;
+  font-weight: 500;
+  color: var(--color-primary);
+}
+.at-a-glance .flag-list {
+  margin-top: 2pt;
+}
+.at-a-glance .flag-reason {
+  color: var(--color-muted);
 }
 .at-a-glance .attention-list-empty {
   color: var(--color-muted);
@@ -263,58 +651,146 @@ h3.confusion-heading {
 }
 .contents .toc {
   list-style: none;
+  margin: 5pt 0 11pt;
   padding: 0;
 }
 .contents .toc li {
-  border-bottom: 0.5pt dotted var(--color-border);
+  border-bottom: 0.6pt dotted var(--color-border);
 }
-.toc a::after {
+.contents .toc a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  padding: 1.5pt 0;
+}
+.contents .toc-section a {
+  font-family: var(--report-font-display);
+  font-size: 9.3pt;
+  font-weight: 600;
+  margin-top: 2pt;
+}
+.contents .toc-entry a {
+  font-size: 8.6pt;
+  color: var(--color-muted);
+  padding-left: 14pt;
+}
+/* The leader is the row's own dotted rule and the page number floats over its
+   right end. A stretched filler element between the two cannot be used: at full
+   width it consumes the line, and the float is pushed onto the next one. */
+.contents .toc a::after {
   content: target-counter(attr(href), page);
   float: right;
+  font-family: var(--report-font-mono);
+  font-size: 8pt;
+  color: var(--color-muted);
+  padding-left: 5pt;
 }
 
-/* ==== methodology.html ==== */
+/* ==== methodology.html (rendered inside contents.html) ==== */
 .methodology {
-  break-after: page;
+  break-before: page;
+}
+.methodology .definitions {
+  columns: 2;
+  column-gap: 9mm;
+  margin-bottom: 7pt;
+}
+.methodology .definitions p {
+  font-size: 8.6pt;
+  margin: 0 0 4pt;
 }
 .methodology .legend {
   list-style: none;
+  margin: 2pt 0 0;
   padding: 0;
+  font-size: 8.6pt;
+}
+.methodology .legend li {
+  padding: 1pt 0;
+}
+.methodology .legend-note {
+  font-size: 8pt;
+  color: var(--color-muted);
+  margin-top: 5pt;
 }
 
 /* ==== summary_tables.html ==== */
 /* Deliberately no `break-inside: avoid` here: a table taller than one page
    would push the whole wrapper to a fresh page and strand the section's own
-   "Summary tables" heading on a blank one. The table splits cleanly instead,
-   repeating its header row via `thead { display: table-header-group }`. */
+   heading on a blank one. The table splits cleanly instead, repeating its
+   header row via `thead { display: table-header-group }`. */
 .summary-tables .course-summary-table {
-  margin-bottom: 6mm;
+  margin-bottom: 10pt;
 }
-/* The 60mm default track is a fifth of a landscape page — far too wide for a
-   table cell that also carries its own label. */
-.summary-tables .completion-bar-outer {
-  width: 16mm;
+.summary-tables .course-table {
+  table-layout: fixed;
 }
-.summary-tables .continuation-caption {
+.summary-tables .col-learner {
+  width: 34mm;
+}
+.summary-tables .col-completion {
+  width: 32mm;
+}
+.summary-tables .col-when {
+  width: 24mm;
+}
+.summary-tables .col-quiz {
+  width: 15mm;
+}
+/* .col-last-item is deliberately left to size itself: under `table-layout:
+   fixed` the unsized column takes whatever the others leave, so a course with
+   two quizzes gives its slack to the item title rather than stretching two
+   quiz columns across a third of the page each. */
+.summary-tables .cell-learner {
+  font-weight: 600;
+}
+.summary-tables .cell-last-item {
+  font-size: 7.4pt;
+}
+.summary-tables .cell-when,
+.summary-tables .cell-quiz {
+  font-family: var(--report-font-mono);
+}
+.summary-tables th.col-quiz-head,
+.summary-tables td.cell-quiz {
+  text-align: center;
+}
+.summary-tables .quiz-attempts {
+  font-size: 6.8pt;
   color: var(--color-muted);
+  margin-left: 2pt;
 }
-.summary-tables .course-table tbody tr:nth-child(even) {
+.summary-tables tbody tr:nth-child(even) td {
   background: var(--color-surface-2);
 }
-.summary-tables .quiz-legend {
-  color: var(--color-muted);
+/* Status tints after the banding so they win on a banded row. */
+.summary-tables tbody tr:nth-child(even) td.status-pass-cell {
+  background: var(--color-success-light);
 }
-.summary-tables .quiz-legend .legend-entry {
+.summary-tables tbody tr:nth-child(even) td.status-fail-cell {
+  background: var(--color-error-light);
+}
+.summary-tables .table-caption {
+  font-size: 7.4pt;
+  color: var(--color-muted);
+  margin: 0 0 4pt;
+}
+.summary-tables .legend-entry {
   margin-right: 4mm;
 }
-.summary-tables .inactive-marker {
+.summary-tables .caption-note {
+  display: block;
+}
+.summary-tables .continuation-caption {
+  font-size: 8pt;
   color: var(--color-muted);
+  margin: 0 0 2pt;
 }
 
-/* ==== student_details.html ==== */
+/* ==== student_details.html / student_detail.html ==== */
 /* The section before this one is landscape; without a break of its own the
-   whole section, heading and first student included, would start part way
-   down that landscape page. The first student is then held against the
+   whole section, heading and first learner included, would start part way
+   down that landscape page. The first learner is then held against the
    heading so the heading is not left alone on the fresh page. */
 .student-details {
   break-before: page;
@@ -331,20 +807,96 @@ h3.confusion-heading {
 .student-section > .student-running-name {
   position: running(student-name);
 }
-.student-section .no-activity {
-  font-style: italic;
+.student-section .student-head {
+  border-bottom: 1.6pt solid var(--color-primary);
+  padding-bottom: 3pt;
+  margin-bottom: 7pt;
+}
+.student-section .student-heading {
+  font-size: 14pt;
+  margin: 0;
+}
+.student-section .student-last-active {
+  float: right;
+  font-family: var(--report-font-mono);
+  font-size: 7.4pt;
+  color: var(--color-muted);
+  padding-top: 5pt;
+}
+.student-section .flags-panel {
+  background: var(--color-surface-2);
+  padding: 6pt 9pt;
+  margin-bottom: 8pt;
+  break-inside: avoid;
+}
+.student-section .flags-error {
+  border-left: 3pt solid var(--color-error);
+}
+.student-section .flags-warning {
+  border-left: 3pt solid var(--color-warning);
+}
+.student-section .flag-reason {
   color: var(--color-muted);
 }
-.student-section .completed-items,
-.student-section .quiz-results,
-.student-section .wrong-answers {
-  padding-left: 5mm;
+.student-section .no-activity {
+  font-family: var(--report-font-display);
+  font-size: 10.5pt;
+  font-weight: 600;
+  background: var(--color-error-light);
+  color: var(--color-on-error-light);
+  padding: 6pt 9pt;
+  margin-top: 8pt;
+}
+/* Two columns of completed items rather than one long list: a course of
+   thirty items is a page of near-empty lines set as a single column. */
+.student-section .items-list {
+  columns: 2;
+  column-gap: 8mm;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.student-section .items-list li {
+  border-bottom: 0.5pt solid var(--color-border);
+  font-size: 7.6pt;
+  padding: 1.8pt 0;
+  break-inside: avoid;
+}
+.student-section .item-date {
+  float: right;
+  font-family: var(--report-font-mono);
+  font-size: 7.2pt;
+  color: var(--color-muted);
+  padding-left: 3mm;
+}
+.student-section .item-kind {
+  color: var(--color-muted);
+}
+/* The full page width is far wider than these few figures need. */
+.student-section .completion-bar-outer {
+  width: 60mm;
+}
+.student-section .attempts-table {
+  width: 130mm;
+}
+.student-section .attempt-date,
+.student-section .attempt-raw {
+  font-family: var(--report-font-mono);
+}
+.student-section .attempt-raw {
+  font-size: 6.8pt;
+  color: var(--color-muted);
+  margin-left: 3pt;
+}
+.student-section .wrong-answers-table .col-question-number {
+  width: 9mm;
+  font-family: var(--report-font-mono);
 }
 
-/* ==== confusions.html ==== */
-/* Cohort-wide, so it neither shares a page with one student's section nor
-   inherits that student's running header. Both halves are needed: the break
-   keeps the last student's name off this section's first page, which WeasyPrint
+/* ==== confusions.html / quiz_confusion.html ==== */
+/* Cohort-wide, so it neither shares a page with one learner's section nor
+   inherits that learner's running header. Both halves are needed: the break
+   keeps the last learner's name off this section's first page, which WeasyPrint
    would otherwise take from the first running element on a shared page, and the
    reset clears the name carried over onto the pages after it. */
 .confusions {
@@ -355,7 +907,7 @@ h3.confusion-heading {
 }
 .quiz-confusion {
   break-inside: avoid-page;
-  margin-bottom: 6mm;
+  margin-bottom: 10pt;
 }
 /* The first block already has a whole fresh page under the section heading, so
    avoiding a break inside it can only push it off that page and strand the
@@ -364,11 +916,44 @@ h3.confusion-heading {
 .confusions > .quiz-confusion:first-of-type {
   break-inside: auto;
 }
-.quiz-confusion .confusion-caution {
-  font-style: italic;
-  color: var(--color-muted);
+.quiz-confusion .confusion-table {
+  table-layout: fixed;
 }
-.quiz-confusion .distractor {
-  display: inline-block;
-  margin-right: 3mm;
+.quiz-confusion .col-question-number {
+  width: 10mm;
+  font-family: var(--report-font-mono);
+}
+.quiz-confusion .col-question {
+  width: 62mm;
+}
+.quiz-confusion .col-distractors {
+  width: 62mm;
+}
+.quiz-confusion .col-ratio {
+  width: 28mm;
+}
+.quiz-confusion .confusion-question {
+  line-height: 1.45;
+}
+.quiz-confusion .correct-answers {
+  display: block;
+  margin-top: 2pt;
+}
+.quiz-confusion .ratio-value {
+  font-family: var(--report-font-mono);
+  font-size: 8.4pt;
+  font-weight: 600;
+}
+.quiz-confusion .ratio-bar {
+  display: block;
+  width: 100%;
+  height: 2.5mm;
+  line-height: 0;
+  background: var(--color-surface-2);
+  margin-top: 1.5mm;
+}
+.quiz-confusion .ratio-bar-fill {
+  display: block;
+  height: 2.5mm;
+  background: var(--color-error);
 }

@@ -29,6 +29,7 @@ class TestGetAtRiskRules:
         assert [rule.id for rule in rules] == [
             *(rule.id for rule in BASE_AT_RISK_RULES),
             "fixture_extra",
+            "severity_free",
         ]
 
     def test_module_missing_both_export_names_raises_import_error(self) -> None:

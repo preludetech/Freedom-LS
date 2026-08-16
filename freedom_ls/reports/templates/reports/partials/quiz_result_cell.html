@@ -1,18 +1,17 @@
-{% comment %}Required context: result (QuizResult | None). `—` when the student never attempted the quiz.{% endcomment %}
+{% comment %}Required context: result (QuizResult | None). `—` when the learner never attempted the quiz.
+
+Sized for the narrowest column in the report. The percentage leads because it
+is the only figure comparable across quizzes with different maximum scores; the
+raw score follows it, and stands in for it when a quiz cannot be scored as a
+percentage at all. A learner's own section carries the full attempt history.
+{% endcomment %}
 <span class="quiz-result-cell">
   {% if result is None %}
   <span class="status-glyph status-na">—</span>
   {% else %}
-  {% if result.passed is True %}
-  <span class="status-glyph status-pass">✓</span>
-  {% elif result.passed is False %}
-  <span class="status-glyph status-fail">✗</span>
-  {% else %}
-  <span class="status-glyph status-no-verdict">○</span>
-  {% endif %}
-  <span class="quiz-score">
-    {% if result.latest_score is not None and result.latest_max_score is not None %}{{ result.latest_score }}/{{ result.latest_max_score }}{% endif %}
-    {% if result.latest_percentage is not None %}({{ result.latest_percentage }}%){% endif %}
+  <span class="quiz-verdict">
+    {% if result.passed is True %}<span class="status-glyph status-pass">✓</span>{% elif result.passed is False %}<span class="status-glyph status-fail">✗</span>{% else %}<span class="status-glyph status-no-verdict">○</span>{% endif %}
+    {% if result.latest_percentage is not None %}<span class="quiz-score">{{ result.latest_percentage }}%</span>{% elif result.latest_score is not None and result.latest_max_score is not None %}<span class="quiz-score">{{ result.latest_score }}/{{ result.latest_max_score }}</span>{% endif %}
   </span>
   <span class="quiz-attempts">×{{ result.attempt_count }}</span>
   {% endif %}

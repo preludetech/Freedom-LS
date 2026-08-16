@@ -1,24 +1,35 @@
-{% comment %}Required context: data (CohortReportData). Links only — every id it points at is emitted by exactly one other partial (course_summary_table.html, student_detail.html, quiz_confusion.html).{% endcomment %}
-<section class="contents">
-  <h2>Contents</h2>
+{% comment %}Required context: data (CohortReportData).
+
+Links only — every id it points at is emitted by exactly one other partial
+(course_summary_table.html, student_detail.html, quiz_confusion.html).
+
+methodology.html is included here rather than standing as its own section: a
+reader who has just been handed a contents page is exactly the reader who needs
+to know what the numbers in it mean, and the two together are one spread.
+{% endcomment %}
+<section class="contents report-section">
+  <p class="kicker">How to read this report</p>
+  <h1>Contents and definitions</h1>
   <ul class="toc">
-    <li>Courses</li>
+    <li class="toc-section"><a href="#glance">Cohort at a glance</a></li>
+    <li class="toc-section"><a href="#summary">1 · Summary of learner progress</a></li>
     {% for section in data.courses %}
-    <li><a href="#course-{{ section.course_id }}">{{ section.title }}</a></li>
+    <li class="toc-entry"><a href="#course-{{ section.course_id }}">{{ section.title }}</a></li>
     {% endfor %}
-    <li>Students</li>
+    <li class="toc-section"><a href="#details">2 · Details per learner</a></li>
     {% for student in data.students %}
-    <li><a href="#student-{{ student.user_id }}">{{ student.full_name }}</a></li>
+    <li class="toc-entry"><a href="#student-{{ student.user_id }}">{{ student.full_name }}</a></li>
     {% endfor %}
-    <li>Question-level confusions</li>
+    <li class="toc-section"><a href="#confusions">3 · Quiz confusions across the cohort</a></li>
     {% for section in data.courses %}
     {% for quiz in section.quizzes %}
     {% for form_id, block in section.confusions_by_quiz.items %}
     {% if form_id == quiz.form_id and block.total %}
-    <li><a href="#confusions-{{ quiz.form_id }}">{{ quiz.title }}</a></li>
+    <li class="toc-entry"><a href="#confusions-{{ quiz.form_id }}">{{ quiz.title }}</a></li>
     {% endif %}
     {% endfor %}
     {% endfor %}
     {% endfor %}
   </ul>
+  {% include "reports/partials/methodology.html" only %}
 </section>

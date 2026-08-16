@@ -2,6 +2,28 @@ from __future__ import annotations
 
 from freedom_ls.base.app_settings import AppSettings, Setting
 
+
+def _variable_face_weights(
+    family: str, static_path: str, style: str = "normal"
+) -> list[dict[str, str]]:
+    """One entry per weight the report asks for, all from one variable file.
+
+    Every weight is declared even where the stylesheet uses only some of them:
+    a weight with no `@font-face` rule is not an error, it is a face WeasyPrint
+    synthesises by smearing the nearest one, and a synthesised bold is visibly
+    coarser than a real one at print resolution.
+    """
+    return [
+        {
+            "family": family,
+            "weight": weight,
+            "style": style,
+            "static_path": static_path,
+        }
+        for weight in ("400", "500", "600", "700")
+    ]
+
+
 # The faces the report's stylesheet is set in. Each entry names a family, a
 # weight and style, and a path resolvable through the staticfiles finders.
 # FLS's own brand faces are only the default: a downstream project drops its
@@ -19,42 +41,16 @@ from freedom_ls.base.app_settings import AppSettings, Setting
 # reserve the name "Source" under the OFL, so an instanced copy could not keep
 # its own name.
 DEFAULT_REPORT_FONT_FACES = [
-    {
-        "family": "Inter",
-        "weight": "600",
-        "style": "normal",
-        "static_path": "reports/fonts/Inter-Variable.ttf",
-    },
-    {
-        "family": "Inter",
-        "weight": "700",
-        "style": "normal",
-        "static_path": "reports/fonts/Inter-Variable.ttf",
-    },
-    {
-        "family": "Source Sans 3",
-        "weight": "400",
-        "style": "normal",
-        "static_path": "reports/fonts/SourceSans3-Variable.ttf",
-    },
-    {
-        "family": "Source Sans 3",
-        "weight": "600",
-        "style": "normal",
-        "static_path": "reports/fonts/SourceSans3-Variable.ttf",
-    },
-    {
-        "family": "Source Code Pro",
-        "weight": "400",
-        "style": "normal",
-        "static_path": "reports/fonts/SourceCodePro-Variable.ttf",
-    },
-    {
-        "family": "Source Code Pro",
-        "weight": "500",
-        "style": "normal",
-        "static_path": "reports/fonts/SourceCodePro-Variable.ttf",
-    },
+    *_variable_face_weights("Inter", "reports/fonts/Inter-Variable.ttf"),
+    *_variable_face_weights("Source Sans 3", "reports/fonts/SourceSans3-Variable.ttf"),
+    *_variable_face_weights(
+        "Source Sans 3",
+        "reports/fonts/SourceSans3-Italic-Variable.ttf",
+        style="italic",
+    ),
+    *_variable_face_weights(
+        "Source Code Pro", "reports/fonts/SourceCodePro-Variable.ttf"
+    ),
     {
         "family": "DejaVu Sans",
         "weight": "400",

@@ -1,10 +1,12 @@
 {% comment %}
-Required context: data (CohortReportData), theme_tokens (str), print_css (str).
+Required context: data (CohortReportData), theme_tokens (str), font_css (str),
+print_css (str), site_logo_url (str|None), powered_by_logo_url (str|None).
 
-This is the document shell only — doctype, head, and one {% include %} per
-section in reading order. No loop, no {% if %}, no markup belonging to a
-section: adding, removing or reordering a section is an edit to this file
-alone, and changing what a section says never touches it.
+This is the document shell only — doctype, head, the page furniture every page
+shares, and one {% include %} per section in reading order. No loop, no
+{% if %}, no markup belonging to a section: adding, removing or reordering a
+section is an edit to this file alone, and changing what a section says never
+touches it.
 
 WeasyPrint source HTML, never served to a browser — no site base template,
 no cotton components.
@@ -13,20 +15,33 @@ no cotton components.
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>{{ data.cohort_name }} — Progress report</title>
-{% comment %}theme_tokens and print_css are server-generated CSS strings — the
-extracted role-token block from the compiled Tailwind bundle and this app's
-own hand-authored stylesheet, never end-user input — so they are inlined
-with `safe` rather than escaped, which would otherwise turn `<` and `&` in
-selectors and content() rules into HTML entities and break the CSS.{% endcomment %}
+<title>{{ data.cohort_name }} — Cohort progress report</title>
+{% comment %}theme_tokens, font_css and print_css are server-generated CSS
+strings — the role-token block extracted from the compiled Tailwind bundle, the
+@font-face rules built from the configured faces, and this app's own
+hand-authored stylesheet. None is end-user input, so they are inlined with
+`safe` rather than escaped, which would otherwise turn `<` and `&` in selectors
+and content() rules into HTML entities and break the CSS.{% endcomment %}
 <style>{{ theme_tokens|safe }}</style>
+<style>{{ font_css|safe }}</style>
 <style>{{ print_css|safe }}</style>
 </head>
 <body>
-{% include "reports/partials/title_page.html" with data=data only %}
+{% comment %}The line print.css draws in the footer of every page but the
+cover. It is a running element rather than a CSS `content:` string because the
+cohort and site names are typed by an administrator: as markup Django escapes
+them, whereas interpolating them into the stylesheet would let a quotation mark
+in a cohort name break every rule after it.
+
+It must stay a block-level element and it must come before the cover — see the
+note on .footer-identity in print.css.{% endcomment %}
+<div class="footer-identity">
+  <span class="footer-org">{{ data.site_name }} · Cohort progress report · {{ data.cohort_name }}</span>
+  {% if data.powered_by_name %}<span class="footer-powered">Powered by {{ data.powered_by_name }}</span>{% endif %}
+</div>
+{% include "reports/partials/title_page.html" with data=data site_logo_url=site_logo_url powered_by_logo_url=powered_by_logo_url only %}
 {% include "reports/partials/at_a_glance.html" with data=data attention=data.attention_list only %}
 {% include "reports/partials/contents.html" with data=data only %}
-{% include "reports/partials/methodology.html" only %}
 {% include "reports/partials/summary_tables.html" with courses=data.courses only %}
 {% include "reports/partials/student_details.html" with students=data.students only %}
 {% include "reports/partials/confusions.html" with courses=data.courses only %}

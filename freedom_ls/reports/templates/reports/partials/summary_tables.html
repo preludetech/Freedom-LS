@@ -1,6 +1,8 @@
 {% comment %}Required context: courses (list[CourseSection]). Landscape wrapper for every course's wide table.{% endcomment %}
-<section class="summary-tables landscape-section">
-  <h2>Summary tables</h2>
+<section class="summary-tables landscape-section report-section" id="summary">
+  <p class="kicker">Section 1</p>
+  <h1>Summary of learner progress</h1>
+  <p class="lede">One table per course. Column headers repeat on every page a table spans; where a course carries more quizzes than fit, the table splits rather than shrinking the type.</p>
   {% for section in courses %}
   {% include "reports/partials/course_summary_table.html" with section=section only %}
   {% empty %}

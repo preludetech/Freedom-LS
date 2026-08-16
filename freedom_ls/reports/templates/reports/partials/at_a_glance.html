@@ -1,13 +1,32 @@
-{% comment %}Required context: data, attention (AttentionList). Attention entries and the disclosure both read only from `attention`, never re-deriving the flag list.{% endcomment %}
-<section class="at-a-glance">
-  <h2>At a glance</h2>
-  <ul class="glance-stats">
-    <li>Cohort size: {{ data.cohort_size }}</li>
-    <li>Median completion: {{ data.median_completion }}%</li>
-    <li>Not started: {{ data.not_started_count }}</li>
-    <li>Complete: {{ data.complete_count }}</li>
-  </ul>
-  <h3>Students needing attention</h3>
+{% comment %}Required context: data, attention (AttentionList). Attention entries
+and the disclosure both read only from `attention`, never re-deriving the flag
+list.
+
+The stat row is a table rather than a flex or grid container: WeasyPrint's
+table layout is its best-tested path, and four equal cells is exactly what a
+table row is.
+{% endcomment %}
+<section class="at-a-glance report-section" id="glance">
+  <p class="kicker">Cohort overview</p>
+  <h1>Cohort at a glance</h1>
+  <p class="lede">Headline numbers for {{ data.cohort_name }}, followed by the learners the at-risk rules flagged when this report was generated.</p>
+
+  <table class="glance-stats">
+    <tr>
+      <td><span class="stat-value">{{ data.cohort_size }}</span><span class="stat-label">Learners in cohort</span></td>
+      <td><span class="stat-value">{{ data.median_completion }}%</span><span class="stat-label">Median completion</span></td>
+      <td><span class="stat-value">{{ data.not_started_count }}</span><span class="stat-label">Not started</span></td>
+      <td><span class="stat-value">{{ data.complete_count }}</span><span class="stat-label">Completed everything</span></td>
+    </tr>
+  </table>
+
+  {% comment %}The count comes before the heading in source order because it is
+  floated: a float can only sit on a line that has already been opened, and the
+  block-level heading would otherwise push it onto the next one.{% endcomment %}
+  <div class="attention-head">
+    <span class="attention-count">{{ attention.total }} of {{ data.cohort_size }} flagged</span>
+    <h2>Learners needing attention</h2>
+  </div>
   {% if attention.students %}
   <div class="attention-list">
     {% for student in attention.students %}
@@ -15,7 +34,7 @@
     {% endfor %}
   </div>
   {% else %}
-  <p class="attention-list-empty">No students currently flagged.</p>
+  <p class="attention-list-empty">No learners currently flagged.</p>
   {% endif %}
-  {% include "reports/partials/cap_disclosure.html" with shown=attention.shown total=attention.total noun="students flagged" only %}
+  {% include "reports/partials/cap_disclosure.html" with shown=attention.shown total=attention.total noun="learners flagged" only %}
 </section>

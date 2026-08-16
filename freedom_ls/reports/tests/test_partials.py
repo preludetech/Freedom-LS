@@ -22,6 +22,7 @@ from freedom_ls.reports.gather import (
     CompletedItem,
     ConfusionBlock,
     CourseSection,
+    QuizAttempt,
     QuizColumn,
     QuizConfusion,
     QuizResult,
@@ -144,7 +145,7 @@ class TestQuizResultCell:
             "reports/partials/quiz_result_cell.html", {"result": result}
         )
 
-        assert "8/10" in html
+        assert "80%" in html
         assert "✓" in html
         assert "×2" in html  # noqa: RUF001 -- the actual attempt-count glyph the template renders
 
@@ -331,7 +332,7 @@ class TestAtAGlance:
             "reports/partials/at_a_glance.html", {"data": data, "attention": attention}
         )
 
-        assert "No students currently flagged." in html
+        assert "No learners currently flagged." in html
 
 
 class TestContents:
@@ -434,7 +435,7 @@ class TestCourseSummaryTable:
 
         assert "Jesse Park" in html
         assert "QZ" in html
-        assert "9/10" in html
+        assert "90%" in html
         assert f'id="course-{section.course_id}"' in html
 
     def test_marks_inactive_registration(self) -> None:
@@ -588,10 +589,10 @@ class TestStudentDetail:
             "reports/partials/student_detail.html", {"student": student}
         )
 
-        assert "Wrong answers — Voltage Quiz" in html
-        assert "Wrong answers — Erosion Quiz" in html
-        assert "Q8. What is voltage?" in html
-        assert "Q3. What is erosion?" in html
+        assert "Incorrect answers — Voltage Quiz" in html
+        assert "Incorrect answers — Erosion Quiz" in html
+        assert "What is voltage?" in html
+        assert "What is erosion?" in html
 
     def test_omits_wrong_answers_block_for_a_quiz_with_no_wrong_answers(self) -> None:
         student = _student_detail(
@@ -605,7 +606,7 @@ class TestStudentDetail:
             "reports/partials/student_detail.html", {"student": student}
         )
 
-        assert "Wrong answers" not in html
+        assert "Incorrect answers" not in html
 
 
 class TestStudentDetails:
@@ -614,7 +615,7 @@ class TestStudentDetails:
             "reports/partials/student_details.html", {"students": []}
         )
 
-        assert "no students" in html
+        assert "no learners" in html
         assert "empty-state" in html
 
     def test_renders_one_block_per_student(self) -> None:
@@ -657,7 +658,8 @@ class TestQuizConfusion:
         assert "4 of 6" in html
         assert "%" not in html
         assert "Option A" in html
-        assert "Option B (3)" in html
+        assert "Option B" in html
+        assert "×3" in html  # noqa: RUF001 -- the multiplication sign the template renders
 
     def test_renders_percentage_not_counts_when_show_percentage_true(self) -> None:
         question = QuizConfusion(
@@ -682,7 +684,8 @@ class TestQuizConfusion:
         assert "75%" in html
         assert "15 of 20" not in html
         assert "Option A" in html
-        assert "Option B (12)" in html
+        assert "Option B" in html
+        assert "×12" in html  # noqa: RUF001 -- the multiplication sign the template renders
 
     def test_emits_confusion_anchor_id(self) -> None:
         quiz = QuizColumn(
@@ -829,11 +832,178 @@ class TestReportShell:
         assert "<!doctype html>" in html
         assert "Cohort A" in html
         assert 'class="title-page"' in html
-        assert 'class="at-a-glance"' in html
-        assert 'class="contents"' in html
+        assert 'class="at-a-glance' in html
+        assert 'class="contents' in html
         assert 'class="methodology"' in html
         assert "landscape-section" in html
-        assert 'class="student-details"' in html
-        assert 'class="confusions"' in html
+        assert 'class="student-details' in html
+        assert 'class="confusions' in html
         assert "--color-success: #38A169;" in html
         assert "body { margin: 0; }" in html
+
+
+class TestFlagSeverity:
+    def test_badge_class_follows_the_flag_severity(self) -> None:
+        flags = [
+            AtRiskFlag("no_activity", "No recorded activity", "Nothing yet.", "error"),
+            AtRiskFlag("inactive", "No activity recently", "Quiet lately.", "warning"),
+        ]
+
+        html = render_to_string("reports/partials/flag_list.html", {"flags": flags})
+
+        assert "badge-error" in html
+        assert "badge-warning" in html
+
+    def test_every_flag_still_carries_the_at_risk_glyph(self) -> None:
+        # Colour is never the only signal, so severity changes the badge's
+        # colour but never removes the glyph.
+        flags = [AtRiskFlag("inactive", "No activity recently", "Quiet.", "warning")]
+
+        html = render_to_string("reports/partials/flag_list.html", {"flags": flags})
+
+        assert "▲" in html
+
+    def test_panel_takes_its_severity_from_the_first_flag(self) -> None:
+        student = _student_detail(
+            flags=[
+                AtRiskFlag("no_activity", "No recorded activity", "Nothing.", "error"),
+                AtRiskFlag("inactive", "No activity recently", "Quiet.", "warning"),
+            ]
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert "flags-error" in html
+
+
+class TestQuizAttemptsTable:
+    def test_renders_one_row_per_completed_attempt(self) -> None:
+        attempts = [
+            QuizAttempt(
+                attempt_number=1,
+                completed_at=GENERATED_AT,
+                score=3,
+                max_score=10,
+                percentage=30,
+                passed=False,
+            ),
+            QuizAttempt(
+                attempt_number=2,
+                completed_at=GENERATED_AT,
+                score=9,
+                max_score=10,
+                percentage=90,
+                passed=True,
+            ),
+        ]
+        student = _student_detail(
+            has_any_progress=True,
+            quiz_results=[
+                QuizResult(
+                    form_id=uuid4(),
+                    title="Orbit Quiz",
+                    latest_score=9,
+                    latest_max_score=10,
+                    latest_percentage=90,
+                    passed=True,
+                    attempt_count=2,
+                    completed_at=GENERATED_AT,
+                    attempts=attempts,
+                )
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert "Quiz attempts" in html
+        assert html.count("Orbit Quiz") == 2
+        assert "30%" in html
+        assert "90%" in html
+        assert "3/10" in html
+        assert "9/10" in html
+
+    def test_attempt_with_no_pass_mark_shows_no_verdict_glyph(self) -> None:
+        student = _student_detail(
+            has_any_progress=True,
+            quiz_results=[
+                QuizResult(
+                    form_id=uuid4(),
+                    title="Unmarked Quiz",
+                    latest_score=5,
+                    latest_max_score=10,
+                    latest_percentage=50,
+                    passed=None,
+                    attempt_count=1,
+                    completed_at=GENERATED_AT,
+                    attempts=[
+                        QuizAttempt(
+                            attempt_number=1,
+                            completed_at=GENERATED_AT,
+                            score=5,
+                            max_score=10,
+                            percentage=50,
+                            passed=None,
+                        )
+                    ],
+                )
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        # Scoped to the attempts table: the learner's own completion bar above
+        # it carries a glyph of its own.
+        attempts_table = html.split("Quiz attempts")[1]
+        assert "○" in attempts_table
+        assert "✓" not in attempts_table
+        assert "✗" not in attempts_table
+
+
+class TestCoverBranding:
+    def test_names_the_site_and_omits_an_unconfigured_powered_by(self) -> None:
+        data = _cohort_report_data(site_name="Bright Academy", powered_by_name=None)
+
+        html = render_to_string(
+            "reports/partials/title_page.html",
+            {"data": data, "site_logo_url": None, "powered_by_logo_url": None},
+        )
+
+        assert "Bright Academy" in html
+        assert "Powered by" not in html
+        assert "<img" not in html
+
+    def test_renders_both_logos_and_the_powered_by_line_when_configured(self) -> None:
+        data = _cohort_report_data(
+            site_name="Bright Academy", powered_by_name="Acme Learning"
+        )
+
+        html = render_to_string(
+            "reports/partials/title_page.html",
+            {
+                "data": data,
+                "site_logo_url": "file:///tmp/site.png",
+                "powered_by_logo_url": "file:///tmp/platform.png",
+            },
+        )
+
+        assert 'src="file:///tmp/site.png"' in html
+        assert 'src="file:///tmp/platform.png"' in html
+        assert "Powered by Acme Learning" in html
+
+    def test_course_card_states_each_course_scale(self) -> None:
+        data = _cohort_report_data(
+            courses=[_course_section(title="Astronomy", item_count=24)]
+        )
+
+        html = render_to_string(
+            "reports/partials/title_page.html",
+            {"data": data, "site_logo_url": None, "powered_by_logo_url": None},
+        )
+
+        assert "24 items" in html

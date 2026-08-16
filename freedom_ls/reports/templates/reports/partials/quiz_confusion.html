@@ -1,27 +1,46 @@
-{% comment %}Required context: quiz (QuizColumn), block (ConfusionBlock). Emits confusions-{{ quiz.form_id }} — the only place that id is emitted.{% endcomment %}
+{% comment %}Required context: quiz (QuizColumn), block (ConfusionBlock). Emits confusions-{{ quiz.form_id }} — the only place that id is emitted.
+
+Options are shown as their own text and nothing else. FLS does not letter or
+number a question's options, and labelling them here would invent an ordering
+the learner never saw.
+{% endcomment %}
 <div class="quiz-confusion" id="confusions-{{ quiz.form_id }}">
   <h3 class="confusion-heading">{{ quiz.title }}</h3>
-  <p class="confusion-caution">A high error rate can mean a hard-but-fair question, not a broken one.</p>
   <table class="confusion-table">
+    <colgroup>
+      <col class="col-question-number">
+      <col class="col-question">
+      <col class="col-distractors">
+      <col class="col-ratio">
+    </colgroup>
     <thead>
       <tr>
-        <th>#</th>
-        <th>Question</th>
-        <th>Wrong</th>
-        <th>Selected distractors</th>
-        <th>Correct answer</th>
+        <th class="col-question-number">Q</th>
+        <th>Question and correct answer</th>
+        <th>Incorrect answers chosen</th>
+        <th>Got it wrong</th>
       </tr>
     </thead>
     <tbody>
       {% for question in block.questions %}
       <tr>
-        <td>{{ question.question_number }}</td>
-        <td>{{ question.question_text }}</td>
-        <td>{% if question.show_percentage %}{{ question.wrong_percentage }}% of {{ question.respondent_count }} students{% else %}{{ question.wrong_count }} of {{ question.respondent_count }} students{% endif %}</td>
-        <td>
-          {% for text, count in question.distractors %}<span class="distractor">{{ text }} ({{ count }})</span>{% endfor %}
+        <td class="col-question-number">Q{{ question.question_number }}</td>
+        <td class="confusion-question">
+          {{ question.question_text }}
+          <span class="correct-answers">{% for text in question.correct_option_texts %}<span class="chip chip-success">{{ text }}</span>{% endfor %}</span>
         </td>
-        <td>{{ question.correct_option_texts|join:", " }}</td>
+        <td class="confusion-distractors">{% for text, count in question.distractors %}<span class="chip chip-error">{{ text }} <span class="chip-count">×{{ count }}</span></span>{% endfor %}</td>
+        {% comment %}The bar is drawn only where a percentage is drawn. Below the
+        respondent threshold a proportional bar would put back the precision the
+        plain count exists to avoid claiming.{% endcomment %}
+        <td class="confusion-ratio">
+          {% if question.show_percentage %}
+          <span class="ratio-value">{{ question.wrong_percentage }}% of {{ question.respondent_count }} learners</span>
+          <span class="ratio-bar"><span class="ratio-bar-fill" style="width: {{ question.wrong_percentage }}%;"></span></span>
+          {% else %}
+          <span class="ratio-value">{{ question.wrong_count }} of {{ question.respondent_count }} learners</span>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>

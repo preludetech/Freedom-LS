@@ -1,8 +1,18 @@
-{% comment %}Required context: flags (list[AtRiskFlag]).{% endcomment %}
+{% comment %}Required context: flags (list[AtRiskFlag]).
+
+Included by both attention_entry.html and student_detail.html, which is what
+makes a learner's flags read identically on the at-a-glance page and in their
+own section: one template over one evaluation, not two hand-kept copies.
+
+Severity changes only the badge's colour. The glyph stays the same on every
+flag, because the status legend gives it one meaning — an at-risk flag was
+raised — and greyscale readers have the badge's own label to tell one flag
+from another, which is a stronger signal than a second glyph would be.
+{% endcomment %}
 {% if flags %}
 <ul class="flag-list">
   {% for flag in flags %}
-  <li class="flag-item"><span class="status-glyph status-flag">▲</span><strong>{{ flag.label }}</strong> — {{ flag.reason }}</li>
+  <li class="flag-item"><span class="badge badge-{{ flag.severity }}"><span class="status-glyph">▲</span>{{ flag.label }}</span><span class="flag-reason">{{ flag.reason }}</span></li>
   {% endfor %}
 </ul>
 {% else %}

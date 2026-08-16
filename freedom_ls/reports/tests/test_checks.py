@@ -7,6 +7,7 @@ from django.test import override_settings
 from freedom_ls.reports.at_risk.loader import get_at_risk_rules
 from freedom_ls.reports.checks import (
     check_at_risk_rules_module_configured,
+    check_report_font_faces_resolvable,
     check_reports_storage_alias_configured,
     check_required_reports_settings,
     check_tailwind_bundle_resolvable,
@@ -100,5 +101,37 @@ class TestAtRiskRulesModuleCheck:
         get_at_risk_rules.cache_clear()
         warnings = check_at_risk_rules_module_configured()
         get_at_risk_rules.cache_clear()
+
+        assert warnings == []
+
+
+class TestReportFontFacesCheck:
+    def test_fires_once_per_unresolvable_face(self) -> None:
+        with override_settings(
+            REPORTS_FONT_FACES=[
+                {
+                    "family": "Nowhere",
+                    "weight": "400",
+                    "style": "normal",
+                    "static_path": "reports/fonts/does-not-exist.ttf",
+                },
+                {
+                    "family": "Nameless",
+                    "weight": "400",
+                    "style": "normal",
+                    "static_path": "",
+                },
+            ]
+        ):
+            warnings = check_report_font_faces_resolvable()
+
+        assert len(warnings) == 2
+        assert {warning.id for warning in warnings} == {"freedom_ls_reports.W004"}
+        assert "does-not-exist.ttf" in warnings[0].msg
+
+    def test_silent_for_the_shipped_faces(self) -> None:
+        # No override: the faces this app ships must all resolve, or a fresh
+        # install would warn out of the box.
+        warnings = check_report_font_faces_resolvable()
 
         assert warnings == []
