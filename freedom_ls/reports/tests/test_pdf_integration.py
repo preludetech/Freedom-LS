@@ -30,6 +30,7 @@ from pypdf.types import OutlineType
 from freedom_ls.reports.gather import (
     CohortReportData,
     CompletedItem,
+    QuizAttempt,
     QuizColumn,
     QuizResult,
     QuizWrongAnswers,
@@ -123,6 +124,16 @@ def _busy_report_data() -> CohortReportData:
                 passed=False,
                 attempt_count=1,
                 completed_at=data.generated_at,
+                attempts=[
+                    QuizAttempt(
+                        attempt_number=1,
+                        completed_at=data.generated_at,
+                        score=3,
+                        max_score=10,
+                        percentage=30,
+                        passed=False,
+                    )
+                ],
             )
         ],
         wrong_answers=[

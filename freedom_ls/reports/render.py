@@ -21,7 +21,9 @@ from urllib.request import url2pathname
 from django.contrib.staticfiles import finders
 from django.template.loader import render_to_string
 
+from freedom_ls.reports.config import config
 from freedom_ls.reports.gather import CohortReportData
+from freedom_ls.site_aware_models.config import config as site_config
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -53,7 +55,8 @@ def _find_static(relative_path: str) -> Path:
         raise ReportRenderError(
             f"Static asset {relative_path!r} could not be resolved through the "
             "staticfiles finders. Run `npm run tailwind_build` if this is the "
-            "compiled Tailwind bundle."
+            "compiled Tailwind bundle; otherwise check the path against the "
+            "setting that names it."
         )
     return Path(resolved)
 
@@ -115,18 +118,95 @@ def extract_theme_tokens() -> str:
     return _extract_theme_tokens_from_css(path.read_text())
 
 
-def build_report_html(data: CohortReportData) -> str:
-    """Render `data` through the report template tree. No ORM access."""
+def build_font_css() -> tuple[str, set[Path]]:
+    """Build the report's `@font-face` rules, and the font files they name.
+
+    The report embeds its own fonts rather than naming system families:
+    WeasyPrint substitutes silently for a family it cannot find and draws a
+    `.notdef` box for a code point a family lacks, and neither shows up until
+    somebody reads a printed report.
+
+    Which faces those are is a setting, not a constant, for the same reason
+    colours are a theme's to supply: a project on its own brand overrides
+    `REPORTS_FONT_FACES` and the three stacks, and `print.css` -- which names
+    no font family, only `var(--report-font-*)` -- does not change.
+
+    The `src` URLs are absolute `file://` URLs, so font loading does not depend
+    on the document's base URL and the URL fetcher can hold an exact-file
+    allowlist rather than trusting a whole directory. Returns those resolved
+    paths alongside the CSS for exactly that purpose.
+    """
+    rules: list[str] = []
+    font_paths: set[Path] = set()
+    for face in config.REPORTS_FONT_FACES:
+        path = _find_static(face["static_path"]).resolve()
+        font_paths.add(path)
+        rules.append(
+            "@font-face {\n"
+            f'  font-family: "{face["family"]}";\n'
+            f"  font-weight: {face['weight']};\n"
+            f"  font-style: {face['style']};\n"
+            f'  src: url("{path.as_uri()}") format("truetype");\n'
+            "}"
+        )
+    stacks = (
+        ":root {\n"
+        f"  --report-font-display: {config.REPORTS_FONT_DISPLAY};\n"
+        f"  --report-font-body: {config.REPORTS_FONT_BODY};\n"
+        f"  --report-font-mono: {config.REPORTS_FONT_MONO};\n"
+        "}"
+    )
+    return "\n".join([*rules, stacks]), font_paths
+
+
+def _resolve_logo(static_path: str | None) -> tuple[str | None, Path | None]:
+    """Resolve an optional logo static path to a `file://` URL and its file.
+
+    An unset path is not a problem -- a fresh FLS install configures no logo,
+    and the report is designed to read as complete without one. A path that is
+    set but cannot be resolved is a misconfiguration, and raises rather than
+    rendering a report with a hole where somebody expected their logo.
+    """
+    if not static_path:
+        return None, None
+    path = _find_static(static_path).resolve()
+    return path.as_uri(), path
+
+
+def _build_document(data: CohortReportData) -> tuple[str, set[Path]]:
+    """Render the report to HTML, and collect every local file it may read."""
     print_css = _find_static("reports/print.css").read_text()
     theme_tokens = extract_theme_tokens()
-    return render_to_string(
-        "reports/report.html",
-        {"data": data, "theme_tokens": theme_tokens, "print_css": print_css},
+    font_css, allowed_paths = build_font_css()
+    site_logo_url, site_logo_path = _resolve_logo(site_config.HEADER_LOGO_STATIC_PATH)
+    powered_by_logo_url, powered_by_logo_path = _resolve_logo(
+        config.REPORTS_POWERED_BY_LOGO_STATIC_PATH
     )
+    allowed_paths |= {p for p in (site_logo_path, powered_by_logo_path) if p}
+    html = render_to_string(
+        "reports/report.html",
+        {
+            "data": data,
+            "theme_tokens": theme_tokens,
+            "font_css": font_css,
+            "print_css": print_css,
+            "site_logo_url": site_logo_url,
+            "powered_by_logo_url": powered_by_logo_url,
+        },
+    )
+    return html, allowed_paths
 
 
-def _restrictive_url_fetcher(trusted_dir: Path) -> Callable[[str], URLFetcherResponse]:
-    """Build a URL fetcher confined to this report's own bundled static assets.
+def build_report_html(data: CohortReportData) -> str:
+    """Render `data` through the report template tree. No ORM access."""
+    html, _ = _build_document(data)
+    return html
+
+
+def _restrictive_url_fetcher(
+    allowed_paths: set[Path],
+) -> Callable[[str], URLFetcherResponse]:
+    """Build a URL fetcher confined to an exact set of local files.
 
     The report renders author-supplied question and option text, so
     WeasyPrint's default fetcher -- which follows any `http(s)://` or
@@ -145,16 +225,17 @@ def _restrictive_url_fetcher(trusted_dir: Path) -> Callable[[str], URLFetcherRes
     So this fetcher raises `FatalURLFetchingError` directly, and
     `render_report_pdf()` re-raises it as `ReportRenderError`.
 
-    The report's own `print.css` references its bundled DejaVu fonts by a
-    relative `url()`, which WeasyPrint resolves through this same fetcher --
-    so it cannot refuse every URL unconditionally without breaking font
-    loading. It allows `file://` reads confined to `trusted_dir` (this
-    report's own static directory, holding only developer-authored assets)
-    and refuses everything else, including any file path outside that
-    directory and any `http(s)` URL that author-supplied text might
-    reference.
+    The document does legitimately reference a few local files -- the
+    configured font faces and, when a project sets them, the site and
+    "powered by" logos -- so the fetcher cannot refuse every URL
+    unconditionally. It allows exactly those files, named up front by
+    `_build_document()`, and refuses everything else: any other file path,
+    and any `http(s)` URL that author-supplied text might carry.
+
+    An exact-file allowlist rather than a trusted directory, because every
+    file the document may read is known before rendering starts. Nothing in
+    the report resolves a file path at render time.
     """
-    trusted_dir = trusted_dir.resolve()
 
     def fetch(url: str) -> URLFetcherResponse:
         from weasyprint.urls import FatalURLFetchingError, default_url_fetcher
@@ -162,7 +243,7 @@ def _restrictive_url_fetcher(trusted_dir: Path) -> Callable[[str], URLFetcherRes
         parsed = urlsplit(url)
         if parsed.scheme == "file":
             path = Path(url2pathname(parsed.path)).resolve()
-            if path.is_relative_to(trusted_dir):
+            if path in allowed_paths:
                 return default_url_fetcher(url)
         raise FatalURLFetchingError(f"External resource fetch refused: {url}")
 
@@ -174,9 +255,9 @@ def render_report_pdf(data: CohortReportData) -> bytes:
     import weasyprint
     from weasyprint.urls import FatalURLFetchingError
 
-    html = build_report_html(data)
+    html, allowed_paths = _build_document(data)
     base_dir = _find_static("reports/print.css").resolve().parent
-    url_fetcher = _restrictive_url_fetcher(base_dir)
+    url_fetcher = _restrictive_url_fetcher(allowed_paths)
     try:
         pdf_bytes: bytes = weasyprint.HTML(
             string=html, base_url=str(base_dir), url_fetcher=url_fetcher

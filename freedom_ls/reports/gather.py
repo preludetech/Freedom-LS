@@ -18,6 +18,7 @@ from datetime import datetime
 from typing import cast
 from uuid import UUID
 
+from django.contrib.sites.models import Site
 from django.db.models import Count, F, Window
 from django.db.models.functions import RowNumber
 from django.utils import timezone
@@ -34,6 +35,7 @@ from freedom_ls.content_engine.models import (
 from freedom_ls.reports.at_risk.loader import get_at_risk_rules
 from freedom_ls.reports.at_risk.rules import StudentDetailLike
 from freedom_ls.reports.config import config
+from freedom_ls.site_aware_models.config import config as site_config
 from freedom_ls.student_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -50,6 +52,11 @@ ATTENTION_LIST_MAX = 12
 CONFUSIONS_PER_QUIZ_MAX = 10
 MIN_RESPONDENTS_FOR_PERCENTAGE = 10
 
+# What a rule's flags are weighted as when the rule declares no severity.
+# Warning rather than error: a rule that never says how serious it is should
+# not be drawn as the most serious thing on the page.
+DEFAULT_FLAG_SEVERITY = "warning"
+
 # Free-text answers have no correctness concept at all, so they are excluded
 # from wrong-answer aggregation and the confusion tally entirely, not scored
 # wrong by default. The set itself lives with QuestionType in content_engine,
@@ -58,6 +65,18 @@ MIN_RESPONDENTS_FOR_PERCENTAGE = 10
 
 class ReportTooLargeError(Exception):
     """Raised when a cohort has more members than `config.REPORTS_MAX_STUDENTS`."""
+
+
+@dataclasses.dataclass(frozen=True)
+class QuizAttempt:
+    """One completed sitting of a quiz."""
+
+    attempt_number: int
+    completed_at: datetime
+    score: int | None
+    max_score: int | None
+    percentage: int | None
+    passed: bool | None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -70,6 +89,10 @@ class QuizResult:
     passed: bool | None
     attempt_count: int
     completed_at: datetime | None
+    # Chronological, oldest first, so a student's own section can show whether
+    # retries improved on the first sitting. Built from the same rows the
+    # latest_* fields above are read from, so the two cannot disagree.
+    attempts: list[QuizAttempt]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -140,6 +163,10 @@ class AtRiskFlag:
     rule_id: str
     label: str
     reason: str
+    # A role token name, so the report can weight a badge by how serious the
+    # flag is. Read off the rule with a fallback, never required of it — see
+    # where the flags are built.
+    severity: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -197,6 +224,7 @@ class CourseSection:
     course_id: UUID
     title: str
     is_active: bool
+    item_count: int
     quizzes: list[QuizColumn]
     student_rows: list[StudentRow]
     # `quizzes` chunked at config.REPORTS_MAX_QUIZ_COLUMNS, so a wide course
@@ -209,6 +237,11 @@ class CourseSection:
 @dataclasses.dataclass(frozen=True)
 class CohortReportData:
     cohort_name: str
+    # Who the report is from: the tenant's own display name, which is the only
+    # organisation identity FLS records. Whoever runs the platform underneath
+    # it is a separate, optional setting the render layer reads.
+    site_name: str
+    powered_by_name: str | None
     generated_at: datetime
     requested_by_name: str
     courses: list[CourseSection]
@@ -301,7 +334,7 @@ def _latest_completion(
     user_id: int,
     topic_complete_time: dict[tuple[int, UUID], datetime],
     latest_form_progress: dict[tuple[int, UUID], FormProgress],
-    completed_count_by_user_form: dict[tuple[int, UUID], int],
+    completed_attempts_by_user_form: dict[tuple[int, UUID], list[FormProgress]],
 ) -> tuple[str | None, datetime | None]:
     """Most recent completion timestamp and title among the given items for one student.
 
@@ -317,7 +350,7 @@ def _latest_completion(
             key = (user_id, item.id)
             at = (
                 latest_form_progress[key].completed_time
-                if completed_count_by_user_form.get(key, 0) > 0
+                if completed_attempts_by_user_form.get(key)
                 else None
             )
         if at is not None and (best_at is None or at > best_at):
@@ -330,7 +363,7 @@ def _completed_items(
     user_id: int,
     topic_complete_time: dict[tuple[int, UUID], datetime],
     latest_form_progress: dict[tuple[int, UUID], FormProgress],
-    completed_count_by_user_form: dict[tuple[int, UUID], int],
+    completed_attempts_by_user_form: dict[tuple[int, UUID], list[FormProgress]],
 ) -> list[CompletedItem]:
     completed: list[CompletedItem] = []
     for item in items:
@@ -342,12 +375,12 @@ def _completed_items(
                 )
         else:
             key = (user_id, item.id)
-            if completed_count_by_user_form.get(key, 0) > 0:
+            if completed_attempts_by_user_form.get(key):
                 fp = latest_form_progress[key]
-                # completed_count_by_user_form is only incremented for rows
-                # with completed_time set, and the ordering that produced
-                # "latest" guarantees a completed row sorts first whenever one
-                # exists — so completed_time is never None here.
+                # completed_attempts_by_user_form only collects rows with
+                # completed_time set, and the ordering that produced "latest"
+                # guarantees a completed row sorts first whenever one exists —
+                # so completed_time is never None here.
                 if fp.completed_time is not None:
                     completed.append(
                         CompletedItem(
@@ -359,33 +392,64 @@ def _completed_items(
     return completed
 
 
-def _quiz_result_for(
-    user_id: int,
-    form: Form,
-    latest_form_progress: dict[tuple[int, UUID], FormProgress],
-    completed_count_by_user_form: dict[tuple[int, UUID], int],
-) -> QuizResult | None:
-    """The student's latest completed attempt at this quiz, or None if never attempted."""
-    key = (user_id, form.id)
-    attempt_count = completed_count_by_user_form.get(key, 0)
-    if attempt_count == 0:
-        return None
-    fp = latest_form_progress[key]
-    latest_score: int | None = None
-    latest_max_score: int | None = None
+def _score_attempt(
+    fp: FormProgress, form: Form
+) -> tuple[int | None, int | None, int | None, bool | None]:
+    """One sitting's score, max score, percentage and verdict.
+
+    The guard proven at educator_interface/views.py: quiz_percentage() raises
+    on falsy scores, passed() raises when quiz_pass_percentage is unset, and
+    quiz_pass_percentage is genuinely nullable. One implementation, so a
+    sitting reads the same in the attempts table as in the summary cell.
+    """
+    score: int | None = None
+    max_score: int | None = None
     percentage: int | None = None
     passed: bool | None = None
-    # Reuses the guard proven at educator_interface/views.py: quiz_percentage()
-    # raises on falsy scores, passed() raises when quiz_pass_percentage is
-    # unset, and quiz_pass_percentage is genuinely nullable.
     if fp.completed_time and fp.scores:
         try:
-            latest_score = fp.scores.get("score")
-            latest_max_score = fp.scores.get("max_score")
+            score = fp.scores.get("score")
+            max_score = fp.scores.get("max_score")
             percentage = fp.quiz_percentage()
             passed = fp.passed() if form.quiz_pass_percentage is not None else None
         except (KeyError, ValueError):
             percentage = passed = None
+    return score, max_score, percentage, passed
+
+
+def _quiz_result_for(
+    user_id: int,
+    form: Form,
+    latest_form_progress: dict[tuple[int, UUID], FormProgress],
+    completed_attempts_by_user_form: dict[tuple[int, UUID], list[FormProgress]],
+) -> QuizResult | None:
+    """The student's completed attempts at this quiz, or None if never attempted."""
+    key = (user_id, form.id)
+    attempt_rows = completed_attempts_by_user_form.get(key, [])
+    if not attempt_rows:
+        return None
+
+    attempts: list[QuizAttempt] = []
+    for attempt_row in attempt_rows:
+        completed_at = attempt_row.completed_time
+        # Only rows with completed_time set are collected into this list; the
+        # check is what narrows the Optional for the type checker.
+        if completed_at is None:
+            continue
+        score, max_score, percentage, passed = _score_attempt(attempt_row, form)
+        attempts.append(
+            QuizAttempt(
+                attempt_number=len(attempts) + 1,
+                completed_at=completed_at,
+                score=score,
+                max_score=max_score,
+                percentage=percentage,
+                passed=passed,
+            )
+        )
+
+    fp = latest_form_progress[key]
+    latest_score, latest_max_score, percentage, passed = _score_attempt(fp, form)
     return QuizResult(
         form_id=form.id,
         title=form.title,
@@ -393,8 +457,9 @@ def _quiz_result_for(
         latest_max_score=latest_max_score,
         latest_percentage=percentage,
         passed=passed,
-        attempt_count=attempt_count,
+        attempt_count=len(attempts),
         completed_at=fp.completed_time,
+        attempts=attempts,
     )
 
 
@@ -491,7 +556,12 @@ def gather_cohort_report_data(
     )
 
     latest_form_progress: dict[tuple[int, UUID], FormProgress] = {}
-    completed_count_by_user_form: dict[tuple[int, UUID], int] = defaultdict(int)
+    # Every completed sitting, not merely how many there were: the per-student
+    # attempts table reads from this, and a count would only have to be
+    # reconciled against it later.
+    completed_attempts_by_user_form: dict[tuple[int, UUID], list[FormProgress]] = (
+        defaultdict(list)
+    )
     completed_form_ids_by_user: dict[int, set[UUID]] = defaultdict(set)
     completed_attempt_ids: list[UUID] = []
     fp_user_form: dict[UUID, tuple[int, UUID]] = {}
@@ -502,9 +572,14 @@ def gather_cohort_report_data(
         if key not in latest_form_progress:
             latest_form_progress[key] = fp
         if fp.completed_time is not None:
-            completed_count_by_user_form[key] += 1
+            completed_attempts_by_user_form[key].append(fp)
             completed_form_ids_by_user[fp.user_id].add(fp.form_id)
             completed_attempt_ids.append(fp.id)
+
+    # The rows arrive newest-completed first; a reader of a student's section
+    # wants their sittings in the order they sat them.
+    for attempt_rows in completed_attempts_by_user_form.values():
+        attempt_rows.reverse()
 
     # Filtering directly on a window annotation works from Django 4.2 onward.
     first_attempt_ids: set[UUID] = set(
@@ -708,14 +783,14 @@ def gather_cohort_report_data(
                 user_id,
                 topic_complete_time,
                 latest_form_progress,
-                completed_count_by_user_form,
+                completed_attempts_by_user_form,
             )
             quiz_cells: dict[UUID, QuizResult | None] = {
                 column.form_id: _quiz_result_for(
                     user_id,
                     forms_by_id[column.form_id],
                     latest_form_progress,
-                    completed_count_by_user_form,
+                    completed_attempts_by_user_form,
                 )
                 for column in quiz_columns
             }
@@ -760,6 +835,7 @@ def gather_cohort_report_data(
                 course_id=course.id,
                 title=course.title,
                 is_active=reg.is_active,
+                item_count=len(items),
                 quizzes=quiz_columns,
                 student_rows=student_rows,
                 summary_tables=summary_tables,
@@ -788,20 +864,20 @@ def gather_cohort_report_data(
             user_id,
             topic_complete_time,
             latest_form_progress,
-            completed_count_by_user_form,
+            completed_attempts_by_user_form,
         )
         completed_items = _completed_items(
             all_items,
             user_id,
             topic_complete_time,
             latest_form_progress,
-            completed_count_by_user_form,
+            completed_attempts_by_user_form,
         )
         quiz_results = [
             result
             for result in (
                 _quiz_result_for(
-                    user_id, form, latest_form_progress, completed_count_by_user_form
+                    user_id, form, latest_form_progress, completed_attempts_by_user_form
                 )
                 for form_id, form in forms_by_id.items()
                 if form_id in quiz_form_ids
@@ -846,7 +922,15 @@ def gather_cohort_report_data(
         # Protocol declared with plain mutable fields, hence the cast.
         detail_for_rules = cast("StudentDetailLike", detail)
         flags = [
-            AtRiskFlag(rule_id=rule.id, label=rule.label, reason=reason)
+            AtRiskFlag(
+                rule_id=rule.id,
+                label=rule.label,
+                reason=reason,
+                # Read off the rule rather than required of it: a downstream
+                # rule class written before severity existed keeps working,
+                # and its flags simply read as warnings.
+                severity=getattr(rule, "severity", DEFAULT_FLAG_SEVERITY),
+            )
             for rule in get_at_risk_rules()
             for reason in [rule.evaluate(detail_for_rules)]
             if reason is not None
@@ -866,6 +950,11 @@ def gather_cohort_report_data(
 
     return CohortReportData(
         cohort_name=cohort.name,
+        # HEADER_TITLE first, mirroring how the site header and outbound email
+        # resolve the same name, so a project that renamed itself in one place
+        # is not still called something else on its reports.
+        site_name=site_config.HEADER_TITLE or Site.objects.get(pk=site_id).name,
+        powered_by_name=config.REPORTS_POWERED_BY_NAME,
         generated_at=now,
         requested_by_name=requested_by_name,
         courses=course_sections,

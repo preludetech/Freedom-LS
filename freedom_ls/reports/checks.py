@@ -14,6 +14,10 @@ W002 — The compiled Tailwind bundle can't be resolved through the staticfiles
 W003 — REPORTS_AT_RISK_RULES_MODULE can't be imported, or exports neither
        AT_RISK_RULES nor BASE_AT_RISK_RULES, so a report generation would
        crash at run time instead of being caught at `manage.py check` time.
+W004 — A face named by REPORTS_FONT_FACES can't be resolved through the
+       staticfiles finders. Same shape as W002, and for the same reason: a
+       project that repoints the font faces at its own brand should learn
+       about a typo from `manage.py check`, not from a failed report.
 """
 
 from __future__ import annotations
@@ -92,3 +96,32 @@ def check_at_risk_rules_module_configured(**kwargs: object) -> list[CheckMessage
         ]
 
     return []
+
+
+@register()
+def check_report_font_faces_resolvable(**kwargs: object) -> list[CheckMessage]:
+    """W004: Warn for every REPORTS_FONT_FACES path the finders can't resolve."""
+    from freedom_ls.reports.config import config
+
+    return [
+        Warning(
+            f"Report font face {face.get('family')!r} names "
+            f"{face.get('static_path')!r}, which could not be resolved through "
+            f"the staticfiles finders. Reports will fail to render.",
+            hint=(
+                "Correct the static_path in REPORTS_FONT_FACES, or add the font "
+                "file to a static directory the finders search."
+            ),
+            id="freedom_ls_reports.W004",
+        )
+        for face in config.REPORTS_FONT_FACES
+        if not _font_face_resolves(face)
+    ]
+
+
+def _font_face_resolves(face: dict[str, str]) -> bool:
+    """Whether a face entry names a static path the finders can resolve."""
+    static_path = face.get("static_path")
+    if not static_path:
+        return False
+    return finders.find(static_path) is not None

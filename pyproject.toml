@@ -260,7 +260,15 @@ show_error_codes = true
 show_column_numbers = true
 pretty = true
 
-exclude = ["migrations/", "manage\\.py", "claude_plugins/(?!fls-content/validate)"]
+# spec_dd/ holds specs, plans and design artefacts, not shipped code. A design
+# sample there is a throwaway sketch of a layout, and typing it to the standard
+# the application is held to would be work spent on something we delete.
+exclude = [
+    "migrations/",
+    "manage\\.py",
+    "claude_plugins/(?!fls-content/validate)",
+    "spec_dd/",
+]
 
 [[tool.mypy.overrides]]
 module = "*.migrations.*"

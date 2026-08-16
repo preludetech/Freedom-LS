@@ -47,9 +47,19 @@ class AtRiskRule(Protocol):
     def evaluate(self, student: StudentDetailLike) -> str | None: ...
 
 
+# How heavily the report draws a rule's flags: a role token name, so a badge
+# is coloured by the theme rather than by this module. Deliberately not part
+# of the AtRiskRule protocol above -- a rule written before this existed must
+# keep working, so the reader falls back to a default instead of requiring
+# the attribute. See DEFAULT_FLAG_SEVERITY in reports/gather.py.
+SEVERITY_ERROR = "error"
+SEVERITY_WARNING = "warning"
+
+
 class NoRecordedActivityRule:
     id = "no_activity"
     label = "No recorded activity"
+    severity = SEVERITY_ERROR
 
     def evaluate(self, student: StudentDetailLike) -> str | None:
         if student.has_any_progress:
@@ -60,6 +70,7 @@ class NoRecordedActivityRule:
 class FailedLatestQuizAttemptRule:
     id = "failed_latest_quiz"
     label = "Failed most recent quiz attempt"
+    severity = SEVERITY_ERROR
 
     def evaluate(self, student: StudentDetailLike) -> str | None:
         latest: QuizResultLike | None = None
@@ -81,6 +92,7 @@ class FailedLatestQuizAttemptRule:
 class InactiveForDaysRule:
     id = "inactive"
     label = "No activity recently"
+    severity = SEVERITY_WARNING
 
     def __init__(self, days: int = 7) -> None:
         self.days = days

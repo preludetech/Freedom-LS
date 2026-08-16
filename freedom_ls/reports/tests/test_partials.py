@@ -12,7 +12,6 @@ The whole-document tier (`build_report_html()`) is out of scope for this file â€
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from uuid import uuid4
 
 from django.template.loader import render_to_string
@@ -20,7 +19,6 @@ from django.template.loader import render_to_string
 from freedom_ls.reports.gather import (
     AtRiskFlag,
     AttentionList,
-    CohortReportData,
     CompletedItem,
     ConfusionBlock,
     CourseSection,
@@ -28,49 +26,17 @@ from freedom_ls.reports.gather import (
     QuizConfusion,
     QuizResult,
     QuizWrongAnswers,
-    StudentDetail,
     StudentRow,
-    SummaryRow,
     SummaryTable,
     WrongAnswer,
 )
-
-GENERATED_AT = datetime(2026, 3, 15, 10, 30, tzinfo=UTC)
-
-
-def _student_detail(**overrides: object) -> StudentDetail:
-    defaults: dict[str, object] = {
-        "user_id": 1,
-        "full_name": "Jamie Smith",
-        "sort_key": ("Smith", "Jamie"),
-        "completion_percentage": 0,
-        "completed_item_count": 0,
-        "total_item_count": 5,
-        "last_completed_title": None,
-        "last_completed_at": None,
-        "has_any_progress": False,
-        "completed_items": [],
-        "quiz_results": [],
-        "wrong_answers": [],
-        "report_generated_at": GENERATED_AT,
-        "flags": [],
-    }
-    defaults.update(overrides)
-    return StudentDetail(**defaults)
-
-
-def _summary_row(row: StudentRow, quizzes: list[QuizColumn]) -> SummaryRow:
-    """The SummaryRow gather.py would derive from this StudentRow for `quizzes`."""
-    return SummaryRow(
-        user_id=row.user_id,
-        full_name=row.full_name,
-        completion_percentage=row.completion_percentage,
-        completed_item_count=row.completed_item_count,
-        total_item_count=row.total_item_count,
-        last_completed_title=row.last_completed_title,
-        last_completed_at=row.last_completed_at,
-        cells=[row.quiz_cells[quiz.form_id] for quiz in quizzes],
-    )
+from freedom_ls.reports.tests.report_data_builders import (
+    GENERATED_AT,
+    _cohort_report_data,
+    _course_section_defaults,
+    _student_detail,
+    _summary_row,
+)
 
 
 def _course_section(
@@ -85,40 +51,18 @@ def _course_section(
     """
     quizzes = quizzes or []
     student_rows = student_rows or []
-    defaults: dict[str, object] = {
-        "course_id": uuid4(),
-        "title": "Course A",
-        "is_active": True,
-        "quizzes": quizzes,
-        "student_rows": student_rows,
-        "summary_tables": [
-            SummaryTable(
-                quizzes=quizzes,
-                rows=[_summary_row(row, quizzes) for row in student_rows],
-                continued=False,
-            )
-        ],
-        "confusions_by_quiz": {},
-    }
+    defaults = _course_section_defaults()
+    defaults["quizzes"] = quizzes
+    defaults["student_rows"] = student_rows
+    defaults["summary_tables"] = [
+        SummaryTable(
+            quizzes=quizzes,
+            rows=[_summary_row(row, quizzes) for row in student_rows],
+            continued=False,
+        )
+    ]
     defaults.update(overrides)
     return CourseSection(**defaults)
-
-
-def _cohort_report_data(**overrides: object) -> CohortReportData:
-    defaults: dict[str, object] = {
-        "cohort_name": "Cohort A",
-        "generated_at": GENERATED_AT,
-        "requested_by_name": "Jamie Educator",
-        "courses": [],
-        "students": [],
-        "attention_list": AttentionList(students=[], shown=0, total=0),
-        "cohort_size": 0,
-        "median_completion": 0,
-        "not_started_count": 0,
-        "complete_count": 0,
-    }
-    defaults.update(overrides)
-    return CohortReportData(**defaults)
 
 
 class TestFlagList:
@@ -128,11 +72,13 @@ class TestFlagList:
                 "no_activity",
                 "No recorded activity",
                 "Has not started any course item.",
+                "warning",
             ),
             AtRiskFlag(
                 "inactive",
                 "No activity recently",
                 "No activity recorded in over 7 days.",
+                "warning",
             ),
         ]
 
@@ -191,6 +137,7 @@ class TestQuizResultCell:
             passed=True,
             attempt_count=2,
             completed_at=GENERATED_AT,
+            attempts=[],
         )
 
         html = render_to_string(
@@ -211,6 +158,7 @@ class TestQuizResultCell:
             passed=False,
             attempt_count=1,
             completed_at=GENERATED_AT,
+            attempts=[],
         )
 
         html = render_to_string(
@@ -230,6 +178,7 @@ class TestQuizResultCell:
             passed=None,
             attempt_count=1,
             completed_at=GENERATED_AT,
+            attempts=[],
         )
 
         html = render_to_string(
@@ -299,6 +248,7 @@ class TestAttentionEntry:
                     "inactive",
                     "No activity recently",
                     "No activity recorded in over 7 days.",
+                    "warning",
                 )
             ],
         )
@@ -341,6 +291,7 @@ class TestAtAGlance:
                     "no_activity",
                     "No recorded activity",
                     "Has not started any course item.",
+                    "warning",
                 )
             ],
         )
@@ -463,6 +414,7 @@ class TestCourseSummaryTable:
             passed=True,
             attempt_count=1,
             completed_at=GENERATED_AT,
+            attempts=[],
         )
         row = StudentRow(
             user_id=5,
@@ -564,6 +516,7 @@ class TestStudentDetail:
                     "no_activity",
                     "No recorded activity",
                     "Has not started any course item.",
+                    "warning",
                 )
             ],
         )

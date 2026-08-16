@@ -50,16 +50,27 @@ def _student_detail(**overrides: object) -> StudentDetail:
     return StudentDetail(**defaults)
 
 
-def _course_section(**overrides: object) -> CourseSection:
-    defaults: dict[str, object] = {
+def _course_section_defaults() -> dict[str, object]:
+    """A fresh default field map for one course section.
+
+    Returned rather than applied so a caller that has to derive one field from
+    another -- summary tables from the quiz columns, say -- can do so before
+    building the frozen dataclass.
+    """
+    return {
         "course_id": uuid4(),
         "title": "Course A",
         "is_active": True,
+        "item_count": 0,
         "quizzes": [],
         "student_rows": [],
         "summary_tables": [],
         "confusions_by_quiz": {},
     }
+
+
+def _course_section(**overrides: object) -> CourseSection:
+    defaults = _course_section_defaults()
     defaults.update(overrides)
     return CourseSection(**defaults)
 
@@ -81,6 +92,8 @@ def _summary_row(row: StudentRow, quizzes: list[QuizColumn]) -> SummaryRow:
 def _cohort_report_data(**overrides: object) -> CohortReportData:
     defaults: dict[str, object] = {
         "cohort_name": "Cohort A",
+        "site_name": "Test Academy",
+        "powered_by_name": None,
         "generated_at": GENERATED_AT,
         "requested_by_name": "Jamie Educator",
         "courses": [],
@@ -105,7 +118,10 @@ def _full_report_data() -> CohortReportData:
     """
     reason = "Has not started any course item in over 7 days, a distinctive reason."
     flag = AtRiskFlag(
-        rule_id="no_activity", label="No recorded activity", reason=reason
+        rule_id="no_activity",
+        label="No recorded activity",
+        reason=reason,
+        severity="error",
     )
 
     quiz = QuizColumn(
@@ -135,6 +151,7 @@ def _full_report_data() -> CohortReportData:
     course_active = _course_section(
         title="Astronomy",
         is_active=True,
+        item_count=5,
         quizzes=[quiz],
         student_rows=[row],
         summary_tables=[
