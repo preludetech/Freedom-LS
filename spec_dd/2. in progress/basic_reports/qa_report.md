@@ -29,6 +29,73 @@ severity.
 
 ---
 
+# Fixes applied
+
+All twenty findings were fixed on `basic_reports` after this run, each with a failing test first.
+The findings below are left as written so the report stays a record of what the run saw; this
+section records what changed and where the fix differed from what the finding assumed.
+
+| Finding | Fix |
+|---|---|
+| F1 | New `REPORTS_MAX_QUIZ_COLUMNS` setting (default **11**, the budget this run measured). Quiz columns are chunked into a first table plus captioned continuation tables instead of clipping. The completion bar also drops from 60mm to 16mm inside a summary table, so the budget buys more columns than it did here |
+| F2 | `.completion-bar-inner` was a `<span>` with no `display` rule, so an inline box ignored `width: N%`. Now `display: block` |
+| F3 | `GeneratedReportAdmin.get_queryset` filters on `get_objects_for_user(view_cohort)`, with object-level `has_view_permission` / `has_delete_permission` |
+| F4 | `.student-details` starts on a fresh portrait page |
+| F5 | Landscape pages clear `@top-center`; the confusions section carries a running-element reset **and** starts on its own page |
+| F6 | WeasyPrint's UA stylesheet bookmarks every `h1`–`h6`; bookmarks are now declared explicitly for exactly the headings the Contents page lists, and the running name is a separate element from the `<h3>` |
+| F7 | Three-state `quiz_verdict` replaces the two-state `is_failed_quiz`, using the same `quiz_pass_percentage is not None` guard the PDF and educator panel already used |
+| F8 | The task layer threads the requester's display name into the report data |
+| F9 | Explicit empty-state copy on the title page, summary tables, student details and confusions; a zero denominator now reads `— No course items` |
+| F10 | One sort feeds both the summary table and the student sections |
+| F11 | Narrower bar plus a `nowrap` label |
+| F12 | Round indicator for `multiple_choice`, square for `checkboxes`, plus a "Select all that apply." hint |
+| F13 | "Wrong answers" headings name their quiz — **see the note below on the "(correct)" half** |
+| F14 | `__str__` names the cohort |
+| F15 | Dropped `break-inside: avoid` from the summary-table wrapper |
+| F16 | Abbreviations keep the whole quiz number (`VQ01`, `HQ12`) and are disambiguated within a course |
+| F17 | The percentage names its respondent count |
+| F18 | `get_incorrect_quiz_answers()` skips free-text questions. `score_quiz()`'s `max_score` is deliberately unchanged, so such a quiz still cannot reach 100% |
+| F19 | The `post_delete` receiver removes the emptied per-report directory |
+| F20 | Server-side rejection at HTTP 422 without advancing, no blank `QuestionAnswer` rows, and client-side checkbox-group validation |
+
+## Where the fix differs from the finding
+
+- **F13's "(correct)" suffix is not a product bug.** The redundant `Voltage Q08 option A (correct)`
+  text comes from this run's own fixture: `qa_create_report_course.py` literally names options
+  `f"{stem} option A (correct)"`. Only the unlabelled repeated "Wrong answers" headings were a
+  defect. Option text is authored content and was left alone.
+- **F3 returns 302, not 403.** The finding expected the detail view to 403. `ModelAdmin` looks the
+  object up through `get_queryset` *before* the permission hook runs, so a hidden row is a
+  does-not-exist redirect to the admin index. Forcing a literal 403 would mean duplicating
+  Django's `get_object` internals. No record is rendered and the cohort name never reaches the
+  response either way.
+- **F4 keeps `.student-section:first-of-type { break-before: avoid }`.** Removing it, as the fix
+  first tried, strands the "Student details" heading alone on a blank page — F15's exact shape.
+  Keeping it holds the first student against the heading on the fresh portrait page, which
+  satisfies F4's requirement.
+- **F5 needed a page break, not just a reset element.** A reset running element alone still leaked,
+  because WeasyPrint takes the *first* running element on a page and the confusions section always
+  began on the last student's page. `.confusions { break-before: page }` closes it. Typical reports
+  gain one page; reports with a confusion block taller than a page **lose** two.
+
+## QA 7 sign-off
+
+Answered: the budget is **11 quiz columns**, now expressed as `REPORTS_MAX_QUIZ_COLUMNS` and
+**enforced by splitting rather than clipping**, so exceeding it is no longer silent data loss. The
+question this run left open — "the number that finally forced a split" — no longer applies.
+
+## Not carried over
+
+- The **Observations** section below was left alone by decision: those are pre-existing or need a
+  product decision, not QA-run failures. The "failed quiz counts toward completion percentage"
+  question in particular is still open.
+- Three artifacts in the manifest are **not committed** — `xl-cohort-long-course.pdf`, its
+  byte-identical `_column-overflow` copy and `large-cohort-medium-course.pdf`. The
+  `check-added-large-files` pre-commit hook caps a blob at 1024 KB and all three exceed it. They
+  remain on disk in `qa-artifacts/`.
+
+---
+
 # Failures
 
 ## F1 — Landscape summary table is clipped instead of splitting once quiz columns exceed the budget
