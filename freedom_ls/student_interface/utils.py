@@ -140,7 +140,14 @@ def get_content_status(
         form_progress = form_progress_map.get(content_item.id)
 
         if form_progress and form_progress.completed_time:
-            if form_progress.form.strategy == FormStrategy.QUIZ:
+            # A quiz with no pass mark configured has nothing to fail against —
+            # treat it the same as a non-quiz form (no verdict) rather than
+            # calling passed(), which raises for a null quiz_pass_percentage.
+            is_scored_quiz = (
+                form_progress.form.strategy == FormStrategy.QUIZ
+                and form_progress.form.quiz_pass_percentage is not None
+            )
+            if is_scored_quiz:
                 if form_progress.passed():
                     return COMPLETE, READY
                 else:
