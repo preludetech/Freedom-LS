@@ -25,6 +25,8 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.student_management.factories import CohortFactory
 from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
 
+# transaction=True so the live server's own DB connection sees the fixture
+# data this test's connection committed.
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 # Narrow enough that the sidebar is the modal sheet rather than the docked
@@ -88,13 +90,12 @@ def test_switching_from_the_mobile_sheet_closes_it_and_keeps_url_and_content_tog
     page.get_by_role("button", name="Switch organisation").click()
     page.get_by_role("menuitemradio", name="Org B").click()
 
+    # That the switch serves Org B's content is proven in the fast tests; what
+    # only a browser shows is that the sheet closed behind it.
     expect(page).to_have_url(
         _interface_url(live_server, organisation_b.slug, "cohorts")
     )
     expect(sheet).to_be_hidden()
-    expect(page.locator("#organisation-switcher")).to_contain_text("Org B")
-    expect(page.get_by_role("link", name="Beta Cohort")).to_be_visible()
-    expect(page.get_by_role("link", name="Alpha Cohort")).to_have_count(0)
 
     # Back must land on the organisation switched away from with its content
     # restored — the sheet's own history entry must not strand the address bar

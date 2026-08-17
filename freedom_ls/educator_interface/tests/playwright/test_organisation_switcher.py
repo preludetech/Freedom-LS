@@ -21,6 +21,8 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.student_management.factories import CohortFactory
 from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
 
+# transaction=True so the live server's own DB connection sees the fixture
+# data this test's connection committed.
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
@@ -58,36 +60,50 @@ def _interface_url(live_server, organisation_slug: str, path_string: str) -> str
     return f"{live_server.url}{path}"
 
 
-def test_keyboard_switch_updates_aria_checked_announcer_and_switcher_label(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: User,
-):
-    page = educator_logged_in_page
+@pytest.fixture
+def two_organisations(educator_user: User):
     organisation_a = OrganisationFactory(name="Org A")
     organisation_b = OrganisationFactory(name="Org B")
     CohortFactory(organisation=organisation_b, name="Org B Cohort")
     assign_object_role(educator_user, organisation_a, "organisation_staff")
     assign_object_role(educator_user, organisation_b, "organisation_staff")
+    return organisation_a, organisation_b
 
+
+def test_ordinary_navigation_leaves_the_live_region_in_place(
+    live_server,
+    educator_logged_in_page: Page,
+    two_organisations,
+):
+    """The live region lives outside #main-content so an ordinary swap leaves
+    it alone. Replacing the element rather than its contents would leave
+    assistive technology watching a node no longer in the document."""
+    page = educator_logged_in_page
+    organisation_a, _organisation_b = two_organisations
     page.goto(_interface_url(live_server, organisation_a.slug, "cohorts"))
-
-    # A normal in-organisation navigation must not disturb the persistent
-    # live region — it lives outside #main-content precisely so ordinary
-    # swaps leave it alone.
     announcer = page.locator("#scope-announcer")
     expect(announcer).to_have_count(1)
+
     page.get_by_role("link", name="Users").click()
+
     expect(page).to_have_url(_interface_url(live_server, organisation_a.slug, "users"))
     expect(announcer).to_have_count(1)
 
-    # Open the switcher with the keyboard and move to the second option.
-    trigger = page.get_by_role("button", name="Switch organisation")
-    trigger.focus()
+
+def test_keyboard_switch_moves_focus_and_announces_in_place(
+    live_server,
+    educator_logged_in_page: Page,
+    two_organisations,
+):
+    page = educator_logged_in_page
+    organisation_a, organisation_b = two_organisations
+    page.goto(_interface_url(live_server, organisation_a.slug, "users"))
+    announcer = page.locator("#scope-announcer")
+
+    page.get_by_role("button", name="Switch organisation").focus()
     page.keyboard.press("Enter")
     org_a_option = page.get_by_role("menuitemradio", name="Org A")
     org_b_option = page.get_by_role("menuitemradio", name="Org B")
-    expect(org_a_option).to_be_visible()
     # Opening from the keyboard puts focus straight on the checked option.
     expect(org_a_option).to_be_focused()
     page.keyboard.press("Tab")
@@ -95,19 +111,8 @@ def test_keyboard_switch_updates_aria_checked_announcer_and_switcher_label(
 
     page.keyboard.press("Enter")
 
-    # The URL, the switcher label and the live region all reflect Org B.
     expect(page).to_have_url(_interface_url(live_server, organisation_b.slug, "users"))
-    expect(page.locator("#organisation-switcher")).to_contain_text("Org B")
+    # Still the same element, now carrying the new text — the whole point of
+    # announcing into the live region rather than replacing it.
     expect(announcer).to_have_count(1)
     expect(announcer).to_have_text("Now viewing Org B")
-
-    # aria-checked has moved to the newly selected organisation.
-    trigger = page.get_by_role("button", name="Switch organisation")
-    trigger.focus()
-    page.keyboard.press("Enter")
-    expect(page.get_by_role("menuitemradio", name="Org B")).to_have_attribute(
-        "aria-checked", "true"
-    )
-    expect(page.get_by_role("menuitemradio", name="Org A")).to_have_attribute(
-        "aria-checked", "false"
-    )

@@ -9,8 +9,10 @@ navigation.
 
 from __future__ import annotations
 
+import lxml.html
 import pytest
 
+from django.contrib.messages import get_messages
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -38,6 +40,19 @@ def _switch(client, url: str):
         HTTP_HX_TARGET="main-content",
         HTTP_X_ORGANISATION_SWITCH="true",
     )
+
+
+def _switcher(response) -> str:
+    """The rendered #organisation-switcher element.
+
+    Selected from the parsed document rather than sliced out of the raw
+    response, so the assertions do not depend on what happens to render
+    after the switcher.
+    """
+    document = lxml.html.fromstring(response.content)
+    elements = document.cssselect("#organisation-switcher")
+    assert elements, "no #organisation-switcher in the response"
+    return str(lxml.html.tostring(elements[0], encoding="unicode"))
 
 
 def _two_organisation_educator():
@@ -78,10 +93,10 @@ class TestSwitchOnAListPage:
 
         response = _switch(client, _interface_url(organisation_b.slug, "cohorts"))
 
-        content = response.content.decode()
-        assert 'hx-swap-oob="innerHTML:#scope-announcer"' in content
-        assert 'id="scope-announcer"' not in content
-        assert "Now viewing Org B" in content
+        # That the announcement rides an out-of-band swap into the persistent
+        # live region is panel_framework's contract, asserted in its own
+        # test_htmx_navigation. What is host-specific is the wording.
+        assert "Now viewing Org B" in response.content.decode()
 
     def test_switch_response_carries_the_updated_switcher_label(self, logged_in_client):
         _organisation_a, organisation_b, _cohort_a, educator = (
@@ -91,51 +106,60 @@ class TestSwitchOnAListPage:
 
         response = _switch(client, _interface_url(organisation_b.slug, "cohorts"))
 
-        content = response.content.decode()
-        switcher_fragment = content[content.index('id="organisation-switcher"') :]
-        assert "Org B" in switcher_fragment
+        assert "Org B" in _switcher(response)
+
+    def test_switcher_links_keep_the_visitor_on_the_same_section(
+        self, logged_in_client
+    ):
+        """Switching from the users list must land on the other organisation's
+        users list, not bounce the visitor back to cohorts."""
+        organisation_a, organisation_b, _cohort_a, educator = (
+            _two_organisation_educator()
+        )
+        client = logged_in_client(educator)
+
+        response = client.get(_interface_url(organisation_a.slug, "users"))
+
+        assert _interface_url(organisation_b.slug, "users") in _switcher(response)
 
 
 @pytest.mark.django_db
 class TestSwitchOnAForeignDetailPage:
-    def test_returns_the_list_content_instead_of_a_404(self, logged_in_client):
+    """Switching while sitting on a detail page belonging to the organisation
+    being left: the detail row does not exist in the new organisation, so the
+    switch softens to that organisation's list rather than 404ing."""
+
+    @pytest.fixture
+    def switch_response(self, logged_in_client):
         _organisation_a, organisation_b, cohort_a, educator = (
             _two_organisation_educator()
         )
+        CohortFactory(organisation=organisation_b, name="Cohort B Only")
         client = logged_in_client(educator)
 
         response = _switch(
             client, _interface_url(organisation_b.slug, f"cohorts/{cohort_a.pk}")
         )
+        response.organisation_b = organisation_b
+        return response
 
-        assert response.status_code == 200
-        assert b"Cohort A Only" not in response.content
+    def test_returns_the_new_organisations_list_instead_of_a_404(self, switch_response):
+        assert switch_response.status_code == 200
+        content = switch_response.content.decode()
+        assert "Cohort B Only" in content
+        assert "Cohort A Only" not in content
 
-    def test_sets_hx_push_url_to_the_list(self, logged_in_client):
-        _organisation_a, organisation_b, cohort_a, educator = (
-            _two_organisation_educator()
-        )
-        client = logged_in_client(educator)
-
-        response = _switch(
-            client, _interface_url(organisation_b.slug, f"cohorts/{cohort_a.pk}")
-        )
-
-        assert response["HX-Push-Url"] == _interface_url(organisation_b.slug, "cohorts")
-
-    def test_queues_an_info_message_naming_the_new_organisation(self, logged_in_client):
-        _organisation_a, organisation_b, cohort_a, educator = (
-            _two_organisation_educator()
-        )
-        client = logged_in_client(educator)
-
-        response = _switch(
-            client, _interface_url(organisation_b.slug, f"cohorts/{cohort_a.pk}")
+    def test_sets_hx_push_url_to_the_list(self, switch_response):
+        assert switch_response["HX-Push-Url"] == _interface_url(
+            switch_response.organisation_b.slug, "cohorts"
         )
 
-        content = response.content.decode()
-        assert "Switched to Org B" in content
-        assert "in this organisation" in content
+    def test_queues_an_info_message_naming_the_new_organisation(self, switch_response):
+        messages = [str(m) for m in get_messages(switch_response.wsgi_request)]
+
+        assert messages == [
+            "Switched to Org B — that cohort isn't in this organisation"
+        ]
 
     def test_foreign_detail_without_the_switch_header_still_404s(
         self, logged_in_client
@@ -184,14 +208,9 @@ class TestSwitcherRendering:
 
         response = client.get(_interface_url(organisation.slug, "cohorts"))
 
-        content = response.content.decode()
-        switcher_fragment = content[
-            content.index('id="organisation-switcher"') : content.index(
-                'id="sidebar-nav"'
-            )
-        ]
-        assert "Solo Org" in switcher_fragment
-        assert "aria-haspopup" not in switcher_fragment
+        switcher = _switcher(response)
+        assert "Solo Org" in switcher
+        assert 'role="menuitemradio"' not in switcher
 
     def test_two_accessible_organisations_renders_current_one_as_checked(
         self, logged_in_client
@@ -203,12 +222,7 @@ class TestSwitcherRendering:
 
         response = client.get(_interface_url(organisation_a.slug, "cohorts"))
 
-        content = response.content.decode()
-        switcher_fragment = content[
-            content.index('id="organisation-switcher"') : content.index(
-                'id="sidebar-nav"'
-            )
-        ]
-        assert 'role="menuitemradio"' in switcher_fragment
-        assert 'aria-checked="true"' in switcher_fragment
-        assert 'aria-checked="false"' in switcher_fragment
+        switcher = _switcher(response)
+        assert 'role="menuitemradio"' in switcher
+        assert 'aria-checked="true"' in switcher
+        assert 'aria-checked="false"' in switcher
