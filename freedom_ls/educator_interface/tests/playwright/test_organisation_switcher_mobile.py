@@ -33,16 +33,8 @@ _MOBILE_VIEWPORT = {"width": 375, "height": 750}
 
 
 @pytest.fixture
-def mobile_educator(db, live_server_site, mock_site_context, mocker) -> User:
-    """A fresh, email-verified staff user.
-
-    Site.objects.get_current is patched so assign_object_role, called from the
-    test's own thread, resolves the same Site mock_site_context set up.
-    """
-    mocker.patch(
-        "django.contrib.sites.models.SiteManager.get_current",
-        return_value=mock_site_context,
-    )
+def mobile_educator(db, live_server_site, mock_site_context) -> User:
+    """A fresh, email-verified staff user."""
     user: User = UserFactory(staff=True, password=_LOGGED_IN_PASSWORD)
     EmailAddress.objects.get_or_create(
         user=user,

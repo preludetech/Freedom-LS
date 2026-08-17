@@ -27,17 +27,6 @@ from freedom_ls.student_management.context_processors import (
 from freedom_ls.student_management.factories import CohortFactory
 
 
-@pytest.fixture(autouse=True)
-def _mock_get_current_site(mock_site_context, mocker):
-    """assign_object_role resolves its role config via Site.objects.get_current(),
-    a separate lookup from the thread-local mock_site_context establishes for the
-    ORM. Point both at the same site so role assignment works in these tests."""
-    mocker.patch(
-        "django.contrib.sites.models.SiteManager.get_current",
-        return_value=mock_site_context,
-    )
-
-
 def _context_for(user: User | AnonymousUser) -> dict[str, bool | SimpleLazyObject]:
     request = RequestFactory().get("/")
     request.user = user

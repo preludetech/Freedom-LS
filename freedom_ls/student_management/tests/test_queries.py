@@ -32,17 +32,6 @@ from freedom_ls.student_management.queries import (
 )
 
 
-@pytest.fixture(autouse=True)
-def _mock_get_current_site(mock_site_context, mocker):
-    """assign_object_role resolves its role config via Site.objects.get_current(),
-    a separate lookup from the thread-local mock_site_context establishes for the
-    ORM. Point both at the same site so role assignment works in these tests."""
-    mocker.patch(
-        "django.contrib.sites.models.SiteManager.get_current",
-        return_value=mock_site_context,
-    )
-
-
 def _backdate(registration: UserCourseRegistration, when) -> UserCourseRegistration:
     """Set registered_at directly, bypassing auto_now_add's save-time override."""
     UserCourseRegistration.objects.filter(pk=registration.pk).update(registered_at=when)

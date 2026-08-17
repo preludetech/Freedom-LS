@@ -24,17 +24,6 @@ EDUCATOR_LINK_TEXT = "Educator Interface"
 ADMIN_LINK_TEXT = "Admin Panel"
 
 
-@pytest.fixture(autouse=True)
-def _mock_get_current_site(mock_site_context, mocker):
-    """assign_object_role resolves its role config via Site.objects.get_current(),
-    a separate lookup from the thread-local mock_site_context establishes for the
-    ORM. Point both at the same site so role assignment works in these tests."""
-    mocker.patch(
-        "django.contrib.sites.models.SiteManager.get_current",
-        return_value=mock_site_context,
-    )
-
-
 def _render_menu(user: User) -> str:
     request = RequestFactory().get("/")
     request.user = user

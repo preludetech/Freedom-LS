@@ -25,19 +25,13 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
 @pytest.fixture
-def educator_user(db, live_server_site, mock_site_context, mocker) -> User:
+def educator_user(db, live_server_site, mock_site_context) -> User:
     """A fresh, email-verified staff user.
 
     A staff variant of freedom_ls.tests.playwright_fixtures.logged_in_user —
     that fixture is hard-coded to a plain student, and this module is the
-    first to need an educator instead. Also patches Site.objects.get_current
-    so assign_object_role (called by the test) resolves the same Site
-    mock_site_context set up.
+    first to need an educator instead.
     """
-    mocker.patch(
-        "django.contrib.sites.models.SiteManager.get_current",
-        return_value=mock_site_context,
-    )
     user: User = UserFactory(staff=True, password=_LOGGED_IN_PASSWORD)
     EmailAddress.objects.get_or_create(
         user=user,

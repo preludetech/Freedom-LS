@@ -22,14 +22,8 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 @pytest.fixture(autouse=True)
-def _mock_get_current_site(mock_site_context, mocker):
-    """assign_object_role resolves the current site via Site.objects.get_current(),
-    a separate lookup from the thread-local mock_site_context sets up for the
-    ORM. Point both at the same site so role assignment works here."""
-    mocker.patch(
-        "django.contrib.sites.models.SiteManager.get_current",
-        return_value=mock_site_context,
-    )
+def _site_context(mock_site_context):
+    """Every test here builds site-aware objects and assigns roles."""
 
 
 @pytest.fixture

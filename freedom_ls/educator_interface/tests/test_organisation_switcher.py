@@ -20,14 +20,8 @@ from freedom_ls.student_management.factories import CohortFactory
 
 
 @pytest.fixture(autouse=True)
-def _mock_get_current_site(mock_site_context, mocker):
-    """assign_object_role resolves the current site via Site.objects.get_current(),
-    a separate lookup from the thread-local mock_site_context sets up for the
-    ORM. Point both at the same site so role assignment works here."""
-    mocker.patch(
-        "django.contrib.sites.models.SiteManager.get_current",
-        return_value=mock_site_context,
-    )
+def _site_context(mock_site_context):
+    """Every test here builds site-aware objects and assigns roles."""
 
 
 def _interface_url(organisation_slug: str, path_string: str) -> str:

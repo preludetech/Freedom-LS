@@ -103,14 +103,8 @@ def _config_path_strings(organisation) -> list[str]:
 @pytest.mark.django_db
 class TestEveryConfiguredSurface404sForAnInaccessibleOrganisation:
     @pytest.fixture(autouse=True)
-    def _mock_get_current_site(self, mock_site_context, mocker):
-        """assign_object_role resolves the current site via
-        Site.objects.get_current(), a separate lookup from the thread-local
-        mock_site_context sets up for the ORM. Point both at the same site."""
-        mocker.patch(
-            "django.contrib.sites.models.SiteManager.get_current",
-            return_value=mock_site_context,
-        )
+    def _site_context(self, mock_site_context):
+        """Every test here builds site-aware objects and assigns roles."""
 
     def test_enumeration_is_non_empty(self):
         organisation = OrganisationFactory()

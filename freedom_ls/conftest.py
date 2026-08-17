@@ -136,6 +136,12 @@ def mock_site_context(site, mocker):
     )
     # Also patch for template context processors
     mocker.patch("django.contrib.sites.shortcuts.get_current_site", return_value=site)
+    # assign_object_role and the role registry resolve the site through
+    # Site.objects.get_current(), which reads SITE_ID rather than the thread
+    # local. Point it at the same site so role assignment sees one site.
+    mocker.patch(
+        "django.contrib.sites.models.SiteManager.get_current", return_value=site
+    )
 
     # Clear and populate SITE_CACHE to ensure RequestFactory requests work
     SITE_CACHE.clear()
