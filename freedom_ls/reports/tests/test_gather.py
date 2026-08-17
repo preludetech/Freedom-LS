@@ -246,6 +246,33 @@ def test_student_with_no_progress_rows_is_zero_percent_with_no_activity(
     detail = data.students[0]
     assert row.completion_percentage == 0
     assert detail.has_any_progress is False
+    assert detail.has_reportable_activity is False
+
+
+def test_student_who_opened_an_item_without_completing_it_has_nothing_to_report(
+    mock_site_context,
+):
+    """The two flags disagree for this student, and the detail section relies on it.
+
+    Opening a topic writes a TopicProgress row, so `has_any_progress` is True and
+    the no-recorded-activity at-risk rule stays silent -- but there is no
+    completion, quiz result or wrong answer to print.
+    """
+    cohort = CohortFactory()
+    student = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=student)
+    course = CourseFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    topic = TopicFactory()
+    _attach(course, topic)
+    TopicProgressFactory(user=student, topic=topic, complete_time=None)
+
+    data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+    detail = data.students[0]
+    assert detail.completion_percentage == 0
+    assert detail.has_any_progress is True
+    assert detail.has_reportable_activity is False
 
 
 def test_student_with_activity_on_one_course_still_appears_in_other_course(
@@ -438,6 +465,22 @@ def _build_cohort_with_quiz_titles(titles: list[str]) -> str:
 
 
 class TestSummaryTableSplitting:
+    def test_the_shipped_budget_splits_an_eleven_quiz_course(self, mock_site_context):
+        """No override: this is the default the report actually renders with.
+
+        Measured on rendered A4 landscape pages -- at eleven quiz columns the
+        "Last item completed" column is squeezed below the width one item title
+        needs and its text runs into "When".
+        """
+        cohort_id = _build_cohort_with_quiz_titles(
+            [f"Course Quiz {index:02d}" for index in range(1, 12)]
+        )
+
+        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+        tables = data.courses[0].summary_tables
+        assert [len(table.quizzes) for table in tables] == [10, 1]
+
     @override_settings(REPORTS_MAX_QUIZ_COLUMNS=11)
     def test_sixteen_quizzes_split_into_two_tables_of_eleven_and_five(
         self, mock_site_context

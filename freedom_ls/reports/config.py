@@ -86,11 +86,13 @@ class ReportsConfig(AppSettings):
         # A resource guard, not a product rule: the safe ceiling depends on the
         # deployment's worker memory and render budget, which FLS cannot know.
         "REPORTS_MAX_STUDENTS": Setting(default=500),
-        # A layout budget, not a product rule: 11 quiz columns (14 columns in
-        # all) is the largest a summary table renders without clipping on A4
-        # landscape, measured on real rendered pages. A deployment that changes
-        # the page size, font or Completion column width can raise or lower it.
-        "REPORTS_MAX_QUIZ_COLUMNS": Setting(default=11),
+        # A layout budget, not a product rule: 10 quiz columns (14 in all,
+        # after Learner, Completion, Last item completed and When) is the most
+        # an A4 landscape summary table fits while still leaving an item title
+        # a readable gap before the When column. Measured on rendered pages in
+        # the report's own body face — a deployment that changes the page size,
+        # the fonts or the Completion column width can raise or lower it.
+        "REPORTS_MAX_QUIZ_COLUMNS": Setting(default=10),
         # The report's one piece of chrome FLS holds no data for. A site's own
         # name and logo come from the Site row and HEADER_LOGO_STATIC_PATH, but
         # nothing in FLS records who runs the platform underneath it. Both

@@ -189,6 +189,16 @@ class StudentDetail:
     report_generated_at: datetime
     flags: list[AtRiskFlag]
 
+    @property
+    def has_reportable_activity(self) -> bool:
+        """Whether the student's own section has a body to draw.
+
+        Narrower than `has_any_progress`, which is true the moment a progress
+        row exists: a student who opened a topic without finishing it has a row
+        but nothing to print, and the section must say so rather than end.
+        """
+        return bool(self.completed_items or self.quiz_results or self.wrong_answers)
+
 
 @dataclasses.dataclass(frozen=True)
 class QuizConfusion:

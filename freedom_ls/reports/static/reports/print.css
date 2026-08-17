@@ -351,20 +351,32 @@ th.numeric {
 /* Progress bars: nested spans, fixed-width outer and percentage-width inner.
    No flexbox — WeasyPrint's flexbox support is not well tested.
    `line-height: 0` on the track stops the outer box's inherited line box
-   from pushing the fill off-centre inside its height. */
+   from pushing the fill off-centre inside its height.
+
+   The track is outlined, not merely filled: inside a summary table it sits on
+   rows banded in the same surface, and on a greyscale print the fill and the
+   band are the same grey. Without the rule a 0% bar disappears entirely on a
+   banded row and a partial bar loses the length it is a fraction of. The rule
+   is drawn in the muted grey rather than the border colour because the border
+   colour is too close to the band to survive an office laser.
+
+   `box-sizing: border-box` keeps the outlined track inside the 16mm summary
+   cell, and the fill takes its height from the shrunken content box. */
 .completion-bar-outer {
   display: block;
+  box-sizing: border-box;
   width: 100%;
   height: 2.5mm;
   line-height: 0;
   background: var(--color-surface-2);
+  border: 0.4pt solid var(--color-muted);
   margin-top: 1.2mm;
 }
 /* Width and height are ignored on an inline box, so the fill must be a block
    for the percentage width to draw at all. */
 .completion-bar-inner {
   display: block;
-  height: 2.5mm;
+  height: 100%;
 }
 .completion-bar-inner.status-pass {
   background: var(--color-success);
@@ -852,6 +864,13 @@ h3.confusion-heading {
   color: var(--color-on-error-light);
   padding: 6pt 9pt;
   margin-top: 8pt;
+}
+/* A student who opened something but finished nothing carries no at-risk flag,
+   so this line sits above a "No flags" panel. The error tint the unstarted line
+   uses would contradict it; the neutral surface states the position instead. */
+.student-section .no-activity-started {
+  background: var(--color-surface-2);
+  color: var(--color-on-surface);
 }
 /* Two columns of completed items rather than one long list: a course of
    thirty items is a page of near-empty lines set as a single column. */

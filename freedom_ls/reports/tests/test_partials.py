@@ -484,7 +484,7 @@ class TestSummaryTables:
 
 
 class TestStudentDetail:
-    def test_renders_no_activity_recorded_when_has_any_progress_false(self) -> None:
+    def test_renders_no_activity_recorded_when_the_student_never_started(self) -> None:
         student = _student_detail(has_any_progress=False)
 
         html = render_to_string(
@@ -492,8 +492,28 @@ class TestStudentDetail:
         )
 
         assert "No activity recorded" in html
+        assert "nothing completed yet" not in html
 
-    def test_renders_activity_when_has_any_progress_true(self) -> None:
+    def test_renders_the_started_line_when_nothing_was_completed(self) -> None:
+        """The section must never be an empty gap.
+
+        A student who opened an item without finishing it has a progress row, so
+        `has_any_progress` is True, but none of the three lists the body draws
+        from has anything in it.
+        """
+        student = _student_detail(has_any_progress=True)
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert "Started, but nothing completed yet." in html
+        assert "No activity recorded" not in html
+        # The line sits above a "No flags" panel, so it must not be drawn in
+        # the error tint the never-started line carries.
+        assert "no-activity-started" in html
+
+    def test_renders_activity_when_an_item_was_completed(self) -> None:
         student = _student_detail(
             has_any_progress=True,
             completed_items=[
@@ -508,7 +528,69 @@ class TestStudentDetail:
         )
 
         assert "No activity recorded" not in html
+        assert "nothing completed yet" not in html
         assert "Intro Topic" in html
+
+    def test_renders_activity_when_only_a_quiz_was_attempted(self) -> None:
+        student = _student_detail(
+            has_any_progress=True,
+            quiz_results=[
+                QuizResult(
+                    form_id=uuid4(),
+                    title="Voltage Quiz",
+                    latest_score=9,
+                    latest_max_score=14,
+                    latest_percentage=64,
+                    passed=True,
+                    attempt_count=1,
+                    completed_at=GENERATED_AT,
+                    attempts=[
+                        QuizAttempt(
+                            attempt_number=1,
+                            completed_at=GENERATED_AT,
+                            score=9,
+                            max_score=14,
+                            percentage=64,
+                            passed=True,
+                        )
+                    ],
+                )
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert "nothing completed yet" not in html
+        assert "Voltage Quiz" in html
+
+    def test_renders_activity_when_only_wrong_answers_were_recorded(self) -> None:
+        student = _student_detail(
+            has_any_progress=True,
+            wrong_answers=[
+                QuizWrongAnswers(
+                    form_id=uuid4(),
+                    title="Erosion Quiz",
+                    answers=[
+                        WrongAnswer(
+                            question_number=3,
+                            question_text="What is erosion?",
+                            times_wrong=1,
+                            selected_option_texts=["Option C"],
+                            correct_option_texts=["Option D"],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert "nothing completed yet" not in html
+        assert "Incorrect answers — Erosion Quiz" in html
 
     def test_renders_flags_at_the_top(self) -> None:
         student = _student_detail(

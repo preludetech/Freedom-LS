@@ -27,7 +27,13 @@ of its warning rule, so the first flag is the most serious one a learner has.
 
   {% include "reports/partials/completion_bar.html" with percentage=student.completion_percentage completed=student.completed_item_count total=student.total_item_count only %}
 
-  {% if student.has_any_progress %}
+  {% comment %}Three branches, never two: a student with nothing to show still
+  gets a line rather than an empty page. The two empty cases are worded apart
+  because the at-risk flags separate them — only a student with no progress row
+  at all carries the no-recorded-activity flag, so telling one who opened
+  something that nothing was recorded would contradict the panel above.
+  {% endcomment %}
+  {% if student.has_reportable_activity %}
   {% if student.completed_items %}
   {% comment %}A list rather than a table so print.css can set it in two columns
   — a course of thirty items is otherwise a page of near-empty lines. The date
@@ -100,6 +106,8 @@ of its warning rule, so the first flag is the most serious one a learner has.
   </table>
   {% endif %}
   {% endfor %}
+  {% elif student.has_any_progress %}
+  <p class="no-activity no-activity-started">Started, but nothing completed yet.</p>
   {% else %}
   <p class="no-activity">No activity recorded.</p>
   {% endif %}

@@ -308,3 +308,42 @@ class TestNoOptionLettersAnywhere:
         html = build_report_html(_full_report_data())
 
         assert not re.search(r">\s*[A-D]\s+[—-]\s+\w", html)
+
+
+def _css_declarations(css: str, selector: str) -> dict[str, str]:
+    """The declarations of the one rule whose selector list starts a line.
+
+    Anchoring on the line start keeps `.completion-bar-outer` from matching the
+    `.student-section .completion-bar-outer` override further down the file.
+    """
+    match = re.search(
+        rf"^{re.escape(selector)}\s*\{{(.*?)\}}", css, re.MULTILINE | re.DOTALL
+    )
+    assert match is not None, f"No rule in print.css starts a line with {selector!r}"
+    declarations = {}
+    for line in match.group(1).split(";"):
+        if ":" in line:
+            prop, _, value = line.partition(":")
+            declarations[prop.strip()] = value.strip()
+    return declarations
+
+
+class TestCompletionBarTrackIsVisibleOnEveryRow:
+    """The empty track once shared `--color-surface-2` with the zebra stripe.
+
+    On an even summary-table row it therefore vanished: a half-complete learner
+    showed a fill with no reference length, and a 0% learner showed no bar at
+    all while a 0% learner on a white row showed an empty track. Nothing in the
+    suite rasterises print.css, so the invariant is asserted against the
+    stylesheet's own source.
+    """
+
+    def test_the_track_carries_an_edge_the_row_banding_does_not_hide(self) -> None:
+        css = _find_static("reports/print.css").read_text()
+
+        track = _css_declarations(css, ".completion-bar-outer")
+        banding = _css_declarations(css, ".summary-tables tbody tr:nth-child(even) td")
+
+        edge = track.get("border") or track.get("outline")
+        assert edge is not None, "The track needs an edge, not only a fill"
+        assert banding["background"] not in edge
