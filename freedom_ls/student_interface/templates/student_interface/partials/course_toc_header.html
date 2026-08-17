@@ -21,7 +21,8 @@ they can never disagree. No N / M counter (decision 3).
         itself decorative — hence the empty alt and the aria-hidden monogram.
         Labelling both would announce the organisation twice.
         {% endcomment %}
-        <div class="mt-1 mb-1 flex items-center gap-2">
+        <div id="course-organisation-chip"
+             class="mt-1 mb-1 flex items-center gap-2">
             {% if course_organisation.logo %}
                 <span class="inline-flex h-8 max-w-32 shrink-0 items-center rounded-md bg-surface border border-border px-2 py-1">
                     <img src="{{ course_organisation.logo.url }}"

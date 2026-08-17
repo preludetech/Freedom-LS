@@ -19,6 +19,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.student_management.factories import (
+    CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     UserCourseRegistrationFactory,
@@ -27,6 +28,7 @@ from freedom_ls.student_management.models import UserCourseRegistration
 from freedom_ls.student_management.queries import (
     cohorts_visible_to,
     latest_registration,
+    organisation_for_learner_course,
     organisations_accessible_to,
     users_visible_to,
 )
@@ -128,20 +130,32 @@ class TestOrganisationsAccessibleTo:
 
     def test_role_holder_sees_the_organisation(self, mock_site_context):
         organisation = OrganisationFactory()
+        OrganisationFactory()  # decoy: held by nobody
         user = UserFactory()
         assign_object_role(user, organisation, "organisation_staff")
 
-        assert organisation in organisations_accessible_to(user)
+        assert list(organisations_accessible_to(user)) == [organisation]
 
     def test_guardian_grant_on_a_cohort_grants_the_organisation(
         self, mock_site_context
     ):
         organisation = OrganisationFactory()
+        OrganisationFactory()  # decoy: no cohort of this one is granted
         cohort = CohortFactory(organisation=organisation)
         user = UserFactory()
         assign_object_role(user, cohort, "instructor")
 
-        assert organisation in organisations_accessible_to(user)
+        assert list(organisations_accessible_to(user)) == [organisation]
+
+    def test_organisations_are_returned_in_name_order(self, mock_site_context):
+        """The switcher renders them in the order this helper returns."""
+        zebra = OrganisationFactory(name="Zebra Academy")
+        acacia = OrganisationFactory(name="Acacia College")
+        user = UserFactory()
+        assign_object_role(user, zebra, "organisation_staff")
+        assign_object_role(user, acacia, "organisation_staff")
+
+        assert list(organisations_accessible_to(user)) == [acacia, zebra]
 
     def test_user_with_both_role_and_grant_sees_the_organisation_once(
         self, mock_site_context
@@ -221,10 +235,26 @@ class TestUsersVisibleTo:
         cohort = CohortFactory(organisation=organisation)
         member = UserFactory()
         CohortMembershipFactory(cohort=cohort, user=member)
+        UserFactory()  # decoy: in no cohort of this organisation
         role_holder = UserFactory()
         assign_object_role(role_holder, organisation, "organisation_staff")
 
-        assert member in users_visible_to(role_holder, organisation)
+        assert set(users_visible_to(role_holder, organisation)) == {member}
+
+    def test_a_member_who_is_also_registered_individually_appears_once(
+        self, mock_site_context
+    ):
+        """Two routes to visibility, one row -- without distinct() the join
+        would return the learner twice and the users list would repeat them."""
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation)
+        learner = UserFactory()
+        CohortMembershipFactory(cohort=cohort, user=learner)
+        UserCourseRegistrationFactory(user=learner, organisation=organisation)
+        role_holder = UserFactory()
+        assign_object_role(role_holder, organisation, "organisation_staff")
+
+        assert list(users_visible_to(role_holder, organisation)).count(learner) == 1
 
     def test_guardian_grant_only_sees_members_of_the_granted_cohort_only(
         self, mock_site_context
@@ -250,10 +280,14 @@ class TestUsersVisibleTo:
         organisation = OrganisationFactory()
         learner = UserFactory()
         UserCourseRegistrationFactory(user=learner, organisation=organisation)
+        # decoy: registered, but through a different organisation
+        UserCourseRegistrationFactory(
+            user=UserFactory(), organisation=OrganisationFactory()
+        )
         role_holder = UserFactory()
         assign_object_role(role_holder, organisation, "organisation_staff")
 
-        assert learner in users_visible_to(role_holder, organisation)
+        assert set(users_visible_to(role_holder, organisation)) == {learner}
 
     def test_individually_registered_learner_not_visible_to_guardian_grant_only_educator(
         self, mock_site_context
@@ -281,3 +315,76 @@ class TestUsersVisibleTo:
         user = UserFactory()
 
         assert list(users_visible_to(user, organisation)) == []
+
+
+@pytest.mark.django_db
+class TestOrganisationForLearnerCourse:
+    """Cohort registration wins over an individual one; with neither, there is
+    no organisation to report. The duplicate-registration tiebreak is
+    delegated to latest_registration and tested there."""
+
+    def test_no_registration_returns_none(self, mock_site_context):
+        course = CourseFactory()
+        user = UserFactory()
+
+        assert organisation_for_learner_course(user, course) is None
+
+    def test_cohort_registration_wins_over_an_individual_one(self, mock_site_context):
+        course = CourseFactory()
+        user = UserFactory()
+        cohort_organisation = OrganisationFactory()
+        individual_organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=cohort_organisation)
+        CohortMembershipFactory(user=user, cohort=cohort)
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        UserCourseRegistrationFactory(
+            user=user, collection=course, organisation=individual_organisation
+        )
+
+        assert organisation_for_learner_course(user, course) == cohort_organisation
+
+    def test_individual_registration_only_uses_its_organisation(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        user = UserFactory()
+        organisation = OrganisationFactory()
+        UserCourseRegistrationFactory(
+            user=user, collection=course, organisation=organisation
+        )
+
+        assert organisation_for_learner_course(user, course) == organisation
+
+
+@pytest.mark.django_db
+class TestOrganisationForLearnerCourseQueryCount:
+    """The resolver's cost must not grow with how many registrations a
+    learner happens to hold, so the same ceiling has to hold for one
+    duplicate and for five."""
+
+    @pytest.mark.parametrize("duplicates", [1, 5])
+    def test_cohort_path_never_looks_at_individual_registrations(
+        self, mock_site_context, django_assert_max_num_queries, duplicates
+    ):
+        course = CourseFactory()
+        user = UserFactory()
+        cohort = CohortFactory()
+        CohortMembershipFactory(user=user, cohort=cohort)
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        for _ in range(duplicates):
+            UserCourseRegistrationFactory(user=user, collection=course)
+
+        with django_assert_max_num_queries(1):
+            organisation_for_learner_course(user, course)
+
+    @pytest.mark.parametrize("duplicates", [1, 5])
+    def test_individual_path_does_not_grow_with_duplicates(
+        self, mock_site_context, django_assert_max_num_queries, duplicates
+    ):
+        course = CourseFactory()
+        user = UserFactory()
+        for _ in range(duplicates):
+            UserCourseRegistrationFactory(user=user, collection=course)
+
+        with django_assert_max_num_queries(2):
+            organisation_for_learner_course(user, course)

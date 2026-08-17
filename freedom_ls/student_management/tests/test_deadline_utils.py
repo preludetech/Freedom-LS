@@ -158,8 +158,9 @@ def test_cohort_plus_individual_registration_shows_both(mock_site_context):
 def test_two_individual_registrations_through_different_organisations_show_both(
     mock_site_context,
 ):
-    """A learner registered for one course through two organisations sees
-    both registrations' deadlines, rather than raising on the extra row."""
+    """Two individual registrations for one course became possible when the
+    unique constraint widened to include organisation. The resolver reports
+    the deadlines from both, rather than picking one registration's."""
     user = UserFactory()
     course = CourseFactory()
     topic = TopicFactory()

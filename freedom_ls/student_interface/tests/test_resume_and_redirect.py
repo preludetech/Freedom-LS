@@ -17,6 +17,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy
+from freedom_ls.role_based_permissions.loader import clear_caches
 from freedom_ls.student_interface.utils import (
     get_course_index,
     get_item_part,
@@ -360,17 +361,16 @@ def test_player_page_query_count_is_bounded(
     ``CoursePart.children`` memoize per instance, so the repeated chrome
     traversals share one resolution -- and (b) bulk-fetches all topic/form
     progress into maps via ``_fetch_player_progress_maps`` instead of one query
-    per item. The ceiling sits just above the current count (~38 for this
+    per item. The ceiling sits just above the current count (41 for this
     4-item fixture) but well below what a reintroduced full traversal or a
     per-item progress N+1 would cost. See
     ``test_player_page_query_count_does_not_grow_with_items``.
 
     A few of those queries belong to the header, which asks whether this user
-    may enter the educator interface. That answer is cached on the user for the
-    rest of the request, so the count moves by two or three depending on
-    whether an earlier test warmed the permission caches -- the ceiling has to
-    absorb that. What the number guards is flatness against item count, which
-    the companion test below pins directly.
+    may enter the educator interface. That lookup is memoized in a process-wide
+    cache, so the count depends on whether an earlier test happened to warm it.
+    Clearing it first makes this the cold-cache number either way, rather than
+    leaving a couple of queries of slack for test order to move around in.
     """
     client = Client()
     client.force_login(enrolled_user)
@@ -378,7 +378,8 @@ def test_player_page_query_count_is_bounded(
         "student_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 1},
     )
-    with django_assert_max_num_queries(42):
+    clear_caches()
+    with django_assert_max_num_queries(41):
         response = client.get(url)
     assert response.status_code == 200
 
@@ -407,11 +408,12 @@ def big_course(mock_site_context):
 def test_player_page_query_count_does_not_grow_with_items(
     big_course, django_assert_max_num_queries
 ):
-    """A 13-item course stays under the same ceiling as the 4-item fixture.
+    """Nine extra items cost one extra query, not nine.
 
-    With a per-item progress N+1 (or per-caller re-traversal) the extra topics
-    would each add a query and overshoot 42; bulk fetching + memoized children
-    keep it flat.
+    The 4-item fixture above sits at 41 cold; this 13-item one sits at 42. A
+    per-item progress N+1 (or a per-caller re-traversal) would put it near 50.
+    The ceiling is one above the small-course count deliberately -- leaving
+    more slack than that would let a real N+1 hide inside it.
     """
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=big_course)
@@ -421,6 +423,7 @@ def test_player_page_query_count_does_not_grow_with_items(
         "student_interface:view_course_item",
         kwargs={"course_slug": "big-course", "index": 1},
     )
+    clear_caches()
     with django_assert_max_num_queries(42):
         response = client.get(url)
     assert response.status_code == 200

@@ -82,7 +82,7 @@ def test_course_table_interest_count_is_site_scoped(
 
 @pytest.mark.django_db
 def test_course_table_renders_visibility_and_interest_columns(
-    mock_site_context, site_aware_request
+    mock_site_context, panel_request
 ):
     """The rendered table shows the visibility label and interest count."""
     course = CourseFactory(
@@ -90,13 +90,7 @@ def test_course_table_renders_visibility_and_interest_columns(
     )
     CourseInterestFactory(course=course, user=UserFactory())
 
-    request = site_aware_request.get("/")
-    # The Title/Cohorts columns link into educator_interface:interface,
-    # which now requires an organisation_slug kwarg. Real requests get this
-    # from the interface() view before dispatch; set it directly here since
-    # the table is rendered standalone.
-    request.panel_url_kwargs = {"organisation_slug": "test-org"}
-    html = CourseDataTable.render(request)
+    html = CourseDataTable.render(panel_request())
 
     assert "Coming soon" in html
     assert "Interest" in html
@@ -114,7 +108,7 @@ def _make_interest(course: Course, first_name: str) -> User:
 
 @pytest.mark.django_db
 def test_interest_panel_lists_only_users_interested_in_this_course(
-    mock_site_context, site_aware_request
+    mock_site_context, panel_request
 ):
     """The panel lists exactly the users who expressed interest in the course."""
     course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
@@ -125,11 +119,8 @@ def test_interest_panel_lists_only_users_interested_in_this_course(
 
     educator = UserFactory(staff=True)
     panel = CourseInterestPanel(course)
-    request = site_aware_request.get("/")
+    request = panel_request()
     request.user = educator
-    # The name columns link into educator_interface:interface, which now
-    # requires an organisation_slug kwarg — see the render test above.
-    request.panel_url_kwargs = {"organisation_slug": "test-org"}
     content = panel.get_content(request)
 
     assert "Interested" in content
@@ -137,7 +128,7 @@ def test_interest_panel_lists_only_users_interested_in_this_course(
 
 
 @pytest.mark.django_db
-def test_interest_panel_shows_interest_timestamp(mock_site_context, site_aware_request):
+def test_interest_panel_shows_interest_timestamp(mock_site_context, panel_request):
     """The panel exposes when each interest was expressed."""
     course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
     user = _make_interest(course, "Timestamped")
@@ -145,11 +136,8 @@ def test_interest_panel_shows_interest_timestamp(mock_site_context, site_aware_r
 
     educator = UserFactory(staff=True)
     panel = CourseInterestPanel(course)
-    request = site_aware_request.get("/")
+    request = panel_request()
     request.user = educator
-    # The name columns link into educator_interface:interface, which now
-    # requires an organisation_slug kwarg — see the render test above.
-    request.panel_url_kwargs = {"organisation_slug": "test-org"}
     content = panel.get_content(request)
 
     assert str(interest.created_at.year) in content

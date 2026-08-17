@@ -79,6 +79,7 @@ def test_hidden_course_registered_through_two_organisations_gets_200(
     response = client.get(_detail_url(course))
 
     assert response.status_code == 200
+    assert course.title in response.content.decode()
 
 
 @pytest.mark.django_db
