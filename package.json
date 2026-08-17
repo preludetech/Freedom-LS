@@ -12,9 +12,11 @@
   "scripts": {
     "_write_active_theme": "uv run manage.py write_active_theme_css",
     "tailwind_watch": "npm run _write_active_theme && npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css --watch",
-    "tailwind_build": "npm run _write_active_theme && npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css"
+    "tailwind_build": "npm run _write_active_theme && npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css",
+    "difit": "npx difit @ main"
   },
   "devDependencies": {
+    "difit": "^5.0.11",
     "wrangler": "^4.58.0"
   }
 }
