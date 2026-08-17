@@ -58,3 +58,24 @@ the learner's QUIZ ATTEMPTS row as `✓ 100% 2/2` with the
 - `gather.CourseSection` has `student_rows` + `summary_tables` + `confusions_by_quiz`; the
   per-learner detail sections (with `wrong_answers`) hang off `CohortReportData.students`, not off
   the course section. `SummaryRow.cells` is a positional list aligned to `SummaryTable.quizzes`.
+- `gather_cohort_report_data(cohort_id, site_id, *, requested_by_name="")` — **two** positional args;
+  passing a `Cohort` instance alone raises `TypeError`. DemoDev site_id is 3.
+- `CohortMembership.user` (**not** `.student`). `FormProgress.answers` is the `QuestionAnswer`
+  related_name (not `question_answers`). `FormQuestion.question` holds the text (not
+  `question_text`) and the option label is `QuestionOption.text`.
+- `StudentDetail.flags` (**not** `at_risk_flags`); `Form.quiz_pass_percentage` (not
+  `pass_percentage` — that name only exists on `gather.QuizColumn`).
+- `accounts.User` has **no** `get_full_name()`; the report uses its own name formatting.
+- Smoke-testing the render without creating a `GeneratedReport` row: call
+  `reports.render.build_report_html(data)` / `render_report_pdf(data)` directly.
+
+## Re-verified 2026-08-17 (third request, QA 2.11 again)
+
+Checked, did **not** rebuild — the leftover cohort was already correct, and still correct after the
+later report commits (`714e730c` "Count a blank answer and a failed quiz honestly in the report",
+`a1467d8f`, `be491470`). Gather output for cohort `831ca50d-…`: Lena Legacy summary cell
+`latest_score=2 / latest_max_score=2 / latest_percentage=100 / passed=True / attempt_count=1`,
+while her `StudentDetail.wrong_answers` lists Q1 with all three options selected. Rendered PDF
+371,594 bytes. Cari Current (exact-match control) has an empty `wrong_answers`.
+**Lesson: inspect before re-running** — a "leftover from an earlier QA run" cohort is often still
+valid, and re-running would have re-stamped identical data for nothing.

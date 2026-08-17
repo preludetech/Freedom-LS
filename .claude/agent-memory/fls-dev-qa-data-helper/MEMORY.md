@@ -34,3 +34,8 @@ recipe is: `qa_create_form_question_types DemoDev`, `qa_create_multiselect_quiz_
 `qa_create_checkbox_scoring_quiz`, then
 `qa_reset_student_progress --student demodev_quizqa@email.com`, then
 `content_save demo_content DemoDev`. All are idempotent; run the reset LAST so the walk starts clean.
+
+The **legacy checkbox score discrepancy** cohort (`qa_create_legacy_checkbox_score`) has now been
+asked for three times (QA 12.6, then QA 2.11 twice). It is stable across the whole report redesign.
+Always **inspect the existing cohort first** — twice now the answer was "already correct, change
+nothing".
