@@ -84,6 +84,8 @@ The review dimensions below become **one `sdd:sdd-worker` per dimension**, each 
 ### IMPORTANT
 The plan.md file MUST NOT say that the frontend_qa should be run. We will run that separately.
 
+The plan also must not create documentation of any kind. It must just be an implementation plan. It should not include any other steps from the SDD plugin. It is only implementation.
+
 # Step 7: Clean up
 
 Delete the `.sdd-work/` scratch directory once `2. plan.md` and any `3. frontend_qa.md` are finalised (recipe step 7).

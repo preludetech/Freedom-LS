@@ -1,7 +1,7 @@
 ---
 description: Execute a frontend QA test plan using Playwright MCP
 argument-hint: [path to the test plan file, or the spec dir holding it]
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, mcp__plugin_ds_playwright__*
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, mcp__playwright__*, mcp__plugin_ds_playwright__*
 ---
 
 Act like a human QA expert. Execute the given test plan.

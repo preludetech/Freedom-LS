@@ -1,6 +1,6 @@
 ---
 description: Update docs/product/ for the current feature after it ships
-allowed-tools: Read, Glob, Write, Edit, Bash, Agent, mcp__plugin_ds_playwright__*
+allowed-tools: Read, Glob, Write, Edit, Bash, Agent, mcp__playwright__*, mcp__plugin_ds_playwright__*
 ---
 
 Update the product documentation under `docs/product/` to reflect the feature that was just implemented. This command runs at **depth 0** and fans work out to sub-agents.
@@ -79,56 +79,88 @@ Read each `.sdd-work/<doc>.md` file **by path** (never dump its contents into th
 - Update the `_Last updated: YYYY-MM-DD_` line at the top of each doc to today's date.
 - Preserve all unchanged sections exactly.
 
-## Step 4: Screenshot lifecycle (visual features only)
+## Step 4: Screenshots (visual features only)
 
 Skip this step if the feature has no visible UI changes (e.g. a backend-only or CLI feature). Proceed if the feature touches any of: learner-experience, educator-interface, admin-interface, or any other doc that requires screenshots.
 
+**Reuse before you capture.** `/do_qa` has almost certainly already photographed this feature. Do not start a dev server until you have checked the QA screenshots and found a real gap.
+
+### 4a: List the images each doc needs
+
+From the Step 1 doc list and the Step 3 edits, write down the images the docs actually need — one line per image: which doc, what the image must show, and a descriptive product-doc filename (e.g. `educator_cohort_progress_report.png`). Keep this list short; a product doc needs an image where the UI *is* the point being made, not one per screen the feature touches.
+
+### 4b: Shop the QA screenshots first
+
+QA output lives alongside the spec:
+
+```bash
+ls "spec_dd/2. in progress/<feature>/screenshots/"
+```
+
+Files are named `<viewport>_<test-id>_<short-description>.png` (e.g. `desktop_1.4_generate_page.png`); some may have been converted to `.jpg` by QA's compression step. Read `qa_report.md` in the same directory to learn what each one actually shows and which ones are failure evidence.
+
+For each needed image, pick a QA screenshot only if it:
+
+- shows the feature **working as intended** — never a bug repro, error page, 403/404, or mid-flow half-filled state, even if the bug has since been fixed
+- is a `desktop_` capture, unless the doc's point is specifically responsive/mobile behaviour
+- is current — captured after the last commit that changed that UI. If the UI has since been redesigned, the shot is stale; treat it as a gap.
+
+Copy the winners into place, renaming to the product-doc name from 4a (QA test IDs mean nothing to a product-doc reader):
+
+```bash
+mkdir -p docs/product/screenshots
+cp "spec_dd/2. in progress/<feature>/screenshots/desktop_1.4_generate_page.png" \
+   docs/product/screenshots/educator_generate_report.png
+```
+
+Copy — never move or symlink. The QA artifacts stay intact for the QA report.
+
+If every needed image was satisfied here, skip to 4d — no dev server, no Playwright.
+
+### 4c: Capture only the gaps
+
+Only for images with no suitable QA screenshot.
+
 **Teardown must run even if capture fails** — use a trap or run the kill step explicitly after any error.
 
-### 4a: Find a free port and start the dev server
+1. **Start a dev server on a free port:**
+
+   ```bash
+   PORT=$(.claude/ds/scripts/find_available_port.sh)
+   uv run python manage.py runserver $PORT
+   ```
+
+   Read `.claude/fls-dev/config.md` for admin credentials. Base URL: `http://127.0.0.1:$PORT/`.
+
+2. **Confirm the branch badge.** Navigate to `http://127.0.0.1:$PORT/` using Playwright MCP and look for the `debug-branch-badge` element. It must name the current branch. If it names a different branch there is a port collision — go back to step 1 and pick another port.
+
+3. **Capture.** Use Playwright MCP tools (`browser_navigate`, `browser_snapshot`, `browser_take_screenshot`, `browser_click`, etc.) at a desktop viewport. Use the **DemoDev** site and demo content for seed data — if required data is missing, delegate to the `fls-dev:qa-data-helper` agent rather than creating data yourself. Save into `docs/product/screenshots/` under the names from 4a.
+
+4. **Kill the dev server** — run this even if capture failed:
+
+   ```bash
+   .claude/ds/scripts/kill_runserver.sh $PORT
+   ```
+
+### 4d: Check file sizes
+
+Every image under `docs/product/screenshots/` must land under the 1024 KB pre-commit large-file limit:
 
 ```bash
-PORT=$(.claude/ds/scripts/find_available_port.sh)
-uv run python manage.py runserver $PORT
+find docs/product/screenshots -type f \( -name '*.png' -o -name '*.jpg' \) -size +1024k
 ```
 
-Read `.claude/fls-dev/config.md` for admin credentials. Base URL: `http://127.0.0.1:$PORT/`.
+Anything listed will trip the pre-commit hook. Screenshots copied in 4b are already compressed by `/do_qa`, so any offender is normally a fresh capture from 4c — re-capture it at a smaller viewport or downscale it. Note that `scripts/compress_screenshots.py` only scans `spec_dd/`, so it will not fix files under `docs/`.
 
-### 4b: Confirm the branch badge
+### 4e: Reference screenshots from docs
 
-Navigate to `http://127.0.0.1:$PORT/` using Playwright MCP. Look for the `debug-branch-badge` element on the page. It must name the current branch. If it names a different branch, there is a port collision — go back to 4a and find a different port.
-
-### 4c: Capture screenshots
-
-Use Playwright MCP tools (`browser_navigate`, `browser_snapshot`, `browser_take_screenshot`, `browser_click`, etc.) to capture the updated UI. Use the **DemoDev** site and demo content for seed data — if required data is missing, delegate to the `fls-dev:qa-data-helper` agent rather than creating data yourself.
-
-Save screenshots into `docs/product/screenshots/` with descriptive names (e.g. `learner_dashboard.png`, `educator_cohort_progress_matrix.png`).
-
-### 4d: Compress screenshots
-
-```bash
-uv run --with pillow python ${CLAUDE_PLUGIN_ROOT}/scripts/compress_screenshots.py
-```
-
-All screenshots must land under the 1024 KB pre-commit large-file limit.
-
-### 4e: Kill the dev server
-
-```bash
-.claude/ds/scripts/kill_runserver.sh $PORT
-```
-
-Run this even if step 4c or 4d failed.
-
-### 4f: Reference screenshots from docs
-
-Update the relevant docs to reference new screenshots with plain markdown:
+Update the relevant docs to reference the screenshots with plain markdown:
 
 ```markdown
 ![](screenshots/<file>.png)
 ```
 
-No cotton components, no custom widgets.
+Use the extension the file actually has (`.jpg` if QA's compression converted it). No cotton components, no custom widgets.
 
 ## Step 5: Clean up
 
