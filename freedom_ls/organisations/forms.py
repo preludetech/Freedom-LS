@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from freedom_ls.site_aware_models.forms import SiteScopedConstraintFormMixin
+from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
 from .models import Organisation
 
 INVALID_IMAGE_MESSAGE = "File is not a readable image. Use PNG, JPEG or WebP."
 
 
-class OrganisationAdminForm(SiteScopedConstraintFormMixin):
+class OrganisationAdminForm(ConstraintValidationFormMixin):
     """Admin form for Organisation.
 
     ``site`` is un-excluded so ``unique_organisation_name_per_site`` is checked
