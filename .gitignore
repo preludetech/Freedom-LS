@@ -54,6 +54,11 @@ htmlcov/
 *.sarif
 bandit.sarif
 
+# QA report artifacts for the biggest cohorts — every regeneration lands above
+# the 1 MB check-added-large-files limit, so they stay local evidence only
+**/qa-artifacts/
+
+
 # SDD fan-out scratch directory (intermediate worker outputs; cleaned on success)
 .sdd-work/
 # Playwright MCP screenshot output dir (moved into spec dir after each QA run)

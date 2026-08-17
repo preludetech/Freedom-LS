@@ -141,7 +141,7 @@ builds every row below in one pass; generate a report for each.
 | `small-cohort-medium-course` | QA Report Small Cohort | 9 students | medium: 12 items, 4 quizzes | **Under 10** — the small-n plain-counts rule (QA 5.6) |
 | `standard-cohort-medium-course` | QA Report Standard Cohort | 9 students | medium | The everyday case; the baseline read-through in QA 2 |
 | `large-cohort-medium-course` | QA Report Large Cohort | 25 students | medium | Multi-page tables, repeated header rows (QA 3) |
-| `xl-cohort-long-course` | QA Report XL Cohort | 40 students, **18 flagged** | long: 30 items, 12 quizzes | Both caps at once — attention list capped at 12, quiz columns past the 10–12 budget (QA 4.6, QA 7) |
+| `xl-cohort-long-course` | QA Report XL Cohort | 40 students, **18 flagged** | long: 30 items, 12 quizzes | Both caps at once — attention list capped at 12, quiz columns past the 10-column budget (QA 4.6, QA 7) |
 | `two-course-cohort` | QA Report Two Course Cohort | 9 students | one medium + one **inactive** registration | Both courses sectioned, inactive one marked (QA 2.4) |
 | `no-progress-cohort` | QA Report No Progress Cohort | 9 students, zero progress | medium | Every learner shows "No activity recorded" (QA 2.5) |
 | `no-pass-mark-cohort` | QA Report No Pass Mark Cohort | 9 students | medium, **first quiz has `quiz_pass_percentage` unset** | Score without verdict must render, not crash or vanish (QA 2.8) |
@@ -150,15 +150,15 @@ To rebuild a single row, pass its fixture key: `qa_create_report_fixtures --only
 
 Course lengths are built by `qa_create_report_course`, which lays out topics and quizzes into a
 standalone QA course (`qa-report-<key>-course`). The **long** course must carry enough quizzes to push
-past the landscape column cap — if 12 quizzes does not force a table split, raise it and rebuild:
+past the landscape column cap, which is 10 — its 12 quizzes clear it. If a change to the cap ever
+leaves 12 too few to force a table split, raise it and rebuild:
 
 ```bash
 uv run manage.py qa_create_report_fixtures --only xl-cohort-long-course --long-course-quizzes 16
 ```
 
 The command is additive, so raising the count appends quizzes to the existing course rather than
-starting over. Record the number that finally forced a split in `qa_report.md` — that number is the
-answer QA 7 needs.
+starting over. Note in `qa_report.md` how many quizzes it took — QA 7 reads that number.
 
 `qa_create_report_fixtures` also seeds the two users the permission checks need:
 
@@ -420,12 +420,17 @@ splits, or that carries a running header on a one-page section, is its own failu
    by completion, or in the shell with
    `FormProgress.objects.filter(completed_time__isnull=False).values("user__email", "form__slug").annotate(n=Count("id")).filter(n__gte=3)`.
 
-## QA 6 — Greyscale print (success criterion 7)
+## QA 6 — Greyscale legibility (success criterion 7)
 
-**This is the one check that cannot be done on screen.**
+**No physical printer.** Rasterise the PDF to greyscale and read that instead — it is reproducible,
+it needs no hardware, and it leaves an artifact the next run can compare against. Use
+`xl-cohort-long-course.pdf`: it has the widest spread of statuses across the most cells.
 
-1. Print `qa-artifacts/xl-cohort-long-course.pdf` to a real office printer **in black and white /
-   greyscale** — it has the widest spread of statuses across the most cells.
+```bash
+pdftoppm -gray -r 150 -png qa-artifacts/xl-cohort-long-course.pdf screenshots/desktop_6_greyscale
+```
+
+1. Open the greyscale pages and read them at 100%.
 2. Walk every status cell: completion bars, quiz pass/fail, RAG-coloured cells.
 3. **Expect** every status to remain unambiguous because each cell carries a glyph
    (`✓` complete, `✗` failing/not started, `▲` warning, `●` in progress, `○` started-no-verdict,
@@ -441,29 +446,31 @@ splits, or that carries a running header on a one-page section, is its own failu
    font, or a synthesised "bold"/"oblique" of a family whose real weight is not embedded, means a
    weight is missing from `REPORTS_FONT_FACES`.
 
-## QA 7 — Landscape column budget (spec §7.1, requires sign-off)
+## QA 7 — Landscape column budget (spec §7.1)
 
-The plan estimates a 10–12 data-column cap for the landscape tables. **This must be validated against
-a real rendered A4 landscape page before sign-off** — the live panel's 15-column screen budget is not
-directly transferable to print.
+**The budget is signed off at 10.** `REPORTS_MAX_QUIZ_COLUMNS = 10` was measured on rendered A4
+landscape pages, in the report's own body face and with the summary table's separate "When" column:
+at 10 quiz columns (14 in all) every "Last item completed" title still clears "When", and at 11 the
+title is squeezed below the width one word needs and runs into it. This section is a regression check
+on that number, not an open sign-off — re-measure only when the page size, the fonts or the fixed
+columns change.
 
-**The previous sign-off does not carry over.** `REPORTS_MAX_QUIZ_COLUMNS = 11` was measured against
-10pt DejaVu Sans; the report is now set in Source Sans 3, which is narrower, and the summary table
-gained a separate "When" column. The budget must be re-measured from scratch and the default
-adjusted to whatever this run finds.
-
-1. Use `xl-cohort-long-course.pdf` — the long course is built specifically to exceed the cap.
-2. Print or view one landscape summary page at 100% / actual size.
+1. Use `xl-cohort-long-course.pdf` — the long course carries 12 quizzes, past the cap, so it is built
+   to force the split.
+2. View one landscape summary page at 100% / actual size.
 3. **Expect:** text is legible at normal reading distance, nothing is clipped at the right margin, and
-   the table splits into a second table rather than shrinking the type.
-4. Walk up the matrix to find the boundary: the short course (1 quiz), the medium course (4), then
-   the long one (12). Record the largest column count that still renders cleanly and the smallest that
-   does not. To move the long course past 12, rebuild it with more quizzes and regenerate:
+   the quizzes past the cap move into a second `(continued)` table rather than the type shrinking.
+4. Confirm the boundary still holds: the first table carries **10** quiz columns, and the item titles
+   under "Last item completed" keep a clear gap before "When". A title touching or overlapping the
+   date means the budget has drifted.
+5. If it has drifted, walk the matrix to re-measure — the short course (1 quiz), the medium course
+   (4), then the long one (12) — and record the largest column count that renders cleanly and the
+   smallest that does not. To push past 12, rebuild with more quizzes and regenerate:
    `uv run manage.py qa_create_report_fixtures --only xl-cohort-long-course --long-course-quizzes 16`
-   (additive — it appends quizzes rather than starting the course over).
-5. If the type is too small or content overflows, record the real usable column count and adjust the
-   constant. Keep the PDF that demonstrates the overflow as
-   `qa-artifacts/xl-cohort-long-course_column-overflow.pdf` — it is the evidence behind the sign-off.
+   (additive — it appends quizzes rather than starting the course over). Adjust
+   `REPORTS_MAX_QUIZ_COLUMNS` (`freedom_ls/reports/config.py`) to the measured number and keep the PDF
+   that demonstrates the overflow as `qa-artifacts/xl-cohort-long-course_column-overflow.pdf` — it is
+   the evidence behind the change.
 
 ## QA 8 — Permissions and access control (success criteria 11, and spec §12.1)
 
