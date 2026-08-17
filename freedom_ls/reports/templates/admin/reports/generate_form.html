@@ -1,35 +1,26 @@
-{% extends "admin/base.html" %}
+{% extends "admin/base_site.html" %}
+{% load unfold %}
 
-{% block title %}
-    {{ title }}
-{% endblock %}
 {% block content %}
-    <h1>
-        {{ title }}
-    </h1>
-    <p>
-        Select a cohort and click "Generate" to start a new progress report. You will be
-        able to download it from the changelist once it is ready.
-    </p>
+    {% component "unfold/components/card.html" %}
+        {% component "unfold/components/text.html" %}
+            Select a cohort and click "Generate" to start a new progress report. You will be
+            able to download it from the changelist once it is ready.
+        {% endcomponent %}
 
-    <form method="post">
-        {% csrf_token %}
-        <div style="margin: 1em 0;">
-            <label for="cohort">
-                <strong>Cohort:</strong>
-            </label>
-            <br />
-            <select name="cohort"
-                    id="cohort"
-                    style="padding: 0.5em;
-                           margin-top: 0.5em">
-                {% for cohort in cohorts %}<option value="{{ cohort.pk }}">{{ cohort.name }}</option>{% endfor %}
-            </select>
-        </div>
-        <div style="margin: 1em 0;">
-            <button type="submit">
-                Generate
-            </button>
-        </div>
-    </form>
+        <form method="post" class="flex flex-col gap-3 mt-6">
+            {% csrf_token %}
+
+            <div class="flex flex-col gap-2">
+                {% include "unfold/helpers/form_label.html" with field=form.cohort %}
+                {{ form.cohort }}
+            </div>
+
+            <div class="mt-3">
+                {% component "unfold/components/button.html" with submit=1 name="generate" %}
+                    Generate
+                {% endcomponent %}
+            </div>
+        </form>
+    {% endcomponent %}
 {% endblock %}

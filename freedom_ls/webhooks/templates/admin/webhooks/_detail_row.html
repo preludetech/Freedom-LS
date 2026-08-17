@@ -1,0 +1,12 @@
+<tr class="border-b border-base-200 dark:border-base-800">
+    <td class="align-top font-semibold py-2 pr-6 text-font-important-light w-40 dark:text-font-important-dark">
+        {{ label }}
+    </td>
+    <td class="align-top py-2">
+        {% if preformatted %}
+            <pre class="bg-base-50 overflow-x-auto p-3 rounded-default text-xs dark:bg-base-800">{{ value }}</pre>
+        {% else %}
+            {{ value }}{{ suffix }}
+        {% endif %}
+    </td>
+</tr>

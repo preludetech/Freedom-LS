@@ -8,6 +8,7 @@ No `urls.py`: these are wired into the admin namespace by
 from __future__ import annotations
 
 from guardian.shortcuts import get_objects_for_user
+from unfold.admin import ModelAdmin
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -18,18 +19,11 @@ from django.tasks import default_task_backend
 from django.urls import reverse
 from django.utils.text import slugify
 
+from freedom_ls.reports.forms import GenerateReportForm
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.tasks import _generate_cohort_report_task
+from freedom_ls.site_aware_models.admin import admin_page_context
 from freedom_ls.student_management.models import Cohort
-
-
-def _admin_context() -> dict[str, bool | str]:
-    """Return common admin template context."""
-    return {
-        "is_popup": False,
-        "has_permission": True,
-        "site_header": "Freedom LS Admin",
-    }
 
 
 def _has_inflight_report(cohort: Cohort) -> bool:
@@ -45,7 +39,9 @@ def _has_inflight_report(cohort: Cohort) -> bool:
     ).exists()
 
 
-def generate_report_view(request: HttpRequest) -> HttpResponse:
+def generate_report_view(
+    request: HttpRequest, *, model_admin: ModelAdmin
+) -> HttpResponse:
     """GET renders the cohort dropdown; POST starts a report for one.
 
     `self.admin_site.admin_view()` (see `GeneratedReportAdmin.get_urls()`)
@@ -58,13 +54,18 @@ def generate_report_view(request: HttpRequest) -> HttpResponse:
 
     if request.method != "POST":
         context = {
-            "cohorts": cohorts,
-            "title": "Generate cohort report",
-            **_admin_context(),
+            "form": GenerateReportForm(cohorts=cohorts),
+            **admin_page_context(request, model_admin, "Generate cohort report"),
         }
         return render(request, "admin/reports/generate_form.html", context)
 
-    cohort = get_object_or_404(cohorts, pk=request.POST.get("cohort"))
+    form = GenerateReportForm(request.POST, cohorts=cohorts)
+    if not form.is_valid():
+        # The dropdown only ever offers cohorts the user may view, so an
+        # invalid choice means a tampered POST -- the same 404 the queryset
+        # lookup used to raise.
+        raise Http404
+    cohort = form.cleaned_data["cohort"]
     if not request.user.has_perm("freedom_ls_student_management.view_cohort", cohort):
         raise PermissionDenied
 

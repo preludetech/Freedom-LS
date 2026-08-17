@@ -91,7 +91,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user + cmd) Fix QA bug: the form runner fires a spurious "Leave site?" prompt when the learner has changed nothing (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: a never-marked survey tells the learner "marking is in progress" on completion (TDD — failing test first, then fix)
 - [ ] (cmd) Call out free-text questions inside a `strategy: QUIZ` form as an authoring anti-pattern in the upgrade notes — they count toward `max_score` but can never be scored correct, capping the achievable score below 100%
-- [ ] (user + cmd) Fix QA bug: the "Generate cohort report" admin page renders with no admin styling — `admin/reports/generate_form.html` extends `admin/base.html` instead of an unfold layout, so the page loses the sidebar, breadcrumbs and CSS, the Generate button renders as plain unstyled text, and a duplicate `<h1>` is emitted (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: the "Generate cohort report" admin page renders with no admin styling — `admin/reports/generate_form.html` extends `admin/base.html` instead of an unfold layout, so the page loses the sidebar, breadcrumbs and CSS, the Generate button renders as plain unstyled text, and a duplicate `<h1>` is emitted (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

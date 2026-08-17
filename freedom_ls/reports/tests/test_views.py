@@ -32,6 +32,12 @@ def _staff_user_with_cohort_view_permission(cohort: object) -> object:
     return user
 
 
+def _tag(html: str, containing: str) -> str:
+    """Return the opening tag carrying the given attribute snippet."""
+    attribute_at = html.index(containing)
+    return html[html.rindex("<", 0, attribute_at) : html.index(">", attribute_at) + 1]
+
+
 def _save_ready_file(report: GeneratedReport) -> None:
     report.file.save(
         "cohort-report.pdf", ContentFile(b"%PDF-1.4 test bytes"), save=True
@@ -50,6 +56,68 @@ class TestGenerateReportViewGet:
 
         assert response.status_code == 200
         assert "Alpha Cohort" in response.content.decode()
+
+    def test_renders_inside_the_admin_shell_with_the_sidebar(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        cohort = CohortFactory()
+        client.force_login(_staff_user_with_cohort_view_permission(cohort))
+
+        response = client.get(_generate_url())
+
+        # each_context is what supplies these; a hand-rolled context dict
+        # silently drops the whole admin shell.
+        assert response.context["is_nav_sidebar_enabled"] is True
+        assert 'id="nav-sidebar"' in response.content.decode()
+
+    def test_renders_exactly_one_h1(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        cohort = CohortFactory()
+        client.force_login(_staff_user_with_cohort_view_permission(cohort))
+
+        response = client.get(_generate_url())
+
+        # The admin header already emits the page's h1; a second one in the
+        # content block reads as the title printed twice.
+        assert response.content.decode().count("<h1") == 1
+
+    def test_breadcrumb_trail_links_back_to_the_changelist(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        cohort = CohortFactory()
+        client.force_login(_staff_user_with_cohort_view_permission(cohort))
+
+        response = client.get(_generate_url())
+
+        changelist_url = reverse("admin:freedom_ls_reports_generatedreport_changelist")
+        assert f'href="{changelist_url}"' in response.content.decode()
+
+    def test_submit_button_is_styled(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        cohort = CohortFactory()
+        client.force_login(_staff_user_with_cohort_view_permission(cohort))
+
+        response = client.get(_generate_url())
+
+        button = _tag(response.content.decode(), 'name="generate"')
+        # Assert a class attribute exists rather than the literal Tailwind
+        # classes, which belong to unfold and move between versions.
+        assert 'class="' in button
+        assert "style=" not in button
+
+    def test_cohort_select_is_styled_and_carries_no_inline_style(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        cohort = CohortFactory()
+        client.force_login(_staff_user_with_cohort_view_permission(cohort))
+
+        response = client.get(_generate_url())
+
+        select = _tag(response.content.decode(), 'name="cohort"')
+        assert 'class="' in select
+        assert "style=" not in select
 
 
 class TestGenerateReportViewPost:

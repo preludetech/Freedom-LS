@@ -1,19 +1,20 @@
 import json
 
+from unfold.admin import ModelAdmin
+
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from freedom_ls.base.webhook_event_types import (
-    FLS_WEBHOOK_EVENT_TYPES,
-    WEBHOOK_EVENT_TYPE_SAMPLES,
-)
+from freedom_ls.base.webhook_event_types import WEBHOOK_EVENT_TYPE_SAMPLES
+from freedom_ls.site_aware_models.admin import admin_page_context
 from freedom_ls.webhooks.delivery import (
     attempt_delivery,
     build_standard_request,
     build_transformed_request,
 )
+from freedom_ls.webhooks.forms import SendTestWebhookForm
 from freedom_ls.webhooks.models import (
     WebhookDelivery,
     WebhookEndpoint,
@@ -23,25 +24,29 @@ from freedom_ls.webhooks.models import (
 from freedom_ls.webhooks.registry import validate_event_type
 
 
-def send_test_form_view(request: HttpRequest, object_id: str) -> HttpResponse:
+def send_test_form_view(
+    request: HttpRequest, object_id: str, *, model_admin: ModelAdmin
+) -> HttpResponse:
     """Show a form to select an event type and send a test webhook."""
     endpoint = get_object_or_404(WebhookEndpoint, pk=object_id)
-    event_type_choices = [(code, label) for code, label in FLS_WEBHOOK_EVENT_TYPES]
     context = {
         "endpoint": endpoint,
-        "event_type_choices": event_type_choices,
-        "title": f"Send Test Webhook: {endpoint.description}",
+        "form": SendTestWebhookForm(endpoint=endpoint),
         "result_url": reverse(
             "admin:webhooks_webhookendpoint_send_test_result",
             args=[object_id],
         ),
-        **_admin_context(),
+        **admin_page_context(
+            request, model_admin, f"Send Test Webhook: {endpoint.description}"
+        ),
     }
     return render(request, "admin/webhooks/send_test_form.html", context)
 
 
 @require_POST
-def send_test_result_view(request: HttpRequest, object_id: str) -> HttpResponse:
+def send_test_result_view(
+    request: HttpRequest, object_id: str, *, model_admin: ModelAdmin
+) -> HttpResponse:
     """Process the test webhook send and display results."""
     endpoint = get_object_or_404(WebhookEndpoint, pk=object_id)
     event_type = request.POST.get("event_type", "")
@@ -88,9 +93,10 @@ def send_test_result_view(request: HttpRequest, object_id: str) -> HttpResponse:
         "event": event,
         "delivery": delivery,
         "request_preview": request_preview,
-        "title": f"Test Result: {endpoint.description}",
         "back_url": back_url,
-        **_admin_context(),
+        **admin_page_context(
+            request, model_admin, f"Test Result: {endpoint.description}"
+        ),
     }
     return render(request, "admin/webhooks/send_test_result.html", context)
 
@@ -135,12 +141,3 @@ def _mask_secrets(value: str, secret_values: set[str]) -> str:
                 masked = "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
             value = value.replace(secret_value, masked)
     return value
-
-
-def _admin_context() -> dict[str, bool | str]:
-    """Return common admin template context."""
-    return {
-        "is_popup": False,
-        "has_permission": True,
-        "site_header": "Freedom LS Admin",
-    }

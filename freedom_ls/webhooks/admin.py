@@ -1,3 +1,5 @@
+from functools import partial
+
 from unfold.decorators import action as unfold_action
 
 from django.contrib import admin, messages
@@ -156,12 +158,16 @@ class WebhookEndpointAdmin(SiteAwareModelAdmin):
         custom_urls = [
             path(
                 "<path:object_id>/send-test/",
-                self.admin_site.admin_view(send_test_form_view),
+                self.admin_site.admin_view(
+                    partial(send_test_form_view, model_admin=self)
+                ),
                 name="webhooks_webhookendpoint_send_test_form",
             ),
             path(
                 "<path:object_id>/send-test/result/",
-                self.admin_site.admin_view(send_test_result_view),
+                self.admin_site.admin_view(
+                    partial(send_test_result_view, model_admin=self)
+                ),
                 name="webhooks_webhookendpoint_send_test_result",
             ),
         ]

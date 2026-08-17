@@ -1,50 +1,26 @@
-{% extends "admin/base.html" %}
+{% extends "admin/base_site.html" %}
+{% load unfold %}
 
-{% block title %}
-    {{ title }}
-{% endblock %}
 {% block content %}
-    <style>
-        .send-test-btn {
-            padding: 0.5em 1em;
-            cursor: pointer;
-            transition: background-color 0.2s, color 0.2s;
-        }
-        .send-test-btn:hover {
-            background-color: #417690;
-            color: #fff;
-        }
-    </style>
-    <h1>
-        {{ title }}
-    </h1>
-    <p>
-        Select an event type and click "Preview &amp; Send" to send a test webhook to <strong>{{ endpoint.url }}</strong>.
-    </p>
+    {% component "unfold/components/card.html" %}
+        {% component "unfold/components/text.html" %}
+            Select an event type and click "Preview &amp; Send" to send a test webhook to
+            <strong>{{ endpoint.url }}</strong>.
+        {% endcomponent %}
 
-    <form method="post" action="{{ result_url }}">
-        {% csrf_token %}
-        <div style="margin: 1em 0;">
-            <label for="event_type">
-                <strong>Event Type:</strong>
-            </label>
-            <br />
-            <select name="event_type"
-                    id="event_type"
-                    style="padding: 0.5em;
-                           margin-top: 0.5em">
-                {% for code, label in event_type_choices %}
-                    <option value="{{ code }}"
-                            {% if code in endpoint.event_types %}selected{% endif %}>
-                        {{ label }} ({{ code }})
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="margin: 1em 0;">
-            <button type="submit" class="send-test-btn">
-                Preview &amp; Send
-            </button>
-        </div>
-    </form>
+        <form method="post" action="{{ result_url }}" class="flex flex-col gap-3 mt-6">
+            {% csrf_token %}
+
+            <div class="flex flex-col gap-2">
+                {% include "unfold/helpers/form_label.html" with field=form.event_type %}
+                {{ form.event_type }}
+            </div>
+
+            <div class="mt-3">
+                {% component "unfold/components/button.html" with submit=1 name="send_test" %}
+                    Preview &amp; Send
+                {% endcomponent %}
+            </div>
+        </form>
+    {% endcomponent %}
 {% endblock %}

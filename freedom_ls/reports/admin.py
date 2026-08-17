@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from functools import partial
+
 from guardian.shortcuts import get_objects_for_user
 from unfold.decorators import action as unfold_action
 
@@ -110,7 +112,9 @@ class GeneratedReportAdmin(SiteAwareModelAdmin):
         custom_urls = [
             path(
                 "generate/",
-                self.admin_site.admin_view(generate_report_view),
+                self.admin_site.admin_view(
+                    partial(generate_report_view, model_admin=self)
+                ),
                 name="freedom_ls_reports_generatedreport_generate",
             ),
             path(

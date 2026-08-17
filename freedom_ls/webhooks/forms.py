@@ -1,9 +1,11 @@
 from django_ace import AceWidget
+from unfold.widgets import UnfoldAdminSelectWidget
 
 from django import forms
 from django.utils.html import json_script
 from django.utils.safestring import SafeString
 
+from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
 from freedom_ls.webhooks.models import WebhookEndpoint, WebhookSecret
 from freedom_ls.webhooks.presets import WEBHOOK_PRESETS, get_preset_choices
 from freedom_ls.webhooks.registry import get_event_type_registry
@@ -134,6 +136,28 @@ class WebhookEndpointForm(forms.ModelForm):
                             *choices_list,
                             (current_slug, f"{current_slug} (unavailable)"),
                         ]
+
+
+class SendTestWebhookForm(forms.Form):
+    """Event-type picker for the admin's "Send test webhook" page.
+
+    Offers every event type, not only the ones the endpoint subscribes to, so
+    a subscription can be tested before it is added. Rendering only -- the
+    result view validates the posted event type against the registry itself.
+    """
+
+    event_type = forms.ChoiceField(
+        choices=[
+            (code, f"{label} ({code})") for code, label in FLS_WEBHOOK_EVENT_TYPES
+        ],
+        widget=UnfoldAdminSelectWidget,
+        label="Event type",
+    )
+
+    def __init__(self, *args, endpoint: WebhookEndpoint, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        if endpoint.event_types:
+            self.fields["event_type"].initial = endpoint.event_types[0]
 
 
 class WebhookSecretForm(forms.ModelForm):
