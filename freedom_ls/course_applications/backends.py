@@ -32,16 +32,14 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------
-# Application-gated access type (extends core vocabulary, not part of CourseAccessType)
+# Application-gated access type
 # ---------------------------------------------------------------------------
 
+# Access type for courses that require a learner application before enrolment.
+# Intentionally not added to core's CourseAccessType — it belongs to the
+# applications backend, and core (course_access, student_interface) never
+# references this string.
 APPLICATION_GATED = "application_gated"
-"""Access type for courses that require a learner application before enrolment.
-
-This value is intentionally NOT added to core's CourseAccessType — it belongs
-to the applications backend. Core (course_access, student_interface) never
-references this string.
-"""
 
 
 class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
