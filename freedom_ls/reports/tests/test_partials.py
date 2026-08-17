@@ -592,6 +592,35 @@ class TestStudentDetail:
         assert "nothing completed yet" not in html
         assert "Incorrect answers — Erosion Quiz" in html
 
+    def test_names_an_unanswered_question_rather_than_leaving_the_cell_blank(
+        self,
+    ) -> None:
+        """A question left blank has nothing to quote back, so the cell has to say so."""
+        student = _student_detail(
+            has_any_progress=True,
+            wrong_answers=[
+                QuizWrongAnswers(
+                    form_id=uuid4(),
+                    title="Erosion Quiz",
+                    answers=[
+                        WrongAnswer(
+                            question_number=3,
+                            question_text="What is erosion?",
+                            times_wrong=1,
+                            selected_option_texts=[],
+                            correct_option_texts=["Option D"],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert "Not answered" in html
+
     def test_renders_flags_at_the_top(self) -> None:
         student = _student_detail(
             flags=[

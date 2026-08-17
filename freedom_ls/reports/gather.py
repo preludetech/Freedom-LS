@@ -45,6 +45,7 @@ from freedom_ls.student_progress.models import (
     FormProgress,
     QuestionAnswer,
     TopicProgress,
+    attempt_completes_form,
     evaluate_quiz_answers,
 )
 
@@ -582,8 +583,13 @@ def gather_cohort_report_data(
         if key not in latest_form_progress:
             latest_form_progress[key] = fp
         if fp.completed_time is not None:
+            # Rows arrive newest-completed first, so the first completed sitting
+            # seen for a key is the learner's latest — the one whose verdict
+            # decides whether they are done with the form.
+            is_latest_completed = key not in completed_attempts_by_user_form
             completed_attempts_by_user_form[key].append(fp)
-            completed_form_ids_by_user[fp.user_id].add(fp.form_id)
+            if is_latest_completed and attempt_completes_form(fp):
+                completed_form_ids_by_user[fp.user_id].add(fp.form_id)
             completed_attempt_ids.append(fp.id)
 
     # The rows arrive newest-completed first; a reader of a student's section
@@ -639,6 +645,10 @@ def gather_cohort_report_data(
         per_form_counter[form_id] += 1
         question_number_by_id[question.id] = per_form_counter[form_id]
 
+    questions_by_form: dict[UUID, list[FormQuestion]] = defaultdict(list)
+    for question in questions:
+        questions_by_form[question.form_page.form_id].append(question)
+
     answers = list(
         QuestionAnswer.objects.filter(
             site_id=site_id,
@@ -649,13 +659,34 @@ def gather_cohort_report_data(
             question_id__in=question_ids,
         ).prefetch_related("selected_options")
     )
-    answer_rows = [
-        (
-            answer.form_progress_id,
-            answer.question_id,
-            {o.id for o in answer.selected_options.all()},
+    selected_options_by_pair: dict[tuple[UUID, UUID], list[QuestionOption]] = {
+        (answer.form_progress_id, answer.question_id): list(
+            answer.selected_options.all()
         )
         for answer in answers
+    }
+    # A question left blank stores no answer row, so walking the rows alone would
+    # drop it — while it still counts against the learner's score. Pair every
+    # completed sitting with every question it covered instead, so a blank one is
+    # judged as an empty selection rather than passed over.
+    sat_pairs: list[tuple[UUID, FormQuestion]] = [
+        (attempt_id, question)
+        for attempt_id in completed_attempt_ids
+        for question in questions_by_form.get(fp_user_form[attempt_id][1], [])
+        if question.type not in FREE_TEXT_QUESTION_TYPES
+    ]
+    answer_rows = [
+        (
+            attempt_id,
+            question.id,
+            {
+                option.id
+                for option in selected_options_by_pair.get(
+                    (attempt_id, question.id), []
+                )
+            },
+        )
+        for attempt_id, question in sat_pairs
     ]
     correctness = evaluate_quiz_answers(answer_rows, options_by_question)
 
@@ -689,21 +720,18 @@ def gather_cohort_report_data(
     # Cohort-wide confusion tally, first attempts only.
     respondent_counts: dict[UUID, int] = defaultdict(int)
     wrong_counts_first: dict[UUID, int] = defaultdict(int)
-    for answer in answers:
-        question = question_by_id[answer.question_id]
-        if question.type in FREE_TEXT_QUESTION_TYPES:
-            continue
-        is_correct = correctness[(answer.form_progress_id, answer.question_id)]
-        user_id, form_id = fp_user_form[answer.form_progress_id]
+    for attempt_id, question in sat_pairs:
+        is_correct = correctness[(attempt_id, question.id)]
+        user_id, form_id = fp_user_form[attempt_id]
         if not is_correct:
-            wrong_key = (user_id, form_id, answer.question_id)
+            wrong_key = (user_id, form_id, question.id)
             wrong_counts[wrong_key] += 1
-            for option in answer.selected_options.all():
+            for option in selected_options_by_pair.get((attempt_id, question.id), []):
                 wrong_selected_texts[wrong_key][option.text] = None
-        if answer.form_progress_id in first_attempt_ids:
-            respondent_counts[answer.question_id] += 1
+        if attempt_id in first_attempt_ids:
+            respondent_counts[question.id] += 1
             if not is_correct:
-                wrong_counts_first[answer.question_id] += 1
+                wrong_counts_first[question.id] += 1
 
     wrong_answers_by_user_quiz: dict[int, dict[UUID, list[WrongAnswer]]] = defaultdict(
         lambda: defaultdict(list)
@@ -723,10 +751,6 @@ def gather_cohort_report_data(
     for per_quiz in wrong_answers_by_user_quiz.values():
         for wrong_answer_list in per_quiz.values():
             wrong_answer_list.sort(key=lambda wa: wa.question_number)
-
-    questions_by_form: dict[UUID, list[FormQuestion]] = defaultdict(list)
-    for question in questions:
-        questions_by_form[question.form_page.form_id].append(question)
 
     confusions_by_quiz: dict[UUID, ConfusionBlock] = {}
     for form_id in quiz_form_ids:

@@ -98,7 +98,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
         <td class="col-question-number">Q{{ wrong.question_number }}</td>
         <td>{{ wrong.question_text }}</td>
         <td class="numeric">×{{ wrong.times_wrong }}</td>
-        <td>{% for text in wrong.selected_option_texts %}<span class="chip chip-error">{{ text }}</span>{% endfor %}</td>
+        <td>{% for text in wrong.selected_option_texts %}<span class="chip chip-error">{{ text }}</span>{% empty %}<span class="no-answer">Not answered</span>{% endfor %}</td>
         <td>{% for text in wrong.correct_option_texts %}<span class="chip chip-success">{{ text }}</span>{% endfor %}</td>
       </tr>
       {% endfor %}

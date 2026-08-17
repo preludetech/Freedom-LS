@@ -165,6 +165,126 @@ def test_completion_percentage_ignores_stale_course_progress_field(mock_site_con
     assert row.completion_percentage == 0
 
 
+def _cohort_with_two_question_quiz(*, pass_percentage: int | None = 50):
+    """Cohort with one course holding a two-question quiz. Returns the pieces a test
+    needs to have a student sit it."""
+    cohort = CohortFactory()
+    student = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=student)
+    course = CourseFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    quiz = FormFactory(
+        title="Two Question Quiz",
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=pass_percentage,
+    )
+    _attach(course, quiz)
+    page = FormPageFactory(form=quiz, order=0)
+
+    questions = []
+    for i in range(2):
+        question = FormQuestionFactory(
+            form_page=page,
+            type=QuestionType.MULTIPLE_CHOICE,
+            question=f"Question {i + 1}?",
+            order=i,
+        )
+        correct_option = QuestionOptionFactory(
+            question=question, text="Right", correct=True, order=0
+        )
+        QuestionOptionFactory(question=question, text="Wrong", correct=False, order=1)
+        questions.append((question, correct_option))
+
+    return cohort, student, quiz, questions
+
+
+def test_a_question_left_blank_reaches_the_wrong_answer_detail(mock_site_context):
+    """A blank question stores no answer row, but the learner still got it wrong."""
+    cohort, student, quiz, questions = _cohort_with_two_question_quiz()
+    (answered, correct_option), (blank, _) = questions
+    attempt = FormProgressFactory(
+        user=student,
+        form=quiz,
+        completed_time=timezone.now(),
+        scores={"score": 1, "max_score": 2},
+    )
+    answer = QuestionAnswerFactory(form_progress=attempt, question=answered)
+    answer.selected_options.add(correct_option)
+
+    data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+    wrong = data.students[0].wrong_answers[0].answers
+    assert [entry.question_text for entry in wrong] == [blank.question]
+    assert wrong[0].selected_option_texts == []
+
+
+def test_confusion_denominator_counts_students_who_left_a_question_blank(
+    mock_site_context,
+):
+    """A learner who sat the quiz and skipped the question is a respondent who got it wrong."""
+    cohort, student, quiz, questions = _cohort_with_two_question_quiz()
+    (answered, correct_option), (blank, _) = questions
+    attempt = FormProgressFactory(
+        user=student,
+        form=quiz,
+        completed_time=timezone.now(),
+        scores={"score": 1, "max_score": 2},
+    )
+    answer = QuestionAnswerFactory(form_progress=attempt, question=answered)
+    answer.selected_options.add(correct_option)
+
+    data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+    confusion = data.courses[0].confusions_by_quiz[quiz.id].questions[0]
+    assert confusion.question_text == blank.question
+    assert confusion.respondent_count == 1
+    assert confusion.wrong_count == 1
+
+
+def test_failed_quiz_does_not_count_toward_report_completion_percentage(
+    mock_site_context,
+):
+    """The report's completion figures follow the same pass-to-complete rule as the course."""
+    cohort, student, quiz, _questions = _cohort_with_two_question_quiz(
+        pass_percentage=80
+    )
+    FormProgressFactory(
+        user=student,
+        form=quiz,
+        completed_time=timezone.now(),
+        scores={"score": 0, "max_score": 2},
+    )
+
+    data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+    assert data.courses[0].student_rows[0].completion_percentage == 0
+
+
+def test_passing_a_retry_restores_the_report_completion_percentage(mock_site_context):
+    """The latest completed sitting decides, so a passing retry counts the quiz as done."""
+    cohort, student, quiz, _questions = _cohort_with_two_question_quiz(
+        pass_percentage=80
+    )
+    with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
+        FormProgressFactory(
+            user=student,
+            form=quiz,
+            completed_time=timezone.now(),
+            scores={"score": 0, "max_score": 2},
+        )
+    with time_machine.travel("2026-01-02T00:00:00Z", tick=False):
+        FormProgressFactory(
+            user=student,
+            form=quiz,
+            completed_time=timezone.now(),
+            scores={"score": 2, "max_score": 2},
+        )
+
+    data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+    assert data.courses[0].student_rows[0].completion_percentage == 100
+
+
 def test_latest_attempt_score_used_across_three_attempts_at_different_times(
     mock_site_context,
 ):
@@ -971,12 +1091,14 @@ class TestSurveysAlongsideQuizzes:
     def test_a_completed_survey_counts_toward_course_completion(
         self, cohort_with_a_quiz_and_a_survey, mock_site_context
     ):
+        """The survey has no pass mark, so completing it is enough — unlike the quiz
+        this student failed, which is why the count is 1 of 2 rather than 2."""
         data = gather_cohort_report_data(
             str(cohort_with_a_quiz_and_a_survey.id), mock_site_context.pk
         )
 
         row = data.courses[0].student_rows[0]
-        assert row.completed_item_count == 2
+        assert row.completed_item_count == 1
         assert row.total_item_count == 2
 
 

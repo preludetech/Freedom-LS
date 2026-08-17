@@ -348,6 +348,13 @@ th.numeric {
   font-size: 6.8pt;
 }
 
+/* A question left blank has no option to quote, so it reads as an absence
+   rather than as something the learner chose. */
+.no-answer {
+  color: var(--color-muted);
+  font-style: italic;
+}
+
 /* Progress bars: nested spans, fixed-width outer and percentage-width inner.
    No flexbox — WeasyPrint's flexbox support is not well tested.
    `line-height: 0` on the track stops the outer box's inherited line box
