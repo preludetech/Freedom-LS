@@ -7,4 +7,4 @@ class ReportsConfig(AppConfig):
     label = "freedom_ls_reports"
 
     def ready(self) -> None:
-        from freedom_ls.reports import checks  # noqa: F401
+        from freedom_ls.reports import checks, signals  # noqa: F401

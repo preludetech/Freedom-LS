@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-import posixpath
-
 from django.conf import settings
 from django.core.files.storage import InvalidStorageError, Storage, storages
 from django.db import models
 from django.db.models import Q, UniqueConstraint
-from django.db.models.signals import post_delete
-from django.dispatch import receiver
 
 from freedom_ls.reports.config import config
 from freedom_ls.site_aware_models.models import SiteAwareModel
@@ -26,10 +22,15 @@ STATUS_CHOICES = [
 
 
 def report_upload_path(instance: GeneratedReport, filename: str) -> str:
-    """pk-derived, never the cohort name — a cohort name is guessable and enumerable."""
+    """pk-derived, never the cohort name — a cohort name is guessable and enumerable.
+
+    The pk is a uuid4, so it alone makes the name unique and every report can
+    sit directly under `reports/`. Nothing user-facing reads this name:
+    `download_report_view` names the download itself via Content-Disposition.
+    """
     if not instance.pk:
         raise ValueError("Instance must be saved before uploading files")
-    return f"reports/{instance.pk}/cohort-report.pdf"
+    return f"reports/{instance.pk}-cohort-report.pdf"
 
 
 def get_reports_storage() -> Storage:
@@ -87,53 +88,3 @@ class GeneratedReport(SiteAwareModel):
         # The delete-confirmation screens show only this string, so it has to
         # name the cohort an admin is about to destroy a report for.
         return f"Report for cohort {self.cohort} ({self.status})"
-
-
-def _delete_empty_report_directory(
-    storage: Storage, directory: str
-) -> None:  # TODO why a directory?
-    """Remove the per-report directory once its only file is gone.
-
-    `report_upload_path` gives every report a directory of its own, so an
-    emptied one is dead weight. Not every backend has directories: the base
-    `Storage` API raises `NotImplementedError` for both `listdir` and `delete`,
-    and object stores synthesise a prefix that disappears with its last key.
-    Those and a concurrently removed directory are the only ways there can
-    legitimately be nothing to remove, so they are the only failures swallowed
-    here — anything else is a real storage fault and must surface.
-    """
-    if not directory:
-        return
-    try:
-        subdirectories, files = storage.listdir(directory)
-    except (NotImplementedError, FileNotFoundError):
-        return
-    if subdirectories or files:
-        return
-    try:
-        storage.delete(directory)
-    except NotImplementedError:
-        return
-
-
-@receiver(post_delete, sender=GeneratedReport)  # TODO signals should go in signals.py
-def delete_report_file(
-    sender: type[GeneratedReport], instance: GeneratedReport, **kwargs: object
-) -> None:
-    """Storage does not follow the row. An orphaned PDF is PII left behind.
-
-    TODO: no retention/expiry policy exists yet for report files while their
-    row is still alive — this only cleans up on delete. Do not remove this
-    TODO without implementing retention.
-    """
-    if not instance.file:
-        return
-    # Read through a local: FieldFile.name is Optional, and the truthiness
-    # check above narrows the FieldFile, not the name it carries.
-    file_name = instance.file.name
-    if not file_name:
-        return
-    directory = posixpath.dirname(file_name)
-    storage = instance.file.storage
-    instance.file.delete(save=False)
-    _delete_empty_report_directory(storage, directory)
