@@ -89,7 +89,9 @@ class GeneratedReport(SiteAwareModel):
         return f"Report for cohort {self.cohort} ({self.status})"
 
 
-def _delete_empty_report_directory(storage: Storage, directory: str) -> None:
+def _delete_empty_report_directory(
+    storage: Storage, directory: str
+) -> None:  # TODO why a directory?
     """Remove the per-report directory once its only file is gone.
 
     `report_upload_path` gives every report a directory of its own, so an
@@ -114,7 +116,7 @@ def _delete_empty_report_directory(storage: Storage, directory: str) -> None:
         return
 
 
-@receiver(post_delete, sender=GeneratedReport)
+@receiver(post_delete, sender=GeneratedReport)  # TODO signals should go in signals.py
 def delete_report_file(
     sender: type[GeneratedReport], instance: GeneratedReport, **kwargs: object
 ) -> None:
