@@ -1,4 +1,10 @@
-"""Tests for ListViewConfig.check_access and authorise_instance."""
+"""Tests for ListViewConfig.check_access and authorise_instance.
+
+These exercise the mechanism directly, on hand-built requests, because the
+scope is deliberately opaque to the framework. The end-to-end coverage --
+every configured surface 404ing for a user with no access, through the real
+client -- lives in educator_interface/tests/test_config_authorisation.py.
+"""
 
 from __future__ import annotations
 
@@ -101,13 +107,30 @@ class TestCheckAccessDenyByDefault:
             url_name=URL_NAME,
         )
         assert response.status_code == 200
+        assert "Allowed Stub" in response.content.decode()
 
 
 class TestCheckAccessPrologueIsNonBypassable:
-    def test_bare_request_raises_http404_not_attribute_error(self) -> None:
-        instance = StubModel(pk=1, name="unsaved")
+    """The prologue denies on two independent grounds -- no authenticated user,
+    and no resolved scope. Both are pinned against PermissiveConfig, whose
+    override would otherwise let the request through."""
+
+    @pytest.mark.django_db
+    def test_request_without_a_resolved_scope_is_denied(
+        self, mock_site_context: None
+    ) -> None:
+        request = RequestFactory().get("/test-panel/allow-stub/1")
+        request.user = make_staff_user()
+
         with pytest.raises(Http404):
-            DenyByDefaultConfig.check_access(HttpRequest(), instance)
+            PermissiveConfig.check_access(request, StubModel(pk=1, name="unsaved"))
+
+    def test_request_without_an_authenticated_user_is_denied(self) -> None:
+        request = RequestFactory().get("/test-panel/allow-stub/1")
+        request.organisation = object()
+
+        with pytest.raises(Http404):
+            PermissiveConfig.check_access(request, StubModel(pk=1, name="unsaved"))
 
     def test_bare_request_raises_http404_even_when_override_dereferences_organisation(
         self,

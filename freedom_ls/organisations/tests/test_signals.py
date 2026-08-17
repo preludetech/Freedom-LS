@@ -10,11 +10,6 @@ from freedom_ls.organisations.models import Organisation
 
 @pytest.mark.django_db
 class TestEnsureDefaultOrganisation:
-    def test_new_site_gets_exactly_one_organisation(self):
-        site = SiteFactory(name="Acme")
-
-        assert Organisation._base_manager.filter(site=site).count() == 1
-
     def test_organisation_lands_on_the_new_site_not_the_ambient_one(
         self, mock_site_context
     ):

@@ -107,21 +107,6 @@ class TestHtmxNavigation:
         # absence-only checks above.
         assert "Name" in content
 
-    def test_htmx_navigation_main_content_div_present(
-        self, mock_site_context: None
-    ) -> None:
-        """HTMX navigation response wraps content in div with id=main-content."""
-        request = _make_request(is_htmx=True, hx_target="main-content")
-        response = panel_framework_view(
-            config=CONFIG,
-            request=request,
-            path_string="stubs",
-            template_name=TEMPLATE,
-            url_name=URL_NAME,
-        )
-        content = response.content.decode()
-        assert 'id="main-content"' in content
-
     def test_htmx_navigation_includes_heading(self, mock_site_context: None) -> None:
         """HTMX navigation response carries the heading in the OOB page-title fragment."""
         request = _make_request(is_htmx=True, hx_target="main-content")

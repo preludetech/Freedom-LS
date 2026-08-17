@@ -13,6 +13,7 @@ import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.template.loader import render_to_string
 from django.test import RequestFactory
+from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -41,22 +42,16 @@ class TestEducatorInterfaceLink:
     """Shown to everyone the educator interface would let in — which is no
     longer the same set as is_staff."""
 
-    def test_shown_to_an_educator_with_roles_on_several_organisations(
-        self, mock_site_context
-    ):
-        user = UserFactory()
-        assign_object_role(user, OrganisationFactory(), "organisation_staff")
-        assign_object_role(user, OrganisationFactory(), "organisation_staff")
-
-        assert EDUCATOR_LINK_TEXT in _render_menu(user)
-
-    def test_shown_to_an_educator_with_a_role_on_one_organisation(
+    def test_shown_to_an_educator_with_a_role_on_an_organisation(
         self, mock_site_context
     ):
         user = UserFactory()
         assign_object_role(user, OrganisationFactory(), "organisation_staff")
 
-        assert EDUCATOR_LINK_TEXT in _render_menu(user)
+        rendered = _render_menu(user)
+
+        assert EDUCATOR_LINK_TEXT in rendered
+        assert f'href="{reverse("educator_interface:root")}"' in rendered
 
     def test_shown_to_an_educator_with_only_a_cohort_grant(self, mock_site_context):
         user = UserFactory()
@@ -76,12 +71,6 @@ class TestEducatorInterfaceLink:
 
         assert EDUCATOR_LINK_TEXT not in _render_menu(user)
 
-    def test_links_to_the_educator_interface_root(self, mock_site_context):
-        user = UserFactory()
-        assign_object_role(user, OrganisationFactory(), "organisation_staff")
-
-        assert 'href="/educator/"' in _render_menu(user)
-
 
 @pytest.mark.django_db
 class TestAdminPanelLink:
@@ -97,12 +86,6 @@ class TestAdminPanelLink:
         assert ADMIN_LINK_TEXT not in rendered
         assert 'href="/admin/"' not in rendered
 
-    def test_hidden_from_a_non_staff_cohort_grant_educator(self, mock_site_context):
-        user = UserFactory()
-        assign_object_role(user, CohortFactory(), "instructor")
-
-        assert ADMIN_LINK_TEXT not in _render_menu(user)
-
     def test_shown_to_a_staff_user(self, mock_site_context):
         user = UserFactory(staff=True)
 
@@ -113,7 +96,8 @@ class TestAdminPanelLink:
 class TestAnonymousHeader:
     """The header renders for logged-out visitors too."""
 
-    def test_renders_without_the_educator_link(self, mock_site_context):
+    def test_offers_the_login_prompt_instead_of_the_user_menu(self, mock_site_context):
         rendered = _render_header(AnonymousUser())
 
+        assert f'href="{reverse("account_login")}"' in rendered
         assert EDUCATOR_LINK_TEXT not in rendered

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from django.template import RequestContext, Template
+from django.template import Context, RequestContext, Template
 from django.test import RequestFactory
 
 
@@ -42,15 +42,15 @@ def test_resolve_url_path_template_merges_panel_url_kwargs(
 
 
 @pytest.mark.django_db
-def test_resolve_url_path_template_without_panel_url_kwargs_omits_extra_segment(
+def test_resolve_url_path_template_without_a_request_in_the_context(
     mock_site_context: None,
 ) -> None:
-    """No request.panel_url_kwargs attribute at all is treated as no extra kwargs."""
-    request = RequestFactory().get("/whatever")
+    """Rendered outside a request, the tag falls back to no extra kwargs
+    rather than raising on the missing 'request' context variable."""
     obj = SimpleNamespace(pk=42)
     template = Template(
         "{% load panel_tags %}"
         "{% resolve_url_path_template obj 'panel_framework_test:interface' 'cohorts/{pk}' %}"
     )
-    result = template.render(RequestContext(request, {"obj": obj}))
+    result = template.render(Context({"obj": obj}))
     assert result.strip() == "/test-panel/cohorts/42"

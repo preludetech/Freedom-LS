@@ -189,14 +189,13 @@ class TestCohortsVisibleTo:
     def test_guardian_grant_only_sees_the_granted_cohort(self, mock_site_context):
         organisation = OrganisationFactory()
         granted_cohort = CohortFactory(organisation=organisation)
-        other_cohort = CohortFactory(organisation=organisation)
+        CohortFactory(organisation=organisation)
         user = UserFactory()
         assign_object_role(user, granted_cohort, "instructor")
 
         visible = cohorts_visible_to(user, organisation)
 
         assert list(visible) == [granted_cohort]
-        assert other_cohort not in visible
 
     def test_anonymous_user_sees_no_cohorts(self, mock_site_context):
         organisation = OrganisationFactory()
