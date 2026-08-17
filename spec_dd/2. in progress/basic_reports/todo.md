@@ -77,21 +77,22 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user + cmd) Fix QA bug: empty report directories left on disk after a report is deleted (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: required-question validation is not enforced on form submit (TDD — failing test first, then fix)
 - [x] (user) Decide QA 7 sign-off: adjust the landscape column constant to the measured 11-quiz / 14-column budget, or implement table splitting
-- [ ] (user) Decide whether a failed quiz should count toward course completion percentage (observation 2 in the QA report)
+- [x] (user) Decide whether a failed quiz should count toward course completion percentage (observation 2 in the QA report) — decided: a learner must pass to complete, so a failed quiz does not count
 - [x] (user + cmd) Redesign the report to the design in `design/`, and update the QA plan where the design deviates
 - [x] (cmd) Split `3. frontend_qa.md` into two independently-runnable plans with separate screenshot/report directories: `3a. report_generation_qa/` and `3b. quiz_marking_qa/`
 - [x] (cmd) Re-run `/fls-dev:do_qa` on `3a. report_generation_qa/frontend_qa_report_generation.md` for the redesigned report — QA 2, 3, 4, 5 and 6 all changed, and QA 2.1, 2.9, 2.10, 2.11, 5.3 and 10.7 are new
 - [x] (cmd) Re-run `/fls-dev:do_qa` on `3b. quiz_marking_qa/frontend_qa_quiz_marking.md` for the multi-select scoring fix — QA 11–13, now including the mobile and tablet passes that the combined admin-oriented plan skipped
 - [ ] (user) **Re-open the QA 7 sign-off.** `REPORTS_MAX_QUIZ_COLUMNS = 11` was measured against 10pt DejaVu Sans. The report is now set in Source Sans 3, which is narrower, and the summary table gained a "When" column — re-measure the budget on a real landscape page and adjust the default
 - [ ] (user) Re-run the greyscale print check (report plan, QA 6): the status glyphs now draw from Source Sans 3 rather than DejaVu, and several families are embedded
+- [ ] (user) Regenerate the `3a. report_generation_qa/` artifacts before sign-off: the Finding 1 fix changes the confusion tally's denominator to "learners who sat the question" and the Finding 5 fix drops failed quizzes from the completion figures, so the recorded PDFs no longer match what the code produces
 - [x] (user + cmd) Fix QA bug: a learner who opened items but completed none renders an empty detail section instead of the "No activity recorded." line (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: the completion bar's empty track is invisible on banded summary-table rows because it shares the zebra stripe's colour token (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: landscape column budget is 10, not 11 — at 11 quiz columns "Last item completed" overflows into the "When" column, so `REPORTS_MAX_QUIZ_COLUMNS` must drop from 11 to 10 (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: an unanswered optional question is scored wrong but omitted from "Review incorrect answers", so a failed learner is shown no feedback at all (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: a pre-fix checkbox attempt shows "100% — 2 / 2 correct — Quiz passed!" directly above an incorrect-answer listing, with nothing on the page explaining the discrepancy (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: "Your answer" marks correctly-ticked multi-select options with a red error glyph, contradicting the "Correct answer" block two lines below (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: the form runner fires a spurious "Leave site?" prompt when the learner has changed nothing (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: a never-marked survey tells the learner "marking is in progress" on completion (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: an unanswered optional question is scored wrong but omitted from "Review incorrect answers", so a failed learner is shown no feedback at all (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: a pre-fix checkbox attempt shows "100% — 2 / 2 correct — Quiz passed!" directly above an incorrect-answer listing, with nothing on the page explaining the discrepancy (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: "Your answer" marks correctly-ticked multi-select options with a red error glyph, contradicting the "Correct answer" block two lines below (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: the form runner fires a spurious "Leave site?" prompt when the learner has changed nothing (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: a never-marked survey tells the learner "marking is in progress" on completion (TDD — failing test first, then fix)
 - [ ] (cmd) Call out free-text questions inside a `strategy: QUIZ` form as an authoring anti-pattern in the upgrade notes — they count toward `max_score` but can never be scored correct, capping the achievable score below 100%
 
 ## 10. Product documentation
@@ -102,7 +103,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 11. Upgrade notes
 
 - [ ] (cmd) Run `/fls-dev:update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
-- [ ] (user) Review the upgrade notes — they must cover the four new reports settings (`REPORTS_POWERED_BY_NAME`, `REPORTS_POWERED_BY_LOGO_STATIC_PATH`, `REPORTS_FONT_FACES` and the three font stacks), how a project rebrands the report's typography, and the `severity` attribute added to the at-risk rule protocol (read with a fallback, so an existing custom rule keeps working)
+- [ ] (user) Review the upgrade notes — they must cover the required `manage.py recalculate_progress_percentages` backfill (a failed quiz no longer counts toward course completion, so stored `progress_percentage` values are stale), and the four new reports settings (`REPORTS_POWERED_BY_NAME`, `REPORTS_POWERED_BY_LOGO_STATIC_PATH`, `REPORTS_FONT_FACES` and the three font stacks), how a project rebrands the report's typography, and the `severity` attribute added to the at-risk rule protocol (read with a fallback, so an existing custom rule keeps working)
 
 ## 12. Template repo
 

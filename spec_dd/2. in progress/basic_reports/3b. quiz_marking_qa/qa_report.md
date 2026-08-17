@@ -405,3 +405,68 @@ cleaned.
 **One caveat on the educator panel's attempt counts.** Because QA 11 deliberately submits the same
 quiz repeatedly, the panel shows "x7" attempts for the QA student by the end of the run. That is the
 QA process, not a defect.
+
+---
+
+# Fixes applied
+
+All six findings are fixed. Each landed failing-test-first; the full suite passes and every fix was
+re-checked in the browser against the fixtures this run built.
+
+| Finding | Fixed in | What changed |
+|---|---|---|
+| 1 — blank question missing from the review list | `student_progress/models.py`, `course_form_complete.html`, `reports/gather.py`, `reports/partials/student_detail.html` | A missing answer row is now judged as an empty selection rather than skipped |
+| 2 — legacy attempt contradicts itself | `student_progress/models.py`, `student_interface/views.py`, `course_form_complete.html` | The page explains the stale score instead of leaving the learner to spot it |
+| 3 — correct ticks marked with a red ✗ | `course_form_complete.html` | Each tick is marked on its own merit; the verdict moves to the question |
+| 4 — spurious "Leave site?" prompt | `student_interface/.../alpine-components.js` | The guard waits for a real edit |
+| 5 — failed quiz counts as complete | `student_progress/models.py`, `student_interface/utils.py` + `views.py`, `reports/gather.py`, `recalculate_progress_percentages` | A learner has to pass to complete |
+| 6 — survey promises marking | `course_form_complete.html` | Copy matches what actually happens |
+
+## Where the fixes went beyond the finding
+
+**Finding 1 was fixed on the report too, not only the student page.** The root cause — `save_answers`
+deliberately storing no row for a blank question — blinds *every* read-time correctness derivation,
+and `reports/gather.py` walked the stored rows the same way. Its per-student wrong-answer detail and
+its confusion tally now pair each completed sitting with every question it covered.
+
+**The report's confusion denominators moved as a result.** `respondent_count` now counts the learners
+who *sat* a question rather than those who answered it, so error rates on quizzes containing optional
+questions will read differently from the 3a run's artifacts. That is the correct denominator for an
+error rate, but it means the 3a report artifacts want regenerating before sign-off.
+
+**Finding 5 also guards `course_finish`.** Changing only the percentage would have left a direct GET
+of the finish URL stamping `CourseProgress.completed_time` over a failed quiz, so the dashboard would
+still have said "Complete". The finish page now withholds the completion — it still renders, so the
+learner is not locked out, they simply are not credited. The rule throughout is: a form counts as
+finished when the learner has a completed attempt and, for a scored quiz, their **latest** completed
+attempt passed. A quiz with no pass mark has no bar to clear and counts on completion, matching what
+the course outline already showed.
+
+**Finding 5 needs a backfill.** Stored `progress_percentage` values are stale under the new rule —
+`uv run manage.py recalculate_progress_percentages` brings them in line (verified on the dev
+database: 81 of 142 records moved, and a second run is a no-op). Already-stamped `completed_time`
+values are left alone; history is not rewritten, consistent with the spec's non-rescoring stance.
+
+**Finding 2 shows its note whenever the stored and re-derived scores disagree**, not only when the
+incorrect-answer list is visible. The score and the verdict banner above it are stale either way, so
+gating the explanation on `quiz_show_incorrect` would hide it exactly where the learner has the least
+other information. `score_quiz()` split into a non-storing `compute_quiz_scores()` so the page can
+re-derive without writing — one code path, so the live derivation cannot drift from what a fresh
+attempt would score.
+
+**Finding 3 treats `correct=None` as neither.** An option nobody marked up is not evidence either
+way, so it carries a neutral glyph rather than being blamed alongside genuinely wrong ticks.
+
+## What was not changed
+
+**`save_answers` still writes no row for a blank question.** That behaviour is deliberate and correct
+— a blank row would count toward the runner's answered tally and hide which questions are still
+outstanding. The fix belongs in the readers, and that is where it went.
+
+**Observation C is still open.** Free-text questions inside a `strategy: QUIZ` form still count toward
+`max_score` while never being scorable. That is an authoring anti-pattern to call out in the upgrade
+notes, not a scoring bug, and it remains an open todo item.
+
+**Observations A, B, D and E** are unrelated to this spec and were left alone. Observation B ("a
+100%-complete course is still labelled IN PROGRESS") was noted as partly a consequence of Finding 5;
+with Finding 5 fixed, the failed-quiz half of it is gone.
