@@ -1,4 +1,4 @@
-"""Tests for the base at-risk rules (freedom_ls.reports.at_risk.rules)."""
+"""Tests for the at-risk rules (freedom_ls.reports.at_risk)."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import time_machine
 
 from django.utils import timezone
 
-from freedom_ls.reports.at_risk.rules import (
-    BASE_AT_RISK_RULES,
+from freedom_ls.reports.at_risk import (
+    AT_RISK_RULES,
     FailedLatestQuizAttemptRule,
     InactiveForDaysRule,
     NoRecordedActivityRule,
@@ -141,7 +141,7 @@ class TestInactiveForDaysRule:
         assert reason == "No activity recorded in over 3 days."
 
 
-class TestBaseAtRiskRules:
+class TestAtRiskRules:
     def test_a_student_can_trip_more_than_one_rule(self) -> None:
         with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
             last_completed_at = timezone.now()
@@ -154,7 +154,7 @@ class TestBaseAtRiskRules:
             quiz_results=[_QuizResult(completed_at=last_completed_at, passed=False)],
         )
 
-        reasons = {rule.id: rule.evaluate(student) for rule in BASE_AT_RISK_RULES}
+        reasons = {rule.id: rule.evaluate(student) for rule in AT_RISK_RULES}
         tripped = {rule_id for rule_id, reason in reasons.items() if reason is not None}
 
         assert tripped == {"failed_latest_quiz", "inactive"}

@@ -1,5 +1,13 @@
 # Report upgrades: per-organisation configuration
 
+> **Needs revision before it is specced.** `basic_reports` has since removed
+> `REPORTS_AT_RISK_RULES_MODULE` and its loader: at-risk rules are now a plain module-level list in
+> `freedom_ls/reports/at_risk.py`, with no settings hook and no downstream extension point. Every
+> passage below that assumes a configurable rules module needs reworking — the "one sequencing
+> decision worth making early" section (there is no contract left to break, so it is settled), the
+> at-risk section's opening paragraph, and the failure modes about a project swapping its rules
+> module and about the loader's cache discipline. The rest of the idea stands.
+
 The cohort progress PDF built by `basic_reports` is configured **once per deployment**. Its colours
 come from whatever theme the project built, its font is the one FLS bundles, and its at-risk rules
 are a list of pre-instantiated rule objects named by a settings module path. That is the right

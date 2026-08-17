@@ -1,19 +1,18 @@
-"""At-risk rule protocol and the base (v1) rule set.
+"""At-risk rule protocol and the rule set the cohort report evaluates.
 
-A rule is a small object: a stable `id`, a human-readable `label`, and an
-`evaluate(student)` method returning a reason string or None. Downstream
-projects extend the registry (see `at_risk/loader.py`) by exporting their own
-`AT_RISK_RULES = [*BASE_AT_RISK_RULES, MyRule(...)]` list — adding a rule is a
-one-line change to a list, never an edit to this module.
+A rule is a small object: a stable `id`, a human-readable `label`, a
+`severity`, and an `evaluate(student)` method returning a reason string or
+None. Adding, removing or reordering a rule is a one-line change to
+AT_RISK_RULES at the foot of this module, and needs no edit to the gathering
+or rendering code.
 
 `StudentDetailLike` is a structural stand-in for the real per-student report
-row (`freedom_ls.reports.gather.StudentDetail`), which is defined in a later
-implementation batch and does not exist yet. It carries only the fields the
-base rules below actually read. Because `typing.Protocol` is duck-typed, the
-real dataclass needs no inheritance from it — it only needs to expose the
-same attributes. See this module's implementation notes for the field the
-real dataclass must add: `report_generated_at`, the single instant the whole
-report (and therefore every rule) is evaluated against.
+row, `freedom_ls.reports.gather.StudentDetail`. It carries only the fields the
+rules below actually read. Because `typing.Protocol` is duck-typed, the real
+dataclass needs no inheritance from it — it only needs to expose the same
+attributes. `report_generated_at` is the single instant the whole report (and
+therefore every rule) is evaluated against, so two rules can never disagree
+about what "now" was.
 """
 
 from __future__ import annotations
@@ -39,19 +38,17 @@ class StudentDetailLike(Protocol):
 
 
 class AtRiskRule(Protocol):
-    """A single at-risk check: identity, display label, and a pure evaluator."""
+    """A single at-risk check: identity, display label, severity, evaluator."""
 
     id: str
     label: str
+    severity: str
 
     def evaluate(self, student: StudentDetailLike) -> str | None: ...
 
 
 # How heavily the report draws a rule's flags: a role token name, so a badge
-# is coloured by the theme rather than by this module. Deliberately not part
-# of the AtRiskRule protocol above -- a rule written before this existed must
-# keep working, so the reader falls back to a default instead of requiring
-# the attribute. See DEFAULT_FLAG_SEVERITY in reports/gather.py.
+# is coloured by the theme rather than by this module.
 SEVERITY_ERROR = "error"
 SEVERITY_WARNING = "warning"
 
@@ -108,7 +105,7 @@ class InactiveForDaysRule:
         return f"No activity recorded in over {self.days} days."
 
 
-BASE_AT_RISK_RULES: list[AtRiskRule] = [
+AT_RISK_RULES: list[AtRiskRule] = [
     NoRecordedActivityRule(),
     FailedLatestQuizAttemptRule(),
     InactiveForDaysRule(days=7),

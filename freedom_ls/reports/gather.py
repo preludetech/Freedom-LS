@@ -32,8 +32,7 @@ from freedom_ls.content_engine.models import (
     QuestionOption,
     Topic,
 )
-from freedom_ls.reports.at_risk.loader import get_at_risk_rules
-from freedom_ls.reports.at_risk.rules import StudentDetailLike
+from freedom_ls.reports.at_risk import AT_RISK_RULES, StudentDetailLike
 from freedom_ls.reports.config import config
 from freedom_ls.site_aware_models.config import config as site_config
 from freedom_ls.student_management.models import (
@@ -52,11 +51,6 @@ from freedom_ls.student_progress.models import (
 ATTENTION_LIST_MAX = 12
 CONFUSIONS_PER_QUIZ_MAX = 10
 MIN_RESPONDENTS_FOR_PERCENTAGE = 10
-
-# What a rule's flags are weighted as when the rule declares no severity.
-# Warning rather than error: a rule that never says how serious it is should
-# not be drawn as the most serious thing on the page.
-DEFAULT_FLAG_SEVERITY = "warning"
 
 # Free-text answers have no correctness concept at all, so they are excluded
 # from wrong-answer aggregation and the confusion tally entirely, not scored
@@ -185,7 +179,7 @@ class StudentDetail:
     quiz_results: list[QuizResult]
     wrong_answers: list[QuizWrongAnswers]
     # The single instant the whole report is evaluated against, carried on
-    # every student so at-risk rules (freedom_ls.reports.at_risk.rules) never
+    # every student so at-risk rules (freedom_ls.reports.at_risk) never
     # call timezone.now() themselves — see AtRiskRule.evaluate().
     report_generated_at: datetime
     flags: list[AtRiskFlag]
@@ -955,7 +949,7 @@ def gather_cohort_report_data(
         # attention list below filters and sorts this same list — it never
         # re-evaluates, so a student's flags read identically everywhere in
         # the report.
-        # StudentDetailLike is a structural stand-in (freedom_ls/reports/at_risk/rules.py);
+        # StudentDetailLike is a structural stand-in (freedom_ls/reports/at_risk.py);
         # StudentDetail satisfies it in practice but mypy can't confirm list
         # invariance and frozen-dataclass read-only attributes against a
         # Protocol declared with plain mutable fields, hence the cast.
@@ -965,12 +959,9 @@ def gather_cohort_report_data(
                 rule_id=rule.id,
                 label=rule.label,
                 reason=reason,
-                # Read off the rule rather than required of it: a downstream
-                # rule class written before severity existed keeps working,
-                # and its flags simply read as warnings.
-                severity=getattr(rule, "severity", DEFAULT_FLAG_SEVERITY),
+                severity=rule.severity,
             )
-            for rule in get_at_risk_rules()
+            for rule in AT_RISK_RULES
             for reason in [rule.evaluate(detail_for_rules)]
             if reason is not None
         ]

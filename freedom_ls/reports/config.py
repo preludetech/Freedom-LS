@@ -68,10 +68,9 @@ DEFAULT_REPORT_FONT_FACES = [
 
 class ReportsConfig(AppSettings):
     REPORTS_STORAGE_ALIAS: str
-    REPORTS_AT_RISK_RULES_MODULE: str
     REPORTS_MAX_STUDENTS: int
     REPORTS_MAX_QUIZ_COLUMNS: int
-    REPORTS_POWERED_BY_NAME: str | None
+    REPORTS_POWERED_BY_NAME: str | None  # TODO
     REPORTS_POWERED_BY_LOGO_STATIC_PATH: str | None
     REPORTS_FONT_FACES: list[dict[str, str]]
     REPORTS_FONT_DISPLAY: str
@@ -80,9 +79,6 @@ class ReportsConfig(AppSettings):
 
     declared_settings = {
         "REPORTS_STORAGE_ALIAS": Setting(default="reports"),
-        "REPORTS_AT_RISK_RULES_MODULE": Setting(
-            default="freedom_ls.reports.at_risk.rules"
-        ),
         # A resource guard, not a product rule: the safe ceiling depends on the
         # deployment's worker memory and render budget, which FLS cannot know.
         "REPORTS_MAX_STUDENTS": Setting(default=500),

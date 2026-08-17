@@ -21,7 +21,6 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy, QuestionType
-from freedom_ls.reports.at_risk.loader import get_at_risk_rules
 from freedom_ls.reports.gather import gather_cohort_report_data
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
@@ -920,7 +919,7 @@ class TestQuizAttempts:
 
 
 class TestFlagSeverity:
-    def test_base_rules_carry_their_declared_severity(self, mock_site_context):
+    def test_rules_carry_their_declared_severity(self, mock_site_context):
         cohort = CohortFactory()
         CohortMembershipFactory(cohort=cohort, user=UserFactory())
         course = CourseFactory()
@@ -931,32 +930,6 @@ class TestFlagSeverity:
 
         flags = {flag.rule_id: flag.severity for flag in data.students[0].flags}
         assert flags["no_activity"] == "error"
-
-    def test_a_rule_declaring_no_severity_falls_back_to_warning(
-        self, mock_site_context
-    ):
-        # A rule class written before severity existed must keep working.
-        get_at_risk_rules.cache_clear()
-        try:
-            with override_settings(
-                REPORTS_AT_RISK_RULES_MODULE=(
-                    "freedom_ls.reports.tests.at_risk_rules_fixture"
-                )
-            ):
-                cohort = CohortFactory()
-                CohortMembershipFactory(cohort=cohort, user=UserFactory())
-                course = CourseFactory()
-                CohortCourseRegistrationFactory(cohort=cohort, collection=course)
-                _attach(course, TopicFactory())
-
-                data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
-
-                severities = {
-                    flag.rule_id: flag.severity for flag in data.students[0].flags
-                }
-                assert severities["severity_free"] == "warning"
-        finally:
-            get_at_risk_rules.cache_clear()
 
 
 class TestSiteName:
