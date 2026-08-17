@@ -114,9 +114,6 @@ touches. */
   font-size: 7pt;
   color: var(--color-muted);
 }
-.footer-powered::before {
-  content: " · ";
-}
 
 /* ===================================================================
    BASE TYPE
@@ -579,16 +576,6 @@ h3.confusion-heading {
   font-family: var(--report-font-display);
   font-size: 11pt;
   font-weight: 700;
-}
-.title-page .band-powered {
-  float: right;
-  font-size: 8pt;
-}
-.title-page .band-logo {
-  max-height: 6mm;
-  max-width: 30mm;
-  vertical-align: middle;
-  margin-left: 4pt;
 }
 
 /* ==== at_a_glance.html ==== */

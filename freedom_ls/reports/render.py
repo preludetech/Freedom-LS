@@ -179,10 +179,8 @@ def _build_document(data: CohortReportData) -> tuple[str, set[Path]]:
     theme_tokens = extract_theme_tokens()
     font_css, allowed_paths = build_font_css()
     site_logo_url, site_logo_path = _resolve_logo(site_config.HEADER_LOGO_STATIC_PATH)
-    powered_by_logo_url, powered_by_logo_path = _resolve_logo(
-        config.REPORTS_POWERED_BY_LOGO_STATIC_PATH
-    )
-    allowed_paths |= {p for p in (site_logo_path, powered_by_logo_path) if p}
+    if site_logo_path:
+        allowed_paths.add(site_logo_path)
     html = render_to_string(
         "reports/report.html",
         {
@@ -191,7 +189,6 @@ def _build_document(data: CohortReportData) -> tuple[str, set[Path]]:
             "font_css": font_css,
             "print_css": print_css,
             "site_logo_url": site_logo_url,
-            "powered_by_logo_url": powered_by_logo_url,
         },
     )
     return html, allowed_paths

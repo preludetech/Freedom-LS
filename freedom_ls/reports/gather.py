@@ -243,10 +243,8 @@ class CourseSection:
 class CohortReportData:
     cohort_name: str
     # Who the report is from: the tenant's own display name, which is the only
-    # organisation identity FLS records. Whoever runs the platform underneath
-    # it is a separate, optional setting the render layer reads.
+    # organisation identity FLS records.
     site_name: str
-    powered_by_name: str | None
     generated_at: datetime
     requested_by_name: str
     courses: list[CourseSection]
@@ -984,7 +982,6 @@ def gather_cohort_report_data(
         # resolve the same name, so a project that renamed itself in one place
         # is not still called something else on its reports.
         site_name=site_config.HEADER_TITLE or Site.objects.get(pk=site_id).name,
-        powered_by_name=config.REPORTS_POWERED_BY_NAME,
         generated_at=now,
         requested_by_name=requested_by_name,
         courses=course_sections,

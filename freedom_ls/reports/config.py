@@ -70,8 +70,6 @@ class ReportsConfig(AppSettings):
     REPORTS_STORAGE_ALIAS: str
     REPORTS_MAX_STUDENTS: int
     REPORTS_MAX_QUIZ_COLUMNS: int
-    REPORTS_POWERED_BY_NAME: str | None  # TODO
-    REPORTS_POWERED_BY_LOGO_STATIC_PATH: str | None
     REPORTS_FONT_FACES: list[dict[str, str]]
     REPORTS_FONT_DISPLAY: str
     REPORTS_FONT_BODY: str
@@ -89,13 +87,6 @@ class ReportsConfig(AppSettings):
         # the report's own body face — a deployment that changes the page size,
         # the fonts or the Completion column width can raise or lower it.
         "REPORTS_MAX_QUIZ_COLUMNS": Setting(default=10),
-        # The report's one piece of chrome FLS holds no data for. A site's own
-        # name and logo come from the Site row and HEADER_LOGO_STATIC_PATH, but
-        # nothing in FLS records who runs the platform underneath it. Both
-        # default to None so an unconfigured install renders no "powered by"
-        # block at all, rather than an empty or invented one.
-        "REPORTS_POWERED_BY_NAME": Setting(default=None),
-        "REPORTS_POWERED_BY_LOGO_STATIC_PATH": Setting(default=None),
         "REPORTS_FONT_FACES": Setting(default=DEFAULT_REPORT_FONT_FACES),
         "REPORTS_FONT_DISPLAY": Setting(default='"Inter", "DejaVu Sans", sans-serif'),
         "REPORTS_FONT_BODY": Setting(

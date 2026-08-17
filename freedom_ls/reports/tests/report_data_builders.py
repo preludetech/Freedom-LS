@@ -93,7 +93,6 @@ def _cohort_report_data(**overrides: object) -> CohortReportData:
     defaults: dict[str, object] = {
         "cohort_name": "Cohort A",
         "site_name": "Test Academy",
-        "powered_by_name": None,
         "generated_at": GENERATED_AT,
         "requested_by_name": "Jamie Educator",
         "courses": [],

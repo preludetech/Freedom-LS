@@ -284,16 +284,6 @@ class TestBrandingOnTheCover:
         ):
             build_report_html(_full_report_data())
 
-    def test_powered_by_block_is_absent_when_the_name_is_unset(self) -> None:
-        html = build_report_html(_cohort_report_data(powered_by_name=None))
-
-        assert "Powered by" not in html
-
-    def test_powered_by_block_names_the_configured_platform(self) -> None:
-        html = build_report_html(_cohort_report_data(powered_by_name="Acme Learning"))
-
-        assert "Powered by Acme Learning" in html
-
     def test_site_name_appears_on_the_cover_and_in_the_page_footer(self) -> None:
         html = build_report_html(_cohort_report_data(site_name="Bright Academy"))
 

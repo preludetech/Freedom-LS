@@ -1077,35 +1077,26 @@ class TestQuizAttemptsTable:
 
 
 class TestCoverBranding:
-    def test_names_the_site_and_omits_an_unconfigured_powered_by(self) -> None:
-        data = _cohort_report_data(site_name="Bright Academy", powered_by_name=None)
+    def test_names_the_site_and_omits_an_unconfigured_logo(self) -> None:
+        data = _cohort_report_data(site_name="Bright Academy")
 
         html = render_to_string(
             "reports/partials/title_page.html",
-            {"data": data, "site_logo_url": None, "powered_by_logo_url": None},
+            {"data": data, "site_logo_url": None},
         )
 
         assert "Bright Academy" in html
-        assert "Powered by" not in html
         assert "<img" not in html
 
-    def test_renders_both_logos_and_the_powered_by_line_when_configured(self) -> None:
-        data = _cohort_report_data(
-            site_name="Bright Academy", powered_by_name="Acme Learning"
-        )
+    def test_renders_the_site_logo_when_configured(self) -> None:
+        data = _cohort_report_data(site_name="Bright Academy")
 
         html = render_to_string(
             "reports/partials/title_page.html",
-            {
-                "data": data,
-                "site_logo_url": "file:///tmp/site.png",
-                "powered_by_logo_url": "file:///tmp/platform.png",
-            },
+            {"data": data, "site_logo_url": "file:///tmp/site.png"},
         )
 
         assert 'src="file:///tmp/site.png"' in html
-        assert 'src="file:///tmp/platform.png"' in html
-        assert "Powered by Acme Learning" in html
 
     def test_course_card_states_each_course_scale(self) -> None:
         data = _cohort_report_data(
@@ -1114,7 +1105,7 @@ class TestCoverBranding:
 
         html = render_to_string(
             "reports/partials/title_page.html",
-            {"data": data, "site_logo_url": None, "powered_by_logo_url": None},
+            {"data": data, "site_logo_url": None},
         )
 
         assert "24 items" in html

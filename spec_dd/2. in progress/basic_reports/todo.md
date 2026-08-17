@@ -101,7 +101,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 11. Upgrade notes
 
 - [ ] (cmd) Run `/fls-dev:update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
-- [ ] (user) Review the upgrade notes — they must cover the required `manage.py recalculate_progress_percentages` backfill (a failed quiz no longer counts toward course completion, so stored `progress_percentage` values are stale), and the four new reports settings (`REPORTS_POWERED_BY_NAME`, `REPORTS_POWERED_BY_LOGO_STATIC_PATH`, `REPORTS_FONT_FACES` and the three font stacks), how a project rebrands the report's typography, and the fact that at-risk rules are a plain list in `freedom_ls/reports/at_risk.py` with no settings hook — a project that needs its own rule forks until `report-upgrades` moves rule selection into the database
+- [ ] (user) Review the upgrade notes — they must cover the required `manage.py recalculate_progress_percentages` backfill (a failed quiz no longer counts toward course completion, so stored `progress_percentage` values are stale), and the new reports settings (`REPORTS_FONT_FACES` and the three font stacks), how a project rebrands the report's typography, and the fact that at-risk rules are a plain list in `freedom_ls/reports/at_risk.py` with no settings hook — a project that needs its own rule forks until `report-upgrades` moves rule selection into the database
 
 ## 12. Template repo
 

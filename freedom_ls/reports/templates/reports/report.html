@@ -1,6 +1,6 @@
 {% comment %}
 Required context: data (CohortReportData), theme_tokens (str), font_css (str),
-print_css (str), site_logo_url (str|None), powered_by_logo_url (str|None).
+print_css (str), site_logo_url (str|None).
 
 This is the document shell only — doctype, head, the page furniture every page
 shares, and one {% include %} per section in reading order. No loop, no
@@ -37,9 +37,8 @@ It must stay a block-level element and it must come before the cover — see the
 note on .footer-identity in print.css.{% endcomment %}
 <div class="footer-identity">
   <span class="footer-org">{{ data.site_name }} · Cohort progress report · {{ data.cohort_name }}</span>
-  {% if data.powered_by_name %}<span class="footer-powered">Powered by {{ data.powered_by_name }}</span>{% endif %}
 </div>
-{% include "reports/partials/title_page.html" with data=data site_logo_url=site_logo_url powered_by_logo_url=powered_by_logo_url only %}
+{% include "reports/partials/title_page.html" with data=data site_logo_url=site_logo_url only %}
 {% include "reports/partials/at_a_glance.html" with data=data attention=data.attention_list only %}
 {% include "reports/partials/contents.html" with data=data only %}
 {% include "reports/partials/summary_tables.html" with courses=data.courses only %}

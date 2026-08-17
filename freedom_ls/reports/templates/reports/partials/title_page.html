@@ -1,9 +1,8 @@
-{% comment %}Required context: data (CohortReportData), site_logo_url, powered_by_logo_url.
+{% comment %}Required context: data (CohortReportData), site_logo_url.
 
-The cover. Both logos are optional and both names stand alone without one, so
-every branding element is conditional: a fresh FLS install configures no logo
-and records nobody underneath it, and the page has to read as finished rather
-than as missing its pieces.
+The cover. The logo is optional and the site name stands alone without one, so
+it is conditional: a fresh FLS install configures no logo, and the page has to
+read as finished rather than as missing a piece.
 {% endcomment %}
 <section class="title-page">
   <div class="cover-brand">
@@ -47,11 +46,5 @@ than as missing its pieces.
 
   <div class="cover-band">
     <span class="band-site">{{ data.site_name }}</span>
-    {% if data.powered_by_name %}
-    <span class="band-powered">
-      Powered by {{ data.powered_by_name }}
-      {% if powered_by_logo_url %}<img class="band-logo" src="{{ powered_by_logo_url }}" alt="">{% endif %}
-    </span>
-    {% endif %}
   </div>
 </section>
