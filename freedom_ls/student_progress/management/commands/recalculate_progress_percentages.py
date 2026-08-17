@@ -5,8 +5,8 @@ import djclick as click
 from freedom_ls.student_management.utils import calculate_course_progress_percentage
 from freedom_ls.student_progress.models import (
     CourseProgress,
-    FormProgress,
     TopicProgress,
+    completed_form_ids_by_user,
 )
 
 
@@ -31,11 +31,7 @@ def command() -> None:
     ).values_list("user_id", "topic_id"):
         completed_topics_by_user.setdefault(user_id, set()).add(topic_id)
 
-    completed_forms_by_user: dict[int, set[UUID]] = {}
-    for user_id, form_id in FormProgress.objects.filter(
-        completed_time__isnull=False
-    ).values_list("user_id", "form_id"):
-        completed_forms_by_user.setdefault(user_id, set()).add(form_id)
+    completed_forms_by_user = completed_form_ids_by_user()
 
     updated = 0
     for cp in all_course_progress.iterator():

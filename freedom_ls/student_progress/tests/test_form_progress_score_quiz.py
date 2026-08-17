@@ -364,6 +364,93 @@ def test_score_quiz_checkbox_nothing_selected_scores_zero(mock_site_context):
     assert [item["question"] for item in incorrect] == [question]
 
 
+# A question left blank stores no QuestionAnswer row at all. It still counts
+# toward max_score, so the review list has to account for it too — otherwise a
+# learner is failed over a question the page never names.
+
+
+@pytest.mark.django_db
+def test_get_incorrect_quiz_answers_lists_a_question_with_no_answer_row(
+    mock_site_context,
+):
+    """A question left blank is listed as incorrect, with nothing recorded as selected."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    question, _correct_1, _correct_2, _wrong_1, _wrong_2 = (
+        _build_checkbox_question_two_of_four(form)
+    )
+
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+
+    incorrect = form_progress.get_incorrect_quiz_answers()
+
+    assert [item["question"] for item in incorrect] == [question]
+    assert incorrect[0]["student_selected"] == []
+
+
+@pytest.mark.django_db
+def test_get_incorrect_quiz_answers_agrees_with_score_quiz_on_a_blank_question(
+    mock_site_context,
+):
+    """One question answered right, one left blank: the score says 1 of 2 and the list names
+    the blank one alone."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    answered_question, correct_1, correct_2, _wrong_1, _wrong_2 = (
+        _build_checkbox_question_two_of_four(form)
+    )
+    blank_page = FormPageFactory(form=form, title="Quiz Page 2", order=1)
+    blank_question = FormQuestionFactory(
+        form_page=blank_page,
+        question="What is the capital of France?",
+        type="multiple_choice",
+        order=0,
+    )
+    QuestionOptionFactory(
+        question=blank_question, text="Paris", value="paris", order=0, correct=True
+    )
+
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=FormProgressFactory(user=user, form=form),
+        question=answered_question,
+    )
+    answer.selected_options.add(correct_1, correct_2)
+    form_progress = answer.form_progress
+
+    form_progress.score_quiz()
+
+    form_progress.refresh_from_db()
+    assert form_progress.scores == {"score": 1, "max_score": 2}
+    incorrect = form_progress.get_incorrect_quiz_answers()
+    assert [item["question"] for item in incorrect] == [blank_question]
+
+
+@pytest.mark.django_db
+def test_compute_quiz_scores_returns_the_figures_without_storing_them(
+    mock_site_context,
+):
+    """The results page re-derives a score to spot a stale one, so computing must not overwrite."""
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    question, correct_1, correct_2, _wrong_1, _wrong_2 = (
+        _build_checkbox_question_two_of_four(form)
+    )
+
+    form_progress: FormProgress = FormProgressFactory(
+        user=user, form=form, scores={"score": 99, "max_score": 99}
+    )
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question
+    )
+    answer.selected_options.add(correct_1, correct_2)
+
+    computed = form_progress.compute_quiz_scores()
+
+    assert computed == {"score": 1, "max_score": 1}
+    form_progress.refresh_from_db()
+    assert form_progress.scores == {"score": 99, "max_score": 99}
+
+
 @pytest.mark.django_db
 def test_score_quiz_checkbox_correct_plus_null_correct_option_scores_one(
     mock_site_context,

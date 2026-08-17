@@ -33,6 +33,7 @@ from freedom_ls.student_progress.models import (
     CourseProgress,
     FormProgress,
     TopicProgress,
+    completed_form_ids_by_user,
 )
 
 if TYPE_CHECKING:
@@ -106,6 +107,27 @@ def stamp_course_access_badge(course: Course, *, badge: AccessBadge | None) -> N
     never mints access-type copy.
     """
     setattr(course, "access_badge", badge)  # noqa: B010
+
+
+def has_unpassed_form(user: User, course: Course) -> bool:
+    """Whether the learner has finished a form in `course` without it counting as done.
+
+    In practice that means a scored quiz they sat and failed. Used to withhold a
+    course completion rather than to gate the page: a learner who has simply not
+    reached an item yet is not blocked by this.
+    """
+    form_ids = {item.id for item in course.viewable_items() if isinstance(item, Form)}
+    if not form_ids:
+        return False
+
+    sat_form_ids = set(
+        FormProgress.objects.filter(
+            user=user, form_id__in=form_ids, completed_time__isnull=False
+        ).values_list("form_id", flat=True)
+    )
+    return bool(
+        sat_form_ids - completed_form_ids_by_user([user.pk]).get(user.pk, set())
+    )
 
 
 def get_content_status(

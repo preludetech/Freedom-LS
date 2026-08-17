@@ -61,6 +61,7 @@ from .utils import (
     get_item_part,
     get_recommended_courses,
     get_resume_index,
+    has_unpassed_form,
     stamp_course_access_badge,
 )
 
@@ -1078,6 +1079,16 @@ def course_form_complete(request, course_slug, index):
         with contextlib.suppress(ValueError):
             percentage = form_progress.quiz_percentage()
 
+    # Scores are frozen at submission and never rescored, so an attempt sat before
+    # the marking rules changed can carry a score the review list below it
+    # contradicts. The page has to own that rather than let the learner spot it.
+    stored_score_outdated = False
+    if form_progress and form.strategy == FormStrategy.QUIZ and form_progress.scores:
+        stored_score_outdated = (
+            form_progress.scores.get("score")
+            != form_progress.compute_quiz_scores()["score"]
+        )
+
     # Three-state: "passed", "failed", or None for a quiz with no pass mark —
     # there is no bar to clear, so the results page must claim neither outcome.
     # The PDF report and the educator panel use the same guard.
@@ -1117,6 +1128,7 @@ def course_form_complete(request, course_slug, index):
         "show_scores": True,
         "scores": form_progress.scores if form_progress else None,
         "incorrect_answers": incorrect_answers,
+        "stored_score_outdated": stored_score_outdated,
         "quiz_verdict": quiz_verdict,
         "next_url": next_url,
         "retry_url": retry_url,
@@ -1143,8 +1155,12 @@ def course_finish(request, course_slug):
         CourseProgress, user=request.user, course=course
     )
 
-    # Mark as complete if not already
-    if not course_progress.completed_time:
+    # Mark as complete if not already. A learner has to pass to complete, so a
+    # quiz they sat and failed withholds the completion — the page still renders
+    # so they can see where they are and get back to the retry.
+    if not course_progress.completed_time and not has_unpassed_form(
+        request.user, course
+    ):
         course_progress.completed_time = timezone.now()
         course_progress.save()
 

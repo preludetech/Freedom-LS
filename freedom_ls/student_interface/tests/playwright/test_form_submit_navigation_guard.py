@@ -39,9 +39,6 @@ def test_submit_disarms_the_beforeunload_leave_prompt(
     )
     logged_in_page.goto(start_url)
 
-    # Before any deliberate navigation the guard is armed for accidental leaves.
-    assert logged_in_page.evaluate(_BEFOREUNLOAD_PREVENTED) is True
-
     # Stub native form submission so the deliberate Submit does not navigate the
     # test page away — we only care that the click disarms the guard.
     logged_in_page.evaluate(
@@ -57,6 +54,9 @@ def test_submit_disarms_the_beforeunload_leave_prompt(
     # answers before opening the submit dialog (parity with intermediate pages).
     logged_in_page.get_by_text("Alpha", exact=True).click()
 
+    # Answering is what arms the guard, and it is armed before the submit runs.
+    assert logged_in_page.evaluate(_BEFOREUNLOAD_PREVENTED) is True
+
     logged_in_page.get_by_role("button", name="Next").click()
     logged_in_page.get_by_role("button", name="Submit", exact=True).click()
 
@@ -64,6 +64,52 @@ def test_submit_disarms_the_beforeunload_leave_prompt(
     assert logged_in_page.evaluate("() => window.__submitted") is True
     # ...and disarmed the beforeunload guard, so no "Leave site?" prompt fires.
     assert logged_in_page.evaluate(_BEFOREUNLOAD_PREVENTED) is False
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_untouched_runner_page_leaves_the_leave_prompt_disarmed(
+    live_server,
+    logged_in_page: Page,
+):
+    """Opening a quiz and changing your mind must not earn a browser warning.
+
+    The guard exists to protect unsaved answers. On a freshly loaded page there
+    are none, so warning about them is a prompt the learner has not earned.
+    """
+    course = course_with_single_question_form(
+        "Untouched Guard Course", "untouched-guard-course"
+    )
+    start_url = reverse_url(
+        live_server,
+        "student_interface:form_start",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    logged_in_page.goto(start_url)
+
+    assert logged_in_page.evaluate(_BEFOREUNLOAD_PREVENTED) is False
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_answering_a_question_arms_the_leave_prompt(
+    live_server,
+    logged_in_page: Page,
+):
+    """Once there is an unsaved answer on the page, leaving should still warn."""
+    course = course_with_single_question_form(
+        "Dirty Guard Course", "dirty-guard-course"
+    )
+    start_url = reverse_url(
+        live_server,
+        "student_interface:form_start",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    logged_in_page.goto(start_url)
+
+    logged_in_page.get_by_text("Alpha", exact=True).click()
+
+    assert logged_in_page.evaluate(_BEFOREUNLOAD_PREVENTED) is True
 
 
 @pytest.mark.playwright

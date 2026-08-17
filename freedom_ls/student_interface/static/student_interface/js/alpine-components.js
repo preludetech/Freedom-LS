@@ -13,6 +13,12 @@ document.addEventListener("alpine:init", () => {
     // leaves (closing the tab, typing a new URL).
     let runnerNavigating = false;
 
+    // Set by examRunnerForm the first time the learner edits an answer on this
+    // page. Without it the guard fires on a page nobody has touched, warning
+    // about unsaved changes that do not exist. Only real interaction raises an
+    // input/change event — answers the server pre-filled do not.
+    let runnerDirty = false;
+
     // Course part expand/collapse (student_interface/partials/course_minimal_toc.html)
     Alpine.data("coursePart", () => ({
         expanded: false,
@@ -94,10 +100,11 @@ document.addEventListener("alpine:init", () => {
         _unloadHandler: null,
         _navHandler: null,
         init() {
-            // Warn only on accidental leaves — skip deliberate in-runner
-            // navigation, which sets runnerNavigating (see below + submit()).
+            // Warn only on accidental leaves that would lose work — skip
+            // deliberate in-runner navigation, which sets runnerNavigating (see
+            // below + submit()), and skip a page the learner has not edited.
             this._unloadHandler = (e) => {
-                if (runnerNavigating) return;
+                if (runnerNavigating || !runnerDirty) return;
                 e.preventDefault();
             };
             window.addEventListener("beforeunload", this._unloadHandler);
@@ -137,6 +144,7 @@ document.addEventListener("alpine:init", () => {
                 this._navHandler = null;
             }
             runnerNavigating = false;
+            runnerDirty = false;
         },
     }));
 
@@ -263,6 +271,7 @@ document.addEventListener("alpine:init", () => {
         _answeredBase: 0,
         _formEl: null,
         _recompute: null,
+        _onEdit: null,
         _onPageShow: null,
         _onSubmit: null,
 
@@ -274,6 +283,11 @@ document.addEventListener("alpine:init", () => {
                 this.answeredCount = this._answeredBase + this._countAnsweredOnPage();
             };
             this._recompute();
+            // Separate from _recompute, which also runs on load and would arm
+            // the unsaved-changes guard before the learner has done anything.
+            this._onEdit = () => {
+                runnerDirty = true;
+            };
             // Intermediate pages advance through a native submit button, which the
             // browser validates — except for checkbox groups, which it cannot.
             this._onSubmit = (event) => {
@@ -282,6 +296,8 @@ document.addEventListener("alpine:init", () => {
             if (this._formEl) {
                 this._formEl.addEventListener("input", this._recompute);
                 this._formEl.addEventListener("change", this._recompute);
+                this._formEl.addEventListener("input", this._onEdit);
+                this._formEl.addEventListener("change", this._onEdit);
                 this._formEl.addEventListener("submit", this._onSubmit);
             }
 
@@ -301,6 +317,8 @@ document.addEventListener("alpine:init", () => {
             if (this._formEl && this._recompute) {
                 this._formEl.removeEventListener("input", this._recompute);
                 this._formEl.removeEventListener("change", this._recompute);
+                this._formEl.removeEventListener("input", this._onEdit);
+                this._formEl.removeEventListener("change", this._onEdit);
                 this._formEl.removeEventListener("submit", this._onSubmit);
             }
             if (this._onPageShow) {

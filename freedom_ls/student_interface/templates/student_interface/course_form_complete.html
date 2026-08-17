@@ -57,6 +57,21 @@
                 </div>
             {% endif %}
 
+            {% comment %}
+            Shown only when the stored score disagrees with what these same
+            answers would score today — otherwise there is nothing to explain.
+            {% endcomment %}
+            {% if stored_score_outdated %}
+                <div class="rounded-lg border-l-4 border-secondary bg-surface-2 px-5 py-4 mb-8"
+                     data-testid="stored-score-note">
+                    <p class="text-sm text-muted">
+                        Checkbox questions now need every correct option ticked and no incorrect
+                        one. This attempt has not been re-marked, so the score above is the one
+                        you were given at the time.
+                    </p>
+                </div>
+            {% endif %}
+
             {% comment %}Incorrect answers review (only when quiz_show_incorrect is enabled){% endcomment %}
             {% if incorrect_answers and form.quiz_show_incorrect %}
                 <div class="mt-8" data-testid="incorrect-answers-section">
@@ -73,24 +88,45 @@
 
                                     {% comment %}Question text{% endcomment %}
                                     <div>
-                                        <p class="text-xs font-mono uppercase tracking-wide text-muted mb-1">
-                                            Question {{ item.question.question_number }}
-                                        </p>
+                                        <div class="flex items-baseline justify-between gap-3 mb-1">
+                                            <p class="text-xs font-mono uppercase tracking-wide text-muted">
+                                                Question {{ item.question.question_number }}
+                                            </p>
+                                            <p class="text-xs font-medium text-error flex items-center gap-1">
+                                                <c-icon name="error" class="size-3.5 flex-none" aria_label="" />
+                                                Marked wrong
+                                            </p>
+                                        </div>
                                         <p class="font-semibold text-on-surface">
                                             {{ item.question.question }}
                                         </p>
                                     </div>
 
-                                    {% comment %}Learner's answer{% endcomment %}
+                                    {% comment %}
+                                    Learner's answer. Each tick is marked on its own merit:
+                                    ✗-ing an option the learner got right would contradict the
+                                    "Correct answer" block below. An option nobody marked up
+                                    (correct is null) is neither, so it carries no verdict.
+                                    {% endcomment %}
                                     <div>
-                                        <p class="text-xs font-medium text-error mb-1">Your answer</p>
+                                        <p class="text-xs font-medium text-muted mb-1">Your answer</p>
                                         <div class="space-y-1 pl-3"
                                              data-testid="student-answer-{{ item.question.id }}">
                                             {% for option in item.student_selected %}
                                                 <div class="flex items-center gap-2 text-muted">
-                                                    <c-icon name="error" class="size-4 text-error flex-none" />
+                                                    {% if option.correct is True %}
+                                                        <c-icon name="success" class="size-4 text-success flex-none" aria_label="Marked correct" />
+                                                    {% elif option.correct is False %}
+                                                        <c-icon name="error" class="size-4 text-error flex-none" aria_label="Marked incorrect" />
+                                                    {% else %}
+                                                        <c-icon name="unknown" class="size-4 text-muted flex-none" aria_label="Not marked" />
+                                                    {% endif %}
                                                     <span>{{ option.text }}</span>
                                                 </div>
+                                            {% empty %}
+                                                <p class="text-muted italic">
+                                                    You did not answer this question.
+                                                </p>
                                             {% endfor %}
                                         </div>
                                     </div>
@@ -128,9 +164,13 @@
                     <h1 class="font-display text-on-surface">
                         Form complete!
                     </h1>
+                    {% comment %}
+                    No marking workflow stands behind this form, so the copy
+                    promises nothing beyond the answers being recorded.
+                    {% endcomment %}
                     <p class="text-muted">
                         Thank you for completing <strong>{{ form.title }}</strong>.
-                        Your responses are being reviewed — marking is in progress.
+                        Your answers have been recorded.
                     </p>
                 </div>
             </div>

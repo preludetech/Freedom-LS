@@ -28,6 +28,50 @@ from freedom_ls.student_management.utils import calculate_course_progress_percen
 User = get_user_model()
 
 
+def attempt_completes_form(attempt: FormProgress) -> bool:
+    """Whether a completed attempt leaves its form finished for progress purposes.
+
+    A learner has to pass to complete: sitting a scored quiz and failing it is an
+    attempt, not an item they are done with. A quiz with no pass mark has no bar
+    to clear, and neither does a survey, so completing either is enough.
+    """
+    form = attempt.form
+    if form.strategy != FormStrategy.QUIZ or form.quiz_pass_percentage is None:
+        return True
+    try:
+        return attempt.passed()
+    except ValueError:
+        # An unscored attempt, or a quiz whose questions were added after it was
+        # sat, has no percentage to measure against the pass mark.
+        return True
+
+
+def completed_form_ids_by_user(
+    user_ids: Iterable[int] | None = None,
+) -> dict[int, set[UUID]]:
+    """Form ids each learner counts as having finished, keyed by user id.
+
+    Their latest completed attempt decides, matching how the course outline reads
+    a quiz's status and how the reports read a learner's score. Pass `user_ids`
+    to narrow the scan to the learners you care about.
+    """
+    attempts = FormProgress.objects.filter(completed_time__isnull=False).select_related(
+        "form"
+    )
+    if user_ids is not None:
+        attempts = attempts.filter(user_id__in=user_ids)
+
+    latest_attempts: dict[tuple[int, UUID], FormProgress] = {}
+    for attempt in attempts.order_by("completed_time", "start_time"):
+        latest_attempts[(attempt.user_id, attempt.form_id)] = attempt
+
+    completed: dict[int, set[UUID]] = {}
+    for (user_id, form_id), attempt in latest_attempts.items():
+        if attempt_completes_form(attempt):
+            completed.setdefault(user_id, set()).add(form_id)
+    return completed
+
+
 def update_course_progress_on_completion(
     user: models.Model, content_item: Topic | Form
 ) -> None:
@@ -78,11 +122,7 @@ def update_course_progress_on_completion(
             user=user, complete_time__isnull=False
         ).values_list("topic_id", flat=True)
     )
-    completed_form_ids = set(
-        FormProgress.objects.filter(
-            user=user, completed_time__isnull=False
-        ).values_list("form_id", flat=True)
-    )
+    completed_form_ids = completed_form_ids_by_user([user.pk]).get(user.pk, set())
 
     # Update each affected course's progress (find/create CourseProgress if needed)
     for course in Course.objects.filter(id__in=course_ids):
@@ -220,7 +260,7 @@ class FormProgress(CourseItemProgress):
 
         return round((score / max_score) * 100)
 
-    def passed(self):
+    def passed(self) -> bool:
         if self.form.quiz_pass_percentage is None:
             raise ValueError(
                 f"Quiz '{self.form.title}' (ID: {self.form.id}) does not have a pass percentage configured. "
@@ -466,14 +506,16 @@ class FormProgress(CourseItemProgress):
         self.scores = scores
         self.save()
 
-    def score_quiz(self):
-        """
-        Calculate quiz score by counting correct answers.
+    def compute_quiz_scores(self) -> dict[str, int]:
+        """Score this attempt against the current marking rules, storing nothing.
+
+        Scores are frozen at submission and never rescored, so a stored score can
+        disagree with what the same answers would earn today. The results page
+        re-derives a score to detect that, which it can only do without writing.
         """
         score = 0
         max_score = 0
 
-        # Iterate through all pages and questions
         for page in self.form.pages.all():
             for child in page.children():
                 # Only process FormQuestion objects (skip FormContent)
@@ -498,8 +540,13 @@ class FormProgress(CourseItemProgress):
                     # Question not answered, contributes 0 to score
                     pass
 
-        # Save the scores
-        self.scores = {"score": score, "max_score": max_score}
+        return {"score": score, "max_score": max_score}
+
+    def score_quiz(self):
+        """
+        Calculate quiz score by counting correct answers.
+        """
+        self.scores = self.compute_quiz_scores()
         self.save()
 
     def score(self):
@@ -547,14 +594,16 @@ class FormProgress(CourseItemProgress):
                 if question.type in FREE_TEXT_QUESTION_TYPES:
                     continue
 
-                # Get the student's answer for this question
+                # A blank question stores no answer row at all, but it still
+                # counts toward max_score — so it has to be judged here as an
+                # empty selection, or the learner is marked down for a question
+                # the review list never names.
                 try:
                     answer = self.answers.get(question=question)
                 except QuestionAnswer.DoesNotExist:
-                    # Question not answered, skip
-                    continue
-
-                selected_options = list(answer.selected_options.all())
+                    selected_options = []
+                else:
+                    selected_options = list(answer.selected_options.all())
                 selected_option_ids = {o.id for o in selected_options}
 
                 # Check if the answer is correct
