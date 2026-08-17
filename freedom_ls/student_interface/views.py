@@ -41,8 +41,8 @@ from freedom_ls.student_progress.models import (
     CourseProgress,
     FormProgress,
     TopicProgress,
-    has_submitted_answer,
 )
+from freedom_ls.student_progress.submissions import has_submitted_answer
 
 from .utils import (
     IN_PROGRESS,

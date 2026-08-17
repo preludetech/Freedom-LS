@@ -44,9 +44,9 @@ from freedom_ls.student_progress.models import (
     FormProgress,
     QuestionAnswer,
     TopicProgress,
-    attempt_completes_form,
-    evaluate_quiz_answers,
 )
+from freedom_ls.student_progress.queries import attempt_completes_form
+from freedom_ls.student_progress.scoring import evaluate_quiz_answers
 
 ATTENTION_LIST_MAX = 12
 CONFUSIONS_PER_QUIZ_MAX = 10

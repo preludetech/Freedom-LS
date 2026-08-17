@@ -84,8 +84,8 @@ from freedom_ls.student_progress.models import (
     FormProgress,
     QuestionAnswer,
     TopicProgress,
-    is_quiz_answer_correct,
 )
+from freedom_ls.student_progress.scoring import is_quiz_answer_correct
 
 COURSE_TITLE = "QA Legacy Checkbox Score Course"
 COURSE_SLUG = "qa-legacy-score-course"

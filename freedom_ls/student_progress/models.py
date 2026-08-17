@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
-from typing import cast
-from uuid import UUID
+from collections.abc import Iterable
+from datetime import datetime
+from typing import TYPE_CHECKING, cast
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.db import models
-from django.http import QueryDict
 from django.utils import timezone
 
 from freedom_ls.content_engine.models import (
     FREE_TEXT_QUESTION_TYPES,
-    ContentCollectionItem,
     Course,
-    CoursePart,
     Form,
     FormQuestion,
     FormStrategy,
@@ -23,121 +20,22 @@ from freedom_ls.content_engine.models import (
     Topic,
 )
 from freedom_ls.site_aware_models.models import SiteAwareModel
-from freedom_ls.student_management.utils import calculate_course_progress_percentage
+from freedom_ls.student_progress.scoring import is_quiz_answer_correct
+from freedom_ls.student_progress.submissions import (
+    has_submitted_answer,
+    submitted_option_ids,
+    submitted_text_answer,
+)
+
+if TYPE_CHECKING:
+    from django.http import QueryDict
 
 User = get_user_model()
 
 
-def attempt_completes_form(attempt: FormProgress) -> bool:
-    """Whether a completed attempt leaves its form finished for progress purposes.
-
-    A learner has to pass to complete: sitting a scored quiz and failing it is an
-    attempt, not an item they are done with. A quiz with no pass mark has no bar
-    to clear, and neither does a survey, so completing either is enough.
-    """
-    form = attempt.form
-    if form.strategy != FormStrategy.QUIZ or form.quiz_pass_percentage is None:
-        return True
-    try:
-        return attempt.passed()
-    except ValueError:
-        # An unscored attempt, or a quiz whose questions were added after it was
-        # sat, has no percentage to measure against the pass mark.
-        return True
-
-
-def completed_form_ids_by_user(
-    user_ids: Iterable[int] | None = None,
-) -> dict[int, set[UUID]]:
-    """Form ids each learner counts as having finished, keyed by user id.
-
-    Their latest completed attempt decides, matching how the course outline reads
-    a quiz's status and how the reports read a learner's score. Pass `user_ids`
-    to narrow the scan to the learners you care about.
-    """
-    attempts = FormProgress.objects.filter(completed_time__isnull=False).select_related(
-        "form"
-    )
-    if user_ids is not None:
-        attempts = attempts.filter(user_id__in=user_ids)
-
-    latest_attempts: dict[tuple[int, UUID], FormProgress] = {}
-    for attempt in attempts.order_by("completed_time", "start_time"):
-        latest_attempts[(attempt.user_id, attempt.form_id)] = attempt
-
-    completed: dict[int, set[UUID]] = {}
-    for (user_id, form_id), attempt in latest_attempts.items():
-        if attempt_completes_form(attempt):
-            completed.setdefault(user_id, set()).add(form_id)
-    return completed
-
-
-def update_course_progress_on_completion(
-    user: models.Model, content_item: Topic | Form
-) -> None:
-    """Update progress_percentage on all CourseProgress records affected by completing a content item.
-
-    Traces through ContentCollectionItem to find parent courses (including
-    items nested inside CourseParts) and recalculates progress for each.
-    """
-    # @claude this function is very long. It needs to be refactored
-    #
-    # topic.courses() should return the courses that a topic is included in
-    # form.courses() should return the courses that the form is in
-    #
-    item_ct = DjangoContentType.objects.get_for_model(content_item)
-    course_ct = DjangoContentType.objects.get_for_model(Course)
-    course_part_ct = DjangoContentType.objects.get_for_model(CoursePart)
-
-    # Find all ContentCollectionItems where this item is a child
-    parent_links = ContentCollectionItem.objects.filter(
-        child_type=item_ct, child_id=content_item.id
-    )
-
-    direct_course_ids: set = set()
-    course_part_ids: set = set()
-    for link in parent_links:
-        if link.collection_type_id == course_ct.id:
-            direct_course_ids.add(link.collection_id)
-        elif link.collection_type_id == course_part_ct.id:
-            course_part_ids.add(link.collection_id)
-
-    # Batch lookup: find parent Courses for all CourseParts in one query
-    course_ids = set(direct_course_ids)
-    if course_part_ids:
-        course_ids.update(
-            ContentCollectionItem.objects.filter(
-                child_type=course_part_ct,
-                child_id__in=course_part_ids,
-                collection_type=course_ct,
-            ).values_list("collection_id", flat=True)
-        )
-
-    if not course_ids:
-        return
-
-    # Get user's completed topic and form IDs
-    completed_topic_ids = set(
-        TopicProgress.objects.filter(
-            user=user, complete_time__isnull=False
-        ).values_list("topic_id", flat=True)
-    )
-    completed_form_ids = completed_form_ids_by_user([user.pk]).get(user.pk, set())
-
-    # Update each affected course's progress (find/create CourseProgress if needed)
-    for course in Course.objects.filter(id__in=course_ids):
-        percentage = calculate_course_progress_percentage(
-            course, completed_topic_ids, completed_form_ids
-        )
-        CourseProgress.objects.update_or_create(
-            user=user,
-            course=course,
-            defaults={"progress_percentage": percentage},
-        )
-
-
 class CourseItemProgress(SiteAwareModel):
-    # Subclasses must define these class attributes
+    # Subclasses must define these class attributes. signals.py reads them off
+    # the instance to find the completion field and the item it belongs to.
     completion_field_name: str
     content_item_field_name: str
     user: models.Model  # Declared here for mypy; actual FK field on subclasses
@@ -147,76 +45,32 @@ class CourseItemProgress(SiteAwareModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._original_completion_value = getattr(
+        self._original_completion_value: datetime | None = getattr(
             self, self.completion_field_name, None
         )
 
-    def save(self, *args, **kwargs):
-        # Note: This hook only fires on instance.save(), not on queryset.update().
-        # If bulk updating completion fields, manually call
-        # update_course_progress_on_completion() for affected records.
+    def newly_completed_item(self) -> Topic | Form | None:
+        """The content item this instance has just been completed for, if any.
+
+        None for a row that was already complete when it was loaded or built, and
+        None once the completion has been recorded: completing an item is a
+        transition, and a row that arrives complete never made one.
 
         # @claude calculate _original_completion_value here instead of during __init__. Remove the __init__ function
+        """
+        current_value: datetime | None = getattr(self, self.completion_field_name)
+        if current_value is None or self._original_completion_value is not None:
+            return None
+        item: Topic | Form = getattr(self, self.content_item_field_name)
+        return item
 
-        super().save(*args, **kwargs)
-        current_value = getattr(self, self.completion_field_name)
-        if current_value is not None and self._original_completion_value is None:
-            content_item = getattr(self, self.content_item_field_name)
-            user = self.user
-            update_course_progress_on_completion(user, content_item)
-            self._original_completion_value = current_value
+    def mark_completion_recorded(self) -> None:
+        """Stop `newly_completed_item()` reporting a transition already acted on.
 
-
-def is_quiz_answer_correct(
-    selected_option_ids: set[UUID], options: Iterable[QuestionOption]
-) -> bool:
-    """Exact-match scoring: every correct option selected, no incorrect one.
-
-    `QuestionOption.correct` is nullable. `True` is required, `False` is forbidden,
-    `None` is neither - an option nobody marked up is not evidence either way.
-    A question with no correct option cannot be answered correctly; that keeps
-    free-text questions (which have no options at all) scoring zero, as they do today.
-    """
-    required = {o.id for o in options if o.correct is True}
-    forbidden = {o.id for o in options if o.correct is False}
-    if not required:
-        return False
-    return required <= selected_option_ids and not (selected_option_ids & forbidden)
-
-
-def submitted_option_ids(question: FormQuestion, post_data: QueryDict) -> list[str]:
-    """Option IDs submitted for a choice question, ignoring blank values."""
-    return [value for value in post_data.getlist(f"question_{question.id}") if value]
-
-
-def submitted_text_answer(question: FormQuestion, post_data: QueryDict) -> str:
-    """Trimmed text submitted for a free-text question."""
-    return post_data.get(f"question_{question.id}", "").strip()
-
-
-def has_submitted_answer(question: FormQuestion, post_data: QueryDict) -> bool:
-    """Whether `post_data` carries an answer to `question`.
-
-    Choice questions need at least one selected option, free-text questions need
-    non-blank text. This is what `FormQuestion.required` is measured against, and
-    what decides whether an answer row is stored at all.
-    """
-    if question.type in FREE_TEXT_QUESTION_TYPES:
-        return bool(submitted_text_answer(question, post_data))
-    return bool(submitted_option_ids(question, post_data))
-
-
-def evaluate_quiz_answers(
-    answer_rows: Iterable[tuple[UUID, UUID, set[UUID]]],
-    options_by_question: Mapping[UUID, list[QuestionOption]],
-) -> dict[tuple[UUID, UUID], bool]:
-    """Correctness for many (attempt, question) pairs from pre-fetched data. Issues no queries."""
-    return {
-        (form_progress_id, question_id): is_quiz_answer_correct(
-            selected_option_ids, options_by_question.get(question_id, [])
-        )
-        for form_progress_id, question_id, selected_option_ids in answer_rows
-    }
+        `complete()` saves three times over one completion; without this the
+        recalculation would run on each.
+        """
+        self._original_completion_value = getattr(self, self.completion_field_name)
 
 
 class FormProgress(CourseItemProgress):

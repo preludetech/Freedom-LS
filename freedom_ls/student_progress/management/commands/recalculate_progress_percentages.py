@@ -6,8 +6,8 @@ from freedom_ls.student_management.utils import calculate_course_progress_percen
 from freedom_ls.student_progress.models import (
     CourseProgress,
     TopicProgress,
-    completed_form_ids_by_user,
 )
+from freedom_ls.student_progress.queries import completed_form_ids_by_user
 
 
 @click.command()
