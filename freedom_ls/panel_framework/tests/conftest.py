@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 import itertools
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -107,6 +109,31 @@ def _panel_test_permissions(db):
             codename=codename,
             defaults={"name": f"Can {codename.split('_')[0]} stub model"},
         )
+
+
+# ---------------------------------------------------------------------------
+# Fixture: use panel_framework's own test templates
+# ---------------------------------------------------------------------------
+
+_TEST_TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+
+
+@pytest.fixture(autouse=True)
+def _use_panel_test_templates(settings: pytest_django.fixtures.SettingsWrapper) -> None:
+    """Make panel_framework's test-only templates loadable.
+
+    `test_interface.html` and `test_extra_oob_fragment.html` are test fixtures,
+    not app templates. They live here rather than in the app's template
+    directory, where the app-directories loader would resolve them in every
+    project that installs FLS. Prepending this directory keeps their template
+    names unchanged while confining them to the test run.
+
+    The copy is deliberate: mutating DIRS in place would neither trigger the
+    template-engine reset nor be undone after the test.
+    """
+    templates = copy.deepcopy(settings.TEMPLATES)
+    templates[0]["DIRS"] = [str(_TEST_TEMPLATES_DIR), *templates[0]["DIRS"]]
+    settings.TEMPLATES = templates
 
 
 # ---------------------------------------------------------------------------
