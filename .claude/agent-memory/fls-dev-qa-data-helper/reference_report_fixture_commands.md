@@ -6,7 +6,8 @@ metadata:
 ---
 
 Three commands build the browser-QA data for the cohort progress report
-(`spec_dd/.../basic_reports/3. frontend_qa.md`). All idempotent, all default to
+(`spec_dd/.../basic_reports/3a. report_generation_qa/frontend_qa_report_generation.md`).
+All idempotent, all default to
 `--site-name DemoDev`, all logins follow password == email.
 
 ## `qa_create_report_fixtures` — the one you normally run

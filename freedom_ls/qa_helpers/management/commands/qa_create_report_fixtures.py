@@ -2,7 +2,8 @@
 
 The report's layout behaviour changes with two axes at once -- cohort size
 lengthens the landscape summary table, course length widens it -- so the QA plan
-(``spec_dd/2. in progress/basic_reports/3. frontend_qa.md``) defines ten fixtures
+(``spec_dd/2. in progress/basic_reports/3a. report_generation_qa/
+frontend_qa_report_generation.md``) defines ten fixtures
 spanning 0 to 40 students and 1 to 12+ quizzes, plus the degenerate and
 no-pass-mark cases. This command builds all of them, plus the two users the
 permission checks need.

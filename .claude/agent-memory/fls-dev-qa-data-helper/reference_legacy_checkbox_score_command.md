@@ -36,3 +36,25 @@ recompute = 1/2 = 50% → FAIL.
   the same student's *Wrong answers* detail lists Q1 with the three selected options; the confusion
   block counts it wrong for 1 of 2 first-attempt respondents. `reports/partials/methodology.html`
   already carries the sentence explaining the discrepancy. PDF renders fine (~260 KB).
+
+## Re-verified 2026-08-17 for QA 2.11 (report generation)
+
+Requested a second time (first for QA 12.6, then for the report-generation plan QA 2.11) — the
+existing command needed **no changes**; just re-run it. It does not touch the
+`qa_create_report_fixtures` matrix, so it is safe to run after `--reset` of those.
+
+Current values on DemoDev (site id 3): cohort uuid `831ca50d-6e8a-4841-a87f-f43a5ae85c57`,
+FormProgress `8ee2cf10-34f5-4e73-ad7e-a175e168cf1e`.
+
+Still correct after the report redesign (`dc439f86`): the rendered PDF (~371 KB, 9 pages) shows
+the learner's QUIZ ATTEMPTS row as `✓ 100% 2/2` with the
+`INCORRECT ANSWERS — QA LEGACY CHECKBOX SCORE QUIZ` block listing Q1 immediately underneath.
+
+### Gotchas when writing a verification script against this data
+
+- `FormProgress.completed_time`, **not** `complete_time` (TopicProgress *does* use `complete_time`).
+- `FormProgress.get_incorrect_quiz_answers()` returns a list of **dicts**
+  (`question` / `student_selected` / `correct_options`), not model objects.
+- `gather.CourseSection` has `student_rows` + `summary_tables` + `confusions_by_quiz`; the
+  per-learner detail sections (with `wrong_answers`) hang off `CohortReportData.students`, not off
+  the course section. `SummaryRow.cells` is a positional list aligned to `SummaryTable.quizzes`.

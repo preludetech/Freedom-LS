@@ -24,3 +24,13 @@
 - [reference_quiz_progression_block_command.md](reference_quiz_progression_block_command.md) — qa_create_quiz_progression_block: 3-item course (topic/checkbox-quiz@80%/topic) proving a FAILED quiz blocks the next item; URL-level unlock is NOT enforced
 - [reference_free_text_survey_command.md](reference_free_text_survey_command.md) — qa_create_free_text_survey: non-scored CATEGORY_VALUE_SUM questionnaire of short_text/long_text; only 2 strategies exist, so CATEGORY_VALUE_SUM is "the survey one"
 - [reference_legacy_checkbox_score_command.md](reference_legacy_checkbox_score_command.md) — qa_create_legacy_checkbox_score: how to craft a pre-fix checkbox attempt whose stored score disagrees with exact-match rescoring (complete() then queryset.update(scores=...)), in a report-ready cohort
+- [reference_checkbox_scoring_quiz_and_reset.md](reference_checkbox_scoring_quiz_and_reset.md) — qa_create_checkbox_scoring_quiz (clean option-backed quiz, OPTIONAL checkbox q so "tick nothing" is submittable) + qa_reset_student_progress; retake = GET start_form; unanswered != incorrect
+
+## Recurring requests
+
+The **quiz-marking browser QA pass** (multi-select scoring fix) has now been set up twice. The full
+recipe is: `qa_create_form_question_types DemoDev`, `qa_create_multiselect_quiz_scoring`,
+`qa_create_quiz_progression_block`, `qa_create_free_text_survey`, `qa_create_legacy_checkbox_score`,
+`qa_create_checkbox_scoring_quiz`, then
+`qa_reset_student_progress --student demodev_quizqa@email.com`, then
+`content_save demo_content DemoDev`. All are idempotent; run the reset LAST so the walk starts clean.
