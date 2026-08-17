@@ -58,17 +58,10 @@ def test_full_page_load_titles_the_tab_with_page_organisation_and_site(
 
 
 @pytest.mark.django_db
-def test_htmx_navigation_response_carries_a_title_element(cohorts_page):
-    client, url, _organisation = cohorts_page
-
-    response = client.get(url, HTTP_HX_REQUEST="true", HTTP_HX_TARGET="main-content")
-
-    assert response.status_code == 200
-    assert "<title>" in response.content.decode()
-
-
-@pytest.mark.django_db
 def test_htmx_navigation_title_matches_the_full_page_title(cohorts_page):
+    """The base template's head block and the out-of-band navigation fragment
+    are two separate code paths that must agree. What the shared title should
+    actually say is pinned by the full-page test above."""
     client, url, _organisation = cohorts_page
 
     full_page = client.get(url)

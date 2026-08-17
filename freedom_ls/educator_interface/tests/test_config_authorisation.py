@@ -9,8 +9,7 @@ walking urlpatterns, which would sweep in the eight-plus test-only configs
 under panel_framework/tests/.
 
 (b) Checks every production ListViewConfig either defines its own
-authorise_instance or declares check_access_exempt_reason, and that none of
-them override check_access (which would bypass the fail-closed prologue).
+authorise_instance or declares check_access_exempt_reason.
 """
 
 from __future__ import annotations
@@ -106,13 +105,6 @@ class TestEveryConfiguredSurface404sForAnInaccessibleOrganisation:
     def _site_context(self, mock_site_context):
         """Every test here builds site-aware objects and assigns roles."""
 
-    def test_enumeration_is_non_empty(self):
-        organisation = OrganisationFactory()
-
-        paths = _config_path_strings(organisation)
-
-        assert paths, "interface_config produced no path_strings to test"
-
     def test_every_enumerated_path_404s_for_a_user_with_no_access_to_the_organisation(
         self, logged_in_client
     ):
@@ -125,33 +117,48 @@ class TestEveryConfiguredSurface404sForAnInaccessibleOrganisation:
         assign_object_role(user, other_organisation, "organisation_staff")
         client = logged_in_client(user)
 
-        for path in paths:
-            url = reverse(
-                "educator_interface:interface",
-                kwargs={"organisation_slug": organisation.slug, "path_string": path},
+        assert paths, "interface_config produced no path_strings to test"
+        # The paths are enumerated from the config at runtime, so this sweep
+        # cannot be parametrized. Collect every offender and assert once, so
+        # a failure names all of them rather than only the first.
+        served = [
+            (path, status)
+            for path, status in (
+                (
+                    path,
+                    client.get(
+                        reverse(
+                            "educator_interface:interface",
+                            kwargs={
+                                "organisation_slug": organisation.slug,
+                                "path_string": path,
+                            },
+                        )
+                    ).status_code,
+                )
+                for path in paths
             )
-            response = client.get(url)
-            assert response.status_code == 404, (
-                f"path_string={path!r} returned {response.status_code}, expected 404"
-            )
+            if status != 404
+        ]
+
+        assert not served, f"expected 404 for every path, got: {served}"
 
 
 class TestProductionConfigsDeclareAuthorisation:
-    def test_every_production_config_overrides_authorise_instance_or_declares_an_exemption(
-        self,
-    ):
-        for config in interface_config.values():
-            overrides_authorise_instance = "authorise_instance" in config.__dict__
-            is_declared_exempt = config.check_access_exempt_reason is not None
-            assert overrides_authorise_instance or is_declared_exempt, (
-                f"{config.__name__} neither overrides authorise_instance nor "
-                "declares check_access_exempt_reason — it would silently "
-                "inherit deny-by-default"
-            )
+    """A new config must make a deliberate choice about authorisation rather
+    than silently inheriting deny-by-default and 404ing in production. That
+    the prologue itself cannot be bypassed is proven behaviourally in
+    panel_framework/tests/test_check_access.py."""
 
-    def test_no_production_config_overrides_check_access(self):
-        for config in interface_config.values():
-            assert "check_access" not in config.__dict__, (
-                f"{config.__name__} overrides check_access, which bypasses "
-                "the fail-closed prologue — override authorise_instance instead"
-            )
+    @pytest.mark.parametrize(
+        "config", list(interface_config.values()), ids=lambda c: c.__name__
+    )
+    def test_config_overrides_authorise_instance_or_declares_an_exemption(self, config):
+        overrides_authorise_instance = "authorise_instance" in config.__dict__
+        is_declared_exempt = config.check_access_exempt_reason is not None
+
+        assert overrides_authorise_instance or is_declared_exempt, (
+            f"{config.__name__} neither overrides authorise_instance nor "
+            "declares check_access_exempt_reason — it would silently "
+            "inherit deny-by-default"
+        )

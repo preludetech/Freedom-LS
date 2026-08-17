@@ -14,6 +14,8 @@ their cohorts.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from django.urls import reverse
@@ -41,86 +43,84 @@ def _interface_url(organisation_slug: str, path_string: str) -> str:
 
 @pytest.mark.django_db
 class TestCrossOrganisationIsolation:
-    def _setup(self):
+    @pytest.fixture
+    def isolation(self, logged_in_client):
+        """Two organisations, an educator with a role on A only, and one
+        cohort plus one member in each -- so every assertion below can pair
+        "B's thing is absent" with "A's thing is present", and an empty page
+        cannot pass for isolation."""
         organisation_a = OrganisationFactory(name="Org A")
         organisation_b = OrganisationFactory(name="Org B")
         educator = UserFactory(staff=True)
         assign_object_role(educator, organisation_a, "organisation_staff")
+
+        cohort_a = CohortFactory(organisation=organisation_a, name="Cohort A Only")
+        member_a = UserFactory(first_name="MemberOfA", last_name="Only")
+        CohortMembershipFactory(cohort=cohort_a, user=member_a)
+
         cohort_b = CohortFactory(organisation=organisation_b, name="Cohort B Only")
         member_b = UserFactory(first_name="MemberOfB", last_name="Only")
         CohortMembershipFactory(cohort=cohort_b, user=member_b)
-        return organisation_a, organisation_b, educator, cohort_b, member_b
 
-    def test_cohorts_list_for_organisation_a_never_shows_organisation_bs_cohort(
-        self, logged_in_client
-    ):
-        organisation_a, _organisation_b, educator, cohort_b, _member_b = self._setup()
-        client = logged_in_client(educator)
-
-        response = client.get(_interface_url(organisation_a.slug, "cohorts"))
-
-        assert response.status_code == 200
-        assert cohort_b.name.encode() not in response.content
-
-    def test_cohort_detail_404s_when_requested_through_organisation_a(
-        self, logged_in_client
-    ):
-        organisation_a, _organisation_b, educator, cohort_b, _member_b = self._setup()
-        client = logged_in_client(educator)
-
-        response = client.get(
-            _interface_url(organisation_a.slug, f"cohorts/{cohort_b.pk}")
+        return SimpleNamespace(
+            organisation_a=organisation_a,
+            organisation_b=organisation_b,
+            cohort_a=cohort_a,
+            cohort_b=cohort_b,
+            member_a=member_a,
+            member_b=member_b,
+            client=logged_in_client(educator),
         )
 
-        assert response.status_code == 404
-
-    def test_cohort_detail_404s_when_requested_through_organisation_b_itself(
-        self, logged_in_client
+    def test_cohorts_list_for_organisation_a_never_shows_organisation_bs_cohort(
+        self, isolation
     ):
-        """The educator has no access to Organisation B at all, so even a
-        URL naming B's own slug for B's own cohort still 404s."""
-        _organisation_a, organisation_b, educator, cohort_b, _member_b = self._setup()
-        client = logged_in_client(educator)
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, "cohorts")
+        )
 
-        response = client.get(
-            _interface_url(organisation_b.slug, f"cohorts/{cohort_b.pk}")
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert isolation.cohort_a.name in content
+        assert isolation.cohort_b.name not in content
+
+    def test_cohort_detail_404s_when_requested_through_organisation_a(self, isolation):
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug, f"cohorts/{isolation.cohort_b.pk}"
+            )
         )
 
         assert response.status_code == 404
 
     def test_users_list_for_organisation_a_never_shows_organisation_bs_member(
-        self, logged_in_client
+        self, isolation
     ):
-        organisation_a, _organisation_b, educator, _cohort_b, member_b = self._setup()
-        client = logged_in_client(educator)
-
-        response = client.get(_interface_url(organisation_a.slug, "users"))
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, "users")
+        )
 
         assert response.status_code == 200
-        assert member_b.first_name.encode() not in response.content
+        content = response.content.decode()
+        assert isolation.member_a.first_name in content
+        assert isolation.member_b.first_name not in content
 
-    def test_user_detail_404s_when_requested_through_organisation_a(
-        self, logged_in_client
-    ):
-        organisation_a, _organisation_b, educator, _cohort_b, member_b = self._setup()
-        client = logged_in_client(educator)
-
-        response = client.get(
-            _interface_url(organisation_a.slug, f"users/{member_b.pk}")
+    def test_user_detail_404s_when_requested_through_organisation_a(self, isolation):
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug, f"users/{isolation.member_b.pk}"
+            )
         )
 
         assert response.status_code == 404
 
     def test_cohort_details_panel_fetch_404s_for_a_cohort_outside_organisation_a(
-        self, logged_in_client
+        self, isolation
     ):
-        organisation_a, _organisation_b, educator, cohort_b, _member_b = self._setup()
-        client = logged_in_client(educator)
-
-        response = client.get(
+        response = isolation.client.get(
             _interface_url(
-                organisation_a.slug,
-                f"cohorts/{cohort_b.pk}/__tabs/details/__panels/details",
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_b.pk}/__tabs/details/__panels/details",
             ),
             HTTP_HX_REQUEST="true",
         )
@@ -148,8 +148,8 @@ class TestGuardianGrantOnlyEducatorIsNotLockedOut:
 
     def test_sees_exactly_the_granted_cohorts_and_no_others(self, logged_in_client):
         organisation = OrganisationFactory()
-        granted_cohort = CohortFactory(organisation=organisation, name="Granted")
-        CohortFactory(organisation=organisation, name="Not Granted")
+        granted_cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
+        CohortFactory(organisation=organisation, name="Beta Cohort")
         educator = UserFactory(staff=True)
         assign_object_role(educator, granted_cohort, "instructor")
         client = logged_in_client(educator)
@@ -157,12 +157,13 @@ class TestGuardianGrantOnlyEducatorIsNotLockedOut:
         response = client.get(_interface_url(organisation.slug, "cohorts"))
 
         assert response.status_code == 200
-        assert b"Granted" in response.content
-        assert b"Not Granted" not in response.content
+        content = response.content.decode()
+        assert "Alpha Cohort" in content
+        assert "Beta Cohort" not in content
 
     def test_granted_cohorts_detail_page_is_reachable(self, logged_in_client):
         organisation = OrganisationFactory()
-        granted_cohort = CohortFactory(organisation=organisation, name="Granted")
+        granted_cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
         educator = UserFactory(staff=True)
         assign_object_role(educator, granted_cohort, "instructor")
         client = logged_in_client(educator)
