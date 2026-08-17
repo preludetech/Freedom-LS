@@ -870,3 +870,137 @@ def test_query_count_gains_one_when_the_site_name_must_be_read(
         django_assert_num_queries(GATHER_QUERY_BOUND + 1),
     ):
         gather_cohort_report_data(cohort_id, mock_site_context.pk)
+
+
+@pytest.fixture
+def cohort_with_a_quiz_and_a_survey(mock_site_context):
+    """One course holding a quiz and a survey, both completed by the same student.
+
+    A survey's questions never reach the quiz analysis, so its answers are the
+    case that distinguishes "every answer in the cohort" from "every quiz answer".
+    """
+    cohort = CohortFactory()
+    student = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=student)
+    course = CourseFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    quiz = FormFactory(
+        title="Astronomy Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=50
+    )
+    _attach(course, quiz, order=0)
+    quiz_page = FormPageFactory(form=quiz, order=0)
+    quiz_question = FormQuestionFactory(
+        form_page=quiz_page,
+        type=QuestionType.MULTIPLE_CHOICE,
+        question="Which planet is red?",
+        order=0,
+    )
+    QuestionOptionFactory(question=quiz_question, text="Mars", correct=True, order=0)
+    distractor = QuestionOptionFactory(
+        question=quiz_question, text="Venus", correct=False, order=1
+    )
+
+    survey = FormFactory(
+        title="Confidence Survey", strategy=FormStrategy.CATEGORY_VALUE_SUM
+    )
+    _attach(course, survey, order=1)
+    survey_page = FormPageFactory(form=survey, order=0)
+    survey_question = FormQuestionFactory(
+        form_page=survey_page,
+        type=QuestionType.MULTIPLE_CHOICE,
+        question="How confident do you feel?",
+        order=0,
+    )
+    survey_option = QuestionOptionFactory(
+        question=survey_question, text="Very confident", correct=None, order=0
+    )
+
+    now = timezone.now()
+    quiz_attempt = FormProgressFactory(
+        user=student, form=quiz, completed_time=now, scores={"score": 0, "max_score": 1}
+    )
+    QuestionAnswerFactory(
+        form_progress=quiz_attempt, question=quiz_question
+    ).selected_options.add(distractor)
+
+    survey_attempt = FormProgressFactory(
+        user=student, form=survey, completed_time=now, scores={"Confidence": 3}
+    )
+    QuestionAnswerFactory(
+        form_progress=survey_attempt, question=survey_question
+    ).selected_options.add(survey_option)
+
+    return cohort
+
+
+class TestSurveysAlongsideQuizzes:
+    def test_a_completed_survey_does_not_stop_the_report_being_gathered(
+        self, cohort_with_a_quiz_and_a_survey, mock_site_context
+    ):
+        data = gather_cohort_report_data(
+            str(cohort_with_a_quiz_and_a_survey.id), mock_site_context.pk
+        )
+
+        assert [quiz.title for quiz in data.courses[0].quizzes] == ["Astronomy Quiz"]
+
+    def test_a_survey_question_is_absent_from_the_confusion_tally(
+        self, cohort_with_a_quiz_and_a_survey, mock_site_context
+    ):
+        data = gather_cohort_report_data(
+            str(cohort_with_a_quiz_and_a_survey.id), mock_site_context.pk
+        )
+
+        confusions = data.courses[0].confusions_by_quiz
+        assert [
+            question.question_text
+            for block in confusions.values()
+            for question in block.questions
+        ] == ["Which planet is red?"]
+
+    def test_a_survey_answer_is_never_reported_as_a_wrong_answer(
+        self, cohort_with_a_quiz_and_a_survey, mock_site_context
+    ):
+        data = gather_cohort_report_data(
+            str(cohort_with_a_quiz_and_a_survey.id), mock_site_context.pk
+        )
+
+        wrong_answers = data.students[0].wrong_answers
+        assert [block.title for block in wrong_answers] == ["Astronomy Quiz"]
+
+    def test_a_completed_survey_counts_toward_course_completion(
+        self, cohort_with_a_quiz_and_a_survey, mock_site_context
+    ):
+        data = gather_cohort_report_data(
+            str(cohort_with_a_quiz_and_a_survey.id), mock_site_context.pk
+        )
+
+        row = data.courses[0].student_rows[0]
+        assert row.completed_item_count == 2
+        assert row.total_item_count == 2
+
+
+class TestQuizWithNoQuestions:
+    def test_a_completed_sitting_reports_no_percentage_or_verdict(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+        student = UserFactory()
+        CohortMembershipFactory(cohort=cohort, user=student)
+        course = CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+        _attach(course, quiz)
+        FormPageFactory(form=quiz, order=0)
+        FormProgressFactory(
+            user=student,
+            form=quiz,
+            completed_time=timezone.now(),
+            scores={"score": 0, "max_score": 0},
+        )
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        result = data.students[0].quiz_results[0]
+        assert result.latest_percentage is None
+        assert result.passed is None

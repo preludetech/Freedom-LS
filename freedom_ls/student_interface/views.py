@@ -952,8 +952,24 @@ def form_fill_page(request, course_slug, index, page_number):
     # Build a dictionary of existing answers keyed by question ID
     existing_answers = form_progress.existing_answers_dict(questions)
 
-    # Determine the furthest page the user has progressed to
-    furthest_page = form_progress.get_current_page_number()
+    # A skipped question leaves no answer row behind, so the first-outstanding
+    # page can sit behind where the learner has actually reached. On its own it
+    # would lock the page they are standing on, and pages they have already
+    # answered, out of the page-jump navigation.
+    answered_page_ids = set(
+        form_progress.answers.values_list("question__form_page_id", flat=True)
+    )
+    furthest_answered_page = max(
+        (
+            number
+            for number, page in enumerate(all_pages, start=1)
+            if page.id in answered_page_ids
+        ),
+        default=0,
+    )
+    furthest_page = max(
+        form_progress.get_current_page_number(), page_number, furthest_answered_page
+    )
 
     # Build list of all page objects with their URLs for navigation
     page_links = []

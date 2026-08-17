@@ -204,13 +204,21 @@ class FormProgress(CourseItemProgress):
     def __str__(self):
         return f"{self.user} - {self.form.title}"
 
-    def quiz_percentage(self):
+    def quiz_percentage(self) -> int:
         if self.form.strategy != FormStrategy.QUIZ:
             raise ValueError("This method should only work for quiz models")
         if not self.scores:
             raise ValueError("Need to score the quiz before calling this method")
 
-        return round((self.scores["score"] / self.scores["max_score"]) * 100)
+        score: int = self.scores["score"]
+        max_score: int = self.scores["max_score"]
+        # A quiz whose questions were added after a learner sat it scores
+        # max_score 0. ValueError, not the natural ZeroDivisionError, because
+        # that is what every caller's guard already catches.
+        if not max_score:
+            raise ValueError("A quiz with no questions has no percentage to report")
+
+        return round((score / max_score) * 100)
 
     def passed(self):
         if self.form.quiz_pass_percentage is None:

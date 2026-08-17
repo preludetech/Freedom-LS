@@ -590,3 +590,42 @@ def test_evaluate_quiz_answers_issues_no_queries(
         result = evaluate_quiz_answers(answer_rows, options_by_question)
 
     assert result == {(attempt_id, question.id): True}
+
+
+@pytest.mark.django_db
+def test_score_quiz_with_no_questions_scores_zero_out_of_zero(mock_site_context):
+    """A quiz whose questions were added after a learner sat it."""
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    FormPageFactory(form=form, title="Empty Page", order=0)
+    form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
+
+    form_progress.score_quiz()
+
+    form_progress.refresh_from_db()
+    assert form_progress.scores == {"score": 0, "max_score": 0}
+
+
+@pytest.mark.django_db
+def test_quiz_percentage_raises_value_error_when_there_are_no_questions(
+    mock_site_context,
+):
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    FormPageFactory(form=form, title="Empty Page", order=0)
+    form_progress: FormProgress = FormProgressFactory(
+        user=UserFactory(), form=form, scores={"score": 0, "max_score": 0}
+    )
+
+    with pytest.raises(ValueError, match="no questions"):
+        form_progress.quiz_percentage()
+
+
+@pytest.mark.django_db
+def test_passed_raises_value_error_when_there_are_no_questions(mock_site_context):
+    form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+    FormPageFactory(form=form, title="Empty Page", order=0)
+    form_progress: FormProgress = FormProgressFactory(
+        user=UserFactory(), form=form, scores={"score": 0, "max_score": 0}
+    )
+
+    with pytest.raises(ValueError, match="no questions"):
+        form_progress.passed()

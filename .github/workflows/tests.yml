@@ -78,6 +78,9 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Build Tailwind CSS
+        run: npm run tailwind_build
+
       - name: Run unit tests
         run: uv run pytest -m "not playwright"
 

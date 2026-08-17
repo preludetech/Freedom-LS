@@ -641,7 +641,12 @@ def gather_cohort_report_data(
 
     answers = list(
         QuestionAnswer.objects.filter(
-            site_id=site_id, form_progress_id__in=completed_attempt_ids
+            site_id=site_id,
+            form_progress_id__in=completed_attempt_ids,
+            # The attempt ids cover every form in the cohort's courses, quiz or
+            # not. Without this, a survey answer would reach the question lookup
+            # below, which only knows about quiz questions.
+            question_id__in=question_ids,
         ).prefetch_related("selected_options")
     )
     answer_rows = [
