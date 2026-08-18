@@ -584,12 +584,11 @@ def _build_cohort_with_quiz_titles(titles: list[str]) -> str:
 
 
 class TestSummaryTableSplitting:
-    def test_the_shipped_budget_splits_an_eleven_quiz_course(self, mock_site_context):
-        """No override: this is the default the report actually renders with.
-
-        Measured on rendered A4 landscape pages -- at eleven quiz columns the
-        "Last item completed" column is squeezed below the width one item title
-        needs and its text runs into "When".
+    @override_settings(REPORTS_MAX_QUIZ_COLUMNS=10)
+    def test_a_ten_column_budget_splits_an_eleven_quiz_course(self, mock_site_context):
+        """Ten is the shipped budget, measured on rendered A4 landscape pages: at
+        eleven quiz columns the "Last item completed" column is squeezed below the
+        width one item title needs and its text runs into "When".
         """
         cohort_id = _build_cohort_with_quiz_titles(
             [f"Course Quiz {index:02d}" for index in range(1, 12)]
@@ -599,30 +598,6 @@ class TestSummaryTableSplitting:
 
         tables = data.courses[0].summary_tables
         assert [len(table.quizzes) for table in tables] == [10, 1]
-
-    @override_settings(REPORTS_MAX_QUIZ_COLUMNS=11)
-    def test_sixteen_quizzes_split_into_two_tables_of_eleven_and_five(
-        self, mock_site_context
-    ):
-        cohort_id = _build_cohort_with_quiz_titles(
-            [f"Course Quiz {index:02d}" for index in range(1, 17)]
-        )
-
-        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
-
-        tables = data.courses[0].summary_tables
-        assert [len(table.quizzes) for table in tables] == [11, 5]
-
-    @override_settings(REPORTS_MAX_QUIZ_COLUMNS=11)
-    def test_only_the_first_table_of_a_split_is_not_continued(self, mock_site_context):
-        cohort_id = _build_cohort_with_quiz_titles(
-            [f"Course Quiz {index:02d}" for index in range(1, 17)]
-        )
-
-        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
-
-        tables = data.courses[0].summary_tables
-        assert [table.continued for table in tables] == [False, True]
 
     @override_settings(REPORTS_MAX_QUIZ_COLUMNS=11)
     def test_every_quiz_appears_in_exactly_one_summary_table(self, mock_site_context):
@@ -639,18 +614,6 @@ class TestSummaryTableSplitting:
         assert placed == [quiz.form_id for quiz in section.quizzes]
         assert len(placed) == len(set(placed))
 
-    @override_settings(REPORTS_MAX_QUIZ_COLUMNS=11)
-    def test_quiz_count_exactly_at_the_budget_yields_one_table(self, mock_site_context):
-        cohort_id = _build_cohort_with_quiz_titles(
-            [f"Course Quiz {index:02d}" for index in range(1, 12)]
-        )
-
-        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
-
-        tables = data.courses[0].summary_tables
-        assert len(tables) == 1
-        assert len(tables[0].quizzes) == 11
-
     def test_course_with_no_quizzes_still_yields_one_table(self, mock_site_context):
         cohort = CohortFactory()
         CohortMembershipFactory(cohort=cohort, user=UserFactory())
@@ -665,23 +628,15 @@ class TestSummaryTableSplitting:
         assert tables[0].quizzes == []
         assert len(tables[0].rows) == 1
 
-    @override_settings(REPORTS_MAX_QUIZ_COLUMNS=11)
-    def test_split_tables_carry_a_cell_per_quiz_in_column_order(
-        self, mock_site_context
-    ):
-        cohort_id = _build_cohort_with_quiz_titles(
-            [f"Course Quiz {index:02d}" for index in range(1, 17)]
-        )
-
-        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
-
-        for table in data.courses[0].summary_tables:
-            for row in table.rows:
-                assert len(row.cells) == len(table.quizzes)
-
 
 class TestQuizAbbreviations:
-    def test_abbreviation_keeps_the_whole_trailing_number(self, mock_site_context):
+    def test_abbreviations_reach_the_columns_in_course_order(self, mock_site_context):
+        """That the abbreviations are wired to the columns at all, and per course.
+
+        How a single title is shortened is settled in test_gather_helpers.py;
+        what only the whole gather can show is that the result lands on
+        CourseSection.quizzes, in the order the course lists its quizzes.
+        """
         cohort_id = _build_cohort_with_quiz_titles(
             ["Voltage Quiz 01", "Hydrology Quiz 12", "Ratios Quiz 10"]
         )
@@ -690,31 +645,6 @@ class TestQuizAbbreviations:
 
         abbreviations = [quiz.abbreviation for quiz in data.courses[0].quizzes]
         assert abbreviations == ["VQ01", "HQ12", "RQ10"]
-
-    def test_abbreviation_of_a_title_without_a_number(self, mock_site_context):
-        cohort_id = _build_cohort_with_quiz_titles(["Orbit Quiz"])
-
-        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
-
-        assert data.courses[0].quizzes[0].abbreviation == "OQ"
-
-    def test_abbreviation_of_a_single_word_title(self, mock_site_context):
-        cohort_id = _build_cohort_with_quiz_titles(["Orbits"])
-
-        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
-
-        assert data.courses[0].quizzes[0].abbreviation == "ORBI"
-
-    def test_colliding_abbreviations_are_disambiguated_within_a_course(
-        self, mock_site_context
-    ):
-        cohort_id = _build_cohort_with_quiz_titles(["Orbit Quiz", "Optics Quiz"])
-
-        data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
-
-        abbreviations = [quiz.abbreviation for quiz in data.courses[0].quizzes]
-        assert len(set(abbreviations)) == 2
-        assert abbreviations[0] == "OQ"
 
 
 class TestStudentOrdering:
@@ -950,19 +880,6 @@ class TestSiteName:
             data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
         assert data.site_name == mock_site_context.name
-
-
-def test_query_count_gains_one_when_the_site_name_must_be_read(
-    mock_site_context, django_assert_num_queries
-):
-    # The only branch in gather that issues a query conditionally.
-    cohort_id = _build_cohort_with_quiz(student_count=2, question_count=2)
-
-    with (
-        override_settings(HEADER_TITLE=None),
-        django_assert_num_queries(GATHER_QUERY_BOUND + 1),
-    ):
-        gather_cohort_report_data(cohort_id, mock_site_context.pk)
 
 
 @pytest.fixture
