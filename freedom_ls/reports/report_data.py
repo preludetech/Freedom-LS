@@ -55,7 +55,9 @@ class WrongAnswer:
     question_number: int
     question_text: str
     times_wrong: int
-    selected_option_texts: list[str]
+    # (option text, the number of wrong attempts that option was selected in),
+    # first-seen order. A count never exceeds times_wrong.
+    selected_options: list[tuple[str, int]]
     correct_option_texts: list[str]
 
 

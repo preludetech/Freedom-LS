@@ -34,9 +34,11 @@ from freedom_ls.reports.gather import (
     _unique_abbreviations,
     build_confusion_block,
     build_wrong_answers_by_user_quiz,
+    tally_quiz_answers,
 )
 from freedom_ls.reports.indexes import (
     QuestionIndex,
+    SatQuestions,
     build_question_index,
     fold_form_progress_rows,
     fold_topic_progress_rows,
@@ -464,7 +466,7 @@ class TestFoldFormProgressRows:
         ]
 
     def test_the_completed_attempt_ids_stay_newest_first(self) -> None:
-        """They drive the sat-pair walk, and so the order of wrong-answer texts."""
+        """They drive the sat-pair walk, and so the order of a student's wrong answers."""
         quiz = a_quiz()
         newest = an_attempt(
             quiz, completed_time=JAN_2, scores={"score": 1, "max_score": 1}
@@ -648,6 +650,63 @@ class TestIndexDistractors:
         ]
 
 
+class TestTallyQuizAnswers:
+    def test_an_option_is_counted_once_per_wrong_attempt_it_was_chosen_in(self) -> None:
+        """The count the report prints is attempts-chosen-in, not options-chosen.
+
+        A sitting cannot select one option twice, so an option reaching two only
+        by being chosen again on a later sitting is what separates a settled
+        misconception from a one-off guess.
+        """
+        quiz = a_quiz()
+        question = a_question(quiz)
+        venus = an_option(question, "Venus", correct=False)
+        mercury = an_option(question, "Mercury", correct=False)
+        older = an_attempt(quiz, completed_time=JAN_1)
+        newer = an_attempt(quiz, completed_time=JAN_2)
+        sat = SatQuestions(
+            # Newest sitting first, as fold_form_progress_rows leaves them.
+            pairs=[(newer.id, question), (older.id, question)],
+            selected_options_by_pair={
+                (newer.id, question.id): [venus],
+                (older.id, question.id): [venus, mercury],
+            },
+            correctness={
+                (newer.id, question.id): False,
+                (older.id, question.id): False,
+            },
+        )
+        forms = a_progress_index(
+            user_form_by_attempt_id={
+                newer.id: (USER_ID, quiz.id),
+                older.id: (USER_ID, quiz.id),
+            }
+        ).forms
+
+        tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
+
+        counts = tallies.wrong_selected_counts[(USER_ID, quiz.id, question.id)]
+        assert list(counts.items()) == [("Venus", 2), ("Mercury", 1)]
+
+    def test_a_correct_sittings_selections_are_not_counted(self) -> None:
+        quiz = a_quiz()
+        question = a_question(quiz)
+        mars = an_option(question, "Mars", correct=True)
+        attempt = an_attempt(quiz, completed_time=JAN_1)
+        sat = SatQuestions(
+            pairs=[(attempt.id, question)],
+            selected_options_by_pair={(attempt.id, question.id): [mars]},
+            correctness={(attempt.id, question.id): True},
+        )
+        forms = a_progress_index(
+            user_form_by_attempt_id={attempt.id: (USER_ID, quiz.id)}
+        ).forms
+
+        tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
+
+        assert (USER_ID, quiz.id, question.id) not in tallies.wrong_selected_counts
+
+
 class TestBuildWrongAnswersByUserQuiz:
     def test_answers_are_ordered_by_question_number(self) -> None:
         quiz = a_quiz()
@@ -660,7 +719,7 @@ class TestBuildWrongAnswersByUserQuiz:
                 (USER_ID, quiz.id, second.id): 1,
                 (USER_ID, quiz.id, first.id): 1,
             },
-            wrong_selected_texts={
+            wrong_selected_counts={
                 (USER_ID, quiz.id, second.id): {},
                 (USER_ID, quiz.id, first.id): {},
             },
@@ -679,7 +738,7 @@ class TestBuildWrongAnswersByUserQuiz:
         index = _a_question_index((question, options))
         tallies = QuizTallies(
             wrong_counts={(USER_ID, quiz.id, question.id): 2},
-            wrong_selected_texts={(USER_ID, quiz.id, question.id): {"Sun": None}},
+            wrong_selected_counts={(USER_ID, quiz.id, question.id): {"Sun": 2}},
             respondent_counts={},
             wrong_counts_first={},
         )
@@ -687,7 +746,7 @@ class TestBuildWrongAnswersByUserQuiz:
         answer = build_wrong_answers_by_user_quiz(tallies, index)[USER_ID][quiz.id][0]
 
         assert answer.times_wrong == 2
-        assert answer.selected_option_texts == ["Sun"]
+        assert answer.selected_options == [("Sun", 2)]
         assert answer.correct_option_texts == ["Mars"]
 
     def test_one_students_wrong_answers_do_not_reach_another(self) -> None:
@@ -696,7 +755,7 @@ class TestBuildWrongAnswersByUserQuiz:
         index = _a_question_index((question, []))
         tallies = QuizTallies(
             wrong_counts={(USER_ID, quiz.id, question.id): 1},
-            wrong_selected_texts={(USER_ID, quiz.id, question.id): {}},
+            wrong_selected_counts={(USER_ID, quiz.id, question.id): {}},
             respondent_counts={},
             wrong_counts_first={},
         )
@@ -710,7 +769,7 @@ class TestBuildConfusionBlock:
     def _tallies(self, *, wrong: dict, respondents: dict) -> QuizTallies:
         return QuizTallies(
             wrong_counts={},
-            wrong_selected_texts={},
+            wrong_selected_counts={},
             respondent_counts=respondents,
             wrong_counts_first=wrong,
         )

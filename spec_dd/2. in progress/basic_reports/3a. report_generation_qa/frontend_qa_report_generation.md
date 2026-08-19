@@ -53,10 +53,9 @@ substitute. `print.css` names no font family and no colour: both come from setti
 compiled theme bundle, so a downstream project rebrands the report without editing a template.
 
 **Branding is optional and must degrade cleanly.** The cover and the page footers use the tenant's own
-name (`HEADER_TITLE`, else the `Site` row) and the logo at `HEADER_LOGO_STATIC_PATH`. Whoever runs the
-platform underneath it comes from `REPORTS_POWERED_BY_NAME` / `REPORTS_POWERED_BY_LOGO_STATIC_PATH`.
-All of those except the site name are optional and default to unset, and FLS records no organisation
-apart from the `Site` — so a report must read as finished with none of them configured (QA 2.1).
+name (`HEADER_TITLE`, else the `Site` row) and the logo at `HEADER_LOGO_STATIC_PATH`. Both except the
+site name are optional and default to unset, and FLS records no organisation apart from the `Site` —
+so a report must read as finished with neither configured (QA 2.1).
 
 ### Login
 
@@ -287,10 +286,10 @@ field names are still `student_*`, but nothing a reader sees says "student". A p
    - Now unset `HEADER_LOGO_STATIC_PATH` and regenerate. **Expect** the cover renders with the name
      alone and **no gap where the logo was** — a fresh FLS install configures no logo, and the page
      must read as finished, not as missing a piece.
-   - With `REPORTS_POWERED_BY_NAME` unset (the default), **expect no "Powered by" line anywhere** in
-     the document, on the cover or in any page footer. Set it, together with
-     `REPORTS_POWERED_BY_LOGO_STATIC_PATH`, regenerate, and **expect** the name and logo in the cover
-     band and the name appended to every page footer.
+   - **Expect no "Powered by" line anywhere** in the document, on the cover or in any page footer.
+     The `REPORTS_POWERED_BY_*` settings and the chrome they drove were removed; the `Site` is the
+     only organisation the report names. The stale `qa-artifacts/tiny-cohort-short-course_powered-by.pdf`
+     predates that removal and cannot be regenerated.
    - A cover naming any organisation FLS does not store — a partner, an accreditation body, a cohort
      code — is a bug. The `Site` is the only organisation in the data model.
 2. **Cohort at a glance** — four stat cards (cohort size, median completion, not started, completed
@@ -327,10 +326,9 @@ field names are still `student_*`, but nothing a reader sees says "student". A p
    did take it, and the score is real. Confirm the definitions block explains that a quiz with no
    pass mark carries a score but no verdict.
 9. **Page furniture.** On every page but the cover: the current section's title top left, the page
-   number bottom right, and bottom left the line `{site} · Cohort progress report · {cohort}` —
-   with `Powered by {name}` appended when that setting is configured. **Expect** the section title in
-   the header to change as you cross from one section into the next, and to stay correct on a
-   section's second and later pages.
+   number bottom right, and bottom left the line `{site} · Cohort progress report · {cohort}` and
+   nothing else. **Expect** the section title in the header to change as you cross from one section
+   into the next, and to stay correct on a section's second and later pages.
 10. **Per-learner quiz attempts.** In a learner's own section, find the "Quiz attempts" table.
     **Expect** one row per **completed** sitting, oldest first, each with its attempt number, its date
     and its score — so a learner who failed twice and passed on the third attempt reads as exactly
@@ -349,6 +347,19 @@ field names are still `student_*`, but nothing a reader sees says "student". A p
     `qa-artifacts/legacy-score-discrepancy.pdf` — it is the one artifact showing the two numbers side
     by side. The student-facing half of this rule (the results page must not rescore either) is
     QA 12.6 in the sibling plan.
+12. **Per-learner incorrect answers, and how often each was chosen.** In a learner's own section,
+    find an "Incorrect answers — {quiz}" table. **Expect** five columns: the question number, the
+    question, a "Wrong" count of the sittings the learner missed it on, the answers they gave, and
+    the correct answer. In the "Answers given" column, **expect** an option the learner chose on more
+    than one wrong sitting to carry a count after it (`option text ×2`), and an option chosen on only
+    one sitting to carry **no** count at all — on a question missed once every option is necessarily
+    ×1, so a count there would be a number that says nothing. A count that exceeds the row's "Wrong"
+    figure is a bug: one sitting cannot choose the same option twice.
+    `standard-cohort-medium-course.pdf` is the fixture — its highest-progress learner missed the same
+    first-quiz question on all three sittings, so their options read `×3` while a learner who missed a
+    question once reads as bare chips.
+    A question the learner left blank has nothing to quote, and **expect** it to read *Not answered*
+    rather than as an empty cell.
 
 ## QA 3 — Page-break and running-header behaviour (success criterion 6)
 
@@ -414,7 +425,9 @@ splits, or that carries a running header on a one-page section, is its own failu
 7. Cross-check one question against a learner's detail section: a learner's repeated wrong answers
    should read as "×3" in their own section (counted per attempt), while the cohort section counts
    first attempts only. These two numbers disagreeing is **correct** — confirm the definitions block
-   explains it.
+   explains it. Both sections now count per option as well, and for the same reason they disagree:
+   a distractor at ×3 in one learner's section can be ×1 in the cohort table, which saw only their
+   first sitting.
    The fixture is already there: in every cohort the highest-progress student has three completed
    attempts at the first quiz, all wrong on the same question. Find them by sorting the summary table
    by completion, or in the shell with

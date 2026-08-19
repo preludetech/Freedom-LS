@@ -593,7 +593,7 @@ class TestStudentDetail:
                             question_number=3,
                             question_text="What is erosion?",
                             times_wrong=1,
-                            selected_option_texts=["Option C"],
+                            selected_options=[("Option C", 1)],
                             correct_option_texts=["Option D"],
                         )
                     ],
@@ -623,7 +623,7 @@ class TestStudentDetail:
                             question_number=3,
                             question_text="What is erosion?",
                             times_wrong=1,
-                            selected_option_texts=[],
+                            selected_options=[],
                             correct_option_texts=["Option D"],
                         )
                     ],
@@ -636,6 +636,61 @@ class TestStudentDetail:
         )
 
         assert "Not answered" in html
+
+    def test_an_option_chosen_on_more_than_one_attempt_carries_its_count(self) -> None:
+        student = student_detail(
+            has_any_progress=True,
+            wrong_answers=[
+                QuizWrongAnswers(
+                    form_id=uuid4(),
+                    title="Erosion Quiz",
+                    answers=[
+                        WrongAnswer(
+                            question_number=3,
+                            question_text="What is erosion?",
+                            times_wrong=3,
+                            selected_options=[("Option C", 2), ("Option A", 1)],
+                            correct_option_texts=["Option D"],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert 'Option C <span class="chip-count">×2</span>' in html  # noqa: RUF001 -- the multiplication sign the template renders
+
+    def test_an_option_chosen_once_carries_no_count(self) -> None:
+        """A question missed once has every option at a count of one, so the badge
+        would put a number on the common case that carries no information."""
+        student = student_detail(
+            has_any_progress=True,
+            wrong_answers=[
+                QuizWrongAnswers(
+                    form_id=uuid4(),
+                    title="Erosion Quiz",
+                    answers=[
+                        WrongAnswer(
+                            question_number=3,
+                            question_text="What is erosion?",
+                            times_wrong=1,
+                            selected_options=[("Option C", 1)],
+                            correct_option_texts=["Option D"],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert "Option C" in html
+        assert "chip-count" not in html
 
     def test_renders_flags_at_the_top(self) -> None:
         student = student_detail(
@@ -691,7 +746,7 @@ class TestStudentDetail:
                             question_number=8,
                             question_text="What is voltage?",
                             times_wrong=2,
-                            selected_option_texts=["Option A"],
+                            selected_options=[("Option A", 1)],
                             correct_option_texts=["Option B"],
                         )
                     ],
@@ -704,7 +759,7 @@ class TestStudentDetail:
                             question_number=3,
                             question_text="What is erosion?",
                             times_wrong=1,
-                            selected_option_texts=["Option C"],
+                            selected_options=[("Option C", 1)],
                             correct_option_texts=["Option D"],
                         )
                     ],

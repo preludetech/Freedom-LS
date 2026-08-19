@@ -152,7 +152,7 @@ def _busy_report_data() -> CohortReportData:
                         question_number=1,
                         question_text="What is an orbit?",
                         times_wrong=1,
-                        selected_option_texts=["A straight line"],
+                        selected_options=[("A straight line", 1)],
                         correct_option_texts=["A closed path around a body"],
                     )
                 ],

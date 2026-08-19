@@ -214,7 +214,49 @@ def test_a_question_left_blank_reaches_the_wrong_answer_detail(mock_site_context
 
     wrong = data.students[0].wrong_answers[0].answers
     assert [entry.question_text for entry in wrong] == [blank.question]
-    assert wrong[0].selected_option_texts == []
+    assert wrong[0].selected_options == []
+
+
+def test_an_option_chosen_on_more_than_one_sitting_is_counted_once_per_sitting(
+    mock_site_context,
+):
+    """Retakes are what make the count worth printing: three wrong sittings on one
+    question read the same until you can see two of them were the same choice."""
+    cohort = CohortFactory()
+    student = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=student)
+    course = CourseFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    quiz = FormFactory(strategy=FormStrategy.QUIZ)
+    _attach(course, quiz)
+    page = FormPageFactory(form=quiz, order=0)
+    question = FormQuestionFactory(
+        form_page=page, type=QuestionType.MULTIPLE_CHOICE, order=0
+    )
+    QuestionOptionFactory(question=question, text="Mars", correct=True, order=0)
+    venus = QuestionOptionFactory(
+        question=question, text="Venus", correct=False, order=1
+    )
+    mercury = QuestionOptionFactory(
+        question=question, text="Mercury", correct=False, order=2
+    )
+
+    for option in (venus, mercury, venus):
+        attempt = FormProgressFactory(
+            user=student,
+            form=quiz,
+            completed_time=timezone.now(),
+            scores={"score": 0, "max_score": 1},
+        )
+        QuestionAnswerFactory(
+            form_progress=attempt, question=question
+        ).selected_options.add(option)
+
+    data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+    answer = data.students[0].wrong_answers[0].answers[0]
+    assert answer.times_wrong == 3
+    assert dict(answer.selected_options) == {"Venus": 2, "Mercury": 1}
 
 
 def test_confusion_denominator_counts_students_who_left_a_question_blank(

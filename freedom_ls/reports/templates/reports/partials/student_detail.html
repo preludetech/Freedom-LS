@@ -79,6 +79,11 @@ of its warning rule, so the first flag is the most serious one a learner has.
   </table>
   {% endif %}
 
+  {% comment %}The per-option count is drawn only above one. Every option on a
+  question missed once is necessarily ×1, so printing it there would put a
+  number on the common case that carries no information. The cohort-wide
+  confusion table prints its counts unconditionally because its numbers span
+  every learner and are rarely one.{% endcomment %}
   {% for quiz in student.wrong_answers %}
   {% if quiz.answers %}
   <p class="subhead">Incorrect answers — {{ quiz.title }} <span class="subhead-note">across all attempts</span></p>
@@ -98,7 +103,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
         <td class="col-question-number">Q{{ wrong.question_number }}</td>
         <td>{{ wrong.question_text }}</td>
         <td class="numeric">×{{ wrong.times_wrong }}</td>
-        <td>{% for text in wrong.selected_option_texts %}<span class="chip chip-error">{{ text }}</span>{% empty %}<span class="no-answer">Not answered</span>{% endfor %}</td>
+        <td>{% for text, count in wrong.selected_options %}<span class="chip chip-error">{{ text }}{% if count > 1 %} <span class="chip-count">×{{ count }}</span>{% endif %}</span>{% empty %}<span class="no-answer">Not answered</span>{% endfor %}</td>
         <td>{% for text in wrong.correct_option_texts %}<span class="chip chip-success">{{ text }}</span>{% endfor %}</td>
       </tr>
       {% endfor %}

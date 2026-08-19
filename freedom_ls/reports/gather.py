@@ -114,8 +114,11 @@ class QuizTallies:
 
     # Per-student wrong-answer detail, counted across every completed attempt.
     wrong_counts: dict[tuple[int, UUID, UUID], int]
-    # An insertion-ordered set: the value is never read, only the key order.
-    wrong_selected_texts: dict[tuple[int, UUID, UUID], dict[str, None]]
+    # Option text to the number of wrong attempts it was selected in. A single
+    # attempt cannot select the same option twice, so a count never exceeds the
+    # matching wrong_counts entry. Key order is first-seen order -- see the
+    # ordering note on FormProgressIndex.completed_attempt_ids.
+    wrong_selected_counts: dict[tuple[int, UUID, UUID], dict[str, int]]
     # Cohort-wide confusion tally, first attempts only.
     respondent_counts: dict[UUID, int]
     wrong_counts_first: dict[UUID, int]
@@ -335,8 +338,8 @@ def tally_quiz_answers(
     counting them apart would traverse every (sitting, question) pair twice.
     """
     wrong_counts: dict[tuple[int, UUID, UUID], int] = defaultdict(int)
-    wrong_selected_texts: dict[tuple[int, UUID, UUID], dict[str, None]] = defaultdict(
-        dict
+    wrong_selected_counts: dict[tuple[int, UUID, UUID], dict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
     )
     respondent_counts: dict[UUID, int] = defaultdict(int)
     wrong_counts_first: dict[UUID, int] = defaultdict(int)
@@ -349,7 +352,7 @@ def tally_quiz_answers(
             for option in sat.selected_options_by_pair.get(
                 (attempt_id, question.id), []
             ):
-                wrong_selected_texts[wrong_key][option.text] = None
+                wrong_selected_counts[wrong_key][option.text] += 1
         if attempt_id in first_attempt_ids:
             respondent_counts[question.id] += 1
             if not is_correct:
@@ -357,7 +360,7 @@ def tally_quiz_answers(
 
     return QuizTallies(
         wrong_counts=wrong_counts,
-        wrong_selected_texts=wrong_selected_texts,
+        wrong_selected_counts=wrong_selected_counts,
         respondent_counts=respondent_counts,
         wrong_counts_first=wrong_counts_first,
     )
@@ -376,8 +379,10 @@ def build_wrong_answers_by_user_quiz(
                 question_number=questions.number_by_id[question_id],
                 question_text=questions.by_id[question_id].question,
                 times_wrong=times_wrong,
-                selected_option_texts=list(
-                    tallies.wrong_selected_texts[(user_id, form_id, question_id)]
+                selected_options=list(
+                    tallies.wrong_selected_counts[
+                        (user_id, form_id, question_id)
+                    ].items()
                 ),
                 correct_option_texts=questions.correct_option_texts[question_id],
             )
