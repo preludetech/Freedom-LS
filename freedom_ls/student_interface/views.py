@@ -61,8 +61,8 @@ from .utils import (
     get_item_part,
     get_recommended_courses,
     get_resume_index,
-    has_unpassed_form,
     stamp_course_access_badge,
+    unpassed_forms,
 )
 
 
@@ -1084,9 +1084,12 @@ def course_form_complete(request, course_slug, index):
     # contradicts. The page has to own that rather than let the learner spot it.
     stored_score_outdated = False
     if form_progress and form.strategy == FormStrategy.QUIZ and form_progress.scores:
-        stored_score_outdated = (
-            form_progress.scores.get("score")
-            != form_progress.compute_quiz_scores()["score"]
+        current_scores = form_progress.compute_quiz_scores()
+        # max_score too, not just score: a quiz that gained or lost a question
+        # since the attempt shows a stale percentage the score alone cannot catch.
+        stored_score_outdated = any(
+            form_progress.scores.get(key) != current_scores[key]
+            for key in ("score", "max_score")
         )
 
     # Three-state: "passed", "failed", or None for a quiz with no pass mark —
@@ -1156,11 +1159,11 @@ def course_finish(request, course_slug):
     )
 
     # Mark as complete if not already. A learner has to pass to complete, so a
-    # quiz they sat and failed withholds the completion — the page still renders
-    # so they can see where they are and get back to the retry.
-    if not course_progress.completed_time and not has_unpassed_form(
-        request.user, course
-    ):
+    # quiz they sat and failed withholds the completion — the page still renders,
+    # naming what is left and linking to the retry.
+    still_to_pass = unpassed_forms(request.user, course)
+
+    if not course_progress.completed_time and not still_to_pass:
         course_progress.completed_time = timezone.now()
         course_progress.save()
 
@@ -1180,6 +1183,7 @@ def course_finish(request, course_slug):
     context = {
         "course": course,
         "course_progress": course_progress,
+        "unpassed_forms": still_to_pass,
         # Outline panel for the completion page (no single current item).
         # can_access_content=True: course_finish is only reachable after completing
         # a course — the learner has had content access throughout.

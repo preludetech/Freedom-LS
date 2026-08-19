@@ -291,7 +291,13 @@ document.addEventListener("alpine:init", () => {
             // Intermediate pages advance through a native submit button, which the
             // browser validates — except for checkbox groups, which it cannot.
             this._onSubmit = (event) => {
-                if (this._revealMissingCheckboxGroups()) event.preventDefault();
+                if (this._revealMissingCheckboxGroups()) {
+                    event.preventDefault();
+                    // The examRunner listener runs in the capture phase, so it has
+                    // already flagged this as a deliberate navigation. Nothing is
+                    // navigating, so re-arm the unsaved-changes guard.
+                    runnerNavigating = false;
+                }
             };
             if (this._formEl) {
                 this._formEl.addEventListener("input", this._recompute);

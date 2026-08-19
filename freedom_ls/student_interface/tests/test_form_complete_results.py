@@ -165,6 +165,29 @@ def test_a_current_score_carries_no_stale_score_note(
 
 
 @pytest.mark.django_db
+def test_a_changed_question_count_is_explained(mock_site_context, logged_in_client):
+    """A quiz that lost a question shows a stale percentage the score alone cannot catch."""
+    form, question, dolphin, bat, _crocodile = _checkbox_quiz()
+    course = course_with_form(form, title="Shrunk Course", slug="shrunk-course")
+    user = _registered_learner(course)
+    attempt = FormProgressFactory(
+        user=user,
+        form=form,
+        completed_time=timezone.now(),
+        # 1 of 2 when it was sat; the second question has since been removed, so
+        # the same answers score 1 of 1 today — right score, wrong total.
+        scores={"score": 1, "max_score": 2},
+    )
+    answer = QuestionAnswerFactory(form_progress=attempt, question=question)
+    answer.selected_options.add(dolphin, bat)
+
+    response = _results(logged_in_client, user, course)
+
+    assert response.context["stored_score_outdated"] is True
+    assert "not been re-marked" in response.content.decode()
+
+
+@pytest.mark.django_db
 def test_a_completed_survey_does_not_promise_marking(
     mock_site_context, logged_in_client
 ):

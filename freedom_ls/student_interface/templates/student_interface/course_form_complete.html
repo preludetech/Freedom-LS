@@ -58,16 +58,16 @@
             {% endif %}
 
             {% comment %}
-            Shown only when the stored score disagrees with what these same
-            answers would score today — otherwise there is nothing to explain.
+            Shown only when the stored score or total disagrees with what this
+            attempt would earn today — otherwise there is nothing to explain.
             {% endcomment %}
             {% if stored_score_outdated %}
                 <div class="rounded-lg border-l-4 border-secondary bg-surface-2 px-5 py-4 mb-8"
                      data-testid="stored-score-note">
                     <p class="text-sm text-muted">
-                        Checkbox questions now need every correct option ticked and no incorrect
-                        one. This attempt has not been re-marked, so the score above is the one
-                        you were given at the time.
+                        This quiz has changed since you sat it.
+                        Your attempt has not been re-marked, so the score above is the
+                        one you were given at the time.
                     </p>
                 </div>
             {% endif %}

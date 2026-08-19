@@ -1,22 +1,68 @@
 {% extends 'student_interface/_course_base.html' %}
 
-{% block item_head_title %}Course complete{% endblock %}
+{% block item_head_title %}{% if course_progress.completed_time %}Course complete{% else %}Course not complete{% endif %}{% endblock %}
 
 {% block content %}
     <c-page width="narrow" flush="true" class="pt-2 lg:pt-4">
-        <div class="text-center mb-8">
-            <div class="mb-6">
-                <c-icon name="achievement" class="size-16 text-warning" />
+
+        {% comment %}
+        A learner has to pass to complete, so reaching the end of the course is
+        not the same as finishing it. completed_time is the authority: the view
+        withholds it while a quiz the learner sat is still unpassed.
+        {% endcomment %}
+        {% if course_progress.completed_time %}
+
+            <div class="text-center mb-8">
+                <div class="mb-6">
+                    <c-icon name="achievement" class="size-16 text-warning" />
+                </div>
+
+                <h1 class="mb-4">
+                    Congratulations!
+                </h1>
+
+                <p class="text-lg text-muted mb-8">
+                    You have successfully completed <strong>{{ course.title }}</strong>.
+                </p>
             </div>
 
-            <h1 class="mb-4">
-                Congratulations!
-            </h1>
+        {% else %}
 
-            <p class="text-lg text-muted mb-8">
-                You have successfully completed <strong>{{ course.title }}</strong>.
-            </p>
-        </div>
+            <div class="text-center mb-8">
+                <div class="mb-6">
+                    <c-icon name="in_progress" class="size-16 text-secondary" />
+                </div>
+
+                <h1 class="mb-4">
+                    Not finished yet
+                </h1>
+
+                <p class="text-lg text-muted mb-8">
+                    You have reached the end of <strong>{{ course.title }}</strong>, but it does
+                    not count as complete until you pass the quiz{{ unpassed_forms|pluralize:"zes" }} below.
+                </p>
+            </div>
+
+            <div class="mb-8 p-6 bg-surface border border-border rounded-lg shadow-sm"
+                 data-testid="unpassed-forms">
+                <h2 class="mb-4">
+                    Still to pass
+                </h2>
+
+                <ul class="space-y-4">
+                    {% for item in unpassed_forms %}
+                        <li class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <span class="text-on-surface">{{ item.form.title }}</span>
+                            <c-button href="{% url 'student_interface:form_start' course_slug=course.slug index=item.index %}"
+                                      icon_left="retry">
+                                Retry quiz
+                            </c-button>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+        {% endif %}
 
         <!-- Course Progress Summary -->
         {% if course_progress %}
@@ -30,10 +76,13 @@
                         <span class="font-medium">Started:</span>
                         <span>{{ course_progress.start_time|date:"F j, Y" }}</span>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="font-medium">Completed:</span>
-                        <span>{{ course_progress.completed_time|date:"F j, Y" }}</span>
-                    </div>
+                    {% comment %}No Completed row while the completion is withheld — it would render blank.{% endcomment %}
+                    {% if course_progress.completed_time %}
+                        <div class="flex justify-between">
+                            <span class="font-medium">Completed:</span>
+                            <span>{{ course_progress.completed_time|date:"F j, Y" }}</span>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         {% endif %}

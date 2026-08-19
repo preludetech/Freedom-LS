@@ -109,25 +109,42 @@ def stamp_course_access_badge(course: Course, *, badge: AccessBadge | None) -> N
     setattr(course, "access_badge", badge)  # noqa: B010
 
 
-def has_unpassed_form(user: User, course: Course) -> bool:
-    """Whether the learner has finished a form in `course` without it counting as done.
+@dataclass(frozen=True)
+class UnpassedForm:
+    """A form the learner still has to clear, and where it sits in the course."""
+
+    index: int  # 1-based position in viewable_items(), which is what form_start takes
+    form: Form
+
+
+def unpassed_forms(user: User, course: Course) -> list[UnpassedForm]:
+    """The forms in `course` the learner has finished without them counting as done.
 
     In practice that means a scored quiz they sat and failed. Used to withhold a
     course completion rather than to gate the page: a learner who has simply not
-    reached an item yet is not blocked by this.
+    reached an item yet is not listed here.
     """
-    form_ids = {item.id for item in course.viewable_items() if isinstance(item, Form)}
-    if not form_ids:
-        return False
+    forms = [
+        UnpassedForm(index=index, form=item)
+        for index, item in enumerate(course.viewable_items(), start=1)
+        if isinstance(item, Form)
+    ]
+    if not forms:
+        return []
 
     sat_form_ids = set(
         FormProgress.objects.filter(
-            user=user, form_id__in=form_ids, completed_time__isnull=False
+            user=user,
+            form_id__in=[entry.form.id for entry in forms],
+            completed_time__isnull=False,
         ).values_list("form_id", flat=True)
     )
-    return bool(
-        sat_form_ids - completed_form_ids_by_user([user.pk]).get(user.pk, set())
-    )
+    passed_form_ids = completed_form_ids_by_user([user.pk]).get(user.pk, set())
+    return [
+        entry
+        for entry in forms
+        if entry.form.id in sat_form_ids and entry.form.id not in passed_form_ids
+    ]
 
 
 def get_content_status(

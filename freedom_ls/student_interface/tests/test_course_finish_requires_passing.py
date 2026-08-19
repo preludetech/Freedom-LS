@@ -73,3 +73,47 @@ def test_finish_page_still_renders_for_a_course_with_a_failed_quiz(
     response = _finish(client, user, course)
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_finish_page_names_the_unpassed_quiz_and_links_to_its_retry(
+    mock_site_context, client, course_with_scored_quiz, sit_quiz
+):
+    """A withheld completion has to say what is left, not congratulate the learner."""
+    user = UserFactory()
+    course, form, question, _right, wrong = course_with_scored_quiz(slug="finish-names")
+    CourseProgressFactory(user=user, course=course, completed_time=None)
+    sit_quiz(user, form, question, wrong)
+
+    content = _finish(client, user, course).content.decode()
+
+    assert "Congratulations" not in content
+    assert "pass the quiz below" in content  # one quiz, so no "quizzes"
+    assert form.title in content
+    assert (
+        reverse(
+            "student_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+        in content
+    )
+
+
+@pytest.mark.django_db
+def test_finish_page_congratulates_once_the_quiz_is_passed(
+    mock_site_context, client, course_with_scored_quiz, sit_quiz
+):
+    """Passing the retry earns the completion copy and the completion date."""
+    user = UserFactory()
+    course, form, question, right, wrong = course_with_scored_quiz(
+        slug="finish-congratulates"
+    )
+    CourseProgressFactory(user=user, course=course, completed_time=None)
+    sit_quiz(user, form, question, wrong)
+    sit_quiz(user, form, question, right)
+
+    content = _finish(client, user, course).content.decode()
+
+    assert "Congratulations" in content
+    assert 'data-testid="unpassed-forms"' not in content
+    assert "Completed:" in content
