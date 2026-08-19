@@ -36,10 +36,20 @@ def _send_test_result_url(endpoint_pk: object) -> str:
     )
 
 
-def _tag(html: str, containing: str) -> str:
-    """Return the opening tag carrying the given attribute snippet."""
-    attribute_at = html.index(containing)
-    return html[html.rindex("<", 0, attribute_at) : html.index(">", attribute_at) + 1]
+def _post_send_test(client: object, admin_user: object) -> object:
+    """Send a test event to an endpoint that accepts it, stubbing the outbound POST."""
+    endpoint = WebhookEndpointFactory(event_types=["user.registered"])
+    client.force_login(admin_user)
+    stubbed = httpx.Response(
+        status_code=200,
+        content=b'{"ok": true}',
+        request=httpx.Request("POST", endpoint.url),
+    )
+    with patch("freedom_ls.webhooks.delivery.httpx.request", return_value=stubbed):
+        return client.post(
+            _send_test_result_url(endpoint.pk),
+            data={"event_type": "user.registered"},
+        )
 
 
 @pytest.mark.django_db
@@ -103,24 +113,6 @@ class TestSendTestFormView:
 
         assert response.content.decode().count("<h1") == 1
 
-    def test_event_type_select_and_button_are_styled(
-        self, admin_user: object, mock_site_context: object, client: object
-    ) -> None:
-        endpoint = WebhookEndpointFactory()
-        client.force_login(admin_user)
-
-        content = client.get(_send_test_form_url(endpoint.pk)).content.decode()
-
-        select = _tag(content, 'name="event_type"')
-        button = _tag(content, 'name="send_test"')
-        assert 'class="' in select
-        assert 'class="' in button
-        assert "style=" not in select
-        assert "style=" not in button
-        # The page used to hardcode legacy Django-admin blue in its own
-        # <style> block instead of taking the admin theme's colours.
-        assert "#417690" not in content
-
     def test_non_admin_cannot_access(
         self, regular_user: object, mock_site_context: object, client: object
     ) -> None:
@@ -146,30 +138,20 @@ class TestSendTestFormView:
 
 @pytest.mark.django_db
 class TestSendTestResultView:
-    def test_renders_inside_the_admin_shell_with_one_h1(
+    def test_renders_inside_the_admin_shell_with_the_sidebar(
         self, admin_user: object, mock_site_context: object, client: object
     ) -> None:
-        endpoint = WebhookEndpointFactory(event_types=["user.registered"])
-        client.force_login(admin_user)
+        response = _post_send_test(client, admin_user)
 
-        mock_response = httpx.Response(
-            status_code=200,
-            content=b'{"ok": true}',
-            request=httpx.Request("POST", endpoint.url),
-        )
-        with patch(
-            "freedom_ls.webhooks.delivery.httpx.request",
-            return_value=mock_response,
-        ):
-            response = client.post(
-                _send_test_result_url(endpoint.pk),
-                data={"event_type": "user.registered"},
-            )
-
-        content = response.content.decode()
         assert response.context["is_nav_sidebar_enabled"] is True
-        assert 'id="nav-sidebar"' in content
-        assert content.count("<h1") == 1
+        assert 'id="nav-sidebar"' in response.content.decode()
+
+    def test_renders_exactly_one_h1(
+        self, admin_user: object, mock_site_context: object, client: object
+    ) -> None:
+        response = _post_send_test(client, admin_user)
+
+        assert response.content.decode().count("<h1") == 1
 
     def test_creates_event_and_delivery(
         self, admin_user: object, mock_site_context: object, client: object

@@ -186,6 +186,66 @@ def course_with_topic(mock_site_context):
 
 
 @pytest.fixture
+def course_with_scored_quiz(mock_site_context):
+    """Factory: a course holding one two-option quiz a learner can pass or fail on demand.
+
+    Returns (course, form, question, right_option, wrong_option). Pass
+    ``pass_percentage=None`` for a quiz with no bar to clear.
+    """
+    from freedom_ls.content_engine.factories import (
+        ContentCollectionItemFactory,
+        CourseFactory,
+        FormFactory,
+        FormPageFactory,
+        FormQuestionFactory,
+        QuestionOptionFactory,
+    )
+    from freedom_ls.content_engine.models import FormStrategy
+
+    def _make(*, pass_percentage: int | None = 80, **course_kwargs) -> tuple:
+        course = CourseFactory(**course_kwargs)
+        form = FormFactory(
+            strategy=FormStrategy.QUIZ, quiz_pass_percentage=pass_percentage
+        )
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=form, order=0
+        )
+        page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
+        question = FormQuestionFactory(
+            form_page=page, question="What is 2 + 2?", type="multiple_choice", order=0
+        )
+        right = QuestionOptionFactory(
+            question=question, text="4", value="4", order=0, correct=True
+        )
+        wrong = QuestionOptionFactory(
+            question=question, text="3", value="3", order=1, correct=False
+        )
+        return course, form, question, right, wrong
+
+    return _make
+
+
+@pytest.fixture
+def sit_quiz():
+    """Factory: complete one attempt at `form`, answering `question` with `option`."""
+    from freedom_ls.student_progress.factories import (
+        FormProgressFactory,
+        QuestionAnswerFactory,
+    )
+    from freedom_ls.student_progress.models import FormProgress, QuestionAnswer
+
+    def _sit(user, form, question, option) -> None:
+        attempt: FormProgress = FormProgressFactory(user=user, form=form)
+        answer: QuestionAnswer = QuestionAnswerFactory(
+            form_progress=attempt, question=question
+        )
+        answer.selected_options.add(option)
+        attempt.complete()
+
+    return _sit
+
+
+@pytest.fixture
 def site_aware_request(mock_site_context):
     return RequestFactory()
 

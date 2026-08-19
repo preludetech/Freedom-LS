@@ -37,18 +37,25 @@ from freedom_ls.reports.gather import (
     WrongAnswer,
 )
 from freedom_ls.reports.render import render_report_pdf
-from freedom_ls.reports.tests.report_data_builders import _full_report_data
+from freedom_ls.reports.tests.conftest import requires_tailwind_bundle
+from freedom_ls.reports.tests.report_data_builders import full_report_data
 
-pytestmark = pytest.mark.weasyprint
+pytestmark = [pytest.mark.weasyprint, requires_tailwind_bundle]
 
 # The six status glyphs used throughout the report (methodology legend,
 # quiz_result_cell.html, completion_bar.html, flag_list.html) -- plain
 # Unicode, never emoji, per freedom_ls/reports/static/reports/print.css.
 STATUS_GLYPH_CODEPOINTS = [0x2713, 0x2717, 0x25B2, 0x25CF, 0x25CB, 0x2014]
 
+# Headings that belong to the per-learner section and must never reach a
+# landscape page or the confusions section. Upper-cased where print.css sets
+# .subhead in small caps -- the extracted text carries what was drawn, not what
+# the template wrote.
+STUDENT_DETAIL_HEADINGS = ["Details per learner", "ITEMS COMPLETED", "QUIZ ATTEMPTS"]
+
 
 def _busy_report_data() -> CohortReportData:
-    """`_full_report_data()` grown until every page-break case under test exists.
+    """`full_report_data()` grown until every page-break case under test exists.
 
     Every student in the base fixture has `has_any_progress=False`, so the
     document contains no "Completed items" or "Quiz results" heading at all and
@@ -66,7 +73,7 @@ def _busy_report_data() -> CohortReportData:
     page, on top of the first quiz's small one, so the section has continuation
     pages to check as well as a first one.
     """
-    data = _full_report_data()
+    data = full_report_data()
     first, last = data.students[0], data.students[-1]
     course = data.courses[0]
     quiz = course.quizzes[0]
@@ -167,7 +174,7 @@ def _unregistered_report_data() -> CohortReportData:
     that used to let a student's detail section -- and with it their running
     header -- start on the landscape page.
     """
-    data = _full_report_data()
+    data = full_report_data()
     courses = [
         dataclasses.replace(
             course,
@@ -181,31 +188,58 @@ def _unregistered_report_data() -> CohortReportData:
     return dataclasses.replace(data, courses=courses)
 
 
-def _completion_report_data(percentage: int) -> CohortReportData:
-    """`_full_report_data()` with its one summary row set to `percentage` complete."""
-    data = _full_report_data()
+def _with_summary_rows(data: CohortReportData, rows: list) -> CohortReportData:
+    """`data` with its first course's single summary table carrying exactly `rows`."""
     course = data.courses[0]
     table = course.summary_tables[0]
-    row = dataclasses.replace(
-        table.rows[0],
-        completion_percentage=percentage,
-        completed_item_count=percentage * 5 // 100,
-    )
     return dataclasses.replace(
         data,
         courses=[
             dataclasses.replace(
-                course, summary_tables=[dataclasses.replace(table, rows=[row])]
+                course, summary_tables=[dataclasses.replace(table, rows=rows)]
             ),
             *data.courses[1:],
         ],
     )
 
 
+def _completion_report_data(percentage: int) -> CohortReportData:
+    """`full_report_data()` with its one summary row set to `percentage` complete."""
+    data = full_report_data()
+    row = dataclasses.replace(
+        data.courses[0].summary_tables[0].rows[0],
+        completion_percentage=percentage,
+        completed_item_count=percentage * 5 // 100,
+    )
+    return _with_summary_rows(data, [row])
+
+
+def _banded_zero_completion_report_data() -> CohortReportData:
+    """A summary table whose 0%-complete learner sits on a zebra-striped row.
+
+    Row parity is what makes this fixture the case under test: the empty track
+    takes its fill from the same token the stripe does, so only on an even row
+    is the fill alone incapable of showing the bar.
+    """
+    data = full_report_data()
+    template = data.courses[0].summary_tables[0].rows[0]
+    unbanded = dataclasses.replace(
+        template, completion_percentage=40, completed_item_count=2
+    )
+    banded = dataclasses.replace(
+        template,
+        user_id=2,
+        full_name="Bo Kim",
+        completion_percentage=0,
+        completed_item_count=0,
+    )
+    return _with_summary_rows(data, [unbanded, banded])
+
+
 @pytest.fixture(scope="module")
 def report_pdf_bytes() -> bytes:
     """Render once per module -- WeasyPrint is slow and the output is immutable bytes."""
-    return render_report_pdf(_full_report_data())
+    return render_report_pdf(full_report_data())
 
 
 @pytest.fixture(scope="module")
@@ -281,6 +315,16 @@ def _font_cmap_codepoints(font_program: bytes) -> set[int]:
     return codepoints
 
 
+def _embedded_codepoints(reader: PdfReader) -> set[int]:
+    """Every code point the document's embedded faces can draw between them."""
+    covered: set[int] = set()
+    for name in _embedded_font_names(reader):
+        program = _embedded_font_program(reader, name.split("+")[-1])
+        if program is not None:
+            covered |= _font_cmap_codepoints(program)
+    return covered
+
+
 def _flatten_outline_titles(entries: OutlineType) -> list[str]:
     titles: list[str] = []
     for entry in entries:
@@ -324,6 +368,11 @@ def _joined_text(reader: PdfReader) -> str:
     return "".join(page.extract_text() for page in reader.pages)
 
 
+def _names_appearing_in(data: CohortReportData, text: str) -> set[str]:
+    """Which of the cohort's learners `text` names -- empty is the passing case."""
+    return {student.full_name for student in data.students if student.full_name in text}
+
+
 def _confusions_section_page_texts(reader: PdfReader) -> list[str]:
     """Text of every page of the confusions section, its own first page included.
 
@@ -344,23 +393,86 @@ def _confusions_section_page_texts(reader: PdfReader) -> list[str]:
     return texts[first:]
 
 
-def _landscape_rect_widths(reader: PdfReader) -> list[float]:
-    """Width of every rectangle painted on the landscape summary page.
+Rect = tuple[float, float, float, float]
 
-    WeasyPrint emits each painted box as a PDF `x y w h re` operator, so a
-    completion bar whose fill is drawn at its declared percentage is visible
-    here as a rectangle of that width -- and one whose fill is not drawn at
-    all is visible as a zero-width one. Nothing else on this page paints a
-    zero-width rectangle.
+# One PDF path/painting operator: a colour to paint in, a rectangle to add to the
+# current path, or the instruction that paints (`f`/`f*`) or strokes (`S`) it.
+_PAINT_OP = re.compile(
+    r"(?P<rgb>[\d.]+ [\d.]+ [\d.]+) rg"
+    r"|(?P<gray>(?<![\d.])[\d.]+) g\b"
+    r"|(?P<rect>[-\d.]+ [-\d.]+ [-\d.]+ [-\d.]+) re\b"
+    r"|(?P<paint>f\*?|S)\b"
+)
+
+
+def _landscape_fills(reader: PdfReader) -> list[tuple[str, Rect]]:
+    """(fill colour, rectangle) for every rectangle filled on the landscape page.
+
+    WeasyPrint paints a box's background across its whole border box, then the
+    border itself as an even-odd ring over that same outer rectangle in the
+    border colour. A bordered box therefore appears here twice under two
+    colours, while an unbordered one appears only under its background.
     """
     page = next(page for page in reader.pages if _is_landscape(page))
     content = page.get_contents()
     assert content is not None
     stream = content.get_data().decode("latin-1")
-    return [
-        float(match.group(1))
-        for match in re.finditer(r"\S+ \S+ (\S+) \S+ re\b", stream)
-    ]
+
+    colour: str | None = None
+    path: list[Rect] = []
+    filled: list[tuple[str, Rect]] = []
+    for match in _PAINT_OP.finditer(stream):
+        if match.group("rgb") or match.group("gray"):
+            colour = match.group("rgb") or match.group("gray")
+        elif match.group("rect"):
+            x, y, width, height = (
+                round(float(value), 4) for value in match.group("rect").split()
+            )
+            path.append((x, y, width, height))
+        elif match.group("paint"):
+            if match.group("paint").startswith("f") and colour is not None:
+                filled.extend((colour, rect) for rect in path)
+            path = []
+    return filled
+
+
+def _landscape_rect_widths(reader: PdfReader) -> list[float]:
+    """Width of every rectangle painted on the landscape summary page.
+
+    A completion bar whose fill is drawn at its declared percentage is visible
+    here as a rectangle of that width -- and one whose fill is not drawn at all
+    is visible as a zero-width one. Nothing else on this page paints a
+    zero-width rectangle.
+    """
+    return [width for _, (_, _, width, _) in _landscape_fills(reader)]
+
+
+def _bordered_boxes(filled: list[tuple[str, Rect]]) -> dict[Rect, set[str]]:
+    """Every rectangle painted in more than one colour, keyed to those colours.
+
+    Two colours on one rectangle means a background plus a border ring; the
+    completion bar tracks are the only boxes the summary page draws that way.
+    """
+    colours_by_rect: dict[Rect, set[str]] = {}
+    for colour, rect in filled:
+        colours_by_rect.setdefault(rect, set()).add(colour)
+    return {
+        rect: colours for rect, colours in colours_by_rect.items() if len(colours) > 1
+    }
+
+
+def _colours_behind(filled: list[tuple[str, Rect]], box: Rect) -> set[str]:
+    """Colours painted on the rectangles enclosing `box` -- its table cell and the page."""
+    left, bottom, width, height = box
+    return {
+        colour
+        for colour, (x, y, other_width, other_height) in filled
+        if (x, y, other_width, other_height) != box
+        and x <= left
+        and y <= bottom
+        and x + other_width >= left + width
+        and y + other_height >= bottom + height
+    }
 
 
 class TestRenderReportPdf:
@@ -380,15 +492,20 @@ class TestRenderReportPdf:
         assert len(portrait_texts) >= 1
         assert "Summary of learner progress" in landscape_texts[0]
 
-    def test_brand_faces_are_embedded(self, report_pdf_bytes: bytes) -> None:
-        # Names, not files: which faces these are is a setting, and asserting
-        # the shipped default's filenames would be asserting configuration
-        # through the code under test.
+    def test_every_font_the_report_uses_is_embedded_as_a_subset(
+        self, report_pdf_bytes: bytes
+    ) -> None:
+        # Which faces these are is a setting, so naming the shipped default's
+        # families would be asserting configuration through the code under
+        # test. The claim that survives a re-skin is that the report carries
+        # its fonts rather than leaning on whatever the printer happens to
+        # have: WeasyPrint tags every subset it embeds `ABCDEF+Family`.
         reader = _reader(report_pdf_bytes)
+
         embedded = _embedded_font_names(reader)
 
-        for family in ("Inter", "Source-Sans-3", "Source-Code-Pro"):
-            assert any(family in name for name in embedded), family
+        assert embedded != set()
+        assert {name for name in embedded if "+" not in name} == set()
 
     def test_every_status_glyph_is_covered_by_an_embedded_font(
         self, report_pdf_bytes: bytes
@@ -402,11 +519,7 @@ class TestRenderReportPdf:
         # covers the vocabulary between them.
         reader = _reader(report_pdf_bytes)
 
-        covered: set[int] = set()
-        for name in _embedded_font_names(reader):
-            program = _embedded_font_program(reader, name.split("+")[-1])
-            if program is not None:
-                covered |= _font_cmap_codepoints(program)
+        covered = _embedded_codepoints(reader)
 
         assert set(STATUS_GLYPH_CODEPOINTS) <= covered
 
@@ -414,7 +527,7 @@ class TestRenderReportPdf:
         self, report_pdf_bytes: bytes
     ) -> None:
         reader = _reader(report_pdf_bytes)
-        data = _full_report_data()
+        data = full_report_data()
         titles = _flatten_outline_titles(reader.outline)
 
         assert titles != []
@@ -447,10 +560,11 @@ class TestRenderReportPdf:
         titles = _flatten_outline_titles(reader.outline)
 
         assert len(titles) == len(set(titles))
-        for student in data.students:
-            assert titles.count(student.full_name) == 1
-        for course in data.courses:
-            assert any(title.startswith(course.title) for title in titles)
+        assert {student.full_name for student in data.students} <= set(titles)
+        assert all(
+            any(title.startswith(course.title) for title in titles)
+            for course in data.courses
+        )
         assert data.courses[0].quizzes[0].title in titles
 
     def test_outline_omits_the_sub_headings_the_contents_page_does_not_list(
@@ -465,22 +579,17 @@ class TestRenderReportPdf:
         assert "Status legend" not in titles
         assert "Learners needing attention" not in titles
 
+    @pytest.mark.parametrize("heading", STUDENT_DETAIL_HEADINGS)
     def test_no_landscape_page_carries_student_detail_content(
-        self, busy_report_pdf_bytes: bytes
+        self, busy_report_pdf_bytes: bytes, heading: str
     ) -> None:
         reader = _reader(busy_report_pdf_bytes)
-        landscape_texts = _landscape_page_texts(reader)
-        portrait_text = "".join(_portrait_page_texts(reader))
+        landscape_text = "".join(_landscape_page_texts(reader))
 
-        # Upper-cased because print.css sets .subhead in small caps -- the
-        # extracted text carries what was drawn, not what the template wrote.
-        for heading in ("Details per learner", "ITEMS COMPLETED", "QUIZ ATTEMPTS"):
-            # Present in the document, so absence below is a real page-break
-            # assertion rather than an assertion about a heading that never
-            # renders in this fixture.
-            assert heading in portrait_text
-            for text in landscape_texts:
-                assert heading not in text
+        # Present in the document, so its absence below is a real page-break
+        # assertion rather than one about a heading this fixture never renders.
+        assert heading in "".join(_portrait_page_texts(reader))
+        assert heading not in landscape_text
 
     def test_no_landscape_page_names_a_student_when_none_is_registered(
         self, unregistered_report_pdf_bytes: bytes
@@ -490,10 +599,9 @@ class TestRenderReportPdf:
         # running header the bare `@page` rule sets, not through a table row.
         reader = _reader(unregistered_report_pdf_bytes)
         data = _unregistered_report_data()
+        landscape_text = "".join(_landscape_page_texts(reader))
 
-        for text in _landscape_page_texts(reader):
-            for student in data.students:
-                assert student.full_name not in text
+        assert _names_appearing_in(data, landscape_text) == set()
 
     def test_no_page_of_the_confusions_section_names_a_student(
         self, busy_report_pdf_bytes: bytes
@@ -509,9 +617,7 @@ class TestRenderReportPdf:
         section_texts = _confusions_section_page_texts(reader)
 
         assert len(section_texts) > 1, "fixture must span a first and a later page"
-        for text in section_texts:
-            for student in data.students:
-                assert student.full_name not in text
+        assert _names_appearing_in(data, "".join(section_texts)) == set()
 
     def test_confusions_section_starts_on_a_page_of_its_own(
         self, busy_report_pdf_bytes: bytes
@@ -523,22 +629,52 @@ class TestRenderReportPdf:
         # The section heading is the first thing on the page, not something
         # stranded alone on the page before it.
         assert "Orbit Quiz" in first_page_text
-        for heading in ("Details per learner", "ITEMS COMPLETED", "QUIZ ATTEMPTS"):
-            assert heading not in first_page_text
+        assert {
+            heading for heading in STUDENT_DETAIL_HEADINGS if heading in first_page_text
+        } == set()
 
-    def test_completion_bar_fill_is_drawn_at_its_declared_width(self) -> None:
+    def test_an_empty_completion_bar_paints_a_zero_width_fill(self) -> None:
         # The fill is a percentage-width box inside a fixed-width track. Drawn
         # as an inline box its width is ignored entirely, so an empty bar and a
-        # full one paint the same zero-width rectangle.
-        empty = _landscape_rect_widths(
+        # full one would paint the same rectangle.
+        widths = _landscape_rect_widths(
             _reader(render_report_pdf(_completion_report_data(0)))
         )
-        full = _landscape_rect_widths(
+
+        assert 0.0 in widths
+
+    def test_a_full_completion_bar_paints_no_zero_width_fill(self) -> None:
+        widths = _landscape_rect_widths(
             _reader(render_report_pdf(_completion_report_data(100)))
         )
 
-        assert 0.0 in empty
-        assert 0.0 not in full
+        assert 0.0 not in widths
+
+    def test_a_completion_bar_stays_visible_where_the_row_banding_matches_its_fill(
+        self,
+    ) -> None:
+        """The empty track takes its fill from the same theme token the zebra
+        stripe does, so on a banded row the fill alone leaves nothing to see: a
+        0%-complete learner showed no bar at all, while the same learner on a
+        white row showed an empty track. The track's border is what keeps it on
+        the page.
+        """
+        reader = _reader(render_report_pdf(_banded_zero_completion_report_data()))
+        filled = _landscape_fills(reader)
+
+        # The tracks whose own fill is a colour already painted behind them --
+        # the ones sitting on a stripe, where the fill cannot be what shows the bar.
+        hidden_fill = {
+            box: colours
+            for box, colours in _bordered_boxes(filled).items()
+            if colours & _colours_behind(filled, box)
+        }
+
+        assert hidden_fill, "no track sits on a stripe matching its fill"
+        assert all(
+            colours - _colours_behind(filled, box)
+            for box, colours in hidden_fill.items()
+        )
 
     def test_contents_page_references_are_present_and_non_decreasing(
         self, report_pdf_bytes: bytes
@@ -554,6 +690,6 @@ class TestRenderReportPdf:
         self, report_pdf_bytes: bytes
     ) -> None:
         reader = _reader(report_pdf_bytes)
-        data = _full_report_data()
+        data = full_report_data()
 
         assert data.cohort_name in _joined_text(reader)

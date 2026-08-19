@@ -43,7 +43,7 @@ def _superuser() -> object:
 
 
 def _restricted_staff_user(cohort: object) -> object:
-    """Staff, every GeneratedReport model permission, view_cohort on one cohort."""
+    """Staff, model-level view and delete on GeneratedReport, view_cohort on one cohort."""
     user = UserFactory(is_staff=True)
     for codename in ("view_generatedreport", "delete_generatedreport"):
         assign_perm(f"freedom_ls_reports.{codename}", user)
@@ -236,11 +236,22 @@ class TestGeneratedReportAdminObjectLevelScoping:
         assert "Alpha Cohort" in content
         assert "Bravo Cohort" in content
 
-    def test_superuser_can_open_any_reports_change_and_delete_views(
+    def test_superuser_can_open_any_reports_change_view(
         self, mock_site_context: object, client: object
     ) -> None:
         report = GeneratedReportFactory(cohort=CohortFactory(name="Bravo Cohort"))
         client.force_login(_superuser())
 
-        assert client.get(_change_url(report.pk)).status_code == 200
-        assert client.get(_delete_url(report.pk)).status_code == 200
+        response = client.get(_change_url(report.pk))
+
+        assert response.status_code == 200
+
+    def test_superuser_can_open_any_reports_delete_view(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        report = GeneratedReportFactory(cohort=CohortFactory(name="Bravo Cohort"))
+        client.force_login(_superuser())
+
+        response = client.get(_delete_url(report.pk))
+
+        assert response.status_code == 200

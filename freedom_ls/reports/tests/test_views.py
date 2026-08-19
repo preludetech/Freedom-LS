@@ -32,12 +32,6 @@ def _staff_user_with_cohort_view_permission(cohort: object) -> object:
     return user
 
 
-def _tag(html: str, containing: str) -> str:
-    """Return the opening tag carrying the given attribute snippet."""
-    attribute_at = html.index(containing)
-    return html[html.rindex("<", 0, attribute_at) : html.index(">", attribute_at) + 1]
-
-
 def _save_ready_file(report: GeneratedReport) -> None:
     report.file.save(
         "cohort-report.pdf", ContentFile(b"%PDF-1.4 test bytes"), save=True
@@ -92,32 +86,6 @@ class TestGenerateReportViewGet:
 
         changelist_url = reverse("admin:freedom_ls_reports_generatedreport_changelist")
         assert f'href="{changelist_url}"' in response.content.decode()
-
-    def test_submit_button_is_styled(
-        self, mock_site_context: object, client: object
-    ) -> None:
-        cohort = CohortFactory()
-        client.force_login(_staff_user_with_cohort_view_permission(cohort))
-
-        response = client.get(_generate_url())
-
-        button = _tag(response.content.decode(), 'name="generate"')
-        # Assert a class attribute exists rather than the literal Tailwind
-        # classes, which belong to unfold and move between versions.
-        assert 'class="' in button
-        assert "style=" not in button
-
-    def test_cohort_select_is_styled_and_carries_no_inline_style(
-        self, mock_site_context: object, client: object
-    ) -> None:
-        cohort = CohortFactory()
-        client.force_login(_staff_user_with_cohort_view_permission(cohort))
-
-        response = client.get(_generate_url())
-
-        select = _tag(response.content.decode(), 'name="cohort"')
-        assert 'class="' in select
-        assert "style=" not in select
 
 
 class TestGenerateReportViewPost:

@@ -217,6 +217,23 @@ def test_score_quiz_includes_unanswered_questions_in_max_score(
 # Checkbox (multi-select) scoring: exact match, all-or-nothing.
 
 
+@pytest.fixture
+def checkbox_attempt(mock_site_context):
+    """An unanswered attempt at a quiz whose one question has 2 correct options of 4.
+
+    Returns (form_progress, answer, question, options) where `options` is
+    (correct_1, correct_2, wrong_1, wrong_2) -- each test only has to tick the
+    combination it is about.
+    """
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    question, *options = _build_checkbox_question_two_of_four(form)
+    form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question
+    )
+    return form_progress, answer, question, options
+
+
 def _build_checkbox_question_two_of_four(form):
     """Checkbox question with 2 correct options of 4, mirroring the qa_helpers fixture shape."""
     page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
@@ -242,18 +259,10 @@ def _build_checkbox_question_two_of_four(form):
 
 
 @pytest.mark.django_db
-def test_score_quiz_checkbox_exactly_correct_options_scores_one(mock_site_context):
+def test_score_quiz_checkbox_exactly_correct_options_scores_one(checkbox_attempt):
     """Ticking exactly the 2 correct options of 4 scores full marks."""
-    user = UserFactory()
-    form = FormFactory(strategy=FormStrategy.QUIZ)
-    question, correct_1, correct_2, _wrong_1, _wrong_2 = (
-        _build_checkbox_question_two_of_four(form)
-    )
-
-    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-    answer: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question
-    )
+    form_progress, answer, _question, options = checkbox_attempt
+    correct_1, correct_2, _wrong_1, _wrong_2 = options
     answer.selected_options.add(correct_1, correct_2)
 
     form_progress.score_quiz()
@@ -266,18 +275,10 @@ def test_score_quiz_checkbox_exactly_correct_options_scores_one(mock_site_contex
 
 
 @pytest.mark.django_db
-def test_score_quiz_checkbox_ticking_all_four_scores_zero(mock_site_context):
+def test_score_quiz_checkbox_ticking_all_four_scores_zero(checkbox_attempt):
     """The headline bug: ticking every option (2 correct, 2 incorrect) must not score full marks."""
-    user = UserFactory()
-    form = FormFactory(strategy=FormStrategy.QUIZ)
-    question, correct_1, correct_2, wrong_1, wrong_2 = (
-        _build_checkbox_question_two_of_four(form)
-    )
-
-    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-    answer: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question
-    )
+    form_progress, answer, question, options = checkbox_attempt
+    correct_1, correct_2, wrong_1, wrong_2 = options
     answer.selected_options.add(correct_1, correct_2, wrong_1, wrong_2)
 
     form_progress.score_quiz()
@@ -290,18 +291,10 @@ def test_score_quiz_checkbox_ticking_all_four_scores_zero(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_score_quiz_checkbox_partial_correct_selection_scores_zero(mock_site_context):
+def test_score_quiz_checkbox_partial_correct_selection_scores_zero(checkbox_attempt):
     """Ticking only 1 of the 2 correct options scores zero — no partial credit."""
-    user = UserFactory()
-    form = FormFactory(strategy=FormStrategy.QUIZ)
-    question, correct_1, _correct_2, _wrong_1, _wrong_2 = (
-        _build_checkbox_question_two_of_four(form)
-    )
-
-    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-    answer: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question
-    )
+    form_progress, answer, question, options = checkbox_attempt
+    correct_1, _correct_2, _wrong_1, _wrong_2 = options
     answer.selected_options.add(correct_1)
 
     form_progress.score_quiz()
@@ -314,18 +307,10 @@ def test_score_quiz_checkbox_partial_correct_selection_scores_zero(mock_site_con
 
 
 @pytest.mark.django_db
-def test_score_quiz_checkbox_correct_plus_incorrect_scores_zero(mock_site_context):
+def test_score_quiz_checkbox_correct_plus_incorrect_scores_zero(checkbox_attempt):
     """Ticking both correct options plus one incorrect option scores zero."""
-    user = UserFactory()
-    form = FormFactory(strategy=FormStrategy.QUIZ)
-    question, correct_1, correct_2, wrong_1, _wrong_2 = (
-        _build_checkbox_question_two_of_four(form)
-    )
-
-    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-    answer: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question
-    )
+    form_progress, answer, question, options = checkbox_attempt
+    correct_1, correct_2, wrong_1, _wrong_2 = options
     answer.selected_options.add(correct_1, correct_2, wrong_1)
 
     form_progress.score_quiz()
@@ -338,16 +323,9 @@ def test_score_quiz_checkbox_correct_plus_incorrect_scores_zero(mock_site_contex
 
 
 @pytest.mark.django_db
-def test_score_quiz_checkbox_nothing_selected_scores_zero(mock_site_context):
+def test_score_quiz_checkbox_nothing_selected_scores_zero(checkbox_attempt):
     """A QuestionAnswer exists but has no selected options — scores zero."""
-    user = UserFactory()
-    form = FormFactory(strategy=FormStrategy.QUIZ)
-    question, _correct_1, _correct_2, _wrong_1, _wrong_2 = (
-        _build_checkbox_question_two_of_four(form)
-    )
-
-    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-    QuestionAnswerFactory(form_progress=form_progress, question=question)
+    form_progress, _answer, question, _options = checkbox_attempt
 
     form_progress.score_quiz()
 

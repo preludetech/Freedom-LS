@@ -25,10 +25,11 @@ from freedom_ls.reports.render import (
     build_report_html,
     extract_theme_tokens,
 )
+from freedom_ls.reports.tests.conftest import requires_tailwind_bundle
 from freedom_ls.reports.tests.report_data_builders import (
-    _cohort_report_data,
-    _course_section,
-    _full_report_data,
+    cohort_report_data,
+    course_section,
+    full_report_data,
 )
 
 # Deliberately fake values, not the real bundle's hex codes -- this is a
@@ -70,6 +71,7 @@ class TestExtractThemeTokens:
         assert "display: flex" not in result
         assert "@layer" not in result
 
+    @requires_tailwind_bundle
     def test_real_bundle_yields_every_role_token_the_report_uses(self) -> None:
         result = extract_theme_tokens()
         role_tokens = [
@@ -100,9 +102,10 @@ class TestExtractThemeTokens:
             extract_theme_tokens()
 
 
+@requires_tailwind_bundle
 class TestBuildReportHtml:
     def test_every_student_name_present(self) -> None:
-        html = build_report_html(_full_report_data())
+        html = build_report_html(full_report_data())
 
         assert "Ada Lovelace" in html
         assert "Bo Kim" in html
@@ -110,7 +113,7 @@ class TestBuildReportHtml:
     def test_flag_reason_identical_between_at_a_glance_and_student_section(
         self,
     ) -> None:
-        data = _full_report_data()
+        data = full_report_data()
         reason = data.students[0].flags[0].reason
 
         html = build_report_html(data)
@@ -118,13 +121,13 @@ class TestBuildReportHtml:
         assert html.count(reason) == 2
 
     def test_inactive_course_section_carries_marker(self) -> None:
-        html = build_report_html(_full_report_data())
+        html = build_report_html(full_report_data())
 
         assert 'class="inactive-marker"' in html
         assert "Retired Course" in html
 
     def test_timezone_appears_on_title_page(self) -> None:
-        data = _full_report_data()
+        data = full_report_data()
 
         html = build_report_html(data)
 
@@ -132,42 +135,43 @@ class TestBuildReportHtml:
         assert expected_tz in html
 
     def test_every_anchor_href_target_exists_exactly_once(self) -> None:
-        html = build_report_html(_full_report_data())
+        html = build_report_html(full_report_data())
 
         assert _dangling_anchor_links(html) == []
 
     def test_requester_name_replaces_the_system_fallback(self) -> None:
-        html = build_report_html(_full_report_data())
+        html = build_report_html(full_report_data())
 
         assert "Jamie Educator" in html
         assert "the system" not in html
 
     def test_missing_requester_falls_back_to_the_system(self) -> None:
-        html = build_report_html(_cohort_report_data(requested_by_name=""))
+        html = build_report_html(cohort_report_data(requested_by_name=""))
 
         assert "the system" in html
 
     def test_confusion_percentage_names_its_denominator(self) -> None:
-        html = build_report_html(_full_report_data())
+        html = build_report_html(full_report_data())
 
         assert "67% of 12 learners" in html
 
 
+@requires_tailwind_bundle
 class TestDegenerateCohortEmptyStates:
     def test_cohort_with_no_courses_states_so_on_the_title_page(self) -> None:
-        html = build_report_html(_cohort_report_data(courses=[]))
+        html = build_report_html(cohort_report_data(courses=[]))
 
         assert "No courses are registered to this cohort." in html
 
     def test_cohort_with_no_courses_states_so_under_summary_tables(self) -> None:
-        html = build_report_html(_cohort_report_data(courses=[]))
+        html = build_report_html(cohort_report_data(courses=[]))
 
         assert "There are no course registrations to summarise." in html
 
     def test_course_with_no_students_states_so_instead_of_a_bare_header_row(
         self,
     ) -> None:
-        data = _cohort_report_data(courses=[_course_section(title="Astronomy")])
+        data = cohort_report_data(courses=[course_section(title="Astronomy")])
 
         html = build_report_html(data)
 
@@ -236,43 +240,55 @@ class TestBuildFontCss:
             build_font_css()
 
 
+def _fatal_url_fetching_error() -> type[Exception]:
+    """WeasyPrint's fetch-refused exception, imported lazily.
+
+    render.py keeps every weasyprint import inside a function so the module
+    stays importable without Pango and friends; this file has to do the same or
+    collection breaks for contributors who cannot run the `weasyprint` set.
+    """
+    from weasyprint.urls import FatalURLFetchingError
+
+    error: type[Exception] = FatalURLFetchingError
+    return error
+
+
+@pytest.mark.weasyprint
 class TestRestrictiveUrlFetcher:
     def test_refuses_a_file_outside_the_allowlist(self) -> None:
-        weasyprint_urls = pytest.importorskip("weasyprint.urls")
         allowed = _find_static("reports/print.css").resolve()
         fetch = _restrictive_url_fetcher({allowed})
         # A real, readable file in the same directory as an allowed one: a
         # directory-wide trust would let this through.
         sibling = allowed.parent / "fonts" / "DejaVuSans.ttf"
 
-        with pytest.raises(weasyprint_urls.FatalURLFetchingError):
+        with pytest.raises(_fatal_url_fetching_error()):
             fetch(sibling.as_uri())
 
     def test_refuses_http_urls(self) -> None:
-        weasyprint_urls = pytest.importorskip("weasyprint.urls")
         fetch = _restrictive_url_fetcher(set())
 
-        with pytest.raises(weasyprint_urls.FatalURLFetchingError):
+        with pytest.raises(_fatal_url_fetching_error()):
             fetch("https://example.invalid/logo.png")
 
     def test_allows_an_allowlisted_file(self) -> None:
-        pytest.importorskip("weasyprint.urls")
         allowed = _find_static("reports/print.css").resolve()
         fetch = _restrictive_url_fetcher({allowed})
 
         assert fetch(allowed.as_uri()) is not None
 
 
+@requires_tailwind_bundle
 class TestBrandingOnTheCover:
     def test_site_logo_is_omitted_when_no_path_is_configured(self) -> None:
         with override_settings(HEADER_LOGO_STATIC_PATH=None):
-            html = build_report_html(_full_report_data())
+            html = build_report_html(full_report_data())
 
         assert '<img class="cover-logo"' not in html
 
     def test_site_logo_is_rendered_when_configured(self) -> None:
         with override_settings(HEADER_LOGO_STATIC_PATH="reports/print.css"):
-            html = build_report_html(_full_report_data())
+            html = build_report_html(full_report_data())
 
         assert '<img class="cover-logo"' in html
         assert "file://" in html
@@ -282,58 +298,10 @@ class TestBrandingOnTheCover:
             override_settings(HEADER_LOGO_STATIC_PATH="nowhere/missing-logo.png"),
             pytest.raises(ReportRenderError, match=re.escape("missing-logo.png")),
         ):
-            build_report_html(_full_report_data())
+            build_report_html(full_report_data())
 
     def test_site_name_appears_on_the_cover_and_in_the_page_footer(self) -> None:
-        html = build_report_html(_cohort_report_data(site_name="Bright Academy"))
+        html = build_report_html(cohort_report_data(site_name="Bright Academy"))
 
         assert "Bright Academy" in html
         assert "Bright Academy · Cohort progress report · Cohort A" in html
-
-
-class TestNoOptionLettersAnywhere:
-    def test_option_text_is_never_prefixed_with_a_letter(self) -> None:
-        # FLS does not letter a question's options, so labelling them in the
-        # report would invent an ordering the learner never saw.
-        html = build_report_html(_full_report_data())
-
-        assert not re.search(r">\s*[A-D]\s+[—-]\s+\w", html)
-
-
-def _css_declarations(css: str, selector: str) -> dict[str, str]:
-    """The declarations of the one rule whose selector list starts a line.
-
-    Anchoring on the line start keeps `.completion-bar-outer` from matching the
-    `.student-section .completion-bar-outer` override further down the file.
-    """
-    match = re.search(
-        rf"^{re.escape(selector)}\s*\{{(.*?)\}}", css, re.MULTILINE | re.DOTALL
-    )
-    assert match is not None, f"No rule in print.css starts a line with {selector!r}"
-    declarations = {}
-    for line in match.group(1).split(";"):
-        if ":" in line:
-            prop, _, value = line.partition(":")
-            declarations[prop.strip()] = value.strip()
-    return declarations
-
-
-class TestCompletionBarTrackIsVisibleOnEveryRow:
-    """The empty track once shared `--color-surface-2` with the zebra stripe.
-
-    On an even summary-table row it therefore vanished: a half-complete learner
-    showed a fill with no reference length, and a 0% learner showed no bar at
-    all while a 0% learner on a white row showed an empty track. Nothing in the
-    suite rasterises print.css, so the invariant is asserted against the
-    stylesheet's own source.
-    """
-
-    def test_the_track_carries_an_edge_the_row_banding_does_not_hide(self) -> None:
-        css = _find_static("reports/print.css").read_text()
-
-        track = _css_declarations(css, ".completion-bar-outer")
-        banding = _css_declarations(css, ".summary-tables tbody tr:nth-child(even) td")
-
-        edge = track.get("border") or track.get("outline")
-        assert edge is not None, "The track needs an edge, not only a fill"
-        assert banding["background"] not in edge

@@ -29,7 +29,7 @@ from freedom_ls.reports.gather import (
 GENERATED_AT = datetime(2026, 3, 15, 10, 30, tzinfo=UTC)
 
 
-def _student_detail(**overrides: object) -> StudentDetail:
+def student_detail(**overrides: object) -> StudentDetail:
     defaults: dict[str, object] = {
         "user_id": 1,
         "full_name": "Jamie Smith",
@@ -50,7 +50,7 @@ def _student_detail(**overrides: object) -> StudentDetail:
     return StudentDetail(**defaults)
 
 
-def _course_section_defaults() -> dict[str, object]:
+def course_section_defaults() -> dict[str, object]:
     """A fresh default field map for one course section.
 
     Returned rather than applied so a caller that has to derive one field from
@@ -69,13 +69,13 @@ def _course_section_defaults() -> dict[str, object]:
     }
 
 
-def _course_section(**overrides: object) -> CourseSection:
-    defaults = _course_section_defaults()
+def course_section(**overrides: object) -> CourseSection:
+    defaults = course_section_defaults()
     defaults.update(overrides)
     return CourseSection(**defaults)
 
 
-def _summary_row(row: StudentRow, quizzes: list[QuizColumn]) -> SummaryRow:
+def summary_row(row: StudentRow, quizzes: list[QuizColumn]) -> SummaryRow:
     """The SummaryRow gather.py would derive from this StudentRow for `quizzes`."""
     return SummaryRow(
         user_id=row.user_id,
@@ -89,7 +89,7 @@ def _summary_row(row: StudentRow, quizzes: list[QuizColumn]) -> SummaryRow:
     )
 
 
-def _cohort_report_data(**overrides: object) -> CohortReportData:
+def cohort_report_data(**overrides: object) -> CohortReportData:
     defaults: dict[str, object] = {
         "cohort_name": "Cohort A",
         "site_name": "Test Academy",
@@ -107,7 +107,7 @@ def _cohort_report_data(**overrides: object) -> CohortReportData:
     return CohortReportData(**defaults)
 
 
-def _full_report_data() -> CohortReportData:
+def full_report_data() -> CohortReportData:
     """A small but structurally complete cohort.
 
     One flagged student whose flags must render identically on the at-a-glance
@@ -147,7 +147,7 @@ def _full_report_data() -> CohortReportData:
         last_completed_at=GENERATED_AT,
         quiz_cells={quiz.form_id: None},
     )
-    course_active = _course_section(
+    course_active = course_section(
         title="Astronomy",
         is_active=True,
         item_count=5,
@@ -155,26 +155,26 @@ def _full_report_data() -> CohortReportData:
         student_rows=[row],
         summary_tables=[
             SummaryTable(
-                quizzes=[quiz], rows=[_summary_row(row, [quiz])], continued=False
+                quizzes=[quiz], rows=[summary_row(row, [quiz])], continued=False
             )
         ],
         confusions_by_quiz={quiz.form_id: block},
     )
-    course_inactive = _course_section(
+    course_inactive = course_section(
         title="Retired Course",
         is_active=False,
         summary_tables=[SummaryTable(quizzes=[], rows=[], continued=False)],
     )
 
-    flagged_student = _student_detail(
+    flagged_student = student_detail(
         user_id=1, full_name="Ada Lovelace", sort_key=("Lovelace", "Ada"), flags=[flag]
     )
-    other_student = _student_detail(
+    other_student = student_detail(
         user_id=2, full_name="Bo Kim", sort_key=("Kim", "Bo"), flags=[]
     )
     attention = AttentionList(students=[flagged_student], shown=1, total=1)
 
-    return _cohort_report_data(
+    return cohort_report_data(
         courses=[course_active, course_inactive],
         students=[flagged_student, other_student],
         attention_list=attention,
