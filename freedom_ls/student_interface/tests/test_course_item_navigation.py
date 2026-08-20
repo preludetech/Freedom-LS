@@ -4,6 +4,7 @@ import pytest
 
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
@@ -15,6 +16,7 @@ from freedom_ls.content_engine.models import Course, CoursePart
 from freedom_ls.student_management.factories import (
     UserCourseRegistrationFactory,
 )
+from freedom_ls.student_progress.models import TopicProgress
 
 
 @pytest.fixture
@@ -82,11 +84,20 @@ def two_part_course(mock_site_context):
 
 @pytest.fixture
 def authenticated_client_for(mock_site_context):
-    """Factory fixture: authenticated client registered for the given course."""
+    """Factory fixture: authenticated client registered for the given course.
+
+    Every topic is marked complete, which clears the sequential-unlock gate for
+    the whole course: these tests exercise prev/next index arithmetic across
+    part boundaries, and would otherwise be unable to open anything past item 1.
+    """
 
     def _make(course: Course) -> Client:
         user = UserFactory()
         UserCourseRegistrationFactory(user=user, collection=course)
+        for item in course.viewable_items():
+            TopicProgress.objects.create(
+                user=user, topic=item, complete_time=timezone.now()
+            )
         client = Client()
         client.force_login(user)
         return client

@@ -10,7 +10,7 @@ from freedom_ls.content_engine.factories import (
     QuestionOptionFactory,
 )
 
-from ..conftest import reverse_url
+from ..conftest import register_user_for_course, reverse_url
 
 
 @pytest.mark.playwright
@@ -19,6 +19,7 @@ from ..conftest import reverse_url
 def test_answered_count_reflects_answers_filled_in_on_the_current_page(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
 ):
     """The runner's "answered" tally counts answers filled in on the page, live.
 
@@ -50,6 +51,7 @@ def test_answered_count_reflects_answers_filled_in_on_the_current_page(
     QuestionOptionFactory(question=cb, text="Green", order=1)
 
     ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
+    register_user_for_course(course, logged_in_user)
 
     # form_start creates the FormProgress for the logged-in user, then redirects
     # to the fill page.

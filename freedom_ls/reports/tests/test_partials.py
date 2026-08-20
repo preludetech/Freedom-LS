@@ -27,6 +27,7 @@ from freedom_ls.reports.gather import (
     QuizConfusion,
     QuizResult,
     QuizWrongAnswers,
+    SelectedOption,
     StudentRow,
     SummaryTable,
     WrongAnswer,
@@ -593,7 +594,7 @@ class TestStudentDetail:
                             question_number=3,
                             question_text="What is erosion?",
                             times_wrong=1,
-                            selected_options=[("Option C", 1)],
+                            selected_options=[SelectedOption("Option C", False, 1)],
                             correct_option_texts=["Option D"],
                         )
                     ],
@@ -649,7 +650,10 @@ class TestStudentDetail:
                             question_number=3,
                             question_text="What is erosion?",
                             times_wrong=3,
-                            selected_options=[("Option C", 2), ("Option A", 1)],
+                            selected_options=[
+                                SelectedOption("Option C", False, 2),
+                                SelectedOption("Option A", False, 1),
+                            ],
                             correct_option_texts=["Option D"],
                         )
                     ],
@@ -677,7 +681,7 @@ class TestStudentDetail:
                             question_number=3,
                             question_text="What is erosion?",
                             times_wrong=1,
-                            selected_options=[("Option C", 1)],
+                            selected_options=[SelectedOption("Option C", False, 1)],
                             correct_option_texts=["Option D"],
                         )
                     ],
@@ -691,6 +695,105 @@ class TestStudentDetail:
 
         assert "Option C" in html
         assert "chip-count" not in html
+
+    def test_a_correctly_ticked_option_is_not_painted_as_a_mistake(self) -> None:
+        """On a multi-select question the learner's right ticks sit inside a wrong
+        answer, and painting them red would contradict the correct-answer column
+        two cells to the right."""
+        student = student_detail(
+            has_any_progress=True,
+            wrong_answers=[
+                QuizWrongAnswers(
+                    form_id=uuid4(),
+                    title="Erosion Quiz",
+                    answers=[
+                        WrongAnswer(
+                            question_number=2,
+                            question_text="Which two apply?",
+                            times_wrong=1,
+                            selected_options=[
+                                SelectedOption("Option A", True, 1),
+                                SelectedOption("Option C", False, 1),
+                            ],
+                            correct_option_texts=["Option A", "Option B"],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert (
+            '<span class="chip chip-success"><span class="chip-glyph">✓</span>Option A'
+            in html
+        )
+        assert (
+            '<span class="chip chip-error"><span class="chip-glyph">✗</span>Option C'
+            in html
+        )
+
+    def test_an_option_the_author_never_marked_up_carries_no_verdict(self) -> None:
+        """`correct` is nullable. An unmarked option is not right, but calling it
+        wrong would assert a verdict the course author never gave."""
+        student = student_detail(
+            has_any_progress=True,
+            wrong_answers=[
+                QuizWrongAnswers(
+                    form_id=uuid4(),
+                    title="Erosion Quiz",
+                    answers=[
+                        WrongAnswer(
+                            question_number=2,
+                            question_text="Which two apply?",
+                            times_wrong=1,
+                            selected_options=[SelectedOption("Option E", None, 1)],
+                            correct_option_texts=["Option A"],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert (
+            '<span class="chip chip-neutral"><span class="chip-glyph">○</span>Option E'
+            in html
+        )
+
+    def test_every_answer_chip_carries_a_glyph_so_greyscale_still_reads(self) -> None:
+        """Tint is not the only signal anywhere else in the report, and these two
+        columns sit side by side -- printed in greyscale they would otherwise be
+        indistinguishable from one another."""
+        student = student_detail(
+            has_any_progress=True,
+            wrong_answers=[
+                QuizWrongAnswers(
+                    form_id=uuid4(),
+                    title="Erosion Quiz",
+                    answers=[
+                        WrongAnswer(
+                            question_number=2,
+                            question_text="Which two apply?",
+                            times_wrong=1,
+                            selected_options=[SelectedOption("Option C", False, 1)],
+                            correct_option_texts=["Option A"],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/student_detail.html", {"student": student}
+        )
+
+        assert html.count('class="chip-glyph"') == 2
 
     def test_renders_flags_at_the_top(self) -> None:
         student = student_detail(
@@ -746,7 +849,7 @@ class TestStudentDetail:
                             question_number=8,
                             question_text="What is voltage?",
                             times_wrong=2,
-                            selected_options=[("Option A", 1)],
+                            selected_options=[SelectedOption("Option A", False, 1)],
                             correct_option_texts=["Option B"],
                         )
                     ],
@@ -759,7 +862,7 @@ class TestStudentDetail:
                             question_number=3,
                             question_text="What is erosion?",
                             times_wrong=1,
-                            selected_options=[("Option C", 1)],
+                            selected_options=[SelectedOption("Option C", False, 1)],
                             correct_option_texts=["Option D"],
                         )
                     ],

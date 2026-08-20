@@ -1,7 +1,11 @@
 import pytest
 from playwright.sync_api import Page, expect
 
-from ..conftest import course_with_single_question_form, reverse_url
+from ..conftest import (
+    course_with_single_question_form,
+    register_user_for_course,
+    reverse_url,
+)
 
 # Dispatches a cancelable beforeunload and reports whether the runner's guard
 # called preventDefault on it (i.e. whether the browser would show the native
@@ -19,6 +23,7 @@ _BEFOREUNLOAD_PREVENTED = """() => {
 def test_submit_disarms_the_beforeunload_leave_prompt(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
 ):
     """Clicking Submit must not leave a "Leave site?" beforeunload prompt armed.
 
@@ -32,6 +37,7 @@ def test_submit_disarms_the_beforeunload_leave_prompt(
     course = course_with_single_question_form(
         "Submit Guard Course", "submit-guard-course"
     )
+    register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
         "student_interface:form_start",
@@ -71,6 +77,7 @@ def test_submit_disarms_the_beforeunload_leave_prompt(
 def test_untouched_runner_page_leaves_the_leave_prompt_disarmed(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
 ):
     """Opening a quiz and changing your mind must not earn a browser warning.
 
@@ -80,6 +87,7 @@ def test_untouched_runner_page_leaves_the_leave_prompt_disarmed(
     course = course_with_single_question_form(
         "Untouched Guard Course", "untouched-guard-course"
     )
+    register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
         "student_interface:form_start",
@@ -95,11 +103,13 @@ def test_untouched_runner_page_leaves_the_leave_prompt_disarmed(
 def test_answering_a_question_arms_the_leave_prompt(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
 ):
     """Once there is an unsaved answer on the page, leaving should still warn."""
     course = course_with_single_question_form(
         "Dirty Guard Course", "dirty-guard-course"
     )
+    register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
         "student_interface:form_start",
@@ -117,6 +127,7 @@ def test_answering_a_question_arms_the_leave_prompt(
 def test_submit_navigates_to_form_completion(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
 ):
     """A deliberate Submit reaches the form-complete page (end-to-end smoke)."""
     # Accept any beforeunload that may still surface so navigation proceeds.
@@ -125,6 +136,7 @@ def test_submit_navigates_to_form_completion(
     course = course_with_single_question_form(
         "Submit Flow Course", "submit-flow-course"
     )
+    register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
         "student_interface:form_start",

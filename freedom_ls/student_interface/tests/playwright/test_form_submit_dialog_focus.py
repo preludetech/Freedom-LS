@@ -1,7 +1,11 @@
 import pytest
 from playwright.sync_api import Page, expect
 
-from ..conftest import course_with_single_question_form, reverse_url
+from ..conftest import (
+    course_with_single_question_form,
+    register_user_for_course,
+    reverse_url,
+)
 
 # Returns whether the document's active element is inside the submit dialog
 # panel (identified by its aria-labelledby). Used to assert focus is moved into
@@ -18,6 +22,7 @@ _FOCUS_IN_SUBMIT_DIALOG = """() => {
 def test_submit_dialog_moves_focus_in_and_traps_tab_within_the_dialog(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
 ):
     """The submit dialog must move focus into the dialog and trap Tab within it.
 
@@ -29,6 +34,7 @@ def test_submit_dialog_moves_focus_in_and_traps_tab_within_the_dialog(
     in on open, and Tab/Shift+Tab cycle only the dialog's own controls.
     """
     course = course_with_single_question_form("Focus Trap Course", "focus-trap-course")
+    register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
         "student_interface:form_start",

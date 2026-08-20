@@ -83,7 +83,14 @@ of its warning rule, so the first flag is the most serious one a learner has.
   question missed once is necessarily ×1, so printing it there would put a
   number on the common case that carries no information. The cohort-wide
   confusion table prints its counts unconditionally because its numbers span
-  every learner and are rarely one.{% endcomment %}
+  every learner and are rarely one.
+
+  Answers given are tinted per option, not per row. A multi-select question is
+  scored wrong as a whole, so the ticks inside one can include the right
+  answers; painting those red would contradict the correct-answer column on the
+  same row. An option the author left unmarked gets neither verdict. Every chip
+  carries its glyph because these two columns sit side by side and tint alone
+  would not survive greyscale printing.{% endcomment %}
   {% for quiz in student.wrong_answers %}
   {% if quiz.answers %}
   <p class="subhead">Incorrect answers — {{ quiz.title }} <span class="subhead-note">across all attempts</span></p>
@@ -103,8 +110,8 @@ of its warning rule, so the first flag is the most serious one a learner has.
         <td class="col-question-number">Q{{ wrong.question_number }}</td>
         <td>{{ wrong.question_text }}</td>
         <td class="numeric">×{{ wrong.times_wrong }}</td>
-        <td>{% for text, count in wrong.selected_options %}<span class="chip chip-error">{{ text }}{% if count > 1 %} <span class="chip-count">×{{ count }}</span>{% endif %}</span>{% empty %}<span class="no-answer">Not answered</span>{% endfor %}</td>
-        <td>{% for text in wrong.correct_option_texts %}<span class="chip chip-success">{{ text }}</span>{% endfor %}</td>
+        <td>{% for option in wrong.selected_options %}<span class="chip {% if option.correct is True %}chip-success{% elif option.correct is False %}chip-error{% else %}chip-neutral{% endif %}"><span class="chip-glyph">{% if option.correct is True %}✓{% elif option.correct is False %}✗{% else %}○{% endif %}</span>{{ option.text }}{% if option.count > 1 %} <span class="chip-count">×{{ option.count }}</span>{% endif %}</span>{% empty %}<span class="no-answer">Not answered</span>{% endfor %}</td>
+        <td>{% for text in wrong.correct_option_texts %}<span class="chip chip-success"><span class="chip-glyph">✓</span>{{ text }}</span>{% endfor %}</td>
       </tr>
       {% endfor %}
     </tbody>

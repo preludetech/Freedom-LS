@@ -48,6 +48,7 @@ from freedom_ls.reports.indexes import (
 from freedom_ls.reports.report_data import (
     AtRiskFlag,
     QuizColumn,
+    SelectedOption,
     StudentDetail,
     StudentRow,
 )
@@ -686,7 +687,7 @@ class TestTallyQuizAnswers:
         tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
 
         counts = tallies.wrong_selected_counts[(USER_ID, quiz.id, question.id)]
-        assert list(counts.items()) == [("Venus", 2), ("Mercury", 1)]
+        assert list(counts.items()) == [(("Venus", False), 2), (("Mercury", False), 1)]
 
     def test_a_correct_sittings_selections_are_not_counted(self) -> None:
         quiz = a_quiz()
@@ -705,6 +706,59 @@ class TestTallyQuizAnswers:
         tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
 
         assert (USER_ID, quiz.id, question.id) not in tallies.wrong_selected_counts
+
+    def test_a_correct_option_ticked_on_a_wrong_sitting_keeps_its_correctness(
+        self,
+    ) -> None:
+        """Multi-select is why a correct option can sit inside a wrong answer.
+
+        Ticking every correct option plus one distractor scores the question
+        wrong, so the learner's correct ticks have to stay distinguishable from
+        the tick that cost them the mark.
+        """
+        quiz = a_quiz()
+        question = a_question(quiz)
+        right = an_option(question, "Mars", correct=True)
+        wrong = an_option(question, "Sun", correct=False)
+        attempt = an_attempt(quiz, completed_time=JAN_1)
+        sat = SatQuestions(
+            pairs=[(attempt.id, question)],
+            selected_options_by_pair={(attempt.id, question.id): [right, wrong]},
+            correctness={(attempt.id, question.id): False},
+        )
+        forms = a_progress_index(
+            user_form_by_attempt_id={attempt.id: (USER_ID, quiz.id)}
+        ).forms
+
+        tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
+
+        counts = tallies.wrong_selected_counts[(USER_ID, quiz.id, question.id)]
+        assert list(counts.items()) == [(("Mars", True), 1), (("Sun", False), 1)]
+
+    def test_an_option_with_no_verdict_is_tallied_as_neither(self) -> None:
+        """`correct` is nullable, and None is not True -- it is also not False.
+
+        The same nullable-field subtlety load_distractor_rows guards against with
+        `.exclude(correct=True)`: an unmarked option must never be painted as a
+        correct tick, and must not claim to be a known mistake either.
+        """
+        quiz = a_quiz()
+        question = a_question(quiz)
+        unmarked = an_option(question, "Pluto", correct=None)
+        attempt = an_attempt(quiz, completed_time=JAN_1)
+        sat = SatQuestions(
+            pairs=[(attempt.id, question)],
+            selected_options_by_pair={(attempt.id, question.id): [unmarked]},
+            correctness={(attempt.id, question.id): False},
+        )
+        forms = a_progress_index(
+            user_form_by_attempt_id={attempt.id: (USER_ID, quiz.id)}
+        ).forms
+
+        tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
+
+        counts = tallies.wrong_selected_counts[(USER_ID, quiz.id, question.id)]
+        assert list(counts.items()) == [(("Pluto", None), 1)]
 
 
 class TestBuildWrongAnswersByUserQuiz:
@@ -738,7 +792,9 @@ class TestBuildWrongAnswersByUserQuiz:
         index = _a_question_index((question, options))
         tallies = QuizTallies(
             wrong_counts={(USER_ID, quiz.id, question.id): 2},
-            wrong_selected_counts={(USER_ID, quiz.id, question.id): {"Sun": 2}},
+            wrong_selected_counts={
+                (USER_ID, quiz.id, question.id): {("Sun", False): 2}
+            },
             respondent_counts={},
             wrong_counts_first={},
         )
@@ -746,8 +802,34 @@ class TestBuildWrongAnswersByUserQuiz:
         answer = build_wrong_answers_by_user_quiz(tallies, index)[USER_ID][quiz.id][0]
 
         assert answer.times_wrong == 2
-        assert answer.selected_options == [("Sun", 2)]
+        assert answer.selected_options == [SelectedOption("Sun", False, 2)]
         assert answer.correct_option_texts == ["Mars"]
+
+    def test_selected_options_carry_each_options_own_correctness(self) -> None:
+        quiz = a_quiz()
+        question = a_question(quiz)
+        options = [an_option(question, "Mars", correct=True)]
+        index = _a_question_index((question, options))
+        tallies = QuizTallies(
+            wrong_counts={(USER_ID, quiz.id, question.id): 1},
+            wrong_selected_counts={
+                (USER_ID, quiz.id, question.id): {
+                    ("Mars", True): 1,
+                    ("Sun", False): 1,
+                    ("Pluto", None): 1,
+                }
+            },
+            respondent_counts={},
+            wrong_counts_first={},
+        )
+
+        answer = build_wrong_answers_by_user_quiz(tallies, index)[USER_ID][quiz.id][0]
+
+        assert answer.selected_options == [
+            SelectedOption("Mars", True, 1),
+            SelectedOption("Sun", False, 1),
+            SelectedOption("Pluto", None, 1),
+        ]
 
     def test_one_students_wrong_answers_do_not_reach_another(self) -> None:
         quiz = a_quiz()

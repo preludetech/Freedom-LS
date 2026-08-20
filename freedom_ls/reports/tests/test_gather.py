@@ -256,7 +256,51 @@ def test_an_option_chosen_on_more_than_one_sitting_is_counted_once_per_sitting(
 
     answer = data.students[0].wrong_answers[0].answers[0]
     assert answer.times_wrong == 3
-    assert dict(answer.selected_options) == {"Venus": 2, "Mercury": 1}
+    assert {option.text: option.count for option in answer.selected_options} == {
+        "Venus": 2,
+        "Mercury": 1,
+    }
+
+
+def test_a_correct_tick_inside_a_wrong_multi_select_answer_is_marked_correct(
+    mock_site_context,
+):
+    """Ticking both right options plus a distractor scores the question wrong.
+
+    The learner's two right ticks still have to read as right, or the report
+    contradicts its own correct-answer column on the same row.
+    """
+    cohort = CohortFactory()
+    student = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=student)
+    course = CourseFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    quiz = FormFactory(strategy=FormStrategy.QUIZ)
+    _attach(course, quiz)
+    page = FormPageFactory(form=quiz, order=0)
+    question = FormQuestionFactory(
+        form_page=page, type=QuestionType.CHECKBOXES, order=0
+    )
+    option_a = QuestionOptionFactory(question=question, text="A", correct=True, order=0)
+    option_b = QuestionOptionFactory(question=question, text="B", correct=True, order=1)
+    option_c = QuestionOptionFactory(
+        question=question, text="C", correct=False, order=2
+    )
+    attempt = FormProgressFactory(
+        user=student,
+        form=quiz,
+        completed_time=timezone.now(),
+        scores={"score": 0, "max_score": 1},
+    )
+    answer = QuestionAnswerFactory(form_progress=attempt, question=question)
+    answer.selected_options.set([option_a, option_b, option_c])
+
+    data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+    wrong_answer = data.students[0].wrong_answers[0].answers[0]
+    assert {
+        option.text: option.correct for option in wrong_answer.selected_options
+    } == {"A": True, "B": True, "C": False}
 
 
 def test_confusion_denominator_counts_students_who_left_a_question_blank(

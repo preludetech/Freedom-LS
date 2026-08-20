@@ -406,6 +406,28 @@ def get_course_index(
     return children
 
 
+def current_entry_status(course_index: list[dict]) -> str | None:
+    """Status of the row ``get_course_index`` marked ``is_current``, or None.
+
+    Reading the status straight off the index the learner is shown is what stops
+    the player's idea of "allowed" and the table of contents' idea of "Locked"
+    from drifting apart again. Searches the top level and one level into a
+    CoursePart's children, the only two places is_current is ever set.
+
+    None means the index carried no current row, which callers must read as *not*
+    blocked. Sequential unlock is a pedagogical gate, not a confidentiality one --
+    the access backend owns that -- so an unexpected index shape must never strand
+    a learner outside their own course.
+    """
+    for entry in course_index:
+        if entry.get("is_current"):
+            return cast("str", entry["status"])
+        for child in entry.get("children", []):
+            if child.get("is_current"):
+                return cast("str", child["status"])
+    return None
+
+
 def _get_deadlines_for_item(
     content_item: Topic | Form | CoursePart,
     deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]],

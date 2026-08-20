@@ -340,6 +340,15 @@ th.numeric {
   background: var(--color-error-light);
   color: var(--color-on-error-light);
 }
+.chip-neutral {
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+}
+/* Chips quoting an answer carry a verdict glyph as well as a tint, so the
+   answers-given and correct-answer columns stay apart in greyscale. */
+.chip-glyph {
+  margin-right: 2pt;
+}
 .chip-count {
   font-family: var(--report-font-mono);
   font-size: 6.8pt;

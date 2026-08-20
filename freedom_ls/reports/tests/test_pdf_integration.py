@@ -34,6 +34,7 @@ from freedom_ls.reports.gather import (
     QuizColumn,
     QuizResult,
     QuizWrongAnswers,
+    SelectedOption,
     WrongAnswer,
 )
 from freedom_ls.reports.render import render_report_pdf
@@ -152,7 +153,7 @@ def _busy_report_data() -> CohortReportData:
                         question_number=1,
                         question_text="What is an orbit?",
                         times_wrong=1,
-                        selected_options=[("A straight line", 1)],
+                        selected_options=[SelectedOption("A straight line", False, 1)],
                         correct_option_texts=["A closed path around a body"],
                     )
                 ],

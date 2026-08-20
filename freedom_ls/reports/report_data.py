@@ -51,13 +51,30 @@ class QuizResult:
 
 
 @dataclasses.dataclass(frozen=True)
+class SelectedOption:
+    """One option a student ticked on a sitting they got wrong."""
+
+    text: str
+    # `QuestionOption.correct` is nullable, and None is carried through as None
+    # rather than collapsed to False: an option the author never marked up is
+    # not a right answer, but calling it wrong asserts a verdict nobody gave.
+    correct: bool | None
+    # Wrong attempts this option was selected in. A sitting cannot select the
+    # same option twice, so the count never exceeds times_wrong.
+    count: int
+
+
+@dataclasses.dataclass(frozen=True)
 class WrongAnswer:
     question_number: int
     question_text: str
     times_wrong: int
-    # (option text, the number of wrong attempts that option was selected in),
-    # first-seen order. A count never exceeds times_wrong.
-    selected_options: list[tuple[str, int]]
+    # Every option the student ticked, in first-seen order -- including the ones
+    # that were right. A multi-select question is scored wrong as a whole, so a
+    # student can tick two correct options and one distractor and land here; the
+    # per-option `correct` is what keeps their right ticks from reading as
+    # mistakes against the correct-answer column alongside.
+    selected_options: list[SelectedOption]
     correct_option_texts: list[str]
 
 

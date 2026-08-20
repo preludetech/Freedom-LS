@@ -1,7 +1,11 @@
 import pytest
 from playwright.sync_api import Page, expect
 
-from ..conftest import course_with_single_question_form, reverse_url
+from ..conftest import (
+    course_with_single_question_form,
+    register_user_for_course,
+    reverse_url,
+)
 
 
 @pytest.mark.playwright
@@ -10,6 +14,7 @@ from ..conftest import course_with_single_question_form, reverse_url
 def test_final_page_submit_dialog_blocked_until_required_answered(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
 ):
     """The final-page Next must not open the submit dialog while a required
     question is unanswered, matching the intermediate-page Next buttons.
@@ -22,6 +27,7 @@ def test_final_page_submit_dialog_blocked_until_required_answered(
     course = course_with_single_question_form(
         "Required Validation Course", "required-validation-course", required=True
     )
+    register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
         "student_interface:form_start",
@@ -46,6 +52,7 @@ def test_final_page_submit_dialog_blocked_until_required_answered(
 def test_required_checkbox_group_blocks_the_submit_dialog(
     live_server,
     logged_in_page: Page,
+    logged_in_user,
 ):
     """HTML cannot mark a checkbox group required — `required` on each input would
     demand every option — so the browser never blocks an empty one. examRunnerForm
@@ -57,6 +64,7 @@ def test_required_checkbox_group_blocks_the_submit_dialog(
         required=True,
         question_type="checkboxes",
     )
+    register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
         "student_interface:form_start",

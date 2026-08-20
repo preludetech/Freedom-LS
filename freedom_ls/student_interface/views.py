@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, cast
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -45,9 +45,11 @@ from freedom_ls.student_progress.models import (
 from freedom_ls.student_progress.submissions import has_submitted_answer
 
 from .utils import (
+    BLOCKED,
     IN_PROGRESS,
     READY,
     count_form_questions,
+    current_entry_status,
     derive_listing_status,
     form_start_page_buttons,
     get_all_courses,
@@ -568,20 +570,58 @@ def initiate_course_access(request, course_slug):
     return redirect("student_interface:course_home", course_slug=course_slug)
 
 
+def _course_access_redirect(
+    user: RequestUser, course: Course
+) -> HttpResponseRedirect | None:
+    """Turn away anyone the course itself is closed to, or None if it is open.
+
+    The same pair of gates for every route that serves or accepts a course item:
+    a hidden course must 404 rather than 302 (a redirect would confirm it exists),
+    and the access backend decides whether this learner may see content at all.
+    """
+    raise_404_if_hidden_unregistered(user, course)
+    decision = get_course_access_backend().get_access(user=user, course=course)
+    if not decision.can_access_content:
+        return redirect("student_interface:course_detail", course_slug=course.slug)
+    return None
+
+
+def _blocked_item_redirect(
+    user: RequestUser,
+    course: Course,
+    index: int,
+    *,
+    course_index: list[dict] | None = None,
+) -> HttpResponseRedirect | None:
+    """Turn away an item the course index shows as BLOCKED, or None if it is open.
+
+    Sequential unlock used to live only in the table of contents, which drew a
+    locked item as unlinked text and left its URL open. Reading the decision off
+    the same index the template renders is what keeps the two in step.
+
+    Callers that have already built the index pass it in; it is not cached, and
+    the view builds it for the player chrome anyway.
+    """
+    if course_index is None:
+        course_index = get_course_index(
+            user=user, course=course, current_index=index, can_access_content=True
+        )
+    if current_entry_status(course_index) == BLOCKED:
+        # course_detail, never course_home: course_home resumes to the last item
+        # accessed, which would bounce straight back here.
+        return redirect("student_interface:course_detail", course_slug=course.slug)
+    return None
+
+
 @login_required
 def view_course_item(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
-    # Hidden courses 404 for anyone not registered, matching every other slug
-    # chokepoint — never leak existence via a 302-vs-404 divergence.
-    raise_404_if_hidden_unregistered(request.user, course)
-
-    # Content-access gate: an unregistered learner (or one blocked by a gating
-    # backend) is redirected to course_detail. This closes the hole where an
+    # Hidden-course 404 plus the content-access gate. Closes the hole where an
     # unregistered learner could view a free course's content by guessing the URL
     # (the TOC hides the links as BLOCKED, but the URL was previously unguarded).
-    decision = get_course_access_backend().get_access(user=request.user, course=course)
-    if not decision.can_access_content:
-        return redirect("student_interface:course_detail", course_slug=course_slug)
+    no_access = _course_access_redirect(request.user, course)
+    if no_access is not None:
+        return no_access
 
     viewable_items = course.viewable_items()
     if index < 1 or index > len(viewable_items):
@@ -599,12 +639,25 @@ def view_course_item(request, course_slug, index):
             # straight back to the same locked item.
             return redirect("student_interface:course_detail", course_slug=course_slug)
 
+    # Sequential-unlock gate. Built here rather than inside _player_chrome_context
+    # so the decision is made before anything is written, then handed on to the
+    # chrome so the index is built once.
+    course_index = get_course_index(
+        user=request.user, course=course, current_index=index, can_access_content=True
+    )
+    blocked = _blocked_item_redirect(
+        request.user, course, index, course_index=course_index
+    )
+    if blocked is not None:
+        return blocked
+
     total = len(viewable_items)
 
     # Update or create course progress, recording this item as the resume
     # target. This is the single write point for both topics and forms, so
     # resume no longer depends on per-item progress timestamps. The
-    # deadline-locked branch returns above, so a locked item is never recorded.
+    # deadline-locked and sequential-unlock branches return above, so a locked
+    # item is never recorded.
     if request.user.is_authenticated:
         course_progress, _ = CourseProgress.objects.get_or_create(
             user=request.user, course=course
@@ -637,7 +690,12 @@ def view_course_item(request, course_slug, index):
     # Reuse the viewable_items already resolved above so the chrome helper does
     # not re-traverse the course a second time.
     player_context = _player_chrome_context(
-        request.user, course, current_item, index, viewable_items=viewable_items
+        request.user,
+        course,
+        current_item,
+        index,
+        viewable_items=viewable_items,
+        course_index=course_index,
     )
 
     if isinstance(current_item, Topic):
@@ -671,12 +729,14 @@ def _player_chrome_context(
     current_item: Topic | Form,
     index: int,
     viewable_items: list | None = None,
+    course_index: list[dict] | None = None,
 ) -> dict:
     """Build the shared player-chrome context (TOC, breadcrumb, header, title).
 
-    ``viewable_items`` may be passed in by a caller that has already resolved it
-    (``view_course_item``) to avoid re-traversing the course; callers that have
-    not (the form fill / complete pages) let it default to ``viewable_items()``.
+    ``viewable_items`` and ``course_index`` may be passed in by a caller that has
+    already resolved them (``view_course_item`` builds both to run its gates) to
+    avoid re-traversing the course; callers that have not (the form fill /
+    complete pages) let them default.
     """
     if viewable_items is None:
         viewable_items = course.viewable_items()
@@ -702,13 +762,16 @@ def _player_chrome_context(
                     current_part_index = n
                     break
 
-    return {
-        # can_access_content=True: _player_chrome_context is only called after
-        # the content-access gate in view_course_item has already passed, so the
-        # learner is confirmed to have content access here.
-        "course_index": get_course_index(
+    if course_index is None:
+        # can_access_content=True: every caller runs the content-access gate
+        # before reaching here, so the learner is confirmed to have content
+        # access at this point.
+        course_index = get_course_index(
             user=user, course=course, current_index=index, can_access_content=True
-        ),
+        )
+
+    return {
+        "course_index": course_index,
         "current_part": current_part,
         "current_part_index": current_part_index,
         "course_progress": course_progress,
@@ -823,7 +886,17 @@ def form_start(request, course_slug, index):
     """Start or resume a form for the current user."""
 
     course = get_object_or_404(Course, slug=course_slug)
+    no_access = _course_access_redirect(request.user, course)
+    if no_access is not None:
+        return no_access
     form = get_form_for_index(course, index)
+
+    # Minting the attempt is what would flip a locked quiz to IN_PROGRESS, so the
+    # gate has to come before it — and before finalise_stale_incomplete, which
+    # writes too.
+    blocked = _blocked_item_redirect(request.user, course, index)
+    if blocked is not None:
+        return blocked
 
     # Finalise any stale incomplete attempt for submit-on-exit forms before
     # get_or_create_incomplete runs. No-op for save-on-exit forms.
@@ -856,7 +929,17 @@ def _unanswered_required_message(questions: list[FormQuestion]) -> str:
 @login_required
 def form_fill_page(request, course_slug, index, page_number):
     course = get_object_or_404(Course, slug=course_slug)
+    no_access = _course_access_redirect(request.user, course)
+    if no_access is not None:
+        return no_access
     form = get_form_for_index(course, index)
+
+    # Gated ahead of the POST branch below, which saves answers and can complete
+    # the attempt: a refused page must write nothing at all.
+    blocked = _blocked_item_redirect(request.user, course, index)
+    if blocked is not None:
+        return blocked
+
     all_pages = list(form.pages.all())
     total_pages = len(all_pages)
     if page_number < 1 or page_number > total_pages:
@@ -1054,6 +1137,12 @@ def form_fill_page(request, course_slug, index, page_number):
 @login_required
 def course_form_complete(request, course_slug, index):
     course = get_object_or_404(Course, slug=course_slug)
+    no_access = _course_access_redirect(request.user, course)
+    if no_access is not None:
+        return no_access
+    # No sequential-unlock gate here, deliberately: this page only reads back a
+    # sitting the learner already made, and a learner is always entitled to the
+    # score they earned — including after a deadline has closed the quiz itself.
     # Fetch viewable_items once and reuse it (it is not cached); the view also
     # needs the list length below for is_last_item.
     viewable_items = course.viewable_items()
@@ -1204,8 +1293,15 @@ def form_submit_and_exit(request, course_slug: str, index: int):
     Calling complete() is idempotent so double-submits are safe.
     """
     course = get_object_or_404(Course, slug=course_slug)
+    no_access = _course_access_redirect(request.user, course)
+    if no_access is not None:
+        return no_access
     form = get_form_for_index(course, index)
 
+    # No sequential-unlock gate here, deliberately: this finalises an attempt the
+    # learner already started, and refusing it would strand that attempt
+    # incomplete for good. Creating an attempt still requires form_start, which
+    # is gated.
     # The exit dialog only renders this POST for submit-on-exit forms, but the
     # endpoint is reachable directly. Save-on-exit forms promise the attempt is
     # saved (resumable), not scored, so never finalise one here — send the
@@ -1230,7 +1326,7 @@ def form_submit_and_exit(request, course_slug: str, index: int):
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
-    from freedom_ls.course_access.backends import CourseAccessBackend
+    from freedom_ls.course_access.backends import CourseAccessBackend, RequestUser
 
 
 def _is_content_item_completed(content_item: Topic | Form, user: User) -> bool:

@@ -21,6 +21,7 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.content_engine.models import FormStrategy
 from freedom_ls.role_based_permissions.loader import clear_caches
 from freedom_ls.student_interface.utils import (
+    current_entry_status,
     get_course_index,
     get_item_part,
     get_resume_index,
@@ -63,6 +64,19 @@ def enrolled_user(mock_site_context, course_structure):
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_structure["course"])
     return user
+
+
+def complete_topics(user, *topics):
+    """Clear the sequential-unlock gate ahead of the item a test wants to open.
+
+    These tests are about breadcrumbs, titles and resume bookkeeping, not about
+    gating, so they open items further in than a learner with no progress could
+    reach on their own.
+    """
+    for topic in topics:
+        TopicProgress.objects.create(
+            user=user, topic=topic, complete_time=timezone.now()
+        )
 
 
 # --- get_resume_index ---------------------------------------------------------
@@ -142,6 +156,36 @@ def test_get_course_index_marks_current_item(course_structure, enrolled_user):
     assert children[1]["is_current"] is False
 
 
+@pytest.mark.django_db
+def test_current_entry_status_reads_a_row_nested_inside_a_part(
+    course_structure, enrolled_user
+):
+    """The player's gate reads its answer off this row, and items inside a part
+    are one level further down than the loop's own iteration."""
+    children = get_course_index(
+        user=enrolled_user,
+        course=course_structure["course"],
+        current_index=2,
+        can_access_content=True,
+    )
+
+    assert current_entry_status(children) == "BLOCKED"
+
+
+@pytest.mark.django_db
+def test_current_entry_status_is_none_when_no_row_is_current(
+    course_structure, enrolled_user
+):
+    """Callers read None as "not blocked", so it must only arise with no current row."""
+    children = get_course_index(
+        user=enrolled_user,
+        course=course_structure["course"],
+        can_access_content=True,
+    )
+
+    assert current_entry_status(children) is None
+
+
 # --- view_course_item records last-accessed item ------------------------------
 
 
@@ -149,6 +193,7 @@ def test_get_course_index_marks_current_item(course_structure, enrolled_user):
 def test_viewing_topic_records_last_accessed_item(course_structure, enrolled_user):
     client = Client()
     client.force_login(enrolled_user)
+    complete_topics(enrolled_user, course_structure["topic_a"])
     url = reverse(
         "student_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 2},
@@ -299,6 +344,9 @@ def test_breadcrumb_includes_part_when_item_in_part(course_structure, enrolled_u
 def test_breadcrumb_drops_part_when_item_top_level(course_structure, enrolled_user):
     client = Client()
     client.force_login(enrolled_user)
+    complete_topics(
+        enrolled_user, course_structure["topic_a"], course_structure["topic_b"]
+    )
     # Item index 3 is Topic C, a top-level item with no part.
     url = reverse(
         "student_interface:view_course_item",
@@ -312,6 +360,9 @@ def test_breadcrumb_drops_part_when_item_top_level(course_structure, enrolled_us
 def test_page_title_is_item_course_site(course_structure, enrolled_user):
     client = Client()
     client.force_login(enrolled_user)
+    complete_topics(
+        enrolled_user, course_structure["topic_a"], course_structure["topic_b"]
+    )
     # Item index 3 (top-level, no part): "{item} — {course} — {site}".
     url = reverse(
         "student_interface:view_course_item",
