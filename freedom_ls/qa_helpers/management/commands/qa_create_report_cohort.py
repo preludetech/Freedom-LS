@@ -28,6 +28,11 @@ What the distribution is tuned for (see ``freedom_ls/reports/gather.py``):
   of chosen options rather than one bar, and so that on a long quiz every
   question picks up at least one wrong answer (which is what makes the
   "showing worst 10 of N" cap disclosure appear).
+- A question the course marked ``required=False`` is missed by being left blank
+  rather than by picking a distractor, and no ``QuestionAnswer`` row is written
+  for it -- exactly what ``save_answers`` does in the browser. The report scores
+  it wrong but has no option text to quote, so its wrong-answer row reads
+  "Not answered".
 
 Usage:
     uv run python manage.py qa_create_report_cohort \
@@ -317,10 +322,17 @@ def _choose_options(
     answer_wrong: bool,
     student_index: int,
 ) -> list[QuestionOption]:
+    """The options this student ticks. An empty list means they left it blank."""
     correct = [option for option in options if option.correct is True]
     incorrect = [option for option in options if option.correct is not True]
     if not answer_wrong:
         return correct
+    if not question.required:
+        # An optional question is the only one a learner can actually submit
+        # blank (form_fill_page re-renders with 422 for a required one), so
+        # missing it is modelled as skipping it. It still scores zero, and the
+        # report has nothing to quote back -- which is the "Not answered" cell.
+        return []
     if not incorrect:
         # Nothing to pick that is wrong; selecting nothing still scores zero.
         return []
@@ -353,6 +365,14 @@ def _complete_attempt(
         chosen = _choose_options(
             question, options, question.order in wrong_orders, student_index
         )
+        if not chosen:
+            # save_answers writes no QuestionAnswer row for a question the
+            # learner left blank, so neither does this. compute_quiz_scores()
+            # still counts the question toward max_score, and the report pairs
+            # every completed sitting with every question regardless of the
+            # rows, so a missing row is judged as an empty selection: wrong,
+            # with no chosen option to print.
+            continue
         answer = cast(
             QuestionAnswer,
             QuestionAnswerFactory(form_progress=attempt, question=question, site=site),

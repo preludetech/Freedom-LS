@@ -21,17 +21,37 @@ Fixture keys → cohort names: `empty-cohort` (0 students), `no-registrations` (
 `CohortCourseRegistration`), `tiny-cohort-short-course` (3), `small-cohort-medium-course` (9),
 `standard-cohort-medium-course` (9), `large-cohort-medium-course` (25),
 `xl-cohort-long-course` (40, 18 flagged), `two-course-cohort` (9, one inactive registration),
-`no-progress-cohort` (9, zero rows), `no-pass-mark-cohort` (9). Cohort names are
-`QA Report <Something> Cohort`; students are `qa-report-<prefix>-NN@email.com`.
+`no-progress-cohort` (9, zero rows), `blank-answer-cohort` (9), `no-pass-mark-cohort` (9). Cohort
+names are `QA Report <Something> Cohort`; students are `qa-report-<prefix>-NN@email.com`.
 
-Courses: `qa-report-{short,medium,long,nopass,second}-course` — 4/12/30/12/8 items with
-1/4/12/4/2 quizzes. `--reset` deletes only the fixture cohorts and their `qa-report-*` students.
+Courses: `qa-report-{short,medium,long,nopass,second,blank}-course` — 4/12/30/12/8/2 items with
+1/4/12/4/2/2 quizzes. `--reset` deletes only the fixture cohorts and their `qa-report-*` students.
 
 Also seeds `qa-report-educator@email.com` (guardian `view_cohort` on every fixture cohort) and
 `qa-report-restricted@email.com` (`is_staff`, all `GeneratedReport` model perms, `view_cohort` on
 *QA Report Standard Cohort* only — cohort A for the permission checks). Model-level
 `student_management.view_cohort` is deliberately NOT granted: guardian returns every object to a
 user holding the global perm, which would defeat object-level scoping.
+
+### `blank-answer-cohort` — the "Not answered" wrong-answer row (QA 2.12)
+
+*QA Report Blank Answer Cohort*, prefix `qa-report-blank`, on `qa-report-blank-course`. Three moving
+parts, all needed together:
+
+1. `build_report_course(..., optional_last_question=True)` clears `required` on each quiz's LAST
+   question (order `question_count - 1`, so a `checkboxes` one). The `_ensure_questions` re-run pass
+   rewrites `required` on existing questions, the way the pass mark is rewritten.
+2. `_choose_options()` in the cohort builder returns `[]` for a question the student should miss
+   when `not question.required` — an optional question is the only one a learner can genuinely
+   submit blank (`form_fill_page` 422s on a required one).
+3. `_complete_attempt()` writes **no** `QuestionAnswer` row when the chosen list is empty, matching
+   what `save_answers` does in the browser. `compute_quiz_scores()` still counts the question toward
+   `max_score`, so the score is identical either way.
+
+The course is **2 items / 2 quizzes and no topics on purpose**: the completion ladder only gives the
+lower rungs the first slot or two, and `quiz_positions()` centres the quizzes, so a course that
+*opens* on a quiz is the only way most of the cohort reaches one. Yields 4 "Not answered" rows
+across 4 students, mixed into tables that also carry ordinary chip rows.
 
 ## `qa_create_report_course`
 
@@ -81,6 +101,12 @@ cross-check.
 - `MIN_RESPONDENTS_FOR_PERCENTAGE = 10` (first-attempt respondents per question), so ≥10 students
   must actually complete a quiz before confusion percentages replace plain counts.
 - `CONFUSIONS_PER_QUIZ_MAX = 10`, `ATTENTION_LIST_MAX = 12`.
+- The `{% empty %}` "Not answered" branch on `wrong.selected_options` is reached by **either**
+  shape — a `QuestionAnswer` with zero `selected_options`, or no row at all. `build_sat_questions()`
+  pairs every completed sitting with every non-free-text question regardless of the rows, and
+  `is_quiz_answer_correct()` scores an empty selection wrong; `wrong_selected_counts` is a
+  `defaultdict`, so the missing key yields an empty list. Prefer the no-row shape: it is what the
+  browser actually stores.
 - Scored quizzes are built from option-backed questions only: `score_quiz()` counts every question
   toward `max_score`, so one free-text question puts a permanent ceiling under 100%. See
   [[reference_multiselect_quiz_scoring_command]].

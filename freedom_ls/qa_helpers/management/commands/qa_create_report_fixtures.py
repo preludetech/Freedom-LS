@@ -3,10 +3,10 @@
 The report's layout behaviour changes with two axes at once -- cohort size
 lengthens the landscape summary table, course length widens it -- so the QA plan
 (``spec_dd/2. in progress/basic_reports/3a. report_generation_qa/
-frontend_qa_report_generation.md``) defines ten fixtures
-spanning 0 to 40 students and 1 to 12+ quizzes, plus the degenerate and
-no-pass-mark cases. This command builds all of them, plus the two users the
-permission checks need.
+frontend_qa_report_generation.md``) defines eleven fixtures
+spanning 0 to 40 students and 1 to 12+ quizzes, plus the degenerate,
+no-pass-mark and blank-answer cases. This command builds all of them, plus the
+two users the permission checks need.
 
 It is a thin orchestrator: the work is done by ``build_report_course`` and
 ``build_report_cohort``, imported from the two builder commands so the whole
@@ -57,6 +57,9 @@ class CourseFixture:
     questions_per_quiz: int
     big_quiz_questions: int
     no_pass_mark_quiz: bool
+    # Clears ``required`` on each quiz's last question, so a learner can leave
+    # it blank. Defaulted, because only the blank-answer fixture wants it.
+    optional_last_question: bool = False
 
     @property
     def slug(self) -> str:
@@ -120,6 +123,20 @@ COURSE_FIXTURES: list[CourseFixture] = [
         questions_per_quiz=4,
         big_quiz_questions=0,
         no_pass_mark_quiz=False,
+    ),
+    # Two quizzes and no topics at all, deliberately: the completion ladder
+    # gives the lower rungs only the first slot or two of a course, so a course
+    # that opens on a quiz is the only way most of the cohort reaches one. Every
+    # student with any progress therefore sits quiz 1, whose last question is
+    # optional and so is the one they can leave blank.
+    CourseFixture(
+        key="blank",
+        num_items=2,
+        num_quizzes=2,
+        questions_per_quiz=4,
+        big_quiz_questions=0,
+        no_pass_mark_quiz=False,
+        optional_last_question=True,
     ),
 ]
 
@@ -224,6 +241,20 @@ COHORT_FIXTURES: list[CohortFixture] = [
         purpose="Every student takes the 'No activity recorded' branch.",
     ),
     CohortFixture(
+        key="blank-answer-cohort",
+        cohort_name="QA Report Blank Answer Cohort",
+        email_prefix="qa-report-blank",
+        num_students=9,
+        course_keys=("blank",),
+        inactive_course_keys=(),
+        num_flagged=2,
+        no_progress=False,
+        purpose=(
+            "Wrong answers with nothing selected: those rows must read "
+            "'Not answered', not leave the 'Answers given' cell blank."
+        ),
+    ),
+    CohortFixture(
         key="no-pass-mark-cohort",
         cohort_name="QA Report No Pass Mark Cohort",
         email_prefix="qa-report-nopass",
@@ -308,7 +339,7 @@ def _grant_report_admin_access(user: User) -> None:
 def command(
     site_name: str, only: tuple[str, ...], long_course_quizzes: int, reset: bool
 ) -> None:
-    """Build the ten-fixture report QA matrix and its two permission users."""
+    """Build the report QA fixture matrix and its two permission users."""
     site: Site = _get_site(site_name)
 
     unknown = [key for key in only if key not in COHORTS_BY_KEY]
@@ -355,6 +386,7 @@ def command(
             big_quiz_questions=course_fixture.big_quiz_questions,
             pass_percentage=50,
             no_pass_mark_quiz=course_fixture.no_pass_mark_quiz,
+            optional_last_question=course_fixture.optional_last_question,
         )
         items = course.viewable_items()
         click.secho(
@@ -362,6 +394,11 @@ def command(
             + (
                 "  (first quiz has NO pass mark)"
                 if course_fixture.no_pass_mark_quiz
+                else ""
+            )
+            + (
+                "  (last question of each quiz is OPTIONAL)"
+                if course_fixture.optional_last_question
                 else ""
             ),
             fg="green",

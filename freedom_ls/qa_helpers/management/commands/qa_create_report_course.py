@@ -202,10 +202,29 @@ def _add_options(
         )
 
 
+def _question_is_required(
+    order: int, question_count: int, optional_last_question: bool
+) -> bool:
+    """Only the quiz's final question is ever optional, and only when asked for."""
+    return not (optional_last_question and order == question_count - 1)
+
+
 def _ensure_questions(
-    form: Form, page: FormPage, subject: str, question_count: int, site: Site
+    form: Form,
+    page: FormPage,
+    subject: str,
+    question_count: int,
+    site: Site,
+    optional_last_question: bool,
 ) -> None:
-    """Add option-backed questions until the page holds ``question_count`` of them."""
+    """Add option-backed questions until the page holds ``question_count`` of them.
+
+    ``optional_last_question`` clears ``required`` on the quiz's final question.
+    A required question cannot be submitted blank -- ``form_fill_page``
+    re-renders with 422 -- so an optional one is the only shape a learner can
+    genuinely leave unanswered, which is what the report renders as
+    "Not answered" rather than as a list of chosen options.
+    """
     existing_orders = set(
         FormQuestion.objects.filter(form_page=page).values_list("order", flat=True)
     )
@@ -228,7 +247,9 @@ def _ensure_questions(
                     if is_checkbox
                     else QuestionType.MULTIPLE_CHOICE
                 ),
-                required=True,
+                required=_question_is_required(
+                    order, question_count, optional_last_question
+                ),
                 order=order,
                 site=site,
             ),
@@ -247,6 +268,17 @@ def _ensure_questions(
             ]
         _add_options(question, options, site)
 
+    # Re-runs converge on ``required`` the same way the pass mark does above:
+    # questions built by an earlier run are rewritten rather than left as first
+    # built, so flipping the flag actually takes effect.
+    for question in FormQuestion.objects.filter(form_page=page):
+        should_be_required = _question_is_required(
+            question.order, question_count, optional_last_question
+        )
+        if question.required != should_be_required:
+            question.required = should_be_required
+            question.save(update_fields=["required"])
+
 
 def _get_or_create_quiz(
     site: Site,
@@ -254,6 +286,7 @@ def _get_or_create_quiz(
     index: int,
     question_count: int,
     pass_percentage: int | None,
+    optional_last_question: bool,
 ) -> Form:
     slug = f"qa-report-{course_key}-quiz-{index + 1:02d}"
     word = _word(QUIZ_WORDS, index)
@@ -290,7 +323,7 @@ def _get_or_create_quiz(
                 site=site,
             ),
         )
-    _ensure_questions(form, page, word, question_count, site)
+    _ensure_questions(form, page, word, question_count, site, optional_last_question)
     return form
 
 
@@ -327,6 +360,7 @@ def build_report_course(
     big_quiz_questions: int,
     pass_percentage: int,
     no_pass_mark_quiz: bool,
+    optional_last_question: bool = False,
 ) -> Course:
     """Create or extend the QA report course and return it.
 
@@ -359,7 +393,12 @@ def build_report_course(
             )
             plan.append(
                 _get_or_create_quiz(
-                    site, course_key, quiz_index, question_count, quiz_pass
+                    site,
+                    course_key,
+                    quiz_index,
+                    question_count,
+                    quiz_pass,
+                    optional_last_question,
                 )
             )
             quiz_index += 1
@@ -423,6 +462,15 @@ def build_report_course(
     default=False,
     help="Leave the FIRST quiz's quiz_pass_percentage unset (score, no verdict).",
 )
+@click.option(
+    "--optional-last-question",
+    is_flag=True,
+    default=False,
+    help=(
+        "Clear 'required' on each quiz's LAST question, so a learner can leave "
+        "it blank and the report renders 'Not answered' for it."
+    ),
+)
 def command(
     site_name: str,
     course_key: str,
@@ -432,6 +480,7 @@ def command(
     big_quiz_questions: int,
     pass_percentage: int,
     no_pass_mark_quiz: bool,
+    optional_last_question: bool,
 ) -> None:
     """Build a standalone QA course of a given length and quiz count."""
     site = _get_site(site_name)
@@ -444,6 +493,7 @@ def command(
         big_quiz_questions=big_quiz_questions,
         pass_percentage=pass_percentage,
         no_pass_mark_quiz=no_pass_mark_quiz,
+        optional_last_question=optional_last_question,
     )
 
     items = course.viewable_items()

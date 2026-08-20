@@ -20,7 +20,7 @@
 - [reference_organisation_scenarios_command.md](reference_organisation_scenarios_command.md) — qa_create_organisation_scenarios: 3 orgs + 4 cohorts + 7 personas for Organisations QA; assign_object_role needs a thread-local site + SITE_ID in a command; unregistered learners can never reach the player, so the player's "no organisation / no logo chip" branch is unreachable in the browser (QA §7.6)
 - [reference_learner_visible_deadlines.md](reference_learner_visible_deadlines.md) — Deadlines render ONLY in the course TOC partial (course detail + player sidebar), never on the dashboard; use a course-level CohortDeadline so badges show without expanding CourseParts; qa_create_soft_deadline defaults to -7 days (overdue)
 - [reference_multiselect_quiz_scoring_command.md](reference_multiselect_quiz_scoring_command.md) — qa_create_multiselect_quiz_scoring: dedicated student + checkbox quiz (pass%=50) + NULL-pass-% quiz; `checkboxes` not `checkbox`; force_login/axes + start_form gotchas
-- [reference_report_fixture_commands.md](reference_report_fixture_commands.md) — qa_create_report_fixtures/_course/_cohort: the ten-fixture cohort-progress-report QA matrix, scored attempts, at-risk flag mix, and the auto-timestamp / CourseProgress-site gotchas
+- [reference_report_fixture_commands.md](reference_report_fixture_commands.md) — qa_create_report_fixtures/_course/_cohort: the eleven-fixture cohort-progress-report QA matrix (incl. blank-answer-cohort for "Not answered"), scored attempts, at-risk flag mix, and the auto-timestamp / CourseProgress-site gotchas
 - [reference_quiz_progression_block_command.md](reference_quiz_progression_block_command.md) — qa_create_quiz_progression_block: 3-item course (topic/checkbox-quiz@80%/topic) proving a FAILED quiz blocks the next item; URL-level unlock is NOT enforced
 - [reference_free_text_survey_command.md](reference_free_text_survey_command.md) — qa_create_free_text_survey: non-scored CATEGORY_VALUE_SUM questionnaire of short_text/long_text; only 2 strategies exist, so CATEGORY_VALUE_SUM is "the survey one"
 - [reference_legacy_checkbox_score_command.md](reference_legacy_checkbox_score_command.md) — qa_create_legacy_checkbox_score: how to craft a pre-fix checkbox attempt whose stored score disagrees with exact-match rescoring (complete() then queryset.update(scores=...)), in a report-ready cohort
@@ -34,6 +34,11 @@ recipe is: `qa_create_form_question_types DemoDev`, `qa_create_multiselect_quiz_
 `qa_create_checkbox_scoring_quiz`, then
 `qa_reset_student_progress --student demodev_quizqa@email.com`, then
 `content_save demo_content DemoDev`. All are idempotent; run the reset LAST so the walk starts clean.
+
+The **report QA matrix** is repeatedly extended one fixture at a time as the QA plan finds an
+unreachable render branch. Always add a new fixture key + (if the data shape needs it) a new course
+key to `qa_create_report_fixtures`, never patch the dev DB by hand, and never `--reset` a cohort the
+tester has already archived artifacts from.
 
 The **legacy checkbox score discrepancy** cohort (`qa_create_legacy_checkbox_score`) has now been
 asked for three times (QA 12.6, then QA 2.11 twice). It is stable across the whole report redesign.
