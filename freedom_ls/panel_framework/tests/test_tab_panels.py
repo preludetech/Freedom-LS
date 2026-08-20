@@ -57,7 +57,6 @@ URL_NAME = "panel_framework_test:interface"
 def _request(path: str):
     request = RequestFactory().get(path, HTTP_HX_REQUEST="true")
     request.user = make_staff_user()
-    request.organisation = object()
     return request
 
 

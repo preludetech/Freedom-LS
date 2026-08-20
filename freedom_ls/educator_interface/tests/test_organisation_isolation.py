@@ -21,11 +21,13 @@ import pytest
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.student_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
+    UserCourseRegistrationFactory,
 )
 
 
@@ -62,6 +64,21 @@ class TestCrossOrganisationIsolation:
         member_b = UserFactory(first_name="MemberOfB", last_name="Only")
         CohortMembershipFactory(cohort=cohort_b, user=member_b)
 
+        # A learner studying through both organisations. Visible to this
+        # educator through A, so A's own list legitimately shows the row --
+        # what must not appear in it is anything belonging to B.
+        shared = UserFactory(first_name="SharedBetween", last_name="Both")
+        CohortMembershipFactory(cohort=cohort_a, user=shared)
+        CohortMembershipFactory(cohort=cohort_b, user=shared)
+        course_a = CourseFactory(title="Course A Only")
+        course_b = CourseFactory(title="Course B Only")
+        UserCourseRegistrationFactory(
+            user=shared, organisation=organisation_a, collection=course_a
+        )
+        UserCourseRegistrationFactory(
+            user=shared, organisation=organisation_b, collection=course_b
+        )
+
         return SimpleNamespace(
             organisation_a=organisation_a,
             organisation_b=organisation_b,
@@ -69,6 +86,9 @@ class TestCrossOrganisationIsolation:
             cohort_b=cohort_b,
             member_a=member_a,
             member_b=member_b,
+            shared=shared,
+            course_a=course_a,
+            course_b=course_b,
             client=logged_in_client(educator),
         )
 
@@ -104,6 +124,34 @@ class TestCrossOrganisationIsolation:
         content = response.content.decode()
         assert isolation.member_a.first_name in content
         assert isolation.member_b.first_name not in content
+
+    def test_users_list_cohort_cell_never_names_a_cohort_from_organisation_b(
+        self, isolation
+    ):
+        """The row for a learner shared between both organisations is scoped,
+        but the Cohorts cell renders a relation of its own that is not."""
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, "users")
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert isolation.shared.first_name in content
+        assert isolation.cohort_a.name in content
+        assert isolation.cohort_b.name not in content
+
+    def test_users_list_course_cell_never_names_a_course_registered_through_b(
+        self, isolation
+    ):
+        """Same leak, through the Registered Courses cell."""
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, "users")
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert isolation.course_a.title in content
+        assert isolation.course_b.title not in content
 
     def test_user_detail_404s_when_requested_through_organisation_a(self, isolation):
         response = isolation.client.get(

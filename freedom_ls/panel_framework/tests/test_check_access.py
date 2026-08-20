@@ -47,34 +47,55 @@ class PermissiveConfig(ListViewConfig):
         return None
 
 
-class OrganisationDereferencingConfig(ListViewConfig):
-    """authorise_instance dereferences request.organisation.
+class ScopedConfig(ListViewConfig):
+    """Declares a scope attribute the framework has never heard of.
+
+    "tenant" is deliberately not a word panel_framework knows: the prologue
+    must deny on whatever name a config declares, not on a hard-coded one.
+    """
+
+    url_name = "scoped-stub"
+    menu_label = "Scoped Stub"
+    model = StubModel
+    instance_view = _StubInstanceView
+    required_request_attrs = ("tenant",)
+
+    @classmethod
+    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
+        return None
+
+
+class ScopeDereferencingConfig(ListViewConfig):
+    """authorise_instance dereferences the scope this config declares.
 
     Used to prove the prologue's checks run, and raise Http404, before this
     override ever executes — if it ran on a bare request this line would
     raise AttributeError instead.
     """
 
-    url_name = "org-deref-stub"
-    menu_label = "Org Deref Stub"
+    url_name = "scope-deref-stub"
+    menu_label = "Scope Deref Stub"
     model = StubModel
     instance_view = _StubInstanceView
+    required_request_attrs = ("tenant",)
 
     @classmethod
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
-        _ = request.organisation.pk
+        _ = request.tenant.pk
 
 
 TEMPLATE = "panel_framework/test_interface.html"
 URL_NAME = "panel_framework_test:interface"
 
 
-def _authorised_request(path: str) -> HttpRequest:
-    """A request that satisfies check_access's prologue: authenticated user
-    and a resolved (generic, opaque) scope."""
+def _authenticated_request(path: str) -> HttpRequest:
+    """A request carrying an authenticated user and no scope attribute at all.
+
+    That is what a host app with no scope concept sends, and it satisfies the
+    prologue for any config that declares no required_request_attrs.
+    """
     request = RequestFactory().get(path)
     request.user = make_staff_user()
-    request.organisation = object()
     return request
 
 
@@ -84,7 +105,7 @@ class TestCheckAccessDenyByDefault:
         self, mock_site_context: None
     ) -> None:
         stub = _make_stub(name="Denied Stub")
-        request = _authorised_request(f"/test-panel/deny-stub/{stub.pk}")
+        request = _authenticated_request(f"/test-panel/deny-stub/{stub.pk}")
         with pytest.raises(Http404):
             panel_framework_view(
                 config={"deny-stub": DenyByDefaultConfig},
@@ -94,11 +115,14 @@ class TestCheckAccessDenyByDefault:
                 url_name=URL_NAME,
             )
 
-    def test_config_with_permissive_override_serves_detail_path(
+    def test_config_declaring_no_scope_serves_a_detail_path_unscoped(
         self, mock_site_context: None
     ) -> None:
+        """The standalone-host case: a config that overrides authorise_instance
+        but declares no required_request_attrs is served on a request that
+        carries no scope of any kind."""
         stub = _make_stub(name="Allowed Stub")
-        request = _authorised_request(f"/test-panel/allow-stub/{stub.pk}")
+        request = _authenticated_request(f"/test-panel/allow-stub/{stub.pk}")
         response = panel_framework_view(
             config={"allow-stub": PermissiveConfig},
             request=request,
@@ -112,31 +136,31 @@ class TestCheckAccessDenyByDefault:
 
 class TestCheckAccessPrologueIsNonBypassable:
     """The prologue denies on two independent grounds -- no authenticated user,
-    and no resolved scope. Both are pinned against PermissiveConfig, whose
-    override would otherwise let the request through."""
+    and a declared scope attribute that is missing. Both are pinned against
+    configs whose override would otherwise let the request through."""
 
     @pytest.mark.django_db
-    def test_request_without_a_resolved_scope_is_denied(
+    def test_request_missing_a_declared_scope_attribute_is_denied(
         self, mock_site_context: None
     ) -> None:
-        request = RequestFactory().get("/test-panel/allow-stub/1")
+        request = RequestFactory().get("/test-panel/scoped-stub/1")
         request.user = make_staff_user()
 
         with pytest.raises(Http404):
-            PermissiveConfig.check_access(request, StubModel(pk=1, name="unsaved"))
+            ScopedConfig.check_access(request, StubModel(pk=1, name="unsaved"))
 
     def test_request_without_an_authenticated_user_is_denied(self) -> None:
-        request = RequestFactory().get("/test-panel/allow-stub/1")
-        request.organisation = object()
+        request = RequestFactory().get("/test-panel/scoped-stub/1")
+        request.tenant = object()
 
         with pytest.raises(Http404):
-            PermissiveConfig.check_access(request, StubModel(pk=1, name="unsaved"))
+            ScopedConfig.check_access(request, StubModel(pk=1, name="unsaved"))
 
-    def test_bare_request_raises_http404_even_when_override_dereferences_organisation(
+    def test_bare_request_raises_http404_even_when_override_dereferences_the_scope(
         self,
     ) -> None:
         """The non-overridable prologue must deny before authorise_instance
         runs, even for a subclass whose override would blow up if it ran."""
         instance = StubModel(pk=1, name="unsaved")
         with pytest.raises(Http404):
-            OrganisationDereferencingConfig.check_access(HttpRequest(), instance)
+            ScopeDereferencingConfig.check_access(HttpRequest(), instance)

@@ -46,8 +46,13 @@ def validate_organisation_logo(file: UploadedFile) -> None:
         )
 
     with warnings.catch_warnings():
-        # A DecompressionBombWarning does nothing in production unless it is
-        # escalated. MAX_IMAGE_PIXELS stays at Pillow's default — never None.
+        # Pillow signals a bomb in two bands and neither reaches the caller on
+        # its own: past MAX_IMAGE_PIXELS it only warns, which does nothing in
+        # production unless escalated; past twice that it raises
+        # DecompressionBombError, which subclasses Exception rather than
+        # OSError and so would sail past the unreadable-image clause below as a
+        # 500. Both have to land on the same ValidationError.
+        # MAX_IMAGE_PIXELS stays at Pillow's default — never None.
         warnings.simplefilter("error", Image.DecompressionBombWarning)
         try:
             file.seek(0)
@@ -56,7 +61,7 @@ def validate_organisation_logo(file: UploadedFile) -> None:
             img = Image.open(file)  # re-open on a rewound handle
             width, height = img.size
             image_format = img.format
-        except Image.DecompressionBombWarning as err:
+        except (Image.DecompressionBombWarning, Image.DecompressionBombError) as err:
             raise ValidationError("Image is too large to process safely.") from err
         except (OSError, Image.UnidentifiedImageError) as err:
             raise ValidationError("File is not a readable image.") from err

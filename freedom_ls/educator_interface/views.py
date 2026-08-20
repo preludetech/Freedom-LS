@@ -15,6 +15,7 @@ from django.db.models import (
     IntegerField,
     Model,
     OuterRef,
+    Prefetch,
     Q,
     QuerySet,
     Subquery,
@@ -79,13 +80,15 @@ class _OrganisationScopedRequest(HttpRequest):
     """Typing-only view of a request after interface() has resolved and
     authorised an organisation onto it.
 
-    panel_framework treats organisation and panel_url_kwargs generically
-    (see ListViewConfig.check_access) and never imports this class — it
-    exists purely so this module can type-check the attribute access
-    without a type: ignore. Never instantiated; only used with cast().
+    panel_framework names none of these: the scope it enforces is whatever a
+    config lists in required_request_attrs, and the title segment reads
+    panel_scope_name. So this class exists purely so this module can
+    type-check the attribute access without a type: ignore, and is never
+    instantiated; only used with cast().
     """
 
     organisation: Organisation
+    panel_scope_name: str
     panel_url_kwargs: dict[str, str]
     accessible_organisations: list[Organisation]
     path_string: str
@@ -151,11 +154,28 @@ class UserDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         request = cast(_OrganisationScopedRequest, request)
+        organisation = request.organisation
+        # users_visible_to scopes which rows appear, but the Cohorts and
+        # Registered Courses cells render separate relations that it does not
+        # touch. A learner who studies through two organisations — the case
+        # organisations exist to separate — would otherwise list both here.
+        # The cells read these relations through .all(), so filtering the
+        # prefetch is what scopes them.
         return (
-            users_visible_to(request.user, request.organisation)
+            users_visible_to(request.user, organisation)
             .prefetch_related(
-                "cohortmembership_set__cohort",
-                "usercourseregistration_set__collection",
+                Prefetch(
+                    "cohortmembership_set",
+                    queryset=CohortMembership.objects.filter(
+                        cohort__in=cohorts_visible_to(request.user, organisation)
+                    ).select_related("cohort"),
+                ),
+                Prefetch(
+                    "usercourseregistration_set",
+                    queryset=UserCourseRegistration.objects.filter(
+                        organisation=organisation
+                    ).select_related("collection"),
+                ),
             )
             .order_by("first_name", "last_name")
         )
@@ -811,6 +831,8 @@ class CohortConfig(ListViewConfig):
     list_view = CohortDataTable
     instance_view = CohortInstanceView
 
+    required_request_attrs = ("organisation",)
+
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
         return [CreateCohortAction()]
@@ -832,6 +854,8 @@ class UserConfig(ListViewConfig):
     model = User
     list_view = UserDataTable
     instance_view = UserInstanceView
+
+    required_request_attrs = ("organisation",)
 
     @classmethod
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
@@ -1104,6 +1128,8 @@ class CourseConfig(ListViewConfig):
     list_view = CourseDataTable
     instance_view = CourseInstanceView
 
+    required_request_attrs = ("organisation",)
+
     check_access_exempt_reason = (
         "Courses are shared across the Site and are not organisation-scoped "
         "in this cut. The list is also currently unguarded entirely."
@@ -1167,6 +1193,7 @@ def interface(
         raise Http404
     scoped_request = cast(_OrganisationScopedRequest, request)
     scoped_request.organisation = organisation
+    scoped_request.panel_scope_name = organisation.name
     scoped_request.panel_url_kwargs = {"organisation_slug": organisation.slug}
     scoped_request.accessible_organisations = list(
         organisations_accessible_to(request.user)

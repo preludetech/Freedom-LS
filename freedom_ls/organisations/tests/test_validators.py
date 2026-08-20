@@ -83,12 +83,24 @@ def test_corrupt_bytes_are_rejected():
         validate_organisation_logo(upload)
 
 
-def test_decompression_bomb_is_rejected(monkeypatch):
-    """A pixel count over Pillow's configured ceiling is rejected, not silently decoded."""
+def test_decompression_bomb_in_the_warning_band_is_rejected(monkeypatch):
+    """A pixel count just over Pillow's ceiling is rejected, not silently decoded.
+
+    150px is over MAX_IMAGE_PIXELS but under twice it, which is the band where
+    Pillow only warns.
+    """
     monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)
-    upload = _png_upload(
-        15, 10
-    )  # 150px > 100, but <= 2x100 (stays a warning, not a hard error)
+    upload = _png_upload(15, 10)
+    with pytest.raises(ValidationError):
+        validate_organisation_logo(upload)
+
+
+def test_decompression_bomb_in_the_error_band_is_rejected(monkeypatch):
+    """Over twice the ceiling Pillow raises DecompressionBombError instead of
+    warning. It subclasses Exception, not OSError, so it has to be caught by
+    name or it escapes the validator as a 500 on the admin upload."""
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)
+    upload = _png_upload(20, 20)  # 400px > 2x100
     with pytest.raises(ValidationError):
         validate_organisation_logo(upload)
 

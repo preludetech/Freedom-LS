@@ -7,8 +7,6 @@ would keep whatever the last full page load put there. htmx lifts a root-level
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 
 from django.contrib.sites.models import Site
@@ -60,21 +58,21 @@ def _title_text(html: str) -> str:
 def test_navigation_bundle_names_the_page_and_the_site(
     mock_site_context: Site,
 ) -> None:
-    """A host with no organisation concept gets no empty segment or stray dash."""
+    """A host with no scope concept gets no empty segment or stray dash."""
     content = _navigate(_navigation_request())
 
     assert _title_text(content) == f"Stubs — {mock_site_context.name}"
 
 
 @pytest.mark.django_db
-def test_navigation_title_names_the_organisation_the_request_carries(
+def test_navigation_title_names_the_scope_the_request_carries(
     mock_site_context: Site,
 ) -> None:
     """panel_framework passes the fragment no context of its own, so the
-    organisation segment is sourced from the request, as the announcer's
-    message and the extra OOB fragments already are."""
+    scope segment is sourced from the request, as the announcer's message and
+    the extra OOB fragments already are."""
     request = _navigation_request()
-    request.organisation = SimpleNamespace(name="Northside Academy")
+    request.panel_scope_name = "Northside Academy"
 
     content = _navigate(request)
 

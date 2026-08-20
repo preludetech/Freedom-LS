@@ -139,9 +139,6 @@ class TestOobSidebarWithInstance:
             HTTP_HX_TARGET="main-content",
         )
         request.user = make_staff_user()
-        # check_access's fail-closed prologue requires a resolved scope;
-        # panel_framework treats this generically and never inspects it.
-        request.organisation = object()
         response = panel_framework_view(
             config=FULL_CONFIG,
             request=request,

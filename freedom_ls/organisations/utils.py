@@ -8,9 +8,9 @@ from .models import Organisation
 
 
 def get_default_organisation(site: Site) -> Organisation:
-    """The Organisation named after the Site itself.
+    """The Organisation a Site falls back to when nothing narrower is in scope.
 
-    Guaranteed to exist by the backfill migration and the post_save receiver.
+    Guaranteed to exist by the post_save receiver that gives every Site one.
     A DoesNotExist here means that invariant was broken out of band — there is
     no supported path to delete an Organisation — so it should surface as an
     error rather than be silently repaired on a learner-facing path.
@@ -20,4 +20,4 @@ def get_default_organisation(site: Site) -> Organisation:
     that has already resolved an explicit `site` (e.g. a management command
     with no request at all).
     """
-    return Organisation._base_manager.get(site=site, name=site.name)
+    return Organisation._base_manager.get(site=site, is_default=True)

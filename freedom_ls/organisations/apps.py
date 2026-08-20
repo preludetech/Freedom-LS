@@ -7,4 +7,12 @@ class OrganisationsConfig(AppConfig):
     label = "freedom_ls_organisations"
 
     def ready(self) -> None:
-        from . import signals  # noqa: F401
+        from django.db.models.signals import post_migrate
+
+        from . import signals
+
+        # sender=self so this fires once, for this app, rather than once per
+        # installed app.
+        post_migrate.connect(
+            signals.ensure_default_organisations_after_migrate, sender=self
+        )

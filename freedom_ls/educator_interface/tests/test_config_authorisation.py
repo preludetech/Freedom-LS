@@ -162,3 +162,18 @@ class TestProductionConfigsDeclareAuthorisation:
             "declares check_access_exempt_reason — it would silently "
             "inherit deny-by-default"
         )
+
+    @pytest.mark.parametrize(
+        "config", list(interface_config.values()), ids=lambda c: c.__name__
+    )
+    def test_config_declares_the_organisation_as_a_required_request_attribute(
+        self, config
+    ):
+        """panel_framework's scope check is opt-in, so every config here has to
+        name the organisation itself. A config that omits it would serve detail
+        views on a request that never resolved one."""
+        assert config.required_request_attrs == ("organisation",), (
+            f"{config.__name__} does not declare the organisation in "
+            "required_request_attrs — its detail views would be served "
+            "without a resolved organisation"
+        )

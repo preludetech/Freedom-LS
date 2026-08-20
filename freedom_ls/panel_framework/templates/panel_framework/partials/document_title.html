@@ -13,8 +13,9 @@ template includes it inside its own {% templatetag openblock %} block head_title
 it on a single line — htmx copies the element's text verbatim, so indentation
 would show up in the tab.
 
-panel_framework passes no context for the organisation: like the announcer's
-message, the fragment sources it from the request, and simply drops the segment
-for a host that has no such concept.
+panel_framework passes no context for the middle segment: like the announcer's
+message, the fragment sources it from the request. A host app that scopes its
+interface names the current scope in request.panel_scope_name; a host with no
+such concept sets nothing and the segment is dropped, leaving no stray dash.
 {% endcomment %}
-{% partialdef document-title %}{% if heading %}{{ heading }} — {% endif %}{% if request.organisation %}{{ request.organisation.name }} — {% endif %}{{ site_name }}{% endpartialdef %}<title>{% partial document-title %}</title>
+{% partialdef document-title %}{% if heading %}{{ heading }} — {% endif %}{% if request.panel_scope_name %}{{ request.panel_scope_name }} — {% endif %}{{ site_name }}{% endpartialdef %}<title>{% partial document-title %}</title>

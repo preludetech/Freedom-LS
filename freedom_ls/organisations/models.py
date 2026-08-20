@@ -33,6 +33,10 @@ class Organisation(SiteAwareModel):
         blank=True,
         validators=[validate_organisation_logo_extension, validate_organisation_logo],
     )
+    #: Marks the one Organisation a Site falls back to when nothing narrower is
+    #: in scope. Set only by the post_save receiver on Site — never exposed in
+    #: the admin, so the flag cannot be moved to a different Organisation.
+    is_default = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
@@ -41,6 +45,14 @@ class Organisation(SiteAwareModel):
             ),
             models.UniqueConstraint(
                 fields=["site", "name"], name="unique_organisation_name_per_site"
+            ),
+            # Partial, so the many non-default Organisations on a Site do not
+            # collide with each other. This is what lets the receiver key its
+            # get_or_create on (site, is_default) and get exactly one row.
+            models.UniqueConstraint(
+                fields=["site"],
+                condition=models.Q(is_default=True),
+                name="one_default_organisation_per_site",
             ),
         ]
 

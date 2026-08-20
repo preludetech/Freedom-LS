@@ -172,6 +172,14 @@ class ListViewConfig:
     #: every exemption is declared rather than accidental.
     check_access_exempt_reason: str | None = None
 
+    #: Names of request attributes that must be resolved and non-None before
+    #: a detail view is served. A host app that scopes its requests — to an
+    #: organisation, a tenant, a workspace — names those attributes here, and
+    #: authorise_instance can then dereference them without a None check of
+    #: its own. Empty by default: panel_framework has no scope concept, so a
+    #: host that has none serves detail views normally.
+    required_request_attrs: tuple[str, ...] = ()
+
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
         return []
@@ -189,15 +197,17 @@ class ListViewConfig:
         override authorise_instance instead.
 
         Runs a fail-closed prologue before any subclass code runs: a request
-        with no authenticated user or no resolved scope is denied here, so a
-        subclass overriding authorise_instance can never turn that denial
-        into an AttributeError by dereferencing either.
+        with no authenticated user, or missing any attribute the config
+        declares in required_request_attrs, is denied here — so a subclass
+        overriding authorise_instance can never turn that denial into an
+        AttributeError by dereferencing one of them.
         """
         user = getattr(request, "user", None)
         if user is None or not user.is_authenticated:
             raise Http404
-        if getattr(request, "organisation", None) is None:
-            raise Http404
+        for attr in cls.required_request_attrs:
+            if getattr(request, attr, None) is None:
+                raise Http404
         cls.authorise_instance(request, instance)
 
     @classmethod

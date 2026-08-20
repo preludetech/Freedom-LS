@@ -541,9 +541,9 @@ def initiate_course_access(request, course_slug):
         )
 
     # Create the course registration directly with user. No organisation is in
-    # scope for a self-service registration, so it lands on the Site's own
-    # Organisation — guaranteed to exist by the backfill migration and the
-    # post_save receiver that keeps every Site carrying one.
+    # scope for a self-service registration, so it lands on the Site's default
+    # Organisation — guaranteed to exist by the post_save receiver that gives
+    # every Site one.
     UserCourseRegistration.objects.get_or_create(
         user=request.user,
         collection=course,
