@@ -1,472 +1,360 @@
-# QA report: multi-select quiz scoring fix (student-facing)
+# QA report — multi-select quiz scoring fix (student-facing)
 
-**Plan:** `frontend_qa_quiz_marking.md`
-**Run date:** 17 August 2026
+**Plan:** `frontend_qa_quiz_marking.md` (QA 11–13)
+**Run date:** 2026-08-20
 **Branch:** `basic_reports` (confirmed via `debug-branch-badge`)
-**Server:** `http://127.0.0.1:8046`, site `DemoDev`
-**Viewports:** desktop 1920×1080, mobile 375×812, tablet 768×1024
-**Tooling:** Playwright MCP, driven interactively (no test scripts)
+**Server:** `http://127.0.0.1:8537/` — own `runserver`, started for this run
+**Browser:** Playwright MCP — desktop 1920×1080, mobile 375×812, tablet 768×1024
+**Build state:** `npm run tailwind_build` run before the pass; `manage.py migrate` clean
 
-## Headline
+## Verdict
 
-**The fix works.** Ticking every option on a `checkboxes` question no longer scores full marks — the
-regression this spec exists to close is closed, on every surface tested: the quiz runner, the results
-page, the course player's progression gate, the student dashboard and the educator live panel. No
-page returned a 500 at any point, including every no-pass-mark page the plan flagged as a critical
-risk.
+**The multi-select scoring fix itself is correct on every surface tested.** Every row of QA 11's
+scoring matrix behaves as specified, and none of the knock-on surfaces in QA 12 break.
 
-Six findings are recorded below. **None of them is a regression introduced by this change** — the
-scoring fix itself passed every assertion the plan makes about it. Five are pre-existing behaviours
-that this plan's checks happened to surface, and one (Finding 2) is an inherent consequence of the
-deliberate decision not to rescore history.
+**1 bug found** — and it is *not* in the scoring change. QA 12.1's progression check exposed that a
+course item shown as **Locked** is not actually protected: its URL serves the content, and visiting
+it permanently clears the lock. Details below.
 
-## Result summary
+| Section | Result |
+|---|---|
+| QA 11 — checkbox scoring, student view | Pass (see note on the unreachable "tick nothing" row) |
+| QA 12.1 — pass/fail and navigation | Scoring half passes; **lock enforcement fails (bug below)** |
+| QA 12.2 — unset pass mark | Pass — no 500 anywhere, no lockout |
+| QA 12.3 — single-select unchanged | Pass |
+| QA 12.4 — free-text in a non-scored form | Pass |
+| QA 12.5 — educator live panel | Pass (desktop and tablet) |
+| QA 12.6 — historical attempts not rescored | Pass |
+| QA 13 — demo content sanity | Pass |
+| Mobile pass (375×812) | Pass |
+| Tablet pass (768×1024) | Pass |
 
-| Test | Result | Note |
-|---|---|---|
-| QA 11 — checkbox scoring, 5-case matrix | **4 of 5 pass** | Row 5 ("tick nothing") fails the score/list-agreement check → Finding 1 |
-| QA 12.1 — pass/fail and navigation | **Pass** | Fail keeps item 3 locked; pass unlocks it |
-| QA 12.2 — unset pass mark, full page walk | **Pass** | No 500 anywhere, incl. dashboard and re-login |
-| QA 12.3 — single-select unchanged | **Pass** | |
-| QA 12.4 — free-text in a non-scored form | **Pass** | Defensive free-text-in-a-quiz check also passes |
-| QA 12.5 — educator live panel | **Pass** | Incl. no-pass-mark course and tablet width |
-| QA 12.6 — historical attempts not rescored | **Pass, with a caveat** | Stored score correctly unchanged, but the page contradicts itself → Finding 2 |
-| QA 13 — demo content sanity | **Pass** | 13.3 has nothing to find — see Observation D |
+---
 
-### QA 11 matrix as observed
+## Bug 1 — A "Locked" course item serves its content on direct access, and the lock never comes back
 
-The scored quiz used was `qa-checkbox-scoring-course` — option-backed questions only, so 100% is
-reachable. **Maximum score: 2** (one `multiple_choice`, one `checkboxes` with 2 correct of 3).
-**Pass mark: 80%**, `quiz_show_incorrect: true`. The multiple-choice question was answered correctly
-in every row except the QA 12.3 run, so the checkbox question alone drives the difference.
+**Test failed:** QA 12.1 (pass/fail and navigation).
 
-| What was ticked on the checkbox question | Score | % | Verdict | In incorrect list? | Agree? |
+**Expected:** failing the quiz at item 2 leaves item 3 blocked — the plan's fixture says so in the
+topic body itself: *"If you can read this, the quiz at item 2 was passed. Failing that quiz must
+leave this topic BLOCKED (locked icon, no link) in the course index."*
+
+**Actual:** the course index does show item 3 as **Locked** with no link — but that is the whole of
+the enforcement. Requesting `/courses/qa-progression-block-course/3/` directly returns **200 and the
+full topic content**, on a quiz the learner has just failed at 75% against an 80% pass mark.
+
+Worse, the visit is not merely a one-off bypass. The item view writes
+`course_progress.last_accessed_item = current_item` on the way through, so afterwards the outline
+shows item 3 as **"In progress" with a live link** — the lock is gone from the UI too, and does not
+return even though the quiz is still "Needs retry":
+
+Before — failed quiz, item 3 correctly Locked:
+
+![](screenshots/desktop_12.1_failed_quiz_blocks_progression.png)
+
+After one direct visit — item 3 now "In progress", linked, quiz still failed:
+
+![](screenshots/desktop_12.1_lock_lost_after_direct_visit.png)
+
+The topic content itself, served despite the failed gate:
+
+![](screenshots/desktop_12.1_locked_item_direct_access.png)
+
+**Root cause (confirmed in code).** `view_course_item` in
+`freedom_ls/student_interface/views.py` gates on exactly three things — hidden-course 404,
+`decision.can_access_content` (registration / access backend), and hard **deadline** locks:
+
+```python
+decision = get_course_access_backend().get_access(user=request.user, course=course)
+if not decision.can_access_content:
+    return redirect("student_interface:course_detail", course_slug=course_slug)
+...
+if config.DEADLINES_ACTIVE and request.user.is_authenticated:
+    if is_item_locked_by_deadline(...):
+        return redirect("student_interface:course_detail", course_slug=course_slug)
+```
+
+There is **no** check for a quiz-progression lock. The Locked state comes from `get_course_index()`,
+which is display-only. The comment directly above the access gate notes that this exact hole was
+closed for unregistered learners — "the TOC hides the links as BLOCKED, but the URL was previously
+unguarded" — and the same hole is still open for progression locks.
+
+**Reproduced twice, independently.** The second instance came from QA 13: in
+`functionality-demo-course-parts` the part "Core Concepts" and its topics 2.1 and 2.2 all showed
+**Locked**, yet item 5 (`Knowledge Check`, inside that locked part) was reachable by URL and could be
+completed for 100%. So this is not specific to the failed-quiz gate — any index-level lock is
+advisory.
+
+**Not a regression from this spec.** Nothing in the multi-select scoring change touches progression
+gating; QA 12.1 is simply the test that walks it. The pass/fail arithmetic driving the gate is
+correct in both directions (see below) — it is the enforcement of the resulting lock that is missing.
+
+---
+
+## QA 11 — Checkbox scoring, student view
+
+**Fixture arithmetic.** `qa_create_multiselect_quiz_scoring` builds `qa-all-question-types-form` as a
+`strategy: QUIZ` form with **4 questions** — one `multiple_choice`, one `checkboxes` (3 options,
+2 correct), one `short_text` and one `long_text` — and a **50% pass mark**.
+
+Per the plan's instruction ("either drop them from the fixture or compute expected percentages
+excluding them"), note that **`max_score` is 4 but the option-backed ceiling is 2**, because the two
+free-text questions count toward the denominator and can never be scored correct. So the highest
+attainable score on this form is **50%** — exactly the pass mark. Every percentage below is computed
+on that basis. (See Observation B: this is a fixture-realism issue, not a scoring defect.)
+
+All runs kept the `multiple_choice` question answered **correctly**, so the checkbox question is the
+only variable:
+
+| What was ticked | Checkbox scored | Total | % | Verdict | Listed under "Review incorrect answers"? |
 |---|---|---|---|---|---|
-| All three options | 1 / 2 | 50% | Not passed | Yes | ✅ |
-| The two correct options only | 2 / 2 | 100% | **Passed** | No | ✅ |
-| One of the two correct options | 1 / 2 | 50% | Not passed | Yes | ✅ |
-| Only the incorrect option *(extra case, see Observation E)* | 1 / 2 | 50% | Not passed | Yes | ✅ |
-| Both correct plus the incorrect one *(= row 1 here)* | 1 / 2 | 50% | Not passed | Yes | ✅ |
-| Nothing | 1 / 2 | 50% | Not passed | **No — section absent** | ❌ Finding 1 |
+| **All three options** | **0 — wrong** | 1 / 4 | 25% | Quiz not passed | **Yes** ✓ |
+| The two correct options only | 1 — right | 2 / 4 | 50% | Quiz passed! | No ✓ |
+| One of the two correct options | 0 — wrong | 1 / 4 | 25% | Quiz not passed | Yes ✓ |
+| Both correct plus the incorrect one | — identical to row 1 for a 3-option / 2-correct question | | | | |
+| Nothing | not reachable — blocked by required-question validation (see below) | | | | |
 
-Row 1 is the headline regression check and it passes:
+**The headline regression is closed: ticking everything no longer scores full marks.** It scores 0,
+the quiz fails, and the question is listed as incorrect.
 
-![](screenshots/desktop_11.1_results_all_three_50pct_fail.png)
+![](screenshots/desktop_11.1_all_three_ticked_scores_zero.png)
 
-Row 2 confirms the quiz is still winnable — a clean 100% with no incorrect-answer section:
+**Score and incorrect-answer list agree in every case** — no row where a question counted wrong is
+missing from the list, and none where a question counted right appears in it.
 
-![](screenshots/desktop_11.2_results_both_correct_100pct_pass.png)
+**The results page marks each ticked option individually.** On the all-three case, "Your answer"
+shows `⊘ Checkbox option A`, `⊘ Checkbox option B` in **green** and `⊗ Checkbox option C` in **red**,
+so the learner can see which of their ticks was the mistake. This is worth recording explicitly
+because the PDF report does **not** do this — see Bug 1 in the sibling report
+(`../3a. report_generation_qa/qa_report.md`), where the same data renders with all three options
+tinted as errors. The student page is the correct reference implementation.
 
----
+**"Tick nothing" is unreachable here, correctly.** The checkbox question is `required=True`, and
+submitting with nothing ticked is blocked client-side with "Select at least one option." under the
+group, with the counter reading "3 of 4 answered" and the submit dialog refusing to proceed:
 
-## Finding 1 — A question left blank is scored wrong but vanishes from the incorrect-answer list
+![](screenshots/desktop_11.5_required_validation_blocks_blank.png)
 
-**Test:** QA 11, matrix row 5 ("Nothing" ticked).
-**Severity:** Medium — a learner who fails is told nothing about *why*.
-**Regression introduced by this change?** No. Pre-existing "unanswered ≠ incorrect" behaviour.
+That is correct product behaviour, so the row's expected outcome (scores 0, listed as incorrect) was
+verified on the **report** side instead, where an *optional* question left blank is scored wrong and
+rendered — see the sibling plan's QA 2.12 and its `blank-answer-cohort` fixture.
 
-**Expected:** the plan requires that "a question counted wrong in the score must appear in the
-incorrect list, and vice versa", and states that a disagreement "is the exact bug this fix exists to
-close".
+**Radio vs checkbox stay distinguishable** — round controls for single-select, square for
+multi-select, with "Select all that apply." on the checkbox group:
 
-**Actual:** the checkbox question is correctly scored 0 (score 1/2, 50%, "Quiz not passed"), but the
-**entire "Review incorrect answers" section is absent from the page**. The learner is told they need
-80% to pass and given no indication which question they got wrong:
+![](screenshots/desktop_11_quiz_runner_radio_vs_checkbox.png)
 
-![](screenshots/desktop_11.5_results_nothing_ticked_no_review_section.png)
+## QA 12.1 — Pass/fail and navigation
 
-Compare row 3, where the same 1/2 score *does* produce a review section:
+Using `qa_create_quiz_progression_block` (3 items: topic → quiz at 80% → topic).
 
-![](screenshots/desktop_11.3_results_one_correct_only_50pct_fail.png)
+The scoring half is **correct in both directions**, and matches the fixture's predicted arithmetic
+exactly:
 
-**Cause:** `save_answers` writes no `QuestionAnswer` row when a question has no submitted answer, and
-`get_incorrect_quiz_answers()` iterates stored answer rows — so a blank question is invisible to it.
-The score comes from `max_score`, which counts the question regardless.
+| Checkbox answer | Score | % | Verdict | Item 2 | Item 3 in the index |
+|---|---|---|---|---|---|
+| Only the wrong box ticked | 3 / 4 | 75% | Quiz not passed | Needs retry | **Locked** |
+| Both correct boxes, nothing else | 4 / 4 | 100% | Quiz passed! | Completed | Unblocked, linked |
 
-**Scope note:** reaching this state needs an **optional** question inside a scored quiz. A `required`
-question left blank is rejected with HTTP 422 by the runner, so the runner already guards the common
-case. The submit dialog does warn "1 Answered / 2 Total questions" beforehand:
+So the multi-select fix drives progression correctly. The failure is that "Locked" is not enforced —
+Bug 1 above.
 
-![](screenshots/desktop_11.5_submit_dialog_1_of_2_answered.png)
+## QA 12.2 — Unset pass mark
 
-This is genuinely out of scope for the checkbox fix, but it is the one place where the plan's
-score/list-agreement rule is violated, so it is recorded as a finding rather than an observation.
+**Passes throughout, including the lockout scenario.** After completing
+`qa-quiz-no-pass-pct-form` (`quiz_pass_percentage = None`):
 
-## Finding 2 — Legacy attempt page claims "2 / 2 correct" and lists a wrong answer, with no explanation
+The results page shows the score and explicitly states there is no verdict — *"QA Quiz Without Pass
+Percentage Form has no pass mark, so there is no pass or fail — here is how you scored."* — with no
+error page:
 
-**Test:** QA 12.6 (historical attempts are not rescored).
-**Severity:** Low–Medium — affects only the finite set of attempts submitted before the fix.
-**Regression introduced by this change?** No — this is the intended non-rescoring behaviour becoming
-visible. The design decision is right; the page just does not explain itself.
+![](screenshots/desktop_12.2_no_pass_mark_results.png)
 
-**Expected:** the plan expects the stored score to be unchanged while the incorrect-answer list,
-derived at read time, marks the question wrong — and asks me to "confirm nothing on the page claims
-otherwise".
+Every page in the plan's walk returned **200**:
 
-**Actual:** both halves behave exactly as specified — the stored score is untouched at 2/2 and the
-review section correctly recomputes the checkbox question as wrong. But something on the page *does*
-claim otherwise: the figure **"2 / 2 correct"** asserts that both questions were answered correctly,
-directly above a section stating that Question 1 was not. On a two-question quiz the contradiction is
-unmissable, and the page carries no methodology note:
-
-![](screenshots/desktop_12.6_legacy_score_100pct_vs_incorrect_list.png)
-
-The sibling plan's QA 2.11 prints both numbers in the report *with* an explanatory note. The
-student-facing page has no equivalent. A one-line explainer shown only when the stored score and the
-recomputed list disagree would close this.
-
-The educator panel reads the stored score and shows "100% Pass" for the same attempt. It surfaces no
-per-question detail, so no contradiction is visible there:
-
-![](screenshots/desktop_12.6_educator_panel_legacy_cohort.png)
-
-## Finding 3 — "Your answer" marks correctly-ticked options with a red error glyph
-
-**Test:** QA 11, rows 1 and 4.
-**Severity:** Low — cosmetic, but actively confusing on exactly the question type this spec changed.
-
-**Expected:** a learner reviewing a wrong multi-select answer can tell which of their ticks were the
-problem.
-
-**Actual:** every option the learner ticked gets a red ✗, including the two that *are* correct. Those
-same two options then appear with a green ✓ in the "Correct answer" block two lines below. "Checkbox
-CORRECT 1" is simultaneously marked wrong and right:
-
-![](screenshots/desktop_11.1_results_all_three_50pct_fail.png)
-
-Under exact-match scoring the *answer as a whole* is wrong, so a single wrong-answer marker on the
-question is defensible — but per-option ✗ glyphs that contradict the block underneath are not. The
-"only the wrong option" case reads correctly, because there the learner's single tick genuinely was
-wrong:
-
-![](screenshots/desktop_11.4_results_only_wrong_option_50pct_fail.png)
-
-Marking the answer wrong at question level, or ✗-ing only the options that were wrongly ticked or
-wrongly omitted, would both read better.
-
-## Finding 4 — Spurious "Leave site?" prompt when nothing has been changed
-
-**Severity:** Low.
-**Regression introduced by this change?** Almost certainly not — the guard is in the form runner.
-
-**Expected:** an unsaved-changes guard fires when there are unsaved changes.
-
-**Actual:** it fires on every navigation away from the form runner, including immediately after a
-fresh page load with **no option ticked and no text typed**. Verified deliberately: loaded
-`/courses/qa-checkbox-scoring-course/1/fill_form/1`, touched nothing, navigated to `/` — the
-`beforeunload` dialog appeared and blocked navigation until dismissed. Reproduced on the survey runner
-too. A learner who opens a quiz and changes their mind gets a browser warning they have not earned.
-
-## Finding 5 — A failed quiz counts as complete for the course progress bar
-
-**Severity:** Low.
-
-**Expected:** progress reflects work actually completed.
-
-**Actual:** an item whose status is "Needs retry" is counted toward the completion percentage. The
-single-item checkbox course reads **"100% complete"** while its only item shows "Needs retry"
-(visible in the sidebar of most screenshots above). The progression-block course reads **67%** —
-2 of 3 — with the failed quiz among the two:
-
-![](screenshots/desktop_12.1_failed_75pct_item3_still_locked.png)
-
-The progression gate itself is correct: item 3 stayed locked. Only the percentage is generous.
-
-## Finding 6 — A never-marked survey tells the learner "marking is in progress"
-
-**Test:** QA 12.4.
-**Severity:** Low (copy).
-
-**Expected:** per the plan, "no pass/fail or incorrect-answer machinery appears at all".
-
-**Actual:** the form completes cleanly with no score and no verdict — correct — but the confirmation
-reads "Your responses are being reviewed — **marking is in progress**." The form is
-`CATEGORY_VALUE_SUM` with no pass mark and will never be marked, so the learner is promised a result
-that will never arrive:
-
-![](screenshots/desktop_12.4_survey_complete_no_verdict.png)
-
----
-
-## Detail on the passing tests
-
-### QA 12.1 — progression blocking (pass)
-
-`qa-progression-block-course`: topic, quiz, topic. Pass mark 80, four questions, the `checkboxes`
-question worth the difference.
-
-Baseline — item 3 locked, rendered with no link at all:
-
-![](screenshots/desktop_12.1_outline_before_quiz_item3_locked.png)
-
-All three multiple-choice answers right, checkbox question wrong → **3/4 = 75%, not passed**, item 2
-"Needs retry", item 3 still "Locked" and still unlinked. Retaken with the checkbox question right →
-**4/4 = 100%, passed**, item 3 flips to "Not started" and becomes linked:
-
-![](screenshots/desktop_12.1_passed_100pct_item3_unlocked.png)
-
-I confirmed the lock by checking the rendered `href` in the outline rather than by URL-guessing —
-direct GETs of a blocked item return 200 and create progress, so the outline is the honest signal.
-
-### QA 12.2 — unset pass mark (pass, and this was the critical one)
-
-`qa-quiz-no-pass-pct-course`, `quiz_pass_percentage = None`. Submitted with all three checkbox
-options ticked (correct answer: A + B), giving 1/2.
-
-The results page shows the score and explicitly declines to judge — "**Quiz complete** … has no pass
-mark, so there is no pass or fail — here is how you scored":
-
-![](screenshots/desktop_12.2_no_pass_mark_results_no_verdict.png)
-
-Every page in the plan's walk list then rendered, with no 500 anywhere:
-
-| Page | Result |
+| Page | Status |
 |---|---|
-| `/courses/qa-quiz-no-pass-pct-course/1/complete` | 200 — score, no verdict |
-| `/courses/qa-quiz-no-pass-pct-course/1/` | 200 — "Previous attempts: 50% (1/2)", no verdict |
+| `/courses/qa-quiz-no-pass-pct-course/1/complete` (results) | 200 |
+| `/courses/qa-quiz-no-pass-pct-course/1/` (course player) | 200 |
 | `/courses/qa-quiz-no-pass-pct-course/detail/` | 200 |
-| `/courses/` | 200 |
-| **`/` (student dashboard)** | **200 — all 7 registered courses listed** |
-| Log out → log back in | 200 — login redirect lands on a working dashboard |
-| Second, unrelated course | 200 |
+| `/courses/` (course home) | 200 |
+| **`/` (student dashboard)** | 200 |
+| `/courses/qa-question-types-course/detail/` (second course) | 200 |
+| `/courses/qa-question-types-course/1/` (second course player) | 200 |
 
-![](screenshots/desktop_12.2_dashboard_renders_after_no_pass_mark_attempt.png)
+Logging out and back in redirects to the dashboard, which renders normally — **no lockout**:
 
-The item's status is "Completed", not "Failed" — a missing pass mark reads as "no verdict" rather
-than as a failure, which is what the plan requires.
+![](screenshots/desktop_12.2_dashboard_after_no_pass_mark_attempt.png)
 
-### QA 12.3 — single-select unchanged (pass)
+The second, unrelated course opens normally, so nothing is globally broken.
 
-Multiple-choice answered wrongly with the checkbox question right: 1/2 = 50%, not passed, and
-**Question 1 — the multiple-choice one — listed as incorrect** while the checkbox question is
-correctly absent:
+**Course completion is also guarded.** The no-pass-mark course reaches its finish page and completes
+cleanly — `unpassed_forms()` does not call `passed()` unguarded, so no `ValueError`:
 
-![](screenshots/desktop_12.3_single_select_wrong_listed.png)
+![](screenshots/desktop_12.2_no_pass_mark_course_finish.png)
 
-### QA 12.4 — free-text (pass, both halves)
+## QA 12.3 — Single-select multiple choice is unchanged
 
-Non-scored survey `qa-free-text-survey-course`: `short_text` and `long_text` answers saved across a
-page boundary and shown back verbatim when navigating back with "Previous":
+Answering the `multiple_choice` question **incorrectly** lists exactly that question as
+"Marked wrong", with "Your answer: MC option B" against "Correct answer: MC option A", and drops the
+score to 1/4. Answering it correctly scores it and omits it from the list. Behaviour is unchanged:
 
-![](screenshots/desktop_12.4_free_text_answers_shown_back.png)
+![](screenshots/desktop_12.3_single_select_wrong.png)
 
-Defensive half — free-text *inside* a `strategy: QUIZ` form (`qa-all-question-types-form`): the
-free-text questions score 0 and are **excluded** from the incorrect-answers list, so no broken cards
-with empty "Your answer" / "Correct answer" blocks appear. 2/4 = 50%, which is that form's ceiling
-(see Observation C):
+## QA 12.4 — Free-text questions
 
-![](screenshots/desktop_12.4_freetext_in_scored_quiz_no_broken_cards.png)
+In a **non-scored** form (`qa-free-text-survey-form`, `strategy: CATEGORY_VALUE_SUM`, no pass mark),
+the form completes with *"Form complete! Thank you for completing QA Free Text Survey. Your answers
+have been recorded."* — **no score, no pass/fail, no incorrect-answer machinery at all**:
 
-### QA 12.5 — educator live panel (pass)
+![](screenshots/desktop_12.4_free_text_survey_complete.png)
 
-Cohort *QA Multi-Select Quiz Scoring Cohort*, as `demodev@email.com`. Percentages render, attempt
-counts render, and where a pass mark exists a Pass/Fail badge accompanies the figure:
+All four answers were saved, including both optional questions (verified directly against
+`FormProgress.answers`):
 
-![](screenshots/desktop_12.5_educator_panel_checkbox_course.png)
-
-Switching the course selector to the **no-pass-mark** course is the crash risk the plan calls out. It
-renders percentages (50%, 0%, 100%) with **no verdict badge at all** and no error:
-
-![](screenshots/desktop_12.5_educator_panel_no_pass_mark_no_verdict.png)
-
-The Details tab and the legacy cohort's panel also render. HTMX tab and sub-panel URLs both returned
-200.
-
-### QA 13 — demo content (pass)
-
-All three demo quizzes completable and passable at 100%:
-
-| Quiz | Result |
+| Question | Stored answer |
 |---|---|
-| `functionality_demo_end_with_quiz` → Mid course Quiz | 6/6 = 100%, passed |
-| `functionality_demo_end_with_quiz` → End course Quiz | 6/6 = 100%, passed |
-| `functionality_demo_course_parts` → `02. Core Concepts/03. knowledge-check` | 3/3 = 100%, passed |
+| In one line, what was the most useful thing you learned? | "The scoring rules for multi-select questions." |
+| How would you explain this course to a colleague? | "It walks you through each question type and shows how answers are marked." |
+| If you could change one thing…? *(optional)* | "More worked examples." |
+| Any other comments…? *(optional)* | "No further comments." |
 
-![](screenshots/desktop_13.1_demo_mid_course_quiz_100pct.png)
+**Defensive check (free-text inside a scored quiz).** `qa-all-question-types-form` does contain
+free-text, so the branch was exercised: both free-text questions **score 0** and **neither appears in
+the incorrect-answers list**, and no broken card with empty "Your answer" / "Correct answer" blocks is
+rendered. This is the robust outcome the plan asks for. The configuration itself is a fixture
+artefact rather than authored content — see Observation B.
 
-![](screenshots/desktop_13.2_demo_knowledge_check_100pct.png)
+## QA 12.5 — Educator live panel
 
-No demo question has become unanswerable. QA 13.3 found nothing to report — see Observation D.
+The cohort course-progress panel renders for both courses, with percentages and attempt counts.
 
-## Mobile (375×812)
+With a pass mark, verdicts appear (`50% Pass ×4`, `0% Fail ×1`). With **no** pass mark, the same
+panel shows the score and attempt count and **no verdict**, and does not error:
 
-The plan's priority here is that radio and checkbox controls stay distinguishable. They do —
-circles for single-select, squares for multi-select, with the "Select all that apply." hint on the
-multi-select group:
+![](screenshots/desktop_12.5_educator_panel_no_pass_mark.png)
 
-![](screenshots/mobile_11.0_quiz_runner_radio_vs_checkbox.png)
-
-| Check | Result |
-|---|---|
-| Radio vs checkbox distinguishable | Pass — circle vs square, plus the hint text |
-| Option touch targets | Pass — 46px tall, full width (above the 44px guideline) |
-| Horizontal overflow | None — `scrollWidth` 375 = viewport on every page checked |
-| Incorrect-answer cards | Pass — readable, no clipping, no overflow |
-| Course outline navigation | Pass — collapses to a bottom-sheet drawer |
-| Dashboard | Pass — no overflow, all courses reachable |
-| Free-text form | Pass |
-
-![](screenshots/mobile_11.1_results_incorrect_answer_card.png)
-
-![](screenshots/mobile_11.1_course_outline_drawer.png)
-
-Minor: the "Exit test" (36px) and "Next" (40px) buttons are slightly under the 44px touch-target
-guideline. Not raised as a finding — they are comfortably usable and unrelated to this change.
-
-## Tablet (768×1024)
-
-The tablet gets the **mobile** navigation treatment — the course outline collapses to a drawer rather
-than showing the desktop sidebar. That is a coherent choice and it works.
-
-![](screenshots/tablet_11.0_quiz_runner_radio_vs_checkbox.png)
-
-![](screenshots/tablet_11.1_results_incorrect_answer_card.png)
-
-The educator panel — the plan's specific tablet ask — renders cleanly:
+At tablet width the panel keeps its tabs, course selector and table; the table sits in an
+`overflow-x: auto` wrapper and the page itself does not scroll horizontally (`scrollWidth` 768 =
+`clientWidth` 768):
 
 ![](screenshots/tablet_12.5_educator_panel.png)
 
-The QA cohort's table is only one item wide, so it cannot exercise column overflow. I checked a
-genuinely wide one (*QA Col Boundary 11*, 16 columns, 1930px of table in a 768px viewport) and the
-responsive pattern is correct: **the table scrolls inside its own `overflow-x: auto` container and
-the page body does not overflow** (`document.scrollWidth` 768 = viewport):
+## QA 12.6 — Historical attempts are not rescored
 
-![](screenshots/tablet_12.5_educator_panel_wide_table_scrolls.png)
+**Passes, and the page does better than the plan requires.** The crafted pre-fix attempt (every
+option ticked, stored score 2/2) shows:
 
-## Tangential observations
+- the **stored** score unchanged — 100%, 2 / 2, "Quiz passed!"
+- the same question listed under "Review incorrect answers" as "Marked wrong" (derived at read time)
+- and an explicit reconciliation note between them: *"This quiz has changed since you sat it. Your
+  attempt has not been re-marked, so the score above is the one you were given at the time."*
 
-These are outside the feature under test. None blocks the spec.
+The plan asks only that nothing on the page claim otherwise; the page actively explains the
+discrepancy.
 
-**A. A form-only course reads "0 lessons".** `qa-quiz-no-pass-pct-course` has one item — the quiz —
-and its detail page shows "LESSONS: 0 lessons" and "THIS COURSE INCLUDES: 0 lessons" alongside
-"Includes assessments" and a course-content list containing that one item. The count appears to
-exclude forms.
+![](screenshots/desktop_12.6_legacy_score_not_rescored.png)
 
-**B. A 100%-complete course is still labelled "IN PROGRESS" on the dashboard.** Visible on
-`qa-quiz-no-pass-pct-course` and `qa-checkbox-scoring-course` in the dashboard screenshot above.
-Partly a consequence of Finding 5.
+This is the same underlying data as the sibling plan's `legacy-score-discrepancy.pdf`, which makes
+the pair a direct A/B: here the learner's correct ticks are green and the wrong one red; in the PDF
+all three are red.
 
-**C. `qa-all-question-types-form` cannot reach 100%, exactly as the plan predicted.** Four questions
-give `max_score = 4`, but its `short_text` and `long_text` questions can never be scored correct, so
-the ceiling is 2/4 = 50%. Its pass mark is 50, so a learner who answers everything they possibly can
-scores exactly the pass mark. This is the unrealistic-fixture trap the plan warns about, not a
-scoring bug — which is why the QA 11 matrix was run against a purpose-built option-only quiz
-instead. Per the plan's instruction, **free-text inside a `strategy: QUIZ` form is worth calling out
-in the upgrade notes as an authoring anti-pattern.**
+## QA 13 — Demo content sanity
 
-**D. The demo content contains no `checkboxes` questions at all.** `mid-course-quiz`,
-`end-course-quiz` and `knowledge-check` are 100% single-select `multiple_choice` with exactly one
-correct option each. So QA 13 verifies "nothing became unanswerable" but cannot exercise the
-checkbox fix. Relatedly, **QA 13.3 found nothing**: a scan of the DemoDev site turned up no
-`multiple_choice` question with more than one correct option, so there is no authored-content defect
-of that kind to escalate. Two consequences worth noting: the demo content does not demonstrate
-multi-select at all, and `end-course-quiz` has `quiz_show_incorrect: false`, so it shows no incorrect
-list by design.
+The dev database had **no demo content loaded** (zero `functionality_demo_*` courses). Loaded via the
+project's own loader rather than by hand:
 
-**E. The plan's matrix rows 1 and 4 coincide.** On a question with 2 correct options and 1 incorrect
-one, "all three options" and "both correct plus the incorrect one" are the same submission. Row 4 is
-therefore verified by row 1. I ran "only the incorrect option" as a distinct fifth combination to
-keep five real data points; it passes.
+```bash
+uv run manage.py content_save demo_content/functionality_demo_end_with_quiz DemoDev
+uv run manage.py content_save demo_content/functionality_demo_course_parts DemoDev
+```
 
-## Difficulties and deviations
+| Demo quiz | Pass mark | Result |
+|---|---|---|
+| `functionality-demo-show-end-with-quiz` — Mid course Quiz | 80% | **100% (6/6)** — passed |
+| `functionality-demo-show-end-with-quiz` — End course Quiz | 50% | **100% (6/6)** — passed |
+| `functionality-demo-course-parts` — Knowledge Check | 80% | **100% (3/3)** — passed |
 
-**Playwright was blocked at the start of the run.** A peer Claude session in this same worktree held
-the shared Chrome profile (`~/.cache/ms-playwright-mcp/mcp-chrome-66560ed`), and Chrome refuses a
-second instance on one profile. I stopped and asked rather than proceeding; on your instruction I
-killed the headless Chrome holding the lock (PID 3679269) and the run proceeded normally. **If
-parallel sessions in this worktree are routine, giving each Playwright MCP server its own
-`--user-data-dir` (or `--isolated`) would remove this collision permanently.**
+Every demo quiz remains completable and reaches 100%; no demo question has become unanswerable.
 
-**Quiz option inputs are `sr-only` behind their labels.** Clicking the `<input>` directly times out
-because the wrapping `<label>` intercepts the pointer event. All option selections were made by
-clicking labels, which is what a real user does; every submission was verified against the DOM's
-`checked` state before submitting.
+![](screenshots/desktop_13.1_demo_knowledge_check_passed.png)
 
-**Test data was created by the `fls-dev:qa-data-helper` agent, not by hand.** It ran the two fixture
-commands the plan names plus `qa_create_quiz_progression_block`, `qa_create_free_text_survey`,
-`qa_create_legacy_checkbox_score` and `content_save demo_content`. Two gaps needed new `qa_helpers`
-commands, both added by that agent with no application code touched:
+**QA 13.3 — no authoring finding.** A database-wide scan found **no** `multiple_choice` question with
+more than one correct option, in demo content or anywhere else. Nothing needs calling out in the
+upgrade notes on this axis.
 
-- `qa_create_checkbox_scoring_quiz.py` — the clean option-only scored quiz QA 11 needs, since the
-  existing all-question-types fixture caps at 50% (Observation C).
-- `qa_reset_student_progress.py` — the QA student carried 21 stale `FormProgress` rows from an
-  earlier pass, including a passed progression-block quiz that had already unlocked item 3, which
-  would have invalidated QA 12.1.
+## Mobile pass (375×812)
 
-**No test was skipped for missing data,** and nothing was marked PARTIAL or N/A.
+- **No horizontal overflow** on the runner or the results page (`scrollWidth` 375 = `clientWidth`).
+- Radio and checkbox controls stay clearly distinguishable — round vs square — at this width.
+- Option touch targets are **343 × 48 px**, above the 44 px guideline. The sticky "Next" button is
+  343 × 40 px — full width but 4 px under the guideline height; minor.
+- The course outline collapses to a hamburger; the results page's incorrect-answer card stacks
+  readably with its per-option glyphs intact.
 
-**Screenshot compression was a no-op** — the largest capture is 407KB, well under the 1024KB
-pre-commit limit, so `compress_screenshots.py` correctly found nothing to do.
+![](screenshots/mobile_11_quiz_runner_options.png)
 
-**No PDF artifacts were produced,** as this plan specifies. The `legacy-score-discrepancy.pdf`
-artifact belongs to the sibling plan's QA 2.11. Nothing outside this directory was written, read or
-cleaned.
+![](screenshots/mobile_11.1_results_incorrect_cards.png)
 
-**One caveat on the educator panel's attempt counts.** Because QA 11 deliberately submits the same
-quiz repeatedly, the panel shows "x7" attempts for the QA student by the end of the run. That is the
-QA process, not a defect.
+## Tablet pass (768×1024)
+
+- The tablet gets the **mobile-style collapsed nav**, not the desktop sidebar. The outline opens as a
+  bottom-sheet drawer over a dimmed backdrop and works correctly.
+- No horizontal overflow on any surface tested; the educator table scrolls inside its own wrapper.
+- The results page and its incorrect-answer card render at a comfortable width.
+
+![](screenshots/tablet_11.1_results_incorrect_cards.png)
+
+![](screenshots/tablet_11_course_outline_drawer.png)
 
 ---
 
-# Fixes applied
+## Observations (tangential — not failures of this plan)
 
-All six findings are fixed. Each landed failing-test-first; the full suite passes and every fix was
-re-checked in the browser against the fixtures this run built.
+### A. Free-text answers are saved but the learner can never re-read them
 
-| Finding | Fixed in | What changed |
-|---|---|---|
-| 1 — blank question missing from the review list | `student_progress/models.py`, `course_form_complete.html`, `reports/gather.py`, `reports/partials/student_detail.html` | A missing answer row is now judged as an empty selection rather than skipped |
-| 2 — legacy attempt contradicts itself | `student_progress/models.py`, `student_interface/views.py`, `course_form_complete.html` | The page explains the stale score instead of leaving the learner to spot it |
-| 3 — correct ticks marked with a red ✗ | `course_form_complete.html` | Each tick is marked on its own merit; the verdict moves to the question |
-| 4 — spurious "Leave site?" prompt | `student_interface/.../alpine-components.js` | The guard waits for a real edit |
-| 5 — failed quiz counts as complete | `student_progress/models.py`, `student_interface/utils.py` + `views.py`, `reports/gather.py`, `recalculate_progress_percentages` | A learner has to pass to complete |
-| 6 — survey promises marking | `course_form_complete.html` | Copy matches what actually happens |
+QA 12.4 asks that a free-text answer be "saved and shown back". The answers are definitely **saved**,
+and the completion page correctly shows no scoring machinery — but there is no route in the UI back
+to the submitted text. Revisiting the form shows only a "Previous attempts / 20 Aug 2026 / Completed"
+row with no link, and the completion page does not echo the answers. For a reflective or feedback
+form, a learner may reasonably expect to re-read what they wrote. Worth a product decision rather
+than a defect.
 
-## Where the fixes went beyond the finding
+### B. The QA fixture mixes free-text into a scored quiz
 
-**Finding 1 was fixed on the report too, not only the student page.** The root cause — `save_answers`
-deliberately storing no row for a blank question — blinds *every* read-time correctness derivation,
-and `reports/gather.py` walked the stored rows the same way. Its per-student wrong-answer detail and
-its confusion tally now pair each completed sitting with every question it covered.
+`qa-all-question-types-form` is `strategy: QUIZ` yet contains `short_text` and `long_text` questions
+— exactly the pattern the plan says should not exist in authored content. The consequence is a score
+ceiling of 50% on a form whose pass mark is 50%, so "answer every option-backed question perfectly"
+and "scrape a pass" are the same outcome, and no attempt can ever exceed the pass mark. That made
+QA 11's percentages awkward to reason about and would make a genuine off-by-one in scoring hard to
+spot.
 
-**The report's confusion denominators moved as a result.** `respondent_count` now counts the learners
-who *sat* a question rather than those who answered it, so error rates on quizzes containing optional
-questions will read differently from the 3a run's artifacts. That is the correct denominator for an
-error rate, but it means the 3a report artifacts want regenerating before sign-off.
+It is a **fixture** problem, not authored content (the scan in QA 13.3 found no such form in demo
+content), so it is not an upgrade-notes item — but `qa_create_multiselect_quiz_scoring` would be
+better splitting the free-text questions into a separate non-scored form, which would also let QA 11
+use round percentages.
 
-**Finding 5 also guards `course_finish`.** Changing only the percentage would have left a direct GET
-of the finish URL stamping `CourseProgress.completed_time` over a failed quiz, so the dashboard would
-still have said "Complete". The finish page now withholds the completion — it still renders, so the
-learner is not locked out, they simply are not credited. The rule throughout is: a form counts as
-finished when the learner has a completed attempt and, for a scored quiz, their **latest** completed
-attempt passed. A quiz with no pass mark has no bar to clear and counts on completion, matching what
-the course outline already showed.
+### C. The dev database had no demo content
 
-**Finding 5 needs a backfill.** Stored `progress_percentage` values are stale under the new rule —
-`uv run manage.py recalculate_progress_percentages` brings them in line (verified on the dev
-database: 81 of 142 records moved, and a second run is a no-op). Already-stamped `completed_time`
-values are left alone; history is not rewritten, consistent with the spec's non-rescoring stance.
+QA 13 could not start until the two demo courses were loaded (see above). Not a product defect, but
+worth knowing that a fresh QA run of this plan needs the `content_save` step, which the plan's Setup
+section does not currently mention.
 
-**Finding 2 shows its note whenever the stored and re-derived scores disagree**, not only when the
-incorrect-answer list is visible. The score and the verdict banner above it are stale either way, so
-gating the explanation on `quiz_show_incorrect` would hide it exactly where the learner has the least
-other information. `score_quiz()` split into a non-storing `compute_quiz_scores()` so the page can
-re-derive without writing — one code path, so the live derivation cannot drift from what a fresh
-attempt would score.
+### D. The form runner's "Leave site?" prompt
 
-**Finding 3 treats `correct=None` as neither.** An option nobody marked up is not evidence either
-way, so it carries a neutral glyph rather than being blamed alongside genuinely wrong ticks.
+Navigating away from a part-filled form fires a native `beforeunload` prompt. This is **correct**
+here — there were genuinely unsaved changes. Noted only to record that the previously-reported
+spurious-prompt bug did not reappear: no prompt fired when navigating away from an untouched form.
 
-## What was not changed
+---
 
-**`save_answers` still writes no row for a blank question.** That behaviour is deliberate and correct
-— a blank row would count toward the runner's answered tally and hide which questions are still
-outstanding. The fix belongs in the readers, and that is where it went.
+## Difficulties
 
-**Observation C is still open.** Free-text questions inside a `strategy: QUIZ` form still count toward
-`max_score` while never being scorable. That is an authoring anti-pattern to call out in the upgrade
-notes, not a scoring bug, and it remains an open todo item.
-
-**Observations A, B, D and E** are unrelated to this spec and were left alone. Observation B ("a
-100%-complete course is still labelled IN PROGRESS") was noted as partly a consequence of Finding 5;
-with Finding 5 fixed, the failed-quiz half of it is gone.
+- Report generation and quiz submission for the larger fixtures occasionally exceed Playwright's 5 s
+  click timeout. The submissions all completed server-side; the timeout is a client-side wait, and
+  each result was verified on the following page.
+- The django-debug-toolbar overlay intercepts clicks in the bottom-left region; hiding it once
+  cleared this for the rest of the run.
+- Option `<input>` elements are `sr-only` behind their labels, so `browser_click` on the input is
+  intercepted by the label. Selections were made by clicking through the same elements a user's tap
+  would activate; the resulting checked state was asserted before every submit.
