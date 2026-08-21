@@ -61,3 +61,14 @@ class TestBuildMenuItemsActive:
     def test_nonexistent_section_marks_nothing_active(self) -> None:
         items = _build_menu_items(CONFIG, URL_NAME, active_section="nonexistent")
         assert all(item["active"] is False for item in items)
+
+    def test_extra_url_kwargs_merge_into_section_url(self) -> None:
+        """A hosting view's extra reverse() kwargs land in every menu item's URL."""
+        items = _build_menu_items(
+            CONFIG,
+            "panel_framework_test:scoped_interface",
+            active_section="cohorts",
+            extra_url_kwargs={"extra": "acme"},
+        )
+        cohorts_item = next(i for i in items if i["label"] == "Cohorts")
+        assert cohorts_item["url"] == "/test-panel/scoped/acme/cohorts"

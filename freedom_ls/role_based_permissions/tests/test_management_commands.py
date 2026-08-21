@@ -9,7 +9,6 @@ import pytest
 from click import ClickException
 from guardian.models import GroupObjectPermission, UserObjectPermission
 from guardian.shortcuts import assign_perm
-from pytest_mock import MockerFixture
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
@@ -35,12 +34,8 @@ def _clear_caches() -> Generator[None]:
 
 
 @pytest.fixture(autouse=True)
-def _mock_get_current_site(mock_site_context: Site, mocker: MockerFixture) -> None:
-    """Ensure Site.objects.get_current() returns the test site."""
-    mocker.patch(
-        "django.contrib.sites.models.SiteManager.get_current",
-        return_value=mock_site_context,
-    )
+def _site_context(mock_site_context: Site) -> None:
+    """Every test here builds site-aware objects and assigns roles."""
 
 
 class TestSyncRolePermissionsNoAssignments:

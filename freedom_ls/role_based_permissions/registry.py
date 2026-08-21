@@ -45,6 +45,9 @@ PERMISSIONS: dict[str, str] = {
     # "freedom_ls_content_engine.add_file": "Can add file",
     # "freedom_ls_content_engine.change_file": "Can change file",
     # "freedom_ls_content_engine.delete_file": "Can delete file",
+    # --- organisations app (label: freedom_ls_organisations) ---
+    # ACTIVE — used in role assignments
+    "freedom_ls_organisations.view_organisation": "Can view organisation",
     # --- student_management app (label: freedom_ls_student_management) ---
     # ACTIVE — used in educator_interface and role assignments
     "freedom_ls_student_management.view_cohort": "Can view cohort",

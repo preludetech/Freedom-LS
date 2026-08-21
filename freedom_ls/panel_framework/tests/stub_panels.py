@@ -137,7 +137,7 @@ class StubListConfig(ListViewConfig):
         return [StubCreateAction()]
 
     @classmethod
-    def get_instance_view(cls, pk: str) -> InstanceView:
+    def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:
         instance: Model = get_object_or_404(_stub_model(), pk=pk)
         assert cls.instance_view is not None
         return cls.instance_view(instance)

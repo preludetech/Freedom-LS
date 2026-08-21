@@ -14,11 +14,12 @@ class TestBaseRoles:
         assert missing == set(), f"Permissions not in registry: {missing}"
 
     def test_all_expected_roles_exist(self) -> None:
-        """All 6 expected roles are defined."""
+        """The expected role set is defined."""
         expected = {
             "site_admin",
             "instructor",
             "ta",
+            "organisation_staff",
             "system_admin",
             "student",
             "observer",

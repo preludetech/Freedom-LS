@@ -1,6 +1,7 @@
 {# djlint:off H037 H026 H021 #}
 <c-dropdown-menu trigger_class="cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2"
-                 aria_label="Open user menu for {{ user.display_name }}">
+                 aria_label="Open user menu for {{ user.display_name }}"
+                 menu_label="User menu">
     <c-slot name="trigger">
         <span class="inline-flex h-10 w-10 items-center justify-center
                      rounded-full bg-header-action text-on-header-action
@@ -17,10 +18,12 @@
     <c-button dropdown="true" href="{% url 'accounts:account_profile' %}">
         Profile
     </c-button>
-    {% if user.is_staff %}
-        <c-button dropdown="true" href="{% url 'educator_interface:interface' '' %}">
+    {% if can_access_educator_interface %}
+        <c-button dropdown="true" href="{% url 'educator_interface:root' %}">
             Educator Interface
         </c-button>
+    {% endif %}
+    {% if user.is_staff %}
         <c-button dropdown="true" href="/admin/" hx-boost="false">
             Admin Panel
         </c-button>

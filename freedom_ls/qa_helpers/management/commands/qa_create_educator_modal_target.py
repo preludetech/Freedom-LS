@@ -24,6 +24,7 @@ from django.contrib.sites.models import Site
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -95,7 +96,12 @@ def command(site_name: str) -> None:
     # Cohort the educator manages.
     cohort: Cohort | None = Cohort.objects.filter(name=COHORT_NAME, site=site).first()
     if cohort is None:
-        cohort = cast(Cohort, CohortFactory(name=COHORT_NAME, site=site))
+        cohort = cast(
+            Cohort,
+            CohortFactory(
+                name=COHORT_NAME, site=site, organisation=get_default_organisation(site)
+            ),
+        )
         click.secho(f"Created cohort '{COHORT_NAME}'", fg="green")
     else:
         click.secho(f"Reusing cohort '{COHORT_NAME}'", fg="yellow")

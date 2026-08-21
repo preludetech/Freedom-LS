@@ -18,6 +18,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_interest.factories import CourseInterestFactory
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 
 
@@ -51,6 +52,34 @@ def test_hidden_course_registered_user_gets_200(
     response = client.get(_detail_url(course))
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_hidden_course_registered_through_two_organisations_gets_200(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    """A learner can hold two registrations for one course, one per
+    organisation. The detail page must still render, not 500."""
+    course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
+    user = UserFactory()
+    UserCourseRegistrationFactory(
+        user=user,
+        collection=course,
+        is_active=True,
+        organisation=OrganisationFactory(),
+    )
+    UserCourseRegistrationFactory(
+        user=user,
+        collection=course,
+        is_active=True,
+        organisation=OrganisationFactory(),
+    )
+    client = logged_in_client(user)
+
+    response = client.get(_detail_url(course))
+
+    assert response.status_code == 200
+    assert course.title in response.content.decode()
 
 
 @pytest.mark.django_db

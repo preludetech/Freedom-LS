@@ -60,11 +60,77 @@ document.addEventListener("alpine:init", () => {
     // Dropdown menu component (cotton/dropdown-menu.html)
     Alpine.data("dropdownMenu", () => ({
         open: false,
-        toggle() {
-            this.open = !this.open;
+        toggle(event) {
+            if (this.open) {
+                this.close();
+                return;
+            }
+            this.open = true;
+            // A click synthesised by Enter or Space carries detail 0. Only a
+            // keyboard open moves focus into the menu; a pointer open leaves
+            // focus on the trigger so the pointer stays in charge.
+            if (event && event.detail === 0) {
+                this.focusInitialItem();
+            }
+        },
+        openFromTrigger() {
+            this.open = true;
+            this.focusInitialItem();
         },
         close() {
             this.open = false;
+        },
+        // Menu items keep their natural tab stop, so Tab still walks the menu
+        // in DOM order; the arrow keys are an addition to that, not a
+        // replacement for it.
+        menuItems() {
+            const panel = this.$refs.menuPanel;
+            if (!panel) return [];
+            const items = panel.querySelectorAll(
+                '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]'
+            );
+            return Array.from(items).filter((item) => !item.disabled);
+        },
+        focusInitialItem() {
+            const items = this.menuItems();
+            if (items.length === 0) return;
+            const checked = items.find(
+                (item) => item.getAttribute("aria-checked") === "true"
+            );
+            const trigger = this.$refs.menuButton;
+            // x-show only reveals the panel on the next tick; a hidden element
+            // cannot take focus. By then the user may already have tabbed on,
+            // so only take focus if it is still sitting on the trigger.
+            this.$nextTick(() => {
+                if (document.activeElement !== trigger) return;
+                (checked || items[0]).focus();
+            });
+        },
+        focusFirstItem() {
+            const items = this.menuItems();
+            if (items.length > 0) items[0].focus();
+        },
+        focusLastItem() {
+            const items = this.menuItems();
+            if (items.length > 0) items[items.length - 1].focus();
+        },
+        focusNextItem() {
+            this.moveFocus(1);
+        },
+        focusPreviousItem() {
+            this.moveFocus(-1);
+        },
+        moveFocus(step) {
+            const items = this.menuItems();
+            if (items.length === 0) return;
+            const current = items.indexOf(document.activeElement);
+            if (current === -1) {
+                // Focus is still on the trigger: enter the menu from the end
+                // the arrow points at.
+                (step > 0 ? items[0] : items[items.length - 1]).focus();
+                return;
+            }
+            items[(current + step + items.length) % items.length].focus();
         },
         onEscape() {
             if (!this.open) return;
@@ -95,6 +161,15 @@ document.addEventListener("alpine:init", () => {
         },
         init() {
             this.$watch("open", () => this.positionMenu());
+            // Options that hx-get into a target outside this dropdown (e.g.
+            // the organisation switcher, whose options swap #main-content
+            // while the dropdown itself lives in the sidebar) leave the
+            // panel visually open after the swap — nothing else closes it.
+            // Every other dropdown option navigates away or reloads the
+            // page, so this is a no-op for them.
+            this.$el.addEventListener("htmx:afterRequest", () => {
+                this.close();
+            });
         },
     }));
 
@@ -335,6 +410,7 @@ document.addEventListener("alpine:init", () => {
         _popstateHandler: null,
         _historyPushed: false,
         _closingFromPopstate: false,
+        _closingForHtmxNav: false,
         triggerEl: null,
         init() {
             this.dialog = this.$refs.panelDialog;
@@ -358,9 +434,12 @@ document.addEventListener("alpine:init", () => {
                 if (this.triggerEl) this.triggerEl.focus();
                 if (this._historyPushed) {
                     this._historyPushed = false;
-                    if (!this._closingFromPopstate) history.back();
+                    if (!this._closingFromPopstate && !this._closingForHtmxNav) {
+                        history.back();
+                    }
                     this._closingFromPopstate = false;
                 }
+                this._closingForHtmxNav = false;
             });
             this.dialog.addEventListener("click", (event) => {
                 if (!this.isMobile) return;
@@ -391,6 +470,28 @@ document.addEventListener("alpine:init", () => {
                 }
                 event.preventDefault();
                 window.location.replace(link.href);
+            });
+
+            // A control inside the sheet that navigates over htmx rather than
+            // by link (the organisation switcher's option buttons) never
+            // reaches the link branch above, so nothing else dismisses the
+            // sheet and it is left covering the content it just loaded.
+            // Closing as the request goes out also means the page htmx caches
+            // for Back is snapshotted with the sheet already shut.
+            //
+            // The history entry pushed on open is deliberately left in place.
+            // htmx stamps the current entry as its own and caches the outgoing
+            // page against it immediately before pushing the new URL, and that
+            // entry is what makes Back restore this page. Unwinding it first
+            // (history.back() races the in-flight request, and its popstate
+            // makes htmx swap the whole document out from under the pending
+            // swap) or collapsing htmx's push into a replace (which discards
+            // the entry htmx just anchored its snapshot to) both end with Back
+            // showing a URL the content no longer matches.
+            this.dialog.addEventListener("htmx:beforeRequest", () => {
+                if (!this.isMobile || !this.dialog.open) return;
+                this._closingForHtmxNav = true;
+                this.close();
             });
 
             // Back closes the modal sheet instead of navigating the page. The

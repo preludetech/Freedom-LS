@@ -1,6 +1,6 @@
 # Learner Tracking
 
-_Last updated: 2026-08-05_
+_Last updated: 2026-08-11_
 
 ## Summary
 
@@ -20,6 +20,8 @@ _Last updated: 2026-08-05_
 
 **Per course** — one record per learner per course, created when they register. It holds start time, last-accessed time, completion time, the progress percentage, and a pointer to the item they last viewed, which is what the course player uses to resume them. Browsing a course without registering leaves no tracking record.
 
+None of this is scoped by organisation. A learner can hold a separate registration for the same course through more than one organisation — see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations) — but progress tracks the learner and the course, not the registration: they still have one record per topic, one course record, and one shared quiz-attempt history, however many organisations they are registered through.
+
 ## Progress Percentage
 
 The percentage is completed items divided by total items in the course, rounded to a whole number. It recalculates automatically the first time an item is marked complete.
@@ -29,7 +31,7 @@ Bulk database updates that bypass the normal save path do not trigger recalculat
 ## Who Can Read Tracking Data
 
 - **Administrators** — full read access to all progress and answer records in the Django admin.
-- **Educators** — completion status, quiz scores, and deadline information for students in their cohorts, via the course-progress matrix. See [educator interface](./educator-interface.md).
+- **Educators** — completion status, quiz scores, and deadline information for students in their cohorts, via the course-progress matrix. Which cohorts and students an educator can reach this way is bounded by the organisation they are currently viewing as well as by their access grants. See [educator interface](./educator-interface.md#access-control).
 - **Learners** — their own progress, shown indirectly through course player status indicators, dashboard sections, and quiz feedback. There is no raw data export for learners.
 
 ## Limits

@@ -5,6 +5,7 @@ import djclick as click
 from django.contrib.sites.models import Site
 
 from freedom_ls.content_engine.models import Course
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -39,7 +40,9 @@ def command(
         cohort = Cohort.objects.get(name=cohort_name, site=site)
         click.secho(f"Cohort '{cohort_name}' already exists", fg="yellow")
     except Cohort.DoesNotExist:
-        cohort = CohortFactory(name=cohort_name, site=site)
+        cohort = CohortFactory(
+            name=cohort_name, site=site, organisation=get_default_organisation(site)
+        )
         click.secho(f"Created cohort '{cohort_name}' (no students)", fg="green")
 
     for slug in course_slug:

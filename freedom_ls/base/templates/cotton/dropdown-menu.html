@@ -2,12 +2,15 @@
 <c-vars trigger=""
         class=""
         aria_label="Menu"
+        menu_label=""
         trigger_class="p-2 hover:bg-surface-2 rounded-md transition-colors" />
 
 <div class="relative inline-block {{ class }}" x-data="dropdownMenu">
     {% comment %} 3-dots menu button {% endcomment %}
     <button type="button"
             x-on:click="toggle"
+            x-on:keydown.arrow-down.prevent="openFromTrigger"
+            x-on:keydown.arrow-up.prevent="openFromTrigger"
             class="{{ trigger_class }}"
             aria-label="{{ aria_label }}"
             aria-haspopup="menu"
@@ -34,6 +37,10 @@
          x-on:click.away="close"
          x-on:scroll.window="close"
          x-on:keydown.escape.window="onEscape"
+         x-on:keydown.arrow-down.prevent="focusNextItem"
+         x-on:keydown.arrow-up.prevent="focusPreviousItem"
+         x-on:keydown.home.prevent="focusFirstItem"
+         x-on:keydown.end.prevent="focusLastItem"
          x-transition:enter="transition ease-out duration-100"
          x-transition:enter-start="transform opacity-0 scale-95"
          x-transition:enter-end="transform opacity-100 scale-100"
@@ -43,7 +50,9 @@
          x-ref="menuPanel"
          class="dropdown-panel fixed w-40 bg-surface border border-border rounded-md shadow-lg z-[9999]"
          style="display: none">
-        <div class="py-1 space-y-1">
+        <div class="py-1 space-y-1"
+             role="menu"
+             aria-label="{{ menu_label|default:aria_label }}">
             {{ slot }}
         </div>
     </div>
@@ -53,6 +62,11 @@
 {# djlint:on H037 H026 H021 #}
 
 {% comment %}
+The panel is a `role="menu"`, so everything passed in the slot must be a menu
+item: `<c-button dropdown="true">` already is one, and a hand-written option
+needs `role="menuitem"`, `menuitemradio` or `menuitemcheckbox`. `menu_label`
+names the menu itself; it falls back to `aria_label` (the trigger's name).
+
 Usage Examples:
 
   <!-- Default 3-dots icon -->

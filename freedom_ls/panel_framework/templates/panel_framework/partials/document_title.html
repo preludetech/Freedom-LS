@@ -1,0 +1,21 @@
+{% comment %}
+Browser-tab title for a panel-framework interface.
+
+Interface navigation is an out-of-band fragment swap and never reloads the page,
+so the tab would go stale on every move without this. htmx lifts a <title> found
+at the root of a partial response out of the swapped content and applies it to
+document.title, which is why the element is emitted bare here rather than
+wrapped or marked hx-swap-oob.
+
+The `document-title` partial is the one source of the string: a hosting page
+template includes it inside its own {% templatetag openblock %} block head_title
+{% templatetag closeblock %} so a navigation cannot change the title format. Keep
+it on a single line — htmx copies the element's text verbatim, so indentation
+would show up in the tab.
+
+panel_framework passes no context for the middle segment: like the announcer's
+message, the fragment sources it from the request. A host app that scopes its
+interface names the current scope in request.panel_scope_name; a host with no
+such concept sets nothing and the segment is dropped, leaving no stray dash.
+{% endcomment %}
+{% partialdef document-title %}{% if heading %}{{ heading }} — {% endif %}{% if request.panel_scope_name %}{{ request.panel_scope_name }} — {% endif %}{{ site_name }}{% endpartialdef %}<title>{% partial document-title %}</title>

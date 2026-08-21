@@ -41,6 +41,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, CourseVisibility, Topic
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -156,7 +157,11 @@ def _ensure_registration(site: Site, user: User, course: Course) -> None:
         user=user, collection=course, site=site
     ).exists():
         UserCourseRegistrationFactory(
-            user=user, collection=course, site=site, is_active=True
+            user=user,
+            collection=course,
+            site=site,
+            organisation=get_default_organisation(site),
+            is_active=True,
         )
 
 
@@ -223,7 +228,12 @@ def command(site_name: str) -> None:
     # --- Educator cohort (so cohort views show data) -------------------
     cohort: Cohort | None = Cohort.objects.filter(name=COHORT_NAME, site=site).first()
     if cohort is None:
-        cohort = cast(Cohort, CohortFactory(name=COHORT_NAME, site=site))
+        cohort = cast(
+            Cohort,
+            CohortFactory(
+                name=COHORT_NAME, site=site, organisation=get_default_organisation(site)
+            ),
+        )
     assign_perm("view_cohort", educator, cohort)
     if not CohortCourseRegistration.objects.filter(
         cohort=cohort, collection=published_free, site=site

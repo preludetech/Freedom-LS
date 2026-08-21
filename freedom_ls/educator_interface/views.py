@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TypedDict
+from typing import TypedDict, cast
 from uuid import UUID
 
-from guardian.shortcuts import get_objects_for_user
-
+from django import forms
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.core.paginator import Page, Paginator
@@ -15,13 +15,15 @@ from django.db.models import (
     IntegerField,
     Model,
     OuterRef,
+    Prefetch,
     Q,
     QuerySet,
     Subquery,
     Value,
 )
 from django.db.models.functions import Coalesce
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
+from django.shortcuts import get_object_or_404, redirect
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone as tz
@@ -29,7 +31,9 @@ from django.utils import timezone as tz
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
 from freedom_ls.course_interest.models import CourseInterest
+from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.forms import CohortForm
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     DeleteAction,
@@ -55,11 +59,41 @@ from freedom_ls.student_management.models import (
     UserCohortDeadlineOverride,
     UserCourseRegistration,
 )
+from freedom_ls.student_management.queries import (
+    cohorts_visible_to,
+    organisations_accessible_to,
+    users_visible_to,
+)
 from freedom_ls.student_progress.models import (
     CourseProgress,
     FormProgress,
     TopicProgress,
 )
+
+#: Session key remembering the educator's last-visited organisation, used
+#: only to pick a default for the bare /educator/ redirect. Re-authorised on
+#: every use — the session value is never trusted on its own.
+LAST_ORGANISATION_SESSION_KEY = "educator_interface_last_organisation_slug"
+
+
+class _OrganisationScopedRequest(HttpRequest):
+    """Typing-only view of a request after interface() has resolved and
+    authorised an organisation onto it.
+
+    panel_framework names none of these: the scope it enforces is whatever a
+    config lists in required_request_attrs, and the title segment reads
+    panel_scope_name. So this class exists purely so this module can
+    type-check the attribute access without a type: ignore, and is never
+    instantiated; only used with cast().
+    """
+
+    organisation: Organisation
+    panel_scope_name: str
+    panel_url_kwargs: dict[str, str]
+    accessible_organisations: list[Organisation]
+    path_string: str
+    panel_announcement: str
+    panel_extra_oob: list[str]
 
 
 class FormProgressData(TypedDict):
@@ -81,12 +115,9 @@ class FormProgressData(TypedDict):
 class CohortDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
+        request = cast(_OrganisationScopedRequest, request)
         return (
-            get_objects_for_user(
-                request.user,
-                "view_cohort",
-                klass=Cohort,
-            )
+            cohorts_visible_to(request.user, request.organisation)
             .annotate(
                 student_count=Count("cohortmembership", distinct=True),
             )
@@ -122,20 +153,29 @@ class UserDataTable(DataTable):
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        # Get cohorts user has access to
-        accessible_cohorts = get_objects_for_user(
-            request.user,
-            "view_cohort",
-            klass=Cohort,
-        )
-
-        # Get users from accessible cohorts
+        request = cast(_OrganisationScopedRequest, request)
+        organisation = request.organisation
+        # users_visible_to scopes which rows appear, but the Cohorts and
+        # Registered Courses cells render separate relations that it does not
+        # touch. A learner who studies through two organisations — the case
+        # organisations exist to separate — would otherwise list both here.
+        # The cells read these relations through .all(), so filtering the
+        # prefetch is what scopes them.
         return (
-            User.objects.filter(cohortmembership__cohort__in=accessible_cohorts)
-            .distinct()
+            users_visible_to(request.user, organisation)
             .prefetch_related(
-                "cohortmembership_set__cohort",
-                "usercourseregistration_set__collection",
+                Prefetch(
+                    "cohortmembership_set",
+                    queryset=CohortMembership.objects.filter(
+                        cohort__in=cohorts_visible_to(request.user, organisation)
+                    ).select_related("cohort"),
+                ),
+                Prefetch(
+                    "usercourseregistration_set",
+                    queryset=UserCourseRegistration.objects.filter(
+                        organisation=organisation
+                    ).select_related("collection"),
+                ),
             )
             .order_by("first_name", "last_name")
         )
@@ -557,6 +597,7 @@ class CohortCourseProgressPanel(Panel):
         student_override_map: dict[
             tuple[int, int | None, UUID | None], UserCohortDeadlineOverride
         ],
+        organisation_slug: str,
     ) -> list[dict[str, object]]:
         """Build row data for each student on the current page."""
         now = tz.now()
@@ -587,7 +628,10 @@ class CohortCourseProgressPanel(Panel):
                     "display_name": display_name,
                     "student_url": reverse(
                         "educator_interface:interface",
-                        kwargs={"path_string": f"users/{user.pk}"},
+                        kwargs={
+                            "organisation_slug": organisation_slug,
+                            "path_string": f"users/{user.pk}",
+                        },
                     ),
                     "progress": membership.progress,
                     "cells": cells,
@@ -670,6 +714,7 @@ class CohortCourseProgressPanel(Panel):
             form_progress_map,
             deadline_map,
             student_override_map,
+            cohort.organisation.slug,
         )
 
         header_items = self._build_header_items(
@@ -729,10 +774,17 @@ class CohortInstanceView(InstanceView):
     }
 
     def get_actions(self) -> list[PanelAction]:
+        # The instance already carries its own organisation — no request
+        # available here, so no need for one.
+        cohort = cast(Cohort, self.instance)
         return [
             DeleteAction(
                 success_url=reverse(
-                    "educator_interface:interface", kwargs={"path_string": "cohorts"}
+                    "educator_interface:interface",
+                    kwargs={
+                        "organisation_slug": cohort.organisation.slug,
+                        "path_string": "cohorts",
+                    },
                 )
             ),
         ]
@@ -744,10 +796,28 @@ class CreateCohortAction(CreateInstanceAction):
     form_title = "Create Cohort"
     action_name = "create_cohort"
 
+    def get_form(
+        self, request: HttpRequest, instance: Model | None = None
+    ) -> forms.ModelForm:
+        # The organisation is not a user choice — CohortForm never exposes
+        # the field — so it comes from the URL the request already resolved
+        # and authorised, not from anything the form submitted. It is attached
+        # here rather than in form_valid because the per-organisation
+        # uniqueness constraint can only be checked while cleaning if the
+        # instance already carries its organisation.
+        form = super().get_form(request, instance)
+        organisation = cast(_OrganisationScopedRequest, request).organisation
+        cast(Cohort, form.instance).organisation = organisation
+        self._organisation_slug = organisation.slug
+        return form
+
     def get_success_url(self, instance: Model) -> str:
         return reverse(
             "educator_interface:interface",
-            kwargs={"path_string": f"cohorts/{instance.pk}"},
+            kwargs={
+                "organisation_slug": self._organisation_slug,
+                "path_string": f"cohorts/{instance.pk}",
+            },
         )
 
     def get_created_event_name(self) -> str:
@@ -761,9 +831,21 @@ class CohortConfig(ListViewConfig):
     list_view = CohortDataTable
     instance_view = CohortInstanceView
 
+    required_request_attrs = ("organisation",)
+
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
         return [CreateCohortAction()]
+
+    @classmethod
+    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
+        organisation = cast(_OrganisationScopedRequest, request).organisation
+        if (
+            not cohorts_visible_to(request.user, organisation)
+            .filter(pk=instance.pk)
+            .exists()
+        ):
+            raise OrganisationScopeDenied
 
 
 class UserConfig(ListViewConfig):
@@ -772,6 +854,18 @@ class UserConfig(ListViewConfig):
     model = User
     list_view = UserDataTable
     instance_view = UserInstanceView
+
+    required_request_attrs = ("organisation",)
+
+    @classmethod
+    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
+        organisation = cast(_OrganisationScopedRequest, request).organisation
+        if (
+            not users_visible_to(request.user, organisation)
+            .filter(pk=instance.pk)
+            .exists()
+        ):
+            raise OrganisationScopeDenied
 
 
 class CourseDataTable(DataTable):
@@ -916,9 +1010,15 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
 class CourseStudentRegistrationDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        return UserCourseRegistration.objects.select_related(
-            "user", "collection"
-        ).order_by("user__first_name", "user__last_name")
+        # Courses themselves are not organisation-scoped (CourseConfig is
+        # exempt), but the individual registrations rendered here belong to
+        # one organisation each and must not leak across them.
+        organisation = cast(_OrganisationScopedRequest, request).organisation
+        return (
+            UserCourseRegistration.objects.select_related("user", "collection")
+            .filter(organisation=organisation)
+            .order_by("user__first_name", "user__last_name")
+        )
 
     @staticmethod
     def get_columns() -> list[dict[str, object]]:
@@ -1028,6 +1128,21 @@ class CourseConfig(ListViewConfig):
     list_view = CourseDataTable
     instance_view = CourseInstanceView
 
+    required_request_attrs = ("organisation",)
+
+    check_access_exempt_reason = (
+        "Courses are shared across the Site and are not organisation-scoped "
+        "in this cut. The list is also currently unguarded entirely."
+    )
+
+    # @claude: CourseDataTable.get_queryset returns Course.objects.all(), so every
+    # logged-in user sees every course on the Site with no permission check. The
+    # real check belongs to critical_security_fixes; this override keeps today's
+    # behaviour while making the gap declared and greppable rather than invisible.
+    @classmethod
+    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
+        return
+
 
 interface_config: dict[str, type[ListViewConfig]] = {
     config.url_name: config for config in [CohortConfig, UserConfig, CourseConfig]
@@ -1035,11 +1150,114 @@ interface_config: dict[str, type[ListViewConfig]] = {
 
 
 @login_required
-def interface(request: HttpRequest, path_string: str = "") -> HttpResponse:
-    return panel_framework_view(
-        config=interface_config,
-        request=request,
-        path_string=path_string,
-        template_name="educator_interface/interface.html",
-        url_name="educator_interface:interface",
+def interface_root(request: HttpRequest) -> HttpResponse:
+    """Redirect a bare /educator/ to a concrete organisation URL.
+
+    The session remembers the last-visited organisation only to decide this
+    redirect, and that value is re-authorised on every use — once a URL
+    names an organisation, the URL always wins over the session.
+    """
+    accessible = organisations_accessible_to(request.user)
+    remembered_slug = request.session.get(LAST_ORGANISATION_SESSION_KEY)
+    organisation = (
+        accessible.filter(slug=remembered_slug).first() if remembered_slug else None
+    ) or accessible.first()  # accessible is ordered by name
+    if organisation is None:
+        raise Http404
+    return redirect(
+        "educator_interface:interface",
+        organisation_slug=organisation.slug,
+        path_string="cohorts",
     )
+
+
+@login_required
+def interface(
+    request: HttpRequest, organisation_slug: str, path_string: str = ""
+) -> HttpResponse:
+    """Resolve and authorise the organisation named in the URL, once.
+
+    Selecting an organisation is an authorisation decision, not a filter:
+    unlike Site, which is derived from the request host and cannot be
+    forged, an organisation comes from user-supplied URL input. "No such
+    slug" and "slug exists but you have no access" both 404 identically — a
+    403 would confirm the slug is real and let an attacker enumerate a
+    Site's organisation names.
+    """
+    organisation = get_object_or_404(Organisation, slug=organisation_slug)
+    if (
+        not organisations_accessible_to(request.user)
+        .filter(pk=organisation.pk)
+        .exists()
+    ):
+        raise Http404
+    scoped_request = cast(_OrganisationScopedRequest, request)
+    scoped_request.organisation = organisation
+    scoped_request.panel_scope_name = organisation.name
+    scoped_request.panel_url_kwargs = {"organisation_slug": organisation.slug}
+    scoped_request.accessible_organisations = list(
+        organisations_accessible_to(request.user)
+    )
+    scoped_request.path_string = path_string
+    # Rendered into the same OOB bundle panel_framework already assembles
+    # for breadcrumbs/sidebar/title/announcer (panel_framework/views.py) —
+    # on every navigation, not only a switch, because the switcher's
+    # per-organisation links embed the current path_string, which changes
+    # on every navigation and would otherwise go stale the moment the user
+    # moves to a different section without switching organisation.
+    scoped_request.panel_extra_oob = [
+        "educator_interface/partials/organisation_switcher.html"
+    ]
+    # Guarded so the session store is only written when the value actually
+    # changes — an unconditional assignment would mark the session dirty on
+    # every educator page load.
+    if request.session.get(LAST_ORGANISATION_SESSION_KEY) != organisation.slug:
+        request.session[LAST_ORGANISATION_SESSION_KEY] = organisation.slug
+
+    is_switch = request.headers.get("X-Organisation-Switch") == "true"
+    if is_switch:
+        scoped_request.panel_announcement = f"Now viewing {organisation.name}"
+
+    try:
+        response = panel_framework_view(
+            config=interface_config,
+            request=scoped_request,
+            path_string=path_string,
+            template_name="educator_interface/interface.html",
+            url_name="educator_interface:interface",
+        )
+    except OrganisationScopeDenied:
+        # Only a switch request gets the softened "wrong organisation"
+        # reply — every other 404 from path resolution (unknown segment,
+        # missing tab/panel/action, deleted object) must still propagate,
+        # switch header or not.
+        if not is_switch:
+            raise
+        section = path_string.split("/", 1)[0]
+        section_model = interface_config[section].model
+        # authorise_instance only ever raises OrganisationScopeDenied from a
+        # config with a real model — get_instance_view (panel_framework/
+        # views.py) requires one to resolve the detail view in the first
+        # place — so this is an internal-consistency check, not a real
+        # runtime path.
+        if section_model is None:
+            raise Http404 from None
+        label = section_model._meta.verbose_name
+        messages.info(
+            request,
+            f"Switched to {organisation.name} — that {label} isn't in this organisation",
+        )
+        scoped_request.path_string = section
+        response = panel_framework_view(
+            config=interface_config,
+            request=scoped_request,
+            path_string=section,
+            template_name="educator_interface/interface.html",
+            url_name="educator_interface:interface",
+        )
+        response["HX-Push-Url"] = reverse(
+            "educator_interface:interface",
+            kwargs={"organisation_slug": organisation.slug, "path_string": section},
+        )
+
+    return response

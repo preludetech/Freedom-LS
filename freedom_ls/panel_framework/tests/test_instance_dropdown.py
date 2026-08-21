@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 from django.test import RequestFactory
 
@@ -111,6 +111,13 @@ class StubListConfigWithModel(ListViewConfig):
     model = StubModel
     instance_view = StubInstanceView
     list_view = StubDataTable
+
+    @classmethod
+    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
+        # This config goes through the base get_instance_view for real, so it
+        # inherits deny-by-default. Permissive here because this test exercises
+        # OOB sidebar rendering, not authorisation rules.
+        return None
 
 
 FULL_CONFIG: dict[str, type[ListViewConfig]] = {

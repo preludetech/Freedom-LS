@@ -42,6 +42,7 @@ from freedom_ls.content_engine.models import (
     QuestionOption,
     QuestionType,
 )
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 from freedom_ls.student_management.models import UserCourseRegistration
 
@@ -226,7 +227,12 @@ def _register(learner: User, course: Course, site: Site) -> None:
     if not UserCourseRegistration.objects.filter(
         user=learner, collection=course, site=site
     ).exists():
-        UserCourseRegistrationFactory(user=learner, collection=course, site=site)
+        UserCourseRegistrationFactory(
+            user=learner,
+            collection=course,
+            site=site,
+            organisation=get_default_organisation(site),
+        )
 
 
 @click.command()

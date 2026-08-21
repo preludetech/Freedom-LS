@@ -1,0 +1,52 @@
+{% comment %}
+Ambient organisation indicator: always names request.organisation, never a
+placeholder. A dropdown when more than one organisation is accessible;
+static text in the same position otherwise, so a later-granted second
+organisation makes the existing label clickable rather than adding a new
+element. Sourced entirely from request.organisation /
+request.accessible_organisations / request.path_string — never re-derived
+from request.path.
+{% endcomment %}
+<div id="organisation-switcher"
+     class="mb-2"
+     {% if oob %}hx-swap-oob="true"{% endif %}>
+    {% with current_organisation=request.organisation accessible_organisations=request.accessible_organisations %}
+        {% if accessible_organisations|length > 1 %}
+            <c-dropdown-menu class="w-full"
+                             trigger_class="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-semibold text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
+                             aria_label="Switch organisation">
+                <c-slot name="trigger">
+                    <span class="flex-1 text-left truncate">{{ current_organisation.name }}</span>
+                    <c-icon name="dropdown" class="size-4 shrink-0" />
+                </c-slot>
+                {% for organisation in accessible_organisations %}
+                    <button type="button"
+                            role="menuitemradio"
+                            aria-checked="{% if organisation.pk == current_organisation.pk %}true{% else %}false{% endif %}"
+                            hx-get="{% url 'educator_interface:interface' organisation_slug=organisation.slug path_string=request.path_string %}"
+                            hx-headers='{"X-Organisation-Switch": "true"}'
+                            hx-target="#main-content"
+                            hx-push-url="true"
+                            hx-swap="outerHTML"
+                            class="flex w-full items-start gap-2 text-left px-3 py-2 text-sm text-muted hover:bg-surface-2 transition-colors cursor-pointer">
+                        {% comment %}
+                        The indicator span is present on every option so the
+                        names stay aligned, and is aria-hidden because
+                        aria-checked already carries the state.
+                        {% endcomment %}
+                        <span class="size-4 shrink-0 mt-0.5 text-primary" aria-hidden="true">
+                            {% if organisation.pk == current_organisation.pk %}
+                                <c-icon name="check" class="size-4" />
+                            {% endif %}
+                        </span>
+                        <span class="min-w-0 flex-1">{{ organisation.name }}</span>
+                    </button>
+                {% endfor %}
+            </c-dropdown-menu>
+        {% else %}
+            <span class="flex items-center gap-2 w-full px-3 py-2 text-sm font-semibold text-on-surface">
+                {{ current_organisation.name }}
+            </span>
+        {% endif %}
+    {% endwith %}
+</div>

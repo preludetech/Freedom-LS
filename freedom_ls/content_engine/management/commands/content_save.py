@@ -3,7 +3,6 @@ example usage:
 python manage.py content_save  ../bloom_content Bloom
 """
 
-import contextlib
 import logging
 import mimetypes
 import re
@@ -42,6 +41,7 @@ from freedom_ls.content_engine.validate import (
     parse_single_file,
     validate,
 )
+from freedom_ls.site_aware_models.slugs import get_unique_slug
 
 logger = logging.getLogger(__name__)
 
@@ -188,39 +188,6 @@ def update_file_with_option_uuids(file_path, question_uuid, option_uuids):
         f.write(new_content)
 
     logger.info(f"Updated {file_path} with option UUIDs")
-
-
-def get_unique_slug(model_class, site, base_slug, existing_uuid=None):
-    """
-    Generate a unique slug by appending -2, -3, etc. if needed.
-
-    Args:
-        model_class: The model class (Topic, Form, Course)
-        site: The site object
-        base_slug: The base slug to make unique
-        existing_uuid: Optional UUID of existing object (to exclude from uniqueness check)
-
-    Returns:
-        A unique slug for the given site and model
-    """
-    slug = base_slug
-    counter = 2
-
-    while True:
-        # Check if this slug exists
-        queryset = model_class.objects.filter(site=site, slug=slug)
-
-        # If we're updating an existing object, exclude it from the check
-        if existing_uuid:
-            with contextlib.suppress(ValueError, AttributeError):
-                queryset = queryset.exclude(id=uuid.UUID(existing_uuid))
-
-        if not queryset.exists():
-            return slug
-
-        # Slug exists, try next number
-        slug = f"{base_slug}-{counter}"
-        counter += 1
 
 
 def save_with_uuid(

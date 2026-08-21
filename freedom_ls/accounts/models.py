@@ -12,41 +12,13 @@ from django.contrib.auth.models import (
 from django.contrib.sites.models import Site
 from django.db import models
 
+from freedom_ls.base.initials import two_or_one
 from freedom_ls.site_aware_models.models import (
     SiteAwareModel,
     SiteAwareModelBase,
     _thread_locals,
     get_cached_site,
 )
-
-
-def _is_latin(ch: str) -> bool:
-    """Return True if the base form of ``ch`` is a basic-Latin / Latin-Extended letter.
-
-    Used to decide whether the avatar can show two characters (``MJ``) or
-    should fall back to a single grapheme (CJK, Arabic, etc.).
-    """
-    if not ch:
-        return False
-    decomposed = unicodedata.normalize("NFD", ch)
-    base = decomposed[0]
-    if not base.isalpha():
-        return False
-    name = unicodedata.name(base, "")
-    return name.startswith("LATIN ")
-
-
-def _two_or_one(first: str, second: str) -> str:
-    """Compose initials from up to two characters.
-
-    Returns ``first.upper() + second.upper()`` if both are Latin letters;
-    otherwise just ``first.upper()`` (a single grapheme works better for
-    non-Latin scripts where two characters can read as a word fragment).
-    """
-    first_up = first.upper()
-    if second and _is_latin(first) and _is_latin(second):
-        return first_up + second.upper()
-    return first_up
 
 
 class UserManager(BaseUserManager["User"]):
@@ -144,22 +116,22 @@ class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
         last = unicodedata.normalize("NFC", (self.last_name or "").strip())
 
         if first and last:
-            return _two_or_one(first[0], last[0])
+            return two_or_one(first[0], last[0])
 
         name = first or last
         if name:
             tokens = name.split()
             if len(tokens) >= 2:
-                return _two_or_one(tokens[0][0], tokens[1][0])
+                return two_or_one(tokens[0][0], tokens[1][0])
             # Single token — first two characters if both Latin, else single grapheme.
-            return _two_or_one(name[0], name[1] if len(name) > 1 else "")
+            return two_or_one(name[0], name[1] if len(name) > 1 else "")
 
         # Email local-part fallback — skip leading non-alphabetic chars.
         local = unicodedata.normalize("NFC", (self.email or "").split("@", 1)[0])
         alphas = [ch for ch in local if ch.isalpha()]
         if not alphas:
             return None
-        return _two_or_one(alphas[0], alphas[1] if len(alphas) > 1 else "")
+        return two_or_one(alphas[0], alphas[1] if len(alphas) > 1 else "")
 
 
 class SiteSignupPolicy(SiteAwareModel):

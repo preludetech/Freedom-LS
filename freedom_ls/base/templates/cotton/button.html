@@ -25,6 +25,7 @@
 {% if value %} value="{{ value }}"{% endif %}
 {% if not href and type %} type="{{ type }}"{% endif %}
 {% if disabled %} disabled{% endif %}
+role="menuitem"
 class="{{ computed_class }}"
 {{ attrs }}
 >
@@ -75,7 +76,9 @@ Usage Examples:
   <!-- Small size -->
   <c-button size="small">Small button</c-button>
 
-  <!-- Dropdown menu style -->
+  <!-- Dropdown menu style. Only this variant is a menu item, so only it
+       carries role="menuitem" — it is meant for the slot of
+       <c-dropdown-menu />, whose panel is a role="menu". -->
   <c-button dropdown="true">Dropdown menu item</c-button>
 
   <!-- With icons -->

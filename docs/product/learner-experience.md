@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-08-05_
+_Last updated: 2026-08-15_
 
 ## Summary
 
@@ -10,6 +10,7 @@ _Last updated: 2026-08-05_
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
 - Hard deadlines lock uncompleted content after expiry; soft deadlines are shown to the learner but never lock anything.
+- Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
 
 ## Dashboard
 
@@ -172,6 +173,18 @@ Courses can be divided into parts (chapters); the player shows part-level progre
 ### Resume
 
 Returning to a course sends the learner straight back to the item they last viewed, so they never have to find their place.
+
+### Organisation Co-Branding
+
+![Course player with an organisation logo and name above the course title](screenshots/learner_player_organisation_logo.png)
+
+If a learner is studying a course through an organisation — reached either through their cohort or through their own registration — that organisation's logo and name appear in the course outline header, directly above the course title, as a small, clearly secondary mark. If the organisation has no logo, an initials monogram derived from its name is shown instead; if its name has no usable letters, a generic icon.
+
+A learner who self-registers for a course, rather than being added through a cohort, is registered through the site's own default organisation, so no mark appears unless an administrator has given that organisation a logo.
+
+This is co-branding, not rebranding: the rest of the learner-facing chrome — theme, colours, domain — remains the site's own regardless of organisation. There is no per-organisation theme, domain, or email and certificate branding.
+
+See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations) for what an organisation is, and [admin interface](./admin-interface.md#organisation-management) for how its logo is uploaded.
 
 ## Multi-Page Forms
 
