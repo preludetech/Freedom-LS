@@ -160,6 +160,39 @@ def cohorts_visible_to(
     )
 
 
+def all_cohorts_visible_to(user: RequestUser) -> QuerySet[Cohort]:
+    """Every cohort this user may see, across every organisation.
+
+    The organisation-unscoped sibling of cohorts_visible_to, for surfaces that
+    have no organisation in scope to pass it -- the Django admin, which is
+    site-wide. The two must stay in lockstep: same two paths, same answer for
+    any one cohort.
+    """
+    from freedom_ls.organisations.models import Organisation as OrganisationModel
+    from freedom_ls.student_management.models import Cohort
+
+    if not user.is_authenticated:
+        return Cohort.objects.none()
+
+    by_role_organisations = get_objects_for_user(
+        user, "freedom_ls_organisations.view_organisation", klass=OrganisationModel
+    )
+    return Cohort.objects.filter(
+        Q(organisation__in=by_role_organisations)
+        | Q(pk__in=get_objects_for_user(user, "view_cohort", klass=Cohort).values("pk"))
+    )
+
+
+def can_view_cohort(user: RequestUser, cohort: Cohort) -> bool:
+    """Whether this user may see one cohort, by either path.
+
+    Expressed through all_cohorts_visible_to rather than repeating its two
+    branches, so a per-object check can never disagree with the queryset that
+    populates a list or a dropdown.
+    """
+    return all_cohorts_visible_to(user).filter(pk=cohort.pk).exists()
+
+
 def users_visible_to(user: RequestUser, organisation: Organisation) -> QuerySet[User]:
     """Users this person may see within an organisation.
 

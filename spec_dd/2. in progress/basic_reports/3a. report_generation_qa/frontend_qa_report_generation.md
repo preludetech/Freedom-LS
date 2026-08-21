@@ -279,19 +279,24 @@ field names are still `student_*`, but nothing a reader sees says "student". A p
 
 1. **Cover page** — the tenant's name top right (`HEADER_TITLE` if set, otherwise the `Site` row's
    name), its logo beside it, the report title, the cohort name, the "Courses covered" card listing
-   each course with its item and quiz counts and the inactive registration explicitly marked, a
-   generated-at timestamp **including a timezone**, who generated it, the cohort size, the caveat that
-   figures and cohort membership are as of generation time, and the brand band across the foot.
+   each course with its item and quiz counts and the inactive registration explicitly marked, the
+   **organisation** the cohort belongs to, a generated-at timestamp **including a timezone**, who
+   generated it, the cohort size, the caveat that figures and cohort membership are as of generation
+   time, and the brand band across the foot.
    **Expect** the cover carries **no** running header, footer line or page number of its own.
    - Now unset `HEADER_LOGO_STATIC_PATH` and regenerate. **Expect** the cover renders with the name
      alone and **no gap where the logo was** — a fresh FLS install configures no logo, and the page
      must read as finished, not as missing a piece.
    - **Expect no "Powered by" line anywhere** in the document, on the cover or in any page footer.
-     The `REPORTS_POWERED_BY_*` settings and the chrome they drove were removed; the `Site` is the
-     only organisation the report names. The stale `qa-artifacts/tiny-cohort-short-course_powered-by.pdf`
-     predates that removal and cannot be regenerated.
-   - A cover naming any organisation FLS does not store — a partner, an accreditation body, a cohort
-     code — is a bug. The `Site` is the only organisation in the data model.
+     The `REPORTS_POWERED_BY_*` settings and the chrome they drove were removed. The stale
+     `qa-artifacts/tiny-cohort-short-course_powered-by.pdf` predates that removal and cannot be
+     regenerated.
+   - **Expect** the running footer on every non-cover page to read
+     `<site> · <organisation> · Cohort progress report · <cohort>`.
+   - A cover naming anything FLS does not store — a partner, an accreditation body, a cohort code —
+     is a bug. `Site` and `Organisation` are the only two the data model records, and the
+     organisation's **logo** is deliberately not on the cover in this cut (it belongs to
+     `report-upgrades`); only its name appears.
 2. **Cohort at a glance** — four stat cards (cohort size, median completion, not started, completed
    everything), the "N of M flagged" count, and the learners-needing-attention list. Each flagged
    learner has a page reference. **Click one** — in a PDF viewer it should jump to that learner's
@@ -493,6 +498,14 @@ The restricted staff user is `qa-report-restricted@email.com` (password == email
 `qa_create_report_fixtures`. **Cohort A** is *QA Report Standard Cohort* — the only one it holds
 `view_cohort` on. Any other fixture cohort is **cohort B**.
 
+Two organisation-role users are seeded by the same command, both `is_staff`, both holding **no**
+per-cohort guardian grant at all:
+
+- `qa-report-orgstaff@email.com` — `organisation_staff` on the site's **default** organisation, which
+  is where every fixture cohort lives.
+- `qa-report-otherorg@email.com` — `organisation_staff` on *QA Report Other Organisation*, which holds
+  none of them.
+
 1. **Anonymous:** log out. Paste the download URL directly
    (`/admin/freedom_ls_reports/generatedreport/<uuid>/download/`). **Expect** a redirect to the admin
    login, never the PDF.
@@ -511,6 +524,18 @@ The restricted staff user is `qa-report-restricted@email.com` (password == email
    In dev with local file storage this may serve the file — that is why the storage-alias system check
    exists. Note the result; it is expected to be blocked in a correctly configured deployment, and the
    `manage.py check` warning in QA 10 is the control.
+8. **Organisation role, no per-cohort grant:** log in as `qa-report-orgstaff@email.com`. **Expect**
+   the changelist to list reports for **every** fixture cohort, the generate dropdown to offer all of
+   them, a generate to succeed, and a download to stream. This is the path guardian cannot express —
+   an empty list here means the admin has fallen back to a bare `view_cohort` lookup.
+9. **Foreign organisation role:** log in as `qa-report-otherorg@email.com`. **Expect** an empty
+   changelist, an empty generate dropdown, a **404** on any fixture report's change page, and a
+   **403** on any fixture report's download URL.
+10. **Forced POST from a foreign organisation:** as the same user, POST the generate form with a
+    fixture cohort's id. **Expect 404** and no new report row.
+11. **Cohort labels:** on the generate page as the org-staff user, confirm each option reads
+    `<organisation> — <cohort>`, and that the changelist carries an **Organisation** column and an
+    Organisation filter.
 
 ## QA 9 — Failure branches (success criteria 12, 13)
 

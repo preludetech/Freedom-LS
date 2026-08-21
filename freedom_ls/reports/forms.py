@@ -8,6 +8,19 @@ from django.db.models import QuerySet
 from freedom_ls.student_management.models import Cohort
 
 
+class CohortChoiceField(forms.ModelChoiceField):
+    """Labels each cohort with its organisation.
+
+    Cohort names are unique per organisation, not per site, so two cohorts on
+    one site may legitimately share a name. Cohort.__str__ stays the bare name
+    -- everywhere else it is read, the educator interface, an organisation is
+    already established by the URL.
+    """
+
+    def label_from_instance(self, obj: Cohort) -> str:
+        return f"{obj.organisation.name} \u2014 {obj.name}"
+
+
 class GenerateReportForm(forms.Form):
     """Cohort picker for the admin's "Generate cohort report" page.
 
@@ -18,7 +31,7 @@ class GenerateReportForm(forms.Form):
 
     def __init__(self, *args, cohorts: QuerySet[Cohort], **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.fields["cohort"] = forms.ModelChoiceField(
+        self.fields["cohort"] = CohortChoiceField(
             queryset=cohorts,
             widget=UnfoldAdminSelectWidget,
             empty_label=None,

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from functools import partial
 
-from guardian.shortcuts import get_objects_for_user
 from unfold.decorators import action as unfold_action
 
 from django.contrib import admin
@@ -15,11 +14,16 @@ from django.utils.html import format_html
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 from freedom_ls.student_management.models import Cohort
+from freedom_ls.student_management.queries import (
+    all_cohorts_visible_to,
+    can_view_cohort,
+)
 
 
 @admin.register(GeneratedReport)
 class GeneratedReportAdmin(SiteAwareModelAdmin):
     list_display = [
+        "organisation",
         "cohort",
         "status",
         "requested_by",
@@ -27,8 +31,8 @@ class GeneratedReportAdmin(SiteAwareModelAdmin):
         "finished_at",
         "download",
     ]
-    list_select_related = ["cohort", "requested_by"]
-    list_filter = ["status", "requested_at"]
+    list_select_related = ["cohort__organisation", "requested_by"]
+    list_filter = ["status", "requested_at", "cohort__organisation"]
     readonly_fields = [
         "cohort",
         "requested_by",
@@ -42,17 +46,21 @@ class GeneratedReportAdmin(SiteAwareModelAdmin):
 
     def _visible_cohorts(self, request: HttpRequest) -> QuerySet[Cohort]:
         """Model-level report permissions say nothing about which cohorts a
-        user may see; object-level view_cohort is what draws that line.
+        user may see; cohort visibility is what draws that line, by either a
+        per-cohort guardian grant or a role on the cohort's organisation.
         Guardian returns everything for a superuser, so they are unaffected.
+
+        The organisation-unscoped helper, because the admin is site-wide and
+        has no organisation in scope to pass the narrower one.
         """
-        return get_objects_for_user(request.user, "view_cohort", klass=Cohort)
+        return all_cohorts_visible_to(request.user)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[GeneratedReport]:
         # select_related here rather than only in list_select_related: the
         # change and delete views look objects up through this queryset and
         # render str(report), which reads the cohort name.
         queryset: QuerySet[GeneratedReport] = super().get_queryset(request)
-        return queryset.select_related("cohort").filter(
+        return queryset.select_related("cohort__organisation").filter(
             cohort__in=self._visible_cohorts(request)
         )
 
@@ -73,9 +81,7 @@ class GeneratedReportAdmin(SiteAwareModelAdmin):
         # get_queryset.
         if obj is None:
             return True
-        return request.user.has_perm(
-            "freedom_ls_student_management.view_cohort", obj.cohort
-        )
+        return can_view_cohort(request.user, obj.cohort)
 
     # delete stays available -- it is the only cleanup path in v1 -- but it must
     # not become a way to reach or destroy another cohort's reports
@@ -86,9 +92,11 @@ class GeneratedReportAdmin(SiteAwareModelAdmin):
             return False
         if obj is None:
             return True
-        return request.user.has_perm(
-            "freedom_ls_student_management.view_cohort", obj.cohort
-        )
+        return can_view_cohort(request.user, obj.cohort)
+
+    @admin.display(description="Organisation", ordering="cohort__organisation__name")
+    def organisation(self, obj: GeneratedReport) -> str:
+        return obj.cohort.organisation.name
 
     @admin.display(description="Download")
     def download(self, obj: GeneratedReport) -> str:

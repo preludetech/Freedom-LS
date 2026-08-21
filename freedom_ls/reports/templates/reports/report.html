@@ -36,7 +36,7 @@ in a cohort name break every rule after it.
 It must stay a block-level element and it must come before the cover — see the
 note on .footer-identity in print.css.{% endcomment %}
 <div class="footer-identity">
-  <span class="footer-org">{{ data.site_name }} · Cohort progress report · {{ data.cohort_name }}</span>
+  <span class="footer-org">{{ data.site_name }} · {{ data.organisation_name }} · Cohort progress report · {{ data.cohort_name }}</span>
 </div>
 {% include "reports/partials/title_page.html" with data=data site_logo_url=site_logo_url only %}
 {% include "reports/partials/at_a_glance.html" with data=data attention=data.attention_list only %}

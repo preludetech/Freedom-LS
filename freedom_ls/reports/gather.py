@@ -738,6 +738,7 @@ def gather_cohort_report_data(
 
     return CohortReportData(
         cohort_name=cohort.name,
+        organisation_name=cohort.organisation.name,
         site_name=resolve_site_name(site_id),
         generated_at=now,
         requested_by_name=requested_by_name,

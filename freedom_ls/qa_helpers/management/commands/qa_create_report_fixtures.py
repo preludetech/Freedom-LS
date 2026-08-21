@@ -6,7 +6,10 @@ lengthens the landscape summary table, course length widens it -- so the QA plan
 frontend_qa_report_generation.md``) defines eleven fixtures
 spanning 0 to 40 students and 1 to 12+ quizzes, plus the degenerate,
 no-pass-mark and blank-answer cases. This command builds all of them, plus the
-two users the permission checks need.
+four users the permission checks need: a cohort educator, a staff user scoped
+to one cohort by a guardian grant, and two organisation-role holders -- one on
+the organisation the fixtures live in, one on an organisation that holds none
+of them.
 
 It is a thin orchestrator: the work is done by ``build_report_course`` and
 ``build_report_cohort``, imported from the two builder commands so the whole
@@ -21,6 +24,7 @@ Usage:
 """
 
 import dataclasses
+from typing import cast
 
 import djclick as click
 from guardian.shortcuts import assign_perm
@@ -30,6 +34,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.models import User
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_report_cohort import (
     _get_or_create_user,
     _get_site,
@@ -39,10 +46,17 @@ from freedom_ls.qa_helpers.management.commands.qa_create_report_course import (
     build_report_course,
 )
 from freedom_ls.reports.models import GeneratedReport
+from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.student_management.models import Cohort
 
 EDUCATOR_EMAIL = "qa-report-educator@email.com"
 RESTRICTED_EMAIL = "qa-report-restricted@email.com"
+# Holds an organisation role on the site's default organisation, where every
+# fixture cohort lives, and no per-cohort guardian grant at all.
+ORG_STAFF_EMAIL = "qa-report-orgstaff@email.com"
+# Holds an organisation role on an organisation with no report cohorts in it.
+FOREIGN_ORG_STAFF_EMAIL = "qa-report-otherorg@email.com"
+FOREIGN_ORGANISATION_NAME = "QA Report Other Organisation"
 
 # The cohort the restricted staff user CAN see. Every other cohort is the
 # "cohort B" of the permission checks.
@@ -306,6 +320,24 @@ def _grant_report_admin_access(user: User) -> None:
     user.user_permissions.add(*Permission.objects.filter(content_type=content_type))
 
 
+def _get_or_create_foreign_organisation(site: Site) -> Organisation:
+    """A second organisation holding none of the fixture cohorts.
+
+    The exclusion half of the organisation-scoping checks: a role on this one
+    must reach nothing the matrix built.
+    """
+    # Bound to a typed local first: the site-aware manager is untyped, so its
+    # .first() is Any, and returning that directly trips warn_return_any.
+    existing: Organisation | None = Organisation.objects.filter(
+        name=FOREIGN_ORGANISATION_NAME, site=site
+    ).first()
+    if existing is not None:
+        return existing
+    return cast(
+        Organisation, OrganisationFactory(name=FOREIGN_ORGANISATION_NAME, site=site)
+    )
+
+
 @click.command()
 @click.option(
     "--site-name",
@@ -458,6 +490,30 @@ def command(
             f"'{PERMITTED_FIXTURE_KEY}' was not built this run.",
             fg="yellow",
         )
+
+    org_staff = _get_or_create_user(site, ORG_STAFF_EMAIL, "Sam", "Orgstaff")
+    _grant_report_admin_access(org_staff)
+    default_organisation = get_default_organisation(site)
+    assign_object_role(org_staff, default_organisation, "organisation_staff")
+    click.secho(
+        f"  Org staff  {org_staff.email} / {org_staff.email} "
+        f"(is_staff, organisation_staff on '{default_organisation.name}', "
+        f"NO per-cohort grant -- must see every cohort above)",
+        fg="green",
+    )
+
+    foreign_organisation = _get_or_create_foreign_organisation(site)
+    foreign_staff = _get_or_create_user(
+        site, FOREIGN_ORG_STAFF_EMAIL, "Frankie", "Elsewhere"
+    )
+    _grant_report_admin_access(foreign_staff)
+    assign_object_role(foreign_staff, foreign_organisation, "organisation_staff")
+    click.secho(
+        f"  Other org  {foreign_staff.email} / {foreign_staff.email} "
+        f"(is_staff, organisation_staff on '{foreign_organisation.name}', "
+        f"which holds none of the cohorts above -- must see nothing)",
+        fg="green",
+    )
 
     click.secho("\n=== Fixture matrix ===", fg="cyan", bold=True)
     for fixture, cohort in built:

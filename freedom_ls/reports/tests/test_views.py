@@ -9,8 +9,10 @@ from django.core.files.base import ContentFile
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
+from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.student_management.factories import CohortFactory
 
 pytestmark = pytest.mark.django_db
@@ -236,3 +238,110 @@ class TestDownloadReportView:
         response = client.get(_download_url(report.pk))
 
         assert response.status_code == 404
+
+
+def _organisation_staff_user(organisation: object) -> object:
+    """Staff with an organisation role and no per-cohort guardian grant."""
+    user = UserFactory(is_staff=True)
+    assign_object_role(user, organisation, "organisation_staff")
+    return user
+
+
+class TestGenerateReportViewOrganisationScoping:
+    """The cohort dropdown and its POST re-check must honour the organisation
+    role, which guardian's view_cohort can never carry."""
+
+    def test_dropdown_offers_every_cohort_in_the_organisation(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        organisation = OrganisationFactory()
+        CohortFactory(name="Alpha Cohort", organisation=organisation)
+        CohortFactory(name="Bravo Cohort", organisation=organisation)
+        client.force_login(_organisation_staff_user(organisation))
+
+        content = client.get(_generate_url()).content.decode()
+
+        assert "Alpha Cohort" in content
+        assert "Bravo Cohort" in content
+
+    def test_dropdown_omits_cohorts_from_another_organisation(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        organisation = OrganisationFactory()
+        CohortFactory(name="Alpha Cohort", organisation=organisation)
+        CohortFactory(name="Foreign Cohort", organisation=OrganisationFactory())
+        client.force_login(_organisation_staff_user(organisation))
+
+        content = client.get(_generate_url()).content.decode()
+
+        assert "Alpha Cohort" in content
+        assert "Foreign Cohort" not in content
+
+    def test_post_creates_a_report_for_a_cohort_in_the_organisation(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation)
+        client.force_login(_organisation_staff_user(organisation))
+
+        client.post(_generate_url(), data={"cohort": str(cohort.pk)})
+
+        report = GeneratedReport.objects.get(cohort=cohort)
+        assert report.status == GeneratedReport.STATUS_PENDING
+
+    def test_post_for_another_organisations_cohort_creates_nothing(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        cohort = CohortFactory(organisation=OrganisationFactory())
+        client.force_login(_organisation_staff_user(OrganisationFactory()))
+
+        response = client.post(_generate_url(), data={"cohort": str(cohort.pk)})
+
+        assert response.status_code == 404
+        assert GeneratedReport.objects.filter(cohort=cohort).count() == 0
+
+
+class TestDownloadReportViewOrganisationScoping:
+    def test_organisation_role_holder_downloads_a_report_in_their_organisation(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        organisation = OrganisationFactory()
+        report = GeneratedReportFactory(
+            cohort=CohortFactory(organisation=organisation),
+            status=GeneratedReport.STATUS_READY,
+        )
+        _save_ready_file(report)
+        client.force_login(_organisation_staff_user(organisation))
+
+        response = client.get(_download_url(report.pk))
+
+        assert response.status_code == 200
+
+    def test_another_organisations_report_is_403(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        report = GeneratedReportFactory(
+            cohort=CohortFactory(organisation=OrganisationFactory()),
+            status=GeneratedReport.STATUS_READY,
+        )
+        _save_ready_file(report)
+        client.force_login(_organisation_staff_user(OrganisationFactory()))
+
+        response = client.get(_download_url(report.pk))
+
+        assert response.status_code == 403
+
+
+class TestGenerateReportViewCohortLabels:
+    def test_dropdown_labels_name_the_organisation(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        """The picker is the one place an admin chooses between two cohorts
+        that may legitimately share a name."""
+        organisation = OrganisationFactory(name="Northside College")
+        CohortFactory(name="Year 9 Maths", organisation=organisation)
+        client.force_login(_organisation_staff_user(organisation))
+
+        content = client.get(_generate_url()).content.decode()
+
+        assert "Northside College — Year 9 Maths" in content

@@ -7,7 +7,6 @@ No `urls.py`: these are wired into the admin namespace by
 
 from __future__ import annotations
 
-from guardian.shortcuts import get_objects_for_user
 from unfold.admin import ModelAdmin
 
 from django.contrib import messages
@@ -24,6 +23,10 @@ from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.tasks import _generate_cohort_report_task
 from freedom_ls.site_aware_models.admin import admin_page_context
 from freedom_ls.student_management.models import Cohort
+from freedom_ls.student_management.queries import (
+    all_cohorts_visible_to,
+    can_view_cohort,
+)
 
 
 def _has_inflight_report(cohort: Cohort) -> bool:
@@ -48,8 +51,10 @@ def generate_report_view(
     only guarantees staff status -- the object-level permission check below
     is separate and mandatory.
     """
-    cohorts = get_objects_for_user(request.user, "view_cohort", klass=Cohort).order_by(
-        "name"
+    cohorts = (
+        all_cohorts_visible_to(request.user)
+        .select_related("organisation")
+        .order_by("organisation__name", "name")
     )
 
     if request.method != "POST":
@@ -66,7 +71,7 @@ def generate_report_view(
         # lookup used to raise.
         raise Http404
     cohort = form.cleaned_data["cohort"]
-    if not request.user.has_perm("freedom_ls_student_management.view_cohort", cohort):
+    if not can_view_cohort(request.user, cohort):
         raise PermissionDenied
 
     changelist_url = reverse("admin:freedom_ls_reports_generatedreport_changelist")
@@ -106,9 +111,7 @@ def download_report_view(request: HttpRequest, object_id: str) -> FileResponse:
     report = get_object_or_404(
         GeneratedReport.objects.select_related("cohort"), pk=object_id
     )
-    if not request.user.has_perm(
-        "freedom_ls_student_management.view_cohort", report.cohort
-    ):
+    if not can_view_cohort(request.user, report.cohort):
         raise PermissionDenied
     if report.status != GeneratedReport.STATUS_READY or not report.file:
         raise Http404

@@ -304,4 +304,7 @@ class TestBrandingOnTheCover:
         html = build_report_html(cohort_report_data(site_name="Bright Academy"))
 
         assert "Bright Academy" in html
-        assert "Bright Academy · Cohort progress report · Cohort A" in html
+        assert (
+            "Bright Academy · Northside College · Cohort progress report · Cohort A"
+            in html
+        )

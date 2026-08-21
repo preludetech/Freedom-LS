@@ -26,6 +26,8 @@ from freedom_ls.student_management.factories import (
 )
 from freedom_ls.student_management.models import UserCourseRegistration
 from freedom_ls.student_management.queries import (
+    all_cohorts_visible_to,
+    can_view_cohort,
     cohorts_visible_to,
     latest_registration,
     organisation_for_learner_course,
@@ -223,6 +225,140 @@ class TestCohortsVisibleTo:
         user = UserFactory()
 
         assert list(cohorts_visible_to(user, organisation)) == []
+
+
+@pytest.mark.django_db
+class TestAllCohortsVisibleTo:
+    """The organisation-unscoped sibling of cohorts_visible_to, for surfaces
+    with no organisation in scope."""
+
+    def test_role_holder_sees_every_cohort_in_their_organisation(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        cohort_a = CohortFactory(organisation=organisation)
+        cohort_b = CohortFactory(organisation=organisation)
+        user = UserFactory()
+        assign_object_role(user, organisation, "organisation_staff")
+
+        assert set(all_cohorts_visible_to(user)) == {cohort_a, cohort_b}
+
+    def test_cohorts_in_another_organisation_are_excluded(self, mock_site_context):
+        organisation = OrganisationFactory()
+        mine = CohortFactory(organisation=organisation)
+        CohortFactory(organisation=OrganisationFactory())
+        user = UserFactory()
+        assign_object_role(user, organisation, "organisation_staff")
+
+        assert list(all_cohorts_visible_to(user)) == [mine]
+
+    def test_guardian_grant_only_sees_the_granted_cohort(self, mock_site_context):
+        organisation = OrganisationFactory()
+        granted = CohortFactory(organisation=organisation)
+        CohortFactory(organisation=organisation)
+        user = UserFactory()
+        assign_object_role(user, granted, "instructor")
+
+        assert list(all_cohorts_visible_to(user)) == [granted]
+
+    def test_roles_in_two_organisations_are_unioned(self, mock_site_context):
+        first = OrganisationFactory()
+        second = OrganisationFactory()
+        cohort_a = CohortFactory(organisation=first)
+        cohort_b = CohortFactory(organisation=second)
+        user = UserFactory()
+        assign_object_role(user, first, "organisation_staff")
+        assign_object_role(user, second, "organisation_staff")
+
+        assert set(all_cohorts_visible_to(user)) == {cohort_a, cohort_b}
+
+    def test_both_paths_return_each_cohort_once(self, mock_site_context):
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation)
+        user = UserFactory()
+        assign_object_role(user, organisation, "organisation_staff")
+        assign_object_role(user, cohort, "instructor")
+
+        assert list(all_cohorts_visible_to(user)).count(cohort) == 1
+
+    def test_anonymous_user_sees_no_cohorts(self, mock_site_context):
+        CohortFactory()
+
+        assert list(all_cohorts_visible_to(AnonymousUser())) == []
+
+    def test_user_with_neither_role_nor_grant_sees_no_cohorts(self, mock_site_context):
+        CohortFactory()
+        user = UserFactory()
+
+        assert list(all_cohorts_visible_to(user)) == []
+
+    def test_it_agrees_with_cohorts_visible_to_within_one_organisation(
+        self, mock_site_context
+    ):
+        """The two helpers must never disagree about a single cohort."""
+        organisation = OrganisationFactory()
+        granted = CohortFactory(organisation=organisation)
+        CohortFactory(organisation=organisation)
+        user = UserFactory()
+        assign_object_role(user, granted, "instructor")
+
+        assert set(all_cohorts_visible_to(user)) == set(
+            cohorts_visible_to(user, organisation)
+        )
+
+
+@pytest.mark.django_db
+class TestCanViewCohort:
+    """The per-object check behind the report admin's permission hooks."""
+
+    def test_role_holder_may_view_a_cohort_in_their_organisation(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation)
+        user = UserFactory()
+        assign_object_role(user, organisation, "organisation_staff")
+
+        assert can_view_cohort(user, cohort) is True
+
+    def test_role_holder_may_not_view_a_cohort_in_another_organisation(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        foreign_cohort = CohortFactory(organisation=OrganisationFactory())
+        user = UserFactory()
+        assign_object_role(user, organisation, "organisation_staff")
+
+        assert can_view_cohort(user, foreign_cohort) is False
+
+    def test_guardian_grant_holder_may_view_the_granted_cohort(self, mock_site_context):
+        cohort = CohortFactory()
+        user = UserFactory()
+        assign_object_role(user, cohort, "instructor")
+
+        assert can_view_cohort(user, cohort) is True
+
+    def test_guardian_grant_holder_may_not_view_a_sibling_cohort(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        granted = CohortFactory(organisation=organisation)
+        sibling = CohortFactory(organisation=organisation)
+        user = UserFactory()
+        assign_object_role(user, granted, "instructor")
+
+        assert can_view_cohort(user, sibling) is False
+
+    def test_anonymous_user_may_view_nothing(self, mock_site_context):
+        cohort = CohortFactory()
+
+        assert can_view_cohort(AnonymousUser(), cohort) is False
+
+    def test_user_with_neither_role_nor_grant_may_view_nothing(self, mock_site_context):
+        cohort = CohortFactory()
+        user = UserFactory()
+
+        assert can_view_cohort(user, cohort) is False
 
 
 @pytest.mark.django_db

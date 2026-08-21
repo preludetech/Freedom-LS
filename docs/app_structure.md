@@ -27,6 +27,7 @@ flowchart TB
     organisations
     panel_framework
     qa_helpers
+    reports
     role_based_permissions
     site_aware_models
     student_interface
@@ -62,6 +63,7 @@ flowchart TB
     educator_interface --> course_interest
     educator_interface --> organisations
     educator_interface --> panel_framework
+    educator_interface --> site_aware_models
     educator_interface --> student_management
     educator_interface --> student_progress
     health --> base
@@ -73,9 +75,17 @@ flowchart TB
     qa_helpers --> content_engine
     qa_helpers --> course_applications
     qa_helpers --> organisations
+    qa_helpers --> reports
+    qa_helpers --> role_based_permissions
     qa_helpers --> site_aware_models
     qa_helpers --> student_management
     qa_helpers --> student_progress
+    reports --> accounts
+    reports --> base
+    reports --> content_engine
+    reports --> site_aware_models
+    reports --> student_management
+    reports --> student_progress
     role_based_permissions --> accounts
     role_based_permissions --> base
     role_based_permissions --> site_aware_models
@@ -104,16 +114,24 @@ flowchart TB
     webhooks --> site_aware_models
     xapi_learning_record_store --> site_aware_models
     accounts -.-> student_management
+    base -.-> accounts
+    base -.-> organisations
+    base -.-> role_based_permissions
+    base -.-> student_management
     course_access -.-> course_applications
     course_interest -.-> student_management
     educator_interface -.-> role_based_permissions
     markdown_rendering -.-> content_engine
     organisations -.-> accounts
+    organisations -.-> role_based_permissions
+    reports -.-> organisations
+    reports -.-> role_based_permissions
     role_based_permissions -.-> student_management
     site_aware_models -.-> accounts
     site_aware_models -.-> content_engine
     site_aware_models -.-> student_management
     student_interface -.-> course_applications
+    student_interface -.-> role_based_permissions
     student_management -.-> role_based_permissions
     webhooks -.-> accounts
 ```
@@ -124,22 +142,23 @@ flowchart TB
 | --- | --- | --- |
 | accounts | base, markdown_rendering, site_aware_models, webhooks | student_management |
 | app_authentication | site_aware_models | — |
-| base | — | — |
+| base | — | accounts, organisations, role_based_permissions, student_management |
 | content_engine | base, icons, markdown_rendering, site_aware_models | — |
 | course_access | accounts, base, content_engine, student_management | course_applications |
 | course_applications | accounts, content_engine, course_access, site_aware_models, student_management | — |
 | course_interest | accounts, content_engine, course_access, site_aware_models | student_management |
 | deployment | base | — |
-| educator_interface | accounts, content_engine, course_interest, organisations, panel_framework, student_management, student_progress | role_based_permissions |
+| educator_interface | accounts, content_engine, course_interest, organisations, panel_framework, site_aware_models, student_management, student_progress | role_based_permissions |
 | health | base | — |
 | icons | base | — |
 | markdown_rendering | base | content_engine |
-| organisations | base, site_aware_models | accounts |
+| organisations | base, site_aware_models | accounts, role_based_permissions |
 | panel_framework | — | — |
-| qa_helpers | accounts, content_engine, course_applications, organisations, site_aware_models, student_management, student_progress | — |
+| qa_helpers | accounts, content_engine, course_applications, organisations, reports, role_based_permissions, site_aware_models, student_management, student_progress | — |
+| reports | accounts, base, content_engine, site_aware_models, student_management, student_progress | organisations, role_based_permissions |
 | role_based_permissions | accounts, base, site_aware_models | student_management |
 | site_aware_models | base | accounts, content_engine, student_management |
-| student_interface | accounts, content_engine, course_access, course_interest, icons, organisations, site_aware_models, student_management, student_progress, webhooks | course_applications |
+| student_interface | accounts, content_engine, course_access, course_interest, icons, organisations, site_aware_models, student_management, student_progress, webhooks | course_applications, role_based_permissions |
 | student_management | accounts, base, content_engine, organisations, site_aware_models, webhooks | role_based_permissions |
 | student_progress | accounts, content_engine, site_aware_models, student_management | — |
 | webhooks | base, site_aware_models | accounts |

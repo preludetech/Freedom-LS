@@ -278,6 +278,7 @@ class TestTitlePage:
         html = render_to_string("reports/partials/title_page.html", {"data": data})
 
         assert "Cohort A" in html
+        assert "Northside College" in html
         assert "Course 1" in html
         assert "Course 2" in html
         assert "inactive" in html.lower()

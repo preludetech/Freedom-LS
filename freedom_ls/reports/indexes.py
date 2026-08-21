@@ -159,7 +159,9 @@ def _student_sort_key(user: User) -> tuple[str, str]:
 def load_cohort(cohort_id: str, site_id: int) -> Cohort:
     # Bound to a typed local first: the site-aware manager is untyped, so its
     # .get() is Any, and returning that directly trips warn_return_any.
-    cohort: Cohort = Cohort.objects.get(pk=cohort_id, site_id=site_id)
+    cohort: Cohort = Cohort.objects.select_related("organisation").get(
+        pk=cohort_id, site_id=site_id
+    )
     return cohort
 
 

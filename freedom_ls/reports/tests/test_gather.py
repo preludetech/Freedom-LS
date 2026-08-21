@@ -21,6 +21,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy, QuestionType
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.gather import gather_cohort_report_data
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
@@ -636,7 +637,14 @@ def test_gathering_one_site_excludes_data_from_another_site(mock_site_context):
     _attach(course_a, topic_a)
     TopicProgressFactory(user=student_a, topic=topic_a, complete_time=timezone.now())
 
-    cohort_b = CohortFactory(name="Isolation Cohort B", site=other_site)
+    # organisation too: CohortFactory's SubFactory does not inherit an
+    # explicit site=, so without this the cohort would sit on site B while its
+    # organisation sat on site A.
+    cohort_b = CohortFactory(
+        name="Isolation Cohort B",
+        site=other_site,
+        organisation=OrganisationFactory(site=other_site),
+    )
     student_b = UserFactory(first_name="Site", last_name="Beta", site=other_site)
     CohortMembershipFactory(cohort=cohort_b, user=student_b, site=other_site)
     course_b = CourseFactory(title="Site B Course", site=other_site)
@@ -946,6 +954,19 @@ class TestFlagSeverity:
 
         flags = {flag.rule_id: flag.severity for flag in data.students[0].flags}
         assert flags["no_activity"] == "error"
+
+
+class TestOrganisationName:
+    def test_the_cohorts_organisation_is_carried_onto_the_report(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory(
+            organisation=OrganisationFactory(name="Northside College")
+        )
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.organisation_name == "Northside College"
 
 
 class TestSiteName:

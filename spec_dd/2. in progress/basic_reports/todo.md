@@ -34,7 +34,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 - [x] (cmd) Run `/fls-dev:plan_structure_review` to check for new cross-app dependencies
 - [ ] (user) Address any structure concerns raised in the plan
-- [ ] (user) Resolve structure concern: whether `reports --> base` (base.app_settings import) should be recorded in docs/app_structure.md
+- [x] (user) Resolve structure concern: whether `reports --> base` (base.app_settings import) should be recorded in docs/app_structure.md — resolved: `docs/app_structure.md` regenerated, and it records `reports --> base` along with the rest of the app's runtime edges
 
 ## 7. Implementation
 
@@ -97,6 +97,10 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 - [x] (user + cmd) Fix QA bug: `form_start_page_buttons` hardcodes a 0.8 pass threshold instead of reading `form.quiz_pass_percentage`, so a quiz with a 90% pass mark scored 85% renders a "Next" button while `get_content_status` reads FAILED — now that sequential unlock is enforced server-side that click bounces the learner to the course detail page instead of doing nothing visible (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: a CoursePart holding a failed quiz renders as "Locked" with no link while the quiz inside it stays reachable for a retry — the index build's part-status chain has no FAILED branch, though `get_content_status` does, so the part row now reads "Needs retry" and routes to the re-sit (TDD — failing test first, then fix)
+- [x] (user + cmd) Adapt the report feature to the landed `organisations` work: route report authorisation through `all_cohorts_visible_to`/`can_view_cohort` so an `organisation_staff` holder is no longer locked out, and name the organisation on the admin changelist, the generate dropdown, `GeneratedReport.__str__`, the report cover and the running footer now that cohort names are unique per organisation rather than per site (TDD — failing tests first, then fix)
+- [x] (user + cmd) Fix QA/test fixtures that passed an explicit `site=` to `CohortFactory`/`UserCourseRegistrationFactory` without an `organisation=`, leaving the row on one site and its organisation on another
+- [ ] (user) Decide how to fix the missing organisation backfill in `student_management/migrations/0014_cohort_organisation_and_more.py` — it adds two non-nullable FKs with no `RunPython` backfill, so `migrate` fails on any database with existing cohorts or registrations (including the dev database). Landed on main, not on this branch, and it blocks the browser QA re-run below
+- [ ] (cmd) Re-run `/fls-dev:do_qa` on `3a. report_generation_qa/frontend_qa_report_generation.md` for the organisation changes — QA 2.1 and QA 8 both changed, and QA 8.8–8.11 are new (blocked until the migration above is fixed)
 
 ## 10. Product documentation
 
@@ -106,7 +110,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 11. Upgrade notes
 
 - [ ] (cmd) Run `/fls-dev:update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
-- [ ] (user) Review the upgrade notes — they must cover the required `manage.py recalculate_progress_percentages` backfill (a failed quiz no longer counts toward course completion, so stored `progress_percentage` values are stale), and the new reports settings (`REPORTS_FONT_FACES` and the three font stacks), how a project rebrands the report's typography, and the fact that at-risk rules are a plain list in `freedom_ls/reports/at_risk.py` with no settings hook — a project that needs its own rule forks until `report-upgrades` moves rule selection into the database, and the moved `student_progress` import paths (`is_quiz_answer_correct`/`evaluate_quiz_answers` → `student_progress.scoring`; `submitted_option_ids`/`submitted_text_answer`/`has_submitted_answer` → `student_progress.submissions`; `attempt_completes_form`/`completed_form_ids_by_user` → `student_progress.queries`; `update_course_progress_on_completion` → `student_progress.signals`, where it is now driven by a `post_save` receiver rather than a `save()` override — a downstream `CourseItemProgress` subclass needs its own `@receiver` line)
+- [ ] (user) Review the upgrade notes — they must cover report access following **both** authorisation paths (a per-cohort `view_cohort` grant, or an `organisation_staff` role on the cohort's organisation), and the required `manage.py recalculate_progress_percentages` backfill (a failed quiz no longer counts toward course completion, so stored `progress_percentage` values are stale), and the new reports settings (`REPORTS_FONT_FACES` and the three font stacks), how a project rebrands the report's typography, and the fact that at-risk rules are a plain list in `freedom_ls/reports/at_risk.py` with no settings hook — a project that needs its own rule forks until `report-upgrades` moves rule selection into the database, and the moved `student_progress` import paths (`is_quiz_answer_correct`/`evaluate_quiz_answers` → `student_progress.scoring`; `submitted_option_ids`/`submitted_text_answer`/`has_submitted_answer` → `student_progress.submissions`; `attempt_completes_form`/`completed_form_ids_by_user` → `student_progress.queries`; `update_course_progress_on_completion` → `student_progress.signals`, where it is now driven by a `post_save` receiver rather than a `save()` override — a downstream `CourseItemProgress` subclass needs its own `@receiver` line)
 
 ## 12. Template repo
 

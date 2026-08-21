@@ -86,5 +86,10 @@ class GeneratedReport(SiteAwareModel):
 
     def __str__(self) -> str:
         # The delete-confirmation screens show only this string, so it has to
-        # name the cohort an admin is about to destroy a report for.
-        return f"Report for cohort {self.cohort} ({self.status})"
+        # name the cohort an admin is about to destroy a report for -- and the
+        # organisation with it, since cohort names are unique per organisation
+        # rather than per site.
+        return (
+            f"Report for cohort {self.cohort.organisation} / {self.cohort} "
+            f"({self.status})"
+        )

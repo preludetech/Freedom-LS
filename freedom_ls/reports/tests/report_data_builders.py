@@ -92,6 +92,7 @@ def summary_row(row: StudentRow, quizzes: list[QuizColumn]) -> SummaryRow:
 def cohort_report_data(**overrides: object) -> CohortReportData:
     defaults: dict[str, object] = {
         "cohort_name": "Cohort A",
+        "organisation_name": "Northside College",
         "site_name": "Test Academy",
         "generated_at": GENERATED_AT,
         "requested_by_name": "Jamie Educator",

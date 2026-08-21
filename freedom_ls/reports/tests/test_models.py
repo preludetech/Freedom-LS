@@ -6,6 +6,7 @@ import pytest
 
 from django.db import IntegrityError
 
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport, report_upload_path
 from freedom_ls.student_management.factories import CohortFactory
@@ -106,3 +107,13 @@ class TestGeneratedReportStr:
         report = GeneratedReportFactory(status=GeneratedReport.STATUS_READY)
 
         assert GeneratedReport.STATUS_READY in str(report)
+
+    def test_str_names_the_organisation(self, mock_site_context: object) -> None:
+        """Cohort names are unique per organisation, not per site, so the
+        name alone no longer identifies what is about to be destroyed."""
+        organisation = OrganisationFactory(name="Northside College")
+        report = GeneratedReportFactory(
+            cohort=CohortFactory(name="Alpha Cohort", organisation=organisation)
+        )
+
+        assert "Northside College" in str(report)

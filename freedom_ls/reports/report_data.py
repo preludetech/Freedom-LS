@@ -221,8 +221,11 @@ class CourseSection:
 @dataclasses.dataclass(frozen=True)
 class CohortReportData:
     cohort_name: str
-    # Who the report is from: the tenant's own display name, which is the only
-    # organisation identity FLS records.
+    # Which organisation's cohort this is. Cohort names are unique per
+    # organisation rather than per site, so the name alone does not identify a
+    # cohort on a site running more than one.
+    organisation_name: str
+    # Who the report is from: the tenant's own display name.
     site_name: str
     generated_at: datetime
     requested_by_name: str
