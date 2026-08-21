@@ -62,6 +62,7 @@ from freedom_ls.content_engine.models import (
     QuestionType,
     Topic,
 )
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -561,7 +562,9 @@ def build_report_cohort(
     cohort = cast(
         Cohort,
         Cohort.objects.filter(name=cohort_name, site=site).first()
-        or CohortFactory(name=cohort_name, site=site),
+        or CohortFactory(
+            name=cohort_name, site=site, organisation=get_default_organisation(site)
+        ),
     )
 
     for slug in (*course_slugs, *inactive_course_slugs):

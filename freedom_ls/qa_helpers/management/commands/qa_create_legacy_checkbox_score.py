@@ -61,6 +61,7 @@ from freedom_ls.content_engine.models import (
     QuestionType,
     Topic,
 )
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.student_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -281,7 +282,12 @@ def _register(user: User, course: Course, site: Site) -> None:
     if not UserCourseRegistration.objects.filter(
         user=user, collection=course, site=site
     ).exists():
-        UserCourseRegistrationFactory(user=user, collection=course, site=site)
+        UserCourseRegistrationFactory(
+            user=user,
+            collection=course,
+            site=site,
+            organisation=get_default_organisation(site),
+        )
 
 
 def _ensure_course_progress_row(user: User, course: Course, site: Site) -> None:
@@ -420,7 +426,12 @@ def _get_or_create_cohort(site: Site) -> Cohort:
     existing: Cohort | None = Cohort.objects.filter(name=COHORT_NAME, site=site).first()
     if existing is not None:
         return existing
-    return cast(Cohort, CohortFactory(name=COHORT_NAME, site=site))
+    return cast(
+        Cohort,
+        CohortFactory(
+            name=COHORT_NAME, site=site, organisation=get_default_organisation(site)
+        ),
+    )
 
 
 def _register_cohort(cohort: Cohort, course: Course, site: Site) -> None:

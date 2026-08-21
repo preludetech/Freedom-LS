@@ -57,6 +57,7 @@ from freedom_ls.content_engine.models import (
     FormStrategy,
     QuestionType,
 )
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_form_question_types import (
     _attach_form_to_course,
     _build_form,
@@ -261,7 +262,12 @@ def _register(student: User, course: Course, site: Site) -> None:
     if not UserCourseRegistration.objects.filter(
         user=student, collection=course, site=site
     ).exists():
-        UserCourseRegistrationFactory(user=student, collection=course, site=site)
+        UserCourseRegistrationFactory(
+            user=student,
+            collection=course,
+            site=site,
+            organisation=get_default_organisation(site),
+        )
 
 
 def _ensure_course_progress_row(user: User, course: Course, site: Site) -> None:
@@ -326,7 +332,12 @@ def _get_or_create_cohort(site: Site) -> Cohort:
     existing: Cohort | None = Cohort.objects.filter(name=COHORT_NAME, site=site).first()
     if existing is not None:
         return existing
-    return cast(Cohort, CohortFactory(name=COHORT_NAME, site=site))
+    return cast(
+        Cohort,
+        CohortFactory(
+            name=COHORT_NAME, site=site, organisation=get_default_organisation(site)
+        ),
+    )
 
 
 def _register_cohort(cohort: Cohort, course: Course, site: Site) -> None:
