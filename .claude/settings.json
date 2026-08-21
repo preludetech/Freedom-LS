@@ -34,11 +34,8 @@
       "WebFetch",
       "WebSearch",
       "Bash(grep *)",
-      "Bash(.claude/ds/scripts/fetch_pr_comments.sh *)",
-      "Bash(.claude/ds/scripts/kill_runserver.sh:*)",
       "Bash(git rm *)",
       "Bash(git grep *)",
-      "Bash(.claude/fls-dev/scripts/dev_db_delete.sh:*)",
       "Bash(git ls-files *)",
       "Bash(git rev-parse *)",
       "Bash(git mv *)",
@@ -48,8 +45,6 @@
       "Bash(git branch *)",
       "Bash(git remote *)",
       "Bash(.claude/ds/scripts/*.sh:*)",
-      "Bash(npm run tailwind_build)",
-      "Bash(sleep 3 && curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:*)",
       "Bash(.claude/fls-dev/scripts/*.sh:*)"
     ],
     "deny": [
