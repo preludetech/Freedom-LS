@@ -37,6 +37,10 @@ from freedom_ls.accounts.models import User
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.qa_helpers.management.commands.qa_create_organisation_scenarios import (
+    _pin_current_site,
+    _site_context,
+)
 from freedom_ls.qa_helpers.management.commands.qa_create_report_cohort import (
     _get_or_create_user,
     _get_site,
@@ -494,20 +498,28 @@ def command(
     org_staff = _get_or_create_user(site, ORG_STAFF_EMAIL, "Sam", "Orgstaff")
     _grant_report_admin_access(org_staff)
     default_organisation = get_default_organisation(site)
-    assign_object_role(org_staff, default_organisation, "organisation_staff")
-    click.secho(
-        f"  Org staff  {org_staff.email} / {org_staff.email} "
-        f"(is_staff, organisation_staff on '{default_organisation.name}', "
-        f"NO per-cohort grant -- must see every cohort above)",
-        fg="green",
-    )
 
     foreign_organisation = _get_or_create_foreign_organisation(site)
     foreign_staff = _get_or_create_user(
         site, FOREIGN_ORG_STAFF_EMAIL, "Frankie", "Elsewhere"
     )
     _grant_report_admin_access(foreign_staff)
-    assign_object_role(foreign_staff, foreign_organisation, "organisation_staff")
+
+    # assign_object_role reads Site.objects.get_current() for the role config
+    # and writes an ObjectRoleAssignment with no site= of its own, and a
+    # management command has neither a SITE_ID nor a request. Both helpers are
+    # shared with qa_create_organisation_scenarios rather than repeated here.
+    _pin_current_site(site)
+    with _site_context(site):
+        assign_object_role(org_staff, default_organisation, "organisation_staff")
+        assign_object_role(foreign_staff, foreign_organisation, "organisation_staff")
+
+    click.secho(
+        f"  Org staff  {org_staff.email} / {org_staff.email} "
+        f"(is_staff, organisation_staff on '{default_organisation.name}', "
+        f"NO per-cohort grant -- must see every cohort above)",
+        fg="green",
+    )
     click.secho(
         f"  Other org  {foreign_staff.email} / {foreign_staff.email} "
         f"(is_staff, organisation_staff on '{foreign_organisation.name}', "

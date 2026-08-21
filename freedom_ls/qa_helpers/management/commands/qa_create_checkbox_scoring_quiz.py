@@ -265,4 +265,7 @@ def command(site_name: str) -> None:
     click.secho("  both correct boxes only -> 2/2 = 100% -> PASS", fg="green")
     click.secho("  any other combination   -> 1/2 =  50% -> FAIL", fg="green")
     click.secho(f"\nCohort for the educator panel: {cohort.name}", fg="cyan")
-    click.secho(f"  /educator/cohorts/{cohort.pk}", fg="green")
+    click.secho(
+        f"  /educator/organisations/{cohort.organisation.slug}/cohorts/{cohort.pk}",
+        fg="green",
+    )

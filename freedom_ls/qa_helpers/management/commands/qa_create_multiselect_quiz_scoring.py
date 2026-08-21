@@ -467,9 +467,14 @@ def command(site_name: str) -> None:
 
     click.secho("\n--- Educator cohort panel ---", fg="cyan", bold=True)
     click.secho(f"Cohort: {cohort.name}", fg="cyan")
-    click.secho(f"  /educator/cohorts/{cohort.pk}", fg="green", bold=True)
     click.secho(
-        f"  /educator/cohorts/{cohort.pk}/__tabs/course_progress",
+        f"  /educator/organisations/{cohort.organisation.slug}/cohorts/{cohort.pk}",
+        fg="green",
+        bold=True,
+    )
+    click.secho(
+        f"  /educator/organisations/{cohort.organisation.slug}"
+        f"/cohorts/{cohort.pk}/__tabs/course_progress",
         fg="green",
     )
     click.secho(

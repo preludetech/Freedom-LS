@@ -737,4 +737,8 @@ def command(
             fg="green",
             bold=True,
         )
-    click.secho(f"Panel:    /educator/cohorts/{cohort.pk}", fg="cyan")
+    click.secho(
+        f"Panel:    /educator/organisations/{cohort.organisation.slug}"
+        f"/cohorts/{cohort.pk}",
+        fg="cyan",
+    )

@@ -99,8 +99,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user + cmd) Fix QA bug: a CoursePart holding a failed quiz renders as "Locked" with no link while the quiz inside it stays reachable for a retry — the index build's part-status chain has no FAILED branch, though `get_content_status` does, so the part row now reads "Needs retry" and routes to the re-sit (TDD — failing test first, then fix)
 - [x] (user + cmd) Adapt the report feature to the landed `organisations` work: route report authorisation through `all_cohorts_visible_to`/`can_view_cohort` so an `organisation_staff` holder is no longer locked out, and name the organisation on the admin changelist, the generate dropdown, `GeneratedReport.__str__`, the report cover and the running footer now that cohort names are unique per organisation rather than per site (TDD — failing tests first, then fix)
 - [x] (user + cmd) Fix QA/test fixtures that passed an explicit `site=` to `CohortFactory`/`UserCourseRegistrationFactory` without an `organisation=`, leaving the row on one site and its organisation on another
-- [ ] (user) Decide how to fix the missing organisation backfill in `student_management/migrations/0014_cohort_organisation_and_more.py` — it adds two non-nullable FKs with no `RunPython` backfill, so `migrate` fails on any database with existing cohorts or registrations (including the dev database). Landed on main, not on this branch, and it blocks the browser QA re-run below
-- [ ] (cmd) Re-run `/fls-dev:do_qa` on `3a. report_generation_qa/frontend_qa_report_generation.md` for the organisation changes — QA 2.1 and QA 8 both changed, and QA 8.8–8.11 are new (blocked until the migration above is fixed)
+- [ ] (cmd) Re-run `/fls-dev:do_qa` on `3a. report_generation_qa/frontend_qa_report_generation.md` for the organisation changes — QA 2.1 and QA 8 both changed, and QA 8.8–8.11 are new
 
 ## 10. Product documentation
 

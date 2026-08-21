@@ -579,6 +579,9 @@ def command(site_name: str) -> None:
     click.echo(
         f"  members: {CohortMembership.objects.filter(cohort=cohort, site=site).count()}"
     )
-    click.echo(f"  educator panel: /educator/cohorts/{cohort.pk}")
+    click.echo(
+        "  educator panel: /educator/organisations/"
+        f"{cohort.organisation.slug}/cohorts/{cohort.pk}"
+    )
     if educator is not None:
         click.echo(f"  guardian view_cohort granted to {educator.email}")
