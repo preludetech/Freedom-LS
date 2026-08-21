@@ -12,6 +12,7 @@
       "Bash(find:*)",
       "Bash(uv run pytest:*)",
       "Bash(uv run git commit:*)",
+      "Bash(uv run git revert:*)",
       "mcp__ide__getDiagnostics",
       "Bash(tail:*)",
       "Bash(uv run git status:*)",
@@ -42,13 +43,11 @@
       "Bash(git mv *)",
       "Bash(chmod +x *)",
       "Bash(GIT_EDITOR=true git rebase --continue)",
-      "Bash(rm -rf .sdd-work/)",
       "Bash(git branch *)",
       "Bash(git remote *)",
       "Bash(.claude/ds/scripts/*.sh:*)",
       "Bash(.claude/fls-dev/scripts/*.sh:*)",
-      "Bash(uv run python manage.py runserver *)",
-      "Bash(uv run --with pillow python * compress_screenshots.py*)"
+      "Bash(uv run python manage.py runserver:*)"
     ],
     "deny": [
       "Write(config/settings_prod.py)",

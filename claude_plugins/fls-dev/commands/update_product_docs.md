@@ -1,6 +1,6 @@
 ---
 description: Update docs/product/ for the current feature after it ships
-allowed-tools: Read, Glob, Write, Edit, Bash, Agent, mcp__playwright*
+allowed-tools: Read, Glob, Write, Edit, Bash, Agent, mcp__plugin_ds_playwright__*
 ---
 
 Update the product documentation under `docs/product/` to reflect the feature that was just implemented. This command runs at **depth 0** and fans work out to sub-agents.

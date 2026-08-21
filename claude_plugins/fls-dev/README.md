@@ -42,18 +42,21 @@ copy rather than merging. `ds`-owned wrappers the legacy dir carried are relocat
 preflight enforces it, and nothing is written until every check passes. The FLS-specific SDD-step
 commands spawn `sdd`-plugin agents.
 
-### Agents (1)
+### Agents (2)
 
 `qa-data-helper` — creates QA test data with factory_boy factories. Its persistent memory lives at
 `.claude/agent-memory/fls-dev-qa-data-helper/`.
+`qa-bugfixer` — fixes one QA-reported bug TDD-style (failing test → fix → full suite → commit).
+Spawned by `do_qa`'s triage loop.
 
-### Scripts (6)
+### Scripts (9)
 
 `dev_db_delete.sh`, `dev_db_init.sh`, `db_recreate.sh`, `install_dev.sh` — per-branch dev/test database
 setup and teardown.
-`qa_cleanup.sh`, `compress_screenshots.py` — QA-run artifact cleanup and screenshot compression. They
-live here rather than in `sdd` because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and their only callers are
-the `fls-dev` commands `do_qa` and `update_product_docs`.
+`qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh` + `compress_screenshots.py`,
+`delete_sdd_work_files.sh` — QA-run artifact cleanup, screenshot collection and compression, and
+scratch-file teardown. They live here rather than in `sdd` because `${CLAUDE_PLUGIN_ROOT}` is
+per-plugin and their only callers are the `fls-dev` commands `do_qa` and `update_product_docs`.
 
 ### Resources (11)
 
@@ -67,5 +70,7 @@ FLS delta addenda (extend the matching `ds` resource): `admin_interface` (extend
 ### Templates
 
 `fls.md`, `fls.local.md` (config templates `/fls-dev:init` copies into `.claude/fls-dev/`), and
-`wrapper_scripts/` (`dev_db_delete.sh`, `dev_db_init.sh`, `db_recreate.sh`, `install_dev.sh`). The
-shared `claude.sh` launcher and the `settings.json` baseline are `ds`-owned templates.
+`wrapper_scripts/` (`dev_db_delete.sh`, `dev_db_init.sh`, `db_recreate.sh`, `install_dev.sh`,
+`qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh`,
+`delete_sdd_work_files.sh`). The shared `claude.sh` launcher and the `settings.json` baseline are
+`ds`-owned templates.

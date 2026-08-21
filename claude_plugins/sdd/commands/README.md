@@ -75,7 +75,7 @@ Run `/do_qa` to execute the QA plan.
 ### Reacting to the QA report
 
 - If tests were skipped because of missing data or fixtures, create the needed test data (the `fls-dev:qa-data-helper` agent is designed for this).
-- If bugs were detected, `/do_qa` now includes a triage → TDD fix → re-verify loop (SC#9): clear
+- If bugs were detected, `/do_qa` now includes a triage → TDD fix → re-verify loop: clear
   functional regressions that are unit-testable, single-app, and not security-adjacent are
   auto-fixed by the `fls-dev:qa-bugfixer` agent using TDD (failing test → fix → full suite → commit →
   re-verify the Playwright flow). Bugs that do not meet the triage criteria are left `UNRESOLVED`
@@ -87,8 +87,8 @@ Run `/do_qa` to execute the QA plan.
 
 The `.claude/settings.json` allow-list uses wildcard entries `Bash(.claude/ds/scripts/*.sh:*)` and
 `Bash(.claude/fls-dev/scripts/*.sh:*)` so that QA helper scripts (`find_available_port.sh`,
-`kill_runserver.sh`, `qa_cleanup.sh`, `qa_collect_screenshots.sh`, `delete_sdd_work_files.sh`, etc.)
-run prompt-free during a QA session.
+`kill_runserver.sh`, `qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh`,
+`delete_sdd_work_files.sh`) run prompt-free during a QA session.
 
 **Adding any script under `.claude/ds/scripts/` or `.claude/fls-dev/scripts/` is equivalent to
 adding it to the allow-list.** That script will be granted prompt-free execution with arbitrary
