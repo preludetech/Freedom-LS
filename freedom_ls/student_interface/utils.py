@@ -147,6 +147,24 @@ def unpassed_forms(user: User, course: Course) -> list[UnpassedForm]:
     ]
 
 
+def quiz_verdict(form: Form, form_progress: FormProgress) -> bool | None:
+    """Whether a completed attempt passed, or None when there is no verdict to give.
+
+    None covers a form that is not a scored quiz at all, and a quiz whose author
+    left ``quiz_pass_percentage`` unset: the score is real, but nothing in the
+    course says what counts as passing it. Guarding here also keeps
+    ``FormProgress.passed()``, which raises on a null pass mark, from being
+    reached with one.
+
+    Every caller that decides whether a learner may move on reads the verdict
+    from here, so the course index and the form's own start page cannot drift
+    apart on what "passed" means.
+    """
+    if form.strategy != FormStrategy.QUIZ or form.quiz_pass_percentage is None:
+        return None
+    return form_progress.passed()
+
+
 def get_content_status(
     content_item: Topic | Form | CoursePart | Course,
     user: RequestUser,
@@ -179,20 +197,11 @@ def get_content_status(
         form_progress = form_progress_map.get(content_item.id)
 
         if form_progress and form_progress.completed_time:
-            # A quiz with no pass mark configured has nothing to fail against —
-            # treat it the same as a non-quiz form (no verdict) rather than
-            # calling passed(), which raises for a null quiz_pass_percentage.
-            is_scored_quiz = (
-                form_progress.form.strategy == FormStrategy.QUIZ
-                and form_progress.form.quiz_pass_percentage is not None
-            )
-            if is_scored_quiz:
-                if form_progress.passed():
-                    return COMPLETE, READY
-                else:
-                    return FAILED, BLOCKED
-            else:
-                return COMPLETE, READY
+            # No verdict — a non-quiz form, or a quiz with no pass mark
+            # configured — counts as done; only an actual fail blocks what follows.
+            if quiz_verdict(form_progress.form, form_progress) is False:
+                return FAILED, BLOCKED
+            return COMPLETE, READY
         elif form_progress:
             return IN_PROGRESS, BLOCKED
         elif next_status == READY:
@@ -566,12 +575,21 @@ def create_child_dict_with_flattened_index(
             ready_child = next(
                 (c for c in part_children_dicts if c["status"] == READY), None
             )
+            failed_child = next(
+                (c for c in part_children_dicts if c["status"] == FAILED), None
+            )
             if in_progress_child:
                 status = IN_PROGRESS
                 url = in_progress_child["url"]
             elif ready_child:
                 status = READY
                 url = ready_child["url"]
+            elif failed_child:
+                # A part whose only open work is a re-sit reads "Needs retry",
+                # not "Locked" — the quiz itself stays reachable so it can be
+                # retried, and a locked part row would deny what its child allows.
+                status = FAILED
+                url = failed_child["url"]
             elif all(c["status"] == COMPLETE for c in part_children_dicts):
                 status = COMPLETE
                 url = part_children_dicts[0]["url"]
@@ -647,32 +665,14 @@ def form_start_page_buttons(
     latest_completed = completed_form_progress.first()
 
     if latest_completed:
-        # For QUIZ forms, check if user passed
-        if form.strategy == FormStrategy.QUIZ:
-            scores = latest_completed.scores or {}
-            score = scores.get("score", 0)
-            max_score = scores.get("max_score", 1)
-
-            # Calculate pass percentage (80% threshold)
-            pass_threshold = 0.8
-            percentage = score / max_score if max_score > 0 else 0
-            passed = percentage >= pass_threshold
-
-            if passed:
-                # User passed the quiz
-                if is_last_item:
-                    buttons.append({"text": "Finish Course", "action": "finish_course"})
-                else:
-                    buttons.append({"text": "Next", "action": "next"})
-            else:
-                # User failed the quiz - only show Try Again
-                buttons.append({"text": "Try Again", "action": "try_again"})
+        # A failed quiz offers only a retry: the item after it is BLOCKED, so a
+        # Next button here would bounce the learner to the course detail page.
+        if quiz_verdict(form, latest_completed) is False:
+            buttons.append({"text": "Try Again", "action": "try_again"})
+        elif is_last_item:
+            buttons.append({"text": "Finish Course", "action": "finish_course"})
         else:
-            # Non-quiz form that's completed
-            if is_last_item:
-                buttons.append({"text": "Finish Course", "action": "finish_course"})
-            else:
-                buttons.append({"text": "Next", "action": "next"})
+            buttons.append({"text": "Next", "action": "next"})
     else:
         # No progress at all - show Start button
         buttons.append({"text": "Start Form", "action": "start"})

@@ -12,9 +12,10 @@ from freedom_ls.content_engine.factories import (
     FormFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course, CoursePart
+from freedom_ls.content_engine.models import Course, CoursePart, FormStrategy
 from freedom_ls.student_interface.utils import (
     BLOCKED,
+    FAILED,
     IN_PROGRESS,
     READY,
     get_course_index,
@@ -22,7 +23,10 @@ from freedom_ls.student_interface.utils import (
 from freedom_ls.student_management.factories import (
     UserCourseRegistrationFactory,
 )
-from freedom_ls.student_progress.factories import TopicProgressFactory
+from freedom_ls.student_progress.factories import (
+    FormProgressFactory,
+    TopicProgressFactory,
+)
 
 
 @pytest.mark.django_db
@@ -260,3 +264,48 @@ def test_empty_course_part_row_has_no_url(mock_site_context):
     children = get_course_index(user=user, course=course, can_access_content=True)
 
     assert children[0]["url"] is None
+
+
+@pytest.mark.django_db
+def test_course_part_holding_a_failed_quiz_reads_as_needing_a_retry(mock_site_context):
+    """A part whose only open work is a re-sit routes to it instead of locking.
+
+    The quiz itself stays reachable so it can be retried, so a part row drawn as
+    BLOCKED with no url would deny what its own child allows.
+    """
+    course: Course = CourseFactory(title="Retry", slug="retry")
+    part: CoursePart = CoursePartFactory(title="Chapter", slug="chapter")
+    first = TopicFactory(title="First", slug="first", content="first")
+    quiz = FormFactory(
+        title="Quiz",
+        slug="quiz",
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=80,
+    )
+    after = TopicFactory(title="After", slug="after", content="after")
+
+    course.items.create(child=part, order=0)
+    part.items.create(child=first, order=0)
+    part.items.create(child=quiz, order=1)
+    part.items.create(child=after, order=2)
+
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course)
+    TopicProgressFactory(user=user, topic=first, complete_time=timezone.now())
+    FormProgressFactory(
+        user=user,
+        form=quiz,
+        completed_time=timezone.now(),
+        scores={"score": 1, "max_score": 2},
+    )
+
+    children = get_course_index(user=user, course=course, can_access_content=True)
+    part_dict = children[0]
+
+    quiz_index = course.viewable_items().index(quiz) + 1
+    expected_url = reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": quiz_index},
+    )
+    assert part_dict["status"] == FAILED
+    assert part_dict["url"] == expected_url

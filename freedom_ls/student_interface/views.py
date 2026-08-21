@@ -852,9 +852,15 @@ def view_form(
     # Get the most-recent completed submissions for this user and form. The start
     # screen shows a compact summary of the 5 latest attempts; the button logic
     # only needs the latest via .first() (the queryset is ordered newest-first).
-    completed_form_progress = FormProgress.objects.filter(
-        user=request.user, form=form, completed_time__isnull=False
-    ).order_by("-completed_time")[:5]
+    # select_related("form") so the button logic's pass/fail verdict reads
+    # form.quiz_pass_percentage without a second query.
+    completed_form_progress = (
+        FormProgress.objects.filter(
+            user=request.user, form=form, completed_time__isnull=False
+        )
+        .select_related("form")
+        .order_by("-completed_time")[:5]
+    )
 
     # Determine which buttons to show
     buttons = form_start_page_buttons(

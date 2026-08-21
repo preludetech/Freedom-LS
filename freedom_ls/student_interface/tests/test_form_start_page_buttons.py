@@ -102,7 +102,9 @@ def test_passed_quiz_not_last_shows_next_button(mock_site_context):
     """When user passed a quiz (not last item), show Next button."""
     user = UserFactory()
     # Create a quiz form
-    quiz = FormFactory(title="Test Quiz", strategy=FormStrategy.QUIZ)
+    quiz = FormFactory(
+        title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=80
+    )
     page = FormPageFactory(form=quiz, title="Page 1", order=0)
     question = FormQuestionFactory(
         form_page=page, question="What is 2+2?", type="multiple_choice", order=0
@@ -134,7 +136,9 @@ def test_passed_quiz_last_shows_finish_course_button(mock_site_context):
     """When user passed a quiz (last item), show Finish Course button."""
     user = UserFactory()
     # Create a quiz form
-    quiz = FormFactory(title="Test Quiz", strategy=FormStrategy.QUIZ)
+    quiz = FormFactory(
+        title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=80
+    )
     page = FormPageFactory(form=quiz, title="Page 1", order=0)
     FormQuestionFactory(
         form_page=page, question="What is 2+2?", type="multiple_choice", order=0
@@ -165,7 +169,9 @@ def test_failed_quiz_shows_try_again_button(mock_site_context):
     """When user failed a quiz, show Try Again button (no Next button)."""
     user = UserFactory()
     # Create a quiz form
-    quiz = FormFactory(title="Test Quiz", strategy=FormStrategy.QUIZ)
+    quiz = FormFactory(
+        title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=80
+    )
     page = FormPageFactory(form=quiz, title="Page 1", order=0)
     FormQuestionFactory(
         form_page=page, question="What is 2+2?", type="multiple_choice", order=0
@@ -196,7 +202,9 @@ def test_failed_quiz_last_item_shows_only_try_again(mock_site_context):
     """When user failed a quiz (even if last item), show only Try Again button."""
     user = UserFactory()
     # Create a quiz form
-    quiz = FormFactory(title="Test Quiz", strategy=FormStrategy.QUIZ)
+    quiz = FormFactory(
+        title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=80
+    )
     page = FormPageFactory(form=quiz, title="Page 1", order=0)
     FormQuestionFactory(
         form_page=page, question="What is 2+2?", type="multiple_choice", order=0
@@ -220,3 +228,100 @@ def test_failed_quiz_last_item_shows_only_try_again(mock_site_context):
     assert len(buttons) == 1
     assert buttons[0]["text"] == "Try Again"
     assert buttons[0]["action"] == "try_again"
+
+
+@pytest.mark.django_db
+def test_quiz_passed_against_its_own_pass_mark_shows_next(mock_site_context):
+    """A quiz is judged against its own pass mark, not a fixed threshold."""
+    user = UserFactory()
+    quiz = FormFactory(
+        title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=50
+    )
+    page = FormPageFactory(form=quiz, title="Page 1", order=0)
+    FormQuestionFactory(
+        form_page=page, question="What is 2+2?", type="multiple_choice", order=0
+    )
+
+    completed_progress: FormProgress = FormProgressFactory(
+        user=user,
+        form=quiz,
+        completed_time=timezone.now(),
+        scores={"score": 3, "max_score": 5},  # 60%, over the 50% pass mark
+    )
+
+    buttons = form_start_page_buttons(
+        form=quiz,
+        incomplete_form_progress=None,
+        completed_form_progress=FormProgress.objects.filter(id=completed_progress.id),
+        is_last_item=False,
+    )
+
+    assert len(buttons) == 1
+    assert buttons[0]["text"] == "Next"
+    assert buttons[0]["action"] == "next"
+
+
+@pytest.mark.django_db
+def test_quiz_failed_against_a_high_pass_mark_shows_try_again(mock_site_context):
+    """A score under a strict pass mark offers a retry, not a way forward.
+
+    The start page and ``get_content_status`` have to agree: an item the course
+    index locks must not be reachable from a button on the page before it.
+    """
+    user = UserFactory()
+    quiz = FormFactory(
+        title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=90
+    )
+    page = FormPageFactory(form=quiz, title="Page 1", order=0)
+    FormQuestionFactory(
+        form_page=page, question="What is 2+2?", type="multiple_choice", order=0
+    )
+
+    completed_progress: FormProgress = FormProgressFactory(
+        user=user,
+        form=quiz,
+        completed_time=timezone.now(),
+        scores={"score": 17, "max_score": 20},  # 85%, under the 90% pass mark
+    )
+
+    buttons = form_start_page_buttons(
+        form=quiz,
+        incomplete_form_progress=None,
+        completed_form_progress=FormProgress.objects.filter(id=completed_progress.id),
+        is_last_item=False,
+    )
+
+    assert len(buttons) == 1
+    assert buttons[0]["text"] == "Try Again"
+    assert buttons[0]["action"] == "try_again"
+
+
+@pytest.mark.django_db
+def test_quiz_with_no_pass_mark_shows_next(mock_site_context):
+    """A quiz with no pass mark has nothing to fail, so the learner moves on."""
+    user = UserFactory()
+    quiz = FormFactory(
+        title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=None
+    )
+    page = FormPageFactory(form=quiz, title="Page 1", order=0)
+    FormQuestionFactory(
+        form_page=page, question="What is 2+2?", type="multiple_choice", order=0
+    )
+
+    completed_progress: FormProgress = FormProgressFactory(
+        user=user,
+        form=quiz,
+        completed_time=timezone.now(),
+        scores={"score": 1, "max_score": 2},
+    )
+
+    buttons = form_start_page_buttons(
+        form=quiz,
+        incomplete_form_progress=None,
+        completed_form_progress=FormProgress.objects.filter(id=completed_progress.id),
+        is_last_item=False,
+    )
+
+    assert len(buttons) == 1
+    assert buttons[0]["text"] == "Next"
+    assert buttons[0]["action"] == "next"

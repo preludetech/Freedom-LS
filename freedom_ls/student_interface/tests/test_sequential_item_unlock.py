@@ -14,6 +14,7 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
+    CoursePartFactory,
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
@@ -464,3 +465,180 @@ def test_a_registered_learner_still_reaches_the_form_runner(
     # Assert
     assert response.status_code == 302
     assert "fill_form" in response.url
+
+
+# --- the same lock, one level down ---------------------------------------------
+
+PARTED_COURSE_SLUG = "parted-course"
+
+
+@pytest.fixture
+def parted_course(mock_site_context) -> dict:
+    """topic (1) -> quiz (2, pass 80) -> part "Core Concepts" [topic (3), topic (4)].
+
+    The shape the second reproduction came from: the whole part reads Locked in
+    the index, and the bug was that the items inside it stayed reachable by URL.
+    """
+    course = CourseFactory(title="Parted Course", slug=PARTED_COURSE_SLUG)
+    topic_intro = TopicFactory(title="Opening", slug="opening", content="opening")
+    quiz = FormFactory(
+        title="Gating quiz",
+        slug="parted-gating-quiz",
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=80,
+    )
+    part = CoursePartFactory(title="Core Concepts", slug="core-concepts")
+    inside_first = TopicFactory(title="2.1", slug="two-one", content="two one")
+    inside_second = TopicFactory(title="2.2", slug="two-two", content="two two")
+
+    course.items.create(child=topic_intro, order=0)
+    course.items.create(child=quiz, order=1)
+    course.items.create(child=part, order=2)
+    part.items.create(child=inside_first, order=0)
+    part.items.create(child=inside_second, order=1)
+
+    page = FormPageFactory(form=quiz, order=0)
+    question = FormQuestionFactory(form_page=page, type="checkboxes", order=0)
+    right = QuestionOptionFactory(question=question, correct=True, order=0)
+    wrong = QuestionOptionFactory(question=question, correct=False, order=1)
+
+    return {
+        "course": course,
+        "topic_intro": topic_intro,
+        "quiz": quiz,
+        "quiz_right_option": right,
+        "quiz_wrong_option": wrong,
+        "inside_first": inside_first,
+        "inside_second": inside_second,
+    }
+
+
+@pytest.fixture
+def parted_learner(mock_site_context, parted_course, client):
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=parted_course["course"])
+    client.force_login(user)
+    return user
+
+
+@pytest.mark.django_db
+def test_an_item_inside_a_locked_part_is_unreachable_by_url(
+    parted_course, parted_learner, client
+):
+    # Arrange
+    _complete_topic(parted_learner, parted_course["topic_intro"])
+    _sit_quiz(parted_learner, parted_course, correct=False)
+
+    # Act
+    response = client.get(
+        reverse(
+            "student_interface:view_course_item",
+            kwargs={"course_slug": PARTED_COURSE_SLUG, "index": 3},
+        )
+    )
+
+    # Assert
+    assert response.status_code == 302
+    assert response.url == reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": PARTED_COURSE_SLUG},
+    )
+    assert not TopicProgress.objects.filter(
+        user=parted_learner, topic=parted_course["inside_first"]
+    ).exists()
+
+
+NEAR_MISS_COURSE_SLUG = "near-miss-course"
+
+
+@pytest.fixture
+def near_miss_course(mock_site_context, client) -> dict:
+    """topic (1) -> quiz (2, pass 90) -> topic (3), with the quiz sat at 85%.
+
+    A score that clears a fixed 80% threshold but not the quiz's own pass mark is
+    what pulls the start page's buttons and the gate apart.
+    """
+    course = CourseFactory(title="Near Miss", slug=NEAR_MISS_COURSE_SLUG)
+    topic_intro = TopicFactory(title="Opening", slug="near-opening", content="opening")
+    quiz = FormFactory(
+        title="Strict quiz",
+        slug="strict-quiz",
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=90,
+    )
+    topic_after = TopicFactory(title="Closing", slug="near-closing", content="closing")
+    course.items.create(child=topic_intro, order=0)
+    course.items.create(child=quiz, order=1)
+    course.items.create(child=topic_after, order=2)
+
+    user = UserFactory()
+    UserCourseRegistrationFactory(user=user, collection=course)
+    client.force_login(user)
+
+    _complete_topic(user, topic_intro)
+    FormProgressFactory(
+        user=user,
+        form=quiz,
+        completed_time=timezone.now(),
+        scores={"score": 17, "max_score": 20},
+    )
+
+    return {"course": course, "quiz": quiz, "topic_after": topic_after, "user": user}
+
+
+def _near_miss_item_url(index: int) -> str:
+    return reverse(
+        "student_interface:view_course_item",
+        kwargs={"course_slug": NEAR_MISS_COURSE_SLUG, "index": index},
+    )
+
+
+@pytest.mark.django_db
+def test_a_failed_quiz_start_page_offers_a_retry_and_no_way_forward(
+    near_miss_course, client
+):
+    """The start page's buttons are drawn from the same verdict as the gate.
+
+    The quiz's own page is where a learner lands after failing, so a Next button
+    here would send them at an item the gate then turns them away from.
+    """
+    # Act
+    response = client.get(_near_miss_item_url(2))
+
+    # Assert
+    content = response.content.decode()
+    assert 'data-testid="try-again-button"' in content
+    assert 'data-testid="next-button"' not in content
+    assert f'href="{_near_miss_item_url(3)}"' not in content
+
+
+@pytest.mark.django_db
+def test_the_item_after_a_near_miss_quiz_is_locked(near_miss_course, client):
+    """The gate's half of the same verdict, so the two are pinned together."""
+    # Act
+    response = client.get(_near_miss_item_url(3))
+
+    # Assert
+    assert response.status_code == 302
+    assert response.url == reverse(
+        "student_interface:course_detail",
+        kwargs={"course_slug": NEAR_MISS_COURSE_SLUG},
+    )
+
+
+@pytest.mark.django_db
+def test_a_passed_quiz_start_page_leads_on_to_the_next_item(
+    gated_course, learner, client
+):
+    """The other half of the same verdict: an 80% pass mark met at 100% moves on."""
+    # Arrange
+    _complete_topic(learner, gated_course["topic_intro"])
+    _sit_quiz(learner, gated_course, correct=True)
+
+    # Act
+    response = client.get(_item_url(2))
+
+    # Assert
+    content = response.content.decode()
+    assert 'data-testid="next-button"' in content
+    assert 'data-testid="try-again-button"' not in content
