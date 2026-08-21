@@ -884,28 +884,54 @@ h3.confusion-heading {
   margin: 0;
   padding: 0;
 }
+/* A flex row rather than a right-floated date: WeasyPrint places the float on
+   the last row of a column short of the edge the rows above it reach, which
+   reads as a broken table. Flex holds the date against the column edge on
+   every row, and keeps it on the first line when a long title wraps. */
 .student-section .items-list li {
   border-bottom: 0.5pt solid var(--color-border);
   font-size: 7.6pt;
   padding: 1.8pt 0;
   break-inside: avoid;
+  display: flex;
+  justify-content: space-between;
+  gap: 3mm;
 }
 .student-section .item-date {
-  float: right;
   font-family: var(--report-font-mono);
   font-size: 7.2pt;
   color: var(--color-muted);
-  padding-left: 3mm;
+  white-space: nowrap;
 }
 .student-section .item-kind {
   color: var(--color-muted);
 }
-/* The full page width is far wider than these few figures need. */
 .student-section .completion-bar-outer {
   width: 60mm;
 }
+/* Fixed widths on both tables below, for the same reason: a learner's section
+   stacks one attempts table and one incorrect-answers table per quiz, and the
+   detail section repeats that stack for every learner. Left to size themselves
+   from their own contents, no two of those tables agree on where a column
+   starts, and a page of them reads as several unrelated tables rather than one
+   set of figures. The widths are budgeted against each table's own width. */
+
+/* 130mm — the full page width is far wider than these four figures need. */
 .student-section .attempts-table {
   width: 130mm;
+  table-layout: fixed;
+}
+.student-section .col-attempt-quiz {
+  width: 62mm;
+}
+.student-section .col-attempt-number {
+  width: 16mm;
+}
+.student-section .col-attempt-date {
+  width: 24mm;
+}
+.student-section .col-attempt-score {
+  width: 28mm;
 }
 .student-section .attempt-date,
 .student-section .attempt-raw {
@@ -916,9 +942,25 @@ h3.confusion-heading {
   color: var(--color-muted);
   margin-left: 3pt;
 }
+/* 180mm — the full page width less the side margins. The two answer columns
+   are held equal so a reader compares what was chosen against what was right
+   across a fixed distance, and the question column takes the rest. */
+.student-section .wrong-answers-table {
+  table-layout: fixed;
+}
 .student-section .wrong-answers-table .col-question-number {
   width: 9mm;
   font-family: var(--report-font-mono);
+}
+.student-section .wrong-answers-table .col-question {
+  width: 60mm;
+}
+.student-section .wrong-answers-table .col-wrong {
+  width: 12mm;
+}
+.student-section .wrong-answers-table .col-answers,
+.student-section .wrong-answers-table .col-correct {
+  width: 49.5mm;
 }
 
 /* ==== confusions.html / quiz_confusion.html ==== */

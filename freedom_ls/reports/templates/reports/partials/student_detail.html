@@ -36,14 +36,17 @@ of its warning rule, so the first flag is the most serious one a learner has.
   {% if student.has_reportable_activity %}
   {% if student.completed_items %}
   {% comment %}A list rather than a table so print.css can set it in two columns
-  — a course of thirty items is otherwise a page of near-empty lines. The date
-  precedes the title because it is floated right.{% endcomment %}
+  — a course of thirty items is otherwise a page of near-empty lines. Each row
+  is a flex row, so the date follows the title in source order. A right float
+  would read the same here but WeasyPrint misplaces one on the last row of a
+  column, leaving that date short of the edge every other row reaches.
+  {% endcomment %}
   <p class="subhead">Items completed</p>
   <ul class="items-list">
     {% for item in student.completed_items %}
     <li>
-      <span class="item-date">{{ item.completed_at|date:"j M Y" }}</span>
       <span class="item-title">{{ item.title }}{% if item.is_quiz %} <span class="item-kind">(quiz)</span>{% endif %}</span>
+      <span class="item-date">{{ item.completed_at|date:"j M Y" }}</span>
     </li>
     {% endfor %}
   </ul>
@@ -54,10 +57,10 @@ of its warning rule, so the first flag is the most serious one a learner has.
   <table class="attempts-table">
     <thead>
       <tr>
-        <th>Quiz</th>
-        <th class="numeric">Attempt</th>
-        <th>Date</th>
-        <th class="numeric">Score</th>
+        <th class="col-attempt-quiz">Quiz</th>
+        <th class="col-attempt-number numeric">Attempt</th>
+        <th class="col-attempt-date">Date</th>
+        <th class="col-attempt-score numeric">Score</th>
       </tr>
     </thead>
     <tbody>
@@ -98,10 +101,10 @@ of its warning rule, so the first flag is the most serious one a learner has.
     <thead>
       <tr>
         <th class="col-question-number">Q</th>
-        <th>Question</th>
-        <th class="numeric">Wrong</th>
-        <th>Answers given</th>
-        <th>Correct answer</th>
+        <th class="col-question">Question</th>
+        <th class="col-wrong numeric">Wrong</th>
+        <th class="col-answers">Answers given</th>
+        <th class="col-correct">Correct answer</th>
       </tr>
     </thead>
     <tbody>
