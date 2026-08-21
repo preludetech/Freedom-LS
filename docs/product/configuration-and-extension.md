@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-08-05_
+_Last updated: 2026-08-21_
 
 ## Summary
 
@@ -32,6 +32,8 @@ Each tier is independent and they can be combined.
 **Tier 2 — component slots.** Course card and course row components expose named slots (`eyebrow`, `footer`) a downstream template can fill without forking the component, and accept a mergeable `class` attribute for layout tweaks. Changes content and layout within a component while leaving its logic alone.
 
 **Tier 3 — whole-file shadowing.** Any FLS template can be replaced entirely by placing a file at the same relative path in the downstream project's theme template directory, which the template loader searches first. Use this when tiers 1 and 2 are not enough.
+
+**Report typography.** The [cohort report](./reports.md) follows the same model: it names no colour and no font family of its own. It takes its colours from the built theme stylesheet, so it matches whichever theme is active, and its typefaces from settings. A downstream project rebrands the report by supplying its own font files and overriding those settings — no template changes needed. The settings are listed [below](#settings-reference).
 
 ## Themes and Icons
 
@@ -84,6 +86,8 @@ FLS is designed to be installed into an existing Django project as a git submodu
 
 FLS is not a black box; the host project has override capability at every layer.
 
+**One stated exception — the report's at-risk rules.** The rules that flag learners as needing attention in the [cohort report](./reports.md) are a fixed, ordered list in code. There is no setting pointing at a downstream rule list and no database-backed configuration, so a project needing a rule of its own — or a different inactivity threshold — must fork until rule selection moves into the database. See the [roadmap](./roadmap.md).
+
 ## Conformance Suite
 
 Because FLS is meant to be installed, extended, and partially overridden, a downstream project can wire it up wrongly in ways that pass Django's own configuration checks yet still fail for a learner at runtime — a required setting left unset, a URL include quietly missing. The conformance suite is an importable module a downstream project brings into its own test suite to answer one question: *have I wired FLS up correctly?*
@@ -119,5 +123,12 @@ The checks need no database connection or network access, so they are cheap enou
 | `FORCE_SITE_NAME` | Pins the installation to one site instead of resolving by host. |
 | `TRUSTED_PROXY_IP_HEADER` | Header to trust for the client IP behind a reverse proxy. |
 | `DJANGO_ADMIN_URL` | Path the Django admin is mounted at. See [admin interface](./admin-interface.md). |
+| `REPORTS_STORAGE_ALIAS` | Storage the cohort report PDF is written to. See [security and data handling](./security-and-data-handling.md). |
+| `REPORTS_MAX_STUDENTS` | Caps the cohort size a report will generate for, bounding render time and memory. |
+| `REPORTS_MAX_QUIZ_COLUMNS` | Caps how many quiz columns a course's landscape summary table carries before splitting into a continued table. |
+| `REPORTS_FONT_FACES` | The font files embedded in the report PDF. |
+| `REPORTS_FONT_DISPLAY` | Font stack for the report's headings. |
+| `REPORTS_FONT_BODY` | Font stack for the report's body text. |
+| `REPORTS_FONT_MONO` | Font stack for the report's monospace text. |
 
-Branding settings are listed [above](#branding). Deployment and storage settings are covered in [deployment](./deployment.md); per-site signup policy in [authentication](./authentication.md).
+Branding settings are listed [above](#branding). Deployment and storage settings are covered in [deployment](./deployment.md); per-site signup policy in [authentication](./authentication.md). What the cohort report contains is documented in [cohort reports](./reports.md).

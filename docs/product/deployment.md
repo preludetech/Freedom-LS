@@ -1,6 +1,6 @@
 # Deployment
 
-_Last updated: 2026-08-05_
+_Last updated: 2026-08-21_
 
 ## Summary
 
@@ -42,7 +42,7 @@ The intent is that all infrastructure configuration is version-controlled, givin
 
 Django 6's built-in task framework is wired in. Production uses a durable, database-backed backend that stores tasks as rows in PostgreSQL — no Celery, Redis, or separate broker — and enqueued tasks are inspectable in the Django admin. Dev and test instead run tasks synchronously inside the request cycle, so the whole test suite runs without a worker process.
 
-**`python manage.py db_worker` is a required production process.** An enqueued task sits in the database until a worker picks it up; without one running, background work — currently webhook delivery — is accepted but never executes. Run it as its own long-lived process or container.
+**`python manage.py db_worker` is a required production process.** An enqueued task sits in the database until a worker picks it up; without one running, background work — webhook delivery and [cohort report](./reports.md) generation — is accepted but never executes, and a requested report stays pending indefinitely. Run it as its own long-lived process or container.
 
 Delivery is at-least-once, so a task can be redelivered. Task producers are idempotent under redelivery: a webhook is not sent twice for the same event and endpoint. See [webhooks](./webhooks.md).
 
@@ -54,13 +54,14 @@ Built into the application and present regardless of deployment configuration:
 
 - **Static files** — served compressed and cache-busted directly from the application. No separate static file server needed.
 - **Object storage for media** — media is served from S3-compatible object storage (Cloudflare R2), enabled by setting the storage bucket environment variable; without it, media falls back to local filesystem storage. Media is **private by default**, with time-limited signed links rather than permanently public URLs. See [security and data handling](./security-and-data-handling.md).
+- **Cohort progress reports** — generates a per-cohort progress report as a PDF. Generation always runs as a background task and always produces a stored file, never a public media file: reports hold real learner names and quiz answers, so they are written to a private storage location configured separately from ordinary media, and a deployment that has not configured one gets a startup warning rather than a silent fallback to publicly served storage. See [security and data handling](./security-and-data-handling.md). The report bundles its own fonts, so rendering does not depend on what the base image happens to carry.
 - **Health probes** — `/health/liveness/` and `/health/readiness/`, available with no configuration. Liveness only confirms the process can serve a request and checks no dependency, so a transient database problem cannot trigger a restart loop. Readiness checks database connectivity and returns a non-200 when it is unreachable, making it the probe that container health checks and load balancers should poll to gate traffic; a setting lets an operator add further checks. Applied migrations are deliberately excluded — that belongs in a deploy-time smoke test, not a polled probe. Health paths are exempt from the HTTPS redirect, so a plain-HTTP internal probe behind a TLS-terminating proxy is served rather than mistaken for unhealthy.
 - **Error tracking (Sentry)** — configured by supplying a DSN, and a complete no-op until one is set, so development and unconfigured deployments send nothing. Once configured it tags events with the deployment's environment and release. Attaching learner personal data is an explicit opt-in, off by default. A staff-only endpoint lets an operator confirm a running deployment is actually reaching Sentry. If a DSN is set but the release identifier is left blank, a non-blocking deployment warning surfaces at boot and in CI, so untagged events are caught rather than quietly degrading release tracking.
 - **Analytics (PostHog)** — a client-side snippet configured by project token and region host. With no token set the snippet does not render, so development deployments send nothing.
 - **Environment-variable configuration** — all secrets and deployment-specific settings are supplied by environment variable, with sensible in-repo defaults where one makes sense, so a deployment configures these services without copy-pasting settings code. No credentials are hardcoded. Database connection SSL mode is configurable and defaults to *preferred*, which suits the shipped same-host containerised PostgreSQL; stricter modes are for external or managed databases. Persistent database connections are enabled with health checking, so a connection left stale by a database restart is recycled rather than failing the next request. A missing `SECRET_KEY` — or a missing `WEBHOOK_ENCRYPTION_SALT` — fails the application at startup as a visible crash-loop rather than booting into a silently broken state. See [security and data handling](./security-and-data-handling.md).
 - **HTTPS detection behind a reverse proxy** — production trusts the proxy's forwarded scheme, so requests that reached the proxy over HTTPS are correctly recognised as secure. This is what makes the HTTPS redirect and HSTS work behind a proxy instead of looping. See [security and data handling](./security-and-data-handling.md) for the trust preconditions.
 - **Shared production defaults** — the production settings FLS recommends are increasingly delivered as values a downstream project imports directly from FLS rather than copies. A fix to one of these lands once in FLS and reaches downstream projects on their next routine version update, instead of needing to be re-applied project by project.
-- **Tailwind build at image-build time** — `npm run tailwind_build` must run during image construction, and `FLS_THEME` must be set at build time. It cannot be changed at runtime without a rebuild.
+- **Tailwind build at image-build time** — `npm run tailwind_build` must run during image construction, and `FLS_THEME` must be set at build time. It cannot be changed at runtime without a rebuild. The [cohort report](./reports.md) takes its colours from this compiled stylesheet rather than carrying any of its own, so a deployment that ships without running the build gets an explicit failure when generating a report rather than a colourless PDF.
 
 **Logging.** The application's logging helper defaults to stdout/stderr only, which suits container log collection. This repo's own production settings currently opt out of that default and additionally write rotating log files to disk — an in-code comment marks that as temporary, pending container-level log size caps. The template repo's reference configuration pairs stdout logging with per-service capped container logging, so the disk-fill risk is handled at the log-driver level rather than relocated.
 
@@ -87,6 +88,7 @@ Moving to Phase 2 is triggered by monitoring data — CPU consistently above 70%
 Vultr's ISO 27001:2022 certification covers the physical data centre, hardware, network backbone, hypervisor, and Vultr's own procedures. It does not cover the OS or the application. The operator owns:
 
 - OS hardening — planned via Ansible, not yet built.
+- PDF rendering system packages — [cohort reports](./reports.md) render using WeasyPrint, which needs Pango, cairo, gdk-pixbuf, and HarfBuzz present at runtime, so a production image must install them. FLS does not load WeasyPrint at startup: a deployment missing those libraries still boots, and report generation fails at generation time with a clear error rather than a crash loop.
 - TLS encryption — terminates at the reverse proxy in the template-repo stack.
 - Encrypted backups — not yet automated.
 - Database SSL configuration.

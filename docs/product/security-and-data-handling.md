@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-08-11_
+_Last updated: 2026-08-21_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -10,9 +10,11 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 - **Built:** Security gates run on every commit — secret and private-key detection, a Python security linter, linting, formatting, type checking, and shell linting. CI additionally runs dependency and static-analysis scans plus Django's own deployment checks.
 - **Built:** Production trusts a TLS-terminating reverse proxy's forwarded scheme, so the HTTPS redirect and HSTS behave correctly behind it — and refuses to start at all if `SECRET_KEY` or `WEBHOOK_ENCRYPTION_SALT` is missing.
 - **Built:** Media in object storage is private by default, served via time-limited signed links rather than permanently public URLs. Error tracking is wired but inactive until an operator supplies credentials, and omits learner personal data by default.
+- **Built:** Cohort progress reports are downloaded only through a permission-checked view, never a public media URL. Generating and downloading one both require the requesting staff user to be authorised to see that cohort; staff status alone is not enough.
+- **Operational:** Report PDFs are written to a private storage location once an operator configures one. Left unconfigured they fall back to default media storage — which may be publicly served — and a startup check warns about it.
 - **Report-only:** Content Security Policy runs in report-only mode — violations are reported, not blocked. HSTS is configurable but needs a staged rollout at deployment time; it is not meaningfully on by default.
 - **Defect narrowed:** cohort and user detail pages in the educator interface are now permission-checked and deny by default. What remains is the Courses section — any authenticated user on a site can still read the full course list, hidden courses included, and any course detail page. Writes are gated and site isolation is unaffected. See [educator interface authorisation](#educator-interface-authorisation-narrowed-defect).
-- **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, and per-request access-controlled media downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
+- **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, per-request access-controlled media downloads, a retention or expiry policy for generated report files, and an access log for report downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
 - **Infrastructure:** The target deployment uses Vultr Johannesburg (ISO 27001:2022 certified). Vultr's certification covers physical and hypervisor layers; the operator owns everything above. See [shared responsibility](#infrastructure-and-shared-responsibility).
 
 ---
@@ -81,6 +83,16 @@ When object storage is configured, this is closed at the storage layer: files ar
 
 **Limitation:** this is storage-layer privacy, not per-request access control. FLS does not re-check whether a specific learner is still authorised at the moment a file is fetched — a signed link works for anyone holding it until it expires. Routing downloads through the same access check used for course pages is **not yet built**; see the [roadmap](./roadmap.md). Without object storage, media is served from local disk with no signing at all — that mode is for development only. See [deployment](./deployment.md) for configuration.
 
+### Cohort Report Access Control (built)
+
+A [cohort progress report](./reports.md) holds real learner names, completion history, and individual quiz answers, and is treated accordingly.
+
+Unlike ordinary media, a report is never reachable through a storage URL. Both generating a report and downloading one require the requesting user to be authorised to see that cohort — through a per-cohort permission grant, or a staff role on the cohort's organisation, the two routes described under [educator interface access control](./educator-interface.md#access-control). Being staff is not sufficient on its own: a staff user holding neither is denied on both the generate action and the download. Unlike media, that check runs on every request, not only at the storage layer.
+
+Downloads are served as an attachment with caching suppressed, so a PII-bearing PDF is not left sitting in a shared proxy cache or a browser's disk cache.
+
+**Not yet built:** report downloads are not audit-logged. Beyond who requested a report's generation, there is no record of who downloaded it or when.
+
 ---
 
 ## Data Handling
@@ -94,6 +106,8 @@ FLS stores, in its PostgreSQL database:
 - Legal consent records — which document and version was accepted, when, from what IP address, and by what method.
 - Learning activity — course progress, quiz answers, and scores.
 - Webhook delivery logs, which may contain user data inside the delivered payload.
+
+Outside the database, FLS stores generated [cohort progress reports](./reports.md) as PDF files. Each holds real learner names, completion history, and individual quiz scores and answers, and is not anonymised — the audience is internal staff, by design. See [generated cohort reports](#generated-cohort-reports).
 
 No payment data, government ID, or biometric data is stored by FLS.
 
@@ -119,13 +133,23 @@ This is **off by default**: attaching personal data to error reports requires a 
 
 Every acceptance of a legal document is recorded as an append-only record tied to the exact committed version of the document accepted, which makes it tamper-evident. This is the closest thing FLS has to a personal-data processing record. Owned by [authentication](./authentication.md) — see it for detail.
 
+### Generated Cohort Reports
+
+A [cohort progress report](./reports.md) is a generated PDF, one per cohort, holding real learner names, completion status, and the individual answers behind each quiz score. It is not anonymised — the audience is internal educators and staff, and that is a deliberate product decision. Who can reach one is covered under [cohort report access control](#cohort-report-access-control-built).
+
+**Storage (operational).** Report files are written to a storage location configured separately from ordinary media, through the `REPORTS_STORAGE_ALIAS` setting. A deployment that has not configured one falls back to default media storage — which may be publicly served — and the application raises a startup warning naming the gap, so it surfaces at deploy time rather than after a leak. See [deployment](./deployment.md).
+
+**Deletion (built).** Deleting a report removes its stored PDF, not only the database row, and the same holds when a cohort is deleted and takes its reports with it. Neither path leaves an orphaned PII-bearing file behind.
+
+**Gap — no retention or expiry (not yet built).** A generated report is kept indefinitely until deleted by hand. This is a deferred decision, not a statement that reports should be kept forever. See [retention, deletion, and data-subject rights](#retention-deletion-and-data-subject-rights-not-yet-built) and the [roadmap](./roadmap.md).
+
 ### Incident Response (not yet built)
 
 No incident-response runbook, breach-notification templates, or automated alerting for data events exist in the codebase. POPIA requires prompt notification to the Information Regulator following a breach. A written plan is an operator responsibility, not something FLS ships. See the [roadmap](./roadmap.md).
 
 ### Retention, Deletion, and Data-Subject Rights (not yet built)
 
-There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. Deleting user data is a manual database or admin operation (hard delete), and the admin does not restrict delete permissions on user records beyond standard Django permission checks. All of this is operator responsibility today. See the [roadmap](./roadmap.md).
+There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. Deleting user data is a manual database or admin operation (hard delete), and the admin does not restrict delete permissions on user records beyond standard Django permission checks. All of this is operator responsibility today. The same gap applies to generated cohort report files — see [generated cohort reports](#generated-cohort-reports). See the [roadmap](./roadmap.md).
 
 ---
 

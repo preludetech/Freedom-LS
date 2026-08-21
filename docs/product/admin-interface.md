@@ -1,12 +1,13 @@
 # Admin Interface
 
-_Last updated: 2026-08-15_
+_Last updated: 2026-08-21_
 
 ## Summary
 
 - The Django admin is enhanced with the Unfold UI framework, preserving all standard Django admin behaviour.
 - Administrators grant educators access to specific cohorts through per-object permissions.
 - Organisations are created, renamed, and given a logo entirely through the admin, with no delete and no merge. Assigning someone a staff role on an organisation grants access to every cohort inside it, including ones added later.
+- A staff user generates a cohort's progress report from the admin by picking a cohort and triggering generation; the choice is limited to cohorts that user is allowed to see, generation runs in the background, and the finished PDF downloads through a permission-checked link rather than a public URL.
 - The admin path is configurable via `DJANGO_ADMIN_URL`, so production can move it off the default location.
 - Legal consent records are fully read-only — they cannot be added, changed, or deleted.
 - Webhook endpoints have a test-send action for verifying configuration without waiting for a real event.
@@ -30,6 +31,17 @@ There is no delete and no merge — both are refused outright. This is a deliber
 Assigning someone a staff role on an organisation, through the same per-object permissions tab used for cohorts, grants them access to every cohort in that organisation in the educator interface, including cohorts added later. It is the alternative to granting per-cohort permissions one at a time. See [educator interface](./educator-interface.md#organisation-scope) for how educators move between the organisations they can reach.
 
 Logo uploads accept PNG, JPEG, and WebP; SVG is rejected deliberately. A maximum file size and minimum and maximum pixel dimensions apply, and each upload is validated against its actual image bytes rather than trusted by filename — see [security and data handling](./security-and-data-handling.md).
+
+## Cohort Progress Reports
+
+A staff user generates a cohort's progress report from the admin: they pick a cohort from a dropdown and trigger generation with one click. The dropdown only ever offers cohorts that user is allowed to see — a per-cohort grant or an [organisation staff role](#organisation-management), the same two routes described under [cohort permissions](#cohort-permissions) — so a cohort outside both is never offered, and a request naming one anyway is refused. What the finished report contains is described in [cohort reports](./reports.md).
+
+![](screenshots/admin_generated_reports.png)
+
+- Generation runs in the background: the report appears in the list right away and updates once it finishes, either becoming available to download or showing a readable explanation of why it failed. Starting a second report for a cohort that already has one generating is refused with a message; a finished or failed report never blocks a new one.
+- The finished PDF is fetched through a permission-checked download link in the list, never a public media URL. See [security and data handling](./security-and-data-handling.md) for the access posture behind that link.
+- Reports are produced by the system, not authored by hand: they cannot be added or edited from the admin, only viewed, downloaded, and deleted. Deleting a report also deletes its stored PDF.
+- Cohort names are unique per organisation rather than per site, so both the list and the generation dropdown name each cohort's organisation alongside the cohort.
 
 ## Configurable Admin URL
 

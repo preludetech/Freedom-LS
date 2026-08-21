@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-08-15_
+_Last updated: 2026-08-21_
 
 ## Summary
 
@@ -166,9 +166,11 @@ The course player displays one content item at a time. The breadcrumb trail star
 
 Items unlock in order: a learner can start an item once the previous one is complete, cannot skip ahead, and a form or quiz that does not reach its pass threshold is marked failed. The first item is always available.
 
+The ordering is enforced on the server, not only in how the outline is drawn: an item shown as locked cannot be reached by opening its URL directly, and visiting one never counts as starting it.
+
 ### Course Parts (Chapters)
 
-Courses can be divided into parts (chapters); the player shows part-level progress for orientation.
+Courses can be divided into parts (chapters); the player shows part-level progress for orientation. Where the only thing standing between a learner and a part is a quiz inside it they have not passed, the part reads as needing a retry and links straight to the re-sit, rather than showing as locked with no way in.
 
 ### Resume
 
@@ -188,7 +190,7 @@ See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations
 
 ## Multi-Page Forms
 
-Form items can span multiple pages. A learner can leave a form part-way through and resume later with their answers preserved.
+Form items can span multiple pages. A learner can leave a form part-way through and resume later with their answers preserved. Leaving is only guarded by a confirmation prompt when there are unsaved changes to lose. A question marked required must be answered before the learner can move on.
 
 ## Quiz Feedback
 
@@ -196,9 +198,15 @@ Form items can span multiple pages. A learner can leave a form part-way through 
 
 After submitting a quiz, the learner sees:
 
-- **Pass or fail.**
 - **Score percentage.**
-- **Incorrect answers** — if the quiz is authored to reveal incorrect answers (`quiz_show_incorrect`), the learner sees which they got wrong; otherwise only the pass/fail result and score are shown.
+- **Pass or fail — or no verdict at all**, where the quiz has no pass mark set. In that case the learner is given their score and nothing is claimed about passing. The same three-way treatment applies everywhere a quiz outcome is shown: the results page, the course player's unlock decisions, and the dashboard.
+- **Incorrect answers** — if the quiz is authored to reveal incorrect answers (`quiz_show_incorrect`), the learner sees which they got wrong; otherwise only the score, and the verdict where there is one, is shown. The review reflects what was actually marked wrong: a free-text question is never listed, having no right-or-wrong options to show; a question left unanswered is listed like any other wrong answer rather than dropped, so a learner who failed is never shown an empty review; and an option the learner ticked correctly is never flagged as an error beside a correct-answer list that says otherwise.
+
+A checkbox question is marked correct only when every correct option is selected and no incorrect one is — ticking everything no longer guarantees full marks. Single-answer multiple-choice questions are unaffected, since only one option can ever be selected.
+
+Scores are frozen when an attempt is submitted and are never recalculated, so a learner keeps the score they were shown even if the quiz's marking changes afterwards. Where an attempt's stored score no longer matches what the same answers would score today — a checkbox attempt sat before the rule above, for instance — the results page says so, rather than leaving the mismatch looking like an error.
+
+A survey or other unscored form confirms that answers were recorded, and does not promise marking that is not coming.
 
 Learners can attempt a quiz more than once.
 
@@ -206,7 +214,7 @@ Learners can attempt a quiz more than once.
 
 ![Course finish page](screenshots/learner_course_finish.png)
 
-When every item in a course is complete, the learner reaches a finish page and the course moves to the completed section of their dashboard. There is no certificate or downloadable completion evidence.
+When every item in a course is complete, the learner reaches a finish page and the course moves to the completed section of their dashboard. A quiz the learner has not passed does not count toward that completion — the finish page names what is outstanding and links to the retry. See [learner tracking](./learner-tracking.md#progress-percentage) for how completion is calculated. There is no certificate or downloadable completion evidence.
 
 ## Deadlines
 

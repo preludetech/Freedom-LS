@@ -1,6 +1,6 @@
 # Freedom LS — Product Documentation
 
-_Last updated: 2026-08-11_
+_Last updated: 2026-08-21_
 
 High-level product documentation for evaluators, operators, and downstream integrators: what Freedom LS does and what can be configured. It is not developer or API reference.
 
@@ -21,6 +21,7 @@ Each document labels its claims by actual state — built, operational (needs de
 | [Learner Experience](./learner-experience.md) | Public catalogue and course pages, personalised dashboard, self-enrolment or application, coming-soon and hidden course visibility with an express-interest waitlist, sequential unlock with resume, multi-page forms, quiz feedback, and deadlines. |
 | [Learner Tracking](./learner-tracking.md) | Per-item completion, quiz attempts and scores, course progress percentage, and a resume pointer. No time-on-task and no score export. |
 | [Educator Interface](./educator-interface.md) | Single-page panel with cohort, user, and course views, scoped to one organisation at a time, plus a course-progress matrix. Read and monitoring only — and with a known authorisation gap on the Courses section. |
+| [Cohort Reports](./reports.md) | A per-cohort A4 PDF covering every course the cohort is registered for: a summary table per course, a detail section per learner, at-risk flags, and a cohort-wide analysis of which quiz questions caused the most trouble. Generated on demand from the admin and downloaded through a permission-checked link. No scheduling, no email, no retention policy. |
 | [Admin Interface](./admin-interface.md) | Django admin enhanced with Unfold, a configurable admin path, organisation management, per-cohort and per-organisation educator permission grants, read-only consent records, and a webhook test-send action. |
 | [Webhooks](./webhooks.md) | Outbound events for registration, course registration, and course completion, with HMAC signing, encrypted per-site secrets, templated payloads, SSRF protection, retries, and a circuit breaker. |
 

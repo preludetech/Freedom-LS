@@ -1,12 +1,12 @@
 # Roadmap
 
-_Last updated: 2026-08-11_
+_Last updated: 2026-08-21_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
 - **Half-built:** course applications (apply flow built; review/approval and authored form not built), role-based access control (built but not wired into access decisions), xAPI (non-functional stub), site-aware user groups (drafted, disabled).
-- **Not built:** 2FA/MFA, educator-interface management actions, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, and the deliberately deferred organisation capabilities.
+- **Not built:** 2FA/MFA, educator-interface management actions, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - **Known defect:** the educator interface's Courses list is still unfiltered and course detail pages are still not permission-checked. Cohort and user detail pages are now checked.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
@@ -100,6 +100,8 @@ When object storage is configured, course files are private and served through t
 
 There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. User deletion is a manual admin or database operation. There is also no incident-response runbook or automated alerting for data events. All of this is operator responsibility today — see [security and data handling](./security-and-data-handling.md).
 
+Generated [cohort reports](./reports.md) are a concrete instance of the same gap: the PDFs hold real learner names and answers and are kept until an administrator deletes them by hand, with no automatic expiry. Deletion itself is handled correctly — removing a report removes its stored file, whether deleted singly, in bulk, or as a consequence of deleting its cohort — so nothing is orphaned. What is missing is anything that prompts or schedules that deletion.
+
 ## xAPI / Tin Can Tracking
 
 **Status: Non-functional stub.**
@@ -135,3 +137,13 @@ A Content Security Policy is configured but runs in report-only mode. Switching 
 **Status: Not built.**
 
 Completing a course produces a finish page but no certificate or downloadable completion evidence. See [learner experience](./learner-experience.md).
+
+## Cohort Report Deferrals
+
+**Status: Not built — deliberate deferrals.**
+
+The [cohort report](./reports.md) itself is built and shipped. Two capabilities around it were deliberately left out of this release rather than overlooked.
+
+**No scheduled or emailed delivery.** A report is only ever produced on demand, by a staff member triggering it in the admin, and whoever wants it must return there to download it. There is no recurring generation and no notification when one finishes. The feature is built so that adding delivery later is a small addition — the same generation runs regardless of what starts it — but that addition is not here.
+
+**At-risk rules are not configurable.** The rules the report flags learners against are a fixed list in code, with no setting to add, remove, reorder, or retune a threshold. A project needing its own rule must fork. A future release moves rule selection and thresholds into the database, replacing the fixed list; until then this is the extension point to ask about. See [configuration and extension](./configuration-and-extension.md).

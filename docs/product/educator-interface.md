@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-08-12_
+_Last updated: 2026-08-21_
 
 ## Summary
 
@@ -9,7 +9,7 @@ _Last updated: 2026-08-12_
 - The cohort detail view includes a course-progress matrix showing completion, quiz scores, pass/fail, and deadlines for every student and course item.
 - The Courses list shows each course's visibility and an interest count, with drill-down to the interested students. Visibility is read-only here.
 - **Access control has a narrowed known gap** — the Cohorts and Users sections are permission-checked on both listings and detail pages, but the Courses section is not filtered at all. Reads only; writes are gated. See [Access Control](#access-control).
-- **Limits:** cohort membership, course registration, and deadline management are admin-only. There is no messaging capability.
+- **Limits:** cohort membership, course registration, deadline management, and generating a cohort progress report are admin-only. There is no messaging capability.
 
 ## Panel Interface
 
@@ -63,6 +63,8 @@ The Courses section is the exception: it is not organisation-scoped, and the swi
 
 The Course Progress tab on a cohort detail page shows a paginated matrix of students (rows) against course items (columns). Each cell shows completion status (complete / in progress / not started), the quiz score and pass/fail outcome for form items, and the item's deadline with an overdue indicator where the deadline has passed and the item is not complete. Both cohort-level deadlines and per-student overrides are visible.
 
+This view is on-screen only, and shows one course at a time. For a printable, filable record covering every course the cohort is registered for, a [cohort progress report](./reports.md) can be produced from the Django admin by anyone with cohort access under either route in [access control](#access-control).
+
 ## Access Control
 
 An administrator grants an educator access one of two ways: permission on a specific cohort, or a staff role on a whole organisation, which covers every cohort in it including ones created later. Both are granted in the Django admin — see [admin interface](./admin-interface.md#organisation-management). The educator interface itself has no permission-management UI.
@@ -82,5 +84,6 @@ These operations are **admin-only** and cannot be performed from the educator in
 - **Cohort membership** — adding or removing students.
 - **Course registration** — registering a cohort or an individual student for a course.
 - **Deadlines** — cohort deadlines, per-student deadlines, and overrides.
+- **Cohort progress reports** — generating a cohort's [progress report](./reports.md) is done from the Django admin. An educator with access to the cohort can have one produced, but not from this interface.
 
 **There is no messaging capability.** Educators cannot send messages or emails to students from FLS.
