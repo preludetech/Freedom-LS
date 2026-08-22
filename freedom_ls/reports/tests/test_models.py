@@ -6,10 +6,10 @@ import pytest
 
 from django.db import IntegrityError
 
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport, report_upload_path
-from freedom_ls.student_management.factories import CohortFactory
 
 
 @pytest.mark.django_db

@@ -1,8 +1,8 @@
 import factory
 
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
-from freedom_ls.student_management.factories import CohortFactory
 
 
 class GeneratedReportFactory(SiteAwareFactory):

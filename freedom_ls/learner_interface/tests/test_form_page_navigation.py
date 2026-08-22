@@ -13,7 +13,7 @@ from freedom_ls.content_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.content_engine.models import Form, FormStrategy
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
 )
@@ -45,7 +45,7 @@ def _survey_with_an_optional_first_question(*, page_count: int) -> Form:
 
 def _accessibility_of_each_page(client, course, page_number: int) -> list[bool]:
     url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": page_number},
     )
     response = client.get(url)

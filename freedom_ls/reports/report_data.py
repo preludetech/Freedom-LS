@@ -19,7 +19,7 @@ MIN_RESPONDENTS_FOR_PERCENTAGE = 10
 
 
 class ReportTooLargeError(Exception):
-    """Raised when a cohort has more members than `config.REPORTS_MAX_STUDENTS`."""
+    """Raised when a cohort has more members than `config.REPORTS_MAX_LEARNERS`."""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -44,7 +44,7 @@ class QuizResult:
     passed: bool | None
     attempt_count: int
     completed_at: datetime | None
-    # Chronological, oldest first, so a student's own section can show whether
+    # Chronological, oldest first, so a learner's own section can show whether
     # retries improved on the first sitting. Built from the same rows the
     # latest_* fields above are read from, so the two cannot disagree.
     attempts: list[QuizAttempt]
@@ -52,7 +52,7 @@ class QuizResult:
 
 @dataclasses.dataclass(frozen=True)
 class SelectedOption:
-    """One option a student ticked on a sitting they got wrong."""
+    """One option a learner ticked on a sitting they got wrong."""
 
     text: str
     # `QuestionOption.correct` is nullable, and None is carried through as None
@@ -69,9 +69,9 @@ class WrongAnswer:
     question_number: int
     question_text: str
     times_wrong: int
-    # Every option the student ticked, in first-seen order -- including the ones
+    # Every option the learner ticked, in first-seen order -- including the ones
     # that were right. A multi-select question is scored wrong as a whole, so a
-    # student can tick two correct options and one distractor and land here; the
+    # learner can tick two correct options and one distractor and land here; the
     # per-option `correct` is what keeps their right ticks from reading as
     # mistakes against the correct-answer column alongside.
     selected_options: list[SelectedOption]
@@ -94,7 +94,7 @@ class QuizColumn:
 
 
 @dataclasses.dataclass(frozen=True)
-class StudentRow:
+class LearnerRow:
     user_id: int
     full_name: str
     completion_percentage: int
@@ -144,7 +144,7 @@ class AtRiskFlag:
 
 
 @dataclasses.dataclass(frozen=True)
-class StudentDetail:
+class LearnerDetail:
     user_id: int
     full_name: str
     sort_key: tuple[str, str]
@@ -158,17 +158,17 @@ class StudentDetail:
     quiz_results: list[QuizResult]
     wrong_answers: list[QuizWrongAnswers]
     # The single instant the whole report is evaluated against, carried on
-    # every student so at-risk rules (freedom_ls.reports.at_risk) never
+    # every learner so at-risk rules (freedom_ls.reports.at_risk) never
     # call timezone.now() themselves — see AtRiskRule.evaluate().
     report_generated_at: datetime
     flags: list[AtRiskFlag]
 
     @property
     def has_reportable_activity(self) -> bool:
-        """Whether the student's own section has a body to draw.
+        """Whether the learner's own section has a body to draw.
 
         Narrower than `has_any_progress`, which is true the moment a progress
-        row exists: a student who opened a topic without finishing it has a row
+        row exists: a learner who opened a topic without finishing it has a row
         but nothing to print, and the section must say so rather than end.
         """
         return bool(self.completed_items or self.quiz_results or self.wrong_answers)
@@ -198,7 +198,7 @@ class ConfusionBlock:
 
 @dataclasses.dataclass(frozen=True)
 class AttentionList:
-    students: list[StudentDetail]
+    learners: list[LearnerDetail]
     shown: int
     total: int
 
@@ -210,7 +210,7 @@ class CourseSection:
     is_active: bool
     item_count: int
     quizzes: list[QuizColumn]
-    student_rows: list[StudentRow]
+    learner_rows: list[LearnerRow]
     # `quizzes` chunked at config.REPORTS_MAX_QUIZ_COLUMNS, so a wide course
     # splits across several tables instead of overflowing the landscape page.
     # Always at least one table, even for a course with no quizzes at all.
@@ -230,7 +230,7 @@ class CohortReportData:
     generated_at: datetime
     requested_by_name: str
     courses: list[CourseSection]
-    students: list[StudentDetail]
+    learners: list[LearnerDetail]
     attention_list: AttentionList
     cohort_size: int
     median_completion: int

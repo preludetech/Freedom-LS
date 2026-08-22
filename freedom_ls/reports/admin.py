@@ -11,13 +11,13 @@ from django.shortcuts import redirect
 from django.urls import URLPattern, path, reverse
 from django.utils.html import format_html
 
-from freedom_ls.reports.models import GeneratedReport
-from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
-from freedom_ls.student_management.models import Cohort
-from freedom_ls.student_management.queries import (
+from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.queries import (
     all_cohorts_visible_to,
     can_view_cohort,
 )
+from freedom_ls.reports.models import GeneratedReport
+from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
 
 @admin.register(GeneratedReport)

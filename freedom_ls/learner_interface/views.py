@@ -28,8 +28,6 @@ from freedom_ls.course_access.overrides import (
 )
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.queries import stamp_interest
-from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.site_aware_models.models import get_cached_site
 from freedom_ls.learner_management.config import config
 from freedom_ls.learner_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.learner_management.models import (
@@ -43,6 +41,8 @@ from freedom_ls.learner_progress.models import (
     TopicProgress,
 )
 from freedom_ls.learner_progress.submissions import has_submitted_answer
+from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.site_aware_models.models import get_cached_site
 
 from .utils import (
     BLOCKED,

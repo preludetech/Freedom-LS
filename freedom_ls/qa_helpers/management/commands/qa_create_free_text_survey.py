@@ -17,7 +17,7 @@ Builds, idempotently, on the requested site:
    ``long_text`` question, page 2 holds an optional one of each. Two pages so
    the runner's "Previous" link is available and QA can walk back to page 1 and
    see the saved free-text answers rendered into the input / textarea.
-3. Registration for the existing QA student (``demodev_quizqa@email.com``,
+3. Registration for the existing QA learner (``demodev_quizqa@email.com``,
    password == email), created here if missing.
 
 Usage:
@@ -49,11 +49,11 @@ from freedom_ls.content_engine.models import (
     FormStrategy,
     QuestionType,
 )
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.models import UserCourseRegistration
 from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
-from freedom_ls.student_management.models import UserCourseRegistration
 
-STUDENT_EMAIL = "demodev_quizqa@email.com"
+LEARNER_EMAIL = "demodev_quizqa@email.com"
 
 COURSE_TITLE = "QA Free Text Survey Course"
 COURSE_SLUG = "qa-free-text-survey-course"
@@ -110,34 +110,34 @@ def _get_site(site_name: str) -> Site:
         ) from e
 
 
-def _get_or_create_student(site: Site) -> tuple[User, bool]:
-    """Login-ready QA student (password == email), reused if already present."""
-    existing: User | None = User.objects.filter(email=STUDENT_EMAIL).first()
+def _get_or_create_learner(site: Site) -> tuple[User, bool]:
+    """Login-ready QA learner (password == email), reused if already present."""
+    existing: User | None = User.objects.filter(email=LEARNER_EMAIL).first()
     if existing is not None:
         existing.is_active = True
-        existing.set_password(STUDENT_EMAIL)
+        existing.set_password(LEARNER_EMAIL)
         existing.save(update_fields=["is_active", "password"])
-        student, created = existing, False
+        learner, created = existing, False
     else:
-        student = cast(
+        learner = cast(
             User,
             UserFactory(
-                email=STUDENT_EMAIL,
+                email=LEARNER_EMAIL,
                 first_name="Quiz",
                 last_name="Scoring QA",
                 is_active=True,
-                password=STUDENT_EMAIL,
+                password=LEARNER_EMAIL,
                 site=site,
             ),
         )
         created = True
 
     EmailAddress.objects.update_or_create(
-        user=student,
-        email=student.email,
+        user=learner,
+        email=learner.email,
         defaults={"verified": True, "primary": True},
     )
-    return student, created
+    return learner, created
 
 
 def _get_or_create_course(site: Site) -> Course:
@@ -209,12 +209,12 @@ def _attach_to_course(course: Course, form: Form, site: Site) -> None:
         )
 
 
-def _register(student: User, course: Course, site: Site) -> None:
+def _register(learner: User, course: Course, site: Site) -> None:
     if not UserCourseRegistration.objects.filter(
-        user=student, collection=course, site=site
+        user=learner, collection=course, site=site
     ).exists():
         UserCourseRegistrationFactory(
-            user=student,
+            user=learner,
             collection=course,
             site=site,
             organisation=get_default_organisation(site),
@@ -237,13 +237,13 @@ def _item_index(course: Course, form: Form) -> int:
     help="Site name to create the data on (default: 'DemoDev').",
 )
 def command(site_name: str) -> None:
-    """Seed a non-scored survey with free-text questions, and its QA student."""
+    """Seed a non-scored survey with free-text questions, and its QA learner."""
     site = _get_site(site_name)
-    student, created = _get_or_create_student(site)
+    learner, created = _get_or_create_learner(site)
     course = _get_or_create_course(site)
     form = _build_survey(site)
     _attach_to_course(course, form, site)
-    _register(student, course, site)
+    _register(learner, course, site)
     index = _item_index(course, form)
 
     click.secho(
@@ -251,8 +251,8 @@ def command(site_name: str) -> None:
     )
     click.secho(f"Site:   {site.name} ({site.domain}) [id {site.pk}]", fg="cyan")
     click.secho(
-        f"{'Created' if created else 'Reused'} student login: "
-        f"{student.email} / {student.email}",
+        f"{'Created' if created else 'Reused'} learner login: "
+        f"{learner.email} / {learner.email}",
         fg="green",
         bold=True,
     )

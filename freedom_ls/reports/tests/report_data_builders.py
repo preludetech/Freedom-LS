@@ -18,10 +18,10 @@ from freedom_ls.reports.gather import (
     CohortReportData,
     ConfusionBlock,
     CourseSection,
+    LearnerDetail,
+    LearnerRow,
     QuizColumn,
     QuizConfusion,
-    StudentDetail,
-    StudentRow,
     SummaryRow,
     SummaryTable,
 )
@@ -29,7 +29,7 @@ from freedom_ls.reports.gather import (
 GENERATED_AT = datetime(2026, 3, 15, 10, 30, tzinfo=UTC)
 
 
-def student_detail(**overrides: object) -> StudentDetail:
+def learner_detail(**overrides: object) -> LearnerDetail:
     defaults: dict[str, object] = {
         "user_id": 1,
         "full_name": "Jamie Smith",
@@ -47,7 +47,7 @@ def student_detail(**overrides: object) -> StudentDetail:
         "flags": [],
     }
     defaults.update(overrides)
-    return StudentDetail(**defaults)
+    return LearnerDetail(**defaults)
 
 
 def course_section_defaults() -> dict[str, object]:
@@ -63,7 +63,7 @@ def course_section_defaults() -> dict[str, object]:
         "is_active": True,
         "item_count": 0,
         "quizzes": [],
-        "student_rows": [],
+        "learner_rows": [],
         "summary_tables": [],
         "confusions_by_quiz": {},
     }
@@ -75,8 +75,8 @@ def course_section(**overrides: object) -> CourseSection:
     return CourseSection(**defaults)
 
 
-def summary_row(row: StudentRow, quizzes: list[QuizColumn]) -> SummaryRow:
-    """The SummaryRow gather.py would derive from this StudentRow for `quizzes`."""
+def summary_row(row: LearnerRow, quizzes: list[QuizColumn]) -> SummaryRow:
+    """The SummaryRow gather.py would derive from this LearnerRow for `quizzes`."""
     return SummaryRow(
         user_id=row.user_id,
         full_name=row.full_name,
@@ -97,8 +97,8 @@ def cohort_report_data(**overrides: object) -> CohortReportData:
         "generated_at": GENERATED_AT,
         "requested_by_name": "Jamie Educator",
         "courses": [],
-        "students": [],
-        "attention_list": AttentionList(students=[], shown=0, total=0),
+        "learners": [],
+        "attention_list": AttentionList(learners=[], shown=0, total=0),
         "cohort_size": 0,
         "median_completion": 0,
         "not_started_count": 0,
@@ -111,7 +111,7 @@ def cohort_report_data(**overrides: object) -> CohortReportData:
 def full_report_data() -> CohortReportData:
     """A small but structurally complete cohort.
 
-    One flagged student whose flags must render identically on the at-a-glance
+    One flagged learner whose flags must render identically on the at-a-glance
     page and their own section, one active and one inactive course, and one
     quiz with a non-empty confusion block -- enough to exercise every anchor
     id the document emits.
@@ -138,7 +138,7 @@ def full_report_data() -> CohortReportData:
         correct_option_texts=["A closed path around a body"],
     )
     block = ConfusionBlock(questions=[confusion], shown=1, total=1)
-    row = StudentRow(
+    row = LearnerRow(
         user_id=1,
         full_name="Ada Lovelace",
         completion_percentage=40,
@@ -153,7 +153,7 @@ def full_report_data() -> CohortReportData:
         is_active=True,
         item_count=5,
         quizzes=[quiz],
-        student_rows=[row],
+        learner_rows=[row],
         summary_tables=[
             SummaryTable(
                 quizzes=[quiz], rows=[summary_row(row, [quiz])], continued=False
@@ -167,17 +167,17 @@ def full_report_data() -> CohortReportData:
         summary_tables=[SummaryTable(quizzes=[], rows=[], continued=False)],
     )
 
-    flagged_student = student_detail(
+    flagged_learner = learner_detail(
         user_id=1, full_name="Ada Lovelace", sort_key=("Lovelace", "Ada"), flags=[flag]
     )
-    other_student = student_detail(
+    other_learner = learner_detail(
         user_id=2, full_name="Bo Kim", sort_key=("Kim", "Bo"), flags=[]
     )
-    attention = AttentionList(students=[flagged_student], shown=1, total=1)
+    attention = AttentionList(learners=[flagged_learner], shown=1, total=1)
 
     return cohort_report_data(
         courses=[course_active, course_inactive],
-        students=[flagged_student, other_student],
+        learners=[flagged_learner, other_learner],
         attention_list=attention,
         cohort_size=2,
     )

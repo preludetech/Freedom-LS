@@ -1,4 +1,4 @@
-"""Reset a QA student's progress so a fixture course can be walked again.
+"""Reset a QA learner's progress so a fixture course can be walked again.
 
 Browser QA of the quiz runner leaves ``FormProgress`` rows behind (one per
 attempt, plus half-finished ones), which changes what the start screen offers
@@ -13,13 +13,13 @@ intact. ``--include-topics`` additionally clears topic progress, and
 registration-side record) to a freshly-registered state.
 
 Scope it with ``--course-slug`` (repeatable). With no ``--course-slug`` the
-student's progress is cleared everywhere, so pass one when other fixtures rely
-on this student's data.
+learner's progress is cleared everywhere, so pass one when other fixtures rely
+on this learner's data.
 
 Usage:
-    uv run python manage.py qa_reset_student_progress --student demodev_quizqa@email.com
-    uv run python manage.py qa_reset_student_progress \
-        --student demodev_quizqa@email.com \
+    uv run python manage.py qa_reset_learner_progress --learner demodev_quizqa@email.com
+    uv run python manage.py qa_reset_learner_progress \
+        --learner demodev_quizqa@email.com \
         --course-slug qa-progression-block-course --include-topics
 """
 
@@ -31,7 +31,7 @@ from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, Form, Topic
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
     TopicProgress,
@@ -77,7 +77,7 @@ def _course_items(courses: list[Course]) -> tuple[list[Form], list[Topic]]:
 
 
 @click.command()
-@click.option("--student", required=True, help="Email address of the QA student.")
+@click.option("--learner", required=True, help="Email address of the QA learner.")
 @click.option(
     "--course-slug",
     "course_slugs",
@@ -93,19 +93,19 @@ def _course_items(courses: list[Course]) -> tuple[list[Form], list[Topic]]:
 @click.option(
     "--site-name",
     default="DemoDev",
-    help="Site name the student and courses live on (default: 'DemoDev').",
+    help="Site name the learner and courses live on (default: 'DemoDev').",
 )
 def command(
-    student: str,
+    learner: str,
     course_slugs: tuple[str, ...],
     include_topics: bool,
     site_name: str,
 ) -> None:
-    """Delete a QA student's quiz/form attempts so the fixtures can be re-walked."""
+    """Delete a QA learner's quiz/form attempts so the fixtures can be re-walked."""
     site = _get_site(site_name)
-    user: User | None = User.objects.filter(email=student).first()
+    user: User | None = User.objects.filter(email=learner).first()
     if user is None:
-        raise click.ClickException(f"No user with email '{student}'.")
+        raise click.ClickException(f"No user with email '{learner}'.")
 
     courses = _get_courses(site, course_slugs)
 
@@ -140,7 +140,7 @@ def command(
 
     click.secho("\n--- Progress reset ---", fg="cyan", bold=True)
     click.secho(f"Site:    {site.name} ({site.domain}) [id {site.pk}]", fg="cyan")
-    click.secho(f"Student: {user.email}", fg="cyan", bold=True)
+    click.secho(f"Learner: {user.email}", fg="cyan", bold=True)
     click.secho(
         "Scope:   "
         + (

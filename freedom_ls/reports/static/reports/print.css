@@ -47,7 +47,7 @@ touches. */
     color: var(--color-muted);
   }
   @top-right {
-    content: element(student-name);
+    content: element(learner-name);
     font-family: var(--report-font-display);
     font-size: 8pt;
     font-weight: 600;
@@ -470,7 +470,7 @@ h6 {
   bookmark-label: content();
 }
 h2.course-heading,
-h3.student-heading,
+h3.learner-heading,
 h3.confusion-heading {
   bookmark-level: 2;
   bookmark-label: content();
@@ -808,58 +808,58 @@ h3.confusion-heading {
   margin: 0 0 2pt;
 }
 
-/* ==== student_details.html / student_detail.html ==== */
+/* ==== learner_details.html / learner_detail.html ==== */
 /* The section before this one is landscape; without a break of its own the
    whole section, heading and first learner included, would start part way
    down that landscape page. The first learner is then held against the
    heading so the heading is not left alone on the fresh page. */
-.student-details {
+.learner-details {
   break-before: page;
 }
-.student-section {
+.learner-section {
   break-before: page;
 }
-.student-section:first-of-type {
+.learner-section:first-of-type {
   break-before: avoid;
 }
 /* A running element is redrawn on every page of its section, so it cannot
    also be the heading — the heading's bookmark would be repeated once per
    page. This carries the header name; the h3 beside it carries the bookmark. */
-.student-section > .student-running-name {
-  position: running(student-name);
+.learner-section > .learner-running-name {
+  position: running(learner-name);
 }
-.student-section .student-head {
+.learner-section .learner-head {
   border-bottom: 1.6pt solid var(--color-primary);
   padding-bottom: 3pt;
   margin-bottom: 7pt;
 }
-.student-section .student-heading {
+.learner-section .learner-heading {
   font-size: 14pt;
   margin: 0;
 }
-.student-section .student-last-active {
+.learner-section .learner-last-active {
   float: right;
   font-family: var(--report-font-mono);
   font-size: 7.4pt;
   color: var(--color-muted);
   padding-top: 5pt;
 }
-.student-section .flags-panel {
+.learner-section .flags-panel {
   background: var(--color-surface-2);
   padding: 6pt 9pt;
   margin-bottom: 8pt;
   break-inside: avoid;
 }
-.student-section .flags-error {
+.learner-section .flags-error {
   border-left: 3pt solid var(--color-error);
 }
-.student-section .flags-warning {
+.learner-section .flags-warning {
   border-left: 3pt solid var(--color-warning);
 }
-.student-section .flag-reason {
+.learner-section .flag-reason {
   color: var(--color-muted);
 }
-.student-section .no-activity {
+.learner-section .no-activity {
   font-family: var(--report-font-display);
   font-size: 10.5pt;
   font-weight: 600;
@@ -868,16 +868,16 @@ h3.confusion-heading {
   padding: 6pt 9pt;
   margin-top: 8pt;
 }
-/* A student who opened something but finished nothing carries no at-risk flag,
+/* A learner who opened something but finished nothing carries no at-risk flag,
    so this line sits above a "No flags" panel. The error tint the unstarted line
    uses would contradict it; the neutral surface states the position instead. */
-.student-section .no-activity-started {
+.learner-section .no-activity-started {
   background: var(--color-surface-2);
   color: var(--color-on-surface);
 }
 /* Two columns of completed items rather than one long list: a course of
    thirty items is a page of near-empty lines set as a single column. */
-.student-section .items-list {
+.learner-section .items-list {
   columns: 2;
   column-gap: 8mm;
   list-style: none;
@@ -888,7 +888,7 @@ h3.confusion-heading {
    the last row of a column short of the edge the rows above it reach, which
    reads as a broken table. Flex holds the date against the column edge on
    every row, and keeps it on the first line when a long title wraps. */
-.student-section .items-list li {
+.learner-section .items-list li {
   border-bottom: 0.5pt solid var(--color-border);
   font-size: 7.6pt;
   padding: 1.8pt 0;
@@ -897,16 +897,16 @@ h3.confusion-heading {
   justify-content: space-between;
   gap: 3mm;
 }
-.student-section .item-date {
+.learner-section .item-date {
   font-family: var(--report-font-mono);
   font-size: 7.2pt;
   color: var(--color-muted);
   white-space: nowrap;
 }
-.student-section .item-kind {
+.learner-section .item-kind {
   color: var(--color-muted);
 }
-.student-section .completion-bar-outer {
+.learner-section .completion-bar-outer {
   width: 60mm;
 }
 /* Fixed widths on both tables below, for the same reason: a learner's section
@@ -917,27 +917,27 @@ h3.confusion-heading {
    set of figures. The widths are budgeted against each table's own width. */
 
 /* 130mm — the full page width is far wider than these four figures need. */
-.student-section .attempts-table {
+.learner-section .attempts-table {
   width: 130mm;
   table-layout: fixed;
 }
-.student-section .col-attempt-quiz {
+.learner-section .col-attempt-quiz {
   width: 62mm;
 }
-.student-section .col-attempt-number {
+.learner-section .col-attempt-number {
   width: 16mm;
 }
-.student-section .col-attempt-date {
+.learner-section .col-attempt-date {
   width: 24mm;
 }
-.student-section .col-attempt-score {
+.learner-section .col-attempt-score {
   width: 28mm;
 }
-.student-section .attempt-date,
-.student-section .attempt-raw {
+.learner-section .attempt-date,
+.learner-section .attempt-raw {
   font-family: var(--report-font-mono);
 }
-.student-section .attempt-raw {
+.learner-section .attempt-raw {
   font-size: 6.8pt;
   color: var(--color-muted);
   margin-left: 3pt;
@@ -945,21 +945,21 @@ h3.confusion-heading {
 /* 180mm — the full page width less the side margins. The two answer columns
    are held equal so a reader compares what was chosen against what was right
    across a fixed distance, and the question column takes the rest. */
-.student-section .wrong-answers-table {
+.learner-section .wrong-answers-table {
   table-layout: fixed;
 }
-.student-section .wrong-answers-table .col-question-number {
+.learner-section .wrong-answers-table .col-question-number {
   width: 9mm;
   font-family: var(--report-font-mono);
 }
-.student-section .wrong-answers-table .col-question {
+.learner-section .wrong-answers-table .col-question {
   width: 60mm;
 }
-.student-section .wrong-answers-table .col-wrong {
+.learner-section .wrong-answers-table .col-wrong {
   width: 12mm;
 }
-.student-section .wrong-answers-table .col-answers,
-.student-section .wrong-answers-table .col-correct {
+.learner-section .wrong-answers-table .col-answers,
+.learner-section .wrong-answers-table .col-correct {
   width: 49.5mm;
 }
 
@@ -973,7 +973,7 @@ h3.confusion-heading {
   break-before: page;
 }
 .running-name-reset {
-  position: running(student-name);
+  position: running(learner-name);
 }
 .quiz-confusion {
   break-inside: avoid-page;

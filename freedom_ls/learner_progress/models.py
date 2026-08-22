@@ -19,13 +19,13 @@ from freedom_ls.content_engine.models import (
     QuestionOption,
     Topic,
 )
-from freedom_ls.site_aware_models.models import SiteAwareModel
 from freedom_ls.learner_progress.scoring import is_quiz_answer_correct
 from freedom_ls.learner_progress.submissions import (
     has_submitted_answer,
     submitted_option_ids,
     submitted_text_answer,
 )
+from freedom_ls.site_aware_models.models import SiteAwareModel
 
 if TYPE_CHECKING:
     from django.http import QueryDict

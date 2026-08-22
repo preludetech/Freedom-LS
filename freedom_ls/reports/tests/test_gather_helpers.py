@@ -19,8 +19,8 @@ from freedom_ls.reports.gather import (
     QuizTallies,
     _abbreviate_quiz_title,
     _build_attention_list,
+    _build_learner_row,
     _build_quiz_columns,
-    _build_student_row,
     _build_summary_tables,
     _chunk_quiz_columns,
     _completed_items,
@@ -47,10 +47,10 @@ from freedom_ls.reports.indexes import (
 )
 from freedom_ls.reports.report_data import (
     AtRiskFlag,
+    LearnerDetail,
+    LearnerRow,
     QuizColumn,
     SelectedOption,
-    StudentDetail,
-    StudentRow,
 )
 from freedom_ls.reports.tests.gather_input_builders import (
     JAN_1,
@@ -59,12 +59,12 @@ from freedom_ls.reports.tests.gather_input_builders import (
     OTHER_USER_ID,
     USER_ID,
     a_catalogue,
+    a_learner,
     a_page,
     a_progress_index,
     a_question,
     a_quiz,
     a_roster,
-    a_student,
     a_survey,
     a_topic,
     an_attempt,
@@ -79,16 +79,16 @@ def _a_column(title: str = "A Quiz") -> QuizColumn:
     )
 
 
-def _a_student_row(
+def _a_learner_row(
     *,
     user_id: int = USER_ID,
     completion: int = 0,
     columns: list[QuizColumn] | None = None,
-) -> StudentRow:
+) -> LearnerRow:
     """A row carrying an (empty) cell for each of `columns`, as gather builds it."""
-    return StudentRow(
+    return LearnerRow(
         user_id=user_id,
-        full_name="A Student",
+        full_name="A Learner",
         completion_percentage=completion,
         completed_item_count=0,
         total_item_count=0,
@@ -100,11 +100,11 @@ def _a_student_row(
 
 def _a_detail(
     *, completion: int = 0, flags: list[AtRiskFlag] | None = None
-) -> StudentDetail:
-    return StudentDetail(
+) -> LearnerDetail:
+    return LearnerDetail(
         user_id=USER_ID,
-        full_name="A Student",
-        sort_key=("Student", "A"),
+        full_name="A Learner",
+        sort_key=("Learner", "A"),
         completion_percentage=completion,
         completed_item_count=0,
         total_item_count=0,
@@ -226,7 +226,7 @@ class TestCompletionCounts:
 
         assert _completion_counts([quiz], USER_ID, progress) == (1, 1)
 
-    def test_another_students_completions_are_not_counted(self) -> None:
+    def test_another_learners_completions_are_not_counted(self) -> None:
         topic = a_topic()
         progress = a_progress_index(
             completed_topic_ids_by_user={OTHER_USER_ID: {topic.id}}
@@ -266,7 +266,7 @@ class TestLatestCompletion:
 
         assert _latest_completion([quiz], USER_ID, progress) == (None, None)
 
-    def test_a_student_with_no_completions_has_no_title_and_no_time(self) -> None:
+    def test_a_learner_with_no_completions_has_no_title_and_no_time(self) -> None:
         assert _latest_completion([a_topic()], USER_ID, a_progress_index()) == (
             None,
             None,
@@ -413,7 +413,7 @@ class TestQuizResultFor:
 
 
 class TestFoldTopicProgressRows:
-    def test_a_row_with_no_complete_time_still_marks_the_student_active(self) -> None:
+    def test_a_row_with_no_complete_time_still_marks_the_learner_active(self) -> None:
         topic = a_topic()
 
         index = fold_topic_progress_rows([(USER_ID, topic.id, None)])
@@ -421,7 +421,7 @@ class TestFoldTopicProgressRows:
         assert index.user_ids_seen == {USER_ID}
         assert index.completed_topic_ids_by_user.get(USER_ID, set()) == set()
 
-    def test_a_completed_topic_is_indexed_against_its_student(self) -> None:
+    def test_a_completed_topic_is_indexed_against_its_learner(self) -> None:
         topic = a_topic()
 
         index = fold_topic_progress_rows([(USER_ID, topic.id, JAN_1)])
@@ -467,7 +467,7 @@ class TestFoldFormProgressRows:
         ]
 
     def test_the_completed_attempt_ids_stay_newest_first(self) -> None:
-        """They drive the sat-pair walk, and so the order of a student's wrong answers."""
+        """They drive the sat-pair walk, and so the order of a learner's wrong answers."""
         quiz = a_quiz()
         newest = an_attempt(
             quiz, completed_time=JAN_2, scores={"score": 1, "max_score": 1}
@@ -525,7 +525,7 @@ class TestFoldFormProgressRows:
 
         assert index.completed_form_ids_by_user[USER_ID] == {survey.id}
 
-    def test_every_sitting_resolves_to_its_student_and_form(self) -> None:
+    def test_every_sitting_resolves_to_its_learner_and_form(self) -> None:
         survey = a_survey()
         sitting = an_attempt(survey, completed_time=JAN_1, scores={"Confidence": 3})
 
@@ -535,7 +535,7 @@ class TestFoldFormProgressRows:
 
 
 class TestMergeProgressIndexes:
-    def test_a_student_seen_only_in_form_progress_still_counts_as_active(self) -> None:
+    def test_a_learner_seen_only_in_form_progress_still_counts_as_active(self) -> None:
         quiz = a_quiz()
         forms = fold_form_progress_rows([an_attempt(quiz, completed_time=None)])
 
@@ -543,7 +543,7 @@ class TestMergeProgressIndexes:
 
         assert merged.user_ids_with_any_progress == {USER_ID}
 
-    def test_a_student_seen_only_in_topic_progress_still_counts_as_active(self) -> None:
+    def test_a_learner_seen_only_in_topic_progress_still_counts_as_active(self) -> None:
         topics = fold_topic_progress_rows([(OTHER_USER_ID, a_topic().id, None)])
 
         merged = merge_progress_indexes(topics, fold_form_progress_rows([]))
@@ -831,7 +831,7 @@ class TestBuildWrongAnswersByUserQuiz:
             SelectedOption("Pluto", None, 1),
         ]
 
-    def test_one_students_wrong_answers_do_not_reach_another(self) -> None:
+    def test_one_learners_wrong_answers_do_not_reach_another(self) -> None:
         quiz = a_quiz()
         question = a_question(quiz)
         index = _a_question_index((question, []))
@@ -971,22 +971,22 @@ class TestBuildQuizColumns:
         assert [column.abbreviation for column in columns] == ["OQ", "OQ-2"]
 
 
-class TestBuildStudentRow:
-    def test_the_row_reports_the_students_completion_over_the_courses_items(
+class TestBuildLearnerRow:
+    def test_the_row_reports_the_learners_completion_over_the_courses_items(
         self,
     ) -> None:
-        student = a_student(first_name="Ada", last_name="Lovelace")
+        learner = a_learner(first_name="Ada", last_name="Lovelace")
         topic, quiz = a_topic("Stars"), a_quiz("Orbit Quiz")
         progress = a_progress_index(
             completed_topic_ids_by_user={USER_ID: {topic.id}},
             topic_complete_time={(USER_ID, topic.id): JAN_1},
         )
 
-        row = _build_student_row(
+        row = _build_learner_row(
             USER_ID,
             [topic, quiz],
             [],
-            a_roster(student),
+            a_roster(learner),
             a_catalogue(course_items={a_quiz().id: [topic, quiz]}),
             progress,
         )
@@ -996,18 +996,18 @@ class TestBuildStudentRow:
         assert row.completion_percentage == 50
         assert row.last_completed_title == "Stars"
 
-    def test_a_quiz_the_student_never_sat_gets_an_empty_cell(self) -> None:
-        student = a_student()
+    def test_a_quiz_the_learner_never_sat_gets_an_empty_cell(self) -> None:
+        learner = a_learner()
         quiz = a_quiz("Orbit Quiz")
         column = QuizColumn(
             form_id=quiz.id, title="Orbit Quiz", abbreviation="OQ", pass_percentage=50
         )
 
-        row = _build_student_row(
+        row = _build_learner_row(
             USER_ID,
             [quiz],
             [column],
-            a_roster(student),
+            a_roster(learner),
             a_catalogue(course_items={a_quiz().id: [quiz]}),
             a_progress_index(),
         )
@@ -1019,7 +1019,7 @@ class TestBuildSummaryTables:
     def test_a_course_with_no_quizzes_yields_one_table_that_still_has_rows(
         self,
     ) -> None:
-        rows = [_a_student_row()]
+        rows = [_a_learner_row()]
 
         tables = _build_summary_tables([], rows, 10)
 
@@ -1029,7 +1029,7 @@ class TestBuildSummaryTables:
 
     def test_only_the_first_table_of_a_split_is_not_continued(self) -> None:
         columns = [_a_column(f"Quiz {index}") for index in range(16)]
-        rows = [_a_student_row(columns=columns)]
+        rows = [_a_learner_row(columns=columns)]
 
         tables = _build_summary_tables(columns, rows, 11)
 
@@ -1037,7 +1037,7 @@ class TestBuildSummaryTables:
 
     def test_each_row_carries_one_cell_per_quiz_in_its_table(self) -> None:
         columns = [_a_column(f"Quiz {index}") for index in range(3)]
-        rows = [_a_student_row(columns=columns)]
+        rows = [_a_learner_row(columns=columns)]
 
         tables = _build_summary_tables(columns, rows, 2)
 
@@ -1045,7 +1045,7 @@ class TestBuildSummaryTables:
 
 
 class TestEvaluateAtRiskFlags:
-    def test_a_student_with_no_activity_is_flagged(self) -> None:
+    def test_a_learner_with_no_activity_is_flagged(self) -> None:
         flags = _evaluate_at_risk_flags(_a_detail())
 
         assert [flag.rule_id for flag in flags] == ["no_activity"]
@@ -1059,24 +1059,24 @@ class TestEvaluateAtRiskFlags:
 
 
 class TestBuildAttentionList:
-    def _flagged(self, completion: int) -> StudentDetail:
+    def _flagged(self, completion: int) -> LearnerDetail:
         flag = AtRiskFlag(
             rule_id="no_activity", label="No activity", reason="none", severity="error"
         )
         return _a_detail(completion=completion, flags=[flag])
 
-    def test_only_flagged_students_are_listed(self) -> None:
+    def test_only_flagged_learners_are_listed(self) -> None:
         listed = _build_attention_list([self._flagged(10), _a_detail(completion=50)])
 
         assert listed.total == 1
-        assert listed.students[0].completion_percentage == 10
+        assert listed.learners[0].completion_percentage == 10
 
-    def test_students_are_ordered_least_complete_first(self) -> None:
+    def test_learners_are_ordered_least_complete_first(self) -> None:
         listed = _build_attention_list(
             [self._flagged(80), self._flagged(10), self._flagged(45)]
         )
 
-        assert [student.completion_percentage for student in listed.students] == [
+        assert [learner.completion_percentage for learner in listed.learners] == [
             10,
             45,
             80,
@@ -1090,20 +1090,20 @@ class TestBuildAttentionList:
 
 
 class TestCompletionStatistics:
-    def test_a_cohort_with_no_students_reports_zeroes(self) -> None:
+    def test_a_cohort_with_no_learners_reports_zeroes(self) -> None:
         assert _completion_statistics([]) == CompletionStats(0, 0, 0)
 
-    def test_the_median_of_an_even_number_of_students_is_rounded(self) -> None:
+    def test_the_median_of_an_even_number_of_learners_is_rounded(self) -> None:
         details = [_a_detail(completion=value) for value in (10, 20, 30, 45)]
 
         assert _completion_statistics(details).median_completion == 25
 
-    def test_not_started_counts_only_zero_percent_students(self) -> None:
+    def test_not_started_counts_only_zero_percent_learners(self) -> None:
         details = [_a_detail(completion=value) for value in (0, 0, 1, 100)]
 
         assert _completion_statistics(details).not_started_count == 2
 
-    def test_complete_counts_only_fully_finished_students(self) -> None:
+    def test_complete_counts_only_fully_finished_learners(self) -> None:
         details = [_a_detail(completion=value) for value in (0, 99, 100, 100)]
 
         assert _completion_statistics(details).complete_count == 2

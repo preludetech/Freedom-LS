@@ -10,7 +10,7 @@ here filters explicitly on `site_id=site_id`.
 
 `frozen=True` on the bundles freezes the binding, not the maps inside them.
 Nothing downstream of a loader may mutate what it returns: the course sections
-and the student details are built from the same bundles, so a mutation in one
+and the learner details are built from the same bundles, so a mutation in one
 would be visible to the other.
 """
 
@@ -35,30 +35,30 @@ from freedom_ls.content_engine.models import (
     QuestionOption,
     Topic,
 )
-from freedom_ls.reports.config import config
-from freedom_ls.reports.report_data import ReportTooLargeError
-from freedom_ls.site_aware_models.config import config as site_config
-from freedom_ls.student_management.models import (
+from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
 )
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_progress.models import (
     FormProgress,
     QuestionAnswer,
     TopicProgress,
 )
-from freedom_ls.student_progress.queries import attempt_completes_form
-from freedom_ls.student_progress.scoring import evaluate_quiz_answers
+from freedom_ls.learner_progress.queries import attempt_completes_form
+from freedom_ls.learner_progress.scoring import evaluate_quiz_answers
+from freedom_ls.reports.config import config
+from freedom_ls.reports.report_data import ReportTooLargeError
+from freedom_ls.site_aware_models.config import config as site_config
 
 
 @dataclasses.dataclass(frozen=True)
 class CohortRoster:
     """The cohort's members, in the one order the whole report uses."""
 
-    students_by_id: dict[int, User]
+    learners_by_id: dict[int, User]
     sort_key_by_id: dict[int, tuple[str, str]]
-    student_ids: list[int]
+    learner_ids: list[int]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -67,7 +67,7 @@ class CourseCatalogue:
 
     course_items: dict[UUID, list[Topic | Form]]
     # Every course's items concatenated, in registration order. An item shared
-    # by two courses appears twice, and so counts twice in a student's overall
+    # by two courses appears twice, and so counts twice in a learner's overall
     # denominator -- the per-course figures are the ones that never double up.
     all_items: list[Topic | Form]
     forms_by_id: dict[UUID, Form]
@@ -75,7 +75,7 @@ class CourseCatalogue:
     form_ids: set[UUID]
     quiz_form_ids: set[UUID]
     # The order quizzes appear in their courses, which is the order the summary
-    # table columns and a student's wrong-answer blocks both follow.
+    # table columns and a learner's wrong-answer blocks both follow.
     # Deduplicated across courses, unlike all_items.
     ordered_quiz_form_ids: list[UUID]
 
@@ -89,7 +89,7 @@ class TopicProgressIndex:
 
 @dataclasses.dataclass(frozen=True)
 class FormProgressIndex:
-    """Every form sitting the cohort has, keyed for the per-student lookups.
+    """Every form sitting the cohort has, keyed for the per-learner lookups.
 
     Built from one queryset ordered completed-time-descending, nulls last. That
     ordering is load-bearing twice: it decides which row is `latest_by_user_form`
@@ -103,7 +103,7 @@ class FormProgressIndex:
     # completed sitting where one exists and the latest started sitting
     # otherwise. `_completed_items` relies on this to know completed_time is set.
     latest_by_user_form: dict[tuple[int, UUID], FormProgress]
-    # Every completed sitting, not merely how many there were: the per-student
+    # Every completed sitting, not merely how many there were: the per-learner
     # attempts table reads from this, and a count would only have to be
     # reconciled against it later. Chronological, oldest first.
     completed_attempts_by_user_form: dict[tuple[int, UUID], list[FormProgress]]
@@ -121,10 +121,10 @@ class FormProgressIndex:
 class ProgressIndex:
     topics: TopicProgressIndex
     forms: FormProgressIndex
-    # Union of the two sources: a student counts as started the moment either a
+    # Union of the two sources: a learner counts as started the moment either a
     # TopicProgress or a FormProgress row exists for them, complete or not.
-    # A field rather than a property, so the per-student membership test stays
-    # O(1) instead of rebuilding the union once per student.
+    # A field rather than a property, so the per-learner membership test stays
+    # O(1) instead of rebuilding the union once per learner.
     user_ids_with_any_progress: set[int]
 
 
@@ -149,7 +149,7 @@ class SatQuestions:
     correctness: dict[tuple[UUID, UUID], bool]
 
 
-def _student_sort_key(user: User) -> tuple[str, str]:
+def _learner_sort_key(user: User) -> tuple[str, str]:
     """Surname-first ordering, falling back to the email when no surname is set."""
     first_name = (user.first_name or "").strip()
     last_name = (user.last_name or "").strip()
@@ -182,27 +182,27 @@ def load_roster(cohort: Cohort, site_id: int) -> CohortRoster:
             "user"
         )
     )
-    students_by_id: dict[int, User] = {m.user_id: m.user for m in memberships}
+    learners_by_id: dict[int, User] = {m.user_id: m.user for m in memberships}
     # One ordering, computed once, used for the summary tables and the
-    # per-student sections alike -- cohort membership query order would put the
-    # summary table out of step with the Contents page and the student
+    # per-learner sections alike -- cohort membership query order would put the
+    # summary table out of step with the Contents page and the learner
     # sections, which are both alphabetical by surname.
     sort_key_by_id: dict[int, tuple[str, str]] = {
-        user_id: _student_sort_key(user) for user_id, user in students_by_id.items()
+        user_id: _learner_sort_key(user) for user_id, user in learners_by_id.items()
     }
-    student_ids = sorted(students_by_id, key=lambda user_id: sort_key_by_id[user_id])
+    learner_ids = sorted(learners_by_id, key=lambda user_id: sort_key_by_id[user_id])
 
-    if len(student_ids) > config.REPORTS_MAX_STUDENTS:
+    if len(learner_ids) > config.REPORTS_MAX_LEARNERS:
         raise ReportTooLargeError(
-            f"Cohort '{cohort.name}' has {len(student_ids)} students, exceeding "
-            f"the configured limit of {config.REPORTS_MAX_STUDENTS} "
-            "(REPORTS_MAX_STUDENTS)."
+            f"Cohort '{cohort.name}' has {len(learner_ids)} learners, exceeding "
+            f"the configured limit of {config.REPORTS_MAX_LEARNERS} "
+            "(REPORTS_MAX_LEARNERS)."
         )
 
     return CohortRoster(
-        students_by_id=students_by_id,
+        learners_by_id=learners_by_id,
         sort_key_by_id=sort_key_by_id,
-        student_ids=student_ids,
+        learner_ids=learner_ids,
     )
 
 
@@ -213,7 +213,7 @@ def build_course_catalogue(
 
     Course items are gathered per course (one children() traversal each,
     memoized on the instance) — bounded by course/CoursePart structure, not
-    by student or question counts. viewable_items() only excludes CoursePart
+    by learner or question counts. viewable_items() only excludes CoursePart
     sentinels, so Activities are filtered out here, taking them out of the
     completion denominator too (no ActivityProgress model exists).
     """
@@ -252,12 +252,12 @@ def build_course_catalogue(
 
 
 def load_topic_progress_rows(
-    site_id: int, student_ids: list[int], topic_ids: set[UUID]
+    site_id: int, learner_ids: list[int], topic_ids: set[UUID]
 ) -> list[tuple[int, UUID, datetime | None]]:
     """(user_id, topic_id, complete_time) for the cohort's topics, in one query."""
     return list(
         TopicProgress.objects.filter(
-            site_id=site_id, user_id__in=student_ids, topic_id__in=topic_ids
+            site_id=site_id, user_id__in=learner_ids, topic_id__in=topic_ids
         ).values_list("user_id", "topic_id", "complete_time")
     )
 
@@ -283,7 +283,7 @@ def fold_topic_progress_rows(
 
 
 def load_form_progress_rows(
-    site_id: int, student_ids: list[int], form_ids: set[UUID]
+    site_id: int, learner_ids: list[int], form_ids: set[UUID]
 ) -> list[FormProgress]:
     """Every sitting of the cohort's forms, newest-completed first, in one query.
 
@@ -293,7 +293,7 @@ def load_form_progress_rows(
     """
     return list(
         FormProgress.objects.filter(
-            site_id=site_id, user_id__in=student_ids, form_id__in=form_ids
+            site_id=site_id, user_id__in=learner_ids, form_id__in=form_ids
         )
         .select_related("form")
         .order_by(F("completed_time").desc(nulls_last=True), "-start_time")
@@ -330,7 +330,7 @@ def fold_form_progress_rows(
                 completed_form_ids_by_user[fp.user_id].add(fp.form_id)
             completed_attempt_ids.append(fp.id)
 
-    # The rows arrive newest-completed first; a reader of a student's section
+    # The rows arrive newest-completed first; a reader of a learner's section
     # wants their sittings in the order they sat them. completed_attempt_ids is
     # deliberately left newest-first -- see its field comment.
     for attempt_rows in completed_attempts_by_user_form.values():
@@ -357,7 +357,7 @@ def merge_progress_indexes(
 
 
 def load_progress_index(
-    site_id: int, student_ids: list[int], catalogue: CourseCatalogue
+    site_id: int, learner_ids: list[int], catalogue: CourseCatalogue
 ) -> ProgressIndex:
     """Both progress sources, loaded and merged.
 
@@ -366,23 +366,23 @@ def load_progress_index(
     """
     return merge_progress_indexes(
         fold_topic_progress_rows(
-            load_topic_progress_rows(site_id, student_ids, catalogue.topic_ids)
+            load_topic_progress_rows(site_id, learner_ids, catalogue.topic_ids)
         ),
         fold_form_progress_rows(
-            load_form_progress_rows(site_id, student_ids, catalogue.form_ids)
+            load_form_progress_rows(site_id, learner_ids, catalogue.form_ids)
         ),
     )
 
 
 def load_first_attempt_ids(
-    site_id: int, student_ids: list[int], quiz_form_ids: set[UUID]
+    site_id: int, learner_ids: list[int], quiz_form_ids: set[UUID]
 ) -> set[UUID]:
-    """The id of each student's earliest completed sitting of each quiz."""
+    """The id of each learner's earliest completed sitting of each quiz."""
     # Filtering directly on a window annotation works from Django 4.2 onward.
     return set(
         FormProgress.objects.filter(
             site_id=site_id,
-            user_id__in=student_ids,
+            user_id__in=learner_ids,
             form_id__in=quiz_form_ids,
             completed_time__isnull=False,
         )

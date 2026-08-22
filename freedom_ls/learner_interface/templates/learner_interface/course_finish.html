@@ -53,7 +53,7 @@
                     {% for item in unpassed_forms %}
                         <li class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <span class="text-on-surface">{{ item.form.title }}</span>
-                            <c-button href="{% url 'student_interface:form_start' course_slug=course.slug index=item.index %}"
+                            <c-button href="{% url 'learner_interface:form_start' course_slug=course.slug index=item.index %}"
                                       icon_left="retry">
                                 Retry quiz
                             </c-button>

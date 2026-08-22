@@ -6,7 +6,7 @@ and the column budget is the constraint that decides whether a table splits.
 {% endcomment %}
 <div class="course-summary-table" id="course-{{ section.course_id }}">
   <h2 class="course-heading">{{ section.title }}{% if not section.is_active %} <span class="inactive-marker">(inactive registration)</span>{% endif %}</h2>
-  {% if not section.student_rows %}
+  {% if not section.learner_rows %}
   <p class="empty-state">This cohort has no learners.</p>
   {% else %}
   {% for table in section.summary_tables %}

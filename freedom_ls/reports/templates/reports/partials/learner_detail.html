@@ -1,4 +1,4 @@
-{% comment %}Required context: student (StudentDetail). Emits student-{{ student.user_id }} — the only place that id is emitted — and carries the running header name.
+{% comment %}Required context: learner (LearnerDetail). Emits learner-{{ learner.user_id }} — the only place that id is emitted — and carries the running header name.
 
 The name appears twice on purpose: print.css takes the span out of normal flow
 into the running header slot, so it is never drawn here, while the h3 stays in
@@ -8,33 +8,33 @@ The severity class on the flags panel is taken from the first flag. The flags
 arrive in registry order and the base registry runs its two error rules ahead
 of its warning rule, so the first flag is the most serious one a learner has.
 {% endcomment %}
-<div class="student-section" id="student-{{ student.user_id }}">
-  <span class="student-running-name">{{ student.full_name }}</span>
+<div class="learner-section" id="learner-{{ learner.user_id }}">
+  <span class="learner-running-name">{{ learner.full_name }}</span>
   {% comment %}The floated last-activity note precedes the heading for the same
   reason the at-a-glance count does: a float needs an open line box.{% endcomment %}
-  <div class="student-head">
-    {% if student.last_completed_at %}<span class="student-last-active">Last activity {{ student.last_completed_at|date:"j M Y" }}</span>{% endif %}
-    <h3 class="student-heading">{{ student.full_name }}</h3>
+  <div class="learner-head">
+    {% if learner.last_completed_at %}<span class="learner-last-active">Last activity {{ learner.last_completed_at|date:"j M Y" }}</span>{% endif %}
+    <h3 class="learner-heading">{{ learner.full_name }}</h3>
   </div>
 
-  {% if student.flags %}
-  <div class="flags-panel flags-{{ student.flags.0.severity }}">
-    {% include "reports/partials/flag_list.html" with flags=student.flags only %}
+  {% if learner.flags %}
+  <div class="flags-panel flags-{{ learner.flags.0.severity }}">
+    {% include "reports/partials/flag_list.html" with flags=learner.flags only %}
   </div>
   {% else %}
-  {% include "reports/partials/flag_list.html" with flags=student.flags only %}
+  {% include "reports/partials/flag_list.html" with flags=learner.flags only %}
   {% endif %}
 
-  {% include "reports/partials/completion_bar.html" with percentage=student.completion_percentage completed=student.completed_item_count total=student.total_item_count only %}
+  {% include "reports/partials/completion_bar.html" with percentage=learner.completion_percentage completed=learner.completed_item_count total=learner.total_item_count only %}
 
-  {% comment %}Three branches, never two: a student with nothing to show still
+  {% comment %}Three branches, never two: a learner with nothing to show still
   gets a line rather than an empty page. The two empty cases are worded apart
-  because the at-risk flags separate them — only a student with no progress row
+  because the at-risk flags separate them — only a learner with no progress row
   at all carries the no-recorded-activity flag, so telling one who opened
   something that nothing was recorded would contradict the panel above.
   {% endcomment %}
-  {% if student.has_reportable_activity %}
-  {% if student.completed_items %}
+  {% if learner.has_reportable_activity %}
+  {% if learner.completed_items %}
   {% comment %}A list rather than a table so print.css can set it in two columns
   — a course of thirty items is otherwise a page of near-empty lines. Each row
   is a flex row, so the date follows the title in source order. A right float
@@ -43,7 +43,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
   {% endcomment %}
   <p class="subhead">Items completed</p>
   <ul class="items-list">
-    {% for item in student.completed_items %}
+    {% for item in learner.completed_items %}
     <li>
       <span class="item-title">{{ item.title }}{% if item.is_quiz %} <span class="item-kind">(quiz)</span>{% endif %}</span>
       <span class="item-date">{{ item.completed_at|date:"j M Y" }}</span>
@@ -52,7 +52,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
   </ul>
   {% endif %}
 
-  {% if student.quiz_results %}
+  {% if learner.quiz_results %}
   <p class="subhead">Quiz attempts <span class="subhead-note">every completed sitting, oldest first</span></p>
   <table class="attempts-table">
     <thead>
@@ -64,7 +64,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
       </tr>
     </thead>
     <tbody>
-      {% for result in student.quiz_results %}
+      {% for result in learner.quiz_results %}
       {% for attempt in result.attempts %}
       <tr>
         <td class="attempt-quiz">{{ result.title }}</td>
@@ -94,7 +94,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
   same row. An option the author left unmarked gets neither verdict. Every chip
   carries its glyph because these two columns sit side by side and tint alone
   would not survive greyscale printing.{% endcomment %}
-  {% for quiz in student.wrong_answers %}
+  {% for quiz in learner.wrong_answers %}
   {% if quiz.answers %}
   <p class="subhead">Incorrect answers — {{ quiz.title }} <span class="subhead-note">across all attempts</span></p>
   <table class="wrong-answers-table">
@@ -121,7 +121,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
   </table>
   {% endif %}
   {% endfor %}
-  {% elif student.has_any_progress %}
+  {% elif learner.has_any_progress %}
   <p class="no-activity no-activity-started">Started, but nothing completed yet.</p>
   {% else %}
   <p class="no-activity">No activity recorded.</p>

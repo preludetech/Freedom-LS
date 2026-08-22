@@ -8,14 +8,14 @@ import pytest
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.student_progress.factories import CourseProgressFactory
-from freedom_ls.student_progress.models import CourseProgress
+from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.models import CourseProgress
 
 
 def _finish(client, user, course):
     client.force_login(user)
     return client.get(
-        reverse("student_interface:course_finish", kwargs={"course_slug": course.slug})
+        reverse("learner_interface:course_finish", kwargs={"course_slug": course.slug})
     )
 
 
@@ -92,7 +92,7 @@ def test_finish_page_names_the_unpassed_quiz_and_links_to_its_retry(
     assert form.title in content
     assert (
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": course.slug, "index": 1},
         )
         in content

@@ -1,7 +1,7 @@
 {% comment %}Required context: data (CohortReportData).
 
 Links only — every id it points at is emitted by exactly one other partial
-(course_summary_table.html, student_detail.html, quiz_confusion.html).
+(course_summary_table.html, learner_detail.html, quiz_confusion.html).
 
 methodology.html is included here rather than standing as its own section: a
 reader who has just been handed a contents page is exactly the reader who needs
@@ -17,8 +17,8 @@ to know what the numbers in it mean, and the two together are one spread.
     <li class="toc-entry"><a href="#course-{{ section.course_id }}">{{ section.title }}</a></li>
     {% endfor %}
     <li class="toc-section"><a href="#details">2 · Details per learner</a></li>
-    {% for student in data.students %}
-    <li class="toc-entry"><a href="#student-{{ student.user_id }}">{{ student.full_name }}</a></li>
+    {% for learner in data.learners %}
+    <li class="toc-entry"><a href="#learner-{{ learner.user_id }}">{{ learner.full_name }}</a></li>
     {% endfor %}
     <li class="toc-section"><a href="#confusions">3 · Quiz confusions across the cohort</a></li>
     {% for section in data.courses %}

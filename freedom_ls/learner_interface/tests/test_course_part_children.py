@@ -304,7 +304,7 @@ def test_course_part_holding_a_failed_quiz_reads_as_needing_a_retry(mock_site_co
 
     quiz_index = course.viewable_items().index(quiz) + 1
     expected_url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": quiz_index},
     )
     assert part_dict["status"] == FAILED

@@ -17,7 +17,7 @@ from freedom_ls.content_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.student_progress.factories import FormProgressFactory
+from freedom_ls.learner_progress.factories import FormProgressFactory
 
 
 def _post_data(pairs):

@@ -23,6 +23,9 @@ flowchart TB
     educator_interface
     health
     icons
+    learner_interface
+    learner_management
+    learner_progress
     markdown_rendering
     organisations
     panel_framework
@@ -30,9 +33,6 @@ flowchart TB
     reports
     role_based_permissions
     site_aware_models
-    learner_interface
-    learner_management
-    learner_progress
     webhooks
     xapi_learning_record_store
     accounts --> base
@@ -51,8 +51,8 @@ flowchart TB
     course_applications --> accounts
     course_applications --> content_engine
     course_applications --> course_access
-    course_applications --> site_aware_models
     course_applications --> learner_management
+    course_applications --> site_aware_models
     course_interest --> accounts
     course_interest --> content_engine
     course_interest --> course_access
@@ -61,44 +61,22 @@ flowchart TB
     educator_interface --> accounts
     educator_interface --> content_engine
     educator_interface --> course_interest
+    educator_interface --> learner_management
+    educator_interface --> learner_progress
     educator_interface --> organisations
     educator_interface --> panel_framework
     educator_interface --> site_aware_models
-    educator_interface --> learner_management
-    educator_interface --> learner_progress
     health --> base
     icons --> base
-    markdown_rendering --> base
-    organisations --> base
-    organisations --> site_aware_models
-    qa_helpers --> accounts
-    qa_helpers --> content_engine
-    qa_helpers --> course_applications
-    qa_helpers --> organisations
-    qa_helpers --> reports
-    qa_helpers --> role_based_permissions
-    qa_helpers --> site_aware_models
-    qa_helpers --> learner_management
-    qa_helpers --> learner_progress
-    reports --> accounts
-    reports --> base
-    reports --> content_engine
-    reports --> site_aware_models
-    reports --> learner_management
-    reports --> learner_progress
-    role_based_permissions --> accounts
-    role_based_permissions --> base
-    role_based_permissions --> site_aware_models
-    site_aware_models --> base
     learner_interface --> accounts
     learner_interface --> content_engine
     learner_interface --> course_access
     learner_interface --> course_interest
     learner_interface --> icons
-    learner_interface --> organisations
-    learner_interface --> site_aware_models
     learner_interface --> learner_management
     learner_interface --> learner_progress
+    learner_interface --> organisations
+    learner_interface --> site_aware_models
     learner_interface --> webhooks
     learner_management --> accounts
     learner_management --> base
@@ -108,19 +86,44 @@ flowchart TB
     learner_management --> webhooks
     learner_progress --> accounts
     learner_progress --> content_engine
-    learner_progress --> site_aware_models
     learner_progress --> learner_management
+    learner_progress --> site_aware_models
+    markdown_rendering --> base
+    organisations --> base
+    organisations --> site_aware_models
+    qa_helpers --> accounts
+    qa_helpers --> content_engine
+    qa_helpers --> course_applications
+    qa_helpers --> learner_management
+    qa_helpers --> learner_progress
+    qa_helpers --> organisations
+    qa_helpers --> reports
+    qa_helpers --> role_based_permissions
+    qa_helpers --> site_aware_models
+    reports --> accounts
+    reports --> base
+    reports --> content_engine
+    reports --> learner_management
+    reports --> learner_progress
+    reports --> site_aware_models
+    role_based_permissions --> accounts
+    role_based_permissions --> base
+    role_based_permissions --> site_aware_models
+    site_aware_models --> base
     webhooks --> base
     webhooks --> site_aware_models
     xapi_learning_record_store --> site_aware_models
     accounts -.-> learner_management
     base -.-> accounts
+    base -.-> learner_management
     base -.-> organisations
     base -.-> role_based_permissions
-    base -.-> learner_management
     course_access -.-> course_applications
     course_interest -.-> learner_management
     educator_interface -.-> role_based_permissions
+    learner_interface -.-> course_applications
+    learner_interface -.-> role_based_permissions
+    learner_management -.-> role_based_permissions
     markdown_rendering -.-> content_engine
     organisations -.-> accounts
     organisations -.-> role_based_permissions
@@ -130,9 +133,6 @@ flowchart TB
     site_aware_models -.-> accounts
     site_aware_models -.-> content_engine
     site_aware_models -.-> learner_management
-    learner_interface -.-> course_applications
-    learner_interface -.-> role_based_permissions
-    learner_management -.-> role_based_permissions
     webhooks -.-> accounts
 ```
 
@@ -142,25 +142,25 @@ flowchart TB
 | --- | --- | --- |
 | accounts | base, markdown_rendering, site_aware_models, webhooks | learner_management |
 | app_authentication | site_aware_models | — |
-| base | — | accounts, organisations, role_based_permissions, learner_management |
+| base | — | accounts, learner_management, organisations, role_based_permissions |
 | content_engine | base, icons, markdown_rendering, site_aware_models | — |
 | course_access | accounts, base, content_engine, learner_management | course_applications |
-| course_applications | accounts, content_engine, course_access, site_aware_models, learner_management | — |
+| course_applications | accounts, content_engine, course_access, learner_management, site_aware_models | — |
 | course_interest | accounts, content_engine, course_access, site_aware_models | learner_management |
 | deployment | base | — |
-| educator_interface | accounts, content_engine, course_interest, organisations, panel_framework, site_aware_models, learner_management, learner_progress | role_based_permissions |
+| educator_interface | accounts, content_engine, course_interest, learner_management, learner_progress, organisations, panel_framework, site_aware_models | role_based_permissions |
 | health | base | — |
 | icons | base | — |
+| learner_interface | accounts, content_engine, course_access, course_interest, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, role_based_permissions |
+| learner_management | accounts, base, content_engine, organisations, site_aware_models, webhooks | role_based_permissions |
+| learner_progress | accounts, content_engine, learner_management, site_aware_models | — |
 | markdown_rendering | base | content_engine |
 | organisations | base, site_aware_models | accounts, role_based_permissions |
 | panel_framework | — | — |
-| qa_helpers | accounts, content_engine, course_applications, organisations, reports, role_based_permissions, site_aware_models, learner_management, learner_progress | — |
-| reports | accounts, base, content_engine, site_aware_models, learner_management, learner_progress | organisations, role_based_permissions |
+| qa_helpers | accounts, content_engine, course_applications, learner_management, learner_progress, organisations, reports, role_based_permissions, site_aware_models | — |
+| reports | accounts, base, content_engine, learner_management, learner_progress, site_aware_models | organisations, role_based_permissions |
 | role_based_permissions | accounts, base, site_aware_models | learner_management |
 | site_aware_models | base | accounts, content_engine, learner_management |
-| learner_interface | accounts, content_engine, course_access, course_interest, icons, organisations, site_aware_models, learner_management, learner_progress, webhooks | course_applications, role_based_permissions |
-| learner_management | accounts, base, content_engine, organisations, site_aware_models, webhooks | role_based_permissions |
-| learner_progress | accounts, content_engine, site_aware_models, learner_management | — |
 | webhooks | base, site_aware_models | accounts |
 | xapi_learning_record_store | site_aware_models | — |
 

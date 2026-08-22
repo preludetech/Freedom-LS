@@ -49,7 +49,7 @@ class GeneratedReport(SiteAwareModel):
     STATUS_CHOICES = STATUS_CHOICES
 
     cohort = models.ForeignKey(
-        "freedom_ls_student_management.Cohort",
+        "freedom_ls_learner_management.Cohort",
         on_delete=models.CASCADE,
         related_name="reports",
     )

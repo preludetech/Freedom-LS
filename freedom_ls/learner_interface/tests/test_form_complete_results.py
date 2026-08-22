@@ -15,8 +15,8 @@ from freedom_ls.content_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
 )
@@ -62,7 +62,7 @@ def _results(client_factory, user, course):
     client = client_factory(user)
     return client.get(
         reverse(
-            "student_interface:course_form_complete",
+            "learner_interface:course_form_complete",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )
@@ -110,7 +110,7 @@ def test_a_correctly_ticked_option_is_not_marked_as_an_error(
     response = _results(logged_in_client, user, course)
 
     content = response.content.decode()
-    your_answer = content.split('data-testid="student-answer-')[1].split(
+    your_answer = content.split('data-testid="learner-answer-')[1].split(
         'data-testid="correct-answer-'
     )[0]
     assert your_answer.count("Marked correct") == 2

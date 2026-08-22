@@ -24,7 +24,7 @@ def test_option_rows_do_not_overflow_the_viewport(
     logged_in_page.goto(
         reverse_url(
             live_server,
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )

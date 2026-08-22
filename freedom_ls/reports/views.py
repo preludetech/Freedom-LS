@@ -18,15 +18,15 @@ from django.tasks import default_task_backend
 from django.urls import reverse
 from django.utils.text import slugify
 
+from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.queries import (
+    all_cohorts_visible_to,
+    can_view_cohort,
+)
 from freedom_ls.reports.forms import GenerateReportForm
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.tasks import _generate_cohort_report_task
 from freedom_ls.site_aware_models.admin import admin_page_context
-from freedom_ls.student_management.models import Cohort
-from freedom_ls.student_management.queries import (
-    all_cohorts_visible_to,
-    can_view_cohort,
-)
 
 
 def _has_inflight_report(cohort: Cohort) -> bool:

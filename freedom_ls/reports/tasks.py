@@ -11,10 +11,10 @@ from django.core.files.base import ContentFile
 from django.tasks import task
 from django.utils import timezone
 
+from freedom_ls.learner_management.models import Cohort
 from freedom_ls.reports.gather import ReportTooLargeError, gather_cohort_report_data
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.render import ReportRenderError, render_report_pdf
-from freedom_ls.student_management.models import Cohort
 
 
 @task()

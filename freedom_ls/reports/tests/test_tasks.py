@@ -7,14 +7,14 @@ import pytest
 from django.test import override_settings
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.learner_management.factories import (
+    CohortFactory,
+    CohortMembershipFactory,
+)
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.render import ReportRenderError
 from freedom_ls.reports.tasks import generate_cohort_report
-from freedom_ls.student_management.factories import (
-    CohortFactory,
-    CohortMembershipFactory,
-)
 
 pytestmark = pytest.mark.django_db
 
@@ -176,7 +176,7 @@ class TestGenerateCohortReportRenderFailure:
 
 
 class TestGenerateCohortReportTooLarge:
-    def test_cohort_over_max_students_leaves_status_failed(
+    def test_cohort_over_max_learners_leaves_status_failed(
         self, mock_site_context: object
     ) -> None:
         cohort = CohortFactory()
@@ -186,13 +186,13 @@ class TestGenerateCohortReportTooLarge:
             cohort=cohort, status=GeneratedReport.STATUS_PENDING
         )
 
-        with override_settings(REPORTS_MAX_STUDENTS=1):
+        with override_settings(REPORTS_MAX_LEARNERS=1):
             generate_cohort_report(str(report.pk), report.site_id)
 
         report.refresh_from_db()
         assert report.status == GeneratedReport.STATUS_FAILED
 
-    def test_cohort_over_max_students_error_message_names_the_limit(
+    def test_cohort_over_max_learners_error_message_names_the_limit(
         self, mock_site_context: object
     ) -> None:
         cohort = CohortFactory()
@@ -202,7 +202,7 @@ class TestGenerateCohortReportTooLarge:
             cohort=cohort, status=GeneratedReport.STATUS_PENDING
         )
 
-        with override_settings(REPORTS_MAX_STUDENTS=1):
+        with override_settings(REPORTS_MAX_LEARNERS=1):
             generate_cohort_report(str(report.pk), report.site_id)
 
         report.refresh_from_db()

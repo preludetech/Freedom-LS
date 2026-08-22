@@ -19,7 +19,6 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy
-from freedom_ls.role_based_permissions.loader import clear_caches
 from freedom_ls.learner_interface.utils import (
     current_entry_status,
     get_course_index,
@@ -36,6 +35,7 @@ from freedom_ls.learner_progress.models import (
     FormProgress,
     TopicProgress,
 )
+from freedom_ls.role_based_permissions.loader import clear_caches
 
 
 @pytest.fixture

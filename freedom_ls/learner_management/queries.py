@@ -168,8 +168,8 @@ def all_cohorts_visible_to(user: RequestUser) -> QuerySet[Cohort]:
     site-wide. The two must stay in lockstep: same two paths, same answer for
     any one cohort.
     """
+    from freedom_ls.learner_management.models import Cohort
     from freedom_ls.organisations.models import Organisation as OrganisationModel
-    from freedom_ls.student_management.models import Cohort
 
     if not user.is_authenticated:
         return Cohort.objects.none()

@@ -24,8 +24,8 @@ class _QuizResult:
 
 
 @dataclass
-class _Student:
-    """A minimal stand-in for the future gather.StudentDetail, built by hand.
+class _Learner:
+    """A minimal stand-in for the future gather.LearnerDetail, built by hand.
 
     Only carries the fields the base at-risk rules read.
     """
@@ -37,73 +37,73 @@ class _Student:
 
 
 class TestNoRecordedActivityRule:
-    def test_flags_student_with_no_progress(self) -> None:
-        student = _Student(has_any_progress=False)
+    def test_flags_learner_with_no_progress(self) -> None:
+        learner = _Learner(has_any_progress=False)
 
-        reason = NoRecordedActivityRule().evaluate(student)
+        reason = NoRecordedActivityRule().evaluate(learner)
 
         assert reason == "Has not started any course item."
 
-    def test_silent_for_student_with_progress(self) -> None:
-        student = _Student(has_any_progress=True)
+    def test_silent_for_learner_with_progress(self) -> None:
+        learner = _Learner(has_any_progress=True)
 
-        reason = NoRecordedActivityRule().evaluate(student)
+        reason = NoRecordedActivityRule().evaluate(learner)
 
         assert reason is None
 
 
 class TestFailedLatestQuizAttemptRule:
     def test_silent_when_no_quiz_results(self) -> None:
-        student = _Student(quiz_results=[])
+        learner = _Learner(quiz_results=[])
 
-        reason = FailedLatestQuizAttemptRule().evaluate(student)
+        reason = FailedLatestQuizAttemptRule().evaluate(learner)
 
         assert reason is None
 
     def test_silent_when_latest_attempt_passed(self) -> None:
         now = timezone.now()
-        student = _Student(quiz_results=[_QuizResult(completed_at=now, passed=True)])
+        learner = _Learner(quiz_results=[_QuizResult(completed_at=now, passed=True)])
 
-        reason = FailedLatestQuizAttemptRule().evaluate(student)
+        reason = FailedLatestQuizAttemptRule().evaluate(learner)
 
         assert reason is None
 
     def test_flags_when_latest_attempt_failed(self) -> None:
         now = timezone.now()
-        student = _Student(quiz_results=[_QuizResult(completed_at=now, passed=False)])
+        learner = _Learner(quiz_results=[_QuizResult(completed_at=now, passed=False)])
 
-        reason = FailedLatestQuizAttemptRule().evaluate(student)
+        reason = FailedLatestQuizAttemptRule().evaluate(learner)
 
         assert reason == "Failed their most recent quiz attempt."
 
     def test_silent_when_latest_attempt_has_no_pass_mark(self) -> None:
         now = timezone.now()
-        student = _Student(quiz_results=[_QuizResult(completed_at=now, passed=None)])
+        learner = _Learner(quiz_results=[_QuizResult(completed_at=now, passed=None)])
 
-        reason = FailedLatestQuizAttemptRule().evaluate(student)
+        reason = FailedLatestQuizAttemptRule().evaluate(learner)
 
         assert reason is None
 
     def test_judges_only_the_most_recent_attempt_by_completion_time(self) -> None:
         earlier = timezone.now()
         later = earlier + timedelta(hours=1)
-        student = _Student(
+        learner = _Learner(
             quiz_results=[
                 _QuizResult(completed_at=later, passed=True),
                 _QuizResult(completed_at=earlier, passed=False),
             ]
         )
 
-        reason = FailedLatestQuizAttemptRule().evaluate(student)
+        reason = FailedLatestQuizAttemptRule().evaluate(learner)
 
         assert reason is None
 
 
 class TestInactiveForDaysRule:
-    def test_silent_when_student_has_no_completions_at_all(self) -> None:
-        student = _Student(last_completed_at=None)
+    def test_silent_when_learner_has_no_completions_at_all(self) -> None:
+        learner = _Learner(last_completed_at=None)
 
-        reason = InactiveForDaysRule(days=7).evaluate(student)
+        reason = InactiveForDaysRule(days=7).evaluate(learner)
 
         assert reason is None
 
@@ -112,9 +112,9 @@ class TestInactiveForDaysRule:
             last_completed_at = timezone.now()
         with time_machine.travel("2026-01-08T00:00:00Z", tick=False):
             now = timezone.now()
-        student = _Student(last_completed_at=last_completed_at, report_generated_at=now)
+        learner = _Learner(last_completed_at=last_completed_at, report_generated_at=now)
 
-        reason = InactiveForDaysRule(days=7).evaluate(student)
+        reason = InactiveForDaysRule(days=7).evaluate(learner)
 
         assert reason is None
 
@@ -123,9 +123,9 @@ class TestInactiveForDaysRule:
             last_completed_at = timezone.now()
         with time_machine.travel("2026-01-09T00:00:00Z", tick=False):
             now = timezone.now()
-        student = _Student(last_completed_at=last_completed_at, report_generated_at=now)
+        learner = _Learner(last_completed_at=last_completed_at, report_generated_at=now)
 
-        reason = InactiveForDaysRule(days=7).evaluate(student)
+        reason = InactiveForDaysRule(days=7).evaluate(learner)
 
         assert reason == "No activity recorded in over 7 days."
 
@@ -134,27 +134,27 @@ class TestInactiveForDaysRule:
             last_completed_at = timezone.now()
         with time_machine.travel("2026-01-05T00:00:00Z", tick=False):
             now = timezone.now()
-        student = _Student(last_completed_at=last_completed_at, report_generated_at=now)
+        learner = _Learner(last_completed_at=last_completed_at, report_generated_at=now)
 
-        reason = InactiveForDaysRule(days=3).evaluate(student)
+        reason = InactiveForDaysRule(days=3).evaluate(learner)
 
         assert reason == "No activity recorded in over 3 days."
 
 
 class TestAtRiskRules:
-    def test_a_student_can_trip_more_than_one_rule(self) -> None:
+    def test_a_learner_can_trip_more_than_one_rule(self) -> None:
         with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
             last_completed_at = timezone.now()
         with time_machine.travel("2026-01-09T00:00:00Z", tick=False):
             now = timezone.now()
-        student = _Student(
+        learner = _Learner(
             has_any_progress=True,
             last_completed_at=last_completed_at,
             report_generated_at=now,
             quiz_results=[_QuizResult(completed_at=last_completed_at, passed=False)],
         )
 
-        reasons = {rule.id: rule.evaluate(student) for rule in AT_RISK_RULES}
+        reasons = {rule.id: rule.evaluate(learner) for rule in AT_RISK_RULES}
         tripped = {rule_id for rule_id, reason in reasons.items() if reason is not None}
 
         assert tripped == {"failed_latest_quiz", "inactive"}

@@ -1,13 +1,13 @@
 """At-risk rule protocol and the rule set the cohort report evaluates.
 
 A rule is a small object: a stable `id`, a human-readable `label`, a
-`severity`, and an `evaluate(student)` method returning a reason string or
+`severity`, and an `evaluate(learner)` method returning a reason string or
 None. Adding, removing or reordering a rule is a one-line change to
 AT_RISK_RULES at the foot of this module, and needs no edit to the gathering
 or rendering code.
 
-`StudentDetailLike` is a structural stand-in for the real per-student report
-row, `freedom_ls.reports.gather.StudentDetail`. It carries only the fields the
+`LearnerDetailLike` is a structural stand-in for the real per-learner report
+row, `freedom_ls.reports.gather.LearnerDetail`. It carries only the fields the
 rules below actually read. Because `typing.Protocol` is duck-typed, the real
 dataclass needs no inheritance from it — it only needs to expose the same
 attributes. `report_generated_at` is the single instant the whole report (and
@@ -28,8 +28,8 @@ class QuizResultLike(Protocol):
     passed: bool | None
 
 
-class StudentDetailLike(Protocol):
-    """The subset of a per-student report row the base rules read."""
+class LearnerDetailLike(Protocol):
+    """The subset of a per-learner report row the base rules read."""
 
     has_any_progress: bool
     last_completed_at: datetime | None
@@ -44,7 +44,7 @@ class AtRiskRule(Protocol):
     label: str
     severity: str
 
-    def evaluate(self, student: StudentDetailLike) -> str | None: ...
+    def evaluate(self, learner: LearnerDetailLike) -> str | None: ...
 
 
 # How heavily the report draws a rule's flags: a role token name, so a badge
@@ -58,8 +58,8 @@ class NoRecordedActivityRule:
     label = "No recorded activity"
     severity = SEVERITY_ERROR
 
-    def evaluate(self, student: StudentDetailLike) -> str | None:
-        if student.has_any_progress:
+    def evaluate(self, learner: LearnerDetailLike) -> str | None:
+        if learner.has_any_progress:
             return None
         return "Has not started any course item."
 
@@ -69,10 +69,10 @@ class FailedLatestQuizAttemptRule:
     label = "Failed most recent quiz attempt"
     severity = SEVERITY_ERROR
 
-    def evaluate(self, student: StudentDetailLike) -> str | None:
+    def evaluate(self, learner: LearnerDetailLike) -> str | None:
         latest: QuizResultLike | None = None
         latest_completed_at: datetime | None = None
-        for result in student.quiz_results:
+        for result in learner.quiz_results:
             completed_at = result.completed_at
             if completed_at is None:
                 continue
@@ -94,12 +94,12 @@ class InactiveForDaysRule:
     def __init__(self, days: int = 7) -> None:
         self.days = days
 
-    def evaluate(self, student: StudentDetailLike) -> str | None:
-        # A student with no completions at all is NoRecordedActivityRule's
+    def evaluate(self, learner: LearnerDetailLike) -> str | None:
+        # A learner with no completions at all is NoRecordedActivityRule's
         # concern, not this one.
-        if student.last_completed_at is None:
+        if learner.last_completed_at is None:
             return None
-        elapsed = student.report_generated_at - student.last_completed_at
+        elapsed = learner.report_generated_at - learner.last_completed_at
         if elapsed <= timedelta(days=self.days):
             return None
         return f"No activity recorded in over {self.days} days."

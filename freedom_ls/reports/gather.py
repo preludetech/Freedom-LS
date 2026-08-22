@@ -27,7 +27,9 @@ from freedom_ls.content_engine.models import (
     FormStrategy,
     Topic,
 )
-from freedom_ls.reports.at_risk import AT_RISK_RULES, StudentDetailLike
+from freedom_ls.learner_management.models import CohortCourseRegistration
+from freedom_ls.learner_progress.models import FormProgress
+from freedom_ls.reports.at_risk import AT_RISK_RULES, LearnerDetailLike
 from freedom_ls.reports.config import config
 from freedom_ls.reports.indexes import (
     CohortRoster,
@@ -60,6 +62,8 @@ from freedom_ls.reports.report_data import (
     CompletedItem,
     ConfusionBlock,
     CourseSection,
+    LearnerDetail,
+    LearnerRow,
     QuizAttempt,
     QuizColumn,
     QuizConfusion,
@@ -67,14 +71,10 @@ from freedom_ls.reports.report_data import (
     QuizWrongAnswers,
     ReportTooLargeError,
     SelectedOption,
-    StudentDetail,
-    StudentRow,
     SummaryRow,
     SummaryTable,
     WrongAnswer,
 )
-from freedom_ls.student_management.models import CohortCourseRegistration
-from freedom_ls.student_progress.models import FormProgress
 
 # The report contract, re-exported for the callers that have always imported it
 # from this module. Naming them in __all__ is what stops ruff removing the
@@ -89,6 +89,8 @@ __all__ = [
     "CompletedItem",
     "ConfusionBlock",
     "CourseSection",
+    "LearnerDetail",
+    "LearnerRow",
     "QuizAttempt",
     "QuizColumn",
     "QuizConfusion",
@@ -96,8 +98,6 @@ __all__ = [
     "QuizWrongAnswers",
     "ReportTooLargeError",
     "SelectedOption",
-    "StudentDetail",
-    "StudentRow",
     "SummaryRow",
     "SummaryTable",
     "WrongAnswer",
@@ -107,14 +107,14 @@ __all__ = [
 # Free-text answers have no correctness concept at all, so they are excluded
 # from wrong-answer aggregation and the confusion tally entirely, not scored
 # wrong by default. The set itself lives with QuestionType in content_engine,
-# so this module and the student results page cannot drift apart on it.
+# so this module and the learner results page cannot drift apart on it.
 
 
 @dataclasses.dataclass(frozen=True)
 class QuizTallies:
     """Both views of the same answers, counted in one pass over the sat pairs."""
 
-    # Per-student wrong-answer detail, counted across every completed attempt.
+    # Per-learner wrong-answer detail, counted across every completed attempt.
     wrong_counts: dict[tuple[int, UUID, UUID], int]
     # (option text, its `correct` verdict) to the number of wrong attempts it was
     # selected in. A single attempt cannot select the same option twice, so a
@@ -178,7 +178,7 @@ def _chunk_quiz_columns(
 ) -> list[list[QuizColumn]]:
     """Split quiz columns into page-sized groups, always yielding at least one group.
 
-    A course with no quizzes still gets one (empty) group so its Student /
+    A course with no quizzes still gets one (empty) group so its Learner /
     Completion / Last-item columns still render.
     """
     if not quizzes:
@@ -197,7 +197,7 @@ def _completion_percentage(completed_count: int, total_count: int) -> int:
 def _completion_counts(
     items: list[Topic | Form], user_id: int, progress: ProgressIndex
 ) -> tuple[int, int]:
-    """(completed_count, total_count) for one student over the given items."""
+    """(completed_count, total_count) for one learner over the given items."""
     completed_topic_ids = progress.topics.completed_topic_ids_by_user.get(
         user_id, set()
     )
@@ -213,7 +213,7 @@ def _completion_counts(
 def _latest_completion(
     items: list[Topic | Form], user_id: int, progress: ProgressIndex
 ) -> tuple[str | None, datetime | None]:
-    """Most recent completion timestamp and title among the given items for one student.
+    """Most recent completion timestamp and title among the given items for one learner.
 
     Never CourseProgress.last_accessed_item — that tracks last viewed, not
     last completed.
@@ -293,7 +293,7 @@ def _score_attempt(
 def _quiz_result_for(
     user_id: int, form: Form, forms: FormProgressIndex
 ) -> QuizResult | None:
-    """The student's completed attempts at this quiz, or None if never attempted."""
+    """The learner's completed attempts at this quiz, or None if never attempted."""
     key = (user_id, form.id)
     attempt_rows = forms.completed_attempts_by_user_form.get(key, [])
     if not attempt_rows:
@@ -338,7 +338,7 @@ def _quiz_result_for(
 def tally_quiz_answers(
     sat: SatQuestions, forms: FormProgressIndex, first_attempt_ids: set[UUID]
 ) -> QuizTallies:
-    """One pass over the sat pairs, feeding both the per-student and cohort views.
+    """One pass over the sat pairs, feeding both the per-learner and cohort views.
 
     The two views are counted together because they share this single walk;
     counting them apart would traverse every (sitting, question) pair twice.
@@ -375,7 +375,7 @@ def tally_quiz_answers(
 def build_wrong_answers_by_user_quiz(
     tallies: QuizTallies, questions: QuestionIndex
 ) -> dict[int, dict[UUID, list[WrongAnswer]]]:
-    """Each student's missed questions, grouped by quiz and ordered by question number."""
+    """Each learner's missed questions, grouped by quiz and ordered by question number."""
     wrong_answers_by_user_quiz: dict[int, dict[UUID, list[WrongAnswer]]] = defaultdict(
         lambda: defaultdict(list)
     )
@@ -483,14 +483,14 @@ def _build_quiz_columns(items: list[Topic | Form]) -> list[QuizColumn]:
     ]
 
 
-def _build_student_row(
+def _build_learner_row(
     user_id: int,
     items: list[Topic | Form],
     quiz_columns: list[QuizColumn],
     roster: CohortRoster,
     catalogue: CourseCatalogue,
     progress: ProgressIndex,
-) -> StudentRow:
+) -> LearnerRow:
     completed_count, total_count = _completion_counts(items, user_id, progress)
     last_title, last_at = _latest_completion(items, user_id, progress)
     quiz_cells: dict[UUID, QuizResult | None] = {
@@ -499,9 +499,9 @@ def _build_student_row(
         )
         for column in quiz_columns
     }
-    return StudentRow(
+    return LearnerRow(
         user_id=user_id,
-        full_name=roster.students_by_id[user_id].display_name,
+        full_name=roster.learners_by_id[user_id].display_name,
         completion_percentage=_completion_percentage(completed_count, total_count),
         completed_item_count=completed_count,
         total_item_count=total_count,
@@ -512,9 +512,9 @@ def _build_student_row(
 
 
 def _build_summary_tables(
-    quiz_columns: list[QuizColumn], student_rows: list[StudentRow], max_columns: int
+    quiz_columns: list[QuizColumn], learner_rows: list[LearnerRow], max_columns: int
 ) -> list[SummaryTable]:
-    """The course's student rows, re-cut into page-width tables of quiz columns."""
+    """The course's learner rows, re-cut into page-width tables of quiz columns."""
     return [
         SummaryTable(
             quizzes=chunk,
@@ -529,7 +529,7 @@ def _build_summary_tables(
                     last_completed_at=row.last_completed_at,
                     cells=[row.quiz_cells[column.form_id] for column in chunk],
                 )
-                for row in student_rows
+                for row in learner_rows
             ],
             continued=index > 0,
         )
@@ -548,9 +548,9 @@ def _build_course_section(
     course = reg.collection
     items = catalogue.course_items[reg.collection_id]
     quiz_columns = _build_quiz_columns(items)
-    student_rows = [
-        _build_student_row(user_id, items, quiz_columns, roster, catalogue, progress)
-        for user_id in roster.student_ids
+    learner_rows = [
+        _build_learner_row(user_id, items, quiz_columns, roster, catalogue, progress)
+        for user_id in roster.learner_ids
     ]
     return CourseSection(
         course_id=course.id,
@@ -558,9 +558,9 @@ def _build_course_section(
         is_active=reg.is_active,
         item_count=len(items),
         quizzes=quiz_columns,
-        student_rows=student_rows,
+        learner_rows=learner_rows,
         summary_tables=_build_summary_tables(
-            quiz_columns, student_rows, max_quiz_columns
+            quiz_columns, learner_rows, max_quiz_columns
         ),
         confusions_by_quiz={
             column.form_id: confusions_by_quiz.get(
@@ -571,18 +571,18 @@ def _build_course_section(
     )
 
 
-def _evaluate_at_risk_flags(detail: StudentDetail) -> list[AtRiskFlag]:
-    """Every at-risk rule's verdict on one student, from a single registry pass.
+def _evaluate_at_risk_flags(detail: LearnerDetail) -> list[AtRiskFlag]:
+    """Every at-risk rule's verdict on one learner, from a single registry pass.
 
-    Flags are evaluated exactly once per student, here. The attention list
-    filters and sorts these same StudentDetail objects — it never re-evaluates,
-    so a student's flags read identically everywhere in the report.
+    Flags are evaluated exactly once per learner, here. The attention list
+    filters and sorts these same LearnerDetail objects — it never re-evaluates,
+    so a learner's flags read identically everywhere in the report.
     """
-    # StudentDetailLike is a structural stand-in (freedom_ls/reports/at_risk.py);
-    # StudentDetail satisfies it in practice but mypy can't confirm list
+    # LearnerDetailLike is a structural stand-in (freedom_ls/reports/at_risk.py);
+    # LearnerDetail satisfies it in practice but mypy can't confirm list
     # invariance and frozen-dataclass read-only attributes against a
     # Protocol declared with plain mutable fields, hence the cast.
-    detail_for_rules = cast("StudentDetailLike", detail)
+    detail_for_rules = cast("LearnerDetailLike", detail)
     return [
         AtRiskFlag(
             rule_id=rule.id,
@@ -596,15 +596,15 @@ def _evaluate_at_risk_flags(detail: StudentDetail) -> list[AtRiskFlag]:
     ]
 
 
-def _build_student_detail(
+def _build_learner_detail(
     user_id: int,
     roster: CohortRoster,
     catalogue: CourseCatalogue,
     progress: ProgressIndex,
     wrong_answers_by_user_quiz: dict[int, dict[UUID, list[WrongAnswer]]],
     now: datetime,
-) -> StudentDetail:
-    user = roster.students_by_id[user_id]
+) -> LearnerDetail:
+    user = roster.learners_by_id[user_id]
     all_items = catalogue.all_items
     completed_count, total_count = _completion_counts(all_items, user_id, progress)
     last_title, last_at = _latest_completion(all_items, user_id, progress)
@@ -630,7 +630,7 @@ def _build_student_detail(
         if form_id in wrong_answers_for_user
     ]
 
-    detail = StudentDetail(
+    detail = LearnerDetail(
         user_id=user_id,
         full_name=user.display_name,
         sort_key=roster.sort_key_by_id[user_id],
@@ -649,20 +649,20 @@ def _build_student_detail(
     return dataclasses.replace(detail, flags=_evaluate_at_risk_flags(detail))
 
 
-def _build_attention_list(student_details: list[StudentDetail]) -> AttentionList:
-    """The flagged students the report leads with, least-complete first."""
+def _build_attention_list(learner_details: list[LearnerDetail]) -> AttentionList:
+    """The flagged learners the report leads with, least-complete first."""
     flagged = sorted(
-        (detail for detail in student_details if detail.flags),
+        (detail for detail in learner_details if detail.flags),
         key=lambda detail: detail.completion_percentage,
     )
     shown_flagged = flagged[:ATTENTION_LIST_MAX]
     return AttentionList(
-        students=shown_flagged, shown=len(shown_flagged), total=len(flagged)
+        learners=shown_flagged, shown=len(shown_flagged), total=len(flagged)
     )
 
 
-def _completion_statistics(student_details: list[StudentDetail]) -> CompletionStats:
-    completion_values = [detail.completion_percentage for detail in student_details]
+def _completion_statistics(learner_details: list[LearnerDetail]) -> CompletionStats:
+    completion_values = [detail.completion_percentage for detail in learner_details]
     return CompletionStats(
         median_completion=round(statistics.median(completion_values))
         if completion_values
@@ -677,11 +677,11 @@ def gather_cohort_report_data(
 ) -> CohortReportData:
     """Assemble one cohort's report data with a fixed number of batched queries.
 
-    No query runs inside a per-student or per-question loop — every id list is
+    No query runs inside a per-learner or per-question loop — every id list is
     collected up front and every downstream lookup reads from an in-memory map
     built from a batched queryset. Each loader below runs once, in this order,
     so the query total is fixed by the cohort's course structure and never by
-    how many students or questions it has.
+    how many learners or questions it has.
     """
     now = timezone.now()
 
@@ -692,9 +692,9 @@ def gather_cohort_report_data(
     roster = load_roster(cohort, site_id)
     catalogue = build_course_catalogue(registrations)
 
-    progress = load_progress_index(site_id, roster.student_ids, catalogue)
+    progress = load_progress_index(site_id, roster.learner_ids, catalogue)
     first_attempt_ids = load_first_attempt_ids(
-        site_id, roster.student_ids, catalogue.quiz_form_ids
+        site_id, roster.learner_ids, catalogue.quiz_form_ids
     )
     questions = build_question_index(
         *load_quiz_questions(site_id, catalogue.quiz_form_ids)
@@ -728,13 +728,13 @@ def gather_cohort_report_data(
         )
         for reg in registrations
     ]
-    student_details = [
-        _build_student_detail(
+    learner_details = [
+        _build_learner_detail(
             user_id, roster, catalogue, progress, wrong_answers_by_user_quiz, now
         )
-        for user_id in roster.student_ids
+        for user_id in roster.learner_ids
     ]
-    stats = _completion_statistics(student_details)
+    stats = _completion_statistics(learner_details)
 
     return CohortReportData(
         cohort_name=cohort.name,
@@ -743,9 +743,9 @@ def gather_cohort_report_data(
         generated_at=now,
         requested_by_name=requested_by_name,
         courses=course_sections,
-        students=student_details,
-        attention_list=_build_attention_list(student_details),
-        cohort_size=len(roster.student_ids),
+        learners=learner_details,
+        attention_list=_build_attention_list(learner_details),
+        cohort_size=len(roster.learner_ids),
         median_completion=stats.median_completion,
         not_started_count=stats.not_started_count,
         complete_count=stats.complete_count,

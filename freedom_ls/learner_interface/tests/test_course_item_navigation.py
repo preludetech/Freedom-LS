@@ -16,7 +16,7 @@ from freedom_ls.content_engine.models import Course, CoursePart
 from freedom_ls.learner_management.factories import (
     UserCourseRegistrationFactory,
 )
-from freedom_ls.student_progress.models import TopicProgress
+from freedom_ls.learner_progress.models import TopicProgress
 
 
 @pytest.fixture

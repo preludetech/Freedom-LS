@@ -90,7 +90,7 @@ def test_untouched_runner_page_leaves_the_leave_prompt_disarmed(
     register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     logged_in_page.goto(start_url)
@@ -112,7 +112,7 @@ def test_answering_a_question_arms_the_leave_prompt(
     register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     logged_in_page.goto(start_url)

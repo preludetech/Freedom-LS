@@ -1,4 +1,4 @@
-"""Seed a CLEAN scored quiz for the checkbox-scoring student walkthrough.
+"""Seed a CLEAN scored quiz for the checkbox-scoring learner walkthrough.
 
 ``qa_create_form_question_types`` builds a QUIZ containing ``short_text`` and
 ``long_text`` questions. ``score_quiz()`` counts every question toward
@@ -71,7 +71,7 @@ from freedom_ls.qa_helpers.management.commands.qa_create_multiselect_quiz_scorin
     _register_cohort,
 )
 
-STUDENT_EMAIL = "demodev_quizqa@email.com"
+LEARNER_EMAIL = "demodev_quizqa@email.com"
 
 COURSE_TITLE = "QA Checkbox Scoring Quiz Course"
 COURSE_SLUG = "qa-checkbox-scoring-course"
@@ -207,19 +207,19 @@ def _item_index(course: Course, form: Form) -> int:
 def command(site_name: str) -> None:
     """Seed the clean option-backed scored quiz for checkbox-scoring QA."""
     site = _get_site(site_name)
-    student, created = _get_or_create_user(site, STUDENT_EMAIL, "Quiz", "Scoring QA")
+    learner, created = _get_or_create_user(site, LEARNER_EMAIL, "Quiz", "Scoring QA")
 
     course = _get_or_create_course(site)
     quiz = _build_quiz(site)
     _attach_form_to_course(course, quiz, site)
     course = cast(Course, Course.objects.get(pk=course.pk))
 
-    _register(student, course, site)
-    _ensure_course_progress_row(student, course, site)
+    _register(learner, course, site)
+    _ensure_course_progress_row(learner, course, site)
 
     cohort = _get_or_create_cohort(site)
     _register_cohort(cohort, course, site)
-    _add_member(student, cohort, site)
+    _add_member(learner, cohort, site)
 
     index = _item_index(course, quiz)
     questions = list(
@@ -229,8 +229,8 @@ def command(site_name: str) -> None:
     click.secho("\n--- Checkbox scoring quiz QA data ---", fg="cyan", bold=True)
     click.secho(f"Site:   {site.name} ({site.domain}) [id {site.pk}]", fg="cyan")
     click.secho(
-        f"{'Created' if created else 'Reused'} student login: "
-        f"{student.email} / {student.email}",
+        f"{'Created' if created else 'Reused'} learner login: "
+        f"{learner.email} / {learner.email}",
         fg="green",
         bold=True,
     )

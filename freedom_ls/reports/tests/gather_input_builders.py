@@ -35,6 +35,7 @@ from freedom_ls.content_engine.models import (
     QuestionType,
     Topic,
 )
+from freedom_ls.learner_progress.models import FormProgress
 from freedom_ls.reports.indexes import (
     CohortRoster,
     CourseCatalogue,
@@ -42,7 +43,6 @@ from freedom_ls.reports.indexes import (
     ProgressIndex,
     TopicProgressIndex,
 )
-from freedom_ls.student_progress.models import FormProgress
 
 # FormProgress.user is a plain integer FK column, so a user id is all the
 # progress helpers need -- no User row, saved or otherwise.
@@ -108,25 +108,25 @@ def an_option(
     return QuestionOption(question=question, text=text, correct=correct, order=order)
 
 
-def a_student(
+def a_learner(
     *,
     user_id: int = USER_ID,
     first_name: str = "",
     last_name: str = "",
-    email: str = "student@example.test",
+    email: str = "learner@example.test",
 ) -> User:
     return User(id=user_id, first_name=first_name, last_name=last_name, email=email)
 
 
 def a_roster(*users: User) -> CohortRoster:
     """A roster over the given users, ordered exactly as passed."""
-    students_by_id = {user.id: user for user in users}
+    learners_by_id = {user.id: user for user in users}
     return CohortRoster(
-        students_by_id=students_by_id,
+        learners_by_id=learners_by_id,
         sort_key_by_id={
             user.id: (user.last_name or user.email, user.first_name) for user in users
         },
-        student_ids=[user.id for user in users],
+        learner_ids=[user.id for user in users],
     )
 
 
@@ -200,7 +200,7 @@ def a_progress_index(
 def attempted(
     form: Form, attempts: list[FormProgress], *, user_id: int = USER_ID
 ) -> ProgressIndex:
-    """A ProgressIndex holding one student's chronological sittings of one form.
+    """A ProgressIndex holding one learner's chronological sittings of one form.
 
     Mirrors what `fold_form_progress_rows` produces: the attempts oldest first,
     and the latest row being the last completed one.

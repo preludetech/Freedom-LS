@@ -1,8 +1,8 @@
-"""Build a cohort of N students with a controlled progress distribution.
+"""Build a cohort of N learners with a controlled progress distribution.
 
 Written for the cohort progress report QA matrix, which needs cohorts of very
-different sizes whose students carry *genuinely scored* quiz attempts. The
-existing helpers cannot do this: ``qa_create_large_cohort`` leaves every student
+different sizes whose learners carry *genuinely scored* quiz attempts. The
+existing helpers cannot do this: ``qa_create_large_cohort`` leaves every learner
 with zero progress, and ``qa_create_cohort_progress`` marks progress rows
 complete without any answers or scores, so every quiz column, at-risk flag and
 confusion tally in the report comes out empty.
@@ -11,20 +11,20 @@ What the distribution is tuned for (see ``freedom_ls/reports/gather.py``):
 
 - Completion is recomputed from ``TopicProgress.complete_time`` /
   ``FormProgress.completed_time``; ``CourseProgress.progress_percentage`` is
-  never read. Students are spread across a completion ladder so median
+  never read. Learners are spread across a completion ladder so median
   completion, "not started" and "complete" are all non-degenerate.
 - A quiz cell needs ``completed_time`` AND ``scores``, so attempts are completed
   through ``FormProgress.complete()`` rather than by setting a timestamp.
-- ``--num-flagged`` is met by mixing all three base at-risk rules: students with
-  no rows at all (``no_activity``), students whose most recent pass-marked quiz
-  attempt fails (``failed_latest_quiz``), and students whose activity is
+- ``--num-flagged`` is met by mixing all three base at-risk rules: learners with
+  no rows at all (``no_activity``), learners whose most recent pass-marked quiz
+  attempt fails (``failed_latest_quiz``), and learners whose activity is
   backdated past the 7-day window (``inactive``). Everyone else is kept
   deliberately unflagged, so "No flags" sections exist to check too.
-- One student gets three completed attempts at the first quiz, all wrong on the
+- One learner gets three completed attempts at the first quiz, all wrong on the
   same question. Their own section counts every attempt ("3 times") while the
   cohort confusion tally counts first attempts only -- the two are meant to
   disagree.
-- Wrong answers rotate by student index so the distractor tables show a spread
+- Wrong answers rotate by learner index so the distractor tables show a spread
   of chosen options rather than one bar, and so that on a long quiz every
   question picks up at least one wrong answer (which is what makes the
   "showing worst 10 of N" cap disclosure appear).
@@ -36,7 +36,7 @@ What the distribution is tuned for (see ``freedom_ls/reports/gather.py``):
 
 Usage:
     uv run python manage.py qa_create_report_cohort \
-        --cohort-name "QA Report Standard Cohort" --num-students 9 \
+        --cohort-name "QA Report Standard Cohort" --num-learners 9 \
         --course-slug qa-report-medium-course --num-flagged 3
 """
 
@@ -62,30 +62,30 @@ from freedom_ls.content_engine.models import (
     QuestionType,
     Topic,
 )
-from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
 )
-from freedom_ls.student_management.models import (
+from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
 )
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
     FormProgressFactory,
     QuestionAnswerFactory,
 )
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
     QuestionAnswer,
     TopicProgress,
 )
+from freedom_ls.organisations.utils import get_default_organisation
 
-# 40 distinct surnames: the report sorts students by surname, so creation order
+# 40 distinct surnames: the report sorts learners by surname, so creation order
 # and alphabetical order are deliberately different.
 SURNAMES = [
     "Okonkwo",
@@ -173,7 +173,7 @@ FIRST_NAMES = [
     "Niamh",
 ]
 
-# Fraction of the course each unflagged student has completed. "started" means
+# Fraction of the course each unflagged learner has completed. "started" means
 # one item opened but nothing completed: has_any_progress is True (so the
 # no_activity rule stays quiet) while completion is still 0%.
 LADDER: list[str | float] = ["started", 0.2, 0.4, 0.6, 0.8, 1.0]
@@ -250,25 +250,25 @@ def _name_for(index: int) -> tuple[str, str]:
     return (first, last if lap == 0 else f"{last}-{lap + 1}")
 
 
-def _student_states(num_students: int, num_flagged: int) -> list[str]:
-    """One state per student; the flagged ones are the trailing indices."""
-    states = [STATE_NORMAL] * num_students
+def _learner_states(num_learners: int, num_flagged: int) -> list[str]:
+    """One state per learner; the flagged ones are the trailing indices."""
+    states = [STATE_NORMAL] * num_learners
     flavours = [STATE_NO_ACTIVITY, STATE_FAILING, STATE_STALE]
-    for n in range(min(num_flagged, num_students)):
-        states[num_students - 1 - n] = flavours[n % len(flavours)]
+    for n in range(min(num_flagged, num_learners)):
+        states[num_learners - 1 - n] = flavours[n % len(flavours)]
     return states
 
 
 def _ladder_value(index: int, states: list[str]) -> str | float:
-    """Where on the completion ladder this student sits.
+    """Where on the completion ladder this learner sits.
 
-    The ladder is stretched across the *unflagged* students rather than cycled
-    by index. Cycling silently starves small cohorts: a three-student cohort
+    The ladder is stretched across the *unflagged* learners rather than cycled
+    by index. Cycling silently starves small cohorts: a three-learner cohort
     would only ever sample the bottom three rungs, so nobody would reach a quiz
     and the report's whole quiz and confusion apparatus would come out empty.
     """
     if states[index] == STATE_NO_ACTIVITY:
-        # Never read: this student gets no progress rows at all.
+        # Never read: this learner gets no progress rows at all.
         return LADDER[0]
     if states[index] in (STATE_FAILING, STATE_STALE):
         # Enough progress to have reached a quiz, still spread out.
@@ -293,7 +293,7 @@ def _ensure_course_progress_row(user: User, course: Course, site: Site) -> None:
 
 
 def _max_wrong_for_pass(question_count: int, pass_percentage: int | None) -> int:
-    """Most questions a student can get wrong and still pass this quiz."""
+    """Most questions a learner can get wrong and still pass this quiz."""
     if pass_percentage is None:
         return max(0, question_count - 1)
     needed = math.ceil(question_count * pass_percentage / 100)
@@ -301,9 +301,9 @@ def _max_wrong_for_pass(question_count: int, pass_percentage: int | None) -> int
 
 
 def _wrong_orders(
-    question_count: int, student_index: int, quiz_index: int, wrong_count: int
+    question_count: int, learner_index: int, quiz_index: int, wrong_count: int
 ) -> set[int]:
-    """Which question orders this student gets wrong, rotated by student index.
+    """Which question orders this learner gets wrong, rotated by learner index.
 
     Rotating rather than always failing question 1 is what gives the cohort
     confusion section more than one question to rank, and what eventually gives
@@ -311,7 +311,7 @@ def _wrong_orders(
     """
     if question_count == 0 or wrong_count <= 0:
         return set()
-    start = (student_index * 3 + quiz_index) % question_count
+    start = (learner_index * 3 + quiz_index) % question_count
     return {
         (start + n) % question_count for n in range(min(wrong_count, question_count))
     }
@@ -321,9 +321,9 @@ def _choose_options(
     question: FormQuestion,
     options: list[QuestionOption],
     answer_wrong: bool,
-    student_index: int,
+    learner_index: int,
 ) -> list[QuestionOption]:
-    """The options this student ticks. An empty list means they left it blank."""
+    """The options this learner ticks. An empty list means they left it blank."""
     correct = [option for option in options if option.correct is True]
     incorrect = [option for option in options if option.correct is not True]
     if not answer_wrong:
@@ -337,9 +337,9 @@ def _choose_options(
     if not incorrect:
         # Nothing to pick that is wrong; selecting nothing still scores zero.
         return []
-    distractor = incorrect[(student_index + question.order) % len(incorrect)]
+    distractor = incorrect[(learner_index + question.order) % len(incorrect)]
     is_checkbox = question.type == QuestionType.CHECKBOXES
-    if is_checkbox and student_index % 2 == 1:
+    if is_checkbox and learner_index % 2 == 1:
         # "Everything ticked" is wrong under exact-match scoring too, and it is
         # the case the multi-select scoring fix exists to close.
         return [*correct, distractor]
@@ -353,7 +353,7 @@ def _complete_attempt(
     questions: list[FormQuestion],
     options_by_question: dict[str, list[QuestionOption]],
     wrong_orders: set[int],
-    student_index: int,
+    learner_index: int,
     started_at: datetime,
     completed_at: datetime,
 ) -> FormProgress:
@@ -364,7 +364,7 @@ def _complete_attempt(
         if not options:
             continue
         chosen = _choose_options(
-            question, options, question.order in wrong_orders, student_index
+            question, options, question.order in wrong_orders, learner_index
         )
         if not chosen:
             # save_answers writes no QuestionAnswer row for a question the
@@ -443,7 +443,7 @@ def _has_existing_progress(user: User, items: list[Topic | Form], site: Site) ->
 
 def _generate_course_progress(
     user: User,
-    student_index: int,
+    learner_index: int,
     state: str,
     ladder_value: str | float,
     course: Course,
@@ -453,7 +453,7 @@ def _generate_course_progress(
     multi_attempt: bool,
     now: datetime,
 ) -> None:
-    """Create this student's progress rows for one course."""
+    """Create this learner's progress rows for one course."""
     items = cast(
         "list[Topic | Form]",
         [item for item in course.viewable_items() if isinstance(item, Topic | Form)],
@@ -483,7 +483,7 @@ def _generate_course_progress(
     failing_slot: int | None = None
     if state == STATE_FAILING and is_last_course:
         # The failed_latest_quiz rule reads the most recently completed quiz, so
-        # the student has to stop ON a pass-marked quiz for the flag to be the
+        # the learner has to stop ON a pass-marked quiz for the flag to be the
         # one this fixture is trying to produce.
         failing_slot = _last_pass_marked_quiz_slot(items, completed_slots)
         if failing_slot is None:
@@ -521,9 +521,9 @@ def _generate_course_progress(
             wrong_count = question_count - max(0, needed - 1)
         else:
             max_wrong = _max_wrong_for_pass(question_count, item.quiz_pass_percentage)
-            wrong_count = student_index % (max_wrong + 1)
+            wrong_count = learner_index % (max_wrong + 1)
         wrong_orders = _wrong_orders(
-            question_count, student_index, quiz_index, wrong_count
+            question_count, learner_index, quiz_index, wrong_count
         )
 
         attempts = MULTI_ATTEMPT_COUNT if (multi_attempt and quiz_index == 0) else 1
@@ -538,7 +538,7 @@ def _generate_course_progress(
                 questions=questions,
                 options_by_question=options_by_question,
                 wrong_orders=wrong_orders,
-                student_index=student_index,
+                learner_index=learner_index,
                 started_at=completed_at - offset - ITEM_SPACING,
                 completed_at=completed_at - offset,
             )
@@ -548,7 +548,7 @@ def _generate_course_progress(
 def build_report_cohort(
     site: Site,
     cohort_name: str,
-    num_students: int,
+    num_learners: int,
     course_slugs: tuple[str, ...],
     inactive_course_slugs: tuple[str, ...],
     num_flagged: int,
@@ -586,9 +586,9 @@ def build_report_cohort(
     courses = [
         _get_course(site, slug) for slug in (*course_slugs, *inactive_course_slugs)
     ]
-    states = _student_states(num_students, num_flagged)
+    states = _learner_states(num_learners, num_flagged)
 
-    # The multi-attempt student must be someone who completes the whole course,
+    # The multi-attempt learner must be someone who completes the whole course,
     # so the repeated quiz is NOT their most recent one and the extra attempts
     # cannot be mistaken for a failed_latest_quiz flag.
     multi_attempt_index: int | None = next(
@@ -600,16 +600,16 @@ def build_report_cohort(
         None,
     )
 
-    students: list[tuple[User, str]] = []
-    for index in range(num_students):
+    learners: list[tuple[User, str]] = []
+    for index in range(num_learners):
         first_name, last_name = _name_for(index)
         email = f"{email_prefix}-{index + 1:02d}@email.com"
-        student = _get_or_create_user(site, email, first_name, last_name)
+        learner = _get_or_create_user(site, email, first_name, last_name)
         if not CohortMembership.objects.filter(
-            user=student, cohort=cohort, site=site
+            user=learner, cohort=cohort, site=site
         ).exists():
-            CohortMembershipFactory(user=student, cohort=cohort, site=site)
-        students.append((student, states[index]))
+            CohortMembershipFactory(user=learner, cohort=cohort, site=site)
+        learners.append((learner, states[index]))
 
         if no_progress:
             continue
@@ -618,8 +618,8 @@ def build_report_cohort(
         ladder_value = _ladder_value(index, states)
         for course_index, course in enumerate(courses):
             _generate_course_progress(
-                user=student,
-                student_index=index,
+                user=learner,
+                learner_index=index,
                 state=state,
                 ladder_value=ladder_value,
                 course=course,
@@ -645,10 +645,10 @@ def build_report_cohort(
 )
 @click.option("--cohort-name", required=True, help="Name of the cohort to build.")
 @click.option(
-    "--num-students",
+    "--num-learners",
     default=9,
     type=int,
-    help="How many students to put in the cohort.",
+    help="How many learners to put in the cohort.",
 )
 @click.option(
     "--course-slug",
@@ -665,7 +665,7 @@ def build_report_cohort(
     default=0,
     type=int,
     help=(
-        "How many students should trip an at-risk rule. Cycles through "
+        "How many learners should trip an at-risk rule. Cycles through "
         "no-activity / failed-latest-quiz / inactive."
     ),
 )
@@ -677,8 +677,8 @@ def build_report_cohort(
 )
 @click.option(
     "--email-prefix",
-    default="qa-report-student",
-    help="Email stem; students are <prefix>-01@email.com upwards.",
+    default="qa-report-learner",
+    help="Email stem; learners are <prefix>-01@email.com upwards.",
 )
 @click.option(
     "--educator-email",
@@ -688,7 +688,7 @@ def build_report_cohort(
 def command(
     site_name: str,
     cohort_name: str,
-    num_students: int,
+    num_learners: int,
     course_slug: tuple[str, ...],
     inactive_course_slug: tuple[str, ...],
     num_flagged: int,
@@ -701,7 +701,7 @@ def command(
     cohort = build_report_cohort(
         site=site,
         cohort_name=cohort_name,
-        num_students=num_students,
+        num_learners=num_learners,
         course_slugs=course_slug,
         inactive_course_slugs=inactive_course_slug,
         num_flagged=num_flagged,
@@ -720,7 +720,7 @@ def command(
     click.secho("\n--- QA report cohort ---", fg="cyan", bold=True)
     click.secho(f"Site:     {site.name} ({site.domain})", fg="cyan")
     click.secho(f"Cohort:   {cohort.name} (pk={cohort.pk})", fg="cyan", bold=True)
-    click.secho(f"Students: {member_count}", fg="cyan")
+    click.secho(f"Learners: {member_count}", fg="cyan")
     click.secho(
         f"Logins:   {email_prefix}-NN@email.com (password == email)", fg="green"
     )

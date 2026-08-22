@@ -27,10 +27,10 @@ table row is.
     <span class="attention-count">{{ attention.total }} of {{ data.cohort_size }} flagged</span>
     <h2>Learners needing attention</h2>
   </div>
-  {% if attention.students %}
+  {% if attention.learners %}
   <div class="attention-list">
-    {% for student in attention.students %}
-    {% include "reports/partials/attention_entry.html" with student=student only %}
+    {% for learner in attention.learners %}
+    {% include "reports/partials/attention_entry.html" with learner=learner only %}
     {% endfor %}
   </div>
   {% else %}

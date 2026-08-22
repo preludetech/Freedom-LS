@@ -68,7 +68,7 @@ DEFAULT_REPORT_FONT_FACES = [
 
 class ReportsConfig(AppSettings):
     REPORTS_STORAGE_ALIAS: str
-    REPORTS_MAX_STUDENTS: int
+    REPORTS_MAX_LEARNERS: int
     REPORTS_MAX_QUIZ_COLUMNS: int
     REPORTS_FONT_FACES: list[dict[str, str]]
     REPORTS_FONT_DISPLAY: str
@@ -79,7 +79,7 @@ class ReportsConfig(AppSettings):
         "REPORTS_STORAGE_ALIAS": Setting(default="reports"),
         # A resource guard, not a product rule: the safe ceiling depends on the
         # deployment's worker memory and render budget, which FLS cannot know.
-        "REPORTS_MAX_STUDENTS": Setting(default=500),
+        "REPORTS_MAX_LEARNERS": Setting(default=500),
         # A layout budget, not a product rule: 10 quiz columns (14 in all,
         # after Learner, Completion, Last item completed and When) is the most
         # an A4 landscape summary table fits while still leaving an item title

@@ -357,7 +357,7 @@ def test_get_incorrect_quiz_answers_lists_a_question_with_no_answer_row(
     incorrect = form_progress.get_incorrect_quiz_answers()
 
     assert [item["question"] for item in incorrect] == [question]
-    assert incorrect[0]["student_selected"] == []
+    assert incorrect[0]["learner_selected"] == []
 
 
 @pytest.mark.django_db

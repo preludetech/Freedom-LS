@@ -22,13 +22,13 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import CourseVisibility, FormStrategy, Topic
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
     TopicProgressFactory,
 )
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
     QuestionAnswer,
@@ -110,7 +110,7 @@ def _sit_quiz(user, gated_course: dict, *, correct: bool) -> None:
 
 def _item_url(index: int) -> str:
     return reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": COURSE_SLUG, "index": index},
     )
 
@@ -131,7 +131,7 @@ def test_failed_gating_quiz_leaves_the_next_item_unreachable_by_url(
 
     # Assert
     assert response.url == reverse(
-        "student_interface:course_detail", kwargs={"course_slug": COURSE_SLUG}
+        "learner_interface:course_detail", kwargs={"course_slug": COURSE_SLUG}
     )
 
 
@@ -279,13 +279,13 @@ def test_resuming_to_a_now_locked_item_lands_on_the_course_detail_page(
 
     # Act
     response = client.get(
-        reverse("student_interface:course_home", kwargs={"course_slug": COURSE_SLUG}),
+        reverse("learner_interface:course_home", kwargs={"course_slug": COURSE_SLUG}),
         follow=True,
     )
 
     # Assert
     assert response.redirect_chain[-1][0] == reverse(
-        "student_interface:course_detail", kwargs={"course_slug": COURSE_SLUG}
+        "learner_interface:course_detail", kwargs={"course_slug": COURSE_SLUG}
     )
 
 
@@ -303,7 +303,7 @@ def test_a_locked_form_cannot_be_started(gated_course, learner, client):
     # Act
     client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": COURSE_SLUG, "index": 4},
         )
     )
@@ -323,7 +323,7 @@ def test_a_locked_form_page_saves_no_answers(gated_course, learner, client):
     # Act
     client.post(
         reverse(
-            "student_interface:form_fill_page",
+            "learner_interface:form_fill_page",
             kwargs={"course_slug": COURSE_SLUG, "index": 4, "page_number": 1},
         ),
         {f"question_{gated_course['closing_question'].id}": "1"},
@@ -345,7 +345,7 @@ def test_the_results_of_a_failed_attempt_stay_readable(gated_course, learner, cl
     # Act
     response = client.get(
         reverse(
-            "student_interface:course_form_complete",
+            "learner_interface:course_form_complete",
             kwargs={"course_slug": COURSE_SLUG, "index": 2},
         )
     )
@@ -382,11 +382,11 @@ def test_an_unregistered_learner_is_turned_away_from_the_form_runner(
 ):
     """The TOC hides these links, and until now the URLs were unguarded."""
     # Act
-    response = client.get(reverse(f"student_interface:{url_name}", kwargs=kwargs))
+    response = client.get(reverse(f"learner_interface:{url_name}", kwargs=kwargs))
 
     # Assert
     assert response.url == reverse(
-        "student_interface:course_detail", kwargs={"course_slug": COURSE_SLUG}
+        "learner_interface:course_detail", kwargs={"course_slug": COURSE_SLUG}
     )
 
 
@@ -395,14 +395,14 @@ def test_an_unregistered_learner_cannot_submit_and_exit(gated_course, outsider, 
     # Act
     response = client.post(
         reverse(
-            "student_interface:form_submit_and_exit",
+            "learner_interface:form_submit_and_exit",
             kwargs={"course_slug": COURSE_SLUG, "index": 2},
         )
     )
 
     # Assert
     assert response.url == reverse(
-        "student_interface:course_detail", kwargs={"course_slug": COURSE_SLUG}
+        "learner_interface:course_detail", kwargs={"course_slug": COURSE_SLUG}
     )
 
 
@@ -413,7 +413,7 @@ def test_an_unregistered_learner_starting_a_form_creates_no_attempt(
     # Act
     client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": COURSE_SLUG, "index": 2},
         )
     )
@@ -437,7 +437,7 @@ def test_an_unregistered_learner_is_404d_by_a_hidden_course(
     # Act
     response = client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": COURSE_SLUG, "index": 2},
         )
     )
@@ -457,7 +457,7 @@ def test_a_registered_learner_still_reaches_the_form_runner(
     # Act
     response = client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": COURSE_SLUG, "index": 2},
         )
     )
@@ -532,7 +532,7 @@ def test_an_item_inside_a_locked_part_is_unreachable_by_url(
     # Act
     response = client.get(
         reverse(
-            "student_interface:view_course_item",
+            "learner_interface:view_course_item",
             kwargs={"course_slug": PARTED_COURSE_SLUG, "index": 3},
         )
     )
@@ -540,7 +540,7 @@ def test_an_item_inside_a_locked_part_is_unreachable_by_url(
     # Assert
     assert response.status_code == 302
     assert response.url == reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": PARTED_COURSE_SLUG},
     )
     assert not TopicProgress.objects.filter(
@@ -588,7 +588,7 @@ def near_miss_course(mock_site_context, client) -> dict:
 
 def _near_miss_item_url(index: int) -> str:
     return reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": NEAR_MISS_COURSE_SLUG, "index": index},
     )
 
@@ -621,7 +621,7 @@ def test_the_item_after_a_near_miss_quiz_is_locked(near_miss_course, client):
     # Assert
     assert response.status_code == 302
     assert response.url == reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": NEAR_MISS_COURSE_SLUG},
     )
 

@@ -2,7 +2,7 @@
 
 Creates, idempotently, on the requested site:
 
-1. A dedicated login-ready student (``demodev_quizqa@email.com``, password ==
+1. A dedicated login-ready learner (``demodev_quizqa@email.com``, password ==
    email, verified + primary allauth EmailAddress) so QA does not have to use
    the ``demodev@email.com`` superuser.
 2. Registration for the "all question types" course built by
@@ -16,7 +16,7 @@ Creates, idempotently, on the requested site:
    correct) plus a single-select ``multiple_choice`` question so the score is
    non-trivial.
 
-4. A cohort registered for BOTH courses, containing the QA student plus two
+4. A cohort registered for BOTH courses, containing the QA learner plus two
    extra learners that already have genuinely scored, completed quiz attempts
    (one above and one below the 50% pass mark, plus attempts on the
    NULL-pass-mark quiz). This gives the educator cohort-course-progress panel
@@ -24,7 +24,7 @@ Creates, idempotently, on the requested site:
    An educator with the guardian ``view_cohort`` permission is created too.
 
 Both forms sit at item index 1 of their own course, so neither is blocked by
-the player's sequential item unlocking. The main QA student is deliberately
+the player's sequential item unlocking. The main QA learner is deliberately
 left with NO progress so the player can be walked from a clean state.
 
 Usage:
@@ -57,36 +57,36 @@ from freedom_ls.content_engine.models import (
     FormStrategy,
     QuestionType,
 )
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    CohortMembershipFactory,
+    UserCourseRegistrationFactory,
+)
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    CohortMembership,
+    UserCourseRegistration,
+)
+from freedom_ls.learner_progress.factories import (
+    CourseProgressFactory,
+    FormProgressFactory,
+    QuestionAnswerFactory,
+)
+from freedom_ls.learner_progress.models import (
+    CourseProgress,
+    FormProgress,
+    QuestionAnswer,
+)
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_form_question_types import (
     _attach_form_to_course,
     _build_form,
     _get_or_create_course,
 )
-from freedom_ls.student_management.factories import (
-    CohortCourseRegistrationFactory,
-    CohortFactory,
-    CohortMembershipFactory,
-    UserCourseRegistrationFactory,
-)
-from freedom_ls.student_management.models import (
-    Cohort,
-    CohortCourseRegistration,
-    CohortMembership,
-    UserCourseRegistration,
-)
-from freedom_ls.student_progress.factories import (
-    CourseProgressFactory,
-    FormProgressFactory,
-    QuestionAnswerFactory,
-)
-from freedom_ls.student_progress.models import (
-    CourseProgress,
-    FormProgress,
-    QuestionAnswer,
-)
 
-STUDENT_EMAIL = "demodev_quizqa@email.com"
+LEARNER_EMAIL = "demodev_quizqa@email.com"
 
 NO_PCT_COURSE_TITLE = "QA Quiz Without Pass Percentage"
 NO_PCT_COURSE_SLUG = "qa-quiz-no-pass-pct-course"
@@ -258,12 +258,12 @@ def _build_no_pct_form(site: Site) -> Form:
     return form
 
 
-def _register(student: User, course: Course, site: Site) -> None:
+def _register(learner: User, course: Course, site: Site) -> None:
     if not UserCourseRegistration.objects.filter(
-        user=student, collection=course, site=site
+        user=learner, collection=course, site=site
     ).exists():
         UserCourseRegistrationFactory(
-            user=student,
+            user=learner,
             collection=course,
             site=site,
             organisation=get_default_organisation(site),
@@ -370,22 +370,22 @@ def _item_index(course: Course, form: Form) -> int:
     help="Site name to create the data on (default: 'DemoDev').",
 )
 def command(site_name: str) -> None:
-    """Seed the checkbox-quiz scoring browser-QA fixtures and their student."""
+    """Seed the checkbox-quiz scoring browser-QA fixtures and their learner."""
     site = _get_site(site_name)
-    student, created = _get_or_create_user(site, STUDENT_EMAIL, "Quiz", "Scoring QA")
+    learner, created = _get_or_create_user(site, LEARNER_EMAIL, "Quiz", "Scoring QA")
 
     # Course 1: the existing all-question-types QUIZ (pass percentage 50).
     types_course = _get_or_create_course(site)
     types_form = _build_form(site)
     _attach_form_to_course(types_course, types_form, site)
-    _register(student, types_course, site)
+    _register(learner, types_course, site)
     types_index = _item_index(types_course, types_form)
 
     # Course 2: QUIZ with no pass percentage.
     no_pct_course = _get_or_create_no_pct_course(site)
     no_pct_form = _build_no_pct_form(site)
     _attach_form_to_course(no_pct_course, no_pct_form, site)
-    _register(student, no_pct_course, site)
+    _register(learner, no_pct_course, site)
     no_pct_index = _item_index(no_pct_course, no_pct_form)
 
     # Cohort for the educator cohort-course-progress panel, registered for BOTH
@@ -393,7 +393,7 @@ def command(site_name: str) -> None:
     cohort = _get_or_create_cohort(site)
     for course in (types_course, no_pct_course):
         _register_cohort(cohort, course, site)
-    _add_member(student, cohort, site)
+    _add_member(learner, cohort, site)
 
     educator, educator_created = _get_or_create_user(
         site, EDUCATOR_EMAIL, "Quinn", "QuizQA Educator"
@@ -415,8 +415,8 @@ def command(site_name: str) -> None:
     click.secho("\n--- Multi-select quiz scoring QA data ---", fg="cyan", bold=True)
     click.secho(f"Site:  {site.name} ({site.domain}) [id {site.pk}]", fg="cyan")
     click.secho(
-        f"{'Created' if created else 'Reused'} student login: "
-        f"{student.email} / {student.email}",
+        f"{'Created' if created else 'Reused'} learner login: "
+        f"{learner.email} / {learner.email}",
         fg="green",
         bold=True,
     )

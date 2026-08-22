@@ -52,30 +52,30 @@ STATUS_GLYPH_CODEPOINTS = [0x2713, 0x2717, 0x25B2, 0x25CF, 0x25CB, 0x2014]
 # landscape page or the confusions section. Upper-cased where print.css sets
 # .subhead in small caps -- the extracted text carries what was drawn, not what
 # the template wrote.
-STUDENT_DETAIL_HEADINGS = ["Details per learner", "ITEMS COMPLETED", "QUIZ ATTEMPTS"]
+LEARNER_DETAIL_HEADINGS = ["Details per learner", "ITEMS COMPLETED", "QUIZ ATTEMPTS"]
 
 
 def _busy_report_data() -> CohortReportData:
     """`full_report_data()` grown until every page-break case under test exists.
 
-    Every student in the base fixture has `has_any_progress=False`, so the
+    Every learner in the base fixture has `has_any_progress=False`, so the
     document contains no "Completed items" or "Quiz results" heading at all and
     an assertion that neither appears on a landscape page would hold vacuously.
-    The *first* student is therefore given enough activity to run past one page.
+    The *first* learner is therefore given enough activity to run past one page.
 
-    The *last* student is left short and given a name that appears nowhere else
+    The *last* learner is left short and given a name that appears nowhere else
     in the document. That combination is what a leaked running header needs:
     his section starts on a fresh page and ends part way down it, so the
     confusions section follows him onto that same page and WeasyPrint fills the
     header from his running element -- the leak QA saw on the first page of the
-    section, which a long final student would hide by ending the page for him.
+    section, which a long final learner would hide by ending the page for him.
 
     The course gets a second quiz whose confusion block is far too big for one
     page, on top of the first quiz's small one, so the section has continuation
     pages to check as well as a first one.
     """
     data = full_report_data()
-    first, last = data.students[0], data.students[-1]
+    first, last = data.learners[0], data.learners[-1]
     course = data.courses[0]
     quiz = course.quizzes[0]
     block = course.confusions_by_quiz[quiz.form_id]
@@ -164,22 +164,22 @@ def _busy_report_data() -> CohortReportData:
     return dataclasses.replace(
         data,
         courses=[course, *data.courses[1:]],
-        students=[busy, *data.students[1:-1], trailing],
+        learners=[busy, *data.learners[1:-1], trailing],
     )
 
 
 def _unregistered_report_data() -> CohortReportData:
-    """A cohort whose students are registered to no course at all.
+    """A cohort whose learners are registered to no course at all.
 
     The summary tables have nothing but their headings, which is the shape
-    that used to let a student's detail section -- and with it their running
+    that used to let a learner's detail section -- and with it their running
     header -- start on the landscape page.
     """
     data = full_report_data()
     courses = [
         dataclasses.replace(
             course,
-            student_rows=[],
+            learner_rows=[],
             summary_tables=[
                 dataclasses.replace(table, rows=[]) for table in course.summary_tables
             ],
@@ -371,7 +371,7 @@ def _joined_text(reader: PdfReader) -> str:
 
 def _names_appearing_in(data: CohortReportData, text: str) -> set[str]:
     """Which of the cohort's learners `text` names -- empty is the passing case."""
-    return {student.full_name for student in data.students if student.full_name in text}
+    return {learner.full_name for learner in data.learners if learner.full_name in text}
 
 
 def _confusions_section_page_texts(reader: PdfReader) -> list[str]:
@@ -532,8 +532,8 @@ class TestRenderReportPdf:
         titles = _flatten_outline_titles(reader.outline)
 
         assert titles != []
-        assert data.students[0].full_name in titles
-        assert data.students[1].full_name in titles
+        assert data.learners[0].full_name in titles
+        assert data.learners[1].full_name in titles
 
     def test_outline_top_level_is_exactly_the_document_sections(
         self, report_pdf_bytes: bytes
@@ -553,7 +553,7 @@ class TestRenderReportPdf:
             "Quiz confusions across the cohort",
         ]
 
-    def test_outline_names_every_course_student_and_analysed_quiz_once(
+    def test_outline_names_every_course_learner_and_analysed_quiz_once(
         self, busy_report_pdf_bytes: bytes
     ) -> None:
         reader = _reader(busy_report_pdf_bytes)
@@ -561,7 +561,7 @@ class TestRenderReportPdf:
         titles = _flatten_outline_titles(reader.outline)
 
         assert len(titles) == len(set(titles))
-        assert {student.full_name for student in data.students} <= set(titles)
+        assert {learner.full_name for learner in data.learners} <= set(titles)
         assert all(
             any(title.startswith(course.title) for title in titles)
             for course in data.courses
@@ -580,8 +580,8 @@ class TestRenderReportPdf:
         assert "Status legend" not in titles
         assert "Learners needing attention" not in titles
 
-    @pytest.mark.parametrize("heading", STUDENT_DETAIL_HEADINGS)
-    def test_no_landscape_page_carries_student_detail_content(
+    @pytest.mark.parametrize("heading", LEARNER_DETAIL_HEADINGS)
+    def test_no_landscape_page_carries_learner_detail_content(
         self, busy_report_pdf_bytes: bytes, heading: str
     ) -> None:
         reader = _reader(busy_report_pdf_bytes)
@@ -592,11 +592,11 @@ class TestRenderReportPdf:
         assert heading in "".join(_portrait_page_texts(reader))
         assert heading not in landscape_text
 
-    def test_no_landscape_page_names_a_student_when_none_is_registered(
+    def test_no_landscape_page_names_a_learner_when_none_is_registered(
         self, unregistered_report_pdf_bytes: bytes
     ) -> None:
         # A cohort registered to no course leaves the summary tables empty, so
-        # any student name reaching a landscape page got there through the
+        # any learner name reaching a landscape page got there through the
         # running header the bare `@page` rule sets, not through a table row.
         reader = _reader(unregistered_report_pdf_bytes)
         data = _unregistered_report_data()
@@ -604,14 +604,14 @@ class TestRenderReportPdf:
 
         assert _names_appearing_in(data, landscape_text) == set()
 
-    def test_no_page_of_the_confusions_section_names_a_student(
+    def test_no_page_of_the_confusions_section_names_a_learner(
         self, busy_report_pdf_bytes: bytes
     ) -> None:
         # Two distinct leaks, and the section's first page is where the harder
         # one lives: WeasyPrint fills the header from the first running element
-        # on a page, so while this section shared a page with the last student's
+        # on a page, so while this section shared a page with the last learner's
         # detail section its own reset element could never win. Nothing in a
-        # cohort-wide section names a student, so any name on these pages came
+        # cohort-wide section names a learner, so any name on these pages came
         # from the running header.
         reader = _reader(busy_report_pdf_bytes)
         data = _busy_report_data()
@@ -631,7 +631,7 @@ class TestRenderReportPdf:
         # stranded alone on the page before it.
         assert "Orbit Quiz" in first_page_text
         assert {
-            heading for heading in STUDENT_DETAIL_HEADINGS if heading in first_page_text
+            heading for heading in LEARNER_DETAIL_HEADINGS if heading in first_page_text
         } == set()
 
     def test_an_empty_completion_bar_paints_a_zero_width_fill(self) -> None:

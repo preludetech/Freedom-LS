@@ -5,7 +5,7 @@ from unfold.widgets import UnfoldAdminSelectWidget
 from django import forms
 from django.db.models import QuerySet
 
-from freedom_ls.student_management.models import Cohort
+from freedom_ls.learner_management.models import Cohort
 
 
 class CohortChoiceField(forms.ModelChoiceField):

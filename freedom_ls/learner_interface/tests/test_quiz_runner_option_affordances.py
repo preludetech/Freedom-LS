@@ -35,13 +35,13 @@ def _runner_page(client, question_type):
     client.force_login(user)
     client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )
     return client.get(
         reverse(
-            "student_interface:form_fill_page",
+            "learner_interface:form_fill_page",
             kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
         )
     )

@@ -3,14 +3,14 @@
 The existing multi-select scoring fixtures
 (``qa_create_form_question_types`` / ``qa_create_multiselect_quiz_scoring``)
 build single-item courses, so there is no following item for a failed quiz to
-block. ``get_content_status`` in ``freedom_ls/student_interface/utils.py``
+block. ``get_content_status`` in ``freedom_ls/learner_interface/utils.py``
 returns ``(FAILED, BLOCKED)`` for a completed quiz the learner did not pass,
 and that ``BLOCKED`` is what the *next* item inherits -- only visible when the
 quiz has a successor.
 
 This command builds (idempotently) a three-item course:
 
-1. Topic  -- pre-completed for the QA student so the quiz is immediately READY.
+1. Topic  -- pre-completed for the QA learner so the quiz is immediately READY.
 2. QUIZ Form -- ``quiz_show_incorrect=True``, ``quiz_pass_percentage=80``,
    four option-backed questions: three ``multiple_choice`` (1 correct of 3) and
    one ``checkboxes`` (3 options, exactly 2 correct).
@@ -26,7 +26,7 @@ Only option-backed questions are used: ``FormProgress.score_quiz()`` counts
 every question toward ``max_score`` and free-text questions can never be scored
 correct, so a quiz holding one could never reach 100%.
 
-The QA student is deliberately left with NO ``FormProgress`` so the quiz start
+The QA learner is deliberately left with NO ``FormProgress`` so the quiz start
 screen offers "Start Form" from a clean state.
 
 Usage:
@@ -58,6 +58,8 @@ from freedom_ls.content_engine.models import (
     QuestionType,
     Topic,
 )
+from freedom_ls.learner_progress.factories import TopicProgressFactory
+from freedom_ls.learner_progress.models import TopicProgress
 from freedom_ls.qa_helpers.management.commands.qa_create_multiselect_quiz_scoring import (
     _add_options,
     _ensure_course_progress_row,
@@ -67,10 +69,8 @@ from freedom_ls.qa_helpers.management.commands.qa_create_multiselect_quiz_scorin
 from freedom_ls.qa_helpers.management.commands.qa_create_report_course import (
     _lay_out_course,
 )
-from freedom_ls.student_progress.factories import TopicProgressFactory
-from freedom_ls.student_progress.models import TopicProgress
 
-STUDENT_EMAIL = "demodev_quizqa@email.com"
+LEARNER_EMAIL = "demodev_quizqa@email.com"
 
 COURSE_TITLE = "QA Quiz Progression Block Course"
 COURSE_SLUG = "qa-progression-block-course"
@@ -80,7 +80,7 @@ FIRST_TOPIC_SLUG = "qa-progression-block-topic-01"
 FIRST_TOPIC_CONTENT = (
     "# Before the quiz\n\n"
     "This topic is item 1 of the quiz-progression-block QA course. It is "
-    "pre-completed for the QA student so the quiz at item 2 is immediately "
+    "pre-completed for the QA learner so the quiz at item 2 is immediately "
     "reachable.\n\n"
     "Item 3 (another topic) must stay locked until the quiz at item 2 is "
     "**passed**.\n"
@@ -254,9 +254,9 @@ def _item_index(course: Course, item: Topic | Form) -> int:
     help="Site name to create the data on (default: 'DemoDev').",
 )
 def command(site_name: str) -> None:
-    """Seed the failed-quiz-blocks-next-item browser-QA course and its student."""
+    """Seed the failed-quiz-blocks-next-item browser-QA course and its learner."""
     site = _get_site(site_name)
-    student, created = _get_or_create_user(site, STUDENT_EMAIL, "Quiz", "Scoring QA")
+    learner, created = _get_or_create_user(site, LEARNER_EMAIL, "Quiz", "Scoring QA")
 
     course = _get_or_create_course(site)
     first_topic = _get_or_create_topic(
@@ -271,11 +271,11 @@ def command(site_name: str) -> None:
     _lay_out_course(course, [first_topic, quiz, next_topic], site)
     course = cast(Course, Course.objects.get(pk=course.pk))
 
-    _register(student, course, site)
-    _ensure_course_progress_row(student, course, site)
+    _register(learner, course, site)
+    _ensure_course_progress_row(learner, course, site)
     # Item 1 complete => item 2 (the quiz) is READY; the quiz itself is left
     # untouched so the start screen shows "Start Form".
-    _complete_topic(student, first_topic, site)
+    _complete_topic(learner, first_topic, site)
 
     indexes = {
         "first_topic": _item_index(course, first_topic),
@@ -287,8 +287,8 @@ def command(site_name: str) -> None:
     click.secho("\n--- Failed-quiz progression block QA data ---", fg="cyan", bold=True)
     click.secho(f"Site:   {site.name} ({site.domain}) [id {site.pk}]", fg="cyan")
     click.secho(
-        f"{'Created' if created else 'Reused'} student login: "
-        f"{student.email} / {student.email}",
+        f"{'Created' if created else 'Reused'} learner login: "
+        f"{learner.email} / {learner.email}",
         fg="green",
         bold=True,
     )

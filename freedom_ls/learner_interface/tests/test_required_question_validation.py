@@ -17,7 +17,7 @@ from freedom_ls.content_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy
-from freedom_ls.student_progress.models import FormProgress
+from freedom_ls.learner_progress.models import FormProgress
 
 from .conftest import course_with_form, register_user_for_course
 
@@ -39,7 +39,7 @@ def _start_form(client, form):
     client.force_login(user)
     client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )
@@ -48,7 +48,7 @@ def _start_form(client, form):
 
 def _page_url(course, page_number):
     return reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": page_number},
     )
 

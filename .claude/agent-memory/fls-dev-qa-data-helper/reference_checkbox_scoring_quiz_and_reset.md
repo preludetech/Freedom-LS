@@ -1,6 +1,6 @@
 ---
 name: checkbox-scoring-quiz-and-progress-reset
-description: qa_create_checkbox_scoring_quiz (clean option-backed scored quiz, optional checkbox question) + qa_reset_student_progress (re-walkable fixtures); quiz retake mechanics
+description: qa_create_checkbox_scoring_quiz (clean option-backed scored quiz, optional checkbox question) + qa_reset_learner_progress (re-walkable fixtures); quiz retake mechanics
 metadata:
   type: reference
 ---
@@ -28,9 +28,9 @@ FAIL. Registers `demodev_quizqa@email.com` and adds the course to
 un-submittable while the question is required. Every other checkbox fixture in the repo marks it
 required.
 
-## `qa_reset_student_progress --student EMAIL [--course-slug SLUG]... [--include-topics]`
+## `qa_reset_learner_progress --learner EMAIL [--course-slug SLUG]... [--include-topics]`
 
-`freedom_ls/qa_helpers/management/commands/qa_reset_student_progress.py`.
+`freedom_ls/qa_helpers/management/commands/qa_reset_learner_progress.py`.
 
 Deletes `FormProgress` (cascades `QuestionAnswer`), optionally `TopicProgress`, and *resets* (never
 deletes) `CourseProgress` to a freshly-registered state (`completed_time=None`,

@@ -34,7 +34,7 @@ from freedom_ls.learner_progress.models import (
     FormProgress,
     TopicProgress,
 )
-from freedom_ls.student_progress.queries import completed_form_ids_by_user
+from freedom_ls.learner_progress.queries import completed_form_ids_by_user
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser

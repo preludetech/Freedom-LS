@@ -104,17 +104,17 @@ class TestExtractThemeTokens:
 
 @requires_tailwind_bundle
 class TestBuildReportHtml:
-    def test_every_student_name_present(self) -> None:
+    def test_every_learner_name_present(self) -> None:
         html = build_report_html(full_report_data())
 
         assert "Ada Lovelace" in html
         assert "Bo Kim" in html
 
-    def test_flag_reason_identical_between_at_a_glance_and_student_section(
+    def test_flag_reason_identical_between_at_a_glance_and_learner_section(
         self,
     ) -> None:
         data = full_report_data()
-        reason = data.students[0].flags[0].reason
+        reason = data.learners[0].flags[0].reason
 
         html = build_report_html(data)
 
@@ -168,7 +168,7 @@ class TestDegenerateCohortEmptyStates:
 
         assert "There are no course registrations to summarise." in html
 
-    def test_course_with_no_students_states_so_instead_of_a_bare_header_row(
+    def test_course_with_no_learners_states_so_instead_of_a_bare_header_row(
         self,
     ) -> None:
         data = cohort_report_data(courses=[course_section(title="Astronomy")])

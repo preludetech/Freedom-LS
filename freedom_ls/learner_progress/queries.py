@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from uuid import UUID
 
 from freedom_ls.content_engine.models import FormStrategy
-from freedom_ls.student_progress.models import FormProgress
+from freedom_ls.learner_progress.models import FormProgress
 
 
 def attempt_completes_form(attempt: FormProgress) -> bool:

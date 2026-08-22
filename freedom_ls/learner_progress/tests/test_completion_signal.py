@@ -17,12 +17,12 @@ from freedom_ls.content_engine.factories import (
     FormFactory,
     TopicFactory,
 )
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
     FormProgressFactory,
     TopicProgressFactory,
 )
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
     TopicProgress,
@@ -49,7 +49,7 @@ def test_creating_an_already_complete_row_does_not_recalculate(mock_site_context
 @pytest.mark.django_db
 def test_completing_a_form_recalculates_once(mock_site_context, monkeypatch):
     """complete() saves three times over one completion, but it is one completion."""
-    from freedom_ls.student_progress import signals
+    from freedom_ls.learner_progress import signals
 
     user = UserFactory()
     course = CourseFactory()

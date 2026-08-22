@@ -15,12 +15,12 @@ from freedom_ls.content_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
 )
-from freedom_ls.student_progress.models import FormProgress, QuestionAnswer
-from freedom_ls.student_progress.scoring import evaluate_quiz_answers
+from freedom_ls.learner_progress.models import FormProgress, QuestionAnswer
+from freedom_ls.learner_progress.scoring import evaluate_quiz_answers
 
 
 @pytest.mark.django_db

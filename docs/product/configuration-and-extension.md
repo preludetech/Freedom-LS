@@ -124,7 +124,7 @@ The checks need no database connection or network access, so they are cheap enou
 | `TRUSTED_PROXY_IP_HEADER` | Header to trust for the client IP behind a reverse proxy. |
 | `DJANGO_ADMIN_URL` | Path the Django admin is mounted at. See [admin interface](./admin-interface.md). |
 | `REPORTS_STORAGE_ALIAS` | Storage the cohort report PDF is written to. See [security and data handling](./security-and-data-handling.md). |
-| `REPORTS_MAX_STUDENTS` | Caps the cohort size a report will generate for, bounding render time and memory. |
+| `REPORTS_MAX_LEARNERS` | Caps the cohort size a report will generate for, bounding render time and memory. |
 | `REPORTS_MAX_QUIZ_COLUMNS` | Caps how many quiz columns a course's landscape summary table carries before splitting into a continued table. |
 | `REPORTS_FONT_FACES` | The font files embedded in the report PDF. |
 | `REPORTS_FONT_DISPLAY` | Font stack for the report's headings. |

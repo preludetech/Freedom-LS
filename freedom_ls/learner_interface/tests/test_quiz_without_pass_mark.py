@@ -15,16 +15,16 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import FormFactory
 from freedom_ls.content_engine.models import FormStrategy
-from freedom_ls.student_interface.utils import get_course_index
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
-from freedom_ls.student_progress.factories import FormProgressFactory
+from freedom_ls.learner_interface.utils import get_course_index
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_progress.factories import FormProgressFactory
 
 from .conftest import course_with_form
 
 
 @pytest.fixture
 def completed_quiz_no_pass_mark(mock_site_context):
-    """A registered student who has completed a QUIZ form with no pass mark set."""
+    """A registered learner who has completed a QUIZ form with no pass mark set."""
     form = FormFactory(
         title="Ungraded Quiz",
         strategy=FormStrategy.QUIZ,
@@ -66,7 +66,7 @@ def test_course_player_renders_for_completed_quiz_without_pass_mark(
 
     response = client.get(
         reverse(
-            "student_interface:view_course_item",
+            "learner_interface:view_course_item",
             kwargs={
                 "course_slug": completed_quiz_no_pass_mark["course"].slug,
                 "index": 1,
@@ -81,7 +81,7 @@ def _results_page(fixture, logged_in_client):
     client = logged_in_client(fixture["user"])
     return client.get(
         reverse(
-            "student_interface:course_form_complete",
+            "learner_interface:course_form_complete",
             kwargs={"course_slug": fixture["course"].slug, "index": 1},
         )
     )
@@ -133,11 +133,11 @@ def test_results_page_without_pass_mark_offers_continue_not_retry(
 
 
 @pytest.mark.django_db
-def test_dashboard_renders_for_student_with_completed_quiz_without_pass_mark(
+def test_dashboard_renders_for_learner_with_completed_quiz_without_pass_mark(
     completed_quiz_no_pass_mark, logged_in_client
 ):
     client = logged_in_client(completed_quiz_no_pass_mark["user"])
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
 
     assert response.status_code == 200

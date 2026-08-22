@@ -19,12 +19,12 @@
 - [reference_webhook_qa_setup.md](reference_webhook_qa_setup.md) — Webhooks browser QA: reuse access-types free/gated courses + fresh unenrolled webhook_qa_learner for course.registered / apply flows
 - [reference_organisation_scenarios_command.md](reference_organisation_scenarios_command.md) — qa_create_organisation_scenarios: 3 orgs + 4 cohorts + 7 personas for Organisations QA; assign_object_role needs a thread-local site + SITE_ID in a command; unregistered learners can never reach the player, so the player's "no organisation / no logo chip" branch is unreachable in the browser (QA §7.6)
 - [reference_learner_visible_deadlines.md](reference_learner_visible_deadlines.md) — Deadlines render ONLY in the course TOC partial (course detail + player sidebar), never on the dashboard; use a course-level CohortDeadline so badges show without expanding CourseParts; qa_create_soft_deadline defaults to -7 days (overdue)
-- [reference_multiselect_quiz_scoring_command.md](reference_multiselect_quiz_scoring_command.md) — qa_create_multiselect_quiz_scoring: dedicated student + checkbox quiz (pass%=50) + NULL-pass-% quiz; `checkboxes` not `checkbox`; force_login/axes + start_form gotchas
+- [reference_multiselect_quiz_scoring_command.md](reference_multiselect_quiz_scoring_command.md) — qa_create_multiselect_quiz_scoring: dedicated learner + checkbox quiz (pass%=50) + NULL-pass-% quiz; `checkboxes` not `checkbox`; force_login/axes + start_form gotchas
 - [reference_report_fixture_commands.md](reference_report_fixture_commands.md) — qa_create_report_fixtures/_course/_cohort: the eleven-fixture cohort-progress-report QA matrix (incl. blank-answer-cohort for "Not answered"), scored attempts, at-risk flag mix, and the auto-timestamp / CourseProgress-site gotchas
 - [reference_quiz_progression_block_command.md](reference_quiz_progression_block_command.md) — qa_create_quiz_progression_block: 3-item course (topic/checkbox-quiz@80%/topic) proving a FAILED quiz blocks the next item; URL-level unlock is NOT enforced
 - [reference_free_text_survey_command.md](reference_free_text_survey_command.md) — qa_create_free_text_survey: non-scored CATEGORY_VALUE_SUM questionnaire of short_text/long_text; only 2 strategies exist, so CATEGORY_VALUE_SUM is "the survey one"
 - [reference_legacy_checkbox_score_command.md](reference_legacy_checkbox_score_command.md) — qa_create_legacy_checkbox_score: how to craft a pre-fix checkbox attempt whose stored score disagrees with exact-match rescoring (complete() then queryset.update(scores=...)), in a report-ready cohort
-- [reference_checkbox_scoring_quiz_and_reset.md](reference_checkbox_scoring_quiz_and_reset.md) — qa_create_checkbox_scoring_quiz (clean option-backed quiz, OPTIONAL checkbox q so "tick nothing" is submittable) + qa_reset_student_progress; retake = GET start_form; unanswered != incorrect
+- [reference_checkbox_scoring_quiz_and_reset.md](reference_checkbox_scoring_quiz_and_reset.md) — qa_create_checkbox_scoring_quiz (clean option-backed quiz, OPTIONAL checkbox q so "tick nothing" is submittable) + qa_reset_learner_progress; retake = GET start_form; unanswered != incorrect
 
 ## Recurring requests
 
@@ -32,7 +32,7 @@ The **quiz-marking browser QA pass** (multi-select scoring fix) has now been set
 recipe is: `qa_create_form_question_types DemoDev`, `qa_create_multiselect_quiz_scoring`,
 `qa_create_quiz_progression_block`, `qa_create_free_text_survey`, `qa_create_legacy_checkbox_score`,
 `qa_create_checkbox_scoring_quiz`, then
-`qa_reset_student_progress --student demodev_quizqa@email.com`, then
+`qa_reset_learner_progress --learner demodev_quizqa@email.com`, then
 `content_save demo_content DemoDev`. All are idempotent; run the reset LAST so the walk starts clean.
 
 The **report QA matrix** is repeatedly extended one fixture at a time as the QA plan finds an

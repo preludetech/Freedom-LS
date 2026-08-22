@@ -33,7 +33,7 @@ recompute = 1/2 = 50% → FAIL.
   the **stored** `scores` via `passed()` / `quiz_percentage()`) **and** "Review incorrect answers"
   listing Q1 (`get_incorrect_quiz_answers()` recomputes with `is_quiz_answer_correct`).
 - Cohort report (`gather_cohort_report_data`): summary-table cell 2/2 100% PASS from stored scores;
-  the same student's *Wrong answers* detail lists Q1 with the three selected options; the confusion
+  the same learner's *Wrong answers* detail lists Q1 with the three selected options; the confusion
   block counts it wrong for 1 of 2 first-attempt respondents. `reports/partials/methodology.html`
   already carries the sentence explaining the discrepancy. PDF renders fine (~260 KB).
 
@@ -54,16 +54,16 @@ the learner's QUIZ ATTEMPTS row as `✓ 100% 2/2` with the
 
 - `FormProgress.completed_time`, **not** `complete_time` (TopicProgress *does* use `complete_time`).
 - `FormProgress.get_incorrect_quiz_answers()` returns a list of **dicts**
-  (`question` / `student_selected` / `correct_options`), not model objects.
-- `gather.CourseSection` has `student_rows` + `summary_tables` + `confusions_by_quiz`; the
-  per-learner detail sections (with `wrong_answers`) hang off `CohortReportData.students`, not off
+  (`question` / `learner_selected` / `correct_options`), not model objects.
+- `gather.CourseSection` has `learner_rows` + `summary_tables` + `confusions_by_quiz`; the
+  per-learner detail sections (with `wrong_answers`) hang off `CohortReportData.learners`, not off
   the course section. `SummaryRow.cells` is a positional list aligned to `SummaryTable.quizzes`.
 - `gather_cohort_report_data(cohort_id, site_id, *, requested_by_name="")` — **two** positional args;
   passing a `Cohort` instance alone raises `TypeError`. DemoDev site_id is 3.
-- `CohortMembership.user` (**not** `.student`). `FormProgress.answers` is the `QuestionAnswer`
+- `CohortMembership.user` (**not** `.learner`). `FormProgress.answers` is the `QuestionAnswer`
   related_name (not `question_answers`). `FormQuestion.question` holds the text (not
   `question_text`) and the option label is `QuestionOption.text`.
-- `StudentDetail.flags` (**not** `at_risk_flags`); `Form.quiz_pass_percentage` (not
+- `LearnerDetail.flags` (**not** `at_risk_flags`); `Form.quiz_pass_percentage` (not
   `pass_percentage` — that name only exists on `gather.QuizColumn`).
 - `accounts.User` has **no** `get_full_name()`; the report uses its own name formatting.
 - Smoke-testing the render without creating a `GeneratedReport` row: call
@@ -75,7 +75,7 @@ Checked, did **not** rebuild — the leftover cohort was already correct, and st
 later report commits (`714e730c` "Count a blank answer and a failed quiz honestly in the report",
 `a1467d8f`, `be491470`). Gather output for cohort `831ca50d-…`: Lena Legacy summary cell
 `latest_score=2 / latest_max_score=2 / latest_percentage=100 / passed=True / attempt_count=1`,
-while her `StudentDetail.wrong_answers` lists Q1 with all three options selected. Rendered PDF
+while her `LearnerDetail.wrong_answers` lists Q1 with all three options selected. Rendered PDF
 371,594 bytes. Cari Current (exact-match control) has an empty `wrong_answers`.
 **Lesson: inspect before re-running** — a "leftover from an earlier QA run" cohort is often still
 valid, and re-running would have re-stamped identical data for nothing.

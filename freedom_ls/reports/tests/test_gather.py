@@ -21,25 +21,25 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy, QuestionType
-from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.reports.gather import gather_cohort_report_data
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
 )
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
     FormProgressFactory,
     QuestionAnswerFactory,
     TopicProgressFactory,
 )
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.reports.gather import gather_cohort_report_data
 
 pytestmark = pytest.mark.django_db
 
 # Established empirically: the number of queries gather_cohort_report_data
-# issues for one course with one quiz, regardless of how many students or
-# questions it has. See test_query_count_is_constant_across_student_and_question_scale.
+# issues for one course with one quiz, regardless of how many learners or
+# questions it has. See test_query_count_is_constant_across_learner_and_question_scale.
 GATHER_QUERY_BOUND = 12
 
 
@@ -51,8 +51,8 @@ def _attach(
     )
 
 
-def _build_cohort_with_quiz(*, student_count: int, question_count: int) -> str:
-    """Build a cohort with one course, one quiz, and every student answering every
+def _build_cohort_with_quiz(*, learner_count: int, question_count: int) -> str:
+    """Build a cohort with one course, one quiz, and every learner answering every
     question correctly in a single completed attempt."""
     cohort = CohortFactory()
     course = CourseFactory()
@@ -72,11 +72,11 @@ def _build_cohort_with_quiz(*, student_count: int, question_count: int) -> str:
         QuestionOptionFactory(question=question, text="Wrong", correct=False, order=1)
         questions_and_correct_options.append((question, correct_option))
 
-    for _ in range(student_count):
-        student = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=student)
+    for _ in range(learner_count):
+        learner = UserFactory()
+        CohortMembershipFactory(cohort=cohort, user=learner)
         attempt = FormProgressFactory(
-            user=student,
+            user=learner,
             form=quiz,
             completed_time=timezone.now(),
             scores={"score": question_count, "max_score": question_count},
@@ -90,8 +90,8 @@ def _build_cohort_with_quiz(*, student_count: int, question_count: int) -> str:
 
 def test_gather_returns_expected_shape_for_small_cohort(mock_site_context):
     cohort = CohortFactory()
-    student = UserFactory(first_name="Ada", last_name="Lovelace")
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory(first_name="Ada", last_name="Lovelace")
+    CohortMembershipFactory(cohort=cohort, user=learner)
 
     course = CourseFactory(title="Astronomy")
     CohortCourseRegistrationFactory(cohort=cohort, collection=course, is_active=True)
@@ -116,9 +116,9 @@ def test_gather_returns_expected_shape_for_small_cohort(mock_site_context):
     QuestionOptionFactory(question=question, text="Sun", correct=False, order=1)
 
     now = timezone.now()
-    TopicProgressFactory(user=student, topic=topic, complete_time=now)
+    TopicProgressFactory(user=learner, topic=topic, complete_time=now)
     attempt = FormProgressFactory(
-        user=student, form=quiz, completed_time=now, scores={"score": 1, "max_score": 1}
+        user=learner, form=quiz, completed_time=now, scores={"score": 1, "max_score": 1}
     )
     answer = QuestionAnswerFactory(form_progress=attempt, question=question)
     answer.selected_options.add(correct_option)
@@ -134,9 +134,9 @@ def test_gather_returns_expected_shape_for_small_cohort(mock_site_context):
     assert course_section.is_active is True
     assert len(course_section.quizzes) == 1
     assert course_section.quizzes[0].title == "Astronomy Quiz"
-    assert len(course_section.student_rows) == 1
+    assert len(course_section.learner_rows) == 1
 
-    row = course_section.student_rows[0]
+    row = course_section.learner_rows[0]
     assert row.full_name == "Ada Lovelace"
     assert row.completion_percentage == 100
 
@@ -145,32 +145,32 @@ def test_gather_returns_expected_shape_for_small_cohort(mock_site_context):
     assert quiz_cell.passed is True
     assert quiz_cell.attempt_count == 1
 
-    assert len(data.students) == 1
-    assert data.students[0].has_any_progress is True
+    assert len(data.learners) == 1
+    assert data.learners[0].has_any_progress is True
 
 
 def test_completion_percentage_ignores_stale_course_progress_field(mock_site_context):
     cohort = CohortFactory()
-    student = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     topic = TopicFactory()
     _attach(course, topic)
-    CourseProgressFactory(user=student, course=course, progress_percentage=87)
+    CourseProgressFactory(user=learner, course=course, progress_percentage=87)
 
     data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-    row = data.courses[0].student_rows[0]
+    row = data.courses[0].learner_rows[0]
     assert row.completion_percentage == 0
 
 
 def _cohort_with_two_question_quiz(*, pass_percentage: int | None = 50):
     """Cohort with one course holding a two-question quiz. Returns the pieces a test
-    needs to have a student sit it."""
+    needs to have a learner sit it."""
     cohort = CohortFactory()
-    student = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     quiz = FormFactory(
@@ -195,15 +195,15 @@ def _cohort_with_two_question_quiz(*, pass_percentage: int | None = 50):
         QuestionOptionFactory(question=question, text="Wrong", correct=False, order=1)
         questions.append((question, correct_option))
 
-    return cohort, student, quiz, questions
+    return cohort, learner, quiz, questions
 
 
 def test_a_question_left_blank_reaches_the_wrong_answer_detail(mock_site_context):
     """A blank question stores no answer row, but the learner still got it wrong."""
-    cohort, student, quiz, questions = _cohort_with_two_question_quiz()
+    cohort, learner, quiz, questions = _cohort_with_two_question_quiz()
     (answered, correct_option), (blank, _) = questions
     attempt = FormProgressFactory(
-        user=student,
+        user=learner,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 1, "max_score": 2},
@@ -213,7 +213,7 @@ def test_a_question_left_blank_reaches_the_wrong_answer_detail(mock_site_context
 
     data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-    wrong = data.students[0].wrong_answers[0].answers
+    wrong = data.learners[0].wrong_answers[0].answers
     assert [entry.question_text for entry in wrong] == [blank.question]
     assert wrong[0].selected_options == []
 
@@ -224,8 +224,8 @@ def test_an_option_chosen_on_more_than_one_sitting_is_counted_once_per_sitting(
     """Retakes are what make the count worth printing: three wrong sittings on one
     question read the same until you can see two of them were the same choice."""
     cohort = CohortFactory()
-    student = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     quiz = FormFactory(strategy=FormStrategy.QUIZ)
@@ -244,7 +244,7 @@ def test_an_option_chosen_on_more_than_one_sitting_is_counted_once_per_sitting(
 
     for option in (venus, mercury, venus):
         attempt = FormProgressFactory(
-            user=student,
+            user=learner,
             form=quiz,
             completed_time=timezone.now(),
             scores={"score": 0, "max_score": 1},
@@ -255,7 +255,7 @@ def test_an_option_chosen_on_more_than_one_sitting_is_counted_once_per_sitting(
 
     data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-    answer = data.students[0].wrong_answers[0].answers[0]
+    answer = data.learners[0].wrong_answers[0].answers[0]
     assert answer.times_wrong == 3
     assert {option.text: option.count for option in answer.selected_options} == {
         "Venus": 2,
@@ -272,8 +272,8 @@ def test_a_correct_tick_inside_a_wrong_multi_select_answer_is_marked_correct(
     contradicts its own correct-answer column on the same row.
     """
     cohort = CohortFactory()
-    student = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     quiz = FormFactory(strategy=FormStrategy.QUIZ)
@@ -288,7 +288,7 @@ def test_a_correct_tick_inside_a_wrong_multi_select_answer_is_marked_correct(
         question=question, text="C", correct=False, order=2
     )
     attempt = FormProgressFactory(
-        user=student,
+        user=learner,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 0, "max_score": 1},
@@ -298,20 +298,20 @@ def test_a_correct_tick_inside_a_wrong_multi_select_answer_is_marked_correct(
 
     data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-    wrong_answer = data.students[0].wrong_answers[0].answers[0]
+    wrong_answer = data.learners[0].wrong_answers[0].answers[0]
     assert {
         option.text: option.correct for option in wrong_answer.selected_options
     } == {"A": True, "B": True, "C": False}
 
 
-def test_confusion_denominator_counts_students_who_left_a_question_blank(
+def test_confusion_denominator_counts_learners_who_left_a_question_blank(
     mock_site_context,
 ):
     """A learner who sat the quiz and skipped the question is a respondent who got it wrong."""
-    cohort, student, quiz, questions = _cohort_with_two_question_quiz()
+    cohort, learner, quiz, questions = _cohort_with_two_question_quiz()
     (answered, correct_option), (blank, _) = questions
     attempt = FormProgressFactory(
-        user=student,
+        user=learner,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 1, "max_score": 2},
@@ -331,11 +331,11 @@ def test_failed_quiz_does_not_count_toward_report_completion_percentage(
     mock_site_context,
 ):
     """The report's completion figures follow the same pass-to-complete rule as the course."""
-    cohort, student, quiz, _questions = _cohort_with_two_question_quiz(
+    cohort, learner, quiz, _questions = _cohort_with_two_question_quiz(
         pass_percentage=80
     )
     FormProgressFactory(
-        user=student,
+        user=learner,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 0, "max_score": 2},
@@ -343,24 +343,24 @@ def test_failed_quiz_does_not_count_toward_report_completion_percentage(
 
     data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-    assert data.courses[0].student_rows[0].completion_percentage == 0
+    assert data.courses[0].learner_rows[0].completion_percentage == 0
 
 
 def test_passing_a_retry_restores_the_report_completion_percentage(mock_site_context):
     """The latest completed sitting decides, so a passing retry counts the quiz as done."""
-    cohort, student, quiz, _questions = _cohort_with_two_question_quiz(
+    cohort, learner, quiz, _questions = _cohort_with_two_question_quiz(
         pass_percentage=80
     )
     with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
         FormProgressFactory(
-            user=student,
+            user=learner,
             form=quiz,
             completed_time=timezone.now(),
             scores={"score": 0, "max_score": 2},
         )
     with time_machine.travel("2026-01-02T00:00:00Z", tick=False):
         FormProgressFactory(
-            user=student,
+            user=learner,
             form=quiz,
             completed_time=timezone.now(),
             scores={"score": 2, "max_score": 2},
@@ -368,15 +368,15 @@ def test_passing_a_retry_restores_the_report_completion_percentage(mock_site_con
 
     data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-    assert data.courses[0].student_rows[0].completion_percentage == 100
+    assert data.courses[0].learner_rows[0].completion_percentage == 100
 
 
 def test_latest_attempt_score_used_across_three_attempts_at_different_times(
     mock_site_context,
 ):
     cohort = CohortFactory()
-    student = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
@@ -384,21 +384,21 @@ def test_latest_attempt_score_used_across_three_attempts_at_different_times(
 
     with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
         FormProgressFactory(
-            user=student,
+            user=learner,
             form=quiz,
             completed_time=timezone.now(),
             scores={"score": 0, "max_score": 1},
         )
     with time_machine.travel("2026-01-02T00:00:00Z", tick=False):
         FormProgressFactory(
-            user=student,
+            user=learner,
             form=quiz,
             completed_time=timezone.now(),
             scores={"score": 1, "max_score": 1},
         )
     with time_machine.travel("2026-01-03T00:00:00Z", tick=False):
         latest = FormProgressFactory(
-            user=student,
+            user=learner,
             form=quiz,
             completed_time=timezone.now(),
             scores={"score": 0, "max_score": 1},
@@ -406,7 +406,7 @@ def test_latest_attempt_score_used_across_three_attempts_at_different_times(
 
     data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-    quiz_result = data.courses[0].student_rows[0].quiz_cells[quiz.id]
+    quiz_result = data.courses[0].learner_rows[0].quiz_cells[quiz.id]
     assert quiz_result is not None
     assert quiz_result.attempt_count == 3
     assert quiz_result.completed_at == latest.completed_time
@@ -415,14 +415,14 @@ def test_latest_attempt_score_used_across_three_attempts_at_different_times(
 
 def test_null_quiz_pass_percentage_yields_no_passed_verdict(mock_site_context):
     cohort = CohortFactory()
-    student = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=None)
     _attach(course, quiz)
     FormProgressFactory(
-        user=student,
+        user=learner,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 1, "max_score": 1},
@@ -430,17 +430,17 @@ def test_null_quiz_pass_percentage_yields_no_passed_verdict(mock_site_context):
 
     data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-    quiz_result = data.courses[0].student_rows[0].quiz_cells[quiz.id]
+    quiz_result = data.courses[0].learner_rows[0].quiz_cells[quiz.id]
     assert quiz_result is not None
     assert quiz_result.passed is None
 
 
-def test_student_with_no_progress_rows_is_zero_percent_with_no_activity(
+def test_learner_with_no_progress_rows_is_zero_percent_with_no_activity(
     mock_site_context,
 ):
     cohort = CohortFactory()
-    student = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     topic = TopicFactory()
@@ -448,51 +448,51 @@ def test_student_with_no_progress_rows_is_zero_percent_with_no_activity(
 
     data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-    row = data.courses[0].student_rows[0]
-    detail = data.students[0]
+    row = data.courses[0].learner_rows[0]
+    detail = data.learners[0]
     assert row.completion_percentage == 0
     assert detail.has_any_progress is False
     assert detail.has_reportable_activity is False
 
 
-def test_student_who_opened_an_item_without_completing_it_has_nothing_to_report(
+def test_learner_who_opened_an_item_without_completing_it_has_nothing_to_report(
     mock_site_context,
 ):
-    """The two flags disagree for this student, and the detail section relies on it.
+    """The two flags disagree for this learner, and the detail section relies on it.
 
     Opening a topic writes a TopicProgress row, so `has_any_progress` is True and
     the no-recorded-activity at-risk rule stays silent -- but there is no
     completion, quiz result or wrong answer to print.
     """
     cohort = CohortFactory()
-    student = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     topic = TopicFactory()
     _attach(course, topic)
-    TopicProgressFactory(user=student, topic=topic, complete_time=None)
+    TopicProgressFactory(user=learner, topic=topic, complete_time=None)
 
     data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-    detail = data.students[0]
+    detail = data.learners[0]
     assert detail.completion_percentage == 0
     assert detail.has_any_progress is True
     assert detail.has_reportable_activity is False
 
 
-def test_student_with_activity_on_one_course_still_appears_in_other_course(
+def test_learner_with_activity_on_one_course_still_appears_in_other_course(
     mock_site_context,
 ):
     cohort = CohortFactory()
-    student = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=learner)
 
     active_course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=active_course)
     topic_done = TopicFactory()
     _attach(active_course, topic_done)
-    TopicProgressFactory(user=student, topic=topic_done, complete_time=timezone.now())
+    TopicProgressFactory(user=learner, topic=topic_done, complete_time=timezone.now())
 
     quiet_course = CourseFactory(title="Untouched Course")
     CohortCourseRegistrationFactory(cohort=cohort, collection=quiet_course)
@@ -503,16 +503,16 @@ def test_student_with_activity_on_one_course_still_appears_in_other_course(
 
     sections_by_title = {section.title: section for section in data.courses}
     quiet_section = sections_by_title["Untouched Course"]
-    assert len(quiet_section.student_rows) == 1
-    assert quiet_section.student_rows[0].completion_percentage == 0
+    assert len(quiet_section.learner_rows) == 1
+    assert quiet_section.learner_rows[0].completion_percentage == 0
 
 
 def test_inactive_registration_produces_course_section_marked_inactive(
     mock_site_context,
 ):
     cohort = CohortFactory()
-    student = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course, is_active=False)
     topic = TopicFactory()
@@ -526,8 +526,8 @@ def test_inactive_registration_produces_course_section_marked_inactive(
 
 def test_correct_none_option_selected_counts_as_distractor(mock_site_context):
     cohort = CohortFactory()
-    student = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     quiz = FormFactory(strategy=FormStrategy.QUIZ)
@@ -542,7 +542,7 @@ def test_correct_none_option_selected_counts_as_distractor(mock_site_context):
     )
 
     attempt = FormProgressFactory(
-        user=student,
+        user=learner,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 0, "max_score": 1},
@@ -564,7 +564,7 @@ def test_correct_none_option_selected_counts_as_distractor(mock_site_context):
 def _build_quiz_with_wrong_answers(
     *, respondent_count: int, wrong_count: int
 ) -> tuple[str, UUID]:
-    """One quiz, one question; the first `wrong_count` first-attempt students answer
+    """One quiz, one question; the first `wrong_count` first-attempt learners answer
     wrong, the rest answer correctly. Returns (cohort_id, quiz_id)."""
     cohort = CohortFactory()
     course = CourseFactory()
@@ -583,10 +583,10 @@ def _build_quiz_with_wrong_answers(
     )
 
     for i in range(respondent_count):
-        student = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=student)
+        learner = UserFactory()
+        CohortMembershipFactory(cohort=cohort, user=learner)
         attempt = FormProgressFactory(
-            user=student,
+            user=learner,
             form=quiz,
             completed_time=timezone.now(),
             scores={"score": 0, "max_score": 1},
@@ -629,13 +629,13 @@ def test_gathering_one_site_excludes_data_from_another_site(mock_site_context):
     other_site = SiteFactory()
 
     cohort_a = CohortFactory(name="Isolation Cohort A")
-    student_a = UserFactory(first_name="Site", last_name="Alpha")
-    CohortMembershipFactory(cohort=cohort_a, user=student_a)
+    learner_a = UserFactory(first_name="Site", last_name="Alpha")
+    CohortMembershipFactory(cohort=cohort_a, user=learner_a)
     course_a = CourseFactory(title="Site A Course")
     CohortCourseRegistrationFactory(cohort=cohort_a, collection=course_a)
     topic_a = TopicFactory(title="Site A Topic")
     _attach(course_a, topic_a)
-    TopicProgressFactory(user=student_a, topic=topic_a, complete_time=timezone.now())
+    TopicProgressFactory(user=learner_a, topic=topic_a, complete_time=timezone.now())
 
     # organisation too: CohortFactory's SubFactory does not inherit an
     # explicit site=, so without this the cohort would sit on site B while its
@@ -645,8 +645,8 @@ def test_gathering_one_site_excludes_data_from_another_site(mock_site_context):
         site=other_site,
         organisation=OrganisationFactory(site=other_site),
     )
-    student_b = UserFactory(first_name="Site", last_name="Beta", site=other_site)
-    CohortMembershipFactory(cohort=cohort_b, user=student_b, site=other_site)
+    learner_b = UserFactory(first_name="Site", last_name="Beta", site=other_site)
+    CohortMembershipFactory(cohort=cohort_b, user=learner_b, site=other_site)
     course_b = CourseFactory(title="Site B Course", site=other_site)
     CohortCourseRegistrationFactory(
         cohort=cohort_b, collection=course_b, site=other_site
@@ -656,17 +656,17 @@ def test_gathering_one_site_excludes_data_from_another_site(mock_site_context):
         collection_object=course_b, child_object=topic_b, order=0, site=other_site
     )
     TopicProgressFactory(
-        user=student_b, topic=topic_b, complete_time=timezone.now(), site=other_site
+        user=learner_b, topic=topic_b, complete_time=timezone.now(), site=other_site
     )
 
     data = gather_cohort_report_data(str(cohort_a.id), mock_site_context.pk)
 
-    assert [student.full_name for student in data.students] == ["Site Alpha"]
+    assert [learner.full_name for learner in data.learners] == ["Site Alpha"]
     assert [section.title for section in data.courses] == ["Site A Course"]
 
 
 def _build_cohort_with_quiz_titles(titles: list[str]) -> str:
-    """One cohort, one student, one course carrying a quiz per title, in order."""
+    """One cohort, one learner, one course carrying a quiz per title, in order."""
     cohort = CohortFactory()
     CohortMembershipFactory(cohort=cohort, user=UserFactory())
     course = CourseFactory()
@@ -741,7 +741,7 @@ class TestQuizAbbreviations:
         assert abbreviations == ["VQ01", "HQ12", "RQ10"]
 
 
-class TestStudentOrdering:
+class TestLearnerOrdering:
     def _build_cohort_with_surnames(self, surnames: list[str]) -> str:
         cohort = CohortFactory()
         course = CourseFactory()
@@ -760,7 +760,7 @@ class TestStudentOrdering:
 
         data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
 
-        names = [row.full_name for row in data.courses[0].student_rows]
+        names = [row.full_name for row in data.courses[0].learner_rows]
         assert names == [
             "Sam Abara",
             "Sam Bergstrom",
@@ -768,15 +768,15 @@ class TestStudentOrdering:
             "Sam Okonkwo",
         ]
 
-    def test_summary_row_order_matches_student_detail_order(self, mock_site_context):
+    def test_summary_row_order_matches_learner_detail_order(self, mock_site_context):
         cohort_id = self._build_cohort_with_surnames(
             ["Okonkwo", "Abara", "Nakamura", "Bergstrom"]
         )
 
         data = gather_cohort_report_data(cohort_id, mock_site_context.pk)
 
-        assert [row.user_id for row in data.courses[0].student_rows] == [
-            detail.user_id for detail in data.students
+        assert [row.user_id for row in data.courses[0].learner_rows] == [
+            detail.user_id for detail in data.learners
         ]
 
     def test_summary_table_rows_follow_the_same_order(self, mock_site_context):
@@ -786,7 +786,7 @@ class TestStudentOrdering:
 
         table = data.courses[0].summary_tables[0]
         assert [row.user_id for row in table.rows] == [
-            detail.user_id for detail in data.students
+            detail.user_id for detail in data.learners
         ]
 
 
@@ -814,8 +814,8 @@ class TestWrongAnswersCarryQuizTitles:
         self, mock_site_context
     ):
         cohort = CohortFactory()
-        student = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=student)
+        learner = UserFactory()
+        CohortMembershipFactory(cohort=cohort, user=learner)
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
@@ -833,7 +833,7 @@ class TestWrongAnswersCarryQuizTitles:
                 question=question, text="Wrong", correct=False, order=1
             )
             attempt = FormProgressFactory(
-                user=student,
+                user=learner,
                 form=quiz,
                 completed_time=timezone.now(),
                 scores={"score": 0, "max_score": 1},
@@ -843,14 +843,14 @@ class TestWrongAnswersCarryQuizTitles:
 
         data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-        detail = data.students[0]
+        detail = data.learners[0]
         assert [block.title for block in detail.wrong_answers] == [
             "Voltage Quiz 01",
             "Erosion Quiz 02",
         ]
         assert all(block.answers for block in detail.wrong_answers)
 
-    def test_student_without_wrong_answers_has_an_empty_list(self, mock_site_context):
+    def test_learner_without_wrong_answers_has_an_empty_list(self, mock_site_context):
         cohort = CohortFactory()
         CohortMembershipFactory(cohort=cohort, user=UserFactory())
         course = CourseFactory()
@@ -859,17 +859,17 @@ class TestWrongAnswersCarryQuizTitles:
 
         data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-        assert data.students[0].wrong_answers == []
+        assert data.learners[0].wrong_answers == []
 
 
-def test_query_count_is_constant_across_student_and_question_scale(
+def test_query_count_is_constant_across_learner_and_question_scale(
     mock_site_context, django_assert_num_queries
 ):
-    small_cohort_id = _build_cohort_with_quiz(student_count=2, question_count=2)
+    small_cohort_id = _build_cohort_with_quiz(learner_count=2, question_count=2)
     with django_assert_num_queries(GATHER_QUERY_BOUND):
         gather_cohort_report_data(small_cohort_id, mock_site_context.pk)
 
-    large_cohort_id = _build_cohort_with_quiz(student_count=6, question_count=6)
+    large_cohort_id = _build_cohort_with_quiz(learner_count=6, question_count=6)
     with django_assert_num_queries(GATHER_QUERY_BOUND):
         gather_cohort_report_data(large_cohort_id, mock_site_context.pk)
 
@@ -879,8 +879,8 @@ class TestQuizAttempts:
         self, mock_site_context
     ):
         cohort = CohortFactory()
-        student = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=student)
+        learner = UserFactory()
+        CohortMembershipFactory(cohort=cohort, user=learner)
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
@@ -888,21 +888,21 @@ class TestQuizAttempts:
 
         with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
             FormProgressFactory(
-                user=student,
+                user=learner,
                 form=quiz,
                 completed_time=timezone.now(),
                 scores={"score": 0, "max_score": 2},
             )
         with time_machine.travel("2026-01-02T00:00:00Z", tick=False):
             FormProgressFactory(
-                user=student,
+                user=learner,
                 form=quiz,
                 completed_time=timezone.now(),
                 scores={"score": 1, "max_score": 2},
             )
         with time_machine.travel("2026-01-03T00:00:00Z", tick=False):
             FormProgressFactory(
-                user=student,
+                user=learner,
                 form=quiz,
                 completed_time=timezone.now(),
                 scores={"score": 2, "max_score": 2},
@@ -910,7 +910,7 @@ class TestQuizAttempts:
 
         data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-        result = data.students[0].quiz_results[0]
+        result = data.learners[0].quiz_results[0]
         assert [attempt.attempt_number for attempt in result.attempts] == [1, 2, 3]
         assert [attempt.percentage for attempt in result.attempts] == [0, 50, 100]
         # The two views of the same rows cannot disagree.
@@ -921,23 +921,23 @@ class TestQuizAttempts:
 
     def test_an_incomplete_sitting_is_not_an_attempt(self, mock_site_context):
         cohort = CohortFactory()
-        student = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=student)
+        learner = UserFactory()
+        CohortMembershipFactory(cohort=cohort, user=learner)
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
         _attach(course, quiz)
         FormProgressFactory(
-            user=student,
+            user=learner,
             form=quiz,
             completed_time=timezone.now(),
             scores={"score": 1, "max_score": 1},
         )
-        FormProgressFactory(user=student, form=quiz, completed_time=None, scores={})
+        FormProgressFactory(user=learner, form=quiz, completed_time=None, scores={})
 
         data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-        result = data.students[0].quiz_results[0]
+        result = data.learners[0].quiz_results[0]
         assert len(result.attempts) == 1
         assert result.attempt_count == 1
 
@@ -952,7 +952,7 @@ class TestFlagSeverity:
 
         data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-        flags = {flag.rule_id: flag.severity for flag in data.students[0].flags}
+        flags = {flag.rule_id: flag.severity for flag in data.learners[0].flags}
         assert flags["no_activity"] == "error"
 
 
@@ -991,14 +991,14 @@ class TestSiteName:
 
 @pytest.fixture
 def cohort_with_a_quiz_and_a_survey(mock_site_context):
-    """One course holding a quiz and a survey, both completed by the same student.
+    """One course holding a quiz and a survey, both completed by the same learner.
 
     A survey's questions never reach the quiz analysis, so its answers are the
     case that distinguishes "every answer in the cohort" from "every quiz answer".
     """
     cohort = CohortFactory()
-    student = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=student)
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
@@ -1035,14 +1035,14 @@ def cohort_with_a_quiz_and_a_survey(mock_site_context):
 
     now = timezone.now()
     quiz_attempt = FormProgressFactory(
-        user=student, form=quiz, completed_time=now, scores={"score": 0, "max_score": 1}
+        user=learner, form=quiz, completed_time=now, scores={"score": 0, "max_score": 1}
     )
     QuestionAnswerFactory(
         form_progress=quiz_attempt, question=quiz_question
     ).selected_options.add(distractor)
 
     survey_attempt = FormProgressFactory(
-        user=student, form=survey, completed_time=now, scores={"Confidence": 3}
+        user=learner, form=survey, completed_time=now, scores={"Confidence": 3}
     )
     QuestionAnswerFactory(
         form_progress=survey_attempt, question=survey_question
@@ -1082,19 +1082,19 @@ class TestSurveysAlongsideQuizzes:
             str(cohort_with_a_quiz_and_a_survey.id), mock_site_context.pk
         )
 
-        wrong_answers = data.students[0].wrong_answers
+        wrong_answers = data.learners[0].wrong_answers
         assert [block.title for block in wrong_answers] == ["Astronomy Quiz"]
 
     def test_a_completed_survey_counts_toward_course_completion(
         self, cohort_with_a_quiz_and_a_survey, mock_site_context
     ):
         """The survey has no pass mark, so completing it is enough — unlike the quiz
-        this student failed, which is why the count is 1 of 2 rather than 2."""
+        this learner failed, which is why the count is 1 of 2 rather than 2."""
         data = gather_cohort_report_data(
             str(cohort_with_a_quiz_and_a_survey.id), mock_site_context.pk
         )
 
-        row = data.courses[0].student_rows[0]
+        row = data.courses[0].learner_rows[0]
         assert row.completed_item_count == 1
         assert row.total_item_count == 2
 
@@ -1104,15 +1104,15 @@ class TestQuizWithNoQuestions:
         self, mock_site_context
     ):
         cohort = CohortFactory()
-        student = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=student)
+        learner = UserFactory()
+        CohortMembershipFactory(cohort=cohort, user=learner)
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
         _attach(course, quiz)
         FormPageFactory(form=quiz, order=0)
         FormProgressFactory(
-            user=student,
+            user=learner,
             form=quiz,
             completed_time=timezone.now(),
             scores={"score": 0, "max_score": 0},
@@ -1120,6 +1120,6 @@ class TestQuizWithNoQuestions:
 
         data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-        result = data.students[0].quiz_results[0]
+        result = data.learners[0].quiz_results[0]
         assert result.latest_percentage is None
         assert result.passed is None

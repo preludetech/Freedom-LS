@@ -21,10 +21,10 @@ Built idempotently on the requested site:
   on. Q1 is ``checkboxes`` (3 options, 2 correct), Q2 is ``multiple_choice``
   (3 options, 1 correct). Stored legacy score 2/2 = 100% (PASS); recomputed
   exact-match score 1/2 = 50% (FAIL).
-* Three students in cohort *QA Legacy Score Discrepancy Cohort*, which is
+* Three learners in cohort *QA Legacy Score Discrepancy Cohort*, which is
   registered for the course so a cohort PDF report can be generated for it:
   the legacy attempt, an honest attempt where stored and recomputed agree, and
-  one student with no activity at all.
+  one learner with no activity at all.
 
 Usage:
     uv run python manage.py qa_create_legacy_checkbox_score
@@ -61,32 +61,32 @@ from freedom_ls.content_engine.models import (
     QuestionType,
     Topic,
 )
-from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     UserCourseRegistrationFactory,
 )
-from freedom_ls.student_management.models import (
+from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
     UserCourseRegistration,
 )
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
     FormProgressFactory,
     QuestionAnswerFactory,
     TopicProgressFactory,
 )
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
     QuestionAnswer,
     TopicProgress,
 )
-from freedom_ls.student_progress.scoring import is_quiz_answer_correct
+from freedom_ls.learner_progress.scoring import is_quiz_answer_correct
+from freedom_ls.organisations.utils import get_default_organisation
 
 COURSE_TITLE = "QA Legacy Checkbox Score Course"
 COURSE_SLUG = "qa-legacy-score-course"
@@ -263,7 +263,7 @@ def _get_or_create_topic(site: Site) -> Topic:
             slug=TOPIC_SLUG,
             content=(
                 "# Follow-up\n\nA second course item so cohort completion is "
-                "partial for the student holding the legacy attempt.\n"
+                "partial for the learner holding the legacy attempt.\n"
             ),
             site=site,
         ),
@@ -544,7 +544,7 @@ def command(site_name: str) -> None:
         )
 
     click.secho("\nThe crafted attempt:", fg="cyan", bold=True)
-    click.echo(f"  student            : {legacy_user.email}")
+    click.echo(f"  learner            : {legacy_user.email}")
     click.echo(
         f"  checkbox selection : every option ({len(CHECKBOX_OPTIONS)} of {len(CHECKBOX_OPTIONS)})"
     )

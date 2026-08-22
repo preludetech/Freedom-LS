@@ -36,6 +36,8 @@ changed_template_paths:
   - freedom_ls/course_applications/templates/course_applications/application_status.html
   - freedom_ls/course_applications/templates/course_applications/partials/dashboard_applications.html
   - freedom_ls/educator_interface/templates/educator_interface/partials/course_progress_panel.html
+  - freedom_ls/reports/templates/reports/partials/learner_detail.html
+  - freedom_ls/reports/templates/reports/partials/learner_details.html
 requires_settings_change: true
 changed_settings:
   - INSTALLED_APPS   # freedom_ls.student_management -> freedom_ls.learner_management
@@ -44,6 +46,7 @@ changed_settings:
   - TEMPLATES[0]["OPTIONS"]["context_processors"]   # freedom_ls.student_management.context_processors.can_access_educator_interface -> freedom_ls.learner_management.context_processors.can_access_educator_interface
   - ROOT_URLCONF include   # include("freedom_ls.student_interface.urls") -> include("freedom_ls.learner_interface.urls")
   - sitemaps   # config/sitemaps.py: "student_interface:courses"/"student_interface:course_detail" -> "learner_interface:..."
+  - REPORTS_MAX_STUDENTS   # renamed to REPORTS_MAX_LEARNERS
 requires_package_upgrade: false
 changed_packages: []
 requires_npm_install: false
@@ -576,15 +579,18 @@ Renaming a management-command *file* renames the command. Four moved:
 | `qa_create_empty_student_cohort` | `qa_create_empty_learner_cohort` |
 | `qa_create_password_reset_student` | `qa_create_password_reset_learner` |
 | `qa_create_rich_dashboard_student` | `qa_create_rich_dashboard_learner` |
+| `qa_reset_student_progress` | `qa_reset_learner_progress` |
 
-And one flag:
+And two flags:
 
 ```bash
 # OLD
 uv run manage.py qa_create_deadline_overrides --student-email demodev_s1@email.com
+uv run manage.py qa_reset_student_progress --student demodev_quizqa@email.com
 
 # NEW
 uv run manage.py qa_create_deadline_overrides --learner-email demodev_s1@email.com
+uv run manage.py qa_reset_learner_progress --learner demodev_quizqa@email.com
 ```
 
 These only affect you if you run FLS's `qa_helpers` app (it is normally dev-only and absent from
@@ -616,6 +622,62 @@ an FLS that did not rename them.
 | The `DEADLINES_ACTIVE` setting key | only its import path moved |
 | Learner-facing URL paths | byte-identical (see section 3) |
 | Seeded QA account emails and passwords | unchanged (see section 10) |
+
+---
+
+### 12. The `reports` app
+
+`freedom_ls.reports` shipped after this rename was planned and was written in the old vocabulary
+throughout. It is swept on the same terms as everything else. The app package, its label
+(`freedom_ls_reports`) and its URL names never carried the word and do not move — but its setting,
+its templates, its stylesheet and its report-data types do.
+
+**One setting is renamed.** It is a declared `AppSettings` key, so a downstream project that
+overrides it in `settings.py` must rename its override or the new key silently falls back to the
+default:
+
+| Old | New | Default |
+| --- | --- | --- |
+| `REPORTS_MAX_STUDENTS` | `REPORTS_MAX_LEARNERS` | `500` |
+
+**Two report partials moved**, and like every other template move these fail **silently** when a
+theme overrides them (see section 4):
+
+| Old | New |
+| --- | --- |
+| `reports/partials/student_detail.html` | `reports/partials/learner_detail.html` |
+| `reports/partials/student_details.html` | `reports/partials/learner_details.html` |
+
+**The print stylesheet's class names moved with them.** `freedom_ls/reports/static/reports/print.css`
+is the report's own stylesheet; if you ship a replacement or an override, these selectors changed:
+`.student-details` → `.learner-details`, `.student-head` → `.learner-head`, `.student-heading` →
+`.learner-heading`, `.student-last-active` → `.learner-last-active`, `.student-running-name` →
+`.learner-running-name`, `.student-section` → `.learner-section`. A stale selector does not raise —
+it just stops matching, and the report renders unstyled in that region.
+
+**Report-data types and the at-risk rule protocol.** These matter if you build your own report
+sections or your own at-risk rules against FLS's types:
+
+| Old | New | File |
+| --- | --- | --- |
+| `StudentRow` | `LearnerRow` | `reports/report_data.py` |
+| `StudentDetail` | `LearnerDetail` | `reports/report_data.py` |
+| `StudentDetailLike` (Protocol) | `LearnerDetailLike` | `reports/at_risk.py` |
+| field `CohortReportData.students` | `.learners` | `reports/report_data.py` |
+| field `CourseSummary.student_rows` | `.learner_rows` | `reports/report_data.py` |
+| `AtRiskRule.evaluate(student)` parameter | `evaluate(learner)` | `reports/at_risk.py` |
+
+**Nothing persisted changes.** `GeneratedReport` stores a rendered PDF in a file field, not a JSON
+blob of report data, so every type above is in-memory only and no data migration is needed for
+them. `GeneratedReport`'s own model name, table, status values and storage path are untouched.
+
+**`reports/migrations/0001_initial.py` was regenerated**, for one reason: it depended on
+`('freedom_ls_student_management', '0013_cohortmembership_unique_user_cohort_membership')`, and
+section 9's fresh-initial strategy means that migration no longer exists. The regenerated file is
+byte-identical apart from the dependency, which now reads
+`('freedom_ls_learner_management', '0001_initial')`. If you have your own app with a migration
+depending on either renamed app's label, it needs the same treatment — and a stale dependency
+fails **loudly**, as `NodeNotFoundError` at `migrate` time.
 
 ---
 

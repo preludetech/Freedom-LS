@@ -9,11 +9,11 @@ from django.core.files.base import ContentFile
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.student_management.factories import CohortFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -49,7 +49,7 @@ def _restricted_staff_user(cohort: object) -> object:
     user = UserFactory(is_staff=True)
     for codename in ("view_generatedreport", "delete_generatedreport"):
         assign_perm(f"freedom_ls_reports.{codename}", user)
-    assign_perm("freedom_ls_student_management.view_cohort", user, cohort)
+    assign_perm("freedom_ls_learner_management.view_cohort", user, cohort)
     return user
 
 
@@ -272,7 +272,7 @@ def _organisation_staff_user(organisation: object) -> object:
 class TestGeneratedReportAdminOrganisationScoping:
     """An organisation role grants every cohort inside the organisation.
     Guardian cannot express that implication, so the admin must go through
-    student_management.queries rather than a bare view_cohort lookup."""
+    learner_management.queries rather than a bare view_cohort lookup."""
 
     def test_changelist_lists_reports_for_every_cohort_in_the_organisation(
         self, mock_site_context: object, client: object

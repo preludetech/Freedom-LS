@@ -16,8 +16,6 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -34,6 +32,8 @@ from freedom_ls.learner_management.queries import (
     organisations_accessible_to,
     users_visible_to,
 )
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 def _backdate(registration: UserCourseRegistration, when) -> UserCourseRegistration:

@@ -9,11 +9,11 @@ from django.core.files.base import ContentFile
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.student_management.factories import CohortFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -30,7 +30,7 @@ def _download_url(report_pk: object) -> str:
 
 def _staff_user_with_cohort_view_permission(cohort: object) -> object:
     user = UserFactory(is_staff=True)
-    assign_perm("freedom_ls_student_management.view_cohort", user, cohort)
+    assign_perm("freedom_ls_learner_management.view_cohort", user, cohort)
     return user
 
 

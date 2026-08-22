@@ -13,7 +13,7 @@ build SINGLE-ITEM courses, so a failed quiz has no successor to block. QA 12.1
 needs a quiz with a following item.
 
 Seeds on `qa-progression-block-course`:
-1. Topic `qa-progression-block-topic-01` — pre-completed for the student (so the quiz is READY).
+1. Topic `qa-progression-block-topic-01` — pre-completed for the learner (so the quiz is READY).
 2. Form `qa-progression-block-quiz` — QUIZ, `quiz_pass_percentage=80`, `quiz_show_incorrect=True`,
    4 option-backed questions: 3 × multiple_choice (1 correct of 3) + 1 × checkboxes (3 opts, 2 correct).
 3. Topic `qa-progression-block-topic-02` — the successor that must stay BLOCKED.
@@ -23,7 +23,7 @@ checkbox wrong = 3/4 = 75% < 80 → FAIL → item 3 BLOCKED. Pass mark 80 also m
 hardcoded `0.8` threshold in `form_start_page_buttons`, so the start-page button
 ("Try Again" vs "Next") agrees with the TOC status.
 
-Student: reuses `demodev_quizqa@email.com` (password == email), left with NO FormProgress.
+Learner: reuses `demodev_quizqa@email.com` (password == email), left with NO FormProgress.
 
 ## Gotchas confirmed
 - **The player does NOT enforce sequential unlock at the URL level.** `view_course_item`

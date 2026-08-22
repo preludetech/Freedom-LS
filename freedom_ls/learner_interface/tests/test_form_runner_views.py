@@ -753,9 +753,9 @@ def test_course_form_complete_no_percentage_for_non_quiz(mock_site_context, clie
 def test_course_form_complete_renders_incorrect_checkbox_answer_with_every_selection(
     mock_site_context, client
 ):
-    """Regression test for the exact-match scoring fix: a student who ticks every option on
+    """Regression test for the exact-match scoring fix: a learner who ticks every option on
     a checkbox question is now correctly marked wrong, and the incorrect-answers block
-    renders every option the student selected, not just the one that used to short-circuit
+    renders every option the learner selected, not just the one that used to short-circuit
     the old any-correct-option rule."""
     user = UserFactory()
     form = FormFactory(
@@ -785,7 +785,7 @@ def test_course_form_complete_renders_incorrect_checkbox_answer_with_every_selec
 
     client.force_login(user)
     url = reverse(
-        "student_interface:course_form_complete",
+        "learner_interface:course_form_complete",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -794,7 +794,7 @@ def test_course_form_complete_renders_incorrect_checkbox_answer_with_every_selec
     assert response.context["quiz_verdict"] == "failed"
     incorrect_answers = response.context["incorrect_answers"]
     assert [item["question"] for item in incorrect_answers] == [question]
-    assert set(incorrect_answers[0]["student_selected"]) == {
+    assert set(incorrect_answers[0]["learner_selected"]) == {
         correct_1,
         correct_2,
         wrong_1,
@@ -817,7 +817,7 @@ def _completed_quiz_results_page(client, *, score, max_score):
     client.force_login(user)
     return client.get(
         reverse(
-            "student_interface:course_form_complete",
+            "learner_interface:course_form_complete",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )

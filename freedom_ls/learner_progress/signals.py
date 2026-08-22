@@ -1,6 +1,6 @@
-"""Signal receivers for the student_progress app.
+"""Signal receivers for the learner_progress app.
 
-Connected by `StudentProgressConfig.ready()`. A receiver in a module nothing imports
+Connected by `LearnerProgressConfig.ready()`. A receiver in a module nothing imports
 is never connected, and fails silently rather than loudly.
 
 The receiver below names its senders, so a new concrete `CourseItemProgress`
@@ -22,14 +22,14 @@ from freedom_ls.content_engine.models import (
     Form,
     Topic,
 )
-from freedom_ls.student_management.utils import calculate_course_progress_percentage
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_management.utils import calculate_course_progress_percentage
+from freedom_ls.learner_progress.models import (
     CourseItemProgress,
     CourseProgress,
     FormProgress,
     TopicProgress,
 )
-from freedom_ls.student_progress.queries import completed_form_ids_by_user
+from freedom_ls.learner_progress.queries import completed_form_ids_by_user
 
 
 def update_course_progress_on_completion(

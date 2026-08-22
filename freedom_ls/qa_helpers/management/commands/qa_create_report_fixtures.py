@@ -4,7 +4,7 @@ The report's layout behaviour changes with two axes at once -- cohort size
 lengthens the landscape summary table, course length widens it -- so the QA plan
 (``spec_dd/2. in progress/basic_reports/3a. report_generation_qa/
 frontend_qa_report_generation.md``) defines eleven fixtures
-spanning 0 to 40 students and 1 to 12+ quizzes, plus the degenerate,
+spanning 0 to 40 learners and 1 to 12+ quizzes, plus the degenerate,
 no-pass-mark and blank-answer cases. This command builds all of them, plus the
 four users the permission checks need: a cohort educator, a staff user scoped
 to one cohort by a guardian grant, and two organisation-role holders -- one on
@@ -34,6 +34,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.models import User
+from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
@@ -51,7 +52,6 @@ from freedom_ls.qa_helpers.management.commands.qa_create_report_course import (
 )
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.student_management.models import Cohort
 
 EDUCATOR_EMAIL = "qa-report-educator@email.com"
 RESTRICTED_EMAIL = "qa-report-restricted@email.com"
@@ -89,7 +89,7 @@ class CohortFixture:
     key: str
     cohort_name: str
     email_prefix: str
-    num_students: int
+    num_learners: int
     course_keys: tuple[str, ...]
     inactive_course_keys: tuple[str, ...]
     num_flagged: int
@@ -145,7 +145,7 @@ COURSE_FIXTURES: list[CourseFixture] = [
     # Two quizzes and no topics at all, deliberately: the completion ladder
     # gives the lower rungs only the first slot or two of a course, so a course
     # that opens on a quiz is the only way most of the cohort reaches one. Every
-    # student with any progress therefore sits quiz 1, whose last question is
+    # learner with any progress therefore sits quiz 1, whose last question is
     # optional and so is the one they can leave blank.
     CourseFixture(
         key="blank",
@@ -163,29 +163,29 @@ COHORT_FIXTURES: list[CohortFixture] = [
         key="empty-cohort",
         cohort_name="QA Report Empty Cohort",
         email_prefix="qa-report-empty",
-        num_students=0,
+        num_learners=0,
         course_keys=("short",),
         inactive_course_keys=(),
         num_flagged=0,
         no_progress=False,
-        purpose="Zero students: the report must say so, not crash.",
+        purpose="Zero learners: the report must say so, not crash.",
     ),
     CohortFixture(
         key="no-registrations",
         cohort_name="QA Report No Registrations Cohort",
         email_prefix="qa-report-noreg",
-        num_students=5,
+        num_learners=5,
         course_keys=(),
         inactive_course_keys=(),
         num_flagged=0,
         no_progress=True,
-        purpose="Students but no course registrations: the report must state it.",
+        purpose="Learners but no course registrations: the report must state it.",
     ),
     CohortFixture(
         key="tiny-cohort-short-course",
         cohort_name="QA Report Tiny Cohort",
         email_prefix="qa-report-tiny",
-        num_students=3,
+        num_learners=3,
         course_keys=("short",),
         inactive_course_keys=(),
         num_flagged=1,
@@ -196,18 +196,18 @@ COHORT_FIXTURES: list[CohortFixture] = [
         key="small-cohort-medium-course",
         cohort_name="QA Report Small Cohort",
         email_prefix="qa-report-small",
-        num_students=9,
+        num_learners=9,
         course_keys=("medium",),
         inactive_course_keys=(),
         num_flagged=3,
         no_progress=False,
-        purpose="Under 10 students: confusions must show plain counts, no percentages.",
+        purpose="Under 10 learners: confusions must show plain counts, no percentages.",
     ),
     CohortFixture(
         key="standard-cohort-medium-course",
         cohort_name="QA Report Standard Cohort",
         email_prefix="qa-report-std",
-        num_students=9,
+        num_learners=9,
         course_keys=("medium",),
         inactive_course_keys=(),
         num_flagged=3,
@@ -218,7 +218,7 @@ COHORT_FIXTURES: list[CohortFixture] = [
         key="large-cohort-medium-course",
         cohort_name="QA Report Large Cohort",
         email_prefix="qa-report-large",
-        num_students=25,
+        num_learners=25,
         course_keys=("medium",),
         inactive_course_keys=(),
         num_flagged=6,
@@ -229,7 +229,7 @@ COHORT_FIXTURES: list[CohortFixture] = [
         key="xl-cohort-long-course",
         cohort_name="QA Report XL Cohort",
         email_prefix="qa-report-xl",
-        num_students=40,
+        num_learners=40,
         course_keys=("long",),
         inactive_course_keys=(),
         num_flagged=18,
@@ -240,7 +240,7 @@ COHORT_FIXTURES: list[CohortFixture] = [
         key="two-course-cohort",
         cohort_name="QA Report Two Course Cohort",
         email_prefix="qa-report-two",
-        num_students=9,
+        num_learners=9,
         course_keys=("medium",),
         inactive_course_keys=("second",),
         num_flagged=2,
@@ -251,18 +251,18 @@ COHORT_FIXTURES: list[CohortFixture] = [
         key="no-progress-cohort",
         cohort_name="QA Report No Progress Cohort",
         email_prefix="qa-report-noprog",
-        num_students=9,
+        num_learners=9,
         course_keys=("medium",),
         inactive_course_keys=(),
         num_flagged=0,
         no_progress=True,
-        purpose="Every student takes the 'No activity recorded' branch.",
+        purpose="Every learner takes the 'No activity recorded' branch.",
     ),
     CohortFixture(
         key="blank-answer-cohort",
         cohort_name="QA Report Blank Answer Cohort",
         email_prefix="qa-report-blank",
-        num_students=9,
+        num_learners=9,
         course_keys=("blank",),
         inactive_course_keys=(),
         num_flagged=2,
@@ -276,7 +276,7 @@ COHORT_FIXTURES: list[CohortFixture] = [
         key="no-pass-mark-cohort",
         cohort_name="QA Report No Pass Mark Cohort",
         email_prefix="qa-report-nopass",
-        num_students=9,
+        num_learners=9,
         course_keys=("nopass",),
         inactive_course_keys=(),
         num_flagged=2,
@@ -290,30 +290,30 @@ COHORTS_BY_KEY = {fixture.key: fixture for fixture in COHORT_FIXTURES}
 
 
 def _reset_fixtures(site: Site, fixtures: list[CohortFixture]) -> tuple[int, int]:
-    """Delete the given fixture cohorts and their students, cascading progress.
+    """Delete the given fixture cohorts and their learners, cascading progress.
 
     Scoped to QA-owned rows only: cohorts are matched by their fixture name and
-    students by their fixture email prefix, so nothing a human created by hand
+    learners by their fixture email prefix, so nothing a human created by hand
     is touched. The QA report courses are left in place -- they are rebuilt
-    idempotently and hold no per-student state.
+    idempotently and hold no per-learner state.
     """
-    deleted_students = 0
+    deleted_learners = 0
     for fixture in fixtures:
-        students = User.objects.filter(
+        learners = User.objects.filter(
             email__startswith=f"{fixture.email_prefix}-", site=site
         )
-        deleted_students += students.count()
-        students.delete()
+        deleted_learners += learners.count()
+        learners.delete()
     deleted_cohorts, _ = Cohort.objects.filter(
         name__in=[fixture.cohort_name for fixture in fixtures], site=site
     ).delete()
-    return deleted_cohorts, deleted_students
+    return deleted_cohorts, deleted_learners
 
 
 def _grant_report_admin_access(user: User) -> None:
     """Staff access plus every model permission on GeneratedReport.
 
-    Model-level ``student_management.view_cohort`` is deliberately NOT granted:
+    Model-level ``learner_management.view_cohort`` is deliberately NOT granted:
     guardian's object-level lookups return everything to a user holding the
     global permission, which would defeat the point of a cohort-scoped user.
     """
@@ -367,7 +367,7 @@ def _get_or_create_foreign_organisation(site: Site) -> Organisation:
     is_flag=True,
     default=False,
     help=(
-        "Delete the selected fixture cohorts and their students first, then "
+        "Delete the selected fixture cohorts and their learners first, then "
         "rebuild. Use when a distribution changed and stale progress would "
         "otherwise be kept. Only QA-owned rows are deleted."
     ),
@@ -389,9 +389,9 @@ def command(
     ]
 
     if reset:
-        cohorts_deleted, students_deleted = _reset_fixtures(site, selected)
+        cohorts_deleted, learners_deleted = _reset_fixtures(site, selected)
         click.secho(
-            f"\nReset: deleted {students_deleted} fixture students and "
+            f"\nReset: deleted {learners_deleted} fixture learners and "
             f"{cohorts_deleted} rows for {len(selected)} cohort(s).",
             fg="yellow",
             bold=True,
@@ -446,7 +446,7 @@ def command(
         cohort = build_report_cohort(
             site=site,
             cohort_name=fixture.cohort_name,
-            num_students=fixture.num_students,
+            num_learners=fixture.num_learners,
             course_slugs=tuple(COURSES_BY_KEY[key].slug for key in fixture.course_keys),
             inactive_course_slugs=tuple(
                 COURSES_BY_KEY[key].slug for key in fixture.inactive_course_keys
@@ -458,7 +458,7 @@ def command(
         )
         built.append((fixture, cohort))
         click.secho(
-            f"  {fixture.key:<30} {fixture.num_students:>3} students  pk={cohort.pk}",
+            f"  {fixture.key:<30} {fixture.num_learners:>3} learners  pk={cohort.pk}",
             fg="green",
         )
 
@@ -534,7 +534,7 @@ def command(
         if inactive:
             courses = f"{courses} (+ {inactive} inactive)"
         click.echo(
-            f"  {fixture.key:<30} {fixture.num_students:>3} students  "
+            f"  {fixture.key:<30} {fixture.num_learners:>3} learners  "
             f"{courses:<28} {cohort.name}\n"
             f"  {'':<30} {fixture.purpose}"
         )

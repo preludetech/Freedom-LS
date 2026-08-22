@@ -9,15 +9,15 @@ import pytest
 from django.core.management import call_command
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.student_progress.factories import CourseProgressFactory
-from freedom_ls.student_progress.models import CourseProgress
+from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.models import CourseProgress
 
 
 @pytest.fixture
 def one_learner_per_batch(monkeypatch):
     """Shrink the batch size so a handful of learners still spans several batches."""
     monkeypatch.setattr(
-        "freedom_ls.student_progress.management.commands"
+        "freedom_ls.learner_progress.management.commands"
         ".recalculate_progress_percentages.USER_BATCH_SIZE",
         1,
     )

@@ -8,7 +8,7 @@ from freedom_ls.learner_progress.models import (
     CourseProgress,
     TopicProgress,
 )
-from freedom_ls.student_progress.queries import completed_form_ids_by_user
+from freedom_ls.learner_progress.queries import completed_form_ids_by_user
 
 # Learners per batch. The command walks every CourseProgress row in the
 # installation, and the completed-item lookups it needs are model instances, not

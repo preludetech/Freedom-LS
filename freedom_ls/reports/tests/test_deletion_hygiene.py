@@ -6,9 +6,9 @@ import pytest
 
 from django.core.files.base import ContentFile
 
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
-from freedom_ls.student_management.factories import CohortFactory
 
 
 @pytest.mark.django_db
