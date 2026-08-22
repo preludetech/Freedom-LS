@@ -9,13 +9,13 @@ from freedom_ls.content_engine.factories import (
     FormQuestionFactory,
     TopicFactory,
 )
-from freedom_ls.site_aware_models.factories import SiteAwareFactory
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
     QuestionAnswer,
     TopicProgress,
 )
+from freedom_ls.site_aware_models.factories import SiteAwareFactory
 
 
 class CourseProgressFactory(SiteAwareFactory):

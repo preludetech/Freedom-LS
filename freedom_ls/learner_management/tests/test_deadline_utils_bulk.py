@@ -8,11 +8,11 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course, Topic
-from freedom_ls.student_management.deadline_utils import (
+from freedom_ls.learner_management.deadline_utils import (
     get_course_deadlines,
     get_effective_deadlines,
 )
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortDeadlineFactory,
     CohortFactory,

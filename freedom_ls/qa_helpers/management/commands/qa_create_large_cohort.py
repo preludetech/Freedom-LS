@@ -5,17 +5,17 @@ import djclick as click
 from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
 )
-from freedom_ls.student_management.models import (
+from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
 )
+from freedom_ls.organisations.utils import get_default_organisation
 
 
 @click.command()

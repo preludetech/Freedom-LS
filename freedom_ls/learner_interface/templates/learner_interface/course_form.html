@@ -1,4 +1,4 @@
-{% extends "student_interface/_course_base.html" %}
+{% extends "learner_interface/_course_base.html" %}
 
 {% block item_head_title %}{{ form.title }}{% endblock %}
 
@@ -26,10 +26,10 @@
             {% endif %}
 
             {% comment %}=== META GRID (questions + pages) ==={% endcomment %}
-            {% include "student_interface/partials/exam_meta_grid.html" %}
+            {% include "learner_interface/partials/exam_meta_grid.html" %}
 
             {% comment %}=== PREVIOUS ATTEMPTS ==={% endcomment %}
-            {% include "student_interface/partials/exam_previous_attempts.html" %}
+            {% include "learner_interface/partials/exam_previous_attempts.html" %}
 
             {% comment %}=== CTA — reuses existing buttons loop logic unchanged ==={% endcomment %}
             <c-player-nav class="pt-4 border-t border-border">

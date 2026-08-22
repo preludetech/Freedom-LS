@@ -41,17 +41,17 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, CourseVisibility, Topic
-from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     UserCourseRegistrationFactory,
 )
-from freedom_ls.student_management.models import (
+from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     UserCourseRegistration,
 )
+from freedom_ls.organisations.utils import get_default_organisation
 
 STUDENT_EMAIL = "demodev_visibility_student@email.com"
 EDUCATOR_EMAIL = "demodev_visibility_educator@email.com"

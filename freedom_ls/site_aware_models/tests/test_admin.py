@@ -6,8 +6,8 @@ from django.contrib import admin
 from django.test import RequestFactory
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.learner_management.models import Cohort
 from freedom_ls.site_aware_models.admin import GuardedSiteAwareModelAdmin
-from freedom_ls.student_management.models import Cohort
 
 
 @pytest.fixture

@@ -73,7 +73,7 @@ def is_registered_for_course(user: RequestUser, course: Course) -> bool:
 
     student_interface.get_is_registered delegates to this function.
     """
-    from freedom_ls.student_management.models import (
+    from freedom_ls.learner_management.models import (
         CohortCourseRegistration,
         UserCourseRegistration,
     )

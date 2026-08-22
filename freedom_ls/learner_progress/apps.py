@@ -1,9 +1,9 @@
 from django.apps import AppConfig
 
 
-class StudentProgressConfig(AppConfig):
+class LearnerProgressConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "freedom_ls.student_progress"
+    name = "freedom_ls.learner_progress"
     label = "freedom_ls_student_progress"
 
     def ready(self) -> None:

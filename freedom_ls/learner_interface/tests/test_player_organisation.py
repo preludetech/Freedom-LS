@@ -17,8 +17,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 
 
 def _logo_upload(name: str = "logo.png") -> SimpleUploadedFile:

@@ -35,7 +35,7 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import Course, Topic
 from freedom_ls.course_applications.models import CourseApplication
-from freedom_ls.student_management.models import UserCourseRegistration
+from freedom_ls.learner_management.models import UserCourseRegistration
 
 LEARNER_EMAIL = "demodev_access_learner@email.com"
 

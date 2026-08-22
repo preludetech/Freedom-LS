@@ -1,5 +1,5 @@
 /**
- * Alpine.js CSP-compatible component registrations for student_interface.
+ * Alpine.js CSP-compatible component registrations for learner_interface.
  *
  * Load this script BEFORE the Alpine CSP script via the
  * extra_alpine_components block.
@@ -19,7 +19,7 @@ document.addEventListener("alpine:init", () => {
     // input/change event — answers the server pre-filled do not.
     let runnerDirty = false;
 
-    // Course part expand/collapse (student_interface/partials/course_minimal_toc.html)
+    // Course part expand/collapse (learner_interface/partials/course_minimal_toc.html)
     Alpine.data("coursePart", () => ({
         expanded: false,
         storageKey: null,
@@ -431,7 +431,7 @@ document.addEventListener("alpine:init", () => {
     // -------------------------------------------------------------------------
 
     // Date eyebrow shown above the dashboard greeting
-    // (student_interface/dashboard.html). Formats today's date in the
+    // (learner_interface/dashboard.html). Formats today's date in the
     // browser's own locale and timezone, spelled out (e.g. "Friday, 30 May
     // 2026"). Refreshes when the tab regains visibility so a long-open tab
     // does not show a stale date.

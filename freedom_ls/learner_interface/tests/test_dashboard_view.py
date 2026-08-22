@@ -16,12 +16,12 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     RecommendedCourseFactory,
     UserCourseRegistrationFactory,
 )
-from freedom_ls.student_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.organisations.factories import OrganisationFactory
 
 # --- dashboard view ---
 

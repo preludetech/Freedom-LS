@@ -22,13 +22,13 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
     UserCourseRegistrationFactory,
 )
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 @pytest.fixture(autouse=True)

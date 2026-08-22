@@ -42,9 +42,9 @@ from freedom_ls.content_engine.models import (
     QuestionOption,
     QuestionType,
 )
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.models import UserCourseRegistration
 from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
-from freedom_ls.student_management.models import UserCourseRegistration
 
 LEARNER_EMAIL = "demodev@email.com"
 

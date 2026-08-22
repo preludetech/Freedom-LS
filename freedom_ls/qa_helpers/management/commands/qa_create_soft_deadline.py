@@ -8,8 +8,8 @@ from django.contrib.sites.models import Site
 from django.utils import timezone
 
 from freedom_ls.content_engine.models import Form, Topic
-from freedom_ls.student_management.factories import CohortDeadlineFactory
-from freedom_ls.student_management.models import (
+from freedom_ls.learner_management.factories import CohortDeadlineFactory
+from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortDeadline,
 )

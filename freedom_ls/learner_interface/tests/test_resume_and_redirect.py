@@ -20,18 +20,18 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import FormStrategy
 from freedom_ls.role_based_permissions.loader import clear_caches
-from freedom_ls.student_interface.utils import (
+from freedom_ls.learner_interface.utils import (
     current_entry_status,
     get_course_index,
     get_item_part,
     get_resume_index,
 )
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
 )
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
     TopicProgress,

@@ -15,6 +15,7 @@ from django.contrib.sites.models import Site
 from django.core.management import call_command
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.role_based_permissions.factories import (
     ObjectRoleAssignmentFactory,
     SystemRoleAssignmentFactory,
@@ -22,7 +23,6 @@ from freedom_ls.role_based_permissions.factories import (
 from freedom_ls.role_based_permissions.loader import clear_caches, get_role_config
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.types import SCOPE_SITE, Role, SiteRolesConfig
-from freedom_ls.student_management.factories import CohortFactory
 
 
 @pytest.fixture(autouse=True)

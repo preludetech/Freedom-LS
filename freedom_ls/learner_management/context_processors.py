@@ -5,7 +5,7 @@ from __future__ import annotations
 from django.http import HttpRequest
 from django.utils.functional import SimpleLazyObject
 
-from freedom_ls.student_management.queries import organisations_accessible_to
+from freedom_ls.learner_management.queries import organisations_accessible_to
 
 
 def can_access_educator_interface(

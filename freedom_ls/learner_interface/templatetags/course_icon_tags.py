@@ -7,7 +7,7 @@ Usage:
     {% load course_icon_tags %}
     {% course_icon course.icon course.icon_fallback aria_label=course.title %}
 
-The tag delegates to :func:`freedom_ls.student_interface.course_icon.render_course_icon`,
+The tag delegates to :func:`freedom_ls.learner_interface.course_icon.render_course_icon`,
 which encodes the resolution order. Templates never branch on icon-name shape.
 """
 
@@ -16,7 +16,7 @@ from __future__ import annotations
 from django import template
 from django.utils.safestring import SafeString
 
-from freedom_ls.student_interface.course_icon import render_course_icon
+from freedom_ls.learner_interface.course_icon import render_course_icon
 
 register = template.Library()
 

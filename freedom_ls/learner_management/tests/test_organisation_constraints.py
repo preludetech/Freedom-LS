@@ -15,12 +15,12 @@ from django.db import IntegrityError
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortFactory,
     UserCourseRegistrationFactory,
 )
-from freedom_ls.student_management.models import Cohort, UserCourseRegistration
+from freedom_ls.learner_management.models import Cohort, UserCourseRegistration
+from freedom_ls.organisations.factories import OrganisationFactory
 
 
 @pytest.mark.django_db

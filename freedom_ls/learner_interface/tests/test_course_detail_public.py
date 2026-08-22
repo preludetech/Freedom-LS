@@ -14,7 +14,7 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
-from freedom_ls.student_interface.utils import BLOCKED
+from freedom_ls.learner_interface.utils import BLOCKED
 
 # ---------------------------------------------------------------------------
 # Anonymous access — free course

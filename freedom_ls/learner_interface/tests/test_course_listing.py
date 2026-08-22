@@ -21,13 +21,13 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
-from freedom_ls.student_interface.utils import (
+from freedom_ls.learner_interface.utils import (
     CourseListingEntry,
     CourseListingStatus,
     get_course_listing,
 )
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
-from freedom_ls.student_progress.factories import CourseProgressFactory
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_progress.factories import CourseProgressFactory
 
 
 @pytest.mark.django_db

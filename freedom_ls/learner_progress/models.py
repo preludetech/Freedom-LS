@@ -20,8 +20,8 @@ from freedom_ls.content_engine.models import (
     Topic,
 )
 from freedom_ls.site_aware_models.models import SiteAwareModel
-from freedom_ls.student_progress.scoring import is_quiz_answer_correct
-from freedom_ls.student_progress.submissions import (
+from freedom_ls.learner_progress.scoring import is_quiz_answer_correct
+from freedom_ls.learner_progress.submissions import (
     has_submitted_answer,
     submitted_option_ids,
     submitted_text_answer,
@@ -546,7 +546,7 @@ class CourseProgress(SiteAwareModel):
 
     # The viewable item (Topic | Form) the learner last visited in this course.
     # Used as the resume target for the bare course URL. Polymorphic, so a
-    # GenericForeignKey, mirroring student_management.CohortDeadline. Nullable:
+    # GenericForeignKey, mirroring learner_management.CohortDeadline. Nullable:
     # existing rows and freshly-registered (0-progress) learners have none and
     # resume at the first item. SET_NULL on the content-type FK so deleting a
     # content model type cannot cascade-delete progress; a dangling object_id

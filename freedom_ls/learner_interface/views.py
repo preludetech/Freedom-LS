@@ -30,19 +30,19 @@ from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.site_aware_models.models import get_cached_site
-from freedom_ls.student_management.config import config
-from freedom_ls.student_management.deadline_utils import is_item_locked_by_deadline
-from freedom_ls.student_management.models import (
+from freedom_ls.learner_management.config import config
+from freedom_ls.learner_management.deadline_utils import is_item_locked_by_deadline
+from freedom_ls.learner_management.models import (
     RecommendedCourse,
     UserCourseRegistration,
 )
-from freedom_ls.student_management.queries import organisation_for_learner_course
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_management.queries import organisation_for_learner_course
+from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
     TopicProgress,
 )
-from freedom_ls.student_progress.submissions import has_submitted_answer
+from freedom_ls.learner_progress.submissions import has_submitted_answer
 
 from .utils import (
     BLOCKED,
@@ -314,7 +314,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         "available_courses": available_courses,
         "dashboard_panels": dashboard_panels,
     }
-    return render(request, "student_interface/dashboard.html", context)
+    return render(request, "learner_interface/dashboard.html", context)
 
 
 def all_courses(request: HttpRequest) -> HttpResponse:
@@ -362,7 +362,7 @@ def all_courses(request: HttpRequest) -> HttpResponse:
 
     return render(
         request,
-        "student_interface/all_courses.html",
+        "learner_interface/all_courses.html",
         {
             "all_courses": courses_with_attrs,
             "catalogue_json_ld": catalogue_json_ld,
@@ -451,7 +451,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
 
     return render(
         request,
-        "student_interface/course_detail.html",
+        "learner_interface/course_detail.html",
         {
             "course": course,
             "children": children,
@@ -822,7 +822,7 @@ def view_topic(
         "is_course_complete": is_course_complete,
         **player_context,
     }
-    return render(request, "student_interface/course_topic.html", context)
+    return render(request, "learner_interface/course_topic.html", context)
 
 
 def view_form(
@@ -884,7 +884,7 @@ def view_form(
         "page_count": form.pages.count(),
     }
 
-    return render(request, "student_interface/course_form.html", context)
+    return render(request, "learner_interface/course_form.html", context)
 
 
 @login_required
@@ -1131,7 +1131,7 @@ def form_fill_page(request, course_slug, index, page_number):
     # A rejected submission is a validation failure, not a fresh page view.
     response = render(
         request,
-        "student_interface/course_form_page.html",
+        "learner_interface/course_form_page.html",
         context,
         status=422 if required_answers_error else 200,
     )
@@ -1239,7 +1239,7 @@ def course_form_complete(request, course_slug, index):
     if percentage is not None:
         context["percentage"] = percentage
 
-    return render(request, "student_interface/course_form_complete.html", context)
+    return render(request, "learner_interface/course_form_complete.html", context)
 
 
 @login_required
@@ -1287,7 +1287,7 @@ def course_finish(request, course_slug):
         ),
     }
 
-    return render(request, "student_interface/course_finish.html", context)
+    return render(request, "learner_interface/course_finish.html", context)
 
 
 @login_required

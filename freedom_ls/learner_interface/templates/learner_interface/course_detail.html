@@ -4,7 +4,7 @@
 {% load course_icon_tags %}
 
 {% block extra_alpine_components %}
-    <script defer src="{% static 'student_interface/js/alpine-components.js' %}"></script>
+    <script defer src="{% static 'learner_interface/js/alpine-components.js' %}"></script>
 {% endblock extra_alpine_components %}
 
 {% block head_title %}
@@ -217,7 +217,7 @@
                                 Course content
                             </h2>
                             <div class="mt-4">
-                                {% include "student_interface/partials/course_minimal_toc.html#course-children" %}
+                                {% include "learner_interface/partials/course_minimal_toc.html#course-children" %}
 
                             </div>
                         </section>

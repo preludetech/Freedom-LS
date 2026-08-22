@@ -13,7 +13,7 @@
 
 {% block extra_alpine_components %}
     {{ block.super }}
-    <script defer src="{% static 'student_interface/js/alpine-components.js' %}"></script>
+    <script defer src="{% static 'learner_interface/js/alpine-components.js' %}"></script>
     <script defer src="{% static 'content_engine/vendor/katex/katex.min.js' %}"></script>
     <script defer src="{% static 'content_engine/js/alpine-components.js' %}"></script>
 {% endblock extra_alpine_components %}
@@ -41,7 +41,7 @@ below lg.
 {% block sidebar_class %}[--sidebar-width:20rem]{% endblock sidebar_class %}
 
 {% block breadcrumbs %}
-    {% include "student_interface/partials/player_breadcrumbs.html" %}
+    {% include "learner_interface/partials/player_breadcrumbs.html" %}
 {% endblock breadcrumbs %}
 
 {% comment %}
@@ -70,10 +70,10 @@ docked outline panel carries its own progress, so the header stays uncluttered.
     panel's open / scroll / Alpine state survives the swap.
     {% endcomment %}
     <div id="course-toc-region">
-        {% include "student_interface/partials/course_toc_header.html" %}
+        {% include "learner_interface/partials/course_toc_header.html" %}
 
         {% with children=course_index %}
-            {% include "student_interface/partials/course_minimal_toc.html#course-children" %}
+            {% include "learner_interface/partials/course_minimal_toc.html#course-children" %}
 
         {% endwith %}
     </div>

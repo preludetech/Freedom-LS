@@ -18,8 +18,8 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_interest.factories import CourseInterestFactory
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
 
 
 def _detail_url(course: Course) -> str:

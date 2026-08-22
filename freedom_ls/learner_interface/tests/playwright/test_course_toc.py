@@ -10,10 +10,10 @@ from freedom_ls.content_engine.factories import (
     CoursePartFactory,
     TopicFactory,
 )
-from freedom_ls.student_interface.templatetags.course_storage_keys import (
+from freedom_ls.learner_interface.templatetags.course_storage_keys import (
     course_part_storage_key,
 )
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
 
 from ..conftest import reverse_url
 

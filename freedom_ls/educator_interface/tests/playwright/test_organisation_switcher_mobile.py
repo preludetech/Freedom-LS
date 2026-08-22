@@ -20,9 +20,9 @@ from playwright.sync_api import Page, expect
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.student_management.factories import CohortFactory
 from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
 
 # transaction=True so the live server's own DB connection sees the fixture

@@ -5,11 +5,11 @@ from django.db import IntegrityError
 from django.utils import timezone
 
 from freedom_ls.content_engine.factories import TopicFactory
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     StudentDeadlineFactory,
     UserCourseRegistrationFactory,
 )
-from freedom_ls.student_management.models import StudentDeadline
+from freedom_ls.learner_management.models import StudentDeadline
 
 
 @pytest.mark.django_db

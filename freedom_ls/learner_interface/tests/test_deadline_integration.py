@@ -9,8 +9,8 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course
-from freedom_ls.student_interface.utils import BLOCKED, get_course_index
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_interface.utils import BLOCKED, get_course_index
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortDeadlineFactory,
     CohortFactory,

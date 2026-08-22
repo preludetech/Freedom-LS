@@ -10,7 +10,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
 from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
-from freedom_ls.student_management.models import (
+from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortDeadline,
     CohortMembership,

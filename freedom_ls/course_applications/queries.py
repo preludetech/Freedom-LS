@@ -1,7 +1,7 @@
 """Query helpers for course_applications.
 
 These helpers are consumed by the ApplicationCourseAccessBackend and this app's own
-views. student_interface must NOT import from here — it reaches the applications
+views. learner_interface must NOT import from here — it reaches the applications
 panel only through backend.get_dashboard_contributions().
 """
 

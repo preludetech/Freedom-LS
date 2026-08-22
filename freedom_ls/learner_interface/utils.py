@@ -19,17 +19,17 @@ from freedom_ls.content_engine.models import (
     FormStrategy,
     Topic,
 )
-from freedom_ls.student_management.config import config
-from freedom_ls.student_management.deadline_utils import (
+from freedom_ls.learner_management.config import config
+from freedom_ls.learner_management.deadline_utils import (
     EffectiveDeadline,
     get_course_deadlines,
 )
-from freedom_ls.student_management.models import (
+from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     RecommendedCourse,
     UserCourseRegistration,
 )
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
     TopicProgress,
@@ -254,7 +254,7 @@ def get_is_registered(user: RequestUser, course: Course) -> bool:
     shared implementation also used by course_access.backends. Kept here as a thin
     wrapper so existing callers in student_interface don't need to change.
     """
-    from freedom_ls.student_management.utils import is_registered_for_course
+    from freedom_ls.learner_management.utils import is_registered_for_course
 
     return is_registered_for_course(user, course)
 

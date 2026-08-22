@@ -17,7 +17,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_access.backends import AccessBadge, FreeOnlyCourseAccessBackend
 from freedom_ls.course_access.loader import get_course_access_backend
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):

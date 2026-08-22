@@ -24,17 +24,17 @@ from django.contrib.sites.models import Site
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
-from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
 )
-from freedom_ls.student_management.models import (
+from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
 )
+from freedom_ls.organisations.utils import get_default_organisation
 
 EDUCATOR_EMAIL = "qa_educator@example.com"
 STUDENT_EMAIL = "qa_modal_student@example.com"

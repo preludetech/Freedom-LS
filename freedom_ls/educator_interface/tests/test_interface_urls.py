@@ -18,9 +18,9 @@ from freedom_ls.educator_interface.views import (
     LAST_ORGANISATION_SESSION_KEY,
     interface,
 )
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.student_management.factories import CohortFactory
 
 
 @pytest.fixture(autouse=True)

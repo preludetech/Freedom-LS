@@ -34,7 +34,7 @@ ADMIN_URL = os.environ.get("DJANGO_ADMIN_URL", "admin/")
 # api = NinjaAPI()
 
 # api.add_router("xapi/", "xapi_learning_record_store.api.router")
-# api.add_router("student/", "student_interface.apis.router")
+# api.add_router("learner/", "learner_interface.apis.router")
 
 
 _sitemaps = {
@@ -45,7 +45,7 @@ _sitemaps = {
 urlpatterns = [
     path("health/", include("freedom_ls.health.urls")),
     path(ADMIN_URL, admin.site.urls),
-    # Robots and sitemap — registered before the student_interface catch-all
+    # Robots and sitemap — registered before the learner_interface catch-all
     path("robots.txt", robots_txt, name="robots_txt"),
     path(
         "sitemap.xml",
@@ -61,7 +61,7 @@ urlpatterns = [
     path("", include("freedom_ls.deployment.urls")),
     path("accounts/", include("allauth.urls")),
     path("accounts/", include("freedom_ls.accounts.urls")),
-    path("", include("freedom_ls.student_interface.urls")),
+    path("", include("freedom_ls.learner_interface.urls")),
     path("applications/", include("freedom_ls.course_applications.urls")),
     path("interest/", include("freedom_ls.course_interest.urls")),
     # path("_allauth/", include("allauth.headless.urls")),

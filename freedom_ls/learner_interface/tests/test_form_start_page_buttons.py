@@ -12,9 +12,9 @@ from freedom_ls.content_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy
-from freedom_ls.student_interface.utils import form_start_page_buttons
-from freedom_ls.student_progress.factories import FormProgressFactory
-from freedom_ls.student_progress.models import FormProgress
+from freedom_ls.learner_interface.utils import form_start_page_buttons
+from freedom_ls.learner_progress.factories import FormProgressFactory
+from freedom_ls.learner_progress.models import FormProgress
 
 
 @pytest.mark.django_db

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
 
 
 # transaction=True so that on_commit hooks for webhook event delivery fire under test

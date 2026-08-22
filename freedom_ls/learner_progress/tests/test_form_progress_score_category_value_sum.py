@@ -7,11 +7,11 @@ from freedom_ls.content_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
 )
-from freedom_ls.student_progress.models import FormProgress, QuestionAnswer
+from freedom_ls.learner_progress.models import FormProgress, QuestionAnswer
 
 
 @pytest.mark.django_db

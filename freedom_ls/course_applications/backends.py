@@ -19,7 +19,7 @@ from freedom_ls.course_access.backends import (
     DashboardContribution,
     FreeOnlyCourseAccessBackend,
 )
-from freedom_ls.student_management.utils import is_registered_for_course
+from freedom_ls.learner_management.utils import is_registered_for_course
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AnonymousUser
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 # Access type for courses that require a learner application before enrolment.
 # Intentionally not added to core's CourseAccessType — it belongs to the
-# applications backend, and core (course_access, student_interface) never
+# applications backend, and core (course_access, learner_interface) never
 # references this string.
 APPLICATION_GATED = "application_gated"
 
@@ -48,7 +48,7 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
     Extends FreeOnlyCourseAccessBackend to add the application_gated access type,
     the "Apply now" CTA, and the in-flight-applications dashboard panel.
 
-    Core (course_access, student_interface) remains ignorant of applications —
+    Core (course_access, learner_interface) remains ignorant of applications —
     the course_applications → course_access edge is the only arrow, and it is
     acyclic.
     """
@@ -154,7 +154,7 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
     ) -> list[DashboardContribution]:
         """Return in-flight-application panel if the learner has any applications.
 
-        student_interface renders each contribution generically via render_to_string
+        learner_interface renders each contribution generically via render_to_string
         and never reads context keys — it never imports course_applications.
         """
         from freedom_ls.course_applications.queries import get_active_applications

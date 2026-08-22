@@ -13,17 +13,17 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, CoursePart, FormStrategy
-from freedom_ls.student_interface.utils import (
+from freedom_ls.learner_interface.utils import (
     BLOCKED,
     FAILED,
     IN_PROGRESS,
     READY,
     get_course_index,
 )
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     UserCourseRegistrationFactory,
 )
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
     TopicProgressFactory,
 )

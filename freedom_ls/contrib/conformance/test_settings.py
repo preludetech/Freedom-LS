@@ -14,7 +14,7 @@ from django.apps import apps
 __all__ = ["test_configured_backend_instantiates"]
 
 _COURSE_ACCESS_BACKEND_CONSUMERS: tuple[str, ...] = (
-    "freedom_ls.student_interface",
+    "freedom_ls.learner_interface",
     "freedom_ls.course_applications",
 )
 

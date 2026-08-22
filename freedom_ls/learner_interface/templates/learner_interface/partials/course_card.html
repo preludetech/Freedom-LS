@@ -40,17 +40,17 @@ access_badge) and user.
     <c-slot name="eyebrow">
         {% if course.listing_status == "not_registered" %}
             {% if user.is_authenticated %}
-                {% include "student_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
+                {% include "learner_interface/partials/course_status_eyebrow.html" with status="not_registered" with_icon=True %}
             {% elif course.access_badge %}
                 <c-chip variant="{{ course.access_badge.variant }}" size="xs">{{ course.access_badge.label }}</c-chip>
             {% endif %}
         {% else %}
-            {% include "student_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
+            {% include "learner_interface/partials/course_status_eyebrow.html" with status=course.listing_status with_icon=True %}
         {% endif %}
     </c-slot>
 
     {% with url=title_url title=course.title %}
-        {% include "student_interface/partials/card_title_link.html" %}
+        {% include "learner_interface/partials/card_title_link.html" %}
     {% endwith %}
 
     {% if course.next_up_title %}
@@ -60,7 +60,7 @@ access_badge) and user.
     {% endif %}
 
     <div class="flex justify-end">
-        {% include "student_interface/partials/course_details_link.html" %}
+        {% include "learner_interface/partials/course_details_link.html" %}
     </div>
 
     {% if course.listing_status == "registered" or course.listing_status == "in_progress" %}

@@ -6,7 +6,7 @@ import pytest
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
@@ -129,7 +129,7 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
 
     def test_registered_free_decision_is_accessible_for_free(self, mock_site_context):
         from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
-        from freedom_ls.student_management.factories import (
+        from freedom_ls.learner_management.factories import (
             UserCourseRegistrationFactory,
         )
 

@@ -6,13 +6,13 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import TopicFactory
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     UserCohortDeadlineOverrideFactory,
 )
-from freedom_ls.student_management.models import UserCohortDeadlineOverride
+from freedom_ls.learner_management.models import UserCohortDeadlineOverride
 
 
 @pytest.mark.django_db

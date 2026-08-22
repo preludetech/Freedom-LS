@@ -9,13 +9,13 @@ from django.contrib.sites.models import Site
 from django.db import IntegrityError
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.role_based_permissions.factories import (
     ObjectRoleAssignmentFactory,
     SiteRoleAssignmentFactory,
     SystemRoleAssignmentFactory,
 )
 from freedom_ls.role_based_permissions.loader import clear_caches
-from freedom_ls.student_management.factories import CohortFactory
 
 
 @pytest.fixture(autouse=True)

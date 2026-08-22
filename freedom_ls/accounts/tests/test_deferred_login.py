@@ -19,7 +19,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
-from freedom_ls.student_management.models import UserCourseRegistration
+from freedom_ls.learner_management.models import UserCourseRegistration
 
 PHONE_FORM_PATH = "freedom_ls.accounts.tests._completion_view_fixtures.PhoneNumberForm"
 

@@ -14,7 +14,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     UserCourseRegistrationFactory,
 )
 

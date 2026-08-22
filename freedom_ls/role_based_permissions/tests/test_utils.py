@@ -10,6 +10,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.role_based_permissions.factories import (
     ObjectRoleAssignmentFactory,
     SiteRoleAssignmentFactory,
@@ -32,7 +33,6 @@ from freedom_ls.role_based_permissions.utils import (
     remove_system_role,
     sync_user_object_permissions,
 )
-from freedom_ls.student_management.factories import CohortFactory
 
 
 @pytest.fixture(autouse=True)
@@ -427,7 +427,7 @@ class TestGuardianIntegration:
     @pytest.mark.django_db
     def test_get_objects_for_user_returns_cohort_after_role_assignment(self) -> None:
         """Assigning instructor role on a Cohort makes get_objects_for_user return it."""
-        from freedom_ls.student_management.models import Cohort
+        from freedom_ls.learner_management.models import Cohort
 
         user = UserFactory()
         cohort: Cohort = CohortFactory()

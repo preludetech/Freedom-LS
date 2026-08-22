@@ -14,7 +14,7 @@ course.listing_status. No per-status dispatch or leaf templates here.
 {% partialdef course-grid %}
     <div class="grid gap-6 md:gap-8 lg:gap-10 md:grid-cols-2 lg:grid-cols-3">
         {% for course in courses %}
-            {% include "student_interface/partials/course_card.html" %}
+            {% include "learner_interface/partials/course_card.html" %}
         {% endfor %}
     </div>
 {% endpartialdef %}
@@ -51,7 +51,7 @@ course.listing_status. No per-status dispatch or leaf templates here.
             <div class="grid gap-6 md:gap-8 lg:gap-10 md:grid-cols-2 lg:grid-cols-3">
                 {% for recommendation in recommended_courses %}
                     {% with course=recommendation.collection %}
-                        {% include "student_interface/partials/course_card.html" %}
+                        {% include "learner_interface/partials/course_card.html" %}
                     {% endwith %}
                 {% endfor %}
             </div>

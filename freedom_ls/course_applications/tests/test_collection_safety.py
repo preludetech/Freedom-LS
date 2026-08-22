@@ -45,7 +45,7 @@ def test_collection_survives_without_course_applications(
         "addopts=",
         f"--rootdir={REPO_ROOT}",
         str(REPO_ROOT / "freedom_ls" / "course_applications"),
-        str(REPO_ROOT / "freedom_ls" / "student_interface"),
+        str(REPO_ROOT / "freedom_ls" / "learner_interface"),
         str(REPO_ROOT / "freedom_ls" / "course_access"),
     )
 

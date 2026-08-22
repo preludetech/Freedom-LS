@@ -167,7 +167,7 @@ class TestGetAccess:
         from freedom_ls.course_applications.backends import (
             ApplicationCourseAccessBackend,
         )
-        from freedom_ls.student_management.factories import (
+        from freedom_ls.learner_management.factories import (
             UserCourseRegistrationFactory,
         )
 

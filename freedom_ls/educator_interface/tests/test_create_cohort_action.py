@@ -20,9 +20,9 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.educator_interface.views import CreateCohortAction
+from freedom_ls.learner_management.factories import CohortFactory
+from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.student_management.factories import CohortFactory
-from freedom_ls.student_management.models import Cohort
 
 
 @pytest.mark.django_db

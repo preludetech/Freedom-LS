@@ -13,21 +13,21 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.educator_interface.views import CohortCourseProgressPanel
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortDeadlineFactory,
     CohortFactory,
     CohortMembershipFactory,
 )
-from freedom_ls.student_management.models import (
+from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
 )
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
     TopicProgressFactory,
 )
-from freedom_ls.student_progress.models import TopicProgress
+from freedom_ls.learner_progress.models import TopicProgress
 
 
 def _make_user(email: str, cohort: Cohort) -> User:

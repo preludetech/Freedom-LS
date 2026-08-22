@@ -1,6 +1,6 @@
 import djclick as click
 
-from freedom_ls.student_progress import models
+from freedom_ls.learner_progress import models
 
 
 @click.command()

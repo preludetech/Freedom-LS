@@ -51,23 +51,23 @@ from django.http import HttpRequest
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import SiteSignupPolicy, User
 from freedom_ls.content_engine.models import Course
-from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.organisations.models import Organisation
-from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
-from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.site_aware_models.models import _thread_locals
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     UserCourseRegistrationFactory,
 )
-from freedom_ls.student_management.models import (
+from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
     UserCourseRegistration,
 )
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
+from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
+from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.site_aware_models.models import _thread_locals
 
 # Byte-identical to `spec_dd/2. in progress/schools/RT-logo.webp` (same md5);
 # the in-repo copy is used so the fixture survives the spec directory moving.

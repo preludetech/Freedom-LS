@@ -3,8 +3,8 @@ from uuid import UUID
 
 import djclick as click
 
-from freedom_ls.student_management.utils import calculate_course_progress_percentage
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_management.utils import calculate_course_progress_percentage
+from freedom_ls.learner_progress.models import (
     CourseProgress,
     TopicProgress,
 )

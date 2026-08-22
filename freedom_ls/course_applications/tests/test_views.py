@@ -16,7 +16,7 @@ if app_not_installed("freedom_ls.course_applications"):
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
 
 # ---------------------------------------------------------------------------
 # apply view

@@ -7,8 +7,8 @@ from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 
 from freedom_ls.accounts.models import User
+from freedom_ls.learner_management.models import Cohort, CohortMembership
 from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.student_management.models import Cohort, CohortMembership
 
 # from app_authentication.models import Client
 

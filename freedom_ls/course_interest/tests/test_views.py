@@ -14,7 +14,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_interest.models import CourseInterest
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
 
 # ---------------------------------------------------------------------------
 # express_interest view

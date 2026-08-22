@@ -14,18 +14,18 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.models import Course, Form, Topic
-from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
 )
-from freedom_ls.student_management.models import Cohort, CohortCourseRegistration
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
+from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
     TopicProgress,
 )
+from freedom_ls.organisations.utils import get_default_organisation
 
 
 def _complete_topic(user: object, topic: Topic, site: Site) -> None:
@@ -214,7 +214,7 @@ def command(
         student = _create_student(site, first, last, email)
 
         # Add to cohort
-        from freedom_ls.student_management.models import CohortMembership
+        from freedom_ls.learner_management.models import CohortMembership
 
         if not CohortMembership.objects.filter(
             user=student, cohort=cohort, site=site

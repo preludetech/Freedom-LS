@@ -33,9 +33,9 @@ from freedom_ls.content_engine.models import (
     Course,
     Topic,
 )
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.models import UserCourseRegistration
 from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
-from freedom_ls.student_management.models import UserCourseRegistration
 
 # (email, first_name, last_name, expected_initials_note)
 USER_SPECS: list[tuple[str, str, str, str]] = [

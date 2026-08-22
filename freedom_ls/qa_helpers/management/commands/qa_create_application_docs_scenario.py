@@ -40,13 +40,13 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.content_engine.models import Course, DifficultyLevel, Topic
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
-from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.student_management.models import UserCourseRegistration
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_management.models import UserCourseRegistration
+from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
     TopicProgressFactory,
 )
-from freedom_ls.student_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.organisations.utils import get_default_organisation
 
 LEARNER_EMAIL = "demodev_applicant@email.com"
 

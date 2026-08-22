@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
+    from freedom_ls.learner_management.models import Cohort, UserCourseRegistration
     from freedom_ls.organisations.models import Organisation
-    from freedom_ls.student_management.models import Cohort, UserCourseRegistration
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
 
@@ -37,7 +37,7 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
     """
     # Lazy import inside the body — mirrors is_registered_for_course (utils.py),
     # which imports these models locally to avoid a module-load import cycle.
-    from freedom_ls.student_management.models import (
+    from freedom_ls.learner_management.models import (
         CohortCourseRegistration,
         UserCourseRegistration,
     )
@@ -64,7 +64,7 @@ def latest_registration(user: User, course: Course) -> UserCourseRegistration | 
     boolean sorts every active row ahead of every inactive one, so recency
     only breaks ties within whichever group is present.
     """
-    from freedom_ls.student_management.models import UserCourseRegistration
+    from freedom_ls.learner_management.models import UserCourseRegistration
 
     return (
         UserCourseRegistration.objects.filter(user=user, collection=course)
@@ -84,7 +84,7 @@ def organisation_for_learner_course(user: User, course: Course) -> Organisation 
 
     One query per path, with select_related — never one per render.
     """
-    from freedom_ls.student_management.models import CohortCourseRegistration
+    from freedom_ls.learner_management.models import CohortCourseRegistration
 
     cohort_registration: CohortCourseRegistration | None = (
         CohortCourseRegistration.objects.filter(
@@ -111,8 +111,8 @@ def organisations_accessible_to(user: RequestUser) -> QuerySet[Organisation]:
     to reach an organisation-scoped interface at all, no matter how many
     cohorts they hold a grant on.
     """
+    from freedom_ls.learner_management.models import Cohort
     from freedom_ls.organisations.models import Organisation
-    from freedom_ls.student_management.models import Cohort
 
     if not user.is_authenticated:
         return Organisation.objects.none()
@@ -143,7 +143,7 @@ def cohorts_visible_to(
     grants every cohort inside it" is therefore performed here, in Python,
     rather than by widening what guardian syncs.
     """
-    from freedom_ls.student_management.models import Cohort
+    from freedom_ls.learner_management.models import Cohort
 
     if not user.is_authenticated:
         return Cohort.objects.none()

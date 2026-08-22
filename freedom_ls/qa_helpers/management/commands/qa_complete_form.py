@@ -8,9 +8,9 @@ from django.contrib.sites.models import Site
 from django.utils import timezone
 
 from freedom_ls.content_engine.models import Form
-from freedom_ls.student_management.models import CohortMembership
-from freedom_ls.student_progress.factories import FormProgressFactory
-from freedom_ls.student_progress.models import FormProgress
+from freedom_ls.learner_management.models import CohortMembership
+from freedom_ls.learner_progress.factories import FormProgressFactory
+from freedom_ls.learner_progress.models import FormProgress
 
 
 @click.command()

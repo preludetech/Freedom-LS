@@ -33,6 +33,24 @@ from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
 from freedom_ls.course_interest.models import CourseInterest
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.forms import CohortForm
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    CohortDeadline,
+    CohortMembership,
+    UserCohortDeadlineOverride,
+    UserCourseRegistration,
+)
+from freedom_ls.learner_management.queries import (
+    cohorts_visible_to,
+    organisations_accessible_to,
+    users_visible_to,
+)
+from freedom_ls.learner_progress.models import (
+    CourseProgress,
+    FormProgress,
+    TopicProgress,
+)
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
@@ -50,24 +68,6 @@ from freedom_ls.panel_framework.views import (
     InstanceView,
     ListViewConfig,
     panel_framework_view,
-)
-from freedom_ls.student_management.models import (
-    Cohort,
-    CohortCourseRegistration,
-    CohortDeadline,
-    CohortMembership,
-    UserCohortDeadlineOverride,
-    UserCourseRegistration,
-)
-from freedom_ls.student_management.queries import (
-    cohorts_visible_to,
-    organisations_accessible_to,
-    users_visible_to,
-)
-from freedom_ls.student_progress.models import (
-    CourseProgress,
-    FormProgress,
-    TopicProgress,
 )
 
 #: Session key remembering the educator's last-visited organisation, used

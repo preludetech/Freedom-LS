@@ -17,7 +17,7 @@ from freedom_ls.content_engine.factories import (
     FileFactory,
     TopicFactory,
 )
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
 
 from ..conftest import reverse_url
 

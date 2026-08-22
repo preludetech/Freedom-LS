@@ -27,14 +27,14 @@ from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.views import ListViewConfig, interface_config
-from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.organisations.models import Organisation
-from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
 )
-from freedom_ls.student_management.models import Cohort
+from freedom_ls.learner_management.models import Cohort
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 def _seed_instance(config: type[ListViewConfig], organisation: Organisation) -> Model:

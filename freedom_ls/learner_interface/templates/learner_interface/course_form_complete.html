@@ -1,4 +1,4 @@
-{% extends 'student_interface/_course_base.html' %}
+{% extends 'learner_interface/_course_base.html' %}
 
 {% block item_head_title %}{{ form.title }} — Complete{% endblock %}
 
@@ -53,7 +53,7 @@
             {% comment %}Score ring + fraction{% endcomment %}
             {% if percentage is not None %}
                 <div class="mb-8">
-                    {% include "student_interface/partials/exam_score_ring.html" %}
+                    {% include "learner_interface/partials/exam_score_ring.html" %}
                 </div>
             {% endif %}
 

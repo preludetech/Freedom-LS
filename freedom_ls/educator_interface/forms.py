@@ -1,5 +1,5 @@
+from freedom_ls.learner_management.models import Cohort
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
-from freedom_ls.student_management.models import Cohort
 
 
 class CohortForm(ConstraintValidationFormMixin):

@@ -1,4 +1,4 @@
-"""Tests for student_management.queries helpers.
+"""Tests for learner_management.queries helpers.
 
 is_registered_for_course_expression is covered in test_utils.py alongside its
 non-queryset sibling, is_registered_for_course. This module holds
@@ -18,14 +18,14 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.student_management.factories import (
+from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     UserCourseRegistrationFactory,
 )
-from freedom_ls.student_management.models import UserCourseRegistration
-from freedom_ls.student_management.queries import (
+from freedom_ls.learner_management.models import UserCourseRegistration
+from freedom_ls.learner_management.queries import (
     all_cohorts_visible_to,
     can_view_cohort,
     cohorts_visible_to,

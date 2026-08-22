@@ -1,7 +1,7 @@
 """Generic icon resolver for the Freedom Learning System.
 
 Provides a single source of truth for icon resolution that any app can use
-without importing ``student_interface``.
+without importing ``learner_interface``.
 
 The resolver walks the following resolution order:
 

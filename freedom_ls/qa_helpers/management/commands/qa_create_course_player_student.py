@@ -26,19 +26,19 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, Form, Topic
-from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
-from freedom_ls.student_management.models import UserCourseRegistration
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.models import UserCourseRegistration
+from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
     FormProgressFactory,
     TopicProgressFactory,
 )
-from freedom_ls.student_progress.models import (
+from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
     TopicProgress,
 )
+from freedom_ls.organisations.utils import get_default_organisation
 
 STUDENT_EMAIL = "demodev_s1@email.com"
 

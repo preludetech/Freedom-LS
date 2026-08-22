@@ -17,12 +17,12 @@ from freedom_ls.content_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy
-from freedom_ls.student_interface.utils import count_form_questions
-from freedom_ls.student_progress.factories import (
+from freedom_ls.learner_interface.utils import count_form_questions
+from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
 )
-from freedom_ls.student_progress.models import FormProgress
+from freedom_ls.learner_progress.models import FormProgress
 
 from .conftest import course_with_form, register_user_for_course
 
@@ -896,7 +896,7 @@ def test_runner_page_loads_content_engine_alpine_components(mock_site_context, c
     """The runner must load content_engine's Alpine components.
 
     Regression (QA report bug 1): the runner base only loaded
-    student_interface's Alpine components, so contentLightbox/onEscape were
+    learner_interface's Alpine components, so contentLightbox/onEscape were
     undefined — a markdown image in a question logged console errors and its
     lightbox covered the runner, blocking submission. The runner must include
     content_engine/js/alpine-components.js (like the normal course pages do).

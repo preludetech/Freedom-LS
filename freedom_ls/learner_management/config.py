@@ -1,12 +1,12 @@
 """
-App-level configuration for student_management.
+App-level configuration for learner_management.
 
 Provides a `config` object that resolves settings by checking Django's
 ``settings`` first, then falling back to the defaults declared here.
 
 Usage::
 
-    from freedom_ls.student_management.config import config
+    from freedom_ls.learner_management.config import config
 
     if config.DEADLINES_ACTIVE:
         # show deadline UI

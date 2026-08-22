@@ -106,8 +106,8 @@ INSTALLED_APPS = [
     "freedom_ls.content_engine",
     "freedom_ls.accounts",
     "freedom_ls.organisations",
-    "freedom_ls.student_management",
-    "freedom_ls.student_progress",
+    "freedom_ls.learner_management",
+    "freedom_ls.learner_progress",
     "freedom_ls.site_aware_models",
     "freedom_ls.panel_framework",
     "freedom_ls.educator_interface",
@@ -119,8 +119,8 @@ INSTALLED_APPS = [
     "freedom_ls.course_applications",
     "freedom_ls.course_interest",
     #########
-    # STUDENT INTERFACE
-    "freedom_ls.student_interface",
+    # LEARNER INTERFACE
+    "freedom_ls.learner_interface",
     #########
     # AllAuth is at the end because we need to override many of its templates
     "encrypted_fields",
@@ -187,7 +187,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "freedom_ls.site_aware_models.context_processors.site_config",
                 "freedom_ls.accounts.context_processors.signup_policy",
-                "freedom_ls.student_management.context_processors.can_access_educator_interface",
+                "freedom_ls.learner_management.context_processors.can_access_educator_interface",
                 "freedom_ls.deployment.context_processors.posthog_config",
                 "django.template.context_processors.csp",
             ],

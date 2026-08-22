@@ -14,9 +14,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.student_interface.utils import CourseListingStatus
-from freedom_ls.student_management.factories import UserCourseRegistrationFactory
-from freedom_ls.student_progress.factories import CourseProgressFactory
+from freedom_ls.learner_interface.utils import CourseListingStatus
+from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_progress.factories import CourseProgressFactory
 
 # --- access + base annotations ---
 
