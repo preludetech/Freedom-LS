@@ -1,22 +1,23 @@
 # Prerequisite: `learner-terminology-rename`
 
-**Added by the `learner-terminology-rename` work. This spec's own prose is untouched — read this
-file alongside it, not instead of it.**
+**Status: satisfied. The rename merged on 2026-08-22 as
+`spec_dd/3. done/2026-08-22_15:42_learner-terminology-rename`. This file stays as the old→new
+reference for reading the pre-rename research in this directory — read it alongside the idea, not
+instead of it.**
 
 ## Why you are reading this
 
 This spec introduces a model called **`Learner`**. Its open-question section punts the terminology
-decision upstream. That decision has now been made and implemented:
-`spec_dd/2. in progress/learner-terminology-rename`.
+decision upstream. That decision has been made, implemented and merged:
+`spec_dd/3. done/2026-08-22_15:42_learner-terminology-rename`.
 
-**That rename is this spec's hard prerequisite.** Without it, this spec files a model named
-`Learner` inside an app named `student_management` — which is exactly the incoherence the rename
-exists to remove.
+That rename was this spec's hard prerequisite. Without it, this spec would have filed a model named
+`Learner` inside an app named `student_management` — exactly the incoherence the rename exists to
+remove.
 
 ## What changed under you
 
-The three apps are renamed. Anything in this spec's research or plan that names the old paths is
-now stale:
+The three apps are renamed. Anything in this spec's research that names the old paths is stale:
 
 | Old | New |
 | --- | --- |
@@ -32,7 +33,7 @@ now stale:
 | URL namespace `student_interface:` | `learner_interface:` |
 
 The full old→new table, including permission strings, template paths and table names, is in
-`spec_dd/2. in progress/learner-terminology-rename/upgrade_notes.md`.
+`spec_dd/3. done/2026-08-22_15:42_learner-terminology-rename/upgrade_notes.md`.
 
 ## What this means for the work here
 
@@ -53,6 +54,8 @@ The full old→new table, including permission strings, template paths and table
 
 ## Ordering
 
-Land `learner-terminology-rename` first. If this spec lands first instead, it acquires rename debt
-in every file it touches, and the rename's own sweep will then have to reason about a brand-new
-`Learner` model mid-flight.
+Settled: `learner-terminology-rename` landed first, as intended. This spec is free to proceed.
+
+One consequence to carry forward: the three renamed apps had their migration history deleted and
+regenerated as a fresh `0001_initial` each, so `learner_management` is at `0001_initial` and nothing
+else. Any pre-rename migration filename quoted in this directory's research no longer exists.

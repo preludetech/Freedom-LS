@@ -3,7 +3,7 @@
 Follow-on from the shipped Organisation layer (`spec_dd/3. done/2026-08-21_09:09_organisations`).
 
 Today, "who belongs to this organisation" is **derived, never stored**. `users_visible_to`
-(`learner_management/queries.py:163-185`) answers it by unioning "members of cohorts in this
+(`learner_management/queries.py:196-218`) answers it by unioning "members of cohorts in this
 organisation" with "holders of a `UserCourseRegistration` in this organisation". There is no way to
 say a person is one of an organisation's learners *before* a registration exists, and no way for an
 educator to curate the roster at all.
@@ -21,20 +21,42 @@ an organisation. A user may be a Learner of several organisations on the same Si
 
 ---
 
-## Prerequisite: the terminology rename lands first
+## Prerequisite: met — the terminology rename has landed
 
-FLS mixes "student" and "learner" for the same person. That is now settled: **the word is
-"learner"** — models, apps, permissions, URLs and copy alike. The rename is its own spec,
-`spec_dd/1. next/learner-terminology-rename`, and **it merges before this cut.**
+FLS mixed "student" and "learner" for the same person. That is settled: **the word is "learner"** —
+models, apps, permissions, URLs and copy alike. The rename shipped as its own spec,
+`spec_dd/3. done/2026-08-22_15:42_learner-terminology-rename`, and has merged. **This cut is no
+longer blocked.**
 
-Everything below is written in the post-rename names, so `learner_management` is today's
-`student_management`, `learner_progress` is `student_progress`, and `learner_interface` is
-`student_interface`.
+Everything below is written in the post-rename names, and those are now the real ones:
+`learner_management`, `learner_progress` and `learner_interface`, under app labels
+`freedom_ls_learner_management` and friends.
 
-Doing it first is cheap for the same reason this cut skips a backfill — no live installs, and the
-dev database is rebuilt from scratch — and it stops this cut from filing a model called `Learner`
+Three things the rename changed under this cut — the full old→new table is in
+`PREREQUISITE_learner-terminology-rename.md` in this directory:
+
+- **`view_learner` / `add_learner` / `change_learner` / `delete_learner` do not exist.** The rename
+  *deleted* the four dead `*_student` codenames rather than translating them, because they named a
+  model that did not exist. Creating `Learner` makes Django generate the four real codenames, and
+  **this cut owns** adding them to `role_based_permissions/registry.py` and granting them to
+  whichever roles should hold them. Do not assume they are wired up.
+- **Names that deliberately did not change must not be renamed here either**:
+  `UserCourseRegistration`, `UserCohortDeadlineOverride`, `CohortMembership`, and the webhook
+  payload keys `user_id` / `user_email`.
+- **The three renamed apps had their migration history deleted and regenerated as a fresh
+  `0001_initial` each.** `learner_management` is at `0001_initial` and nothing else, so this cut's
+  migration is `learner_management/0002_...`, and any pre-rename migration filename quoted in the
+  research below no longer exists.
+
+Landing it first was cheap for the same reason this cut skips a backfill — no live installs, and the
+dev database is rebuilt from scratch — and it stopped this cut from filing a model called `Learner`
 inside an app named after the other word, which is the mismatch that made terminology an open
 question in the first place.
+
+The research files in this directory were written pre-rename: `research_codebase_impact.md`,
+`research_migration_and_autocreation.md`, `research_cross_org_identity_ux.md` and
+`research_learner_lifecycle.md` still quote `student_*` paths, labels and line numbers. Apply the
+old→new table before trusting any path or import they cite.
 
 ---
 
@@ -180,7 +202,7 @@ fires — a consumer may reasonably expect the association to exist when the eve
 
 ## Educator interface
 
-- **`users_visible_to`'s second branch becomes a direct fact.**
+- **`users_visible_to`'s second branch becomes a direct fact** (`learner_management/queries.py:217`).
   `Q(usercourseregistration__organisation=organisation)` becomes
   `Q(learner__organisation=organisation, learner__is_active=True)`. This is a **behaviour change, not
   a refactor** — the set of visible users can shift, in both directions, depending on when Learner
@@ -220,8 +242,8 @@ backfill would have to find. The earlier plan for a `RunPython` derivation step 
 
 That leaves **one migration**: a single `CreateModel` for `Learner`, every field `NOT NULL`, unique
 constraint included. Nothing existing is narrowed, so reverse is a plain table drop with no data
-loss to warn about. It lands in `learner_management` and stacks on the rename spec's final
-migration state, so generate it only once that spec has merged.
+loss to warn about. It lands in `learner_management`, on top of the rename's regenerated
+`0001_initial`.
 
 Notes:
 
@@ -237,9 +259,10 @@ Notes:
   since no active registration remains.
 - **Assert, don't propagate, on cross-site rows.** Nothing in the schema stops a `Cohort` or
   registration from pointing at an organisation on another Site — no current code path produces it,
-  but if the data holds one, `rebuild_learners` should fail loudly naming the offending IDs
-  (precedent: `learner_management/migrations/0006_validate_no_duplicate_students.py`) rather than
-  quietly minting a cross-site Learner.
+  but if the data holds one, `rebuild_learners` should fail loudly naming the offending IDs rather
+  than quietly minting a cross-site Learner. (The precedent this previously cited,
+  `student_management/migrations/0006_validate_no_duplicate_students.py`, was dropped when the
+  rename regenerated the app's migrations — there is no in-repo example left to copy.)
 - **No thread-local request exists during a management command**, exactly as none exists during
   `migrate`. The site-aware managers and the `course.registered` webhook both assume one, so
   `rebuild_learners` must resolve Site explicitly from the organisation rather than relying on
@@ -280,17 +303,18 @@ Notes:
   organisation to attach at those points in the flow, and none of them writes a registration today.
   When application acceptance ships it will need `ensure_learner` — note it there, don't pre-build it.
 - **The rename itself is not in this cut.** Standardising student → learner across the codebase
-  is `spec_dd/1. next/learner-terminology-rename`, and it merges first. Folding it in here would
-  bury real design work under a repo-wide mechanical change.
+  shipped separately as `spec_dd/3. done/2026-08-22_15:42_learner-terminology-rename` and is already
+  merged. Keeping it out kept real design work from being buried under a repo-wide mechanical
+  change. Residual `student_*` strings are that spec's business, not this one's.
 
 ---
 
 ## Decided: terminology
 
 **The word is "learner".** This model is `Learner`, it lives in `learner_management`, and the
-educator interface says "learners" — the prerequisite rename makes those three agree rather than leaving
-`Learner` stranded in an app named after the other word. "Learner" matches Docebo's usage and reads
-well to an educator.
+educator interface says "learners" — the merged rename already makes those three agree rather than
+leaving `Learner` stranded in an app named after the other word. "Learner" matches Docebo's usage
+and reads well to an educator.
 
 What still belongs to *this* cut is the copy on the screens it builds. The roster screens say
 "learner" consistently, and the pass audits for "user" leaking through where "learner" is meant —
