@@ -1,4 +1,4 @@
-"""Factories for student_progress models."""
+"""Factories for learner_progress models."""
 
 import factory
 

@@ -1,4 +1,4 @@
-"""Tests for the student dashboard view.
+"""Tests for the learner dashboard view.
 
 The dashboard view replaces the old ``partial_list_courses`` HTMX
 endpoint; tests for that endpoint were deleted in the same change set.

@@ -1,4 +1,4 @@
-"""Tests for course helper functions in student_interface.utils."""
+"""Tests for course helper functions in learner_interface.utils."""
 
 import pytest
 

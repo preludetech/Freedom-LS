@@ -250,7 +250,7 @@ def get_content_status(
 def get_is_registered(user: RequestUser, course: Course) -> bool:
     """Check if user is registered for the course (directly or via cohort).
 
-    Delegates to student_management.utils.is_registered_for_course, which is the
+    Delegates to learner_management.utils.is_registered_for_course, which is the
     shared implementation also used by course_access.backends. Kept here as a thin
     wrapper so existing callers in learner_interface don't need to change.
     """
@@ -565,7 +565,7 @@ def create_child_dict_with_flattened_index(
 
         if part_children_dicts:
             # Resume-aware: route to the first IN_PROGRESS child (so a returning
-            # student lands where they left off), then the first READY child, then
+            # learner lands where they left off), then the first READY child, then
             # the first child if everything is complete. Skipping BLOCKED children
             # also avoids producing a row with status READY but url=None when the
             # first child is hard-deadline-locked.
@@ -775,7 +775,7 @@ def get_course_listing(
     user: RequestUser,
     visible_courses: QuerySet[Course] | None = None,
 ) -> list[CourseListingEntry]:
-    """Build the all-courses listing for the student interface.
+    """Build the all-courses listing for the learner interface.
 
     ``visible_courses`` may be passed by the caller (already filtered through
     ``backend.filter_visible``) to avoid a second queryset. When omitted, falls

@@ -1,6 +1,6 @@
 ---
 name: reference-registration-completion-scenario-command
-description: qa_create_registration_completion_scenario command + DB-backed QAProfileCompletionForm — gate new signups via RegistrationCompletionMiddleware while a seeded student stays complete
+description: qa_create_registration_completion_scenario command + DB-backed QAProfileCompletionForm — gate new signups via RegistrationCompletionMiddleware while a seeded learner stays complete
 metadata:
   type: reference
 ---
@@ -18,11 +18,11 @@ so it produces the SAME learner + courses, then adds the policy/completion bits:
 - GATED course slug `qa-application-gated-course-access-types` (access
   `application_gated`, published, anon catalogue). Apply flow is mounted at
   `/applications/apply/<slug>/` (name `course_applications:apply`), NOT `/apply/`.
-- Student `demodev_access_learner@email.com` (password == email), verified+primary
+- Learner `demodev_access_learner@email.com` (password == email), verified+primary
   allauth EmailAddress, ZERO regs/apps, and registration-COMPLETE. Also now gets
   terms+privacy `LegalConsent` rows via `LegalConsentFactory` (helper
   `_ensure_legal_consents`, copies the site's real doc version/git_hash from
-  `get_legal_doc`) so the "complete" student mirrors a fully-consented signup.
+  `get_legal_doc`) so the "complete" learner mirrors a fully-consented signup.
   NOTE: `RegistrationCompletionMiddleware` only checks additional_registration_forms
   completion, NOT LegalConsent — the consent rows are for realism/other flows, not
   the middleware gate. LegalConsent is append-only; the helper is existence-guarded
@@ -36,8 +36,8 @@ so it produces the SAME learner + courses, then adds the policy/completion bits:
 KEY DESIGN — why a NEW form/model instead of the `accounts/tests` fixtures:
 `PhoneNumberForm`/`AlwaysIncompleteForm` track completion in a PROCESS-LOCAL
 dict, so (a) a `runserver` restart re-gates everyone and (b) you canNOT make a
-seeded student persistently "complete" from a management command (different
-process). To satisfy "new signups gated BUT seeded student stays complete" you
+seeded learner persistently "complete" from a management command (different
+process). To satisfy "new signups gated BUT seeded learner stays complete" you
 need DB-backed completion. Added to the dev-only `qa_helpers` app (NOT core):
 - `freedom_ls/qa_helpers/models.py` → `QARegistrationCompletion` (OneToOne user
   marker; migration `0001_initial`; app label `freedom_ls_qa_helpers`).
@@ -50,6 +50,6 @@ need DB-backed completion. Added to the dev-only `qa_helpers` app (NOT core):
   User; `django_get_or_create=("user",)` for idempotency).
 
 Verify the gate with `get_incomplete_forms(user, policy.additional_registration_forms)`:
-seeded student → `[]` (passes), a fresh non-staff user w/ no marker →
+seeded learner → `[]` (passes), a fresh non-staff user w/ no marker →
 `['QAProfileCompletionForm']` (redirected to `accounts:complete_registration`).
 `qa_helpers` is only in `config/settings_dev.py` INSTALLED_APPS (dev DB = the QA DB).

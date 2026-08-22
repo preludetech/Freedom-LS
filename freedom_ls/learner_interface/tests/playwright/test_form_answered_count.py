@@ -24,9 +24,9 @@ def test_answered_count_reflects_answers_filled_in_on_the_current_page(
     """The runner's "answered" tally counts answers filled in on the page, live.
 
     Regression: the count was rendered from persisted answers only, so on the
-    page the student was filling it stayed at 0 (the submit modal showed
+    page the learner was filling it stayed at 0 (the submit modal showed
     "0 Answered" even after every question was answered). It must now reflect
-    answers present in the browser — updating as the student answers, and
+    answers present in the browser — updating as the learner answers, and
     correct in the "Ready to submit?" modal.
     """
     course = CourseFactory(title="Answer Count Course", slug="answer-count-course")

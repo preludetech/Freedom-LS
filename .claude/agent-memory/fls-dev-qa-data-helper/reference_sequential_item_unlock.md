@@ -5,8 +5,8 @@ metadata:
   type: reference
 ---
 
-In the student course player, items unlock sequentially. `get_content_status`
-in `freedom_ls/student_interface/utils.py` only marks an item READY (clickable,
+In the learner course player, items unlock sequentially. `get_content_status`
+in `freedom_ls/learner_interface/utils.py` only marks an item READY (clickable,
 gets a URL) if the previous item is COMPLETE; otherwise it is BLOCKED (locked
 icon, `url=None`). The very first item starts READY.
 
@@ -30,5 +30,5 @@ Lightbox image topic for QA: `content-widgets-demo-reference` item 2 "Media"
 `demo_content/functionality_demo_content_widgets/images/`. The quiz course
 `functionality-demo-show-end-with-quiz` item 1 also embeds one `<c-picture>`.
 
-See [[reference_course_player_student_command]] and [[reference_completing_a_course]]
+See [[reference_course_player_learner_command]] and [[reference_completing_a_course]]
 for the resume-pointer (`last_accessed_item` GenericFK) and missing-site gotchas.

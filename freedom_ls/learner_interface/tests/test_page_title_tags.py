@@ -1,4 +1,4 @@
-"""Tests for the browser-tab <title> tags across the student-facing pages.
+"""Tests for the browser-tab <title> tags across the learner-facing pages.
 
 Covers the dashboard, all-courses, and course-detail pages.
 """

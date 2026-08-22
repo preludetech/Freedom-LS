@@ -19,10 +19,10 @@
 - **Key Features**:
   - Course selection dropdown with HTMX
   - Frozen header row (sticky top/left positioning)
-  - Progress grid with student rows and course item columns
-  - Pagination for both students and columns
+  - Progress grid with learner rows and course item columns
+  - Pagination for both learners and columns
   - Deadline visualization with hard/soft distinction
-  - Student override display with clock icon
+  - Learner override display with clock icon
   - Color-coded cells: success for completed, primary-bold for started, border/muted for not started
   - Quiz-specific display: percentage + pass/fail + attempt count
 
@@ -45,11 +45,10 @@
 - Alpine.js icon toggling: `x-show` on wrapper spans or `rotate-180` for directional flips
 - Icon sizing: size-3 (badges), size-4 (compact), size-5 (standard), size-6 (emphasis), size-8 (large), size-16 (hero)
 
-## Student Model Refactoring (Completed)
-- Student model removed; all FKs now point to User directly
-- Models renamed: StudentCourseRegistration -> UserCourseRegistration, StudentCohortDeadlineOverride -> UserCohortDeadlineOverride
-- StudentDeadline was NOT renamed (left as-is per plan)
-- StudentDeadline.student_course_registration FK field name also NOT changed (points to UserCourseRegistration)
+## Learner Model Refactoring (Completed)
+- The old per-learner registration model was removed; all FKs now point to User directly
+- That earlier refactor renamed the per-learner registration and per-learner deadline-override models to UserCourseRegistration and UserCohortDeadlineOverride respectively
+- LearnerDeadline (a separate model) and its FK field learner_course_registration were later renamed in the site-wide terminology rename — this corrects an earlier note in this file claiming neither was renamed
 - Migrations 0006-0012 handle the full refactoring chain
 - related_name on UserCourseRegistration.collection is "user_registrations"
 - CohortMembership has no unique constraint on (user, cohort)

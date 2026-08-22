@@ -3,9 +3,9 @@
 # from typing import List, Optional
 # from django.shortcuts import get_object_or_404
 
-# from student_management.models import Student
+# from learner_management.models import Learner
 # from content_engine.models import ContentCollection, Topic, Form
-# from student_interface.models import FormProgress, TopicProgress
+# from learner_interface.models import FormProgress, TopicProgress
 
 # from allauth.headless.contrib.ninja.security import x_session_token_auth
 
@@ -25,10 +25,10 @@
 # @router.get(
 #     "/courses", response=List[CourseRegistrationSchema], auth=[x_session_token_auth]
 # )
-# def get_student_courses(request):
+# def get_learner_courses(request):
 #     """
-#     Get all courses that the currently logged in student is registered for.
-#     The student logged in using the allauth login api.
+#     Get all courses that the currently logged in learner is registered for.
+#     The learner logged in using the allauth login api.
 #     """
 
 #     # Get the authenticated user
@@ -38,14 +38,14 @@
 #     if not user.is_authenticated:
 #         raise HttpError(401, "Authentication required")
 
-#     # Get the student record for this user
+#     # Get the learner record for this user
 #     try:
-#         student = Student.objects.get(user=user)
-#     except Student.DoesNotExist:
-#         raise HttpError(403, "No student record found for this user")
+#         learner = Learner.objects.get(user=user)
+#     except Learner.DoesNotExist:
+#         raise HttpError(403, "No learner record found for this user")
 
 #     # Get all registered collections
-#     collections = student.get_course_registrations()
+#     collections = learner.get_course_registrations()
 
 #     # Convert to schema format
 #     return [
@@ -87,7 +87,7 @@
 #     # Get the collection
 #     collection = get_object_or_404(ContentCollection, slug=slug)
 
-#     # TODO: Check that the student is registered for the course
+#     # TODO: Check that the learner is registered for the course
 
 #     IN_PROGRESS = "IN_PROGRESS"
 #     COMPLETE = "COMPLETE"

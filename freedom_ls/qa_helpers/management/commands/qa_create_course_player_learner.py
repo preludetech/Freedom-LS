@@ -1,6 +1,6 @@
-"""Create a login-ready student for QA of the student course player.
+"""Create a login-ready learner for QA of the learner course player.
 
-Creates (idempotently) a single student who can log in via the browser and
+Creates (idempotently) a single learner who can log in via the browser and
 exercises the three course-player redirect/resume cases:
 
 1. Enrolled in a course WITH course parts but with NO progress, so the bare
@@ -11,7 +11,7 @@ exercises the three course-player redirect/resume cases:
    course redirects to its /preview/ page.
 
 The login convention in this project is password == email address, so the
-student's password is set to its own email.
+learner's password is set to its own email.
 """
 
 from typing import cast
@@ -40,7 +40,7 @@ from freedom_ls.learner_progress.models import (
 )
 from freedom_ls.organisations.utils import get_default_organisation
 
-STUDENT_EMAIL = "demodev_s1@email.com"
+LEARNER_EMAIL = "demodev_s1@email.com"
 
 # Course used for each scenario. Slugs are validated against the site at runtime.
 NO_PROGRESS_COURSE_SLUG = "functionality-demo-course-parts"
@@ -65,23 +65,23 @@ def _get_course(site: Site, slug: str) -> Course:
         ) from e
 
 
-def _get_or_create_student(site: Site) -> User:
-    """Create the QA student (password == email), or return the existing one."""
-    existing: User | None = User.objects.filter(email=STUDENT_EMAIL).first()
+def _get_or_create_learner(site: Site) -> User:
+    """Create the QA learner (password == email), or return the existing one."""
+    existing: User | None = User.objects.filter(email=LEARNER_EMAIL).first()
     if existing is not None:
         # Ensure the existing account is usable for login.
         existing.is_active = True
-        existing.set_password(STUDENT_EMAIL)
+        existing.set_password(LEARNER_EMAIL)
         existing.save(update_fields=["is_active", "password"])
         return existing
     return cast(
         User,
         UserFactory(
-            email=STUDENT_EMAIL,
+            email=LEARNER_EMAIL,
             first_name="DemoDev",
-            last_name="Student One",
+            last_name="Learner One",
             is_active=True,
-            password=STUDENT_EMAIL,
+            password=LEARNER_EMAIL,
             site=site,
         ),
     )
@@ -191,7 +191,7 @@ def _set_resume_progress(
 @click.command()
 @click.argument("site_name", default="DemoDev")
 def command(site_name: str) -> None:
-    """Create a login-ready course-player QA student.
+    """Create a login-ready course-player QA learner.
 
     SITE_NAME is the site to create data on (default: DemoDev).
     """
@@ -207,19 +207,19 @@ def command(site_name: str) -> None:
     with_progress_course = _get_course(site, WITH_PROGRESS_COURSE_SLUG)
     not_enrolled_course = _get_course(site, NOT_ENROLLED_COURSE_SLUG)
 
-    student = _get_or_create_student(site)
-    _ensure_verified_email(student)
+    learner = _get_or_create_learner(site)
+    _ensure_verified_email(learner)
     click.secho(
-        f"Student: {student.email} (password: {student.email}) "
-        f"active={student.is_active} site={site.name}",
+        f"Learner: {learner.email} (password: {learner.email}) "
+        f"active={learner.is_active} site={site.name}",
         fg="green",
     )
 
     # Case 1: enrolled, no progress, course with parts.
-    _register(student, no_progress_course, site)
+    _register(learner, no_progress_course, site)
     # Defensively clear any stale progress so the bare URL really resolves to item 1.
     CourseProgress.objects.filter(
-        user=student, course=no_progress_course, site=site
+        user=learner, course=no_progress_course, site=site
     ).delete()
     click.secho(
         f"Enrolled (NO progress): {no_progress_course.slug} "
@@ -228,8 +228,8 @@ def command(site_name: str) -> None:
     )
 
     # Case 2: enrolled, with progress, resume mid-course.
-    _register(student, with_progress_course, site)
-    _set_resume_progress(student, with_progress_course, site, RESUME_INDEX)
+    _register(learner, with_progress_course, site)
+    _set_resume_progress(learner, with_progress_course, site, RESUME_INDEX)
     items = with_progress_course.viewable_items()
     resume_item = items[RESUME_INDEX - 1]
     click.secho(
@@ -241,7 +241,7 @@ def command(site_name: str) -> None:
 
     # Case 3: NOT enrolled (report only; ensure no registration exists).
     UserCourseRegistration.objects.filter(
-        user=student, collection=not_enrolled_course, site=site
+        user=learner, collection=not_enrolled_course, site=site
     ).delete()
     click.secho(
         f"NOT enrolled: {not_enrolled_course.slug} "
@@ -251,7 +251,7 @@ def command(site_name: str) -> None:
 
     click.secho("\n--- Summary ---", fg="cyan", bold=True)
     click.secho(f"Site: {site.name} ({site.domain})", fg="cyan")
-    click.secho(f"Login: {student.email} / {student.email}", fg="cyan", bold=True)
+    click.secho(f"Login: {learner.email} / {learner.email}", fg="cyan", bold=True)
     click.secho(
         f"(a) enrolled, no progress, course-with-parts: {no_progress_course.slug}",
         fg="cyan",

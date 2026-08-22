@@ -1,4 +1,4 @@
-"""Create a cohort with many students for testing row pagination."""
+"""Create a cohort with many learners for testing row pagination."""
 
 import djclick as click
 
@@ -26,10 +26,10 @@ from freedom_ls.organisations.utils import get_default_organisation
     help="Name for the cohort (default: 'QA Large Cohort')",
 )
 @click.option(
-    "--num-students",
+    "--num-learners",
     default=25,
     type=int,
-    help="Number of students to create (default: 25)",
+    help="Number of learners to create (default: 25)",
 )
 @click.option(
     "--course-slug",
@@ -39,7 +39,7 @@ from freedom_ls.organisations.utils import get_default_organisation
 def command(
     site_name: str,
     cohort_name: str,
-    num_students: int,
+    num_learners: int,
     course_slug: tuple[str, ...],
 ) -> None:
     from freedom_ls.content_engine.models import Course
@@ -60,8 +60,8 @@ def command(
 
     # Create users and add to cohort
     created_count = 0
-    for i in range(1, num_students + 1):
-        email = f"qa_student_{i}@example.com"
+    for i in range(1, num_learners + 1):
+        email = f"qa_learner_{i}@example.com"
         from django.contrib.auth import get_user_model
 
         user_model = get_user_model()
@@ -71,7 +71,7 @@ def command(
         except user_model.DoesNotExist:
             user = UserFactory(
                 email=email,
-                first_name="QA Student",
+                first_name="QA Learner",
                 last_name=str(i),
                 is_active=True,
                 password="testpass123",  # noqa: S106
@@ -85,8 +85,8 @@ def command(
             created_count += 1
 
     click.secho(
-        f"Added {created_count} new students to '{cohort_name}' "
-        f"(total requested: {num_students})",
+        f"Added {created_count} new learners to '{cohort_name}' "
+        f"(total requested: {num_learners})",
         fg="green",
     )
 

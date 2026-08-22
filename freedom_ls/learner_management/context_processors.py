@@ -1,4 +1,4 @@
-"""Context processors for student management."""
+"""Context processors for learner management."""
 
 from __future__ import annotations
 

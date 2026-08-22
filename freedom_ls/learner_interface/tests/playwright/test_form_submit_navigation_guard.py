@@ -29,7 +29,7 @@ def test_submit_disarms_the_beforeunload_leave_prompt(
 
     Regression: the runner armed a window ``beforeunload`` guard that called
     ``preventDefault`` on every unload. Clicking Submit ran ``form.submit()``,
-    which triggered that prompt; if the student then pressed Cancel on it the
+    which triggered that prompt; if the learner then pressed Cancel on it the
     navigation aborted but the Submit button stayed latched disabled forever,
     with no way out but a reload. Deliberate navigation (Submit) must disarm the
     guard so no prompt — and therefore no trap — can occur.

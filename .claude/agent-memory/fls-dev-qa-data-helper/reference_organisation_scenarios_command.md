@@ -30,7 +30,7 @@ Organisations browser-QA data set (spec: `spec_dd/.../schools/3. frontend_qa.md`
   -> guardian `freedom_ls_organisations.view_organisation`.
 - Legacy per-cohort access = object-scoped **`instructor`** role on a **Cohort**
   -> guardian `view_cohort` only (`sync_user_object_permissions` filters a
-  role's permissions to the target's content type, so `view_student` is dropped).
+  role's permissions to the target's content type, so `view_learner` is dropped).
 - `organisations_accessible_to` = orgs by role UNION orgs owning a
   guardian-granted cohort, so a cohort-only grant still reaches `/educator/`.
 
@@ -67,7 +67,7 @@ Verified empirically on the dev DB (2026-08, branch `schools`) for QA §7.6
    membership). Neither `OVERRIDE_COURSE_ACCESS_TO_FREE` nor
    `OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE` lifts this — both route through
    `_free_access_decision`, which still checks registration. No staff/superuser
-   bypass exists in `student_interface.views`.
+   bypass exists in `learner_interface.views`.
 2. **Every registration carries an organisation.** `UserCourseRegistration.
    organisation` and `Cohort.organisation` are both non-nullable FKs (confirmed
    `is_nullable = NO` in `information_schema`). Self-service enrolment
@@ -77,7 +77,7 @@ Verified empirically on the dev DB (2026-08, branch `schools`) for QA §7.6
 So whenever the player is reachable, `organisation_for_learner_course` returns a
 non-null org, and `course_toc_header.html`'s `{% if course_organisation %}`
 false branch never renders. That branch is exercised only by unit tests calling
-the query function directly (`student_interface/tests/test_player_organisation.py
+the query function directly (`learner_interface/tests/test_player_organisation.py
 ::test_no_registration_returns_none`), never through the browser.
 
 **Consequence worth reporting:** every self-registered learner sees a
@@ -88,4 +88,4 @@ Empirical probe (Django test `Client`, `SERVER_NAME="127.0.0.1"`,
 `SERVER_PORT="8000"`): unregistered course => `GET /courses/<slug>/1/` -> 302 to
 `/detail/`; registered course => 200 with the DemoDev chip.
 
-See [[reference_verified_student_setup]].
+See [[reference_verified_learner_setup]].

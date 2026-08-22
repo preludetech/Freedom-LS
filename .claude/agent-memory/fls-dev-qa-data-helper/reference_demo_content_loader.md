@@ -17,6 +17,6 @@ e.g. `content_save "demo_content/functionality_demo_content_widgets" DemoDev`.
 - Stored Topic/Form `content` is raw markdown/HTML (e.g. `<c-picture ...>` tags as authored, after `markdown_translate` rewrites obsidian `![[...]]` syntax). The final HTML render (cotton components) happens at view time, not at save time — so to confirm an attribute change landed, grep the stored `content` for the raw attribute (e.g. `title=` / `description=`), not rendered output.
 - Emits no stdout (uses `logger`); verify success by querying the DB.
 
-The site-aware `UserCourseRegistrationFactory` (`freedom_ls.student_management.factories`) can be used outside a request by passing `site=` explicitly to override its `_get_current_site` LazyFunction default (which returns None with no thread-local request). FK is `collection` (the Course), user FK is `user`. See [[reference_verified_student_setup]].
+The site-aware `UserCourseRegistrationFactory` (`freedom_ls.learner_management.factories`) can be used outside a request by passing `site=` explicitly to override its `_get_current_site` LazyFunction default (which returns None with no thread-local request). FK is `collection` (the Course), user FK is `user`. See [[reference_verified_learner_setup]].
 
-Course-player URL: `/courses/<course_slug>/<index>/` where index is 1-based into `course.viewable_items()`. The bare `/courses/<slug>/` redirects/resumes. See [[reference_course_player_student_command]].
+Course-player URL: `/courses/<course_slug>/<index>/` where index is 1-based into `course.viewable_items()`. The bare `/courses/<slug>/` redirects/resumes. See [[reference_course_player_learner_command]].

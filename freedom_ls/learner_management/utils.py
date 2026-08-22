@@ -67,11 +67,11 @@ def calculate_course_progress_percentage(
 def is_registered_for_course(user: RequestUser, course: Course) -> bool:
     """Check if user is registered for the course (directly or via cohort).
 
-    Extracted from student_interface.utils.get_is_registered so that
+    Extracted from learner_interface.utils.get_is_registered so that
     course_access.backends can call it without creating a dependency cycle
-    (student_interface → course_access would be cyclic).
+    (learner_interface → course_access would be cyclic).
 
-    student_interface.get_is_registered delegates to this function.
+    learner_interface.get_is_registered delegates to this function.
     """
     from freedom_ls.learner_management.models import (
         CohortCourseRegistration,

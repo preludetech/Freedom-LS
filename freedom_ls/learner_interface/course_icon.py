@@ -1,8 +1,8 @@
 """Course-icon resolver.
 
-This module lives in ``student_interface`` rather than in ``freedom_ls.icons``
+This module lives in ``learner_interface`` rather than in ``freedom_ls.icons``
 so that the icons app stays portable and reusable in downstream Django
-projects: "course icon resolution" is a student-interface concern.
+projects: "course icon resolution" is a learner-interface concern.
 
 The resolver walks the resolution order documented in the spec:
 

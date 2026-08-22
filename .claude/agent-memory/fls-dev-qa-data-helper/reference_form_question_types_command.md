@@ -15,6 +15,6 @@ Schema facts confirmed for the four question types (content_engine):
 - `QuestionType` choices ARE exactly these four (`multiple_choice`, `checkboxes`, `short_text`, `long_text`) — all are supported by the models.
 - `FormQuestion.type` is the discriminator; `QuestionOption` has `text`, `value`, `order`, and nullable `correct` BooleanField. short_text/long_text questions simply have no options.
 - `Form.strategy` uses `FormStrategy.QUIZ`; quiz fields `quiz_show_incorrect` (nullable bool) and `quiz_pass_percentage` (nullable 0-100) are optional.
-- A Form is reachable as a course item via `ContentCollectionItem` (use `ContentCollectionItemFactory(collection_object=course, child_object=form)`); index into `course.viewable_items()` is 1-based and `CoursePart`s are excluded. See [[reference_course_player_student_command]] and [[reference_verified_student_setup]].
+- A Form is reachable as a course item via `ContentCollectionItem` (use `ContentCollectionItemFactory(collection_object=course, child_object=form)`); index into `course.viewable_items()` is 1-based and `CoursePart`s are excluded. See [[reference_course_player_learner_command]] and [[reference_verified_learner_setup]].
 
-NOTE: this command registers the `demodev@email.com` superuser, not a student. For a dedicated student on this same course (plus a NULL-`quiz_pass_percentage` quiz) see [[reference_multiselect_quiz_scoring_command]], which imports and reuses this module's helpers.
+NOTE: this command registers the `demodev@email.com` superuser, not a learner. For a dedicated learner on this same course (plus a NULL-`quiz_pass_percentage` quiz) see [[reference_multiselect_quiz_scoring_command]], which imports and reuses this module's helpers.

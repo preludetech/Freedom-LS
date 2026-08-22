@@ -2,7 +2,7 @@
 player's TOC header.
 
 organisation_for_learner_course itself is tested next to the other query
-helpers, in student_management/tests/test_queries.py.
+helpers, in learner_management/tests/test_queries.py.
 """
 
 from __future__ import annotations

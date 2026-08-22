@@ -57,7 +57,7 @@ class TestBrevoPresetIntegration:
             event_type="user.registered",
             payload={
                 "user_id": "abc-123",
-                "user_email": "student@example.com",
+                "user_email": "learner@example.com",
                 "first_name": "Jane",
                 "last_name": "Doe",
             },
@@ -99,7 +99,7 @@ class TestBrevoPresetIntegration:
 
         # Body should be the Brevo-transformed payload
         body = json.loads(call_kwargs["content"])
-        assert body["email"] == "student@example.com"
+        assert body["email"] == "learner@example.com"
         assert body["attributes"]["FNAME"] == "Jane"
         assert body["attributes"]["LNAME"] == "Doe"
         assert body["listIds"] == [6]

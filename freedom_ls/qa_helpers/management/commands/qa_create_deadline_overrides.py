@@ -1,4 +1,4 @@
-"""Create student deadline overrides for QA testing."""
+"""Create learner deadline overrides for QA testing."""
 
 from datetime import timedelta
 
@@ -21,9 +21,9 @@ from freedom_ls.learner_management.models import (
 @click.option("--cohort-name", required=True, help="Name of the cohort")
 @click.option("--course-slug", required=True, help="Slug of the course")
 @click.option(
-    "--student-email",
+    "--learner-email",
     required=True,
-    help="Email of the student to give the override to",
+    help="Email of the learner to give the override to",
 )
 @click.option(
     "--item-slug",
@@ -46,7 +46,7 @@ def command(
     site_name: str,
     cohort_name: str,
     course_slug: str,
-    student_email: str,
+    learner_email: str,
     item_slug: str | None,
     days_from_now: int,
     soft: bool,
@@ -72,12 +72,12 @@ def command(
     try:
         membership = CohortMembership.objects.select_related("user").get(
             cohort=registration.cohort,
-            user__email=student_email,
+            user__email=learner_email,
             site=site,
         )
     except CohortMembership.DoesNotExist as e:
         raise click.ClickException(
-            f"Student '{student_email}' is not a member of cohort '{cohort_name}'."
+            f"Learner '{learner_email}' is not a member of cohort '{cohort_name}'."
         ) from e
 
     user = membership.user
@@ -119,7 +119,7 @@ def command(
     try:
         override = UserCohortDeadlineOverride.objects.get(**lookup)
         click.secho(
-            f"Override already exists for '{student_email}' on {item_name}. "
+            f"Override already exists for '{learner_email}' on {item_name}. "
             f"Current deadline: {override.deadline.strftime('%Y-%m-%d %H:%M')}",
             fg="yellow",
         )
@@ -137,7 +137,7 @@ def command(
 
         deadline_type = "hard" if is_hard else "soft"
         click.secho(
-            f"Created {deadline_type} deadline override for '{student_email}' "
+            f"Created {deadline_type} deadline override for '{learner_email}' "
             f"on {item_name}: {deadline.strftime('%Y-%m-%d %H:%M')}",
             fg="green",
         )

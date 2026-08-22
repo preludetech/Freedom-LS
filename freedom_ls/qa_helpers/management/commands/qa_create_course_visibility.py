@@ -4,7 +4,7 @@ Seeds (idempotently) on a single site (default: DemoDev) the full data shape a
 manual browser QA pass needs for course visibility:
 
 ACCOUNTS (both login-ready: verified+primary EmailAddress, password == email):
-  1. A regular student.
+  1. A regular learner.
   2. An educator who can reach the educator course-management interface
      (gated only by @login_required) and who owns a cohort registered for the
      published course, so the educator's cohort views show data. The educator is
@@ -13,11 +13,11 @@ ACCOUNTS (both login-ready: verified+primary EmailAddress, password == email):
 COURSES (4, each with one viewable Topic so the player resolves):
   1. published-free    visibility=published,  access_config={"access_type":"free"}
   2. coming-soon       visibility=coming_soon
-  3. hidden-course     visibility=hidden,  NO registration for the student
-  4. hidden-registered visibility=hidden,  student IS registered (mid-course access)
+  3. hidden-course     visibility=hidden,  NO registration for the learner
+  4. hidden-registered visibility=hidden,  learner IS registered (mid-course access)
 
 RELATIONSHIPS:
-  - Student registered in hidden-registered (and published-free) only; explicitly
+  - Learner registered in hidden-registered (and published-free) only; explicitly
     NOT registered in hidden-course (the command deletes any such row each run).
   - No CourseInterest rows are pre-created (the QA tester makes those via the UI).
 
@@ -53,7 +53,7 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.organisations.utils import get_default_organisation
 
-STUDENT_EMAIL = "demodev_visibility_student@email.com"
+LEARNER_EMAIL = "demodev_visibility_learner@email.com"
 EDUCATOR_EMAIL = "demodev_visibility_educator@email.com"
 
 COHORT_NAME = "QA Visibility Cohort"
@@ -152,7 +152,7 @@ def _get_or_create_course(
 
 
 def _ensure_registration(site: Site, user: User, course: Course) -> None:
-    """Ensure the student has an active registration for the course."""
+    """Ensure the learner has an active registration for the course."""
     if not UserCourseRegistration.objects.filter(
         user=user, collection=course, site=site
     ).exists():
@@ -181,8 +181,8 @@ def command(site_name: str) -> None:
         ) from e
 
     # --- Accounts -------------------------------------------------------
-    student = _get_or_create_user(site, STUDENT_EMAIL, "DemoDev", "Visibility Student")
-    _ensure_verified_email(student)
+    learner = _get_or_create_user(site, LEARNER_EMAIL, "DemoDev", "Visibility Learner")
+    _ensure_verified_email(learner)
 
     educator = _get_or_create_user(
         site, EDUCATOR_EMAIL, "DemoDev", "Visibility Educator"
@@ -216,13 +216,13 @@ def command(site_name: str) -> None:
         visibility=CourseVisibility.HIDDEN,
     )
 
-    # --- Student registrations -----------------------------------------
+    # --- Learner registrations -----------------------------------------
     # Registered in hidden-registered (mid-course access) and published-free.
-    _ensure_registration(site, student, hidden_registered)
-    _ensure_registration(site, student, published_free)
-    # Guarantee the student is NOT registered in hidden-course.
+    _ensure_registration(site, learner, hidden_registered)
+    _ensure_registration(site, learner, published_free)
+    # Guarantee the learner is NOT registered in hidden-course.
     UserCourseRegistration.objects.filter(
-        user=student, collection=hidden, site=site
+        user=learner, collection=hidden, site=site
     ).delete()
 
     # --- Educator cohort (so cohort views show data) -------------------
@@ -243,8 +243,8 @@ def command(site_name: str) -> None:
         )
 
     # --- Verification (fresh queries; children() is memoized per instance) ---
-    student_regs = list(
-        UserCourseRegistration.objects.filter(user=student, site=site)
+    learner_regs = list(
+        UserCourseRegistration.objects.filter(user=learner, site=site)
         .select_related("collection")
         .values_list("collection__slug", flat=True)
     )
@@ -252,7 +252,7 @@ def command(site_name: str) -> None:
     click.secho("\n--- Course Visibility QA data ---", fg="cyan", bold=True)
     click.secho(f"Site: {site.name} (domain: {site.domain})", fg="cyan")
     click.secho(
-        f"STUDENT  login: {student.email} / {student.email} (verified, active)",
+        f"LEARNER  login: {learner.email} / {learner.email} (verified, active)",
         fg="green",
         bold=True,
     )
@@ -276,14 +276,14 @@ def command(site_name: str) -> None:
         )
     click.secho(f"Educator cohort: {COHORT_NAME} (pk={cohort.pk})", fg="cyan")
     click.secho(
-        f"Student registered in: {sorted(student_regs)}",
+        f"Learner registered in: {sorted(learner_regs)}",
         fg="green",
     )
     not_in_hidden = not UserCourseRegistration.objects.filter(
-        user=student, collection=hidden, site=site
+        user=learner, collection=hidden, site=site
     ).exists()
     click.secho(
-        f"Student NOT registered in hidden-course: {not_in_hidden}",
+        f"Learner NOT registered in hidden-course: {not_in_hidden}",
         fg="green" if not_in_hidden else "red",
         bold=True,
     )

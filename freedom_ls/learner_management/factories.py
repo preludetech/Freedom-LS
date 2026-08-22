@@ -1,4 +1,4 @@
-"""Factories for student_management models."""
+"""Factories for learner_management models."""
 
 from datetime import timedelta
 

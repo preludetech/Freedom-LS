@@ -133,7 +133,7 @@ class CohortCourseRegistration(SiteAwareModel):
 
 
 class CohortDeadline(SiteAwareModel):
-    """Deadline applied to all students in a cohort for a specific course registration."""
+    """Deadline applied to all learners in a cohort for a specific course registration."""
 
     cohort_course_registration = models.ForeignKey(
         CohortCourseRegistration,

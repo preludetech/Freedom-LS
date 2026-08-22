@@ -1,13 +1,13 @@
 ---
 name: Course progress panel pagination semantics
-description: How the educator course-progress panel paginates rows (students) and columns (course items) — what counts as an item
+description: How the educator course-progress panel paginates rows (learners) and columns (course items) — what counts as an item
 type: reference
 ---
 
 The educator course-progress panel (`/educator/cohorts/<uuid>/__tabs/course_progress`) has two independent paginators driven by `CohortCourseProgressPanel` in `freedom_ls/educator_interface/views.py`:
 
 - **Columns paginator** — paginates *flat course items* at `COLUMN_PAGE_SIZE` (default 15). "Items" = `Topic` + `Form` from `course.children_flat()`. **`CoursePart` instances are excluded** — they appear only as visual headers spanning their visible children.
-- **Rows paginator** — paginates `CohortMembership` rows at `STUDENT_PAGE_SIZE` (default 20).
+- **Rows paginator** — paginates `CohortMembership` rows at `LEARNER_PAGE_SIZE` (default 20).
 
 To exercise both paginators: you need `>15` topics+forms in the course AND `>20` cohort members.
 

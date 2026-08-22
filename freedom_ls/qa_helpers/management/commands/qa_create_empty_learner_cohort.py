@@ -1,4 +1,4 @@
-"""Create a cohort with course registrations but no students."""
+"""Create a cohort with course registrations but no learners."""
 
 import djclick as click
 
@@ -17,8 +17,8 @@ from freedom_ls.organisations.utils import get_default_organisation
 @click.argument("site_name")
 @click.option(
     "--cohort-name",
-    default="QA Empty Students Cohort",
-    help="Name for the cohort (default: 'QA Empty Students Cohort')",
+    default="QA Empty Learners Cohort",
+    help="Name for the cohort (default: 'QA Empty Learners Cohort')",
 )
 @click.option(
     "--course-slug",
@@ -43,7 +43,7 @@ def command(
         cohort = CohortFactory(
             name=cohort_name, site=site, organisation=get_default_organisation(site)
         )
-        click.secho(f"Created cohort '{cohort_name}' (no students)", fg="green")
+        click.secho(f"Created cohort '{cohort_name}' (no learners)", fg="green")
 
     for slug in course_slug:
         try:
@@ -61,6 +61,6 @@ def command(
             click.secho(f"Already registered for '{course.title}'", fg="yellow")
 
     click.secho(
-        f"\nCohort '{cohort_name}' has course registrations but zero students.",
+        f"\nCohort '{cohort_name}' has course registrations but zero learners.",
         fg="green",
     )

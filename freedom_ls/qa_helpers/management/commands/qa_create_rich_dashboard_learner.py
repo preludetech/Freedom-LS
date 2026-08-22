@@ -1,6 +1,6 @@
-"""Create a login-ready student with a rich, fully populated dashboard.
+"""Create a login-ready learner with a rich, fully populated dashboard.
 
-Idempotently seeds a single DemoDev student whose dashboard shows all three
+Idempotently seeds a single DemoDev learner whose dashboard shows all three
 sections populated:
 
 - In progress: a course with partial CourseProgress (~43%), no completed_time.
@@ -9,7 +9,7 @@ sections populated:
   page is reachable.
 - Recommended: a RecommendedCourse row.
 
-The completed course is the quiz-ending demo course, so the student also has a
+The completed course is the quiz-ending demo course, so the learner also has a
 genuinely-scored, passing quiz attempt (real QuestionAnswer rows scored via
 FormProgress.complete()) for screenshotting quiz feedback.
 
@@ -44,7 +44,7 @@ from freedom_ls.learner_progress.models import (
 )
 from freedom_ls.organisations.utils import get_default_organisation
 
-STUDENT_EMAIL = "demodev_s1@email.com"
+LEARNER_EMAIL = "demodev_s1@email.com"
 
 IN_PROGRESS_COURSE_SLUG = "functionality-demo-show-end-with-topic"
 COMPLETED_COURSE_SLUG = "functionality-demo-show-end-with-quiz"
@@ -67,21 +67,21 @@ def _get_course(site: Site, slug: str) -> Course:
         ) from e
 
 
-def _get_or_create_student(site: Site) -> User:
-    existing: User | None = User.objects.filter(email=STUDENT_EMAIL).first()
+def _get_or_create_learner(site: Site) -> User:
+    existing: User | None = User.objects.filter(email=LEARNER_EMAIL).first()
     if existing is not None:
         existing.is_active = True
-        existing.set_password(STUDENT_EMAIL)
+        existing.set_password(LEARNER_EMAIL)
         existing.save(update_fields=["is_active", "password"])
         return existing
     return cast(
         User,
         UserFactory(
-            email=STUDENT_EMAIL,
+            email=LEARNER_EMAIL,
             first_name="DemoDev",
-            last_name="Student One",
+            last_name="Learner One",
             is_active=True,
-            password=STUDENT_EMAIL,
+            password=LEARNER_EMAIL,
             site=site,
         ),
     )
@@ -224,7 +224,7 @@ def _set_course_progress(
 @click.command()
 @click.argument("site_name", default="DemoDev")
 def command(site_name: str) -> None:
-    """Seed a login-ready student with a fully populated dashboard.
+    """Seed a login-ready learner with a fully populated dashboard.
 
     SITE_NAME is the site to create data on (default: DemoDev).
     """
@@ -240,28 +240,28 @@ def command(site_name: str) -> None:
     completed_course = _get_course(site, COMPLETED_COURSE_SLUG)
     recommended_course = _get_course(site, RECOMMENDED_COURSE_SLUG)
 
-    student = _get_or_create_student(site)
-    _ensure_verified_email(student)
+    learner = _get_or_create_learner(site)
+    _ensure_verified_email(learner)
     click.secho(
-        f"Student: {student.email} (password: {student.email}) site={site.name}",
+        f"Learner: {learner.email} (password: {learner.email}) site={site.name}",
         fg="green",
     )
 
     # --- In-progress course: partial progress, no completion ---
-    _register(student, in_progress_course, site)
-    _ensure_course_progress_row(student, in_progress_course, site)
+    _register(learner, in_progress_course, site)
+    _ensure_course_progress_row(learner, in_progress_course, site)
     items = in_progress_course.viewable_items()
     completed_count = 0
     for item in items[:IN_PROGRESS_ITEMS_TO_COMPLETE]:
         if isinstance(item, Topic):
-            _complete_topic(student, item, site)
+            _complete_topic(learner, item, site)
             completed_count += 1
         elif isinstance(item, Form):
-            _attempt_form(student, item, site, all_correct=True, leave_one_wrong=False)
+            _attempt_form(learner, item, site, all_correct=True, leave_one_wrong=False)
             completed_count += 1
-    pct = _canonical_course_percentage(student, in_progress_course, site)
+    pct = _canonical_course_percentage(learner, in_progress_course, site)
     _set_course_progress(
-        student, in_progress_course, site, percentage=pct, completed=False
+        learner, in_progress_course, site, percentage=pct, completed=False
     )
     click.secho(
         f"In progress: {in_progress_course.slug} "
@@ -270,17 +270,17 @@ def command(site_name: str) -> None:
     )
 
     # --- Completed course: fully complete, both quizzes passed ---
-    _register(student, completed_course, site)
-    _ensure_course_progress_row(student, completed_course, site)
+    _register(learner, completed_course, site)
+    _ensure_course_progress_row(learner, completed_course, site)
     quiz_form: Form | None = None
     quiz_progress: FormProgress | None = None
     for item in completed_course.viewable_items():
         if isinstance(item, Topic):
-            _complete_topic(student, item, site)
+            _complete_topic(learner, item, site)
         elif isinstance(item, Form):
             # 5/6 correct on the 80%-threshold mid-course quiz => PASS, imperfect.
             fp = _attempt_form(
-                student,
+                learner,
                 item,
                 site,
                 all_correct=False,
@@ -290,9 +290,9 @@ def command(site_name: str) -> None:
                 quiz_form = item
                 quiz_progress = fp
 
-    final_pct = _canonical_course_percentage(student, completed_course, site)
+    final_pct = _canonical_course_percentage(learner, completed_course, site)
     _set_course_progress(
-        student, completed_course, site, percentage=final_pct, completed=True
+        learner, completed_course, site, percentage=final_pct, completed=True
     )
     if quiz_form is not None and quiz_progress is not None:
         scores = quiz_progress.scores or {}
@@ -307,14 +307,14 @@ def command(site_name: str) -> None:
 
     # --- Recommended course ---
     if not RecommendedCourse.objects.filter(
-        user=student, collection=recommended_course, site=site
+        user=learner, collection=recommended_course, site=site
     ).exists():
-        RecommendedCourseFactory(user=student, collection=recommended_course, site=site)
+        RecommendedCourseFactory(user=learner, collection=recommended_course, site=site)
     click.secho(f"Recommended: {recommended_course.slug}", fg="green")
 
     click.secho("\n--- Summary ---", fg="cyan", bold=True)
     click.secho(f"Site: {site.name} ({site.domain})", fg="cyan")
-    click.secho(f"Login: {student.email} / {student.email}", fg="cyan", bold=True)
+    click.secho(f"Login: {learner.email} / {learner.email}", fg="cyan", bold=True)
     click.secho(f"In progress ({pct}%): {in_progress_course.slug}", fg="cyan")
     click.secho(f"Completed (quiz attempt): {completed_course.slug}", fg="cyan")
     click.secho(f"Recommended: {recommended_course.slug}", fg="cyan")

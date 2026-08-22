@@ -46,4 +46,4 @@ Workflow 7 you need a non-staff verified learner (e.g. the
 genuinely new browser signup). Verify the gate with
 `get_incomplete_forms(learner, forms)`.
 
-See [[reference_course_access_types_command]] and [[reference_verified_student_setup]].
+See [[reference_course_access_types_command]] and [[reference_verified_learner_setup]].

@@ -341,21 +341,21 @@ def _seed(site: Site) -> None:
     cohort_learner = _ensure_user(site, "cohort.learner@example.com", "Cara", "Learner")
     _ensure_membership(site, rpas_maths, cohort_learner)
     for email, first, last in [
-        ("y9.student2@example.com", "Priya", "Naidoo"),
-        ("y9.student3@example.com", "Tom", "Fischer"),
+        ("y9.learner2@example.com", "Priya", "Naidoo"),
+        ("y9.learner3@example.com", "Tom", "Fischer"),
     ]:
         _ensure_membership(site, rpas_maths, _ensure_user(site, email, first, last))
 
     # A member the legacy educator holds no grant on, so §5's "other cohort
     # 404s" and "users list is limited to Year 9 Maths" checks can distinguish.
     _ensure_membership(
-        site, rpas_other, _ensure_user(site, "y10.student@example.com", "Ada", "Kruger")
+        site, rpas_other, _ensure_user(site, "y10.learner@example.com", "Ada", "Kruger")
     )
 
     # Northside-only learners: they must never surface in an RPAS Training list.
     for email, first, last in [
-        ("northside.student1@example.com", "Nina", "Botha"),
-        ("northside.student2@example.com", "Neo", "Dlamini"),
+        ("northside.learner1@example.com", "Nina", "Botha"),
+        ("northside.learner2@example.com", "Neo", "Dlamini"),
     ]:
         _ensure_membership(
             site, northside_maths, _ensure_user(site, email, first, last)
@@ -364,7 +364,7 @@ def _seed(site: Site) -> None:
     _ensure_membership(
         site,
         southgate_only,
-        _ensure_user(site, "southgate.student@example.com", "Sipho", "Gate"),
+        _ensure_user(site, "southgate.learner@example.com", "Sipho", "Gate"),
     )
 
     solo_learner = _ensure_user(site, "solo.learner@example.com", "Sol", "Individual")

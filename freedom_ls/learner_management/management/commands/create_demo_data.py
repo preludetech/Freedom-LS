@@ -13,7 +13,7 @@ from freedom_ls.organisations.utils import get_default_organisation
 # from app_authentication.models import Client
 
 client_api_key = "W8tuA0ReonfZsAKywAZz9-IMGNCIq3TVGDiiar0LJqRoLEMceqgYjllfXU7iz6s7"
-client_name = "Student Interface"
+client_name = "Learner Interface"
 
 demo_sites: list[dict[str, Any]] = [
     {
@@ -25,7 +25,7 @@ demo_sites: list[dict[str, Any]] = [
         "name": "DemoDev",
         "domain": "127.0.0.1:8000",
         "cohorts": ["Cohort 2025.03.04", "Cohort 2025.04.06"],
-        "num_students": 50,
+        "num_learners": 50,
     },
     {
         "name": "Bloom",
@@ -119,16 +119,16 @@ class Command(BaseCommand):
                         self.style.WARNING(f"Cohort '{cohort_name}' already exists")
                     )
 
-            # Create student users for this site
+            # Create learner users for this site
             created_users = []
             site_prefix = site_data["name"].lower()
-            max_students = site_data.get("num_students", 3) + 1
-            for i in range(1, max_students):
+            max_learners = site_data.get("num_learners", 3) + 1
+            for i in range(1, max_learners):
                 full_name = f"{site_prefix}_s{i}"
                 email = f"{site_prefix}_s{i}@email.com"
 
                 # Create or get the user
-                student_user, user_created = user_model.objects.get_or_create(
+                learner_user, user_created = user_model.objects.get_or_create(
                     email=email,
                     site=site,
                     defaults={
@@ -138,12 +138,12 @@ class Command(BaseCommand):
                     },
                 )
                 if user_created:
-                    student_user.set_password(email)
-                    student_user.save()
+                    learner_user.set_password(email)
+                    learner_user.save()
 
-                self._ensure_verified_email(student_user)
+                self._ensure_verified_email(learner_user)
 
-                created_users.append(student_user)
+                created_users.append(learner_user)
                 if user_created:
                     self.stdout.write(
                         self.style.SUCCESS(
@@ -158,14 +158,14 @@ class Command(BaseCommand):
             # Add users to first cohort if available
             if created_cohorts and created_users:
                 first_cohort = created_cohorts[0]
-                for student_user in created_users:
+                for learner_user in created_users:
                     _membership, created = CohortMembership.objects.get_or_create(
-                        user=student_user,
+                        user=learner_user,
                         cohort=first_cohort,
                         site=site,
                     )
                     if created:
-                        user_name = f"{student_user.first_name} {student_user.last_name}".strip()
+                        user_name = f"{learner_user.first_name} {learner_user.last_name}".strip()
                         self.stdout.write(
                             self.style.SUCCESS(
                                 f"Added '{user_name}' to cohort '{first_cohort.name}'"

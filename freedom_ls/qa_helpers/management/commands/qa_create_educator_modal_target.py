@@ -7,7 +7,7 @@ and see the ``DeleteAction`` button, which opens the
 
 The educator is granted object-level ``view_cohort`` (so the cohort appears in
 the list and the detail page loads) and ``delete_cohort`` (so the Delete action
-renders) on the created cohort. A single student member plus a course
+renders) on the created cohort. A single learner member plus a course
 registration give the delete-confirmation modal a cascade summary to show.
 
 Idempotent: re-running reuses existing records by email / name.
@@ -37,7 +37,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.organisations.utils import get_default_organisation
 
 EDUCATOR_EMAIL = "qa_educator@example.com"
-STUDENT_EMAIL = "qa_modal_student@example.com"
+LEARNER_EMAIL = "qa_modal_learner@example.com"
 COHORT_NAME = "QA Modal Cohort"
 
 
@@ -111,16 +111,16 @@ def command(site_name: str) -> None:
     assign_perm("delete_cohort", educator, cohort)
     click.secho("Assigned view_cohort + delete_cohort on cohort", fg="green")
 
-    # One student member so the cohort is non-empty and the delete modal has a
+    # One learner member so the cohort is non-empty and the delete modal has a
     # cascade summary to display.
-    student = _get_or_create_user(site, STUDENT_EMAIL, "Sam", "Student")
+    learner = _get_or_create_user(site, LEARNER_EMAIL, "Sam", "Learner")
     if not CohortMembership.objects.filter(
-        user=student, cohort=cohort, site=site
+        user=learner, cohort=cohort, site=site
     ).exists():
-        CohortMembershipFactory(user=student, cohort=cohort, site=site)
-        click.secho(f"Added student member {STUDENT_EMAIL}", fg="green")
+        CohortMembershipFactory(user=learner, cohort=cohort, site=site)
+        click.secho(f"Added learner member {LEARNER_EMAIL}", fg="green")
     else:
-        click.secho(f"Student {STUDENT_EMAIL} already a member", fg="yellow")
+        click.secho(f"Learner {LEARNER_EMAIL} already a member", fg="yellow")
 
     # Register the cohort for a course (gives the cascade summary an item).
     course = Course.objects.filter(site=site).order_by("title").first()

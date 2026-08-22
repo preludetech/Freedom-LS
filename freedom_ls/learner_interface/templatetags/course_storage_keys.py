@@ -1,4 +1,4 @@
-"""Single source of truth for the localStorage keys used by the student-
+"""Single source of truth for the localStorage keys used by the learner-
 facing course UI.
 
 The Alpine ``coursePart`` component reads / writes a per-course-part

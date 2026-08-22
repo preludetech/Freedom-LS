@@ -1,4 +1,4 @@
-"""Tests for student_management.utils functions."""
+"""Tests for learner_management.utils functions."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from freedom_ls.learner_management.factories import (
 
 @pytest.mark.django_db
 class TestIsRegisteredForCourse:
-    """Tests for student_management.utils.is_registered_for_course."""
+    """Tests for learner_management.utils.is_registered_for_course."""
 
     def test_anonymous_user_is_not_registered(self, mock_site_context):
         from django.contrib.auth.models import AnonymousUser
@@ -64,7 +64,7 @@ class TestIsRegisteredForCourse:
 
 @pytest.mark.django_db
 class TestIsRegisteredForCourseExpression:
-    """Tests for student_management.queries.is_registered_for_course_expression."""
+    """Tests for learner_management.queries.is_registered_for_course_expression."""
 
     def test_directly_registered_course_annotates_true(self, mock_site_context):
         from freedom_ls.content_engine.models import Course

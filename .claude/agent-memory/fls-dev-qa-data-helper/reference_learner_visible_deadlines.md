@@ -9,30 +9,30 @@ metadata:
 
 ## The only learner-facing render point
 
-`student_interface/partials/course_minimal_toc.html`, `{% partialdef deadline-badges %}`
+`learner_interface/partials/course_minimal_toc.html`, `{% partialdef deadline-badges %}`
 — a `<span class="text-xs text-warning ..." title="{{ dl.source }}">` (soft) or
 `text-error` (hard) with a `deadline` icon and `{{ dl.deadline|date:"d M" }}`.
 
 That partial is included from exactly two templates:
 
-- `student_interface/course_detail.html` -> `/courses/<slug>/detail/`
+- `learner_interface/course_detail.html` -> `/courses/<slug>/detail/`
   (only when `course.table_of_contents_in_development` is **False**)
-- `student_interface/_course_base.html` (player sidebar) -> `/courses/<slug>/<index>/`
+- `learner_interface/_course_base.html` (player sidebar) -> `/courses/<slug>/<index>/`
 
 **The dashboard `/` renders NO deadlines** — it has no TOC. Don't look for them there.
 
 ## Data path
 
-`get_course_index()` (`student_interface/utils.py`) fills `deadlines_map` via
-`student_management.deadline_utils.get_course_deadlines(user, course)`, gated on
+`get_course_index()` (`learner_interface/utils.py`) fills `deadlines_map` via
+`learner_management.deadline_utils.get_course_deadlines(user, course)`, gated on
 `user.is_authenticated and config.DEADLINES_ACTIVE`
-(`freedom_ls/student_management/config.py`, default **True**, no project override).
+(`freedom_ls/learner_management/config.py`, default **True**, no project override).
 
 Resolution per active registration:
 
 - Cohort reg: `UserCohortDeadlineOverride` > `CohortDeadline` (item) >
   course-level override > course-level `CohortDeadline`
-- Individual `UserCourseRegistration`: `StudentDeadline` item > `StudentDeadline` course-level
+- Individual `UserCourseRegistration`: `LearnerDeadline` item > `LearnerDeadline` course-level
 
 ## KEY TRICK — use a course-level deadline for visibility
 
@@ -69,13 +69,13 @@ on Site 3 both own a cohort named "Year 9 Maths", so this raises
 RPAS Training's does.
 
 For an individual `UserCourseRegistration` there is **no** qa command — you'd need
-`StudentDeadlineFactory(student_course_registration=reg, deadline=..., site=site)`.
+`LearnerDeadlineFactory(learner_course_registration=reg, deadline=..., site=site)`.
 `qa_create_deadline_overrides` covers `UserCohortDeadlineOverride`.
 
 ## Hard-deadline side effect
 
 Expired **hard** deadlines set the row to `BLOCKED`, drop its URL, and
-`view_course_item` redirects to `/detail/` (`student_interface/views.py`,
+`view_course_item` redirects to `/detail/` (`learner_interface/views.py`,
 `is_item_locked_by_deadline`). Soft deadlines never lock. Use soft for
 "deadlines render" checks so you don't disturb live progress QA.
 

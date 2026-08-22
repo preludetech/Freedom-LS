@@ -1,7 +1,7 @@
-"""Create a cohort with students at varying levels of course progress.
+"""Create a cohort with learners at varying levels of course progress.
 
-Creates an educator user, a cohort with 8-10 students, registers the cohort
-for a course, and creates progress records so students are at different stages
+Creates an educator user, a cohort with 8-10 learners, registers the cohort
+for a course, and creates progress records so learners are at different stages
 of completion. Useful for demonstrating the Course Progress panel in the
 educator interface.
 """
@@ -79,8 +79,8 @@ def _set_course_progress(
     )
 
 
-def _create_student(site: Site, first_name: str, last_name: str, email: str) -> object:
-    """Create a student user, or return existing one."""
+def _create_learner(site: Site, first_name: str, last_name: str, email: str) -> object:
+    """Create a learner user, or return existing one."""
     from freedom_ls.accounts.models import User
 
     try:
@@ -112,7 +112,7 @@ def command(
     course_slug: str,
     cohort_name: str,
 ) -> None:
-    """Create a cohort with students at varying progress levels through a course.
+    """Create a cohort with learners at varying progress levels through a course.
 
     SITE_NAME is the name of the site to create data on (e.g. 'DemoDev').
     """
@@ -167,7 +167,7 @@ def command(
 
     # Create educator user
     educator_email = "qa-educator-progress@example.com"
-    educator = _create_student(site, "Quinn", "Educator", educator_email)
+    educator = _create_learner(site, "Quinn", "Educator", educator_email)
     assign_perm("view_cohort", educator, cohort)
     click.secho(
         f"Educator: {educator_email} (password: testpass123) "
@@ -175,8 +175,8 @@ def command(
         fg="green",
     )
 
-    # Define students with their progress profiles
-    student_profiles = [
+    # Define learners with their progress profiles
+    learner_profiles = [
         # (first, last, email_prefix, description, topics_to_complete, topics_to_start, forms_to_complete, forms_to_start)
         ("Alice", "Zero", "alice.zero", "no progress", 0, 0, 0, 0),
         ("Bob", "Nada", "bob.nada", "no progress", 0, 0, 0, 0),
@@ -198,7 +198,7 @@ def command(
         ("Ivy", "Done", "ivy.done", "fully complete", 5, 0, 2, 0),
     ]
 
-    click.secho(f"\nCreating {len(student_profiles)} students:", fg="cyan")
+    click.secho(f"\nCreating {len(learner_profiles)} learners:", fg="cyan")
 
     for (
         first,
@@ -209,41 +209,41 @@ def command(
         n_topics_start,
         n_forms_complete,
         n_forms_start,
-    ) in student_profiles:
+    ) in learner_profiles:
         email = f"qa-{email_prefix}@example.com"
-        student = _create_student(site, first, last, email)
+        learner = _create_learner(site, first, last, email)
 
         # Add to cohort
         from freedom_ls.learner_management.models import CohortMembership
 
         if not CohortMembership.objects.filter(
-            user=student, cohort=cohort, site=site
+            user=learner, cohort=cohort, site=site
         ).exists():
-            CohortMembershipFactory(user=student, cohort=cohort, site=site)
+            CohortMembershipFactory(user=learner, cohort=cohort, site=site)
 
         # Create topic progress
         completed_count = 0
         for i, topic in enumerate(topics):
             if i < n_topics_complete:
-                _complete_topic(student, topic, site)
+                _complete_topic(learner, topic, site)
                 completed_count += 1
             elif i < n_topics_complete + n_topics_start:
-                _start_topic(student, topic, site)
+                _start_topic(learner, topic, site)
 
         # Create form progress
         for i, form in enumerate(forms):
             if i < n_forms_complete:
-                _complete_form(student, form, site)
+                _complete_form(learner, form, site)
                 completed_count += 1
             elif i < n_forms_complete + n_forms_start:
-                _start_form(student, form, site)
+                _start_form(learner, form, site)
 
         # Set course progress percentage
         if total_items > 0:
             percentage = round((completed_count / total_items) * 100)
         else:
             percentage = 0
-        _set_course_progress(student, course, site, percentage)
+        _set_course_progress(learner, course, site, percentage)
 
         click.secho(
             f"  {first} {last} <{email}> - {desc} "
@@ -255,14 +255,14 @@ def command(
     click.secho(f"Site: {site.name} ({site.domain})", fg="cyan")
     click.secho(f"Cohort: {cohort_name} (pk={cohort.pk})", fg="cyan")
     click.secho(f"Course: {course.title}", fg="cyan")
-    click.secho(f"Students: {len(student_profiles)}", fg="cyan")
+    click.secho(f"Learners: {len(learner_profiles)}", fg="cyan")
     click.secho(
         f"\nEducator login: {educator_email} / testpass123",
         fg="green",
         bold=True,
     )
     click.secho(
-        "All student passwords: testpass123",
+        "All learner passwords: testpass123",
         fg="green",
     )
     click.secho(

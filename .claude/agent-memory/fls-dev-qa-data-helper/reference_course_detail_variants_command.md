@@ -25,7 +25,7 @@ KEY CONSTRAINT (enforced in `content_engine/schema.py` `_validate_toc_in_develop
 and Course model): a PUBLISHED course may NOT have `table_of_contents_in_development=True`.
 The two toc_dev=True courses are therefore `coming_soon`.
 
-Detail-page counting (`student_interface/views.py` course_detail): `lesson_count` =
+Detail-page counting (`learner_interface/views.py` course_detail): `lesson_count` =
 viewable items that are NOT `Form`; `includes_assessments` = any viewable child is a
 `Form`. So "assessments panel" is driven purely by presence of a Form viewable child.
 

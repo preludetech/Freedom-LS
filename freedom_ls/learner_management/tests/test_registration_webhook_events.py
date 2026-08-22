@@ -1,4 +1,4 @@
-"""Tests for webhook events fired from the student_management app."""
+"""Tests for webhook events fired from the learner_management app."""
 
 from unittest.mock import patch
 

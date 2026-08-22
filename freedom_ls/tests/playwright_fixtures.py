@@ -13,7 +13,7 @@ Available fixtures
   (writing to localStorage and navigating again still finds the value)
   intact.
 - ``logged_in_page`` (function): yields a Playwright ``Page`` for a freshly-
-  created, email-verified student user. Drives the allauth login form once
+  created, email-verified learner user. Drives the allauth login form once
   per test using semantic locators (``get_by_label`` / ``get_by_role``) per
   the ``fls:playwright-tests`` skill. Replaces the older fixture body that
   used CSS selectors (``input[name="login"]``, ``button[type="submit"]``).
@@ -60,8 +60,8 @@ its own site lookup; the mock is for the test process.
 Role variants
 -------------
 
-Only a student-shaped login is provided today, because every existing
-Playwright test uses a student. Role-specific variants
+Only a learner-shaped login is provided today, because every existing
+Playwright test uses a learner. Role-specific variants
 (``educator_logged_in_page``, ``admin_logged_in_page``) should be added
 the moment a second test needs them — not preemptively.
 """
@@ -149,7 +149,7 @@ _LOGGED_IN_PASSWORD = "testpass"  # noqa: S105  # pragma: allowlist secret
 
 @pytest.fixture
 def logged_in_user(db, live_server_site, mock_site_context) -> User:
-    """A fresh, email-verified student user — the one ``logged_in_page`` signs in.
+    """A fresh, email-verified learner user — the one ``logged_in_page`` signs in.
 
     Exposed as its own fixture so a test can register this exact user for the
     course it browses. Content surfaces gate on registration

@@ -1,4 +1,4 @@
-"""Tests for student_management.context_processors.
+"""Tests for learner_management.context_processors.
 
 can_access_educator_interface answers one question for the header menu: may
 this person enter the educator interface at all? It must agree with

@@ -1,4 +1,4 @@
-"""Complete a form for students in a cohort (creates FormProgress records)."""
+"""Complete a form for learners in a cohort (creates FormProgress records)."""
 
 from datetime import timedelta
 
@@ -18,7 +18,7 @@ from freedom_ls.learner_progress.models import FormProgress
 @click.option(
     "--cohort-name",
     required=True,
-    help="Name of the cohort whose students will complete the form.",
+    help="Name of the cohort whose learners will complete the form.",
 )
 @click.option(
     "--form-slug",
@@ -46,7 +46,7 @@ def command(
     ).select_related("user")
 
     if not memberships.exists():
-        raise click.ClickException(f"No students found in cohort '{cohort_name}'.")
+        raise click.ClickException(f"No learners found in cohort '{cohort_name}'.")
 
     now = timezone.now()
     created_count = 0
