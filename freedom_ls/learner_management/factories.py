@@ -14,8 +14,8 @@ from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortDeadline,
     CohortMembership,
+    LearnerDeadline,
     RecommendedCourse,
-    StudentDeadline,
     UserCohortDeadlineOverride,
     UserCourseRegistration,
 )
@@ -96,21 +96,21 @@ class CohortDeadlineFactory(SiteAwareFactory):
     )
 
 
-class StudentDeadlineFactory(SiteAwareFactory):
-    """Factory for creating StudentDeadline instances.
+class LearnerDeadlineFactory(SiteAwareFactory):
+    """Factory for creating LearnerDeadline instances.
 
     Pass ``content_item=<model instance>`` to set the GenericFK fields.
     When omitted, content_type and object_id default to None (course-level deadline).
     """
 
     class Meta:
-        model = StudentDeadline
+        model = LearnerDeadline
         exclude = ["content_item"]
 
     class Params:
         content_item = None
 
-    student_course_registration = factory.SubFactory(UserCourseRegistrationFactory)
+    learner_course_registration = factory.SubFactory(UserCourseRegistrationFactory)
     deadline = factory.LazyFunction(lambda: timezone.now() + timedelta(days=30))
     is_hard_deadline = False
 

@@ -12,8 +12,8 @@ from .models import (
     CohortCourseRegistration,
     CohortDeadline,
     CohortMembership,
+    LearnerDeadline,
     RecommendedCourse,
-    StudentDeadline,
     UserCohortDeadlineOverride,
     UserCourseRegistration,
 )
@@ -51,8 +51,8 @@ class CohortAdmin(GuardedSiteAwareModelAdmin):
     # comment can be removed.
 
 
-class StudentDeadlineInline(TabularInline):
-    model = StudentDeadline
+class LearnerDeadlineInline(TabularInline):
+    model = LearnerDeadline
     extra = 0
     fields = ["content_type", "object_id", "deadline", "is_hard_deadline"]
 
@@ -73,7 +73,7 @@ class UserCourseRegistrationAdmin(SiteAwareModelAdmin):
     ]
     autocomplete_fields = ["organisation", "user", "collection"]
     readonly_fields = ["registered_at"]
-    inlines = [StudentDeadlineInline]
+    inlines = [LearnerDeadlineInline]
 
     fieldsets = (
         (None, {"fields": ("organisation", "user", "collection", "is_active")}),
@@ -164,8 +164,8 @@ class CohortDeadlineAdmin(SiteAwareModelAdmin):
         return str(obj.content_item) if obj.content_item else "Whole course"
 
 
-@admin.register(StudentDeadline)
-class StudentDeadlineAdmin(SiteAwareModelAdmin):
+@admin.register(LearnerDeadline)
+class LearnerDeadlineAdmin(SiteAwareModelAdmin):
     list_display = [
         "get_user_name",
         "get_course_name",
@@ -174,30 +174,30 @@ class StudentDeadlineAdmin(SiteAwareModelAdmin):
         "is_hard_deadline",
     ]
     list_select_related = [
-        "student_course_registration__user",
-        "student_course_registration__collection",
+        "learner_course_registration__user",
+        "learner_course_registration__collection",
     ]
     list_filter = [
-        "student_course_registration__collection",
+        "learner_course_registration__collection",
         "is_hard_deadline",
     ]
     search_fields = [
-        "student_course_registration__user__first_name",
-        "student_course_registration__user__last_name",
-        "student_course_registration__collection__title",
+        "learner_course_registration__user__first_name",
+        "learner_course_registration__user__last_name",
+        "learner_course_registration__collection__title",
     ]
-    autocomplete_fields = ["student_course_registration"]
+    autocomplete_fields = ["learner_course_registration"]
 
     @admin.display(description="User")
-    def get_user_name(self, obj: StudentDeadline) -> str:
-        return str(obj.student_course_registration.user)
+    def get_user_name(self, obj: LearnerDeadline) -> str:
+        return str(obj.learner_course_registration.user)
 
     @admin.display(description="Course")
-    def get_course_name(self, obj: StudentDeadline) -> str:
-        return obj.student_course_registration.collection.title
+    def get_course_name(self, obj: LearnerDeadline) -> str:
+        return obj.learner_course_registration.collection.title
 
     @admin.display(description="Content Item")
-    def get_content_item(self, obj: StudentDeadline) -> str:
+    def get_content_item(self, obj: LearnerDeadline) -> str:
         return str(obj.content_item) if obj.content_item else "Whole course"
 
 

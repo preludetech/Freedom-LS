@@ -14,7 +14,7 @@ from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortDeadline,
     CohortMembership,
-    StudentDeadline,
+    LearnerDeadline,
     UserCohortDeadlineOverride,
     UserCourseRegistration,
 )
@@ -22,7 +22,7 @@ from freedom_ls.learner_management.models import (
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
 
-type _DeadlineType = CohortDeadline | StudentDeadline | UserCohortDeadlineOverride
+type _DeadlineType = CohortDeadline | LearnerDeadline | UserCohortDeadlineOverride
 type _IndexKey = tuple[uuid.UUID, int | None, uuid.UUID | None]
 
 
@@ -72,15 +72,15 @@ def get_effective_deadlines(
         if effective is not None:
             results.append(effective)
 
-    # --- Individual student registrations ---
-    student_regs = UserCourseRegistration.objects.filter(
+    # --- Individual learner registrations ---
+    learner_regs = UserCourseRegistration.objects.filter(
         user=user,
         collection=course,
         is_active=True,
     )
 
-    for student_reg in student_regs:
-        effective = _resolve_student_deadline(student_reg, content_type_id, object_id)
+    for learner_reg in learner_regs:
+        effective = _resolve_learner_deadline(learner_reg, content_type_id, object_id)
         if effective is not None:
             results.append(effective)
 
@@ -155,19 +155,19 @@ def _resolve_cohort_deadline(
     return None
 
 
-def _resolve_student_deadline(
+def _resolve_learner_deadline(
     reg: UserCourseRegistration,
     content_type_id: int | None,
     object_id: uuid.UUID | None,
 ) -> EffectiveDeadline | None:
-    """Resolve the effective deadline for a single student registration.
+    """Resolve the effective deadline for a single learner registration.
 
     Priority: item-level > course-level fallback.
     """
     # 1. Check for item-level deadline
     if content_type_id is not None:
-        item_dl = StudentDeadline.objects.filter(
-            student_course_registration=reg,
+        item_dl = LearnerDeadline.objects.filter(
+            learner_course_registration=reg,
             content_type_id=content_type_id,
             object_id=object_id,
         ).first()
@@ -179,8 +179,8 @@ def _resolve_student_deadline(
             )
 
     # 2. Fall back to course-level
-    course_dl = StudentDeadline.objects.filter(
-        student_course_registration=reg,
+    course_dl = LearnerDeadline.objects.filter(
+        learner_course_registration=reg,
         content_type__isnull=True,
         object_id__isnull=True,
     ).first()
@@ -216,17 +216,17 @@ def get_course_deadlines(
         ).select_related("cohort")
     )
 
-    student_regs = list(
+    learner_regs = list(
         UserCourseRegistration.objects.filter(
             user=user, collection=course, is_active=True
         )
     )
 
-    if not cohort_regs and not student_regs:
+    if not cohort_regs and not learner_regs:
         return {}
 
     cohort_reg_ids = [r.id for r in cohort_regs]
-    student_reg_ids = [r.id for r in student_regs]
+    learner_reg_ids = [r.id for r in learner_regs]
 
     # Bulk fetch all deadline records
     all_cohort_deadlines = list(
@@ -237,9 +237,9 @@ def get_course_deadlines(
             cohort_course_registration_id__in=cohort_reg_ids, user=user
         )
     )
-    all_student_deadlines = list(
-        StudentDeadline.objects.filter(
-            student_course_registration_id__in=student_reg_ids
+    all_learner_deadlines = list(
+        LearnerDeadline.objects.filter(
+            learner_course_registration_id__in=learner_reg_ids
         )
     )
 
@@ -258,13 +258,13 @@ def get_course_deadlines(
         all_cohort_deadlines, "cohort_course_registration_id"
     )
     override_index = _index_deadlines(all_overrides, "cohort_course_registration_id")
-    student_dl_index = _index_deadlines(
-        all_student_deadlines, "student_course_registration_id"
+    learner_dl_index = _index_deadlines(
+        all_learner_deadlines, "learner_course_registration_id"
     )
 
     # Collect all unique (ct_id, obj_id) keys across all deadlines
     all_keys: set[tuple[int | None, uuid.UUID | None]] = set()
-    for dl in all_cohort_deadlines + all_overrides + all_student_deadlines:
+    for dl in all_cohort_deadlines + all_overrides + all_learner_deadlines:
         all_keys.add((dl.content_type_id, dl.object_id))
 
     # For each unique key, resolve effective deadlines per registration
@@ -280,9 +280,9 @@ def get_course_deadlines(
             if effective:
                 effective_list.append(effective)
 
-        for student_reg in student_regs:
-            effective = _resolve_student_deadline_from_index(
-                student_reg, ct_id, obj_id, student_dl_index
+        for learner_reg in learner_regs:
+            effective = _resolve_learner_deadline_from_index(
+                learner_reg, ct_id, obj_id, learner_dl_index
             )
             if effective:
                 effective_list.append(effective)
@@ -348,17 +348,17 @@ def _resolve_cohort_deadline_from_index(
     return None
 
 
-def _resolve_student_deadline_from_index(
+def _resolve_learner_deadline_from_index(
     reg: UserCourseRegistration,
     content_type_id: int | None,
     object_id: uuid.UUID | None,
-    student_dl_index: dict[_IndexKey, list[_DeadlineType]],
+    learner_dl_index: dict[_IndexKey, list[_DeadlineType]],
 ) -> EffectiveDeadline | None:
-    """Resolve a student deadline using pre-fetched indexes."""
+    """Resolve a learner deadline using pre-fetched indexes."""
     reg_id = reg.id
 
     if content_type_id is not None:
-        item_dls = student_dl_index.get((reg_id, content_type_id, object_id), [])
+        item_dls = learner_dl_index.get((reg_id, content_type_id, object_id), [])
         if item_dls:
             dl = item_dls[0]
             return EffectiveDeadline(
@@ -368,7 +368,7 @@ def _resolve_student_deadline_from_index(
             )
 
     # Fall back to course-level
-    course_dls = student_dl_index.get((reg_id, None, None), [])
+    course_dls = learner_dl_index.get((reg_id, None, None), [])
     if course_dls:
         dl = course_dls[0]
         return EffectiveDeadline(

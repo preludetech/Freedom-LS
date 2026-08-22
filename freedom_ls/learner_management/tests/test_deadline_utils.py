@@ -15,7 +15,7 @@ from freedom_ls.learner_management.factories import (
     CohortDeadlineFactory,
     CohortFactory,
     CohortMembershipFactory,
-    StudentDeadlineFactory,
+    LearnerDeadlineFactory,
     UserCohortDeadlineOverrideFactory,
     UserCourseRegistrationFactory,
 )
@@ -134,24 +134,24 @@ def test_cohort_plus_individual_registration_shows_both(mock_site_context):
     user_course_reg = UserCourseRegistrationFactory(user=user, collection=course)
 
     cohort_dt = timezone.now() + timedelta(days=5)
-    student_dt = timezone.now() + timedelta(days=10)
+    learner_dt = timezone.now() + timedelta(days=10)
 
     CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
         content_item=topic,
         deadline=cohort_dt,
     )
-    StudentDeadlineFactory(
-        student_course_registration=user_course_reg,
+    LearnerDeadlineFactory(
+        learner_course_registration=user_course_reg,
         content_item=topic,
-        deadline=student_dt,
+        deadline=learner_dt,
     )
 
     result = get_effective_deadlines(user, course, content_item=topic)
 
     assert len(result) == 2
     deadlines = {r.deadline for r in result}
-    assert deadlines == {cohort_dt, student_dt}
+    assert deadlines == {cohort_dt, learner_dt}
 
 
 @pytest.mark.django_db
@@ -174,11 +174,11 @@ def test_two_individual_registrations_through_different_organisations_show_both(
     dt_a = timezone.now() + timedelta(days=5)
     dt_b = timezone.now() + timedelta(days=10)
 
-    StudentDeadlineFactory(
-        student_course_registration=reg_a, content_item=topic, deadline=dt_a
+    LearnerDeadlineFactory(
+        learner_course_registration=reg_a, content_item=topic, deadline=dt_a
     )
-    StudentDeadlineFactory(
-        student_course_registration=reg_b, content_item=topic, deadline=dt_b
+    LearnerDeadlineFactory(
+        learner_course_registration=reg_b, content_item=topic, deadline=dt_b
     )
 
     result = get_effective_deadlines(user, course, content_item=topic)
