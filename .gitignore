@@ -64,3 +64,6 @@ bandit.sarif
 # Playwright MCP screenshot output dir (moved into spec dir after each QA run)
 qa-screenshots/
 .claude/scheduled_tasks.lock
+
+# pytest-playwright traces and failure screenshots
+test-results/

@@ -196,7 +196,7 @@ class PhoneNumberForm(forms.Form):
     def applies_to(cls, user) -> bool:
         if user.is_superuser or user.is_staff:
             return False
-        return hasattr(user, "student_profile")
+        return hasattr(user, "learner_profile")
 
     @classmethod
     def is_complete(cls, user) -> bool:

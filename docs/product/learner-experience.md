@@ -16,7 +16,7 @@ _Last updated: 2026-08-21_
 
 ![Learner dashboard](screenshots/learner_dashboard.png)
 
-The student dashboard serves as the home page at `/`. Its content branches on whether the visitor is authenticated.
+The learner dashboard serves as the home page at `/`. Its content branches on whether the visitor is authenticated.
 
 **Anonymous visitors** see a value-proposition hero (a short headline, subtext, and a single "Browse all courses" CTA) at the top of the page, followed by the **Available courses** discovery section showing a sample of courses on the site. The personalised sections — the "Welcome back" greeting, In Progress, Recommended Courses, Learning History, and any backend panels — are not shown. They are omitted entirely rather than shown as "sign in to see this" placeholders.
 
@@ -74,17 +74,17 @@ On the course detail page, an unregistered learner sees an "I'm interested" cont
 
 The confirmation copy sets a soft expectation that the learner will be told when the course is ready. In the current release, expressing interest only records that interest — no email or in-app notification is sent when the course later launches, because FLS has no notification system yet. Notify-on-launch is planned future work; see [roadmap](./roadmap.md).
 
-There is deliberately no scarcity signalling anywhere in this flow: no queue position, no count of other interested students, and no countdown to launch.
+There is deliberately no scarcity signalling anywhere in this flow: no queue position, no count of other interested learners, and no countdown to launch.
 
 A coming-soon course's content stays locked: a learner who is not registered cannot open the course player, and is sent back to the detail page if they try.
 
 ### Hidden
 
-A hidden course is removed from discovery entirely — it does not appear in the course listing, the dashboard, or any other browse surface. Its detail page returns a "not found" result for a learner who isn't already registered, the same as if the course didn't exist; a hidden course never confirms its own existence to a student who stumbles onto its URL.
+A hidden course is removed from discovery entirely — it does not appear in the course listing, the dashboard, or any other browse surface. Its detail page returns a "not found" result for a learner who isn't already registered, the same as if the course didn't exist; a hidden course never confirms its own existence to a learner who stumbles onto its URL.
 
 ### Setting visibility
 
-Visibility is set per course in the course's content file and takes effect on import; it is not something a learner or educator toggles in the app. See [content editing workflow](./content-editing-workflow.md) for how it's authored and [configuration and extension](./configuration-and-extension.md) for how access types and backends interact with it. The educator-facing view of visibility (badges, interest counts, drill-down to interested students) is described in [educator-interface](./educator-interface.md).
+Visibility is set per course in the course's content file and takes effect on import; it is not something a learner or educator toggles in the app. See [content editing workflow](./content-editing-workflow.md) for how it's authored and [configuration and extension](./configuration-and-extension.md) for how access types and backends interact with it. The educator-facing view of visibility (badges, interest counts, drill-down to interested learners) is described in [educator-interface](./educator-interface.md).
 
 ## Course Detail Page
 
@@ -218,9 +218,9 @@ When every item in a course is complete, the learner reaches a finish page and t
 
 ## Deadlines
 
-Deadlines are set by administrators (cohort-level or per-student) and are read-only from the learner's perspective. Applicable deadline dates appear as colour-coded badges against items in the course contents.
+Deadlines are set by administrators (cohort-level or per-learner) and are read-only from the learner's perspective. Applicable deadline dates appear as colour-coded badges against items in the course contents.
 
 - **Hard deadline** — once expired, an incomplete item is locked. A lock icon is shown and the learner cannot open it. Completed items are never locked.
 - **Soft deadline** — shown to the learner but never locks anything; the content stays accessible and completable past the date. Note there is no explicit "overdue" state on the learner's side — overdue highlighting appears only in the educator's [progress matrix](./educator-interface.md#course-progress-matrix).
 
-Where both a cohort deadline and a per-student override apply, the most permissive — the latest — governs. Deadlines can be disabled site-wide via the `DEADLINES_ACTIVE` setting.
+Where both a cohort deadline and a per-learner override apply, the most permissive — the latest — governs. Deadlines can be disabled site-wide via the `DEADLINES_ACTIVE` setting.

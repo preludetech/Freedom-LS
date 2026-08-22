@@ -90,7 +90,7 @@ Rules for the prose sections:
 - **Facts only.** Base every statement on the spec, the plan, and the actual diff. Do not speculate.
 - **Right altitude.** The audience is a developer maintaining a downstream FLS project. Name settings, migration commands, and template paths explicitly when relevant. Skip internal implementation details they don't need.
 - **Breaking changes** — list anything a downstream project must change in their own code to stay working (renamed settings, removed template blocks, changed URLs, altered model fields). Write "None" if there are none.
-- **Manual steps** — list concrete actions the downstream developer must take after pulling (e.g. "run `manage.py migrate`", "rebuild Tailwind", "review and re-apply customisations to `freedom_ls/student_interface/templates/…`"). Write "None" if there are none.
+- **Manual steps** — list concrete actions the downstream developer must take after pulling (e.g. "run `manage.py migrate`", "rebuild Tailwind", "review and re-apply customisations to `freedom_ls/learner_interface/templates/…`"). Write "None" if there are none.
 
 Keep the prose short and actionable. If there is genuinely nothing for downstream projects to do, say so plainly — an honest "no action needed" is more useful than padding.
 

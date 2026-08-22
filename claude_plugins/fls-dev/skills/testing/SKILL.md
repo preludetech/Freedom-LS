@@ -19,14 +19,14 @@ FreedomLS tests live at `freedom_ls/<app_name>/tests/test_<module>.py`.
 Any test that touches a site-aware model **must** take the `mock_site_context` fixture — never manually set `site`. The fixture sets the thread-local site context that `SiteAwareFactory` and the site-aware managers read.
 
 ```python
-def test_registered_student_appears_in_cohort_roster(mock_site_context):
+def test_registered_learner_appears_in_cohort_roster(mock_site_context):
     # Arrange
     cohort = CohortFactory()
-    student = StudentFactory()
+    learner = UserFactory()
     # Act
-    cohort.register(student)
+    cohort.register(learner)
     # Assert
-    assert student in cohort.roster()
+    assert learner in cohort.roster()
 ```
 
 ## Marker taxonomy (downstream-distribution semantics)

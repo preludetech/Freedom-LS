@@ -36,7 +36,7 @@ class CohortAdmin(GuardedModelAdmin):
     exclude = ["site"]  # Required for site-aware models
 ```
 
-Likewise, any admin that does not subclass `SiteAwareModelAdmin` needs `exclude = ["site"]` for a site-aware model. FLS example admin classes (e.g. `StudentAdmin(SiteAwareModelAdmin)` with custom display methods) subclass `SiteAwareModelAdmin`.
+Likewise, any admin that does not subclass `SiteAwareModelAdmin` needs `exclude = ["site"]` for a site-aware model. FLS example admin classes (e.g. `LearnerDeadlineAdmin(SiteAwareModelAdmin)` with custom display methods) subclass `SiteAwareModelAdmin`.
 
 ## FLS key rules
 

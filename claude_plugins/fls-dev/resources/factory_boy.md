@@ -24,8 +24,8 @@ When creating a new factory for a site-aware model, import `SiteAwareFactory` fr
 
 ## FLS model examples
 
-- **SubFactory:** `StudentFactory` / `CourseFactory`.
-- **RelatedFactory:** `CohortFactory(SiteAwareFactory)` with `"freedom_ls.student_management.factories.CohortMembershipFactory"`.
+- **SubFactory:** `UserCourseRegistrationFactory` / `CourseFactory`.
+- **RelatedFactory:** `CohortFactory(SiteAwareFactory)` with `"freedom_ls.learner_management.factories.CohortMembershipFactory"`.
 - **GenericFK:** `CohortDeadlineFactory(SiteAwareFactory)` with `CohortDeadline` / `content_item` / `TopicFactory`.
 - **ContentCollectionItem (dual GenericFK):**
 
@@ -41,10 +41,10 @@ Always use `mock_site_context` when working with site-aware factories:
 
 ```python
 @pytest.mark.django_db
-def test_student_creation(mock_site_context):
-    student = StudentFactory()
-    assert student.user is not None
-    assert student.site is not None
+def test_learner_registration_creation(mock_site_context):
+    registration = UserCourseRegistrationFactory()
+    assert registration.user is not None
+    assert registration.site is not None
 
 
 @pytest.mark.django_db
@@ -59,5 +59,5 @@ def test_cohort_membership(mock_site_context):
     cohort = CohortFactory(name="Test Cohort")
     membership = CohortMembershipFactory(cohort=cohort)
     assert membership.cohort == cohort
-    # membership.student was auto-created by SubFactory
+    # membership.user was auto-created by SubFactory
 ```

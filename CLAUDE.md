@@ -55,11 +55,11 @@ If you are told not to implement a feature immediately then that does not mean t
 - `app_authentication` — API client authentication and key management
 - `base` — Base app configuration
 - `content_engine` — Course content models (topics, forms, activities) with markdown rendering
-- `educator_interface` — Educator views for managing cohorts and viewing student progress
+- `educator_interface` — Educator views for managing cohorts and viewing learner progress
 - `site_aware_models` — Base models and manager for multi-site support with automatic site filtering
-- `student_interface` — Student views for browsing courses, tracking progress, completing content
-- `student_management` — Student profiles, cohorts, course registrations, recommendations
-- `student_progress` — Progress tracking for topics, forms, and courses with scoring strategies
+- `learner_interface` — Learner views for browsing courses, tracking progress, completing content
+- `learner_management` — Learner profiles, cohorts, course registrations, recommendations
+- `learner_progress` — Progress tracking for topics, forms, and courses with scoring strategies
 
 ## Conventions
 

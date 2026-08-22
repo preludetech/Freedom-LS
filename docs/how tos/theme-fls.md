@@ -318,7 +318,7 @@ Removing a prop or changing a default is a breaking change — callers that rely
 Drop a file at the same relative template path:
 
 ```
-themes/my-theme/templates/student_interface/partials/course_card_registered.html
+themes/my-theme/templates/learner_interface/partials/course_card_registered.html
 ```
 
 The file resolves before the FLS app version.

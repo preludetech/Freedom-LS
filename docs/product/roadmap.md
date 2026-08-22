@@ -78,7 +78,7 @@ No 2FA or MFA code exists in any form — no MFA app, no one-time-password integ
 
 **Status: Built and installed, but not the authority for access decisions.**
 
-A role system ships and is migrated: system-level, site-level, and object-level role assignments, with role definitions for site admin, instructor, TA, system admin, student, and observer, plus commands to synchronise and validate role permissions.
+A role system ships and is migrated: system-level, site-level, and object-level role assignments, with role definitions for site admin, instructor, TA, system admin, learner, and observer, plus commands to synchronise and validate role permissions.
 
 It is not, however, what governs access today:
 
@@ -120,11 +120,11 @@ A site-scoped equivalent of Django's groups is written but commented out, so gro
 
 These operations must be performed in the Django admin by an administrator:
 
-- **Cohort membership** — adding or removing students.
-- **Course registration** — registering a cohort or an individual student for a course.
-- **Deadlines** — cohort deadlines, per-student deadlines, and overrides.
+- **Cohort membership** — adding or removing learners.
+- **Course registration** — registering a cohort or an individual learner for a course.
+- **Deadlines** — cohort deadlines, per-learner deadlines, and overrides.
 
-There is also **no messaging capability** — educators cannot contact students from within FLS (see [Notification System](#notification-system)). For what the interface does provide, see [educator interface](./educator-interface.md).
+There is also **no messaging capability** — educators cannot contact learners from within FLS (see [Notification System](#notification-system)). For what the interface does provide, see [educator interface](./educator-interface.md).
 
 ## Enforcing Content Security Policy
 

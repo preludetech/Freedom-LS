@@ -77,8 +77,8 @@ Estimates from the Gunicorn configuration above and typical Django/PostgreSQL ch
 
 | Phase | Estimated capacity | Rough cost |
 |---|---|---|
-| Phase 1 — single VPS | ~50–200 concurrent users, ~1,000 registered students | ~$45–48/month |
-| Phase 2 — separate DB | ~500+ concurrent, ~5,000–10,000 students | ~$60–108/month |
+| Phase 1 — single VPS | ~50–200 concurrent users, ~1,000 registered learners | ~$45–48/month |
+| Phase 2 — separate DB | ~500+ concurrent, ~5,000–10,000 learners | ~$60–108/month |
 | Phase 3 — horizontal scaling | ~1,000+ concurrent, multiple tenants | ~$150–250/month |
 
 Moving to Phase 2 is triggered by monitoring data — CPU consistently above 70% at peak, or database size past 50 GB — not by a calendar date.

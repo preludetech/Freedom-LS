@@ -6,8 +6,8 @@ _Last updated: 2026-08-21_
 
 - Educators use a single-page HTMX panel with three sections: Cohorts, Users, and Courses.
 - The interface is scoped to one organisation at a time, chosen with a switcher and carried in the URL. See [Organisation Scope](#organisation-scope).
-- The cohort detail view includes a course-progress matrix showing completion, quiz scores, pass/fail, and deadlines for every student and course item.
-- The Courses list shows each course's visibility and an interest count, with drill-down to the interested students. Visibility is read-only here.
+- The cohort detail view includes a course-progress matrix showing completion, quiz scores, pass/fail, and deadlines for every learner and course item.
+- The Courses list shows each course's visibility and an interest count, with drill-down to the interested learners. Visibility is read-only here.
 - **Access control has a narrowed known gap** — the Cohorts and Users sections are permission-checked on both listings and detail pages, but the Courses section is not filtered at all. Reads only; writes are gated. See [Access Control](#access-control).
 - **Limits:** cohort membership, course registration, deadline management, and generating a cohort progress report are admin-only. There is no messaging capability.
 
@@ -19,8 +19,8 @@ The educator interface is a single-page application, scoped to one organisation 
 
 ### Cohorts
 
-- **List view** — each cohort in the current organisation the educator has access to, with its student count and registered courses.
-- **Detail view** — cohort name (editable inline), student members, and registered courses. Cohorts can be created and deleted. Only a cohort the educator has access to can be opened — see [Access Control](#access-control).
+- **List view** — each cohort in the current organisation the educator has access to, with its learner count and registered courses.
+- **Detail view** — cohort name (editable inline), learner members, and registered courses. Cohorts can be created and deleted. Only a cohort the educator has access to can be opened — see [Access Control](#access-control).
 - **Course Progress tab** — the [progress matrix](#course-progress-matrix).
 
 ### Users
@@ -31,15 +31,15 @@ Lists users in the current organisation the educator has access to — members o
 
 ![Educator courses list with visibility and interest count](screenshots/educator_course_visibility.png)
 
-Lists all courses with their active student and cohort counts. Each course shows its **visibility** — published, coming soon, or hidden — so educators and admins see every course regardless of state; visibility filtering only ever applies to learners, never to educator or admin views.
+Lists all courses with their active learner and cohort counts. Each course shows its **visibility** — published, coming soon, or hidden — so educators and admins see every course regardless of state; visibility filtering only ever applies to learners, never to educator or admin views.
 
 Unlike Cohorts and Users, this section is not scoped to the current organisation, and it carries **no permission filter at all** — every course on the site, hidden ones included, is visible to any authenticated user. See [Access Control](#access-control).
 
 Each course also shows an **interest count**: the number of learners who have expressed interest through the coming-soon waitlist. The count and its drill-down are shown for every course, not only coming-soon ones, so a course that has since launched still shows the demand it attracted.
 
-![Interested-students drill-down panel](screenshots/educator_interest_panel.png)
+![Interested-learners drill-down panel](screenshots/educator_interest_panel.png)
 
-The course detail view shows the title and category, the cohorts registered for the course, any direct non-cohort registrations, and a drill-down panel listing interested students by name with the date they expressed interest — making the waitlist actionable. All of it is scoped to the current site.
+The course detail view shows the title and category, the cohorts registered for the course, any direct non-cohort registrations, and a drill-down panel listing interested learners by name with the date they expressed interest — making the waitlist actionable. All of it is scoped to the current site.
 
 Visibility is **read-only** here and in the Django admin. It is set solely in the course's content frontmatter and takes effect on import — see [content editing workflow](./content-editing-workflow.md). The learner-facing experience of coming-soon and hidden courses is covered in [learner experience](./learner-experience.md).
 
@@ -61,7 +61,7 @@ The Courses section is the exception: it is not organisation-scoped, and the swi
 
 ![Cohort progress matrix](screenshots/educator_cohort_progress_matrix.png)
 
-The Course Progress tab on a cohort detail page shows a paginated matrix of students (rows) against course items (columns). Each cell shows completion status (complete / in progress / not started), the quiz score and pass/fail outcome for form items, and the item's deadline with an overdue indicator where the deadline has passed and the item is not complete. Both cohort-level deadlines and per-student overrides are visible.
+The Course Progress tab on a cohort detail page shows a paginated matrix of learners (rows) against course items (columns). Each cell shows completion status (complete / in progress / not started), the quiz score and pass/fail outcome for form items, and the item's deadline with an overdue indicator where the deadline has passed and the item is not complete. Both cohort-level deadlines and per-learner overrides are visible.
 
 This view is on-screen only, and shows one course at a time. For a printable, filable record covering every course the cohort is registered for, a [cohort progress report](./reports.md) can be produced from the Django admin by anyone with cohort access under either route in [access control](#access-control).
 
@@ -81,9 +81,9 @@ An administrator grants an educator access one of two ways: permission on a spec
 
 These operations are **admin-only** and cannot be performed from the educator interface:
 
-- **Cohort membership** — adding or removing students.
-- **Course registration** — registering a cohort or an individual student for a course.
-- **Deadlines** — cohort deadlines, per-student deadlines, and overrides.
+- **Cohort membership** — adding or removing learners.
+- **Course registration** — registering a cohort or an individual learner for a course.
+- **Deadlines** — cohort deadlines, per-learner deadlines, and overrides.
 - **Cohort progress reports** — generating a cohort's [progress report](./reports.md) is done from the Django admin. An educator with access to the cohort can have one produced, but not from this interface.
 
-**There is no messaging capability.** Educators cannot send messages or emails to students from FLS.
+**There is no messaging capability.** Educators cannot send messages or emails to learners from FLS.
