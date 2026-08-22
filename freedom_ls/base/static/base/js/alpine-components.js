@@ -383,7 +383,7 @@ document.addEventListener("alpine:init", () => {
 
     // Unified side panel (base/_base_interface.html).
     //
-    // One <dialog> drives every sidebar in the app (student course TOC,
+    // One <dialog> drives every sidebar in the app (learner course TOC,
     // educator nav, panel_framework nav). The presentation differs per consumer
     // (bottom-sheet vs side-drawer, set via a data attribute) but the mechanism
     // is identical:

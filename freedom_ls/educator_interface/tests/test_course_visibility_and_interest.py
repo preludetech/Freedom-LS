@@ -97,7 +97,7 @@ def test_course_table_renders_visibility_and_interest_columns(
     assert "Visibility" in html
 
 
-# -- Task 5.2: interested-students drill-down panel ---------------------
+# -- Task 5.2: interested-learners drill-down panel ---------------------
 
 
 def _make_interest(course: Course, first_name: str) -> User:

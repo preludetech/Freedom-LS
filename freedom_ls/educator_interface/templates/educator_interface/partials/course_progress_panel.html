@@ -71,7 +71,7 @@
                     <tr class="sticky {% if has_parts and visible_parts %}top-[33px]{% else %}top-0{% endif %} z-20 bg-surface-2">
                         <th scope="col"
                             class="md:sticky md:left-0 z-30 bg-surface-2 px-3 py-2 text-left min-w-[180px] border-r border-border">
-                            Student
+                            Learner
                         </th>
                         {% for hi in header_items %}
                             <th scope="col"
@@ -94,7 +94,7 @@
                         <tr>
                             <th scope="row"
                                 class="md:sticky md:left-0 z-10 bg-surface px-3 py-2 whitespace-nowrap border-r border-border font-normal text-left">
-                                <a href="{{ row.student_url }}"
+                                <a href="{{ row.learner_url }}"
                                    class="text-sm text-primary hover:underline">
                                     {{ row.display_name }}
                                 </a>
@@ -157,8 +157,8 @@
            so each one passes the OTHER's current page (and the selected
            registration) through ``extra_params`` to keep them independent.{% endcomment %}
         {% load pagination_tags %}
-        {% join_query registration=selected_reg.pk page=student_page.number as col_extra %}
-        {% join_query registration=selected_reg.pk col_page=col_page.number as student_extra %}
+        {% join_query registration=selected_reg.pk page=learner_page.number as col_extra %}
+        {% join_query registration=selected_reg.pk col_page=col_page.number as learner_extra %}
         <div class="flex flex-wrap justify-between items-center mt-4 gap-4 text-sm text-muted">
             <div class="flex items-center gap-2">
                 <span>Items {{ col_page.start_index }}–{{ col_page.end_index }} of {{ col_page.paginator.count }}</span>
@@ -170,18 +170,18 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <span>Students {{ student_page.start_index }}–{{ student_page.end_index }} of {{ student_page.paginator.count }}</span>
-                <c-pagination :page_obj="student_page"
+                <span>Learners {{ learner_page.start_index }}–{{ learner_page.end_index }} of {{ learner_page.paginator.count }}</span>
+                <c-pagination :page_obj="learner_page"
                               :base_url="base_url"
                               table_id="course-progress-content"
-                              :extra_params="student_extra" />
+                              :extra_params="learner_extra" />
             </div>
         </div>
 
     {% else %}
         <div class="text-center py-8 text-muted">
             <p>
-                No students are currently enrolled in this cohort.
+                No learners are currently enrolled in this cohort.
             </p>
         </div>
     {% endif %}

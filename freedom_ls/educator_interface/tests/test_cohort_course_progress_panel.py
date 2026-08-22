@@ -116,8 +116,8 @@ def test_panel_includes_inactive_registrations_in_dropdown(
 
 
 @pytest.mark.django_db
-def test_students_sorted_by_progress_ascending(mock_site_context, site_aware_request):
-    """Test that students are sorted by progress ascending (least progress first)."""
+def test_learners_sorted_by_progress_ascending(mock_site_context, site_aware_request):
+    """Test that learners are sorted by progress ascending (least progress first)."""
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
@@ -126,8 +126,8 @@ def test_students_sorted_by_progress_ascending(mock_site_context, site_aware_req
     topic = TopicFactory(title="Topic 1")
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
 
-    _make_user("student_a@example.com", cohort)
-    user_b = _make_user("student_b@example.com", cohort)
+    _make_user("learner_a@example.com", cohort)
+    user_b = _make_user("learner_b@example.com", cohort)
 
     # user_b has progress, user_a does not
     CourseProgressFactory(user=user_b, course=course, progress_percentage=100)
@@ -138,16 +138,16 @@ def test_students_sorted_by_progress_ascending(mock_site_context, site_aware_req
     content = panel.get_content(request)
 
     # user_a (0%) should appear before user_b (100%)
-    pos_a = content.find("student_a@example.com")
-    pos_b = content.find("student_b@example.com")
-    assert pos_a < pos_b, "Student with less progress should appear first"
+    pos_a = content.find("learner_a@example.com")
+    pos_b = content.find("learner_b@example.com")
+    assert pos_a < pos_b, "Learner with less progress should appear first"
 
 
 @pytest.mark.django_db
-def test_students_without_course_progress_appear_first(
+def test_learners_without_course_progress_appear_first(
     mock_site_context, site_aware_request
 ):
-    """Test that students with no CourseProgress appear first (treated as 0%)."""
+    """Test that learners with no CourseProgress appear first (treated as 0%)."""
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
@@ -170,7 +170,7 @@ def test_students_without_course_progress_appear_first(
 
     pos_no = content.find("no_progress@example.com")
     pos_has = content.find("has_progress@example.com")
-    assert pos_no < pos_has, "Student without progress should appear first"
+    assert pos_no < pos_has, "Learner without progress should appear first"
 
 
 @pytest.mark.django_db
@@ -188,7 +188,7 @@ def test_column_pagination_slices_items(mock_site_context, site_aware_request):
             collection_object=course, child_object=topic, order=i
         )
 
-    _make_user("student@example.com", cohort)
+    _make_user("learner@example.com", cohort)
 
     panel = CohortCourseProgressPanel(cohort)
 
@@ -211,7 +211,7 @@ def test_column_pagination_slices_items(mock_site_context, site_aware_request):
 def test_cell_data_fetched_only_for_visible_window(
     mock_site_context, site_aware_request
 ):
-    """Test that cell data is fetched only for visible students x visible items."""
+    """Test that cell data is fetched only for visible learners x visible items."""
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
@@ -225,7 +225,7 @@ def test_cell_data_fetched_only_for_visible_window(
         )
         topics.append(topic)
 
-    user = _make_user("student@example.com", cohort)
+    user = _make_user("learner@example.com", cohort)
 
     # Complete topic 16 (on page 2 of columns)
     tp: TopicProgress = TopicProgressFactory(user=user, topic=topics[16])
@@ -263,7 +263,7 @@ def test_displayed_percentage_matches_actual_completion(
     ContentCollectionItemFactory(collection_object=course, child_object=topic1, order=0)
     ContentCollectionItemFactory(collection_object=course, child_object=topic2, order=1)
 
-    user = _make_user("student@example.com", cohort)
+    user = _make_user("learner@example.com", cohort)
 
     # Complete 1 of 2 topics -> 50% (save trigger auto-creates CourseProgress)
     tp: TopicProgress = TopicProgressFactory(user=user, topic=topic1)
@@ -291,7 +291,7 @@ def test_panel_internal_htmx_swap_returns_content_only(
     educator_user = UserFactory(staff=True)
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
-    _make_user("student@example.com", cohort)
+    _make_user("learner@example.com", cohort)
 
     panel = CohortCourseProgressPanel(cohort)
 
@@ -319,7 +319,7 @@ def test_tab_level_htmx_request_keeps_chrome(mock_site_context, site_aware_reque
     educator_user = UserFactory(staff=True)
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
-    _make_user("student@example.com", cohort)
+    _make_user("learner@example.com", cohort)
 
     panel = CohortCourseProgressPanel(cohort)
     request = site_aware_request.get(
@@ -345,7 +345,7 @@ def test_pagination_comment_does_not_leak_into_rendered_html(
 
     topic = TopicFactory(title="Topic 1")
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
-    _make_user("student@example.com", cohort)
+    _make_user("learner@example.com", cohort)
 
     panel = CohortCourseProgressPanel(cohort)
     request = site_aware_request.get("/")
@@ -357,10 +357,10 @@ def test_pagination_comment_does_not_leak_into_rendered_html(
 
 
 @pytest.mark.django_db
-def test_column_pagination_links_preserve_student_page(
+def test_column_pagination_links_preserve_learner_page(
     mock_site_context, site_aware_request
 ):
-    """Clicking page 2 of course items must keep the student paginator on
+    """Clicking page 2 of course items must keep the learner paginator on
     its current page."""
     cohort = CohortFactory()
     course = CourseFactory()
@@ -374,24 +374,24 @@ def test_column_pagination_links_preserve_student_page(
             collection_object=course, child_object=topic, order=i
         )
 
-    # Enough students for >1 page
+    # Enough learners for >1 page
     for i in range(25):
-        _make_user(f"student_{i:02d}@example.com", cohort)
+        _make_user(f"learner_{i:02d}@example.com", cohort)
 
     panel = CohortCourseProgressPanel(cohort)
     request = site_aware_request.get("/?col_page=1&page=2")
     request.user = educator_user
     content = panel.get_content(request)
 
-    # Column-pagination links must include page=2 to keep the student page.
+    # Column-pagination links must include page=2 to keep the learner page.
     assert "page=2" in content
 
 
 @pytest.mark.django_db
-def test_student_pagination_links_preserve_column_page(
+def test_learner_pagination_links_preserve_column_page(
     mock_site_context, site_aware_request
 ):
-    """Clicking page 2 of students must keep the column paginator on its
+    """Clicking page 2 of learners must keep the column paginator on its
     current page."""
     cohort = CohortFactory()
     course = CourseFactory()
@@ -405,14 +405,14 @@ def test_student_pagination_links_preserve_column_page(
         )
 
     for i in range(25):
-        _make_user(f"student_{i:02d}@example.com", cohort)
+        _make_user(f"learner_{i:02d}@example.com", cohort)
 
     panel = CohortCourseProgressPanel(cohort)
     request = site_aware_request.get("/?col_page=2&page=1")
     request.user = educator_user
     content = panel.get_content(request)
 
-    # Student-pagination links must include col_page=2 to keep the column page.
+    # Learner-pagination links must include col_page=2 to keep the column page.
     assert "col_page=2" in content
 
 
@@ -431,7 +431,7 @@ def test_item_deadlines_shown_in_column_headers(mock_site_context, site_aware_re
     ContentCollectionItemFactory(collection_object=course, child_object=topic1, order=0)
     ContentCollectionItemFactory(collection_object=course, child_object=topic2, order=1)
 
-    _make_user("student@example.com", cohort)
+    _make_user("learner@example.com", cohort)
 
     # Hard deadline on topic1
     hard_deadline = timezone.now() + timedelta(days=5)

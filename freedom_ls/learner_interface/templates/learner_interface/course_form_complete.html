@@ -111,8 +111,8 @@
                                     <div>
                                         <p class="text-xs font-medium text-muted mb-1">Your answer</p>
                                         <div class="space-y-1 pl-3"
-                                             data-testid="student-answer-{{ item.question.id }}">
-                                            {% for option in item.student_selected %}
+                                             data-testid="learner-answer-{{ item.question.id }}">
+                                            {% for option in item.learner_selected %}
                                                 <div class="flex items-center gap-2 text-muted">
                                                     {% if option.correct is True %}
                                                         <c-icon name="success" class="size-4 text-success flex-none" aria_label="Marked correct" />

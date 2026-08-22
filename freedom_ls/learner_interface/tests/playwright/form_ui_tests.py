@@ -207,7 +207,7 @@ def complete_form_with_questions(mock_site_context):
     """Create a form with multiple pages and different question types."""
     form = FormFactory(
         title="Test Quiz",
-        subtitle="A test quiz for students",
+        subtitle="A test quiz for learners",
         slug="test-quiz",
         strategy="CATEGORY_VALUE_SUM",
     )
@@ -286,7 +286,7 @@ def test_view_form_landing_page(
     assert title.is_visible()
 
     # Assert form subtitle is visible
-    subtitle = logged_in_page.locator("p:has-text('A test quiz for students')")
+    subtitle = logged_in_page.locator("p:has-text('A test quiz for learners')")
     assert subtitle.is_visible()
 
     # Assert "Start Form" button is visible
@@ -482,7 +482,7 @@ def test_quiz_completion_shows_scores(
     logged_in_user,
     mock_site_context,
 ):
-    """Test that when a student completes a quiz, they see their score and percentage."""
+    """Test that when a learner completes a quiz, they see their score and percentage."""
     quiz_form = _create_quiz_form(quiz_show_incorrect=True)
     quiz_course = course_with_form(quiz_form, title="Math Course")
     register_user_for_course(quiz_course, logged_in_user)
@@ -556,10 +556,10 @@ def test_quiz_shows_incorrect_answers_when_enabled(
     assert q1_incorrect.is_visible()
     assert "What is 5+3?" in q1_incorrect.inner_text()
 
-    # Verify student's answer and correct answer are shown
-    student_answer = logged_in_page.locator(f"[data-testid='student-answer-{q1.id}']")
-    assert student_answer.is_visible()
-    assert "7" in student_answer.inner_text()
+    # Verify learner's answer and correct answer are shown
+    learner_answer = logged_in_page.locator(f"[data-testid='learner-answer-{q1.id}']")
+    assert learner_answer.is_visible()
+    assert "7" in learner_answer.inner_text()
 
     correct_answer = logged_in_page.locator(f"[data-testid='correct-answer-{q1.id}']")
     assert correct_answer.is_visible()

@@ -103,8 +103,8 @@ class UserCohortDeadlineOverrideInline(TabularInline):
     autocomplete_fields = ["user"]
     fields = ["user", "content_type", "object_id", "deadline", "is_hard_deadline"]
 
-    verbose_name = "Student Deadline Override"
-    verbose_name_plural = "Student Deadline Overrides"
+    verbose_name = "User Deadline Override"
+    verbose_name_plural = "User Deadline Overrides"
 
 
 @admin.register(CohortCourseRegistration)

@@ -119,7 +119,7 @@ class CohortDataTable(DataTable):
         return (
             cohorts_visible_to(request.user, request.organisation)
             .annotate(
-                student_count=Count("cohortmembership", distinct=True),
+                learner_count=Count("cohortmembership", distinct=True),
             )
             .prefetch_related("course_registrations__collection")
             .order_by("name")
@@ -137,9 +137,9 @@ class CohortDataTable(DataTable):
                 "htmx_nav": True,
             },
             {
-                "header": "Active Students",
+                "header": "Active Learners",
                 "template": "cotton/data-table-cells/text.html",
-                "attr": "student_count",
+                "attr": "learner_count",
             },
             {
                 "header": "Registered Courses",
@@ -281,8 +281,8 @@ class CohortCourseRegistrationDataTable(DataTable):
         ]
 
 
-class CohortStudentsPanel(DataTablePanel):
-    title = "Students"
+class CohortLearnersPanel(DataTablePanel):
+    title = "Learners"
     data_table = UserDataTable
 
     def get_filters(self) -> dict:
@@ -301,7 +301,7 @@ class CohortCourseProgressPanel(Panel):
     title = "Course Progress"
 
     COLUMN_PAGE_SIZE = 15
-    STUDENT_PAGE_SIZE = 20
+    LEARNER_PAGE_SIZE = 20
 
     def _get_selected_registration(
         self,
@@ -354,7 +354,7 @@ class CohortCourseProgressPanel(Panel):
 
         return visible_items, visible_parts, bool(part_children_map), col_page
 
-    def _paginate_students(
+    def _paginate_learners(
         self,
         cohort: Cohort,
         course: Course,
@@ -376,8 +376,8 @@ class CohortCourseProgressPanel(Panel):
             .order_by("progress", "user__email")
         )
 
-        student_paginator = Paginator(memberships, self.STUDENT_PAGE_SIZE)
-        return student_paginator.get_page(page_num)
+        learner_paginator = Paginator(memberships, self.LEARNER_PAGE_SIZE)
+        return learner_paginator.get_page(page_num)
 
     def _fetch_progress_maps(
         self,
@@ -426,7 +426,7 @@ class CohortCourseProgressPanel(Panel):
         self,
         selected_reg: CohortCourseRegistration,
         visible_items: list[Topic | Form],
-        student_page: Page,
+        learner_page: Page,
     ) -> tuple[
         CohortDeadline | None,
         dict[tuple[int, UUID | None], CohortDeadline],
@@ -434,9 +434,9 @@ class CohortCourseProgressPanel(Panel):
         DjangoContentType,
         DjangoContentType,
     ]:
-        """Fetch cohort deadlines and student overrides for visible items.
+        """Fetch cohort deadlines and learner overrides for visible items.
 
-        Returns (course_deadline, deadline_map, student_override_map, topic_ct, form_ct).
+        Returns (course_deadline, deadline_map, learner_override_map, topic_ct, form_ct).
         """
         topic_ct = DjangoContentType.objects.get_for_model(Topic)
         form_ct = DjangoContentType.objects.get_for_model(Form)
@@ -463,21 +463,21 @@ class CohortCourseProgressPanel(Panel):
             else:
                 deadline_map[(dl.content_type_id, dl.object_id)] = dl
 
-        student_override_map: dict[
+        learner_override_map: dict[
             tuple[int, int | None, UUID | None], UserCohortDeadlineOverride
         ] = {}
-        user_ids = [m.user_id for m in student_page.object_list]
+        user_ids = [m.user_id for m in learner_page.object_list]
         if user_ids:
             overrides = UserCohortDeadlineOverride.objects.filter(
                 cohort_course_registration=selected_reg,
                 user_id__in=user_ids,
             ).filter(deadline_q)
             for ovr in overrides:
-                student_override_map[
+                learner_override_map[
                     (ovr.user_id, ovr.content_type_id, ovr.object_id)
                 ] = ovr
 
-        return course_deadline, deadline_map, student_override_map, topic_ct, form_ct
+        return course_deadline, deadline_map, learner_override_map, topic_ct, form_ct
 
     def _build_topic_cell(
         self,
@@ -542,7 +542,7 @@ class CohortCourseProgressPanel(Panel):
         topic_progress_map: dict[tuple[int, UUID], TopicProgress],
         form_progress_map: dict[tuple[int, UUID], FormProgressData],
         deadline_map: dict[tuple[int, UUID | None], CohortDeadline],
-        student_override_map: dict[
+        learner_override_map: dict[
             tuple[int, int | None, UUID | None], UserCohortDeadlineOverride
         ],
         now: datetime,
@@ -567,7 +567,7 @@ class CohortCourseProgressPanel(Panel):
 
         item_ct = topic_ct if isinstance(item, Topic) else form_ct
         item_deadline = deadline_map.get((item_ct.id, item.id))
-        override = student_override_map.get((user.id, item_ct.id, item.id))
+        override = learner_override_map.get((user.id, item_ct.id, item.id))
         effective_deadline = override or item_deadline
         cell["deadline"] = item_deadline
         cell["override"] = override
@@ -587,22 +587,22 @@ class CohortCourseProgressPanel(Panel):
 
     def _build_rows(
         self,
-        student_page: Page,
+        learner_page: Page,
         visible_items: list[Topic | Form],
         topic_ct: DjangoContentType,
         form_ct: DjangoContentType,
         topic_progress_map: dict[tuple[int, UUID], TopicProgress],
         form_progress_map: dict[tuple[int, UUID], FormProgressData],
         deadline_map: dict[tuple[int, UUID | None], CohortDeadline],
-        student_override_map: dict[
+        learner_override_map: dict[
             tuple[int, int | None, UUID | None], UserCohortDeadlineOverride
         ],
         organisation_slug: str,
     ) -> list[dict[str, object]]:
-        """Build row data for each student on the current page."""
+        """Build row data for each learner on the current page."""
         now = tz.now()
         rows = []
-        for membership in student_page.object_list:
+        for membership in learner_page.object_list:
             user = membership.user
             cells = [
                 self._build_cell(
@@ -613,7 +613,7 @@ class CohortCourseProgressPanel(Panel):
                     topic_progress_map,
                     form_progress_map,
                     deadline_map,
-                    student_override_map,
+                    learner_override_map,
                     now,
                 )
                 for item in visible_items
@@ -626,7 +626,7 @@ class CohortCourseProgressPanel(Panel):
                 {
                     "user": user,
                     "display_name": display_name,
-                    "student_url": reverse(
+                    "learner_url": reverse(
                         "educator_interface:interface",
                         kwargs={
                             "organisation_slug": organisation_slug,
@@ -688,32 +688,32 @@ class CohortCourseProgressPanel(Panel):
             request.GET.get("col_page", 1),
         )
 
-        student_page = self._paginate_students(
+        learner_page = self._paginate_learners(
             cohort,
             course,
             request.GET.get("page", 1),
         )
 
-        visible_user_ids = [m.user.id for m in student_page.object_list]
+        visible_user_ids = [m.user.id for m in learner_page.object_list]
 
         topic_progress_map, form_progress_map = self._fetch_progress_maps(
             visible_user_ids,
             visible_items,
         )
 
-        course_deadline, deadline_map, student_override_map, topic_ct, form_ct = (
-            self._fetch_deadline_data(selected_reg, visible_items, student_page)
+        course_deadline, deadline_map, learner_override_map, topic_ct, form_ct = (
+            self._fetch_deadline_data(selected_reg, visible_items, learner_page)
         )
 
         rows = self._build_rows(
-            student_page,
+            learner_page,
             visible_items,
             topic_ct,
             form_ct,
             topic_progress_map,
             form_progress_map,
             deadline_map,
-            student_override_map,
+            learner_override_map,
             cohort.organisation.slug,
         )
 
@@ -734,7 +734,7 @@ class CohortCourseProgressPanel(Panel):
             "visible_parts": visible_parts,
             "has_parts": has_parts,
             "col_page": col_page,
-            "student_page": student_page,
+            "learner_page": learner_page,
             "rows": rows,
             "deadline_map": deadline_map,
             "topic_ct": topic_ct,
@@ -768,7 +768,7 @@ class CohortInstanceView(InstanceView):
             panels={
                 "details": CohortDetailsPanel,
                 "courses": CourseRegistrationsPanel,
-                "students": CohortStudentsPanel,
+                "learners": CohortLearnersPanel,
             },
         ),
     }
@@ -879,7 +879,7 @@ class CourseDataTable(DataTable):
                     filter=Q(cohort_registrations__is_active=True),
                     distinct=True,
                 ),
-                direct_student_count=Count(
+                direct_learner_count=Count(
                     "user_registrations",
                     filter=Q(user_registrations__is_active=True),
                     distinct=True,
@@ -895,7 +895,7 @@ class CourseDataTable(DataTable):
         return qs
 
     @staticmethod
-    def _annotate_total_student_count(page_obj: Page) -> None:
+    def _annotate_total_learner_count(page_obj: Page) -> None:
         """Calculate total unique active users (direct + through cohorts) for each course.
 
         Uses .all() instead of .filter() to leverage the prefetch cache and avoid N+1 queries.
@@ -913,14 +913,14 @@ class CourseDataTable(DataTable):
                 reg.user_id for reg in course.user_registrations.all() if reg.is_active
             }
 
-            course.total_student_count = len(cohort_user_ids | direct_user_ids)
+            course.total_learner_count = len(cohort_user_ids | direct_user_ids)
 
     @classmethod
     def get_rows(
         cls, request: HttpRequest, columns: list[dict], filters: dict | None = None
     ) -> Page:
         page_obj = super().get_rows(request, columns, filters=filters)
-        cls._annotate_total_student_count(page_obj)
+        cls._annotate_total_learner_count(page_obj)
         return page_obj
 
     @staticmethod
@@ -945,9 +945,9 @@ class CourseDataTable(DataTable):
                 "attr": "interest_count",
             },
             {
-                "header": "Active Students",
+                "header": "Active Learners",
                 "template": "cotton/data-table-cells/text.html",
-                "attr": "total_student_count",
+                "attr": "total_learner_count",
             },
             {
                 "header": "Active Cohorts",
@@ -1007,7 +1007,7 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
         return {"collection": self.instance}
 
 
-class CourseStudentRegistrationDataTable(DataTable):
+class CourseLearnerRegistrationDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         # Courses themselves are not organisation-scoped (CourseConfig is
@@ -1057,9 +1057,9 @@ class CourseStudentRegistrationDataTable(DataTable):
         ]
 
 
-class CourseStudentRegistrationsPanel(DataTablePanel):
+class CourseLearnerRegistrationsPanel(DataTablePanel):
     title = "Direct Registrations"
-    data_table = CourseStudentRegistrationDataTable
+    data_table = CourseLearnerRegistrationDataTable
 
     def get_filters(self) -> dict:
         return {"collection": self.instance}
@@ -1105,7 +1105,7 @@ class CourseInterestDataTable(DataTable):
 
 
 class CourseInterestPanel(DataTablePanel):
-    title = "Interested Students"
+    title = "Interested Learners"
     data_table = CourseInterestDataTable
 
     def get_filters(self) -> dict:
@@ -1116,7 +1116,7 @@ class CourseInstanceView(InstanceView):
     panels = {
         "details": CourseDetailsPanel,
         "cohorts": CourseCohortRegistrationsPanel,
-        "students": CourseStudentRegistrationsPanel,
+        "learners": CourseLearnerRegistrationsPanel,
         "interest": CourseInterestPanel,
     }
 

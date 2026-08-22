@@ -31,7 +31,7 @@ def educator_user(db, live_server_site, mock_site_context) -> User:
     """A fresh, email-verified staff user.
 
     A staff variant of freedom_ls.tests.playwright_fixtures.logged_in_user —
-    that fixture is hard-coded to a plain student, and this module is the
+    that fixture is hard-coded to a plain learner, and this module is the
     first to need an educator instead.
     """
     user: User = UserFactory(staff=True, password=_LOGGED_IN_PASSWORD)

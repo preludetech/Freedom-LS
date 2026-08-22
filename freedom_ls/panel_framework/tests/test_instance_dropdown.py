@@ -25,14 +25,14 @@ class CohortsConfig(ListViewConfig):
     menu_label = "Cohorts"
 
 
-class StudentsConfig(ListViewConfig):
-    url_name = "students"
-    menu_label = "Students"
+class LearnersConfig(ListViewConfig):
+    url_name = "learners"
+    menu_label = "Learners"
 
 
 CONFIG: dict[str, type[ListViewConfig]] = {
     "cohorts": CohortsConfig,
-    "students": StudentsConfig,
+    "learners": LearnersConfig,
 }
 
 URL_NAME = "panel_framework_test:interface"
@@ -61,10 +61,10 @@ class TestBuildMenuItemsInstanceDropdown:
         items = _build_menu_items(
             CONFIG, URL_NAME, active_section="cohorts", current_instance=instance
         )
-        students_item = next(i for i in items if i["label"] == "Students")
-        assert students_item["expanded"] is False
-        assert students_item["instance_label"] == ""
-        assert students_item["instance_url"] == ""
+        learners_item = next(i for i in items if i["label"] == "Learners")
+        assert learners_item["expanded"] is False
+        assert learners_item["instance_label"] == ""
+        assert learners_item["instance_url"] == ""
 
     def test_expanded_false_when_no_active_section(self) -> None:
         instance = StubModel(pk=1, name="Test Cohort")

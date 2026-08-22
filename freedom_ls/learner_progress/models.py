@@ -74,7 +74,7 @@ class CourseItemProgress(SiteAwareModel):
 
 
 class FormProgress(CourseItemProgress):
-    """Tracks a user's progress through a form."""
+    """Tracks a learner's progress through a form."""
 
     completion_field_name = "completed_time"
     content_item_field_name = "form"
@@ -419,13 +419,13 @@ class FormProgress(CourseItemProgress):
 
         Returns a list of dicts with:
         - question: FormQuestion instance
-        - student_selected: list of QuestionOption instances the student selected
+        - learner_selected: list of QuestionOption instances the learner selected
         - correct_options: list of QuestionOption instances that are correct
 
         Only returns results if:
         - form.strategy is QUIZ
 
-        We will use this function in multiple places. Sometimes we'll want to show the incorrect answers to the teacher. Even if we dont want to show the answers to the student, this function should work
+        We will use this function in multiple places. Sometimes we'll want to show the incorrect answers to the teacher. Even if we dont want to show the answers to the learner, this function should work
         """
         incorrect_answers: list[dict] = []
 
@@ -472,7 +472,7 @@ class FormProgress(CourseItemProgress):
                     incorrect_answers.append(
                         {
                             "question": question,
-                            "student_selected": selected_options,
+                            "learner_selected": selected_options,
                             "correct_options": correct_options,
                         }
                     )
@@ -501,7 +501,7 @@ class QuestionAnswer(SiteAwareModel):
 
 
 class TopicProgress(CourseItemProgress):
-    """Tracks a user's progress through a topic."""
+    """Tracks a learner's progress through a topic."""
 
     completion_field_name = "complete_time"
     content_item_field_name = "topic"
@@ -525,11 +525,11 @@ class TopicProgress(CourseItemProgress):
 
 
 class CourseProgress(SiteAwareModel):
-    """Tracks a user's progress through a course.
+    """Tracks a learner's progress through a course.
 
-    IMPORTANT!! These are only created when a user EXPLICITY chooses to register a student for a course.
-    In some cases a student will register themselves for a course by choosing to start the course
-    In some cases an educator/staff user will register a student for a course.
+    IMPORTANT!! These are only created when a user EXPLICITY chooses to register a learner for a course.
+    In some cases a learner will register themselves for a course by choosing to start the course
+    In some cases an educator/staff user will register a learner for a course.
 
     """
 

@@ -122,7 +122,7 @@ Basic text columns (no custom templates needed):
   columns = [
       {'header': 'Name', 'template': 'cotton/data-table-cells/text.html', 'attr': 'name'},
       {'header': 'Email', 'template': 'cotton/data-table-cells/text.html', 'attr': 'email'},
-      {'header': 'Student Count', 'template': 'cotton/data-table-cells/text.html', 'attr': 'student_count'},
+      {'header': 'Learner Count', 'template': 'cotton/data-table-cells/text.html', 'attr': 'learner_count'},
   ]
   rows = Cohort.objects.all()
 
@@ -135,7 +135,7 @@ Link columns (no custom templates needed):
           'url_name': 'educator_interface:cohort_detail',
           'url_param': 'pk'
       },
-      {'header': 'Students', 'template': 'cotton/data-table-cells/text.html', 'attr': 'student_count'},
+      {'header': 'Learners', 'template': 'cotton/data-table-cells/text.html', 'attr': 'learner_count'},
   ]
 
 Nested attributes (related models):

@@ -10,9 +10,9 @@ class CohortsConfig(ListViewConfig):
     menu_label = "Cohorts"
 
 
-class StudentsConfig(ListViewConfig):
-    url_name = "students"
-    menu_label = "Students"
+class LearnersConfig(ListViewConfig):
+    url_name = "learners"
+    menu_label = "Learners"
 
 
 class CoursesConfig(ListViewConfig):
@@ -22,7 +22,7 @@ class CoursesConfig(ListViewConfig):
 
 CONFIG: dict[str, type[ListViewConfig]] = {
     "cohorts": CohortsConfig,
-    "students": StudentsConfig,
+    "learners": LearnersConfig,
     "courses": CoursesConfig,
 }
 
@@ -41,12 +41,12 @@ class TestBuildMenuItemsActive:
         inactive_items = [item for item in items if not item["active"]]
         assert len(inactive_items) == 2
         labels = {item["label"] for item in inactive_items}
-        assert labels == {"Students", "Courses"}
+        assert labels == {"Learners", "Courses"}
 
-    def test_active_for_students_section(self) -> None:
-        items = _build_menu_items(CONFIG, URL_NAME, active_section="students")
+    def test_active_for_learners_section(self) -> None:
+        items = _build_menu_items(CONFIG, URL_NAME, active_section="learners")
         by_label = {item["label"]: item for item in items}
-        assert by_label["Students"]["active"] is True
+        assert by_label["Learners"]["active"] is True
         assert by_label["Cohorts"]["active"] is False
         assert by_label["Courses"]["active"] is False
 
