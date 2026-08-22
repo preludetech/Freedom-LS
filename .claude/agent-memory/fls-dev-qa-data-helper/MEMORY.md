@@ -25,6 +25,11 @@
 - [reference_free_text_survey_command.md](reference_free_text_survey_command.md) — qa_create_free_text_survey: non-scored CATEGORY_VALUE_SUM questionnaire of short_text/long_text; only 2 strategies exist, so CATEGORY_VALUE_SUM is "the survey one"
 - [reference_legacy_checkbox_score_command.md](reference_legacy_checkbox_score_command.md) — qa_create_legacy_checkbox_score: how to craft a pre-fix checkbox attempt whose stored score disagrees with exact-match rescoring (complete() then queryset.update(scores=...)), in a report-ready cohort
 - [reference_checkbox_scoring_quiz_and_reset.md](reference_checkbox_scoring_quiz_and_reset.md) — qa_create_checkbox_scoring_quiz (clean option-backed quiz, OPTIONAL checkbox q so "tick nothing" is submittable) + qa_reset_learner_progress; retake = GET start_form; unanswered != incorrect
+- [reference_qa_command_site_arg_styles.md](reference_qa_command_site_arg_styles.md) — Which qa_ commands take SITE_NAME positionally vs --site-name, plus the required-option / cohort-membership prerequisites that make them exit 2
+- [reference_educator_cohort_visibility_grants.md](reference_educator_cohort_visibility_grants.md) — cohorts_visible_to needs a guardian view_cohort grant; large/empty cohort commands grant none, so assign_perm after running them
+- [reference_demodev_s1_fixture_collisions.md](reference_demodev_s1_fixture_collisions.md) — demodev_s1@email.com is shared by 4 commands that overwrite each other; run order and how to repair
+- [reference_learner_deadline_admin_fixtures.md](reference_learner_deadline_admin_fixtures.md) — qa_create_learner_deadlines; the three deadline models are not interchangeable; LearnerDeadlineAdmin.search_fields has no email
+- [reference_column_pagination_scenario.md](reference_column_pagination_scenario.md) — qa_create_column_pagination_scenario; both course-progress paginators live at once WITHOUT padding functionality-demo-course-parts
 
 ## Recurring requests
 
@@ -44,3 +49,22 @@ The **legacy checkbox score discrepancy** cohort (`qa_create_legacy_checkbox_sco
 asked for three times (QA 12.6, then QA 2.11 twice). It is stable across the whole report redesign.
 Always **inspect the existing cohort first** — twice now the answer was "already correct, change
 nothing".
+
+The **terminology-rename (learner_*) browser QA run** was set up once (Aug 2026). Full recipe in
+[[reference_demodev_s1_fixture_collisions]]; the run is: `qa_create_cohort_progress DemoDev`,
+`qa_create_large_cohort DemoDev --course-slug functionality-demo-course-parts`,
+`qa_create_empty_learner_cohort DemoDev --course-slug functionality-demo-course-parts`,
+`qa_create_rich_dashboard_learner DemoDev`, `qa_create_course_player_learner DemoDev`,
+`qa_create_organisation_scenarios --site-name DemoDev`,
+`qa_create_password_reset_learner --site-name DemoDev`, `qa_create_course_access_types DemoDev`,
+add demodev_s1 to the progress cohort, `qa_create_deadline_overrides ...`,
+`qa_create_course_visibility DemoDev`, then assign_perm view_cohort for the large/empty cohorts.
+NO qa_ command output contains the word "student" as of this branch.
+
+**"Seed deadlines" is ambiguous and has now bitten twice.** Always ask/confirm WHICH of
+`CohortDeadline` / `UserCohortDeadlineOverride` / `LearnerDeadline` is wanted, and state in
+the report which model you wrote. `qa_create_deadline_overrides` writes only the middle one.
+
+**Never pad `functionality-demo-course-parts` for pagination QA.** It is the shared
+course-player / resume / TOC fixture. `qa_add_course_items_for_pagination` DEFAULTS to it;
+always pass an explicit `--course-slug`, or use `qa_create_column_pagination_scenario`.
