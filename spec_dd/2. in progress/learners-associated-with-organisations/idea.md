@@ -3,7 +3,7 @@
 Follow-on from the shipped Organisation layer (`spec_dd/3. done/2026-08-21_09:09_organisations`).
 
 Today, "who belongs to this organisation" is **derived, never stored**. `users_visible_to`
-(`student_management/queries.py:163-185`) answers it by unioning "members of cohorts in this
+(`learner_management/queries.py:163-185`) answers it by unioning "members of cohorts in this
 organisation" with "holders of a `UserCourseRegistration` in this organisation". There is no way to
 say a person is one of an organisation's learners *before* a registration exists, and no way for an
 educator to curate the roster at all.
@@ -21,12 +21,29 @@ an organisation. A user may be a Learner of several organisations on the same Si
 
 ---
 
+## Prerequisite: the terminology rename lands first
+
+FLS mixes "student" and "learner" for the same person. That is now settled: **the word is
+"learner"** — models, apps, permissions, URLs and copy alike. The rename is its own spec,
+`spec_dd/1. next/learner-terminology-rename`, and **it merges before this cut.**
+
+Everything below is written in the post-rename names, so `learner_management` is today's
+`student_management`, `learner_progress` is `student_progress`, and `learner_interface` is
+`student_interface`.
+
+Doing it first is cheap for the same reason this cut skips a backfill — no live installs, and the
+dev database is rebuilt from scratch — and it stops this cut from filing a model called `Learner`
+inside an app named after the other word, which is the mismatch that made terminology an open
+question in the first place.
+
+---
+
 ## What a Learner row is
 
 **A roster entry, not an access gate.** Registration and cohort membership keep working exactly as
 they do today; they simply also ensure a `Learner` row exists. Nothing anywhere checks "is this
 person a Learner?" before granting access to anything. `Learner` scopes what an *educator* sees and
-records who an organisation considers theirs — it never decides what a *student* can reach.
+records who an organisation considers theirs — it never decides what a *learner* can reach.
 
 Keeping it a record rather than a gate follows Decision 5 of the Organisation cut: loosening later is
 easy, tightening later is not.
@@ -47,7 +64,7 @@ No product researched ships a membership object that admins cannot touch directl
 
 ## Data
 
-`Learner`, a `SiteAwareModel`, living in **`student_management`**.
+`Learner`, a `SiteAwareModel`, living in **`learner_management`**.
 
 | Field | Notes |
 |---|---|
@@ -70,14 +87,14 @@ FLS would have to guess — which is exactly the position Docebo is in.
 self-registration or SSO flows this cut is not building. Adding the field now with nothing to drive
 it is the version of a status field the research found products regret.
 
-**App placement: `student_management`, not a new app and not `organisations`.** `student_management`
+**App placement: `learner_management`, not a new app and not `organisations`.** `learner_management`
 already depends on both `organisations` and `accounts`, so `Learner` adds **zero new edges** to
 `docs/app_structure.md`. Putting the sync receivers in `organisations` instead would force
-`organisations` to import `student_management` models as signal senders — inverting the edge that
+`organisations` to import `learner_management` models as signal senders — inverting the edge that
 cut deliberately established. Regenerate `docs/app_structure.md` with `/ds:app_map` regardless.
 
 *Landmine to state in the spec:* `accounts` must never gain a runtime dependency on wherever
-`Learner` lives. `student_management → accounts` already exists, and nearly every app depends on
+`Learner` lives. `learner_management → accounts` already exists, and nearly every app depends on
 `accounts`, so wiring Learner creation into the signup flow itself would create a cycle through most
 of the codebase. Signup alone creates no registration or cohort membership today, so nothing needs
 this — but it is the direction a naive implementation reaches for.
@@ -125,7 +142,7 @@ Three parts, all shipped together:
    it deactivated would recreate the invisible-learner state the removal rule exists to prevent.
 
 2. **`post_save` receivers on `CohortMembership` and `UserCourseRegistration`**, defined in
-   `student_management`, delegating straight to the helper.
+   `learner_management`, delegating straight to the helper.
 
    Django's own docs advise preferring an explicit call over a signal when sender and receiver are
    both inside your project — and that advice is right, but its premise doesn't hold here. FLS ships
@@ -141,7 +158,7 @@ Three parts, all shipped together:
    the Organisation cut — are covered for the same reason.
 
 3. **A `rebuild_learners` management command**, following
-   `student_progress/management/commands/recalculate_progress_percentages.py`. **Ships in this
+   `learner_progress/management/commands/recalculate_progress_percentages.py`. **Ships in this
    change, not as a follow-up** — with no backfill migration it is now the *only* thing that derives
    `Learner` rows from existing `UserCourseRegistration` and `CohortMembership` data, and the only
    mitigation for the gaps a signal cannot close.
@@ -203,7 +220,8 @@ backfill would have to find. The earlier plan for a `RunPython` derivation step 
 
 That leaves **one migration**: a single `CreateModel` for `Learner`, every field `NOT NULL`, unique
 constraint included. Nothing existing is narrowed, so reverse is a plain table drop with no data
-loss to warn about.
+loss to warn about. It lands in `learner_management` and stacks on the rename spec's final
+migration state, so generate it only once that spec has merged.
 
 Notes:
 
@@ -220,7 +238,7 @@ Notes:
 - **Assert, don't propagate, on cross-site rows.** Nothing in the schema stops a `Cohort` or
   registration from pointing at an organisation on another Site — no current code path produces it,
   but if the data holds one, `rebuild_learners` should fail loudly naming the offending IDs
-  (precedent: `student_management/migrations/0006_validate_no_duplicate_students.py`) rather than
+  (precedent: `learner_management/migrations/0006_validate_no_duplicate_students.py`) rather than
   quietly minting a cross-site Learner.
 - **No thread-local request exists during a management command**, exactly as none exists during
   `migrate`. The site-aware managers and the `course.registered` webhook both assume one, so
@@ -240,16 +258,16 @@ Notes:
 
 ## Non-goals for this cut
 
-- **No student-facing changes.** A learner studying through two organisations still sees one merged
+- **No learner-facing changes.** A learner studying through two organisations still sees one merged
   course list, with the existing per-course organisation logo as the only cue. *Caveat:* the
   existing-account lookup above is a shared surface that will not stay confined to the educator
-  interface — name where it lives, even though the student UI stays out.
+  interface — name where it lives, even though the learner UI stays out.
 - **No gating.** Being a Learner is never a precondition for registering or joining a cohort.
 - **No hard delete, no merge.** Same reasoning as `Organisation` itself.
 - **No bulk add/remove and no CSV import.** Every product that has these has them because branches
   hold hundreds of users; FLS expects 2–5 organisations per Site.
 - **No self-registration via an organisation-specific signup URL, no SSO attribute mapping, no invite
-  links.** All blocked on student-facing work, or on infrastructure FLS doesn't have.
+  links.** All blocked on learner-facing work, or on infrastructure FLS doesn't have.
 - **No `pending`/`invited` states.**
 - **No periodic reconciliation task.** FLS has a background-task system but no scheduled-task
   infrastructure; that would be net-new scope. `rebuild_learners` run by hand, or by a downstream
@@ -261,17 +279,22 @@ Notes:
 - **Not wired into `course_interest`, `course_applications` or `RecommendedCourse`.** There is no
   organisation to attach at those points in the flow, and none of them writes a registration today.
   When application acceptance ships it will need `ensure_learner` — note it there, don't pre-build it.
+- **The rename itself is not in this cut.** Standardising student → learner across the codebase
+  is `spec_dd/1. next/learner-terminology-rename`, and it merges first. Folding it in here would
+  bury real design work under a repo-wide mechanical change.
 
 ---
 
-## Open question
+## Decided: terminology
 
-**Terminology.** This model is called `Learner`, but it lives in `student_management`, and the
-educator interface currently says "Students" in its column headers. "Learner" matches Docebo's usage
-and reads well to an educator; the mismatch with surrounding code and copy is the thing to resolve.
-Recommendation: keep `Learner` and do a copy pass so roster screens say "learner" consistently —
-auditing for "user" leaking through where "learner" is meant, which is precisely where Absorb's and
-Docebo's own UI copy gets sloppy. Renaming the app is out of scope.
+**The word is "learner".** This model is `Learner`, it lives in `learner_management`, and the
+educator interface says "learners" — the prerequisite rename makes those three agree rather than leaving
+`Learner` stranded in an app named after the other word. "Learner" matches Docebo's usage and reads
+well to an educator.
+
+What still belongs to *this* cut is the copy on the screens it builds. The roster screens say
+"learner" consistently, and the pass audits for "user" leaking through where "learner" is meant —
+precisely where Absorb's and Docebo's own UI copy gets sloppy.
 
 ---
 
