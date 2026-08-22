@@ -37,7 +37,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 7. Implementation
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 
 ## 8. Code security review
@@ -54,7 +54,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 10. Product documentation
 
-- [ ] (cmd) Run `/fls-dev:update_product_docs` to update docs/product/ for this feature
+- [x] (cmd) Run `/fls-dev:update_product_docs` to update docs/product/ for this feature
 - [ ] (user) Review the updated documentation
 
 ## 11. Upgrade notes
@@ -69,7 +69,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 13. Author plugin sync
 
-- [ ] (cmd) Run `/fls-dev:update_claude_plugin_fls_content` to sync the course-author plugin if authoring functionality changed
+- [x] (cmd) Run `/fls-dev:update_claude_plugin_fls_content` to sync the course-author plugin if authoring functionality changed
 
 ## 14. Pull request
 
