@@ -82,7 +82,7 @@ def test_form_submit_and_exit_post_completes_attempt_and_redirects(
 
     client.force_login(user)
     url = reverse(
-        "student_interface:form_submit_and_exit",
+        "learner_interface:form_submit_and_exit",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.post(url)
@@ -92,7 +92,7 @@ def test_form_submit_and_exit_post_completes_attempt_and_redirects(
 
     assert response.status_code == 302
     expected_redirect = reverse(
-        "student_interface:course_form_complete",
+        "learner_interface:course_form_complete",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     assert response["Location"] == expected_redirect
@@ -108,7 +108,7 @@ def test_form_submit_and_exit_get_returns_405(mock_site_context, client):
 
     client.force_login(user)
     url = reverse(
-        "student_interface:form_submit_and_exit",
+        "learner_interface:form_submit_and_exit",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -128,14 +128,14 @@ def test_form_submit_and_exit_with_no_incomplete_attempt_still_redirects(
 
     client.force_login(user)
     url = reverse(
-        "student_interface:form_submit_and_exit",
+        "learner_interface:form_submit_and_exit",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.post(url)
 
     assert response.status_code == 302
     expected_redirect = reverse(
-        "student_interface:course_form_complete",
+        "learner_interface:course_form_complete",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     assert response["Location"] == expected_redirect
@@ -161,7 +161,7 @@ def test_form_submit_and_exit_does_not_finalise_save_on_exit_form(
 
     client.force_login(user)
     url = reverse(
-        "student_interface:form_submit_and_exit",
+        "learner_interface:form_submit_and_exit",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.post(url)
@@ -171,7 +171,7 @@ def test_form_submit_and_exit_does_not_finalise_save_on_exit_form(
 
     assert response.status_code == 302
     expected_redirect = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     assert response["Location"] == expected_redirect
@@ -184,7 +184,7 @@ def test_form_submit_and_exit_requires_login(mock_site_context, client):
     course = course_with_form(form)
 
     url = reverse(
-        "student_interface:form_submit_and_exit",
+        "learner_interface:form_submit_and_exit",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.post(url)
@@ -216,7 +216,7 @@ def test_answered_count_reflects_only_persisted_answers_after_page_advance(
     # Start the form — creates a FormProgress
     client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )
@@ -228,14 +228,14 @@ def test_answered_count_reflects_only_persisted_answers_after_page_advance(
     # POST page 1 to save the answer (this persists q1's answer)
     correct_option = questions[0].options.filter(correct=True).first()
     page1_url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
     )
     client.post(page1_url, {f"question_{questions[0].id}": str(correct_option.id)})
 
     # Now on page 2, GET the runner page
     page2_url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 2},
     )
     response = client.get(page2_url)
@@ -261,14 +261,14 @@ def test_answered_count_does_not_include_unsaved_page_edits(mock_site_context, c
     # Start form
     client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )
 
     # GET page 1 without submitting any answers
     page1_url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
     )
     response = client.get(page1_url)
@@ -299,7 +299,7 @@ def test_answered_other_pages_excludes_current_page_questions(
     client.force_login(user)
     client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )
@@ -307,14 +307,14 @@ def test_answered_other_pages_excludes_current_page_questions(
     # Persist page 1's answer.
     correct_option = questions[0].options.filter(correct=True).first()
     page1_url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
     )
     client.post(page1_url, {f"question_{questions[0].id}": str(correct_option.id)})
 
     # On the final page, page 1's persisted answer is "another page" → base 1.
     page2_url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 2},
     )
     assert client.get(page2_url).context["answered_other_pages"] == 1
@@ -347,7 +347,7 @@ def test_view_form_finalises_stale_incomplete_for_submit_on_exit(
 
     client.force_login(user)
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -385,7 +385,7 @@ def test_form_start_finalises_stale_incomplete_for_submit_on_exit(
 
     client.force_login(user)
     url = reverse(
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     client.get(url)
@@ -417,7 +417,7 @@ def test_view_form_save_on_exit_does_not_finalise_incomplete(mock_site_context, 
 
     client.force_login(user)
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -454,7 +454,7 @@ def test_view_form_context_includes_question_count_and_page_count(
 
     client.force_login(user)
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -482,7 +482,7 @@ def test_view_form_start_screen_title_in_tab_but_not_duplicated(
 
     client.force_login(user)
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -518,13 +518,13 @@ def test_form_fill_page_sets_cache_control_no_store(mock_site_context, client):
     # Start the form first so a FormProgress exists
     client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )
 
     url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
     )
     response = client.get(url)
@@ -546,13 +546,13 @@ def test_form_fill_page_context_includes_total_question_count(
     client.force_login(user)
     client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )
 
     url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
     )
     response = client.get(url)
@@ -572,20 +572,20 @@ def test_form_fill_page_context_includes_submit_and_exit_url(mock_site_context, 
     client.force_login(user)
     client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )
 
     url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
     )
     response = client.get(url)
 
     assert response.status_code == 200
     expected_exit_url = reverse(
-        "student_interface:form_submit_and_exit",
+        "learner_interface:form_submit_and_exit",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     assert response.context["submit_and_exit_url"] == expected_exit_url
@@ -609,13 +609,13 @@ def test_save_on_exit_dialog_renders_real_view_course_item_url(
     client.force_login(user)
     client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )
 
     url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
     )
     response = client.get(url)
@@ -623,7 +623,7 @@ def test_save_on_exit_dialog_renders_real_view_course_item_url(
     assert response.status_code == 200
     content = response.content.decode()
     expected_url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     # The "Leave and save" link must point at the real save-and-exit URL.
@@ -644,13 +644,13 @@ def test_form_fill_page_context_includes_submit_on_exit(mock_site_context, clien
     client.force_login(user)
     client.get(
         reverse(
-            "student_interface:form_start",
+            "learner_interface:form_start",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )
 
     url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
     )
     response = client.get(url)
@@ -682,7 +682,7 @@ def test_course_form_complete_includes_percentage_for_quiz(mock_site_context, cl
 
     client.force_login(user)
     url = reverse(
-        "student_interface:course_form_complete",
+        "learner_interface:course_form_complete",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -710,7 +710,7 @@ def test_course_form_complete_percentage_reflects_partial_score(
 
     client.force_login(user)
     url = reverse(
-        "student_interface:course_form_complete",
+        "learner_interface:course_form_complete",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -736,7 +736,7 @@ def test_course_form_complete_no_percentage_for_non_quiz(mock_site_context, clie
 
     client.force_login(user)
     url = reverse(
-        "student_interface:course_form_complete",
+        "learner_interface:course_form_complete",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -885,7 +885,7 @@ def _start_runner(client, user, form):
     register_user_for_course(course, user)
     client.force_login(user)
     start_url = reverse(
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     return client.get(start_url, follow=True)
@@ -971,14 +971,14 @@ def test_form_fill_page_post_with_no_incomplete_attempt_redirects(
 
     # No FormProgress created — POST straight to the fill page.
     page_url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
     )
     response = client.post(page_url)
 
     assert response.status_code == 302
     expected_redirect = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     assert response["Location"] == expected_redirect
@@ -1010,14 +1010,14 @@ def test_form_fill_page_get_with_no_incomplete_attempt_redirects(
     )
 
     page_url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
     )
     response = client.get(page_url)
 
     assert response.status_code == 302
     expected_redirect = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     assert response["Location"] == expected_redirect
@@ -1061,7 +1061,7 @@ def test_view_form_previous_attempts_shows_multiple_newest_first(
     )
 
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -1093,7 +1093,7 @@ def test_view_form_previous_attempts_capped_at_five(mock_site_context, client):
     # attempts[0] is newest (offset 0); attempts[6] is oldest.
 
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)

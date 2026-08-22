@@ -38,21 +38,21 @@
                     {% for button in buttons %}
                         {% if button.action == "continue" %}
                             <p>
-                                <c-button href="{% url 'student_interface:form_fill_page' course.slug index page_number %}"
+                                <c-button href="{% url 'learner_interface:form_fill_page' course.slug index page_number %}"
                                           data-testid="continue-form-button">
                                     {{ button.text }}
                                 </c-button>
                             </p>
                         {% elif button.action == "start" %}
                             <p>
-                                <c-button href="{% url 'student_interface:form_start' course.slug index %}"
+                                <c-button href="{% url 'learner_interface:form_start' course.slug index %}"
                                           data-testid="start-form-button">
                                     {{ button.text }}
                                 </c-button>
                             </p>
                         {% elif button.action == "try_again" %}
                             <p>
-                                <c-button href="{% url 'student_interface:form_start' course.slug index %}"
+                                <c-button href="{% url 'learner_interface:form_start' course.slug index %}"
                                           data-testid="try-again-button">
                                     {{ button.text }}
                                 </c-button>
@@ -65,7 +65,7 @@
                             </p>
                         {% elif button.action == "finish_course" %}
                             <p>
-                                <c-button href="{% url 'student_interface:course_finish' course_slug=course.slug %}"
+                                <c-button href="{% url 'learner_interface:course_finish' course_slug=course.slug %}"
                                           data-testid="finish-course-button">
                                     {{ button.text }}
                                 </c-button>

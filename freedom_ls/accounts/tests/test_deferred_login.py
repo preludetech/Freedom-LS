@@ -74,7 +74,7 @@ def test_anonymous_access_to_initiate_redirects_to_login_with_next(
 
     client = Client()
     access_url = reverse(
-        "student_interface:initiate_course_access",
+        "learner_interface:initiate_course_access",
         kwargs={"course_slug": course.slug},
     )
     response = client.get(access_url, follow=False)
@@ -99,7 +99,7 @@ def test_deferred_login_free_course_enrolls_and_redirects(
     client = logged_in_client(user)
 
     access_url = reverse(
-        "student_interface:initiate_course_access",
+        "learner_interface:initiate_course_access",
         kwargs={"course_slug": course.slug},
     )
     response = client.get(access_url, follow=False)

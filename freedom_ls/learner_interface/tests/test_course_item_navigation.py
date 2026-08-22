@@ -114,7 +114,7 @@ def test_first_viewable_item_has_no_previous_url(
     client = authenticated_client_for(course)
 
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -133,14 +133,14 @@ def test_first_item_of_non_first_part_links_back_to_last_item_of_previous_part(
     client = authenticated_client_for(course)
 
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 3},
     )
     response = client.get(url)
 
     assert response.status_code == 200
     expected_prev = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 2},
     )
     assert response.context["previous_url"] == expected_prev
@@ -160,18 +160,18 @@ def test_middle_of_part_prev_and_next_are_adjacent_viewables(
     client = authenticated_client_for(course)
 
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 2},
     )
     response = client.get(url)
 
     assert response.status_code == 200
     assert response.context["previous_url"] == reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     assert response.context["next_url"] == reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 3},
     )
 
@@ -186,14 +186,14 @@ def test_last_item_of_part_next_links_to_first_item_of_next_part(
     client = authenticated_client_for(course)
 
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 2},
     )
     response = client.get(url)
     next_url = response.context["next_url"]
 
     expected_next = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 3},
     )
     assert next_url == expected_next
@@ -211,7 +211,7 @@ def test_last_item_of_course_has_no_next_url(two_part_course, authenticated_clie
     client = authenticated_client_for(course)
 
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 4},
     )
     response = client.get(url)

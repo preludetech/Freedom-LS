@@ -103,7 +103,7 @@ def stamp_course_access_badge(course: Course, *, badge: AccessBadge | None) -> N
     Shared by the all_courses catalogue and the dashboard discovery cards so the
     setattr lives in one place; templates read {{ course.access_badge.label }} /
     {{ course.access_badge.variant }} with no conditional branching. The badge
-    itself comes from the active backend's get_access_badge — student_interface
+    itself comes from the active backend's get_access_badge — learner_interface
     never mints access-type copy.
     """
     setattr(course, "access_badge", badge)  # noqa: B010
@@ -252,7 +252,7 @@ def get_is_registered(user: RequestUser, course: Course) -> bool:
 
     Delegates to student_management.utils.is_registered_for_course, which is the
     shared implementation also used by course_access.backends. Kept here as a thin
-    wrapper so existing callers in student_interface don't need to change.
+    wrapper so existing callers in learner_interface don't need to change.
     """
     from freedom_ls.learner_management.utils import is_registered_for_course
 
@@ -535,7 +535,7 @@ def create_child_dict_with_flattened_index(
                     form_progress_map,
                 )
                 child_url = reverse(
-                    "student_interface:view_course_item",
+                    "learner_interface:view_course_item",
                     kwargs={
                         "course_slug": course.slug,
                         "index": start_index + items_added + 1,
@@ -620,7 +620,7 @@ def create_child_dict_with_flattened_index(
                 content_item, user, next_status, topic_progress_map, form_progress_map
             )
             url = reverse(
-                "student_interface:view_course_item",
+                "learner_interface:view_course_item",
                 kwargs={"course_slug": course.slug, "index": start_index + 1},
             )
         else:

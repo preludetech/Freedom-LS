@@ -195,7 +195,7 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
         decision = backend.get_access(user=AnonymousUser(), course=course)
 
         expected_url = reverse(
-            "student_interface:initiate_course_access",
+            "learner_interface:initiate_course_access",
             kwargs={"course_slug": "my-course"},
         )
         assert decision.cta_url == expected_url
@@ -227,7 +227,7 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
         decision = backend.get_access(user=user, course=course)
 
         expected_url = reverse(
-            "student_interface:course_home",
+            "learner_interface:course_home",
             kwargs={"course_slug": "my-course"},
         )
         assert decision.cta_url == expected_url

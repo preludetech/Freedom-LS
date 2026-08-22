@@ -76,7 +76,7 @@ def _extract_json_ld(body: str, script_id: str) -> dict:
 @pytest.mark.django_db
 def test_catalogue_page_has_meaningful_title(mock_site_context):
     """The all-courses page has a non-empty title mentioning courses."""
-    title = _extract_title(_get("student_interface:courses"))
+    title = _extract_title(_get("learner_interface:courses"))
     assert title  # non-empty
     assert "Courses" in title or "courses" in title
 
@@ -88,7 +88,7 @@ def test_catalogue_page_has_meta_description(mock_site_context):
     It must override the generic base-template fallback, so we assert the
     distinctive catalogue copy is present rather than merely non-empty.
     """
-    desc = _extract_meta_description(_get("student_interface:courses"))
+    desc = _extract_meta_description(_get("learner_interface:courses"))
     assert "Browse all available courses" in desc
 
 
@@ -106,7 +106,7 @@ def test_course_detail_has_meta_description_from_description_field(
         description="A thorough introduction to Python programming.",
         subtitle="",
     )
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     assert (
         _extract_meta_description(body)
         == "A thorough introduction to Python programming."
@@ -119,7 +119,7 @@ def test_course_detail_falls_back_to_subtitle_when_no_description(
 ):
     """Detail page uses course.subtitle when description is empty."""
     course = course_with_topic(description="", subtitle="Learn fast, learn well.")
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     assert _extract_meta_description(body) == "Learn fast, learn well."
 
 
@@ -129,7 +129,7 @@ def test_course_detail_falls_back_to_site_default_when_no_description_or_subtitl
 ):
     """Detail page uses the built-in generic fallback when description and subtitle are empty."""
     course = course_with_topic(description="", subtitle="")
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     assert (
         _extract_meta_description(body) == "Explore this course and expand your skills."
     )
@@ -144,7 +144,7 @@ def test_course_detail_falls_back_to_site_default_when_no_description_or_subtitl
 def test_course_detail_json_ld_is_course_type(mock_site_context, course_with_topic):
     """Detail page JSON-LD has @type: Course."""
     course = course_with_topic()
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     data = _extract_json_ld(body, "course-jsonld")
     assert data["@type"] == "Course"
     assert data["@context"] == "https://schema.org"
@@ -156,7 +156,7 @@ def test_course_detail_json_ld_has_required_fields(
 ):
     """Detail JSON-LD has name, url, and isAccessibleForFree."""
     course = course_with_topic()
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     data = _extract_json_ld(body, "course-jsonld")
     assert data["name"] == course.title
     assert "url" in data
@@ -169,7 +169,7 @@ def test_course_detail_json_ld_free_course_is_accessible_for_free(
 ):
     """A free course has isAccessibleForFree: true in its JSON-LD."""
     course = course_with_topic()
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     assert _extract_json_ld(body, "course-jsonld")["isAccessibleForFree"] is True
 
 
@@ -182,7 +182,7 @@ def test_course_detail_json_ld_gated_course_is_not_accessible_for_free(
         slug="gated-seo-course",
         access_type="application_gated",
     )
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     assert _extract_json_ld(body, "course-jsonld")["isAccessibleForFree"] is False
 
 
@@ -192,7 +192,7 @@ def test_course_detail_json_ld_omits_forbidden_fields(
 ):
     """Detail JSON-LD must NOT include provider, image, author, or courseCode."""
     course = course_with_topic()
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     data = _extract_json_ld(body, "course-jsonld")
     assert "provider" not in data
     assert "image" not in data
@@ -206,7 +206,7 @@ def test_course_detail_json_ld_url_contains_course_slug(
 ):
     """The JSON-LD url includes the course slug (absolute URL)."""
     course = course_with_topic(slug="my-test-course")
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     assert "my-test-course" in _extract_json_ld(body, "course-jsonld")["url"]
 
 
@@ -216,7 +216,7 @@ def test_course_detail_json_ld_description_matches_meta_description(
 ):
     """The JSON-LD and meta descriptions both equal the course description field."""
     course = course_with_topic(description="Hands-on Python course.", subtitle="")
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     meta_desc = _extract_meta_description(body)
     json_ld = _extract_json_ld(body, "course-jsonld")
     assert json_ld.get("description") == "Hands-on Python course."
@@ -229,7 +229,7 @@ def test_course_detail_json_ld_omits_educational_level_when_unset(
 ):
     """educationalLevel is omitted when course.difficulty is blank."""
     course = course_with_topic(difficulty="")
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     assert "educationalLevel" not in _extract_json_ld(body, "course-jsonld")
 
 
@@ -239,7 +239,7 @@ def test_course_detail_json_ld_includes_educational_level_when_set(
 ):
     """educationalLevel carries the human-readable difficulty label when set."""
     course = course_with_topic(difficulty="beginner")
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     data = _extract_json_ld(body, "course-jsonld")
     assert data["educationalLevel"] == "Beginner"
 
@@ -250,7 +250,7 @@ def test_course_detail_json_ld_omits_time_required_when_duration_unset(
 ):
     """timeRequired is absent when estimated_duration is not set."""
     course = course_with_topic(estimated_duration=None)
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     assert "timeRequired" not in _extract_json_ld(body, "course-jsonld")
 
 
@@ -260,7 +260,7 @@ def test_course_detail_json_ld_includes_time_required_when_duration_set(
 ):
     """timeRequired is present and ISO-8601 when estimated_duration is set."""
     course = course_with_topic(estimated_duration=timedelta(hours=1, minutes=30))
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     assert _extract_json_ld(body, "course-jsonld")["timeRequired"] == "PT1H30M"
 
 
@@ -270,7 +270,7 @@ def test_course_detail_json_ld_omits_teaches_when_learning_outcomes_empty(
 ):
     """teaches is absent when course.learning_outcomes is empty."""
     course = course_with_topic(learning_outcomes=[])
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     assert "teaches" not in _extract_json_ld(body, "course-jsonld")
 
 
@@ -282,7 +282,7 @@ def test_course_detail_json_ld_includes_teaches_when_learning_outcomes_set(
     course = course_with_topic(
         learning_outcomes=["Understand variables", "Write functions"]
     )
-    body = _get("student_interface:course_detail", kwargs={"course_slug": course.slug})
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     assert _extract_json_ld(body, "course-jsonld")["teaches"] == [
         "Understand variables",
         "Write functions",
@@ -298,7 +298,7 @@ def test_course_detail_json_ld_includes_teaches_when_learning_outcomes_set(
 def test_catalogue_json_ld_is_item_list(mock_site_context):
     """Catalogue JSON-LD has @type: ItemList."""
     CourseFactory()
-    data = _extract_json_ld(_get("student_interface:courses"), "catalogue-jsonld")
+    data = _extract_json_ld(_get("learner_interface:courses"), "catalogue-jsonld")
     assert data["@type"] == "ItemList"
     assert data["@context"] == "https://schema.org"
 
@@ -309,7 +309,7 @@ def test_catalogue_json_ld_contains_course_detail_urls(
 ):
     """Catalogue JSON-LD items include absolute URLs to each course's detail page."""
     course_with_topic(slug="alpha-course")
-    data = _extract_json_ld(_get("student_interface:courses"), "catalogue-jsonld")
+    data = _extract_json_ld(_get("learner_interface:courses"), "catalogue-jsonld")
     item_urls = [item.get("url", "") for item in data.get("itemListElement", [])]
     assert any("alpha-course" in url for url in item_urls)
 

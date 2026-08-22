@@ -138,14 +138,14 @@ def test_view_course_item_redirects_if_locked(client, mock_site_context):
 
     client.force_login(user)
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
 
     assert response.status_code == 302
     assert response.url == reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
 
 
@@ -195,7 +195,7 @@ def test_view_course_item_skips_lock_check_when_deadlines_inactive(
 
     client.force_login(user)
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)

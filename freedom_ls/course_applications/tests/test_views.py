@@ -221,7 +221,7 @@ class TestApplyViewVisibilityGate:
         response = client.post(self._apply_url(course))
 
         expected = reverse(
-            "student_interface:course_detail", kwargs={"course_slug": course.slug}
+            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
         )
         assert response.status_code == 302
         assert response["Location"] == expected

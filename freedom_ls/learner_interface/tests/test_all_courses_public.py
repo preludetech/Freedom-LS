@@ -22,7 +22,7 @@ from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 def test_all_courses_anonymous_returns_200(mock_site_context):
     """Anonymous GET /courses/ returns 200 — no login redirect."""
     client = Client()
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
 
@@ -34,7 +34,7 @@ def test_all_courses_anonymous_lists_site_courses(mock_site_context):
     course.items.create(child=topic, order=0)
 
     client = Client()
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
     assert "Intro to Django" in response.content.decode()
 
@@ -57,7 +57,7 @@ def test_all_courses_free_course_row_shows_free_badge(mock_site_context):
     course.items.create(child=topic, order=0)
 
     client = Client()
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
     body = response.content.decode()
     assert "Free" in body
@@ -85,7 +85,7 @@ def test_all_courses_gated_course_row_shows_by_application_badge(mock_site_conte
     gated_course.items.create(child=topic, order=0)
 
     client = Client()
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
     body = response.content.decode()
     assert "By application" in body
@@ -100,7 +100,7 @@ def test_all_courses_anonymous_not_registered_row_has_no_not_registered_eyebrow(
     CourseFactory(title="Some Course", slug="some-course")
 
     client = Client()
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
     assert "Not registered" not in response.content.decode()
 
@@ -117,7 +117,7 @@ def test_all_courses_authenticated_not_registered_row_shows_not_registered_eyebr
     client = Client()
     client.force_login(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
     assert "Not registered" in response.content.decode()
 
@@ -136,7 +136,7 @@ def test_all_courses_site_isolation(mock_site_context):
     other_course.save()
 
     client = Client()
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
     body = response.content.decode()
     assert "Our Course" in body

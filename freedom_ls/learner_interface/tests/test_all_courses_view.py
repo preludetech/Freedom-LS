@@ -24,7 +24,7 @@ from freedom_ls.learner_progress.factories import CourseProgressFactory
 @pytest.mark.django_db
 def test_all_courses_anonymous_returns_200(client, courses, mock_site_context):
     """Anonymous users can browse the catalogue — no login redirect."""
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
 
@@ -37,7 +37,7 @@ def test_all_courses_started_course_has_progress_percentage(
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     all_courses_list = list(response.context["all_courses"])
@@ -55,7 +55,7 @@ def test_all_courses_annotates_accent_slot_key(
     """Every course returned to the all_courses page has an ``accent_slot_key``."""
     user = UserFactory()
     client = logged_in_client(user)
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
     from freedom_ls.content_engine.course_accent import PALETTE
 
@@ -75,7 +75,7 @@ def test_all_courses_not_registered_has_not_registered_status(
     user = UserFactory()
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     all_courses_list = list(response.context["all_courses"])
@@ -93,7 +93,7 @@ def test_all_courses_registered_zero_percent_has_registered_status(
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     all_courses_list = list(response.context["all_courses"])
@@ -114,7 +114,7 @@ def test_all_courses_in_progress_has_in_progress_status(
     )
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     all_courses_list = list(response.context["all_courses"])
@@ -138,7 +138,7 @@ def test_all_courses_complete_has_complete_status(
     )
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     all_courses_list = list(response.context["all_courses"])

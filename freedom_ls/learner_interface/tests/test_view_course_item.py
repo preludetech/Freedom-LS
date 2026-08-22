@@ -108,7 +108,7 @@ def test_accessing_topic_inside_course_part_should_display_topic(
 
     # The first viewable item is at index 1 (CoursePart no longer consumes a slot)
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "test-course", "index": 1},
     )
 
@@ -142,7 +142,7 @@ def test_starting_form_inside_course_part_should_work(
 
     # The first viewable item is at index 1 (CoursePart no longer consumes a slot)
     url = reverse(
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": "test-course", "index": 1},
     )
 
@@ -166,7 +166,7 @@ def test_view_course_item_anonymous_redirects_to_login(
     """Anonymous user hitting view_course_item is redirected to login (login_required)."""
     # The first viewable item is at index 1 (CoursePart no longer consumes a slot)
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "test-course", "index": 1},
     )
     response = client.get(url)
@@ -180,7 +180,7 @@ def test_form_start_anonymous_redirects_to_login(course_with_nested_structure, c
     """Anonymous user hitting form_start is redirected to login (login_required)."""
     # The first viewable item is at index 1 (CoursePart no longer consumes a slot)
     url = reverse(
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": "test-course", "index": 1},
     )
     response = client.get(url)
@@ -202,7 +202,7 @@ def test_form_complete_inside_course_part_should_work(
 
     # The first viewable item is at index 1 (CoursePart no longer consumes a slot)
     url = reverse(
-        "student_interface:course_form_complete",
+        "learner_interface:course_form_complete",
         kwargs={"course_slug": "test-course", "index": 1},
     )
 
@@ -227,7 +227,7 @@ def test_view_course_item_out_of_range_index_returns_404(
     course = course_with_nested_structure["course"]
     out_of_range = len(course.viewable_items()) + 1
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "test-course", "index": out_of_range},
     )
     response = authenticated_client.get(url)
@@ -240,7 +240,7 @@ def test_view_course_item_zero_index_returns_404(
 ):
     """index=0 returns 404 instead of indexing into the last item."""
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "test-course", "index": 0},
     )
     response = authenticated_client.get(url)
@@ -256,7 +256,7 @@ def test_form_start_out_of_range_index_returns_404(
     course = course_with_nested_structure["course"]
     out_of_range = len(course.viewable_items()) + 1
     url = reverse(
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": "test-course", "index": out_of_range},
     )
     response = authenticated_client.get(url)
@@ -272,7 +272,7 @@ def test_course_form_complete_out_of_range_index_returns_404(
     course = course_with_nested_structure["course"]
     out_of_range = len(course.viewable_items()) + 1
     url = reverse(
-        "student_interface:course_form_complete",
+        "learner_interface:course_form_complete",
         kwargs={"course_slug": "test-course", "index": out_of_range},
     )
     response = authenticated_client.get(url)
@@ -288,7 +288,7 @@ def test_form_fill_page_out_of_range_index_returns_404(
     course = course_with_nested_structure["course"]
     out_of_range = len(course.viewable_items()) + 1
     url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={
             "course_slug": "test-course",
             "index": out_of_range,
@@ -306,7 +306,7 @@ def test_form_fill_page_out_of_range_page_returns_404(
 ):
     """form_fill_page with a valid index but out-of-range page_number returns 404."""
     url = reverse(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         kwargs={
             "course_slug": "test-course",
             "index": 1,

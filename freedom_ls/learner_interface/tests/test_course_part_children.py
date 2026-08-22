@@ -136,11 +136,11 @@ def test_course_part_row_url_resolves_to_first_viewable_child_index(mock_site_co
     p2_dict = children[1]
 
     expected_p1_url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": p1_first_child_idx},
     )
     expected_p2_url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": p2_first_child_idx},
     )
 
@@ -215,7 +215,7 @@ def test_course_part_url_resumes_at_in_progress_child(mock_site_context):
 
     second_index = course.viewable_items().index(second) + 1
     expected_url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": second_index},
     )
     assert part_dict["status"] == IN_PROGRESS
@@ -244,7 +244,7 @@ def test_course_part_url_skips_completed_first_child_to_first_ready(mock_site_co
 
     second_index = course.viewable_items().index(second) + 1
     expected_url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": second_index},
     )
     assert part_dict["status"] == READY

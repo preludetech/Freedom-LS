@@ -40,7 +40,7 @@ def test_submit_disarms_the_beforeunload_leave_prompt(
     register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     logged_in_page.goto(start_url)
@@ -139,7 +139,7 @@ def test_submit_navigates_to_form_completion(
     register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     logged_in_page.goto(start_url)
@@ -150,7 +150,7 @@ def test_submit_navigates_to_form_completion(
 
     complete_url = reverse_url(
         live_server,
-        "student_interface:course_form_complete",
+        "learner_interface:course_form_complete",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     expect(logged_in_page).to_have_url(complete_url)

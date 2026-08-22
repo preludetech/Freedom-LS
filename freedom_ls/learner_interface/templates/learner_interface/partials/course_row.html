@@ -28,11 +28,11 @@ Required context: course (listing_status, slug, accent_slot_key, icon,
 icon_fallback, title, progress_percentage, access_badge) and user.
 {% endcomment %}
 {% if course.listing_status == "complete" %}
-    {% url 'student_interface:course_finish' course_slug=course.slug as title_url %}
+    {% url 'learner_interface:course_finish' course_slug=course.slug as title_url %}
 {% elif course.listing_status == "registered" or course.listing_status == "in_progress" %}
-    {% url 'student_interface:view_course_item' course_slug=course.slug index=1 as title_url %}
+    {% url 'learner_interface:view_course_item' course_slug=course.slug index=1 as title_url %}
 {% else %}
-    {% url 'student_interface:course_detail' course_slug=course.slug as title_url %}
+    {% url 'learner_interface:course_detail' course_slug=course.slug as title_url %}
 {% endif %}
 
 <c-course-row-shell accent_slot_key="{{ course.accent_slot_key }}"

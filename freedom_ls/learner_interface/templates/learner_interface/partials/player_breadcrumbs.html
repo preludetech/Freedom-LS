@@ -14,7 +14,7 @@ mobile expand button and the progress bar are supplied by the shared content
 header in _base_interface.html, not here.
 {% endcomment %}
 
-{% url 'student_interface:course_detail' course_slug=course.slug as course_detail_url %}
+{% url 'learner_interface:course_detail' course_slug=course.slug as course_detail_url %}
 
 <nav aria-label="Breadcrumb">
     <ol class="list-none ml-0 flex items-center gap-2 text-sm text-muted min-w-0">
@@ -26,7 +26,7 @@ header in _base_interface.html, not here.
         {% if current_part and current_part_index %}
             <li class="m-0 p-0 flex items-center gap-2 min-w-0">
                 <span aria-hidden="true" class="shrink-0">&gt;</span>
-                <a href="{% url 'student_interface:view_course_item' course_slug=course.slug index=current_part_index %}"
+                <a href="{% url 'learner_interface:view_course_item' course_slug=course.slug index=current_part_index %}"
                    class="no-underline text-muted hover:text-primary truncate max-w-[16rem]"
                    title="{{ current_part.title }}">{{ current_part.title }}</a>
             </li>

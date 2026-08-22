@@ -42,11 +42,11 @@ def test_all_courses_coming_soon_is_plain_detail_link_no_cta(
     )
     client = logged_in_client(UserFactory())
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     body = response.content.decode()
 
     detail_url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": "cs"}
+        "learner_interface:course_detail", kwargs={"course_slug": "cs"}
     )
     assert response.status_code == 200
     assert "Coming soon" in body
@@ -67,7 +67,7 @@ def test_all_courses_coming_soon_no_cta_even_when_interested(
     CourseInterestFactory(user=user, course=course)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     body = response.content.decode()
 
     assert "I'm interested" not in body
@@ -83,7 +83,7 @@ def test_all_courses_hidden_course_absent_for_unregistered(
     )
     client = logged_in_client(UserFactory())
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
 
     assert "Hidden Course" not in response.content.decode()
 
@@ -101,7 +101,7 @@ def test_all_courses_coming_soon_registered_keeps_registered_status(
     UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     body = response.content.decode()
 
     assert response.status_code == 200
@@ -123,11 +123,11 @@ def test_dashboard_coming_soon_is_plain_detail_link_no_cta(
     )
     client = logged_in_client(UserFactory())
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     detail_url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": "cs"}
+        "learner_interface:course_detail", kwargs={"course_slug": "cs"}
     )
     assert response.status_code == 200
     assert "Coming soon" in body
@@ -148,7 +148,7 @@ def test_dashboard_coming_soon_no_cta_even_when_interested(
     CourseInterestFactory(user=user, course=course)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     assert "I'm interested" not in body
@@ -168,11 +168,11 @@ def test_dashboard_recommended_coming_soon_is_plain_detail_link_no_cta(
     RecommendedCourseFactory(user=user, collection=course)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     detail_url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": "cs"}
+        "learner_interface:course_detail", kwargs={"course_slug": "cs"}
     )
     assert "Coming soon" in body
     assert f'href="{detail_url}"' in body
@@ -193,7 +193,7 @@ def test_dashboard_hidden_recommended_absent_for_unregistered(
     RecommendedCourseFactory(user=user, collection=course)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
 
     assert "Hidden Recommended" not in response.content.decode()
 
@@ -212,7 +212,7 @@ def test_dashboard_hidden_recommended_present_for_registered(
     UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
 
     assert "Hidden Recommended" in response.content.decode()
 
@@ -226,7 +226,7 @@ def test_dashboard_hidden_absent_for_unregistered(
     )
     client = logged_in_client(UserFactory())
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
 
     assert "Hidden Course" not in response.content.decode()
 
@@ -242,7 +242,7 @@ def test_dashboard_hidden_present_for_registered_user(
     UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
 
     assert "Hidden Course" in response.content.decode()
 
@@ -261,7 +261,7 @@ def test_dashboard_shows_published_course_for_anonymous(
         visibility=CourseVisibility.PUBLISHED, slug="pub", title="Published Course"
     )
 
-    response = Client().get(reverse("student_interface:dashboard"))
+    response = Client().get(reverse("learner_interface:dashboard"))
 
     assert response.status_code == 200
     assert "Published Course" in response.content.decode()
@@ -275,7 +275,7 @@ def test_dashboard_hidden_absent_for_anonymous(mock_site_context, course_with_to
         visibility=CourseVisibility.HIDDEN, slug="hid", title="Hidden Course"
     )
 
-    response = Client().get(reverse("student_interface:dashboard"))
+    response = Client().get(reverse("learner_interface:dashboard"))
 
     assert "Hidden Course" not in response.content.decode()
 
@@ -290,7 +290,7 @@ def test_dashboard_coming_soon_present_for_anonymous(
         visibility=CourseVisibility.COMING_SOON, slug="cs", title="Coming Soon Course"
     )
 
-    response = Client().get(reverse("student_interface:dashboard"))
+    response = Client().get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     assert "Coming Soon Course" in body
@@ -313,7 +313,7 @@ def test_all_courses_coming_soon_shows_no_chip_for_anonymous_with_override(
     )
 
     with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
-        response = Client().get(reverse("student_interface:courses"))
+        response = Client().get(reverse("learner_interface:courses"))
     body = response.content.decode()
 
     assert response.status_code == 200
@@ -335,7 +335,7 @@ def test_all_courses_coming_soon_shows_no_chip_for_authenticated_with_override(
     client = logged_in_client(UserFactory())
 
     with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
-        response = client.get(reverse("student_interface:courses"))
+        response = client.get(reverse("learner_interface:courses"))
     body = response.content.decode()
 
     assert response.status_code == 200
@@ -357,7 +357,7 @@ def test_dashboard_available_coming_soon_shows_no_chip_with_override(
     client = logged_in_client(UserFactory())
 
     with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
-        response = client.get(reverse("student_interface:dashboard"))
+        response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     assert response.status_code == 200
@@ -381,7 +381,7 @@ def test_dashboard_recommended_coming_soon_shows_no_chip_with_override(
     client = logged_in_client(user)
 
     with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
-        response = client.get(reverse("student_interface:dashboard"))
+        response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     assert "Preview Launch Course" in body

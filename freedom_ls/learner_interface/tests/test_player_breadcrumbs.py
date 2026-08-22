@@ -30,7 +30,7 @@ def test_first_crumb_links_to_course_detail_not_item_one(mock_site_context):
     client = Client()
     client.force_login(user)
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "breadcrumb-course", "index": 1},
     )
     response = client.get(url)
@@ -39,10 +39,10 @@ def test_first_crumb_links_to_course_detail_not_item_one(mock_site_context):
     nav_html = _breadcrumb_nav(response.content.decode())
 
     course_detail_url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": "breadcrumb-course"}
+        "learner_interface:course_detail", kwargs={"course_slug": "breadcrumb-course"}
     )
     item_one_url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "breadcrumb-course", "index": 1},
     )
 

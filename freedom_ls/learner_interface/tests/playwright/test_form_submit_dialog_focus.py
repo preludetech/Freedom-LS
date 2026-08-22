@@ -37,7 +37,7 @@ def test_submit_dialog_moves_focus_in_and_traps_tab_within_the_dialog(
     register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     logged_in_page.goto(start_url)

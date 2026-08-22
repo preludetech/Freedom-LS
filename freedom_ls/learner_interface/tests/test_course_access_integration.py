@@ -1,4 +1,4 @@
-"""Tests for wiring the course-access backend into student_interface.
+"""Tests for wiring the course-access backend into learner_interface.
 
 Covers:
 1. Chokepoint gate in initiate_course_access
@@ -8,7 +8,7 @@ Covers:
 5. Dashboard contributions (plugin dashboard seam)
 
 These tests import course_applications factories/models to *build state* but
-student_interface production code must NOT import course_applications — that rule
+learner_interface production code must NOT import course_applications — that rule
 is enforced by the architecture, not these tests.
 """
 
@@ -50,7 +50,7 @@ def test_initiate_access_gated_course_redirects_to_apply_url(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course.slug}
     )
     response = client.post(url)
 
@@ -71,7 +71,7 @@ def test_initiate_access_gated_course_creates_no_registration(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course.slug}
     )
     client.post(url)
 
@@ -90,7 +90,7 @@ def test_initiate_access_gated_course_get_also_redirects(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -111,7 +111,7 @@ def test_initiate_access_free_course_creates_registration(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course.slug}
     )
     client.post(url)
 
@@ -133,7 +133,7 @@ def test_course_detail_gated_not_registered_shows_apply_now(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -152,7 +152,7 @@ def test_course_detail_gated_not_registered_cta_url_is_apply_url(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -172,7 +172,7 @@ def test_course_detail_free_not_registered_shows_enrol_for_free_label(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -196,7 +196,7 @@ def test_course_detail_gated_shows_application_copy_not_free_copy(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     body = client.get(url).content.decode()
 
@@ -217,7 +217,7 @@ def test_course_detail_free_shows_free_acquisition_copy(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     body = client.get(url).content.decode()
 
@@ -236,7 +236,7 @@ def test_course_detail_registered_shows_start_course_label(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -256,7 +256,7 @@ def test_course_detail_registered_in_progress_shows_continue_label(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -281,7 +281,7 @@ def test_course_detail_registered_completed_shows_review_label(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -304,7 +304,7 @@ def test_dashboard_lists_all_courses_with_default_backend(
     course_b = CourseFactory(title="Course B", slug="course-b")
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
 
     assert response.status_code == 200
     available = response.context["available_courses"]
@@ -328,14 +328,14 @@ def test_view_course_item_unregistered_redirects_to_course_detail(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
 
     assert response.status_code == 302
     assert response["Location"] == reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
 
 
@@ -350,7 +350,7 @@ def test_view_course_item_registered_renders_content(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -369,7 +369,7 @@ def test_course_detail_unregistered_all_toc_items_blocked(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -391,7 +391,7 @@ def test_course_detail_registered_toc_items_not_all_blocked(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -411,12 +411,12 @@ def test_course_home_unregistered_redirects_to_course_detail(
     user = UserFactory()
     client = logged_in_client(user)
 
-    url = reverse("student_interface:course_home", kwargs={"course_slug": course.slug})
+    url = reverse("learner_interface:course_home", kwargs={"course_slug": course.slug})
     response = client.get(url)
 
     assert response.status_code == 302
     assert response["Location"] == reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
 
 
@@ -431,7 +431,7 @@ def test_gated_course_detail_unregistered_shows_apply_not_item_content(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -453,14 +453,14 @@ def test_view_course_item_gated_unregistered_redirects_to_course_detail(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
 
     assert response.status_code == 302
     assert response["Location"] == reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
 
 
@@ -479,7 +479,7 @@ def test_dashboard_with_active_application_shows_status_link(
     application = CourseApplicationFactory(user=user, course=course)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
 
     assert response.status_code == 200
     body = response.content.decode()
@@ -506,7 +506,7 @@ def test_dashboard_without_applications_shows_no_extra_panel(
         COURSE_ACCESS_BACKEND="freedom_ls.course_access.backends.FreeOnlyCourseAccessBackend"
     ):
         get_course_access_backend.cache_clear()
-        response = client.get(reverse("student_interface:dashboard"))
+        response = client.get(reverse("learner_interface:dashboard"))
 
     assert response.status_code == 200
     assert "dashboard_panels" in response.context
@@ -519,7 +519,7 @@ def test_dashboard_panels_in_context(mock_site_context, logged_in_client):
     user = UserFactory()
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
 
     assert response.status_code == 200
     assert "dashboard_panels" in response.context
@@ -538,7 +538,7 @@ def test_course_home_hidden_unregistered_returns_404(
     course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
     client = logged_in_client(UserFactory())
 
-    url = reverse("student_interface:course_home", kwargs={"course_slug": course.slug})
+    url = reverse("learner_interface:course_home", kwargs={"course_slug": course.slug})
     response = client.get(url)
 
     assert response.status_code == 404
@@ -554,7 +554,7 @@ def test_course_home_hidden_registered_still_resolves(
     UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
     client = logged_in_client(user)
 
-    url = reverse("student_interface:course_home", kwargs={"course_slug": course.slug})
+    url = reverse("learner_interface:course_home", kwargs={"course_slug": course.slug})
     response = client.get(url)
 
     assert response.status_code == 302
@@ -569,7 +569,7 @@ def test_view_course_item_hidden_unregistered_returns_404(
     client = logged_in_client(UserFactory())
 
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -588,7 +588,7 @@ def test_view_course_item_hidden_registered_renders_content(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     response = client.get(url)
@@ -611,12 +611,12 @@ def test_initiate_access_coming_soon_redirects_to_detail(
     client = logged_in_client(UserFactory())
 
     url = reverse(
-        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course.slug}
     )
     response = client.post(url)
 
     detail_url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     assert response.status_code == 302
     assert response["Location"] == detail_url
@@ -634,7 +634,7 @@ def test_initiate_access_coming_soon_creates_no_registration(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course.slug}
     )
     client.post(url)
 
@@ -652,7 +652,7 @@ def test_initiate_access_hidden_unregistered_returns_404(
     client = logged_in_client(UserFactory())
 
     url = reverse(
-        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course.slug}
     )
     response = client.post(url)
 
@@ -673,7 +673,7 @@ def test_initiate_access_coming_soon_self_registers_with_visibility_override(
     client = logged_in_client(user)
 
     url = reverse(
-        "student_interface:initiate_course_access", kwargs={"course_slug": course.slug}
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course.slug}
     )
     with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):
         get_course_access_backend.cache_clear()
@@ -681,6 +681,6 @@ def test_initiate_access_coming_soon_self_registers_with_visibility_override(
 
     assert response.status_code == 302
     assert response["Location"] != reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     assert UserCourseRegistration.objects.filter(user=user, collection=course).exists()

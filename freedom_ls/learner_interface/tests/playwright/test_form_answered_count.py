@@ -57,7 +57,7 @@ def test_answered_count_reflects_answers_filled_in_on_the_current_page(
     # to the fill page.
     start_url = reverse_url(
         live_server,
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     logged_in_page.goto(start_url)

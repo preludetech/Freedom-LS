@@ -34,7 +34,7 @@ course.listing_status. No per-status dispatch or leaf templates here.
                 <p class="text-muted">
                     You haven't signed up for any courses yet.
                 </p>
-                <!-- <c-button href="{% url 'student_interface:courses' %}">
+                <!-- <c-button href="{% url 'learner_interface:courses' %}">
                     Browse courses
                 </c-button> -->
             </div>
@@ -66,7 +66,7 @@ course.listing_status. No per-status dispatch or leaf templates here.
                 {% with heading="Available courses" %}
                     {% partial section-heading %}
                 {% endwith %}
-                <c-button href="{% url 'student_interface:courses' %}"
+                <c-button href="{% url 'learner_interface:courses' %}"
                           variant="link"
                           size="small"
                           icon_right="next"

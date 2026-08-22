@@ -59,7 +59,7 @@ def _build_picture_page(
     return str(
         reverse_url(
             live_server,
-            "student_interface:view_course_item",
+            "learner_interface:view_course_item",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     )

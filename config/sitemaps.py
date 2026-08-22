@@ -23,7 +23,7 @@ class StaticViewSitemap(Sitemap):
     priority = 0.8
 
     def items(self) -> list[str]:
-        return ["student_interface:courses"]
+        return ["learner_interface:courses"]
 
     def location(self, item: str) -> str:
         return reverse(item)
@@ -51,6 +51,6 @@ class CourseSitemap(Sitemap):
 
     def location(self, obj: Course) -> str:
         return reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": obj.slug},
         )

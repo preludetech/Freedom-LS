@@ -46,7 +46,7 @@ class TestOverridesOffRegression:
         get_course_access_backend.cache_clear()
         response = client.get(
             reverse(
-                "student_interface:course_detail",
+                "learner_interface:course_detail",
                 kwargs={"course_slug": course.slug},
             )
         )

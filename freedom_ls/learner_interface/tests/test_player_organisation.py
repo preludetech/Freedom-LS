@@ -52,7 +52,7 @@ def player_response(mock_site_context, course_with_topic, logged_in_client):
         )
         response = logged_in_client(user).get(
             reverse(
-                "student_interface:view_course_item",
+                "learner_interface:view_course_item",
                 kwargs={"course_slug": course.slug, "index": 1},
             )
         )

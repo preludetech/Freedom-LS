@@ -24,7 +24,7 @@ def test_toc_in_development_hides_all_three_surfaces(
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
     content = response.content.decode()
@@ -50,7 +50,7 @@ def test_toc_in_development_with_assessments_shows_only_assessments_line(
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
     content = response.content.decode()
@@ -72,7 +72,7 @@ def test_toc_in_development_off_shows_all_three_surfaces(
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
     content = response.content.decode()

@@ -24,7 +24,7 @@ from freedom_ls.organisations.factories import OrganisationFactory
 
 def _detail_url(course: Course) -> str:
     return reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
 
 

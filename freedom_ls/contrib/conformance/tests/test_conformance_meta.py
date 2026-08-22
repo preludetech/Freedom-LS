@@ -57,7 +57,7 @@ def _reset_dropped_probes() -> Iterator[None]:
 
 def test_namespace_probe_fails_for_unresolvable_viewname() -> None:
     broken = _Probe(
-        "freedom_ls.learner_interface", "student_interface:does_not_exist", True
+        "freedom_ls.learner_interface", "learner_interface:does_not_exist", True
     )
 
     with pytest.raises(NoReverseMatch):
@@ -68,7 +68,7 @@ def test_namespace_probe_skips_when_its_app_is_not_installed() -> None:
     remaining_apps = [
         app for app in settings.INSTALLED_APPS if app != "freedom_ls.learner_interface"
     ]
-    probe = _Probe("freedom_ls.learner_interface", "student_interface:dashboard", True)
+    probe = _Probe("freedom_ls.learner_interface", "learner_interface:dashboard", True)
 
     with (
         override_settings(INSTALLED_APPS=remaining_apps),
@@ -84,24 +84,24 @@ def test_namespace_probe_treats_appconfig_path_install_as_installed() -> None:
         else app
         for app in settings.INSTALLED_APPS
     ]
-    probe = _Probe("freedom_ls.learner_interface", "student_interface:dashboard", True)
+    probe = _Probe("freedom_ls.learner_interface", "learner_interface:dashboard", True)
 
     with override_settings(INSTALLED_APPS=apps_via_config_path):
         probe_namespace_reverses(probe)
 
 
 def test_dropped_internal_probe_skips() -> None:
-    drop("student_interface:courses")
-    probe = _Probe("freedom_ls.learner_interface", "student_interface:courses", False)
+    drop("learner_interface:courses")
+    probe = _Probe("freedom_ls.learner_interface", "learner_interface:courses", False)
 
     with pytest.raises(pytest.skip.Exception):
         probe_namespace_reverses(probe)
 
 
 def test_drop_does_not_exempt_contract_tier_probes() -> None:
-    drop("student_interface:removed_route")
+    drop("learner_interface:removed_route")
     broken_contract_probe = _Probe(
-        "freedom_ls.learner_interface", "student_interface:removed_route", True
+        "freedom_ls.learner_interface", "learner_interface:removed_route", True
     )
 
     with pytest.raises(NoReverseMatch):

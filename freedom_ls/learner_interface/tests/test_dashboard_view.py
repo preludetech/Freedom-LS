@@ -32,7 +32,7 @@ def test_dashboard_authenticated_returns_200_with_user_label(
 ):
     user = UserFactory(first_name="Ada")
     client = logged_in_client(user)
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     # The greeting renders the user's first name.
     assert "Ada" in response.content.decode()
@@ -45,7 +45,7 @@ def test_dashboard_current_courses(mock_site_context, courses, logged_in_client)
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     registered = response.context["registered_courses"]
     assert len(registered) == 1
@@ -68,7 +68,7 @@ def test_dashboard_dedupes_a_course_registered_through_two_organisations(
     )
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
 
     assert response.status_code == 200
     registered = response.context["registered_courses"]
@@ -85,7 +85,7 @@ def test_dashboard_current_courses_have_progress_percentage(
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     registered = response.context["registered_courses"]
     assert len(registered) == 1
     assert hasattr(registered[0], "progress_percentage")
@@ -99,7 +99,7 @@ def test_dashboard_completed_courses(mock_site_context, courses, logged_in_clien
     CourseProgressFactory(user=user, course=courses[0], completed_time=timezone.now())
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     assert courses[0] in response.context["completed_courses"]
     assert courses[0] not in list(response.context["registered_courses"])
@@ -113,7 +113,7 @@ def test_dashboard_recommended_courses(mock_site_context, courses, logged_in_cli
     RecommendedCourseFactory(user=user, collection=courses[0])
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     recommended = list(response.context["recommended_courses"])
     assert len(recommended) == 1
@@ -133,7 +133,7 @@ def test_dashboard_annotates_accent_on_every_course(
     RecommendedCourseFactory(user=user, collection=courses[2])
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
 
     for course in response.context["registered_courses"]:
@@ -158,7 +158,7 @@ def test_dashboard_available_excludes_registered_and_completed(
     CourseProgressFactory(user=user, course=courses[1], completed_time=timezone.now())
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     available = response.context["available_courses"]
     assert courses[0] not in available
@@ -174,7 +174,7 @@ def test_dashboard_available_excludes_recommended(
     RecommendedCourseFactory(user=user, collection=courses[0])
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     available = response.context["available_courses"]
     assert courses[0] not in available
@@ -190,7 +190,7 @@ def test_dashboard_available_capped_at_three(
     CourseFactory(title="Course E", slug="course-e")
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     assert len(response.context["available_courses"]) == 3
 
@@ -203,7 +203,7 @@ def test_dashboard_available_includes_eligible_course(
     user = UserFactory()
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     available = response.context["available_courses"]
     assert courses[0] in available
@@ -221,7 +221,7 @@ def test_dashboard_available_courses_are_not_registered(
     user = UserFactory()
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     available = response.context["available_courses"]
     assert available
@@ -242,14 +242,14 @@ def test_dashboard_available_section_renders_browse_all_link(
     user = UserFactory()
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     body = response.content.decode()
 
     assert "Available courses" in body
     assert "Browse all courses" in body
     # A real anchor pointing at the all-courses page.
-    courses_url = reverse("student_interface:courses")
+    courses_url = reverse("learner_interface:courses")
     assert f'href="{courses_url}"' in body
 
 
@@ -265,7 +265,7 @@ def test_dashboard_available_section_hidden_when_empty(
     RecommendedCourseFactory(user=user, collection=courses[2])
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     assert not response.context["available_courses"]
     body = response.content.decode()
@@ -281,7 +281,7 @@ def test_dashboard_old_all_courses_button_removed(
     user = UserFactory()
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     assert "All Courses" not in response.content.decode()
 
@@ -294,7 +294,7 @@ def test_dashboard_empty_state_browse_courses_button_present(
     user = UserFactory()
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     body = response.content.decode()
     assert "You haven't signed up for any courses yet." in body
@@ -311,7 +311,7 @@ def test_dashboard_completed_course_in_history_not_available(
     CourseProgressFactory(user=user, course=courses[0], completed_time=timezone.now())
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     assert courses[0] in response.context["completed_courses"]
     assert courses[0] not in response.context["available_courses"]

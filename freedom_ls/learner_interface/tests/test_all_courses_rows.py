@@ -62,7 +62,7 @@ def test_all_courses_renders_four_distinct_status_labels(
     )
 
     client = logged_in_client(user)
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
     body = response.content.decode()
 
@@ -81,11 +81,11 @@ def test_all_courses_not_registered_row_links_to_course_detail(
     user = UserFactory()
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     detail_url = reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": courses[0].slug},
     )
     body = response.content.decode()
@@ -101,7 +101,7 @@ def test_all_courses_not_registered_row_has_no_progress_bar(
     # No registration — courses[0] is NOT_REGISTERED
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     body = response.content.decode()
@@ -121,11 +121,11 @@ def test_all_courses_registered_zero_percent_row_links_to_first_item(
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     item_url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": courses[0].slug, "index": 1},
     )
     body = response.content.decode()
@@ -146,7 +146,7 @@ def test_all_courses_registered_zero_percent_row_has_progress_value_zero(
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     body = response.content.decode()
@@ -166,11 +166,11 @@ def test_all_courses_in_progress_row_links_to_first_item(
     )
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     item_url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": courses[0].slug, "index": 1},
     )
     body = response.content.decode()
@@ -193,7 +193,7 @@ def test_all_courses_in_progress_row_has_progress_value_above_zero(
     )
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     body = response.content.decode()
@@ -216,11 +216,11 @@ def test_all_courses_complete_row_links_to_course_finish(
     )
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     finish_url = reverse(
-        "student_interface:course_finish",
+        "learner_interface:course_finish",
         kwargs={"course_slug": courses[0].slug},
     )
     body = response.content.decode()
@@ -244,7 +244,7 @@ def test_all_courses_complete_row_has_no_progress_bar(
     # No registered-but-incomplete courses means no progress bars in the whole page.
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     body = response.content.decode()
@@ -276,7 +276,7 @@ def test_all_courses_status_icons_are_decorative(
     # courses[2] stays unregistered -> exercises the not_started icon.
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     body = response.content.decode()
@@ -299,11 +299,11 @@ def test_all_courses_registered_row_has_details_link(
     UserCourseRegistrationFactory(user=user, collection=courses[0])
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     detail_url = reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": courses[0].slug},
     )
     body = response.content.decode()
@@ -327,11 +327,11 @@ def test_all_courses_complete_row_has_details_link(
     )
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     detail_url = reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": courses[0].slug},
     )
     body = response.content.decode()
@@ -348,11 +348,11 @@ def test_all_courses_not_registered_row_has_details_link(
     user = UserFactory()
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     detail_url = reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": courses[0].slug},
     )
     body = response.content.decode()
@@ -367,11 +367,11 @@ def test_all_courses_coming_soon_row_has_details_link(mock_site_context):
     course = _coming_soon_course(slug="cs-row", title="Coming Soon Row Course")
     client = Client()
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     detail_url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     body = response.content.decode()
     assert "Details" in body
@@ -386,11 +386,11 @@ def test_all_courses_details_link_renders_for_anonymous_visitor(
     visitor, not just for authenticated ones."""
     client = Client()
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     detail_url = reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": courses[0].slug},
     )
     body = response.content.decode()
@@ -407,11 +407,11 @@ def test_all_courses_details_link_renders_for_authenticated_unregistered_visitor
     user = UserFactory()
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
 
     detail_url = reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": courses[0].slug},
     )
     body = response.content.decode()

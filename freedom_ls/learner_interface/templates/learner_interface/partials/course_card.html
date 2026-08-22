@@ -25,12 +25,12 @@ icon_fallback, title, progress_percentage, next_up_url, next_up_title,
 access_badge) and user.
 {% endcomment %}
 {% if course.listing_status == "complete" %}
-    {% url 'student_interface:course_finish' course_slug=course.slug as title_url %}
+    {% url 'learner_interface:course_finish' course_slug=course.slug as title_url %}
 {% elif course.listing_status == "registered" or course.listing_status == "in_progress" %}
-    {% url 'student_interface:course_home' course_slug=course.slug as home_url %}
+    {% url 'learner_interface:course_home' course_slug=course.slug as home_url %}
     {% firstof course.next_up_url home_url as title_url %}
 {% else %}
-    {% url 'student_interface:course_detail' course_slug=course.slug as title_url %}
+    {% url 'learner_interface:course_detail' course_slug=course.slug as title_url %}
 {% endif %}
 
 <c-course-card-shell accent_slot_key="{{ course.accent_slot_key }}"

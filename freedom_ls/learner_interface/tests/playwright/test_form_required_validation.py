@@ -30,7 +30,7 @@ def test_final_page_submit_dialog_blocked_until_required_answered(
     register_user_for_course(course, logged_in_user)
     start_url = reverse_url(
         live_server,
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     logged_in_page.goto(start_url)

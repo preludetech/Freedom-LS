@@ -65,7 +65,7 @@ class AccessBadge:
     """Backend-owned at-a-glance access badge for course cards/rows.
 
     The backend owns both the copy and the chip styling so a new access type
-    (e.g. "Paid") can add its own label/variant without student_interface knowing
+    (e.g. "Paid") can add its own label/variant without learner_interface knowing
     any access-type copy. None from get_access_badge means "render no badge".
     """
 
@@ -123,7 +123,7 @@ class CourseAccessBackend:
         Sibling of is_accessible_for_free: that is the semantic boolean (badge +
         JSON-LD agree with it), this is the display badge itself. Each backend owns
         its own labels/variants, so a new access type never leaks copy into
-        student_interface.
+        learner_interface.
         """
         raise NotImplementedError
 
@@ -164,7 +164,7 @@ class CourseAccessBackend:
         """Backend-owned panels for the learner dashboard. Default: nothing.
 
         The dashboard renders each generically and never names the backend — this is
-        the seam that replaces a hard-coded student_interface -> course_applications import.
+        the seam that replaces a hard-coded learner_interface -> course_applications import.
         """
         return []
 
@@ -199,7 +199,7 @@ def _free_access_decision(*, user: RequestUser, course: Course) -> CourseAccessD
         return CourseAccessDecision(
             cta_label="Continue",
             cta_url=reverse(
-                "student_interface:course_home",
+                "learner_interface:course_home",
                 kwargs={"course_slug": course.slug},
             ),
             can_self_register=False,
@@ -212,7 +212,7 @@ def _free_access_decision(*, user: RequestUser, course: Course) -> CourseAccessD
     return CourseAccessDecision(
         cta_label="Enrol for free",
         cta_url=reverse(
-            "student_interface:initiate_course_access",
+            "learner_interface:initiate_course_access",
             kwargs={"course_slug": course.slug},
         ),
         can_self_register=True,

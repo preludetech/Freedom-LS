@@ -112,16 +112,16 @@ def _detail_start_url(course: Course, *, is_registered: bool, has_items: bool) -
     """
     if not is_registered:
         return reverse(
-            "student_interface:initiate_course_access",
+            "learner_interface:initiate_course_access",
             kwargs={"course_slug": course.slug},
         )
     if has_items:
         return reverse(
-            "student_interface:view_course_item",
+            "learner_interface:view_course_item",
             kwargs={"course_slug": course.slug, "index": 1},
         )
     return reverse(
-        "student_interface:course_home",
+        "learner_interface:course_home",
         kwargs={"course_slug": course.slug},
     )
 
@@ -350,7 +350,7 @@ def all_courses(request: HttpRequest) -> HttpResponse:
                 "position": idx + 1,
                 "url": request.build_absolute_uri(
                     reverse(
-                        "student_interface:course_detail",
+                        "learner_interface:course_detail",
                         kwargs={"course_slug": c.slug},
                     )
                 ),
@@ -412,7 +412,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     if is_coming_soon and not is_registered:
         stamp_interest(request.user, [course])
     breadcrumbs = [
-        {"label": "All courses", "url": reverse("student_interface:courses")},
+        {"label": "All courses", "url": reverse("learner_interface:courses")},
         {"label": course.title},
     ]
     viewable = course.viewable_items()
@@ -431,7 +431,7 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
 
     # JSON-LD for schema.org/Course — only honestly-sourced fields; no provider/image/author.
     course_url = request.build_absolute_uri(
-        reverse("student_interface:course_detail", kwargs={"course_slug": course.slug})
+        reverse("learner_interface:course_detail", kwargs={"course_slug": course.slug})
     )
     json_ld: dict[str, object] = {
         "@context": "https://schema.org",
@@ -496,11 +496,11 @@ def course_home(request, course_slug):
         .get_access(user=request.user, course=course)
         .can_access_content
     ):
-        return redirect("student_interface:course_detail", course_slug=course_slug)
+        return redirect("learner_interface:course_detail", course_slug=course_slug)
 
     index = get_resume_index(request.user, course)
     return redirect(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         course_slug=course_slug,
         index=index,
     )
@@ -530,7 +530,7 @@ def initiate_course_access(request, course_slug):
         course.visibility == CourseVisibility.COMING_SOON
         and not override_visibility_to_visible()
     ):
-        return redirect("student_interface:course_detail", course_slug=course.slug)
+        return redirect("learner_interface:course_detail", course_slug=course.slug)
 
     # Chokepoint gate: consult the active backend before allowing self-registration.
     # If the backend does not permit self-registration (e.g. application-gated courses),
@@ -542,7 +542,7 @@ def initiate_course_access(request, course_slug):
         return (
             redirect(target)
             if target
-            else redirect("student_interface:course_detail", course_slug=course_slug)
+            else redirect("learner_interface:course_detail", course_slug=course_slug)
         )
 
     # Create the course registration directly with user. No organisation is in
@@ -567,7 +567,7 @@ def initiate_course_access(request, course_slug):
 
     # Redirect into the player. course_home is now a resume redirector, so a
     # freshly registered (0-progress) learner lands on the first course item.
-    return redirect("student_interface:course_home", course_slug=course_slug)
+    return redirect("learner_interface:course_home", course_slug=course_slug)
 
 
 def _course_access_redirect(
@@ -582,7 +582,7 @@ def _course_access_redirect(
     raise_404_if_hidden_unregistered(user, course)
     decision = get_course_access_backend().get_access(user=user, course=course)
     if not decision.can_access_content:
-        return redirect("student_interface:course_detail", course_slug=course.slug)
+        return redirect("learner_interface:course_detail", course_slug=course.slug)
     return None
 
 
@@ -609,7 +609,7 @@ def _blocked_item_redirect(
     if current_entry_status(course_index) == BLOCKED:
         # course_detail, never course_home: course_home resumes to the last item
         # accessed, which would bounce straight back here.
-        return redirect("student_interface:course_detail", course_slug=course.slug)
+        return redirect("learner_interface:course_detail", course_slug=course.slug)
     return None
 
 
@@ -637,7 +637,7 @@ def view_course_item(request, course_slug, index):
             # Redirect to the loop-free detail page. course_home is now a
             # resume redirector, so redirecting a locked item there would loop
             # straight back to the same locked item.
-            return redirect("student_interface:course_detail", course_slug=course_slug)
+            return redirect("learner_interface:course_detail", course_slug=course_slug)
 
     # Sequential-unlock gate. Built here rather than inside _player_chrome_context
     # so the decision is made before anything is written, then handed on to the
@@ -669,7 +669,7 @@ def view_course_item(request, course_slug, index):
     is_last_item = index >= total
     next_url = (
         reverse(
-            "student_interface:view_course_item",
+            "learner_interface:view_course_item",
             kwargs={"course_slug": course_slug, "index": index + 1},
         )
         if index < total
@@ -677,7 +677,7 @@ def view_course_item(request, course_slug, index):
     )
     previous_url = (
         reverse(
-            "student_interface:view_course_item",
+            "learner_interface:view_course_item",
             kwargs={"course_slug": course_slug, "index": index - 1},
         )
         if index > 1
@@ -804,7 +804,7 @@ def view_topic(
             return redirect(next_url)
         else:
             # If no next_url (last item), redirect to course finish page
-            return redirect("student_interface:course_finish", course_slug=course.slug)
+            return redirect("learner_interface:course_finish", course_slug=course.slug)
 
     # Check if the course is already complete. Reuse the CourseProgress already
     # fetched into player_context rather than querying it a second time.
@@ -916,7 +916,7 @@ def form_start(request, course_slug, index):
 
     # Redirect the user to form_fill_page
     return redirect(
-        "student_interface:form_fill_page",
+        "learner_interface:form_fill_page",
         course_slug=course_slug,
         index=index,
         page_number=page_number,
@@ -964,7 +964,7 @@ def form_fill_page(request, course_slug, index, page_number):
 
     next_page_url = (
         reverse(
-            "student_interface:form_fill_page",
+            "learner_interface:form_fill_page",
             kwargs={
                 "course_slug": course_slug,
                 "index": index,
@@ -985,7 +985,7 @@ def form_fill_page(request, course_slug, index, page_number):
         # Send the learner back to the form start screen rather than 500.
         if form_progress is None:
             return redirect(
-                "student_interface:view_course_item",
+                "learner_interface:view_course_item",
                 course_slug=course_slug,
                 index=index,
             )
@@ -1008,7 +1008,7 @@ def form_fill_page(request, course_slug, index, page_number):
             form_progress.complete()
 
             return redirect(
-                "student_interface:course_form_complete",
+                "learner_interface:course_form_complete",
                 course_slug=course_slug,
                 index=index,
             )
@@ -1017,7 +1017,7 @@ def form_fill_page(request, course_slug, index, page_number):
 
     previous_page_url = (
         reverse(
-            "student_interface:form_fill_page",
+            "learner_interface:form_fill_page",
             kwargs={
                 "course_slug": course_slug,
                 "index": index,
@@ -1034,7 +1034,7 @@ def form_fill_page(request, course_slug, index, page_number):
     # POST branch above.
     if form_progress is None:
         return redirect(
-            "student_interface:view_course_item",
+            "learner_interface:view_course_item",
             course_slug=course_slug,
             index=index,
         )
@@ -1069,7 +1069,7 @@ def form_fill_page(request, course_slug, index, page_number):
                 "number": i,
                 "title": all_pages[i - 1].title,
                 "url": reverse(
-                    "student_interface:form_fill_page",
+                    "learner_interface:form_fill_page",
                     kwargs={
                         "course_slug": course_slug,
                         "index": index,
@@ -1096,13 +1096,13 @@ def form_fill_page(request, course_slug, index, page_number):
 
     # URL for the submit-and-exit endpoint (used by the exit dialog)
     submit_and_exit_url = reverse(
-        "student_interface:form_submit_and_exit",
+        "learner_interface:form_submit_and_exit",
         kwargs={"course_slug": course_slug, "index": index},
     )
 
     # URL for the save-and-exit link (used by the exit dialog)
     save_and_exit_url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course_slug, "index": index},
     )
 
@@ -1204,18 +1204,18 @@ def course_form_complete(request, course_slug, index):
     if is_last_item:
         # Last item - go to course finish page
         next_url = reverse(
-            "student_interface:course_finish", kwargs={"course_slug": course_slug}
+            "learner_interface:course_finish", kwargs={"course_slug": course_slug}
         )
     else:
         # Not last item - go to next item
         next_url = reverse(
-            "student_interface:view_course_item",
+            "learner_interface:view_course_item",
             kwargs={"course_slug": course_slug, "index": index + 1},
         )
 
     # Calculate retry URL
     retry_url = reverse(
-        "student_interface:form_start",
+        "learner_interface:form_start",
         kwargs={"course_slug": course_slug, "index": index},
     )
 
@@ -1314,7 +1314,7 @@ def form_submit_and_exit(request, course_slug: str, index: int):
     # learner back to the form start screen instead.
     if not form.submit_on_exit:
         return redirect(
-            "student_interface:view_course_item",
+            "learner_interface:view_course_item",
             course_slug=course_slug,
             index=index,
         )
@@ -1324,7 +1324,7 @@ def form_submit_and_exit(request, course_slug: str, index: int):
         form_progress.complete()  # idempotent
 
     return redirect(
-        "student_interface:course_form_complete",
+        "learner_interface:course_form_complete",
         course_slug=course_slug,
         index=index,
     )

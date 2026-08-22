@@ -15,4 +15,4 @@ FLS's own `uv run pytest` exercises the `playwright` and `fls_internal` tests ag
 ## Cross-references and reverse names
 
 - HTMX interaction guidance: `Skill(ds:htmx)` (htmx is `ds`-owned; there is no `fls-dev` overlay).
-- Login-fixture reverse names in FLS examples use `reverse('student_interface:home')` (the generic resource uses `dashboard:home`). `accounts:login` is generic and left as-is. Enrollment/course wording in examples is generic e-learning illustration.
+- Login-fixture reverse names in FLS examples use `reverse('learner_interface:home')` (the generic resource uses `dashboard:home`). `accounts:login` is generic and left as-is. Enrollment/course wording in examples is generic e-learning illustration.

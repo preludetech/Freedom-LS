@@ -14,7 +14,7 @@ so it produces the SAME learner + courses, then adds the policy/completion bits:
 
 - FREE course slug `qa-free-course-access-types` (access `free`, published, in
   anon catalogue, 1 viewable Topic) — free-access flow at `/courses/<slug>/access/`
-  (name `student_interface:initiate_course_access`).
+  (name `learner_interface:initiate_course_access`).
 - GATED course slug `qa-application-gated-course-access-types` (access
   `application_gated`, published, anon catalogue). Apply flow is mounted at
   `/applications/apply/<slug>/` (name `course_applications:apply`), NOT `/apply/`.

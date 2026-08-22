@@ -19,7 +19,7 @@ def navigate_to_form(page: Page, live_server, course_slug: str, index: int = 1):
     """Navigate to a form landing page."""
     form_url = reverse_url(
         live_server,
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course_slug, "index": index},
     )
     page.goto(form_url)

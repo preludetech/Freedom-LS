@@ -1,4 +1,4 @@
-"""Tests for webhook events fired from the student_interface app."""
+"""Tests for webhook events fired from the learner_interface app."""
 
 from unittest.mock import patch
 
@@ -28,7 +28,7 @@ class TestCourseCompletedWebhookEvent:
 
         with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
             url = reverse(
-                "student_interface:course_finish",
+                "learner_interface:course_finish",
                 kwargs={"course_slug": "test-course"},
             )
             client.get(url)
@@ -58,7 +58,7 @@ class TestCourseCompletedWebhookEvent:
 
         with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
             url = reverse(
-                "student_interface:course_finish",
+                "learner_interface:course_finish",
                 kwargs={"course_slug": "test-course-2"},
             )
             client.get(url)

@@ -6,7 +6,7 @@
     test_fls_namespace_reverses = conformance.test_fls_namespace_reverses
 
 Prune an internal-tier route you have customised while keeping its app:
-    conformance.drop("student_interface:courses")
+    conformance.drop("learner_interface:courses")
 """
 
 from __future__ import annotations

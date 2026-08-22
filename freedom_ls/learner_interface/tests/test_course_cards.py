@@ -60,7 +60,7 @@ def test_registered_card_for_zero_progress(
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
     # No progress => percentage stays 0.
     client = logged_in_client(user)
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
     assert "Registered" in body
     assert "In progress" not in body  # no in-progress card rendered
@@ -76,7 +76,7 @@ def test_registered_card_shows_empty_progress_bar(
     user = UserFactory()
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
     client = logged_in_client(user)
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
     assert "Registered" in body
     assert 'value="0"' in body
@@ -98,7 +98,7 @@ def test_in_progress_card_when_progress_above_zero(
     CourseProgressFactory(user=user, course=course_with_topics, progress_percentage=33)
 
     client = logged_in_client(user)
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
     assert "In progress" in body
 
@@ -116,7 +116,7 @@ def test_complete_card_for_completed_course(
         completed_time=timezone.now(),
     )
     client = logged_in_client(user)
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
     assert "Completed" in body
 
@@ -131,7 +131,7 @@ def test_not_registered_card_shows_not_registered_label(
     user = UserFactory()
     RecommendedCourseFactory(user=user, collection=course_with_topics)
     client = logged_in_client(user)
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
     assert "Not registered" in body
     assert "Not started" not in body
@@ -148,7 +148,7 @@ def test_course_detail_returns_200_for_authenticated_user(
     client = logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
@@ -164,7 +164,7 @@ def test_course_detail_is_public(mock_site_context, course_with_topics, client):
     """Anonymous users can access the course detail page — no login redirect."""
     response = client.get(
         reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
@@ -186,7 +186,7 @@ def test_course_detail_shows_enrol_for_free_for_unregistered_user_free_course(
     client = logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
@@ -203,13 +203,13 @@ def test_course_detail_enrol_cta_links_to_initiate_course_access_when_unregister
     client = logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
     body = response.content.decode()
     register_url = reverse(
-        "student_interface:initiate_course_access",
+        "learner_interface:initiate_course_access",
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert register_url in body
@@ -226,13 +226,13 @@ def test_course_detail_has_start_button_when_registered_zero_progress(
     client = logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
     body = response.content.decode()
     first_item_url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course_with_topics.slug, "index": 1},
     )
     assert "Start course" in body
@@ -257,7 +257,7 @@ def test_course_detail_shows_continue_when_registered_with_progress(
     client = logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
@@ -282,7 +282,7 @@ def test_course_detail_shows_review_course_when_completed(
     client = logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
@@ -300,12 +300,12 @@ def test_course_detail_renders_breadcrumbs(
     client = logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
     body = response.content.decode()
-    all_courses_url = reverse("student_interface:courses")
+    all_courses_url = reverse("learner_interface:courses")
     assert all_courses_url in body
     assert "All courses" in body
     assert course_with_topics.title in body
@@ -320,7 +320,7 @@ def test_course_detail_renders_lesson_count_in_stats(
     client = logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
@@ -341,7 +341,7 @@ def test_course_detail_omits_difficulty_when_not_set(
     client = logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
@@ -358,7 +358,7 @@ def test_course_detail_omits_duration_when_not_set(
     client = logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
@@ -376,7 +376,7 @@ def test_course_detail_omits_learning_outcomes_section_when_not_set(
     client = logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_detail",
+            "learner_interface:course_detail",
             kwargs={"course_slug": course_with_topics.slug},
         )
     )
@@ -395,11 +395,11 @@ def test_registered_card_does_not_link_to_register_url(
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     register_url = reverse(
-        "student_interface:initiate_course_access",
+        "learner_interface:initiate_course_access",
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert register_url not in body
@@ -416,11 +416,11 @@ def test_registered_zero_progress_card_links_title_to_first_item(
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     first_item_url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course_with_topics.slug, "index": 1},
     )
     assert "Registered" in body
@@ -437,11 +437,11 @@ def test_not_registered_card_links_to_course_detail(
     RecommendedCourseFactory(user=user, collection=course_with_topics)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     detail_url = reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert detail_url in body
@@ -460,11 +460,11 @@ def test_registered_zero_progress_card_shows_details_link(
     UserCourseRegistrationFactory(user=user, collection=course_with_topics)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     detail_url = reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert "Details" in body
@@ -484,11 +484,11 @@ def test_in_progress_card_shows_details_link(
     CourseProgressFactory(user=user, course=course_with_topics, progress_percentage=33)
 
     client = logged_in_client(user)
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     detail_url = reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert "Details" in body
@@ -511,11 +511,11 @@ def test_complete_card_shows_details_link(
     )
 
     client = logged_in_client(user)
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     detail_url = reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert "Details" in body
@@ -533,11 +533,11 @@ def test_not_registered_card_shows_explicit_details_link(
     RecommendedCourseFactory(user=user, collection=course_with_topics)
     client = logged_in_client(user)
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     detail_url = reverse(
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         kwargs={"course_slug": course_with_topics.slug},
     )
     assert "Details" in body
@@ -551,11 +551,11 @@ def test_coming_soon_card_shows_details_link(mock_site_context, logged_in_client
     course = _coming_soon_course(slug="cs-details", title="Coming Soon Course")
     client = logged_in_client(UserFactory())
 
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
 
     detail_url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     assert "Details" in body
     assert f'href="{detail_url}"' in body

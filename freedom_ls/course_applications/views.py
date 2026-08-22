@@ -47,7 +47,7 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     # Coming-soon courses are not enrollable — route to the detail page's
     # express-interest CTA instead of creating an application.
     if course.visibility == CourseVisibility.COMING_SOON:
-        return redirect("student_interface:course_detail", course_slug=course.slug)
+        return redirect("learner_interface:course_detail", course_slug=course.slug)
 
     if request.method == "POST":
         # get_or_create is race-safe (savepoint + IntegrityError catch + re-get), so

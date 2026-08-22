@@ -25,7 +25,7 @@ from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 def test_anonymous_dashboard_returns_200(mock_site_context):
     """Anonymous GET / must return 200, not a login redirect."""
     client = Client()
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
 
 
@@ -33,7 +33,7 @@ def test_anonymous_dashboard_returns_200(mock_site_context):
 def test_anonymous_dashboard_contains_hero_headline(mock_site_context):
     """Anonymous home page shows the hero value-prop headline."""
     client = Client()
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
     # The hero headline should appear for anonymous users
     assert "Teach the way your learners need" in body
@@ -43,9 +43,9 @@ def test_anonymous_dashboard_contains_hero_headline(mock_site_context):
 def test_anonymous_dashboard_contains_browse_all_courses_cta(mock_site_context):
     """Anonymous home page shows a 'Browse all courses' link to the catalogue."""
     client = Client()
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
-    courses_url = reverse("student_interface:courses")
+    courses_url = reverse("learner_interface:courses")
     assert "Browse all courses" in body
     assert f'href="{courses_url}"' in body
 
@@ -54,7 +54,7 @@ def test_anonymous_dashboard_contains_browse_all_courses_cta(mock_site_context):
 def test_anonymous_dashboard_does_not_show_welcome_back(mock_site_context):
     """Anonymous home page must not show the authenticated greeting."""
     client = Client()
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert "Welcome back" not in response.content.decode()
 
 
@@ -62,7 +62,7 @@ def test_anonymous_dashboard_does_not_show_welcome_back(mock_site_context):
 def test_anonymous_dashboard_does_not_show_in_progress_section(mock_site_context):
     """Anonymous home page must not show the 'In Progress' courses section."""
     client = Client()
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert "In Progress" not in response.content.decode()
 
 
@@ -70,7 +70,7 @@ def test_anonymous_dashboard_does_not_show_in_progress_section(mock_site_context
 def test_anonymous_dashboard_does_not_show_learning_history(mock_site_context):
     """Anonymous home page must not show the 'Learning History' section."""
     client = Client()
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert "Learning History" not in response.content.decode()
 
 
@@ -78,7 +78,7 @@ def test_anonymous_dashboard_does_not_show_learning_history(mock_site_context):
 def test_anonymous_dashboard_does_not_show_unenrolled_placeholder(mock_site_context):
     """Anonymous home page must not show the 'You haven't signed up' placeholder."""
     client = Client()
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert "You haven't signed up" not in response.content.decode()
 
 
@@ -86,7 +86,7 @@ def test_anonymous_dashboard_does_not_show_unenrolled_placeholder(mock_site_cont
 def test_anonymous_dashboard_shows_login_link(mock_site_context):
     """Anonymous home page header shows a Login link."""
     client = Client()
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
     login_url = reverse("account_login")
     assert "Login" in body
@@ -98,7 +98,7 @@ def test_anonymous_dashboard_shows_signup_when_allowed(mock_site_context):
     """Sign up button appears when the site allows signups."""
     SiteSignupPolicyFactory(allow_signups=True)
     client = Client()
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
     assert "Sign up" in body
     assert reverse("account_signup") in body
@@ -109,7 +109,7 @@ def test_anonymous_dashboard_hides_signup_when_disallowed(mock_site_context):
     """Sign up button is hidden when the site disallows signups."""
     SiteSignupPolicyFactory(allow_signups=False)
     client = Client()
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert "Sign up" not in response.content.decode()
 
 
@@ -124,7 +124,7 @@ def test_anonymous_dashboard_does_not_call_get_dashboard_contributions(
     client = Client()
     backend_path = "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend.get_dashboard_contributions"
     with mock.patch(backend_path) as mock_contributions:
-        client.get(reverse("student_interface:dashboard"))
+        client.get(reverse("learner_interface:dashboard"))
         mock_contributions.assert_not_called()
 
 
@@ -134,7 +134,7 @@ def test_authenticated_dashboard_does_not_show_hero(mock_site_context):
     user = UserFactory(first_name="Ada")
     client = Client()
     client.force_login(user)
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
     assert "Welcome back" in body
     assert "Teach the way your learners need" not in body
@@ -146,5 +146,5 @@ def test_authenticated_dashboard_still_returns_200(mock_site_context):
     user = UserFactory(first_name="Ada")
     client = Client()
     client.force_login(user)
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200

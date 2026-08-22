@@ -26,26 +26,26 @@ class _Probe:
 
 
 FLS_NAMESPACE_PROBES: list[_Probe] = [
-    _Probe("freedom_ls.learner_interface", "student_interface:dashboard", True),
+    _Probe("freedom_ls.learner_interface", "learner_interface:dashboard", True),
     _Probe(
         "freedom_ls.learner_interface",
-        "student_interface:course_detail",
+        "learner_interface:course_detail",
         True,
         {"course_slug": "x"},
     ),
     _Probe(
         "freedom_ls.learner_interface",
-        "student_interface:course_home",
+        "learner_interface:course_home",
         True,
         {"course_slug": "x"},
     ),
     _Probe(
         "freedom_ls.learner_interface",
-        "student_interface:initiate_course_access",
+        "learner_interface:initiate_course_access",
         True,
         {"course_slug": "x"},
     ),
-    _Probe("freedom_ls.learner_interface", "student_interface:courses", False),
+    _Probe("freedom_ls.learner_interface", "learner_interface:courses", False),
     _Probe(
         "freedom_ls.course_applications",
         "course_applications:apply",

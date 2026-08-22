@@ -28,7 +28,7 @@ def test_dashboard_title_tag_says_dashboard(
     """The dashboard's browser-tab title is 'Dashboard'."""
     user = UserFactory()
     client = logged_in_client(user)
-    response = client.get(reverse("student_interface:dashboard"))
+    response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     assert _extract_title(response.content.decode()) == "Dashboard"
 
@@ -40,7 +40,7 @@ def test_all_courses_title_tag_says_all_courses(
     """The all-courses page title includes 'All Courses' and the site name."""
     user = UserFactory()
     client = logged_in_client(user)
-    response = client.get(reverse("student_interface:courses"))
+    response = client.get(reverse("learner_interface:courses"))
     assert response.status_code == 200
     title = _extract_title(response.content.decode())
     assert "All Courses" in title
@@ -56,7 +56,7 @@ def test_course_detail_title_tag_uses_course_title(
     client = logged_in_client(user)
     response = client.get(
         reverse(
-            "student_interface:course_detail", kwargs={"course_slug": courses[0].slug}
+            "learner_interface:course_detail", kwargs={"course_slug": courses[0].slug}
         )
     )
     assert response.status_code == 200

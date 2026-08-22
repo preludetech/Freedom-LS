@@ -58,7 +58,7 @@ def test_toc_course_part_expands_and_collapses_on_course_detail_page(
 
     topic_url = reverse_url(
         live_server,
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
 
@@ -119,14 +119,14 @@ def test_toc_course_part_expand_state_persists_across_navigation(
 
     topic_url = reverse_url(
         live_server,
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     # course_home is now a resume redirector, so navigate to a concrete item URL
     # to re-render the player TOC and assert the expand state persisted.
     second_item_url = reverse_url(
         live_server,
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 2},
     )
     # Single source of truth for the storage key — production helper, not an
@@ -204,7 +204,7 @@ def test_back_button_closes_mobile_bottom_sheet(
 
     item_url = reverse_url(
         live_server,
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
 
@@ -270,7 +270,7 @@ def test_course_part_toggle_does_not_announce_chevron_state(
 
     item_url = reverse_url(
         live_server,
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": 1},
     )
     logged_in_page.goto(item_url)

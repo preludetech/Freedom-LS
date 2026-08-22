@@ -1,5 +1,5 @@
 {% comment %}
-"Details" entry point to the course overview page (student_interface:course_detail).
+"Details" entry point to the course overview page (learner_interface:course_detail).
 Low-emphasis secondary link rendered as a text-only link button
 (<c-button variant="link">) — no background fill; the hover treatment (colour
 intensify + scale pop) lives in the `.btn-link` variant so this control stays
@@ -13,7 +13,7 @@ Context: course (needs course.slug). Placement/alignment is the caller's job:
 cards wrap this on its own right-aligned footer line; rows render it inline,
 right-aligned in the eyebrow slot.
 {% endcomment %}
-<c-button href="{% url 'student_interface:course_detail' course_slug=course.slug %}"
+<c-button href="{% url 'learner_interface:course_detail' course_slug=course.slug %}"
           variant="link"
           size="small"
           icon_right="next"

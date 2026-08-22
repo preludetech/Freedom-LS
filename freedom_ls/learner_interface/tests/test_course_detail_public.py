@@ -28,7 +28,7 @@ def test_anonymous_free_course_detail_returns_200(mock_site_context, course_with
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -44,7 +44,7 @@ def test_anonymous_free_course_detail_cta_label_is_enrol_for_free(
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -60,12 +60,12 @@ def test_anonymous_free_course_detail_cta_href_is_access_url(
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
     access_url = reverse(
-        "student_interface:initiate_course_access",
+        "learner_interface:initiate_course_access",
         kwargs={"course_slug": course.slug},
     )
     assert access_url in response.content.decode()
@@ -89,7 +89,7 @@ def test_anonymous_gated_course_detail_returns_200(
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -105,7 +105,7 @@ def test_anonymous_gated_course_detail_cta_label_is_apply_now(
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -121,7 +121,7 @@ def test_anonymous_gated_course_detail_cta_href_is_apply_url(
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -140,7 +140,7 @@ def test_anonymous_gated_course_detail_shows_by_application(
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -161,7 +161,7 @@ def test_anonymous_free_course_detail_toc_items_all_blocked(
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -180,7 +180,7 @@ def test_anonymous_gated_course_detail_toc_items_all_blocked(
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 
@@ -199,7 +199,7 @@ def test_anonymous_free_course_detail_toc_items_have_no_url(
     client = Client()
 
     url = reverse(
-        "student_interface:course_detail", kwargs={"course_slug": course.slug}
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     response = client.get(url)
 

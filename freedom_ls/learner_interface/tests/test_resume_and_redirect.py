@@ -195,7 +195,7 @@ def test_viewing_topic_records_last_accessed_item(course_structure, enrolled_use
     client.force_login(enrolled_user)
     complete_topics(enrolled_user, course_structure["topic_a"])
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 2},
     )
     response = client.get(url)
@@ -216,12 +216,12 @@ def test_course_home_enrolled_no_progress_redirects_to_item_one(
     client = Client()
     client.force_login(enrolled_user)
     url = reverse(
-        "student_interface:course_home", kwargs={"course_slug": "resume-course"}
+        "learner_interface:course_home", kwargs={"course_slug": "resume-course"}
     )
     response = client.get(url)
     assert response.status_code == 302
     assert response.url == reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 1},
     )
 
@@ -238,12 +238,12 @@ def test_course_home_enrolled_with_progress_redirects_to_last_item(
     client = Client()
     client.force_login(enrolled_user)
     url = reverse(
-        "student_interface:course_home", kwargs={"course_slug": "resume-course"}
+        "learner_interface:course_home", kwargs={"course_slug": "resume-course"}
     )
     response = client.get(url)
     assert response.status_code == 302
     assert response.url == reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 3},
     )
 
@@ -254,19 +254,19 @@ def test_course_home_unenrolled_redirects_to_detail(course_structure):
     client = Client()
     client.force_login(user)
     url = reverse(
-        "student_interface:course_home", kwargs={"course_slug": "resume-course"}
+        "learner_interface:course_home", kwargs={"course_slug": "resume-course"}
     )
     response = client.get(url)
     assert response.status_code == 302
     assert response.url == reverse(
-        "student_interface:course_detail", kwargs={"course_slug": "resume-course"}
+        "learner_interface:course_detail", kwargs={"course_slug": "resume-course"}
     )
 
 
 @pytest.mark.django_db
 def test_course_home_anonymous_redirects_to_login(course_structure, client):
     url = reverse(
-        "student_interface:course_home", kwargs={"course_slug": "resume-course"}
+        "learner_interface:course_home", kwargs={"course_slug": "resume-course"}
     )
     response = client.get(url)
     assert response.status_code == 302
@@ -279,7 +279,7 @@ def test_course_home_never_renders_start_page(course_structure, enrolled_user):
     client = Client()
     client.force_login(enrolled_user)
     url = reverse(
-        "student_interface:course_home", kwargs={"course_slug": "resume-course"}
+        "learner_interface:course_home", kwargs={"course_slug": "resume-course"}
     )
     response = client.get(url)
     assert response.status_code == 302
@@ -308,7 +308,7 @@ def test_viewing_form_does_not_create_form_progress(mock_site_context):
     client = Client()
     client.force_login(user)
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "form-course", "index": 1},
     )
     response = client.get(url)
@@ -328,7 +328,7 @@ def test_breadcrumb_includes_part_when_item_in_part(course_structure, enrolled_u
     client.force_login(enrolled_user)
     # Item index 1 is Topic A, inside the "Chapter 1" part.
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 1},
     )
     response = client.get(url)
@@ -349,7 +349,7 @@ def test_breadcrumb_drops_part_when_item_top_level(course_structure, enrolled_us
     )
     # Item index 3 is Topic C, a top-level item with no part.
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 3},
     )
     response = client.get(url)
@@ -365,7 +365,7 @@ def test_page_title_is_item_course_site(course_structure, enrolled_user):
     )
     # Item index 3 (top-level, no part): "{item} — {course} — {site}".
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 3},
     )
     html = client.get(url).content.decode()
@@ -378,7 +378,7 @@ def test_page_title_includes_part_when_present(course_structure, enrolled_user):
     client.force_login(enrolled_user)
     # Item index 1 (Topic A inside Chapter 1): part sits between item and course.
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 1},
     )
     html = client.get(url).content.decode()
@@ -391,14 +391,14 @@ def test_initiate_course_access_lands_on_item_url(course_structure):
     client = Client()
     client.force_login(user)
     url = reverse(
-        "student_interface:initiate_course_access",
+        "learner_interface:initiate_course_access",
         kwargs={"course_slug": "resume-course"},
     )
     response = client.get(url, follow=True)
     # Final landing URL is a concrete item URL, not a rendered start page.
     final_url, _status = response.redirect_chain[-1]
     assert final_url == reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 1},
     )
 
@@ -432,7 +432,7 @@ def test_player_page_query_count_is_bounded(
     client = Client()
     client.force_login(enrolled_user)
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 1},
     )
     clear_caches()
@@ -477,7 +477,7 @@ def test_player_page_query_count_does_not_grow_with_items(
     client = Client()
     client.force_login(user)
     url = reverse(
-        "student_interface:view_course_item",
+        "learner_interface:view_course_item",
         kwargs={"course_slug": "big-course", "index": 1},
     )
     clear_caches()
