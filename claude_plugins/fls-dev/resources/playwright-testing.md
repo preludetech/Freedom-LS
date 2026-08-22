@@ -15,4 +15,4 @@ FLS's own `uv run pytest` exercises the `playwright` and `fls_internal` tests ag
 ## Cross-references and reverse names
 
 - HTMX interaction guidance: `Skill(ds:htmx)` (htmx is `ds`-owned; there is no `fls-dev` overlay).
-- Login-fixture reverse names in FLS examples use `reverse('learner_interface:home')` (the generic resource uses `dashboard:home`). `accounts:login` is generic and left as-is. Enrollment/course wording in examples is generic e-learning illustration.
+- Login-fixture reverse names: the generic resource's `accounts:login` and `home` are placeholders — substitute the real ones. FLS's shared fixture (`freedom_ls/tests/playwright_fixtures.py`) reverses allauth's unnamespaced `account_login` and then asserts the redirect *away* from it, because `LOGIN_REDIRECT_URL` is `/`. The learner dashboard is `learner_interface:dashboard`; there is no `:home`. Enrollment/course wording in examples is generic e-learning illustration.
