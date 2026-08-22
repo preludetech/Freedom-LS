@@ -10,8 +10,6 @@ from freedom_ls.role_based_permissions.types import (
 # As features are built, add the relevant permissions from the
 # commented lists below and create data migrations for them.
 
-# TODO: update these so there is no mention of rights over students, only rights over users
-
 BASE_ROLES = SiteRolesConfig(
     {
         # --- Roles with currently-existing permissions ---
@@ -23,14 +21,10 @@ BASE_ROLES = SiteRolesConfig(
             permissions=frozenset(
                 {
                     # Django built-in permissions
-                    "freedom_ls_student_management.view_cohort",
-                    "freedom_ls_student_management.add_cohort",
-                    "freedom_ls_student_management.change_cohort",
-                    "freedom_ls_student_management.delete_cohort",
-                    "freedom_ls_student_management.view_student",
-                    "freedom_ls_student_management.add_student",
-                    "freedom_ls_student_management.change_student",
-                    "freedom_ls_student_management.delete_student",
+                    "freedom_ls_learner_management.view_cohort",
+                    "freedom_ls_learner_management.add_cohort",
+                    "freedom_ls_learner_management.change_cohort",
+                    "freedom_ls_learner_management.delete_cohort",
                     # FUTURE: add freedom_ls_role_based_permissions.* custom permissions as site admin features are built
                 }
             ),
@@ -43,9 +37,7 @@ BASE_ROLES = SiteRolesConfig(
             permissions=frozenset(
                 {
                     # Django built-in permissions
-                    "freedom_ls_student_management.view_cohort",
-                    "freedom_ls_student_management.view_student",
-                    "freedom_ls_student_management.change_student",
+                    "freedom_ls_learner_management.view_cohort",
                     # FUTURE: add course-level permissions as features are built
                 }
             ),
@@ -58,8 +50,7 @@ BASE_ROLES = SiteRolesConfig(
             permissions=frozenset(
                 {
                     # Django built-in permissions
-                    "freedom_ls_student_management.view_cohort",
-                    "freedom_ls_student_management.view_student",
+                    "freedom_ls_learner_management.view_cohort",
                     # FUTURE: add grading/analytics permissions as features are built
                 }
             ),
@@ -90,8 +81,8 @@ BASE_ROLES = SiteRolesConfig(
             # FUTURE: freedom_ls_role_based_permissions.manage_sites, freedom_ls_role_based_permissions.manage_users,
             # freedom_ls_role_based_permissions.manage_settings, freedom_ls_role_based_permissions.view_audit_log
         ),
-        "student": Role(
-            display_name="Student",
+        "learner": Role(
+            display_name="Learner",
             assignment_scope=SCOPE_OBJECT,
             lti_role=None,
             description="Standard learner role.",

@@ -57,13 +57,13 @@ class TestSyncRolePermissionsDetectsAndFixesDrift:
         user = UserFactory()
         cohort = CohortFactory()
 
-        # Create an active role assignment for 'ta' (has view_cohort, view_student)
+        # Create an active role assignment for 'ta' (has view_cohort)
         ObjectRoleAssignmentFactory(
             user=user, target_object=cohort, role="ta", is_active=True
         )
 
         # Manually add a guardian perm that the role shouldn't have
-        assign_perm("freedom_ls_student_management.add_cohort", user, cohort)
+        assign_perm("freedom_ls_learner_management.add_cohort", user, cohort)
 
         # Verify it exists
         assert UserObjectPermission.objects.filter(
@@ -101,7 +101,7 @@ class TestSyncRolePermissionsDryRun:
         )
 
         # Manually add an extra guardian perm
-        assign_perm("freedom_ls_student_management.add_cohort", user, cohort)
+        assign_perm("freedom_ls_learner_management.add_cohort", user, cohort)
 
         out = _call_sync("--dry-run")
 
@@ -155,7 +155,7 @@ class TestSyncRolePermissionsReportOrphans:
         cohort = CohortFactory()
 
         # Manually grant a guardian perm with no role assignment
-        assign_perm("freedom_ls_student_management.add_cohort", user, cohort)
+        assign_perm("freedom_ls_learner_management.add_cohort", user, cohort)
 
         out = _call_sync("--report-orphans")
 
@@ -169,7 +169,7 @@ class TestSyncRolePermissionsReportOrphans:
         group = Group.objects.create(name="test-group")
         cohort = CohortFactory()
 
-        assign_perm("freedom_ls_student_management.add_cohort", group, cohort)
+        assign_perm("freedom_ls_learner_management.add_cohort", group, cohort)
 
         assert GroupObjectPermission.objects.count() == 1
 

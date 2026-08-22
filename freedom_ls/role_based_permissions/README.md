@@ -49,11 +49,11 @@ After role assignment, use standard Django/guardian permission checks:
 
 ```python
 # Object-level check
-user.has_perm("freedom_ls_student_management.view_cohort", cohort)
+user.has_perm("freedom_ls_learner_management.view_cohort", cohort)
 
 # Filter querysets by permission
 from guardian.shortcuts import get_objects_for_user
-cohorts = get_objects_for_user(user, "freedom_ls_student_management.view_cohort")
+cohorts = get_objects_for_user(user, "freedom_ls_learner_management.view_cohort")
 ```
 
 ### Querying role assignments
@@ -71,11 +71,11 @@ Defined in `roles.py` as `BASE_ROLES`:
 
 | Role key | Display name | Description |
 |----------|-------------|-------------|
-| `site_admin` | Site Administrator | Full CRUD on cohorts and students |
-| `instructor` | Instructor | View cohorts, view/change students |
-| `ta` | Teaching Assistant | View cohorts and students |
+| `site_admin` | Site Administrator | Full CRUD on cohorts |
+| `instructor` | Instructor | View cohorts |
+| `ta` | Teaching Assistant | View cohorts |
 | `system_admin` | System Administrator | Placeholder (no permissions yet) |
-| `student` | Student | Placeholder (no permissions yet) |
+| `learner` | Learner | Placeholder (no permissions yet) |
 | `observer` | Observer | Placeholder (no permissions yet) |
 
 ## Customizing roles per site
@@ -99,7 +99,7 @@ ROLES = BASE_ROLES.extend({
     # Add permissions to an existing role
     "ta": {
         "add_permissions": frozenset({
-            "freedom_ls_student_management.change_student",
+            "freedom_ls_learner_management.change_cohort",
         }),
     },
 
@@ -108,7 +108,7 @@ ROLES = BASE_ROLES.extend({
         "inherits": "instructor",
         "display_name": "Lead Instructor",
         "add_permissions": frozenset({
-            "freedom_ls_student_management.add_cohort",
+            "freedom_ls_learner_management.add_cohort",
         }),
     },
 
@@ -117,7 +117,7 @@ ROLES = BASE_ROLES.extend({
         display_name="Observer",
         assignment_scope=SCOPE_OBJECT,
         permissions=frozenset({
-            "freedom_ls_student_management.view_cohort",
+            "freedom_ls_learner_management.view_cohort",
         }),
     ),
 })
@@ -132,8 +132,8 @@ All valid permission strings are declared in `registry.py`. Every permission ref
 ```python
 # registry.py
 PERMISSIONS: dict[str, str] = {
-    "freedom_ls_student_management.view_cohort": "Can view cohort",
-    "freedom_ls_student_management.add_cohort": "Can add cohort",
+    "freedom_ls_learner_management.view_cohort": "Can view cohort",
+    "freedom_ls_learner_management.add_cohort": "Can add cohort",
     # ...
 }
 ```

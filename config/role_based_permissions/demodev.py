@@ -9,27 +9,20 @@ from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
 
 ROLES = BASE_ROLES.extend(
     {
-        # DemoDev-specific TA variant: can also manage students
+        # DemoDev-specific TA variant: currently identical to `ta`, kept as the slot
+        # a real additional permission gets added to.
         "senior_ta": {
             "display_name": "Senior Teaching Assistant",
             "inherits": "ta",
-            "description": "TA with additional student management permissions.",
-            "add_permissions": {
-                "freedom_ls_student_management.change_student",
-                "freedom_ls_student_management.add_student",
-            },
+            "description": "TA variant reserved for additional permissions.",
+            "add_permissions": set(),
         },
         # Lightweight role for guest reviewers
         "guest_reviewer": Role(
             display_name="Guest Reviewer",
             assignment_scope=SCOPE_OBJECT,
             description="Read-only access for external reviewers.",
-            permissions=frozenset(
-                {
-                    "freedom_ls_student_management.view_cohort",
-                    "freedom_ls_student_management.view_student",
-                }
-            ),
+            permissions=frozenset({"freedom_ls_learner_management.view_cohort"}),
         ),
     }
 )

@@ -21,7 +21,7 @@ class TestBaseRoles:
             "ta",
             "organisation_staff",
             "system_admin",
-            "student",
+            "learner",
             "observer",
         }
         assert set(BASE_ROLES.keys()) == expected
@@ -52,13 +52,13 @@ class TestBaseRoles:
         """system_admin has no permissions (placeholder)."""
         assert len(BASE_ROLES["system_admin"].permissions) == 0
 
-    def test_student_display_name(self) -> None:
-        """student has correct display_name."""
-        assert BASE_ROLES["student"].display_name == "Student"
+    def test_learner_display_name(self) -> None:
+        """learner has correct display_name."""
+        assert BASE_ROLES["learner"].display_name == "Learner"
 
-    def test_student_has_no_permissions_yet(self) -> None:
-        """student has no permissions (placeholder)."""
-        assert len(BASE_ROLES["student"].permissions) == 0
+    def test_learner_has_no_permissions_yet(self) -> None:
+        """learner has no permissions (placeholder)."""
+        assert len(BASE_ROLES["learner"].permissions) == 0
 
     def test_observer_display_name(self) -> None:
         """observer has correct display_name."""
@@ -76,15 +76,14 @@ class TestBaseRoles:
     def test_instructor_has_view_cohort(self) -> None:
         """instructor includes view_cohort permission."""
         assert (
-            "freedom_ls_student_management.view_cohort"
+            "freedom_ls_learner_management.view_cohort"
             in BASE_ROLES["instructor"].permissions
         )
 
-    def test_ta_has_view_cohort_and_view_student(self) -> None:
-        """ta includes both view_cohort and view_student."""
+    def test_ta_has_view_cohort(self) -> None:
+        """ta includes view_cohort."""
         ta_perms = BASE_ROLES["ta"].permissions
-        assert "freedom_ls_student_management.view_cohort" in ta_perms
-        assert "freedom_ls_student_management.view_student" in ta_perms
+        assert "freedom_ls_learner_management.view_cohort" in ta_perms
 
     def test_site_admin_is_superset_of_instructor(self) -> None:
         """site_admin permissions are a superset of instructor permissions."""

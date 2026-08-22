@@ -183,7 +183,7 @@ class TestRemoveObjectRole:
         user = UserFactory()
         cohort = CohortFactory()
 
-        # instructor has view_cohort + view/change_student; ta has view_cohort + view_student
+        # instructor and ta both have view_cohort
         assign_object_role(user, cohort, "instructor")
         assign_object_role(user, cohort, "ta")
 
@@ -211,7 +211,7 @@ class TestSyncUserObjectPermissions:
         result = sync_user_object_permissions(user, cohort)
 
         # Only cohort-matching perms from instructor role should be added
-        assert "freedom_ls_student_management.view_cohort" in result["added"]
+        assert "freedom_ls_learner_management.view_cohort" in result["added"]
         assert result["removed"] == set()
 
     @pytest.mark.django_db
@@ -436,7 +436,7 @@ class TestGuardianIntegration:
         assign_object_role(user, cohort, "instructor")
 
         accessible = get_objects_for_user(
-            user, "freedom_ls_student_management.view_cohort", klass=Cohort
+            user, "freedom_ls_learner_management.view_cohort", klass=Cohort
         )
         assert cohort in accessible
         assert other_cohort not in accessible

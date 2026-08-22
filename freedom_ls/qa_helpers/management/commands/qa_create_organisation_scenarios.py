@@ -330,8 +330,7 @@ def _seed(site: Site) -> None:
     assign_object_role(single_org, rpas, "organisation_staff")
 
     # No organisation role at all: guardian view_cohort on ONE cohort, which is
-    # what the object-scoped instructor role syncs onto a Cohort (its
-    # view_student permission is filtered out — wrong content type).
+    # what the object-scoped instructor role syncs onto a Cohort.
     legacy_educator = _ensure_user(
         site, "legacy.educator@example.com", "Lena", "Legacy"
     )

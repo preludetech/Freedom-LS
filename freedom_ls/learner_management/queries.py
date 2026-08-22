@@ -139,7 +139,7 @@ def cohorts_visible_to(
     ones matching the *target object's* content type
     (role_based_permissions/utils.py), so a role assigned on an Organisation
     can only ever sync freedom_ls_organisations.* permissions onto guardian —
-    never freedom_ls_student_management.view_cohort. "An organisation role
+    never freedom_ls_learner_management.view_cohort. "An organisation role
     grants every cohort inside it" is therefore performed here, in Python,
     rather than by widening what guardian syncs.
     """

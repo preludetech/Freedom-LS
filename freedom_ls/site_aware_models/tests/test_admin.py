@@ -35,4 +35,4 @@ class TestGuardedSiteAwareModelAdmin:
     ) -> None:
         url_names = {pattern.name for pattern in admin_instance.get_urls()}
 
-        assert "freedom_ls_student_management_cohort_permissions" in url_names
+        assert "freedom_ls_learner_management_cohort_permissions" in url_names

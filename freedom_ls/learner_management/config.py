@@ -17,10 +17,10 @@ from __future__ import annotations
 from freedom_ls.base.app_settings import AppSettings, Setting
 
 
-class StudentManagementConfig(AppSettings):
+class LearnerManagementConfig(AppSettings):
     DEADLINES_ACTIVE: bool
 
     declared_settings = {"DEADLINES_ACTIVE": Setting(default=True)}
 
 
-config = StudentManagementConfig()
+config = LearnerManagementConfig()

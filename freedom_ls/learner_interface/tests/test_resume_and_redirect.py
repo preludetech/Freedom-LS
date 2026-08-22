@@ -627,5 +627,5 @@ def test_get_course_index_unregistered_user_skips_progress_queries(mock_site_con
 
     assert [c["status"] for c in children] == ["BLOCKED", "BLOCKED"]
     sql = " ".join(q["sql"].lower() for q in ctx.captured_queries)
-    assert "student_progress_topicprogress" not in sql
-    assert "student_progress_formprogress" not in sql
+    assert "learner_progress_topicprogress" not in sql
+    assert "learner_progress_formprogress" not in sql
