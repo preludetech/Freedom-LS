@@ -104,7 +104,7 @@ detailed test pass began. No failure URL or failure reason was recorded.
 | 6.2 | PASS | As Rita, the dashboard's In Progress reads "You haven't signed up for any courses yet." The solo course is in neither current nor completed courses. |
 | 6.3 | PASS | The solo course detail page loads and offers the self-registration CTA "Enrol for free", not a continue link. |
 | 6.4 | PASS | Hitting the player directly redirects to the course detail page. Note: the plan's URL `/<slug>/home/` does not exist in this codebase (404s for everyone); the real player path is `/<slug>/<n>/`, and that is what redirects. |
-| 6.5 | NOT OBSERVABLE (environment) | `config/settings_dev.py` sets `OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE = True`, so both hidden QA courses appear in listings and 200 on their detail pages for everyone. The list and per-row gate do still agree (both show it), which is the divergence this step hunts for, and both code paths honour the same override early-return — but the plan's absolute hidden/404 expectation cannot be exercised with the override on. |
+| 6.5 | PASS (re-run with the override off) | Originally not observable: `config/settings_dev.py` sets `OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE = True`, which shows every hidden course to everyone. Re-driven on a fresh dev database with that setting temporarily `False` (restored afterwards; the diff on `settings_dev.py` is empty). Rita's learner was registered for `qa-hidden-visibility` via `/admin/` → Learner course registrations, then as Rita the course is absent from `/courses/` **and** `/courses/qa-hidden-visibility/detail/` returns 404 — the list and the per-row gate agree. The gate is doing real work in both directions: in the same run `demodev_visibility_learner` (an *active* learner registered for `qa-hidden-registered-visibility`) sees that course listed and 200 on its detail page, while `qa-hidden-visibility` still 404s for them. Rita's registration was removed afterwards (screenshot: `screenshots/qa-6-5-hidden-course-404-as-rita.png`). |
 | 6.6 | PASS | With Rita `is_active=False`, the RPAS Learners list omits her for both Olive Educator (organisation-role branch) and Lena Legacy (per-cohort branch). |
 | 6.7 | PASS | After reactivating Rita's Learner row, the solo course is back on her dashboard as REGISTERED with her progress unchanged, the player opens normally, and Olive's Learners list shows her again with her registered course. |
 | 6.8 | PASS | Rita's RPAS Training learner was set back to `is_active=False`; DB confirms RPAS Training=false, DemoDev=true (the legitimate §7 default-org row). |
@@ -145,7 +145,7 @@ detailed test pass began. No failure URL or failure reason was recorded.
 | 9.3 | PASS | A generated cohort report for Year 9 Maths lists all three members in surname order with full names and per-learner detail — the `load_roster` user hop is intact. Note: report generation lives in `/admin/` rather than the educator interface, so this was run as admin rather than as Olive. |
 | 9.4 | PASS | Adding a second registration for Cara through a different organisation did not change the solo course's Active Learners count (stayed at 4) — the count is per-person, not per-learner-row. The extra registration was removed afterwards. |
 | 9.5 | PASS | The fresh `course.registered` webhook payload carries the integer `user_id` and `user_email`, not learner ids — unchanged by this cut. |
-| 9.6 | PASS | Logged out entirely, the course listing and public course detail pages load for anonymous visitors. The "hidden course still 404s" half is not observable, for the same dev-override reason as 6.5 (verified separately via curl). |
+| 9.6 | PASS (re-run with the override off) | Logged out entirely, `/courses/` returns 200 and lists the published and coming-soon courses; public course detail pages return 200. Neither hidden course appears in the listing, and `/courses/qa-hidden-visibility/detail/` returns 404. (The bare `/courses/<slug>/` is the player entry and 302s an anonymous visitor to login — the login gate, not the visibility gate; see 6.4 on the plan's player URL.) |
 | 9.7 | PASS | A full HTMX click-through of Cohorts → Learners → Courses (40 requests) produced zero requests to any `.../users/...` path and zero 404s. |
 | 9.8 | PASS | Deleting RPAS Training in `/admin/` is refused with HTTP 403 — learners now protect the organisation on top of cohorts, via `on_delete=PROTECT` on both `Cohort.organisation` and `Learner.organisation`. |
 
@@ -219,9 +219,8 @@ the instance's FK is unset, and `Model.full_clean()` still calls `clean()`, whic
 
 ## Bug status
 
-- **UNRESOLVED** — B1: Cohort membership learner dropdown is not scoped to the cohort's organisation
-  (reason: red lane — sits on the multi-tenant isolation boundary, and scoping an autocomplete
-  endpoint is a design decision rather than a mechanical fix)
+- **FIXED** (commit: `436c5c00`) — B1: Cohort membership learner dropdown is not scoped to the
+  cohort's organisation
 - **FIXED** (commit: `4049025d3ed72ed4647609a0d8c27707ab9c9a53`) — B2: Saving a cross-organisation
   cohort membership returns HTTP 500 instead of a validation error
 
@@ -241,21 +240,49 @@ surfaces were spot-checked and all render correctly: an unmodified cohort save s
 changed successfully", and the educator cohort Course Progress panel and Learners list both still
 list their members with working `/learners/<uuid>` links.
 
-Note that B1 remains open and is the reason a cross-organisation learner is offered in that dropdown
-at all. B2's fix turns the resulting rejection into a proper validation error, but it does not make
-the dropdown correct.
+B2's fix turns the resulting rejection into a proper validation error; B1's fix, below, stops the
+cross-organisation learner being offered in the first place.
+
+**B1 fix and re-verification.** The dropdown's options come from Django's shared `admin:autocomplete`
+endpoint, which never sees an inline's narrowed formfield queryset — so a new
+`ScopedLearnerAutocompleteSelect` names the scope on the URL it puts in `data-ajax--url`, and
+`LearnerAdmin.get_search_results` honours it. It only ever narrows, and only when the param is
+present, so the Learners changelist and the (deliberately unscoped) `LearnerCourseRegistration`
+dropdown are untouched; a scope that does not parse offers nothing rather than falling back to
+unscoped.
+
+`UserCohortDeadlineOverrideInline` had the same shape of gap and is scoped the same way, against the
+rule its own model enforces: members of the registration's cohort. Narrowing that queryset turns an
+out-of-cohort choice into a field error, which would have crashed
+`UserCohortDeadlineOverride.clean()` exactly the way B2 crashed `CohortMembership.clean()`, so both
+now share one guard for unset relations. `LearnerCourseRegistrationAdmin.learner` stays unscoped —
+it is a standalone admin with no parent organisation to scope to.
+
+Twelve tests were added, two of them written first and confirmed red for the right reason (the
+foreign-organisation learner was in the endpoint's results; the change page emitted no scope). The
+full suite passes (2591 passed, 23 deselected).
+
+Re-driven in the browser on the RPAS Training "Year 9 Maths" cohort: every membership row's
+`data-ajax--url` carries `organisation_of_cohort=<cohort pk>`, including the `__prefix__` template
+row; searching the dropdown for `northside` gives "No results found", and `example.com` returns only
+the six RPAS Training learners — `removed.learner@example.com` among them, which is required, since
+the queryset also validates existing rows. Clicking "Add another Cohort membership" produces a row
+that is scoped identically. On the Year 9 Maths cohort course registration, the User Deadline
+Overrides Learner dropdown offers only the three cohort members, not the other three RPAS learners.
+The Learners changelist search for `example.com` still returns all eleven learners across RPAS
+Training, Northside and Southgate.
+
+![](screenshots/b1-cohort-dropdown-scoped.png)
 
 ## General notes
 
-**Not tested, and why:** Two plan assertions could not be observed on this dev server because
-`config/settings_dev.py` sets `OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE = True` (and
-`OVERRIDE_COURSE_ACCESS_TO_FREE = True`). This override makes both hidden QA courses (and the
-coming-soon course used in 5.5) visible/free to everyone, both authenticated and anonymous, so the
-"hidden course 404s" half of tests 6.5 and 9.6 is not exercisable, and the rendered
-express-interest CTA in 5.5 is suppressed (the write path was still verified directly via POST).
-In all three cases the code paths that matter (`filter_visible`, `raise_404_if_hidden_unregistered`,
-`override_visibility_to_visible()`) were confirmed to honour the same override consistently, so the
-gap is environmental, not a sign of a regression.
+**Not tested, and why:** One plan assertion still cannot be observed on this dev server, because
+`config/settings_dev.py` sets `OVERRIDE_COURSE_ACCESS_TO_FREE = True`: the rendered express-interest
+CTA in 5.5 is suppressed, so the write path was verified directly via POST instead.
+
+The two hidden-course assertions originally blocked by `OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE = True`
+— the "hidden course 404s" half of 6.5 and 9.6 — have since been re-run in the browser with that
+setting temporarily off, and both pass; see their rows above. The setting was restored afterwards.
 
 **Test-plan/environment mismatches found (not product defects):**
 - The plan's player URL `/<slug>/home/` does not exist in this codebase; the real path is

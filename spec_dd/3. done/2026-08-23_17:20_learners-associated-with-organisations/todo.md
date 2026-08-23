@@ -51,8 +51,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: cohort membership learner dropdown in /admin/ offers learners from other organisations (TDD — failing test first, then fix)
-- [ ] (user) Re-run the hidden-course checks from frontend_qa §6.5 and §9.6 with OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE disabled — the dev-settings override made them unobservable this run
+- [x] (user + cmd) Fix QA bug: cohort membership learner dropdown in /admin/ offers learners from other organisations (TDD — failing test first, then fix)
+- [x] (user) Re-run the hidden-course checks from frontend_qa §6.5 and §9.6 with OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE disabled — the dev-settings override made them unobservable this run
 
 ## 10. Product documentation
 
