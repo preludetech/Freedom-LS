@@ -32,43 +32,78 @@ class Cohort(SiteAwareModel):
         return self.name
 
 
-class CohortMembership(SiteAwareModel):
-    cohort = models.ForeignKey(Cohort, on_delete=models.CASCADE)
+class Learner(SiteAwareModel):
+    """A user's association with an organisation for enrolment purposes.
+
+    A user may hold a Learner row in more than one organisation. Enrolment
+    records (CohortMembership, LearnerCourseRegistration) hang off Learner
+    rather than User, so an enrolment with no organisation association
+    cannot be represented.
+
+    Self-service registration on the default organisation reactivates a
+    removed learner rather than refusing it: registering again is treated as
+    a live signal of re-association, so ensure_learner overwrites
+    is_active=False instead of erroring on it.
+    """
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    organisation = models.ForeignKey(
+        "freedom_ls_organisations.Organisation", on_delete=models.PROTECT
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "cohort"],
-                name="unique_user_cohort_membership",
+                fields=["user", "organisation"], name="unique_learner_per_organisation"
             )
         ]
 
+    def __str__(self) -> str:
+        return f"{self.user} - {self.organisation}"
+
+
+class CohortMembership(SiteAwareModel):
+    cohort = models.ForeignKey(Cohort, on_delete=models.CASCADE)
+    learner = models.ForeignKey(Learner, on_delete=models.CASCADE)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["learner", "cohort"],
+                name="unique_learner_cohort_membership",
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.learner.organisation_id != self.cohort.organisation_id:
+            raise ValidationError(
+                "Learner and cohort must belong to the same organisation."
+            )
+
     def __str__(self):
-        return f"{self.user} - {self.cohort}"
+        return f"{self.learner} - {self.cohort}"
 
 
-class UserCourseRegistration(SiteAwareModel):
-    """Individual user registration for a course."""
+class LearnerCourseRegistration(SiteAwareModel):
+    """Individual learner registration for a course."""
 
-    organisation = models.ForeignKey(
-        "freedom_ls_organisations.Organisation",
-        on_delete=models.PROTECT,
-    )
     collection = models.ForeignKey(
         "freedom_ls_content_engine.Course",
         on_delete=models.CASCADE,
-        related_name="user_registrations",
+        related_name="learner_registrations",
     )
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    learner = models.ForeignKey(Learner, on_delete=models.CASCADE)
     is_active = models.BooleanField(default=True)
     registered_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["site_id", "organisation", "collection", "user"],
-                name="unique_user_course_registration",
+                fields=["site_id", "learner", "collection"],
+                name="unique_learner_course_registration",
             )
         ]
 
@@ -76,13 +111,16 @@ class UserCourseRegistration(SiteAwareModel):
         is_new = self._state.adding
         super().save(*args, **kwargs)
         if is_new:
-            from freedom_ls.accounts.models import User
             from freedom_ls.content_engine.models import Course
             from freedom_ls.webhooks.events import fire_webhook_event
 
-            user_email = (
-                User.objects.filter(pk=self.user_id)
-                .values_list("email", flat=True)
+            # _base_manager: save() can run from a management command with
+            # no ambient request, or with a different site ambient than the
+            # learner's own, so the site-aware manager cannot be trusted to
+            # find this row.
+            user_id, user_email = (
+                Learner._base_manager.filter(pk=self.learner_id)
+                .values_list("user_id", "user__email")
                 .get()
             )
             course_title = (
@@ -94,7 +132,7 @@ class UserCourseRegistration(SiteAwareModel):
             fire_webhook_event(
                 "course.registered",
                 {
-                    "user_id": self.user_id,
+                    "user_id": user_id,
                     "user_email": user_email,
                     "course_id": str(self.collection_id),
                     "course_title": course_title,
@@ -103,7 +141,7 @@ class UserCourseRegistration(SiteAwareModel):
             )
 
     def __str__(self):
-        return f"{self.user} - {self.collection}"
+        return f"{self.learner} - {self.collection}"
 
 
 class CohortCourseRegistration(SiteAwareModel):
@@ -183,7 +221,7 @@ class LearnerDeadline(SiteAwareModel):
     """Deadline for a learner registered individually for a course."""
 
     learner_course_registration = models.ForeignKey(
-        UserCourseRegistration,
+        LearnerCourseRegistration,
         on_delete=models.CASCADE,
         related_name="deadlines",
     )
@@ -223,18 +261,18 @@ class LearnerDeadline(SiteAwareModel):
     def __str__(self) -> str:
         reg = self.learner_course_registration
         item_label = str(self.content_item) if self.content_item else "Whole course"
-        return f"{reg.user} - {reg.collection} - {item_label}"
+        return f"{reg.learner.user} - {reg.collection} - {item_label}"
 
 
 class UserCohortDeadlineOverride(SiteAwareModel):
-    """Override deadline for a specific user within a cohort."""
+    """Override deadline for a specific learner within a cohort."""
 
     cohort_course_registration = models.ForeignKey(
         CohortCourseRegistration,
         on_delete=models.CASCADE,
         related_name="deadline_overrides",
     )
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    learner = models.ForeignKey(Learner, on_delete=models.CASCADE)
     content_type = models.ForeignKey(
         DjangoContentType,
         on_delete=models.CASCADE,
@@ -251,7 +289,7 @@ class UserCohortDeadlineOverride(SiteAwareModel):
             models.UniqueConstraint(
                 fields=[
                     "cohort_course_registration",
-                    "user",
+                    "learner",
                     "content_type",
                     "object_id",
                 ],
@@ -262,32 +300,32 @@ class UserCohortDeadlineOverride(SiteAwareModel):
 
     def clean(self) -> None:
         super().clean()
-        # Validate user is a member of the cohort
+        # Validate the learner is a member of the cohort
         if not CohortMembership.objects.filter(
-            user=self.user,
+            learner=self.learner,
             cohort=self.cohort_course_registration.cohort,
         ).exists():
             raise ValidationError(
-                "User is not a member of the cohort for this registration."
+                "Learner is not a member of the cohort for this registration."
             )
 
         # Validate uniqueness for course-level overrides (null content)
         if self.content_type is None and self.object_id is None:
             existing = UserCohortDeadlineOverride.objects.filter(
                 cohort_course_registration=self.cohort_course_registration,
-                user=self.user,
+                learner=self.learner,
                 content_type__isnull=True,
                 object_id__isnull=True,
             ).exclude(pk=self.pk)
             if existing.exists():
                 raise ValidationError(
-                    "A course-level override already exists for this user and cohort registration."
+                    "A course-level override already exists for this learner and cohort registration."
                 )
 
     def __str__(self) -> str:
         reg = self.cohort_course_registration
         item_label = str(self.content_item) if self.content_item else "Whole course"
-        return f"{self.user} - {reg.cohort} - {reg.collection} - {item_label}"
+        return f"{self.learner} - {reg.cohort} - {reg.collection} - {item_label}"
 
 
 class RecommendedCourse(SiteAwareModel):
