@@ -1,6 +1,6 @@
 # Webhooks
 
-_Last updated: 2026-08-05_
+_Last updated: 2026-08-23_
 
 ## Summary
 
@@ -55,7 +55,7 @@ This is the only application-level encryption at rest in FLS. Database-level enc
 
 In production, an endpoint URL is validated when it is saved: the scheme must be HTTPS, and the hostname is resolved with every returned address checked — if any is private, loopback, or link-local, the URL is rejected. This stops the application being used as a proxy into internal network services. Validation is skipped when running in debug mode so local endpoints can be tested.
 
-**Known limitation.** The check resolves DNS at validation time, but the request re-resolves at delivery time. An attacker controlling DNS could return a public address during validation and a private one at delivery — a DNS rebinding bypass. A TODO in the webhook code records this and describes the fix (pinning the resolved address for delivery). It is not yet implemented.
+**Known limitation.** The check resolves DNS at validation time, but the request re-resolves at delivery time. An attacker controlling DNS could return a public address during validation and a private one at delivery — a DNS rebinding bypass. The fix — pinning the resolved address for delivery — is known and not yet implemented.
 
 ## Delivery, Retries, and the Circuit Breaker
 

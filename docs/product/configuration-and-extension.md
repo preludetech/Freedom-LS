@@ -108,9 +108,12 @@ The checks need no database connection or network access, so they are cheap enou
 
 ## Boot-Time System Checks
 
-Some wiring mistakes are caught earlier still. FLS registers checks with Django's own configuration-check framework, so they run automatically on every `manage.py check`, `runserver`, and `migrate` — unlike the conformance suite above, which is opt-in and runs in a test suite. Two integration mistakes now fail at boot rather than as a runtime error on a learner's first request: pointing `COURSE_ACCESS_BACKEND` at one of FLS's own backends whose app has been removed from the project is an error, and wiring a sitemap URL without Django's sitemaps app installed is a warning — a warning rather than an error because a deployment supplying its own sitemap page is a legitimate configuration. A deployment's own custom backend is left alone, and removing an FLS app removes that app's checks with it.
+Some wiring mistakes are caught without opting in to anything: FLS reports them when the application starts, rather than letting them surface later as a broken page for a learner.
 
-Each check identifies exactly one condition, so a deployment can silence one precisely through Django's standard silenced-checks setting. As part of that, a course-access error ID that previously covered two conditions was split: a deployment silencing `freedom_ls_course_access.E001` because of course access-configuration validation must move that entry to `freedom_ls_course_access.E002`, or it will keep suppressing the unset-required-setting error too.
+- A required setting left unset, or a course-access backend belonging to an app the project does not install, stops start-up.
+- A missing piece of sitemap wiring is flagged as a warning, not a blocker — a deployment that supplies its own is fine.
+
+A deployment that has a good reason to accept one of these can silence it individually. Removing an FLS app removes its checks along with it.
 
 ## Settings Reference
 
