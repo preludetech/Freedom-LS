@@ -4,7 +4,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -78,7 +78,15 @@ class CohortMembership(SiteAwareModel):
 
     def clean(self) -> None:
         super().clean()
-        if self.learner.organisation_id != self.cohort.organisation_id:
+        try:
+            learner = self.learner
+            cohort = self.cohort
+        except ObjectDoesNotExist:
+            # A field-level validation error already exists for the unset
+            # foreign key (e.g. an invalid choice in an admin inline); let
+            # that surface instead of a RelatedObjectDoesNotExist crash.
+            return
+        if learner.organisation_id != cohort.organisation_id:
             raise ValidationError(
                 "Learner and cohort must belong to the same organisation."
             )

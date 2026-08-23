@@ -50,6 +50,20 @@ class TestCohortMembershipClean:
 
         membership.clean()
 
+    def test_does_not_raise_when_learner_is_unset(self, mock_site_context):
+        cohort = CohortFactory(organisation=OrganisationFactory())
+
+        membership = CohortMembership(cohort=cohort)
+
+        membership.clean()
+
+    def test_does_not_raise_when_cohort_is_unset(self, mock_site_context):
+        learner = LearnerFactory(organisation=OrganisationFactory())
+
+        membership = CohortMembership(learner=learner)
+
+        membership.clean()
+
 
 @pytest.mark.django_db
 class TestCohortNameUniqueness:
