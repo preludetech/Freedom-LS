@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import cast
 from urllib.parse import parse_qsl
 from uuid import uuid4
@@ -10,6 +11,7 @@ import pytest
 
 from django.contrib import admin
 from django.contrib.admin.widgets import AutocompleteSelect
+from django.core.paginator import UnorderedObjectListWarning
 from django.db.models import Model, QuerySet
 from django.forms import ModelChoiceField
 from django.http import HttpRequest
@@ -296,6 +298,49 @@ class TestLearnerAutocompleteEndpoint:
         )
 
         assert {str(learner.pk) for learner in learners} <= offered
+
+
+@pytest.mark.django_db
+class TestLearnerOrdering:
+    """The autocomplete endpoint paginates its results, so the queryset behind
+    them has to have a stable order or page 2 can repeat or skip a learner."""
+
+    def test_the_dropdown_offers_learners_in_a_stable_order(self, staff_client) -> None:
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation, name="Cohort A")
+        for email in ("zoe@ordering.test", "adam@ordering.test", "mia@ordering.test"):
+            LearnerFactory(organisation=organisation, user=UserFactory(email=email))
+        url, params = _autocomplete_request(
+            _learner_field(_request_for_cohort(cohort)), CohortMembership
+        )
+
+        response = staff_client.get(url, params)
+
+        assert [result["text"] for result in response.json()["results"]] == [
+            f"adam@ordering.test - {organisation.name}",
+            f"mia@ordering.test - {organisation.name}",
+            f"zoe@ordering.test - {organisation.name}",
+        ]
+
+    def test_paginating_the_dropdown_does_not_warn_about_an_unordered_queryset(
+        self, staff_client
+    ) -> None:
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation, name="Cohort A")
+        LearnerFactory(organisation=organisation)
+        url, params = _autocomplete_request(
+            _learner_field(_request_for_cohort(cohort)), CohortMembership
+        )
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            staff_client.get(url, params)
+
+        assert not [
+            warning
+            for warning in caught
+            if issubclass(warning.category, UnorderedObjectListWarning)
+        ]
 
 
 @pytest.mark.django_db

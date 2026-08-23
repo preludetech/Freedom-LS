@@ -100,6 +100,10 @@ class LearnerAdmin(SiteAwareModelAdmin):
     readonly_fields = ["created_at"]
     search_fields = ["user__first_name", "user__last_name", "user__email"]
     autocomplete_fields = ["user", "organisation"]
+    # Matches the "<email> - <organisation>" label a learner dropdown renders.
+    # The autocomplete endpoint paginates, so without a stable order its second
+    # page can repeat or skip a learner.
+    ordering = ["user__email", "organisation__name"]
 
     def has_delete_permission(
         self, request: HttpRequest, obj: Learner | None = None
