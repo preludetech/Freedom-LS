@@ -1,6 +1,6 @@
 """Seed ``LearnerDeadline`` rows for the learner-deadline admin QA workflow.
 
-``LearnerDeadline`` hangs off an individual ``UserCourseRegistration`` (the
+``LearnerDeadline`` hangs off an individual ``LearnerCourseRegistration`` (the
 ``learner_course_registration`` FK), which is what makes it distinct from
 ``CohortDeadline`` (cohort registration) and ``UserCohortDeadlineOverride``
 (per-user override inside a cohort). ``qa_create_deadline_overrides`` seeds the
@@ -33,10 +33,13 @@ from django.utils import timezone
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, Form, Topic
 from freedom_ls.learner_management.factories import (
+    LearnerCourseRegistrationFactory,
     LearnerDeadlineFactory,
-    UserCourseRegistrationFactory,
 )
-from freedom_ls.learner_management.models import LearnerDeadline, UserCourseRegistration
+from freedom_ls.learner_management.models import (
+    LearnerCourseRegistration,
+    LearnerDeadline,
+)
 from freedom_ls.organisations.utils import get_default_organisation
 
 PRIMARY_LEARNER_EMAIL = "demodev_s1@email.com"
@@ -70,35 +73,37 @@ def _get_course(slug: str, site: Site) -> Course:
 
 def _ensure_registration(
     user: User, course: Course, site: Site
-) -> UserCourseRegistration:
+) -> LearnerCourseRegistration:
     """Return the learner's individual registration, creating it if absent.
 
     Never touches the ``User`` row, so passwords and sessions are left alone.
     """
-    existing: UserCourseRegistration | None = UserCourseRegistration.objects.filter(
-        user=user, collection=course, site=site
-    ).first()
+    existing: LearnerCourseRegistration | None = (
+        LearnerCourseRegistration.objects.filter(
+            learner__user=user, collection=course, site=site
+        ).first()
+    )
     if existing is not None:
         return existing
     registration = cast(
-        UserCourseRegistration,
-        UserCourseRegistrationFactory(
-            user=user,
+        LearnerCourseRegistration,
+        LearnerCourseRegistrationFactory(
+            learner__user=user,
+            learner__organisation=get_default_organisation(site),
             collection=course,
             site=site,
-            organisation=get_default_organisation(site),
             is_active=True,
         ),
     )
     click.secho(
-        f"  + Created UserCourseRegistration {user.email} -> {course.slug}",
+        f"  + Created LearnerCourseRegistration {user.email} -> {course.slug}",
         fg="green",
     )
     return registration
 
 
 def _ensure_deadline(
-    registration: UserCourseRegistration,
+    registration: LearnerCourseRegistration,
     site: Site,
     days_from_now: int,
     is_hard: bool,
@@ -173,7 +178,7 @@ def command(site_name: str) -> None:
     reg_secondary_one = _ensure_registration(secondary, course_one, site)
 
     # (registration, days, is_hard, content_item, human label)
-    plan: list[tuple[UserCourseRegistration, int, bool, Topic | Form | None]] = [
+    plan: list[tuple[LearnerCourseRegistration, int, bool, Topic | Form | None]] = [
         (reg_primary_one, 30, True, None),
         (reg_primary_one, 21, False, _first_form(course_one)),
         (reg_primary_one, 45, True, _first_topic(course_one)),
@@ -194,7 +199,7 @@ def command(site_name: str) -> None:
         kind = "hard" if is_hard else "soft"
         verb = "created" if was_created else "exists"
         click.secho(
-            f"  {verb:8} {registration.user.email:32} "
+            f"  {verb:8} {registration.learner.user.email:32} "
             f"{registration.collection.slug:40} {target:28} {kind:4} "
             f"{deadline.deadline:%Y-%m-%d}",
             fg="green" if was_created else "yellow",
@@ -211,7 +216,7 @@ def command(site_name: str) -> None:
     learners = sorted(
         set(
             LearnerDeadline.objects.filter(site=site).values_list(
-                "learner_course_registration__user__email", flat=True
+                "learner_course_registration__learner__user__email", flat=True
             )
         )
     )

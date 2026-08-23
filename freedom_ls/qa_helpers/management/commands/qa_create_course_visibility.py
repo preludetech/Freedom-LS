@@ -44,12 +44,12 @@ from freedom_ls.content_engine.models import Course, CourseVisibility, Topic
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
-    UserCourseRegistrationFactory,
+    LearnerCourseRegistrationFactory,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
-    UserCourseRegistration,
+    LearnerCourseRegistration,
 )
 from freedom_ls.organisations.utils import get_default_organisation
 
@@ -153,14 +153,14 @@ def _get_or_create_course(
 
 def _ensure_registration(site: Site, user: User, course: Course) -> None:
     """Ensure the learner has an active registration for the course."""
-    if not UserCourseRegistration.objects.filter(
-        user=user, collection=course, site=site
+    if not LearnerCourseRegistration.objects.filter(
+        learner__user=user, collection=course, site=site
     ).exists():
-        UserCourseRegistrationFactory(
-            user=user,
+        LearnerCourseRegistrationFactory(
+            learner__user=user,
+            learner__organisation=get_default_organisation(site),
             collection=course,
             site=site,
-            organisation=get_default_organisation(site),
             is_active=True,
         )
 
@@ -221,8 +221,8 @@ def command(site_name: str) -> None:
     _ensure_registration(site, learner, hidden_registered)
     _ensure_registration(site, learner, published_free)
     # Guarantee the learner is NOT registered in hidden-course.
-    UserCourseRegistration.objects.filter(
-        user=learner, collection=hidden, site=site
+    LearnerCourseRegistration.objects.filter(
+        learner__user=learner, collection=hidden, site=site
     ).delete()
 
     # --- Educator cohort (so cohort views show data) -------------------
@@ -244,7 +244,7 @@ def command(site_name: str) -> None:
 
     # --- Verification (fresh queries; children() is memoized per instance) ---
     learner_regs = list(
-        UserCourseRegistration.objects.filter(user=learner, site=site)
+        LearnerCourseRegistration.objects.filter(learner__user=learner, site=site)
         .select_related("collection")
         .values_list("collection__slug", flat=True)
     )
@@ -279,8 +279,8 @@ def command(site_name: str) -> None:
         f"Learner registered in: {sorted(learner_regs)}",
         fg="green",
     )
-    not_in_hidden = not UserCourseRegistration.objects.filter(
-        user=learner, collection=hidden, site=site
+    not_in_hidden = not LearnerCourseRegistration.objects.filter(
+        learner__user=learner, collection=hidden, site=site
     ).exists()
     click.secho(
         f"Learner NOT registered in hidden-course: {not_in_hidden}",

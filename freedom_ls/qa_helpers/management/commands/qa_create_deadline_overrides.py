@@ -70,9 +70,9 @@ def command(
         ) from e
 
     try:
-        membership = CohortMembership.objects.select_related("user").get(
+        membership = CohortMembership.objects.select_related("learner__user").get(
             cohort=registration.cohort,
-            user__email=learner_email,
+            learner__user__email=learner_email,
             site=site,
         )
     except CohortMembership.DoesNotExist as e:
@@ -80,7 +80,7 @@ def command(
             f"Learner '{learner_email}' is not a member of cohort '{cohort_name}'."
         ) from e
 
-    user = membership.user
+    learner = membership.learner
     is_hard = not soft
     deadline = timezone.now() + timedelta(days=days_from_now)
 
@@ -105,7 +105,7 @@ def command(
     # Check for existing override using the unique constraint fields
     lookup = {
         "cohort_course_registration": registration,
-        "user": user,
+        "learner": learner,
         "content_type": None,
         "object_id": None,
         "site": site,
@@ -126,7 +126,7 @@ def command(
     except UserCohortDeadlineOverride.DoesNotExist:
         factory_kwargs = {
             "cohort_course_registration": registration,
-            "user": user,
+            "learner": learner,
             "deadline": deadline,
             "is_hard_deadline": is_hard,
             "site": site,

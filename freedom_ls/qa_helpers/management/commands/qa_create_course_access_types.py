@@ -4,7 +4,7 @@ Creates (idempotently) on a single site (default: DemoDev):
 
 1. A login-ready learner enrolled in NOTHING:
    - verified, primary EmailAddress (allauth mandatory verification),
-   - ZERO UserCourseRegistration rows,
+   - ZERO LearnerCourseRegistration rows,
    - ZERO CourseApplication rows.
    - Login convention in this project is password == email.
 
@@ -35,7 +35,7 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import Course, Topic
 from freedom_ls.course_applications.models import CourseApplication
-from freedom_ls.learner_management.models import UserCourseRegistration
+from freedom_ls.learner_management.models import LearnerCourseRegistration
 
 LEARNER_EMAIL = "demodev_access_learner@email.com"
 
@@ -147,10 +147,12 @@ def command(site_name: str) -> None:
     )
 
     # Guarantee the "enrolled in NOTHING" and "no application yet" preconditions.
-    UserCourseRegistration.objects.filter(user=learner, site=site).delete()
+    LearnerCourseRegistration.objects.filter(learner__user=learner, site=site).delete()
     CourseApplication.objects.filter(user=learner, site=site).delete()
 
-    reg_count = UserCourseRegistration.objects.filter(user=learner, site=site).count()
+    reg_count = LearnerCourseRegistration.objects.filter(
+        learner__user=learner, site=site
+    ).count()
     app_count = CourseApplication.objects.filter(user=learner, site=site).count()
 
     click.secho("\n--- Course Access Types QA data ---", fg="cyan", bold=True)

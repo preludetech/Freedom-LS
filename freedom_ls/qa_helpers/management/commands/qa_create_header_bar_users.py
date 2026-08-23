@@ -33,8 +33,8 @@ from freedom_ls.content_engine.models import (
     Course,
     Topic,
 )
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
-from freedom_ls.learner_management.models import UserCourseRegistration
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
+from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.organisations.utils import get_default_organisation
 
 # (email, first_name, last_name, expected_initials_note)
@@ -130,14 +130,14 @@ def _ensure_verified_email(user: User) -> None:
 
 def _ensure_course_registration(user: User, course: Course, site: Site) -> None:
     """Ensure user is registered for the course (so they can browse it)."""
-    if not UserCourseRegistration.objects.filter(
-        user=user, collection=course, site=site
+    if not LearnerCourseRegistration.objects.filter(
+        learner__user=user, collection=course, site=site
     ).exists():
-        UserCourseRegistrationFactory(
-            user=user,
+        LearnerCourseRegistrationFactory(
+            learner__user=user,
+            learner__organisation=get_default_organisation(site),
             collection=course,
             site=site,
-            organisation=get_default_organisation(site),
         )
 
 

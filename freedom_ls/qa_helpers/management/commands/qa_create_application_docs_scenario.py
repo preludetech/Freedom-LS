@@ -40,7 +40,8 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.content_engine.models import Course, DifficultyLevel, Topic
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
-from freedom_ls.learner_management.models import UserCourseRegistration
+from freedom_ls.learner_management.models import LearnerCourseRegistration
+from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
     TopicProgressFactory,
@@ -240,14 +241,12 @@ def _enroll_in_progress(
     site: Site, *, user: User, course: Course, completed_topic: Topic
 ) -> None:
     """Register the learner on a free course and mark it partially complete."""
-    UserCourseRegistration.objects.get_or_create(
-        user=user,
+    learner = ensure_learner(user, get_default_organisation(site))
+    LearnerCourseRegistration.objects.get_or_create(
+        learner=learner,
         collection=course,
         site=site,
-        defaults={
-            "is_active": True,
-            "organisation": get_default_organisation(site),
-        },
+        defaults={"is_active": True},
     )
     # Mark one topic complete so the course shows as "in progress".
     # NOTE: TopicProgress uses `complete_time` (FormProgress uses `completed_time`).
@@ -301,8 +300,8 @@ def command(site_name: str) -> None:
 
     # Preconditions for the gated course: NO registration (so "Apply now"
     # shows), but a single in-flight application exists.
-    UserCourseRegistration.objects.filter(
-        user=learner, collection=gated_course, site=site
+    LearnerCourseRegistration.objects.filter(
+        learner__user=learner, collection=gated_course, site=site
     ).delete()
     application, _ = CourseApplication.objects.get_or_create(
         user=learner, course=gated_course, site=site
@@ -322,8 +321,8 @@ def command(site_name: str) -> None:
         site, user=learner, course=free_course, completed_topic=free_topics[0]
     )
 
-    gated_reg = UserCourseRegistration.objects.filter(
-        user=learner, collection=gated_course, site=site
+    gated_reg = LearnerCourseRegistration.objects.filter(
+        learner__user=learner, collection=gated_course, site=site
     ).count()
     app_count = CourseApplication.objects.filter(
         user=learner, course=gated_course, site=site

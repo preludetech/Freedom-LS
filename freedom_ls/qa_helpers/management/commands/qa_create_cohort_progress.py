@@ -217,9 +217,14 @@ def command(
         from freedom_ls.learner_management.models import CohortMembership
 
         if not CohortMembership.objects.filter(
-            user=learner, cohort=cohort, site=site
+            learner__user=learner, cohort=cohort, site=site
         ).exists():
-            CohortMembershipFactory(user=learner, cohort=cohort, site=site)
+            CohortMembershipFactory(
+                learner__user=learner,
+                learner__organisation=cohort.organisation,
+                cohort=cohort,
+                site=site,
+            )
 
         # Create topic progress
         completed_count = 0

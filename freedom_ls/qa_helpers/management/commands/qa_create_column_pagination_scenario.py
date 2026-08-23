@@ -140,9 +140,14 @@ def _ensure_cohort(site: Site, course: Course, num_learners: int) -> Cohort:
                 ),
             )
         if not CohortMembership.objects.filter(
-            user=user, cohort=cohort, site=site
+            learner__user=user, cohort=cohort, site=site
         ).exists():
-            CohortMembershipFactory(user=user, cohort=cohort, site=site)
+            CohortMembershipFactory(
+                learner__user=user,
+                learner__organisation=cohort.organisation,
+                cohort=cohort,
+                site=site,
+            )
             added += 1
     click.secho(f"Cohort members added this run: {added}", fg="green")
 

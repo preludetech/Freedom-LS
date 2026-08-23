@@ -28,12 +28,12 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, Form, Topic
 from freedom_ls.learner_management.factories import (
+    LearnerCourseRegistrationFactory,
     RecommendedCourseFactory,
-    UserCourseRegistrationFactory,
 )
 from freedom_ls.learner_management.models import (
+    LearnerCourseRegistration,
     RecommendedCourse,
-    UserCourseRegistration,
 )
 from freedom_ls.learner_management.utils import calculate_course_progress_percentage
 from freedom_ls.learner_progress.models import (
@@ -96,14 +96,14 @@ def _ensure_verified_email(user: User) -> None:
 
 
 def _register(user: User, course: Course, site: Site) -> None:
-    if not UserCourseRegistration.objects.filter(
-        user=user, collection=course, site=site
+    if not LearnerCourseRegistration.objects.filter(
+        learner__user=user, collection=course, site=site
     ).exists():
-        UserCourseRegistrationFactory(
-            user=user,
+        LearnerCourseRegistrationFactory(
+            learner__user=user,
+            learner__organisation=get_default_organisation(site),
             collection=course,
             site=site,
-            organisation=get_default_organisation(site),
         )
 
 

@@ -43,7 +43,7 @@ def command(
     memberships = CohortMembership.objects.filter(
         cohort__name=cohort_name,
         site=site,
-    ).select_related("user")
+    ).select_related("learner__user")
 
     if not memberships.exists():
         raise click.ClickException(f"No learners found in cohort '{cohort_name}'.")
@@ -52,7 +52,7 @@ def command(
     created_count = 0
 
     for i, membership in enumerate(memberships):
-        user = membership.user
+        user = membership.learner.user
         if not FormProgress.objects.filter(form=form, user=user, site=site).exists():
             FormProgressFactory(
                 form=form,

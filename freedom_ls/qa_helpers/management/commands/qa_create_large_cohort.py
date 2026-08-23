@@ -79,9 +79,14 @@ def command(
             )
 
         if not CohortMembership.objects.filter(
-            user=user, cohort=cohort, site=site
+            learner__user=user, cohort=cohort, site=site
         ).exists():
-            CohortMembershipFactory(user=user, cohort=cohort, site=site)
+            CohortMembershipFactory(
+                learner__user=user,
+                learner__organisation=cohort.organisation,
+                cohort=cohort,
+                site=site,
+            )
             created_count += 1
 
     click.secho(

@@ -26,8 +26,8 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, Form, Topic
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
-from freedom_ls.learner_management.models import UserCourseRegistration
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
+from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
     FormProgressFactory,
@@ -98,14 +98,14 @@ def _ensure_verified_email(user: User) -> None:
 
 def _register(user: User, course: Course, site: Site) -> None:
     """Register the user for the course (idempotent)."""
-    if not UserCourseRegistration.objects.filter(
-        user=user, collection=course, site=site
+    if not LearnerCourseRegistration.objects.filter(
+        learner__user=user, collection=course, site=site
     ).exists():
-        UserCourseRegistrationFactory(
-            user=user,
+        LearnerCourseRegistrationFactory(
+            learner__user=user,
+            learner__organisation=get_default_organisation(site),
             collection=course,
             site=site,
-            organisation=get_default_organisation(site),
         )
 
 
@@ -240,8 +240,8 @@ def command(site_name: str) -> None:
     )
 
     # Case 3: NOT enrolled (report only; ensure no registration exists).
-    UserCourseRegistration.objects.filter(
-        user=learner, collection=not_enrolled_course, site=site
+    LearnerCourseRegistration.objects.filter(
+        learner__user=learner, collection=not_enrolled_course, site=site
     ).delete()
     click.secho(
         f"NOT enrolled: {not_enrolled_course.slug} "

@@ -42,8 +42,8 @@ from freedom_ls.content_engine.models import (
     QuestionOption,
     QuestionType,
 )
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
-from freedom_ls.learner_management.models import UserCourseRegistration
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
+from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.organisations.utils import get_default_organisation
 
 LEARNER_EMAIL = "demodev@email.com"
@@ -224,14 +224,14 @@ def _attach_form_to_course(course: Course, form: Form, site: Site) -> None:
 
 
 def _register(learner: User, course: Course, site: Site) -> None:
-    if not UserCourseRegistration.objects.filter(
-        user=learner, collection=course, site=site
+    if not LearnerCourseRegistration.objects.filter(
+        learner__user=learner, collection=course, site=site
     ).exists():
-        UserCourseRegistrationFactory(
-            user=learner,
+        LearnerCourseRegistrationFactory(
+            learner__user=learner,
+            learner__organisation=get_default_organisation(site),
             collection=course,
             site=site,
-            organisation=get_default_organisation(site),
         )
 
 

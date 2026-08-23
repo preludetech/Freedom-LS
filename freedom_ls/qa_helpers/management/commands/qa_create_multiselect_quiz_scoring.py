@@ -61,13 +61,13 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
-    UserCourseRegistrationFactory,
+    LearnerCourseRegistrationFactory,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
-    UserCourseRegistration,
+    LearnerCourseRegistration,
 )
 from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
@@ -259,14 +259,14 @@ def _build_no_pct_form(site: Site) -> Form:
 
 
 def _register(learner: User, course: Course, site: Site) -> None:
-    if not UserCourseRegistration.objects.filter(
-        user=learner, collection=course, site=site
+    if not LearnerCourseRegistration.objects.filter(
+        learner__user=learner, collection=course, site=site
     ).exists():
-        UserCourseRegistrationFactory(
-            user=learner,
+        LearnerCourseRegistrationFactory(
+            learner__user=learner,
+            learner__organisation=get_default_organisation(site),
             collection=course,
             site=site,
-            organisation=get_default_organisation(site),
         )
 
 
@@ -349,9 +349,14 @@ def _register_cohort(cohort: Cohort, course: Course, site: Site) -> None:
 
 def _add_member(user: User, cohort: Cohort, site: Site) -> None:
     if not CohortMembership.objects.filter(
-        user=user, cohort=cohort, site=site
+        learner__user=user, cohort=cohort, site=site
     ).exists():
-        CohortMembershipFactory(user=user, cohort=cohort, site=site)
+        CohortMembershipFactory(
+            learner__user=user,
+            learner__organisation=cohort.organisation,
+            cohort=cohort,
+            site=site,
+        )
 
 
 def _item_index(course: Course, form: Form) -> int:

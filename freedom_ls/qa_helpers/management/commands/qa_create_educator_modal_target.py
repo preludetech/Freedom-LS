@@ -115,9 +115,14 @@ def command(site_name: str) -> None:
     # cascade summary to display.
     learner = _get_or_create_user(site, LEARNER_EMAIL, "Sam", "Learner")
     if not CohortMembership.objects.filter(
-        user=learner, cohort=cohort, site=site
+        learner__user=learner, cohort=cohort, site=site
     ).exists():
-        CohortMembershipFactory(user=learner, cohort=cohort, site=site)
+        CohortMembershipFactory(
+            learner__user=learner,
+            learner__organisation=cohort.organisation,
+            cohort=cohort,
+            site=site,
+        )
         click.secho(f"Added learner member {LEARNER_EMAIL}", fg="green")
     else:
         click.secho(f"Learner {LEARNER_EMAIL} already a member", fg="yellow")

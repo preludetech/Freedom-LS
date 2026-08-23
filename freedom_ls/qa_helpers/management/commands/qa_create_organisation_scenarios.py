@@ -3,7 +3,10 @@
 Covers the prerequisites table in
 ``spec_dd/2. in progress/schools/3. frontend_qa.md`` §0.4: three organisations,
 four cohorts (including the same cohort name in two organisations, which is
-what proves the narrowed uniqueness constraint), and the seven personas.
+what proves the narrowed uniqueness constraint), and eight personas —
+including a learner registered through two organisations, one with a Learner
+row but no enrolment at all, and a removed learner whose enrolment records are
+preserved while their access is suspended.
 
 Everything is created on ONE site (default: DemoDev — the site
 ``FORCE_SITE_NAME`` pins the dev server to, whatever port it listens on).
@@ -55,14 +58,16 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
-    UserCourseRegistrationFactory,
+    LearnerCourseRegistrationFactory,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
-    UserCourseRegistration,
+    Learner,
+    LearnerCourseRegistration,
 )
+from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
@@ -195,7 +200,8 @@ def _retire_stale_northside(site: Site) -> str | None:
 
     references = (
         Cohort.objects.filter(organisation=stale).count()
-        + UserCourseRegistration.objects.filter(organisation=stale).count()
+        + Learner._base_manager.filter(organisation=stale).count()
+        + LearnerCourseRegistration.objects.filter(learner__organisation=stale).count()
         + ObjectRoleAssignment.objects.filter(object_id=str(stale.pk)).count()
         + UserObjectPermission.objects.filter(object_pk=str(stale.pk)).count()
     )
@@ -261,8 +267,13 @@ def _ensure_user(site: Site, email: str, first_name: str, last_name: str) -> Use
 
 
 def _ensure_membership(site: Site, cohort: Cohort, user: User) -> None:
-    if not CohortMembership.objects.filter(cohort=cohort, user=user).exists():
-        CohortMembershipFactory(site=site, cohort=cohort, user=user)
+    if not CohortMembership.objects.filter(cohort=cohort, learner__user=user).exists():
+        CohortMembershipFactory(
+            site=site,
+            cohort=cohort,
+            learner__user=user,
+            learner__organisation=cohort.organisation,
+        )
 
 
 def _ensure_cohort_registration(site: Site, cohort: Cohort, course: Course) -> None:
@@ -275,11 +286,48 @@ def _ensure_cohort_registration(site: Site, cohort: Cohort, course: Course) -> N
 def _ensure_user_registration(
     site: Site, organisation: Organisation, user: User, course: Course
 ) -> None:
-    if not UserCourseRegistration.objects.filter(
-        organisation=organisation, user=user, collection=course
+    if not LearnerCourseRegistration.objects.filter(
+        learner__organisation=organisation, learner__user=user, collection=course
     ).exists():
-        UserCourseRegistrationFactory(
-            site=site, organisation=organisation, user=user, collection=course
+        LearnerCourseRegistrationFactory(
+            site=site,
+            learner__organisation=organisation,
+            learner__user=user,
+            collection=course,
+        )
+
+
+def _ensure_removed_learner(organisation: Organisation, user: User) -> Learner:
+    """Write a removed Learner directly.
+
+    is_active=False is exactly what ensure_learner will not produce — it
+    always reactivates the row on write — so this bypasses it and writes the
+    row itself, with the site taken from the organisation.
+    """
+    learner, _ = Learner._base_manager.update_or_create(
+        site=organisation.site,
+        user=user,
+        organisation=organisation,
+        defaults={"is_active": False},
+    )
+    return learner
+
+
+def _ensure_active_registration_for_learner(
+    site: Site, learner: Learner, course: Course
+) -> None:
+    """Register an already-resolved Learner for a course.
+
+    Takes the Learner instance directly rather than learner__user= /
+    learner__organisation= traversal, so LearnerFactory's ensure_learner call
+    never runs here — that call would otherwise reactivate a removed learner
+    as a side effect of registering them.
+    """
+    if not LearnerCourseRegistration.objects.filter(
+        learner=learner, collection=course
+    ).exists():
+        LearnerCourseRegistrationFactory(
+            learner=learner, collection=course, site=site, is_active=True
         )
 
 
@@ -370,7 +418,23 @@ def _seed(site: Site) -> None:
     solo_learner = _ensure_user(site, "solo.learner@example.com", "Sol", "Individual")
     _ensure_user_registration(site, northside, solo_learner, solo_course)
 
-    _ensure_user(site, "no.reg.learner@example.com", "Nell", "Unregistered")
+    # Cara (already an RPAS Training cohort_learner above) also registers
+    # individually through Northside, so she holds a Learner row in both
+    # organisations.
+    _ensure_user_registration(site, northside, cohort_learner, solo_course)
+
+    # Nell Unregistered: a Learner in RPAS Training with no enrolment at all —
+    # no CohortMembership, no LearnerCourseRegistration.
+    unregistered_learner = _ensure_user(
+        site, "no.reg.learner@example.com", "Nell", "Unregistered"
+    )
+    ensure_learner(unregistered_learner, rpas)
+
+    # Rita Removed: records preserved, access suspended — a removed Learner in
+    # RPAS Training that still carries an active course registration.
+    removed_user = _ensure_user(site, "removed.learner@example.com", "Rita", "Removed")
+    removed_learner = _ensure_removed_learner(rpas, removed_user)
+    _ensure_active_registration_for_learner(site, removed_learner, solo_course)
 
     gate = _clear_registration_gate(site)
 
@@ -398,6 +462,26 @@ def _seed(site: Site) -> None:
     click.secho(
         f"Cohort course: /courses/{cohort_course.slug}/  "
         f"Solo-learner course: /courses/{solo_course.slug}/",
+        fg="green",
+    )
+    cara_orgs = sorted(
+        Learner._base_manager.filter(user=cohort_learner).values_list(
+            "organisation__name", flat=True
+        )
+    )
+    click.secho(
+        f"LEARNER {cohort_learner.email!r} holds a Learner row in: {cara_orgs}",
+        fg="green",
+    )
+    click.secho(
+        f"LEARNER {unregistered_learner.email!r} holds a Learner in "
+        f"{rpas.name!r} with no enrolment of any kind",
+        fg="green",
+    )
+    click.secho(
+        f"LEARNER {removed_user.email!r} is a removed Learner (is_active="
+        f"{removed_learner.is_active}) in {rpas.name!r}, with an active "
+        f"registration for {solo_course.slug!r}",
         fg="green",
     )
     click.secho(f"All persona passwords: {PASSWORD}", fg="cyan", bold=True)

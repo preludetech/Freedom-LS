@@ -606,9 +606,14 @@ def build_report_cohort(
         email = f"{email_prefix}-{index + 1:02d}@email.com"
         learner = _get_or_create_user(site, email, first_name, last_name)
         if not CohortMembership.objects.filter(
-            user=learner, cohort=cohort, site=site
+            learner__user=learner, cohort=cohort, site=site
         ).exists():
-            CohortMembershipFactory(user=learner, cohort=cohort, site=site)
+            CohortMembershipFactory(
+                learner__user=learner,
+                learner__organisation=cohort.organisation,
+                cohort=cohort,
+                site=site,
+            )
         learners.append((learner, states[index]))
 
         if no_progress:
