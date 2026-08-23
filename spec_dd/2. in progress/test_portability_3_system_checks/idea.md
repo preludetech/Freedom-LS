@@ -20,8 +20,11 @@ lives in the referenced source files below — not duplicated here.
 
 ## References (source of truth — relative to `spec_dd/`)
 
+- `2. in progress/fls-test-portability-part-2/SUPERSEDED.md` — the authoritative
+  layer → slice map, and the rule that where the umbrella and a slice disagree,
+  the slice wins. Read this before any of the umbrella files below.
 - `2. in progress/fls-test-portability-part-2/idea.md` — the umbrella Part-2 idea
-  (§ "Layer 4"). See also its `SUPERSEDED.md`.
+  (§ "Layer 4").
 - `2. in progress/fls-test-portability-part-2/1. spec.md` — **§ "Layer 4"** and
   decisions **D3, D7, D8**. Pre-revision text; this slice's own `1. spec.md`
   supersedes its scope.
@@ -29,7 +32,11 @@ lives in the referenced source files below — not duplicated here.
   (T4.1–T4.4). Superseded by this slice's `2. plan.md`.
 - Research:
   - `2. in progress/fls-test-portability-part-2/research_django_system_checks.md`
-    — how Django's own `admin.check_dependencies` resolves apps without importing.
+    — app resolution without importing. **Caveat:** its framing of
+    `admin.check_dependencies` is wrong — that check uses `apps.is_installed()`.
+    The helper this slice needs is `apps.get_containing_app_config()`, whose
+    in-Django precedent is `ModelBase.__new__`. `1. spec.md` carries the
+    correction; do not reintroduce the original framing.
   - `2. in progress/fls-test-portability-part-2/research_existing_fls_conventions.md`
     — the existing `course_access`/`base`/`accounts`/`icons` check house style.
   - `2. in progress/fls-test-portability-part-2/research_conformance_tooling.md`
@@ -55,11 +62,14 @@ flat IDs (deliberate non-fix per D3).
 
 ## Dependencies between the split-out slices
 
-- **`per-app config.py settings convention` (Layer 0)** — shipped 2026-07-10.
+- **`per-app config.py settings convention` (Layer 0)** — shipped 2026-07-10
+  (`spec_dd/3. done/2026-07-10_05:19_per-app config.py settings convention`).
   This slice depends on it: `required_settings_errors` and
   `freedom_ls_course_access.E001` both come from it, and its arrival is what made
   the original E001 proposal redundant.
-- **`test_portability_2_conformance_suite` (Layer 3)** — shipped. Complementary
+- **`test_portability_2_conformance_suite` (Layer 3)** — shipped
+  (`spec_dd/3. done/2026-07-18_13:35_test_portability_2_conformance_suite`;
+  code at `freedom_ls/contrib/conformance/`). Complementary
   per D8: checks own static config-shape questions, the suite owns behavioural
   ones. Neither requires the other.
 - **`test_portability_4_upgrade_notes_and_docs` (Layers 5/6)** — should land
@@ -68,4 +78,5 @@ flat IDs (deliberate non-fix per D3).
   at these checks.
 - Assumes Part 1 (marker taxonomy, collection-safety, de-branding) is present.
 - The umbrella's `PREREQUISITE_learner-terminology-rename.md` has been applied to
-  this slice's spec and plan; no further translation is needed.
+  this slice's spec and plan; no further translation is needed
+  (`spec_dd/3. done/2026-08-22_15:42_learner-terminology-rename`).
