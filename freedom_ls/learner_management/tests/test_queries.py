@@ -8,7 +8,8 @@ latest_registration and the organisation-scoping helpers.
 from __future__ import annotations
 
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
+from typing import cast
 
 import pytest
 
@@ -16,7 +17,9 @@ from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import Course
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -24,7 +27,11 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import LearnerCourseRegistration
+from freedom_ls.learner_management.models import (
+    Cohort,
+    Learner,
+    LearnerCourseRegistration,
+)
 from freedom_ls.learner_management.queries import (
     all_cohorts_visible_to,
     can_view_cohort,
@@ -35,12 +42,16 @@ from freedom_ls.learner_management.queries import (
     organisations_accessible_to,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
-def _make_learner(user, *, is_active=True, organisation=None):
-    learner = LearnerFactory(
-        user=user, organisation=organisation or OrganisationFactory()
+def _make_learner(
+    user: User, *, is_active: bool = True, organisation: Organisation | None = None
+) -> Learner:
+    learner = cast(
+        Learner,
+        LearnerFactory(user=user, organisation=organisation or OrganisationFactory()),
     )
     if not is_active:
         learner.is_active = False
@@ -48,22 +59,36 @@ def _make_learner(user, *, is_active=True, organisation=None):
     return learner
 
 
-def _make_cohort(*, organisation=None, name=None):
-    return CohortFactory(
-        organisation=organisation or OrganisationFactory(),
-        name=name or f"Cohort {uuid.uuid4()}",
+def _make_cohort(
+    *, organisation: Organisation | None = None, name: str | None = None
+) -> Cohort:
+    return cast(
+        Cohort,
+        CohortFactory(
+            organisation=organisation or OrganisationFactory(),
+            name=name or f"Cohort {uuid.uuid4()}",
+        ),
     )
 
 
-def _make_registration(user, course, *, organisation=None, is_active=True):
+def _make_registration(
+    user: User,
+    course: Course,
+    *,
+    organisation: Organisation | None = None,
+    is_active: bool = True,
+) -> LearnerCourseRegistration:
     learner = _make_learner(user, organisation=organisation)
-    return LearnerCourseRegistrationFactory(
-        learner=learner, collection=course, is_active=is_active
+    return cast(
+        LearnerCourseRegistration,
+        LearnerCourseRegistrationFactory(
+            learner=learner, collection=course, is_active=is_active
+        ),
     )
 
 
 def _backdate(
-    registration: LearnerCourseRegistration, when
+    registration: LearnerCourseRegistration, when: datetime
 ) -> LearnerCourseRegistration:
     """Set registered_at directly, bypassing auto_now_add's save-time override."""
     LearnerCourseRegistration.objects.filter(pk=registration.pk).update(

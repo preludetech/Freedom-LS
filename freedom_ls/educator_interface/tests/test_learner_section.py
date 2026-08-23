@@ -7,19 +7,26 @@ Registered Courses column resolves through its renamed cell template.
 
 from __future__ import annotations
 
+import uuid
+from typing import cast
+
 import pytest
 
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.learner_management.models import (
-    Cohort,
-    CohortMembership,
-    Learner,
-    LearnerCourseRegistration,
+from freedom_ls.educator_interface.views import LearnerDataTable
+from freedom_ls.learner_management.factories import (
+    CohortFactory,
+    CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
+    LearnerFactory,
 )
+from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
@@ -28,19 +35,20 @@ def _site_context(mock_site_context):
     """Every test here builds site-aware objects and assigns roles."""
 
 
-# Direct-creation stopgap for Learner-based enrolment models:
-# learner_management.factories still imports the pre-rename model names and
-# is rewritten in a later batch, so its factories cannot be used here yet.
+def _make_learner(
+    user: User, *, organisation: Organisation, is_active: bool = True
+) -> Learner:
+    learner = cast(Learner, LearnerFactory(user=user, organisation=organisation))
+    if not is_active:
+        learner.is_active = False
+        learner.save()
+    return learner
 
 
-def _make_learner(user, *, organisation, is_active: bool = True) -> Learner:
-    return Learner.objects.create(
-        user=user, organisation=organisation, is_active=is_active
+def _make_cohort(*, organisation: Organisation) -> Cohort:
+    return cast(
+        Cohort, CohortFactory(organisation=organisation, name=f"Cohort {uuid.uuid4()}")
     )
-
-
-def _make_cohort(*, organisation) -> Cohort:
-    return Cohort.objects.create(organisation=organisation, name="Cohort")
 
 
 def _learners_url(organisation_slug: str, path_string: str = "learners") -> str:
@@ -131,9 +139,7 @@ def test_learners_list_renders_a_registered_course_through_the_renamed_cell_temp
     learner = _make_learner(
         UserFactory(first_name="Ada", last_name="Lovelace"), organisation=organisation
     )
-    LearnerCourseRegistration.objects.create(
-        learner=learner, collection=course, is_active=True
-    )
+    LearnerCourseRegistrationFactory(learner=learner, collection=course, is_active=True)
     educator = UserFactory(staff=True)
     assign_object_role(educator, organisation, "organisation_staff")
     client = logged_in_client(educator)
@@ -174,7 +180,7 @@ def test_cohort_only_educator_can_open_a_member_of_their_own_cohort(
     member = _make_learner(
         UserFactory(first_name="Ada", last_name="Lovelace"), organisation=organisation
     )
-    CohortMembership.objects.create(learner=member, cohort=granted_cohort)
+    CohortMembershipFactory(learner=member, cohort=granted_cohort)
     educator = UserFactory(staff=True)
     assign_object_role(educator, granted_cohort, "instructor")
     client = logged_in_client(educator)
@@ -183,3 +189,37 @@ def test_cohort_only_educator_can_open_a_member_of_their_own_cohort(
 
     assert response.status_code == 200
     assert "Ada" in response.content.decode()
+
+
+@pytest.mark.django_db
+class TestLearnerDataTableQueryCost:
+    """The prefetches in LearnerDataTable.get_queryset are what keep the
+    Cohorts and Registered Courses cells' cost from growing with row count."""
+
+    @pytest.mark.parametrize("learner_count", [1, 4])
+    def test_query_count_does_not_grow_with_learner_count(
+        self,
+        mock_site_context,
+        site_aware_request,
+        django_assert_max_num_queries,
+        learner_count,
+    ):
+        organisation = OrganisationFactory()
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, organisation, "organisation_staff")
+
+        for _ in range(learner_count):
+            learner = _make_learner(UserFactory(), organisation=organisation)
+            cohort = _make_cohort(organisation=organisation)
+            CohortMembershipFactory(learner=learner, cohort=cohort)
+            LearnerCourseRegistrationFactory(
+                learner=learner, collection=CourseFactory(), is_active=True
+            )
+
+        request = site_aware_request.get("/")
+        request.user = educator
+        request.organisation = organisation
+        request.panel_url_kwargs = {"organisation_slug": organisation.slug}
+
+        with django_assert_max_num_queries(11):
+            LearnerDataTable.render(request)

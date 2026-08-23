@@ -21,7 +21,7 @@ from freedom_ls.learner_management.factories import (
 def _setup_cohort_registration(user, course):
     """Set up user in a cohort registered for a course. Returns the registration."""
     cohort = CohortFactory(name="Test Cohort")
-    CohortMembershipFactory(user=user, cohort=cohort)
+    CohortMembershipFactory(learner__user=user, cohort=cohort)
     return CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
 

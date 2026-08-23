@@ -17,7 +17,10 @@ from freedom_ls.learner_management.factories import (
     CohortDeadlineFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
+    LearnerDeadlineFactory,
 )
+from freedom_ls.organisations.factories import OrganisationFactory
 
 
 @pytest.mark.django_db
@@ -26,7 +29,7 @@ def test_bulk_returns_course_level_deadline(mock_site_context):
     user = UserFactory()
     course: Course = CourseFactory()
     cohort = CohortFactory()
-    CohortMembershipFactory(user=user, cohort=cohort)
+    CohortMembershipFactory(learner__user=user, cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(
         cohort=cohort, collection=course
     )
@@ -50,7 +53,7 @@ def test_bulk_returns_item_level_deadlines(mock_site_context):
     user = UserFactory()
     course: Course = CourseFactory()
     cohort = CohortFactory()
-    CohortMembershipFactory(user=user, cohort=cohort)
+    CohortMembershipFactory(learner__user=user, cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(
         cohort=cohort, collection=course
     )
@@ -91,7 +94,7 @@ def test_bulk_matches_per_item_resolution(mock_site_context):
     user = UserFactory()
     course: Course = CourseFactory()
     cohort = CohortFactory()
-    CohortMembershipFactory(user=user, cohort=cohort)
+    CohortMembershipFactory(learner__user=user, cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(
         cohort=cohort, collection=course
     )
@@ -115,12 +118,50 @@ def test_bulk_matches_per_item_resolution(mock_site_context):
 
 
 @pytest.mark.django_db
+def test_bulk_resolves_one_deadline_per_learner_row(mock_site_context):
+    """A person holding two Learner rows for one course (one per organisation)
+    still resolves one deadline per registration, not a single merged answer."""
+    user = UserFactory()
+    course: Course = CourseFactory()
+
+    topic: Topic = TopicFactory(title="Two Orgs Topic")
+    course.items.create(child=topic, order=0)
+    topic_ct = ContentType.objects.get_for_model(Topic)
+
+    reg_a = LearnerCourseRegistrationFactory(
+        learner__user=user,
+        collection=course,
+        learner__organisation=OrganisationFactory(),
+    )
+    reg_b = LearnerCourseRegistrationFactory(
+        learner__user=user,
+        collection=course,
+        learner__organisation=OrganisationFactory(),
+    )
+
+    dt_a = timezone.now() + timedelta(days=5)
+    dt_b = timezone.now() + timedelta(days=10)
+    LearnerDeadlineFactory(
+        learner_course_registration=reg_a, content_item=topic, deadline=dt_a
+    )
+    LearnerDeadlineFactory(
+        learner_course_registration=reg_b, content_item=topic, deadline=dt_b
+    )
+
+    result = get_course_deadlines(user, course)
+
+    key = (topic_ct.id, topic.id)
+    deadlines = {effective.deadline for effective in result[key]}
+    assert deadlines == {dt_a, dt_b}
+
+
+@pytest.mark.django_db
 def test_bulk_empty_when_no_deadlines(mock_site_context):
     """Bulk resolution returns empty dict when there are no deadlines."""
     user = UserFactory()
     course = CourseFactory()
     cohort = CohortFactory()
-    CohortMembershipFactory(user=user, cohort=cohort)
+    CohortMembershipFactory(learner__user=user, cohort=cohort)
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
     result = get_course_deadlines(user, course)

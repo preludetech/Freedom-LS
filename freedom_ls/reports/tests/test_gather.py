@@ -74,7 +74,7 @@ def _build_cohort_with_quiz(*, learner_count: int, question_count: int) -> str:
 
     for _ in range(learner_count):
         learner = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=learner)
+        CohortMembershipFactory(cohort=cohort, learner__user=learner)
         attempt = FormProgressFactory(
             user=learner,
             form=quiz,
@@ -91,7 +91,7 @@ def _build_cohort_with_quiz(*, learner_count: int, question_count: int) -> str:
 def test_gather_returns_expected_shape_for_small_cohort(mock_site_context):
     cohort = CohortFactory()
     learner = UserFactory(first_name="Ada", last_name="Lovelace")
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
 
     course = CourseFactory(title="Astronomy")
     CohortCourseRegistrationFactory(cohort=cohort, collection=course, is_active=True)
@@ -152,7 +152,7 @@ def test_gather_returns_expected_shape_for_small_cohort(mock_site_context):
 def test_completion_percentage_ignores_stale_course_progress_field(mock_site_context):
     cohort = CohortFactory()
     learner = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     topic = TopicFactory()
@@ -170,7 +170,7 @@ def _cohort_with_two_question_quiz(*, pass_percentage: int | None = 50):
     needs to have a learner sit it."""
     cohort = CohortFactory()
     learner = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     quiz = FormFactory(
@@ -225,7 +225,7 @@ def test_an_option_chosen_on_more_than_one_sitting_is_counted_once_per_sitting(
     question read the same until you can see two of them were the same choice."""
     cohort = CohortFactory()
     learner = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     quiz = FormFactory(strategy=FormStrategy.QUIZ)
@@ -273,7 +273,7 @@ def test_a_correct_tick_inside_a_wrong_multi_select_answer_is_marked_correct(
     """
     cohort = CohortFactory()
     learner = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     quiz = FormFactory(strategy=FormStrategy.QUIZ)
@@ -376,7 +376,7 @@ def test_latest_attempt_score_used_across_three_attempts_at_different_times(
 ):
     cohort = CohortFactory()
     learner = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
@@ -416,7 +416,7 @@ def test_latest_attempt_score_used_across_three_attempts_at_different_times(
 def test_null_quiz_pass_percentage_yields_no_passed_verdict(mock_site_context):
     cohort = CohortFactory()
     learner = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=None)
@@ -440,7 +440,7 @@ def test_learner_with_no_progress_rows_is_zero_percent_with_no_activity(
 ):
     cohort = CohortFactory()
     learner = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     topic = TopicFactory()
@@ -466,7 +466,7 @@ def test_learner_who_opened_an_item_without_completing_it_has_nothing_to_report(
     """
     cohort = CohortFactory()
     learner = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     topic = TopicFactory()
@@ -486,7 +486,7 @@ def test_learner_with_activity_on_one_course_still_appears_in_other_course(
 ):
     cohort = CohortFactory()
     learner = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
 
     active_course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=active_course)
@@ -512,7 +512,7 @@ def test_inactive_registration_produces_course_section_marked_inactive(
 ):
     cohort = CohortFactory()
     learner = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course, is_active=False)
     topic = TopicFactory()
@@ -527,7 +527,7 @@ def test_inactive_registration_produces_course_section_marked_inactive(
 def test_correct_none_option_selected_counts_as_distractor(mock_site_context):
     cohort = CohortFactory()
     learner = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     quiz = FormFactory(strategy=FormStrategy.QUIZ)
@@ -584,7 +584,7 @@ def _build_quiz_with_wrong_answers(
 
     for i in range(respondent_count):
         learner = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=learner)
+        CohortMembershipFactory(cohort=cohort, learner__user=learner)
         attempt = FormProgressFactory(
             user=learner,
             form=quiz,
@@ -630,7 +630,7 @@ def test_gathering_one_site_excludes_data_from_another_site(mock_site_context):
 
     cohort_a = CohortFactory(name="Isolation Cohort A")
     learner_a = UserFactory(first_name="Site", last_name="Alpha")
-    CohortMembershipFactory(cohort=cohort_a, user=learner_a)
+    CohortMembershipFactory(cohort=cohort_a, learner__user=learner_a)
     course_a = CourseFactory(title="Site A Course")
     CohortCourseRegistrationFactory(cohort=cohort_a, collection=course_a)
     topic_a = TopicFactory(title="Site A Topic")
@@ -646,7 +646,7 @@ def test_gathering_one_site_excludes_data_from_another_site(mock_site_context):
         organisation=OrganisationFactory(site=other_site),
     )
     learner_b = UserFactory(first_name="Site", last_name="Beta", site=other_site)
-    CohortMembershipFactory(cohort=cohort_b, user=learner_b, site=other_site)
+    CohortMembershipFactory(cohort=cohort_b, learner__user=learner_b, site=other_site)
     course_b = CourseFactory(title="Site B Course", site=other_site)
     CohortCourseRegistrationFactory(
         cohort=cohort_b, collection=course_b, site=other_site
@@ -668,7 +668,7 @@ def test_gathering_one_site_excludes_data_from_another_site(mock_site_context):
 def _build_cohort_with_quiz_titles(titles: list[str]) -> str:
     """One cohort, one learner, one course carrying a quiz per title, in order."""
     cohort = CohortFactory()
-    CohortMembershipFactory(cohort=cohort, user=UserFactory())
+    CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     for order, title in enumerate(titles):
@@ -710,7 +710,7 @@ class TestSummaryTableSplitting:
 
     def test_course_with_no_quizzes_still_yields_one_table(self, mock_site_context):
         cohort = CohortFactory()
-        CohortMembershipFactory(cohort=cohort, user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         _attach(course, TopicFactory())
@@ -749,7 +749,8 @@ class TestLearnerOrdering:
         _attach(course, TopicFactory())
         for surname in surnames:
             CohortMembershipFactory(
-                cohort=cohort, user=UserFactory(first_name="Sam", last_name=surname)
+                cohort=cohort,
+                learner__user=UserFactory(first_name="Sam", last_name=surname),
             )
         return str(cohort.id)
 
@@ -793,7 +794,7 @@ class TestLearnerOrdering:
 class TestRequestedByName:
     def test_requested_by_name_reaches_the_report_data(self, mock_site_context):
         cohort = CohortFactory()
-        CohortMembershipFactory(cohort=cohort, user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
 
         data = gather_cohort_report_data(
             str(cohort.id), mock_site_context.pk, requested_by_name="Ada Lovelace"
@@ -815,7 +816,7 @@ class TestWrongAnswersCarryQuizTitles:
     ):
         cohort = CohortFactory()
         learner = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=learner)
+        CohortMembershipFactory(cohort=cohort, learner__user=learner)
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
@@ -852,7 +853,7 @@ class TestWrongAnswersCarryQuizTitles:
 
     def test_learner_without_wrong_answers_has_an_empty_list(self, mock_site_context):
         cohort = CohortFactory()
-        CohortMembershipFactory(cohort=cohort, user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         _attach(course, TopicFactory())
@@ -880,7 +881,7 @@ class TestQuizAttempts:
     ):
         cohort = CohortFactory()
         learner = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=learner)
+        CohortMembershipFactory(cohort=cohort, learner__user=learner)
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
@@ -922,7 +923,7 @@ class TestQuizAttempts:
     def test_an_incomplete_sitting_is_not_an_attempt(self, mock_site_context):
         cohort = CohortFactory()
         learner = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=learner)
+        CohortMembershipFactory(cohort=cohort, learner__user=learner)
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
@@ -945,7 +946,7 @@ class TestQuizAttempts:
 class TestFlagSeverity:
     def test_rules_carry_their_declared_severity(self, mock_site_context):
         cohort = CohortFactory()
-        CohortMembershipFactory(cohort=cohort, user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         _attach(course, TopicFactory())
@@ -998,7 +999,7 @@ def cohort_with_a_quiz_and_a_survey(mock_site_context):
     """
     cohort = CohortFactory()
     learner = UserFactory()
-    CohortMembershipFactory(cohort=cohort, user=learner)
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
     course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
@@ -1105,7 +1106,7 @@ class TestQuizWithNoQuestions:
     ):
         cohort = CohortFactory()
         learner = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=learner)
+        CohortMembershipFactory(cohort=cohort, learner__user=learner)
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)

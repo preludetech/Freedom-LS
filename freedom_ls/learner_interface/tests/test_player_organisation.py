@@ -17,7 +17,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 
 
@@ -47,8 +47,8 @@ def player_response(mock_site_context, course_with_topic, logged_in_client):
     def _get(organisation):
         course = course_with_topic()
         user = UserFactory()
-        UserCourseRegistrationFactory(
-            user=user, collection=course, organisation=organisation
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, learner__organisation=organisation
         )
         response = logged_in_client(user).get(
             reverse(

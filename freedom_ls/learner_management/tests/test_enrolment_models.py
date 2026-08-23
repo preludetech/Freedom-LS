@@ -5,9 +5,22 @@ from __future__ import annotations
 import pytest
 
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 
-from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
-from freedom_ls.learner_management.models import CohortMembership
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.learner_management.factories import (
+    CohortFactory,
+    LearnerCourseRegistrationFactory,
+    LearnerFactory,
+)
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortMembership,
+    LearnerCourseRegistration,
+)
+from freedom_ls.learner_management.utils import is_registered_for_course
+from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 
 
@@ -36,3 +49,92 @@ class TestCohortMembershipClean:
         membership = CohortMembership(learner=learner, cohort=cohort)
 
         membership.clean()
+
+
+@pytest.mark.django_db
+class TestCohortNameUniqueness:
+    """Cohort names are unique per organisation, not per site -- a name that
+    used to clash across the whole site is now allowed once per organisation."""
+
+    def test_two_cohorts_with_one_name_in_one_organisation_are_rejected(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        CohortFactory(organisation=organisation, name="Year 10 Science")
+
+        with pytest.raises(IntegrityError):
+            CohortFactory(organisation=organisation, name="Year 10 Science")
+
+    def test_the_same_cohort_name_in_two_organisations_is_permitted(
+        self, mock_site_context
+    ):
+        CohortFactory(organisation=OrganisationFactory(), name="Year 10 Science")
+        CohortFactory(organisation=OrganisationFactory(), name="Year 10 Science")
+
+        assert Cohort.objects.filter(name="Year 10 Science").count() == 2
+
+
+@pytest.mark.django_db
+class TestLearnerCourseRegistrationUniqueness:
+    """One learner per organisation, one registration each -- the same user
+    can hold a registration in two organisations because each organisation
+    gives them a distinct Learner row."""
+
+    def test_two_registrations_for_one_learner_and_course_are_rejected(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        learner = LearnerFactory()
+        LearnerCourseRegistrationFactory(learner=learner, collection=course)
+
+        with pytest.raises(IntegrityError):
+            LearnerCourseRegistrationFactory(learner=learner, collection=course)
+
+    def test_one_user_may_register_for_one_course_through_two_organisations(
+        self, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        learner_a = LearnerFactory(user=user, organisation=OrganisationFactory())
+        learner_b = LearnerFactory(user=user, organisation=OrganisationFactory())
+        LearnerCourseRegistrationFactory(learner=learner_a, collection=course)
+        LearnerCourseRegistrationFactory(learner=learner_b, collection=course)
+
+        assert (
+            LearnerCourseRegistration.objects.filter(
+                learner__user=user, collection=course
+            ).count()
+            == 2
+        )
+
+
+@pytest.mark.django_db
+class TestDeactivatingALearnerPreservesRecords:
+    """Removal is soft and never cascades: every enrolment and progress row a
+    removed learner held stays exactly as it was. Only access is suspended."""
+
+    def test_deactivating_a_learner_leaves_registrations_memberships_and_progress_untouched(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation)
+        cohort = CohortFactory(organisation=organisation)
+        membership = CohortMembership.objects.create(learner=learner, cohort=cohort)
+        registration = LearnerCourseRegistrationFactory(
+            learner=learner, collection=course
+        )
+        progress = TopicProgressFactory(user=learner.user)
+
+        assert is_registered_for_course(learner.user, course) is True
+
+        learner.is_active = False
+        learner.save()
+
+        registration.refresh_from_db()
+        membership.refresh_from_db()
+        progress.refresh_from_db()
+        assert registration.is_active is True
+        assert CohortMembership.objects.filter(pk=membership.pk).exists()
+        assert progress.pk is not None
+        assert is_registered_for_course(learner.user, course) is False

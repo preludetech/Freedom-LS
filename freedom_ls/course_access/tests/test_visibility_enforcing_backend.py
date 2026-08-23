@@ -26,7 +26,7 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
-    UserCourseRegistrationFactory,
+    LearnerCourseRegistrationFactory,
 )
 
 BACKEND_PATHS = [
@@ -129,7 +129,9 @@ class TestVisibilityEnforcingBackendGetAccess:
         """A registered user on a hidden course gets content access (delegated)."""
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
         user = UserFactory()
-        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, is_active=True
+        )
         decision = _decision_for(backend_path, user=user, course=course)
 
         assert decision.can_access_content is True
@@ -144,7 +146,9 @@ class TestVisibilityEnforcingBackendGetAccess:
         """
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
         user = UserFactory()
-        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, is_active=True
+        )
         decision = _decision_for(backend_path, user=user, course=course)
 
         assert decision.can_access_content is True
@@ -197,7 +201,9 @@ class TestVisibilityEnforcingBackendFilterVisible:
     ):
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
         user = UserFactory()
-        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, is_active=True
+        )
         result = _filter_visible_for(
             backend_path, user=user, courses=Course.objects.all()
         )
@@ -231,7 +237,7 @@ class TestVisibilityEnforcingBackendFilterVisible:
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
         user = UserFactory()
         cohort = CohortFactory()
-        CohortMembershipFactory(user=user, cohort=cohort)
+        CohortMembershipFactory(learner__user=user, cohort=cohort)
         CohortCourseRegistrationFactory(
             cohort=cohort, collection=course, is_active=True
         )

@@ -19,7 +19,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
-from freedom_ls.learner_management.models import UserCourseRegistration
+from freedom_ls.learner_management.models import LearnerCourseRegistration
 
 PHONE_FORM_PATH = "freedom_ls.accounts.tests._completion_view_fixtures.PhoneNumberForm"
 
@@ -107,7 +107,9 @@ def test_deferred_login_free_course_enrolls_and_redirects(
     # The view registers the user and redirects to course_home which then
     # redirects into the first item — we only need to verify the first hop.
     assert response.status_code == 302
-    assert UserCourseRegistration.objects.filter(user=user, collection=course).exists()
+    assert LearnerCourseRegistration.objects.filter(
+        learner__user=user, collection=course
+    ).exists()
 
 
 @pytest.mark.django_db

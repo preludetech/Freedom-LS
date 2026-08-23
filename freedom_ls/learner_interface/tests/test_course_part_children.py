@@ -21,7 +21,7 @@ from freedom_ls.learner_interface.utils import (
     get_course_index,
 )
 from freedom_ls.learner_management.factories import (
-    UserCourseRegistrationFactory,
+    LearnerCourseRegistrationFactory,
 )
 from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
@@ -47,7 +47,7 @@ def test_course_part_children_have_status_and_url(mock_site_context):
 
     # Create a user and register them for the course
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
 
     # Get the course index
     children = get_course_index(user=user, course=course, can_access_content=True)
@@ -89,7 +89,7 @@ def test_course_part_status_based_on_children(mock_site_context):
 
     # Create a user and register them
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
 
     # Get the course index
     children = get_course_index(user=user, course=course, can_access_content=True)
@@ -119,7 +119,7 @@ def test_course_part_row_url_resolves_to_first_viewable_child_index(mock_site_co
     p2.items.create(child=p2a, order=0)
 
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     # Complete all viewable items so every item has a non-BLOCKED status (and thus a URL).
     now = timezone.now()
     for topic in (p1a, p1b, p2a):
@@ -167,7 +167,7 @@ def test_consecutive_viewable_items_have_dense_indices(mock_site_context):
     p2.items.create(child=p2a, order=0)
 
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     # Complete all viewable items so every viewable row has a URL we can compare.
     now = timezone.now()
     for topic in (p1a, p1b, p2a, direct):
@@ -205,7 +205,7 @@ def test_course_part_url_resumes_at_in_progress_child(mock_site_context):
     part.items.create(child=third, order=2)
 
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     # First item completed; second item started but not complete.
     TopicProgressFactory(user=user, topic=first, complete_time=timezone.now())
     TopicProgressFactory(user=user, topic=second, complete_time=None)
@@ -235,7 +235,7 @@ def test_course_part_url_skips_completed_first_child_to_first_ready(mock_site_co
     part.items.create(child=second, order=1)
 
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     # Complete first item; second item has no progress (becomes READY).
     TopicProgressFactory(user=user, topic=first, complete_time=timezone.now())
 
@@ -259,7 +259,7 @@ def test_empty_course_part_row_has_no_url(mock_site_context):
     course.items.create(child=empty_part, order=0)
 
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
 
     children = get_course_index(user=user, course=course, can_access_content=True)
 
@@ -290,7 +290,7 @@ def test_course_part_holding_a_failed_quiz_reads_as_needing_a_retry(mock_site_co
     part.items.create(child=after, order=2)
 
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     TopicProgressFactory(user=user, topic=first, complete_time=timezone.now())
     FormProgressFactory(
         user=user,

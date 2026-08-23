@@ -1,3 +1,5 @@
+from typing import cast
+
 from unfold.admin import TabularInline
 
 from django import forms
@@ -60,7 +62,10 @@ class CohortMembershipInline(TabularInline):
                 kwargs["queryset"] = Learner.objects.filter(
                     organisation__cohort__id=cohort_id, is_active=True
                 )
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+        return cast(
+            "forms.ModelChoiceField | None",
+            super().formfield_for_foreignkey(db_field, request, **kwargs),
+        )
 
 
 class CohortCourseRegistrationInline(TabularInline):

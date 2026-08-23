@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
 
 # transaction=True so that on_commit hooks for webhook event delivery fire under test
@@ -13,15 +13,15 @@ class TestCourseRegisteredWebhookEvent:
     def test_creating_registration_fires_webhook_event(
         self, mock_site_context: object
     ) -> None:
-        """Creating a new UserCourseRegistration fires course.registered event."""
+        """Creating a new LearnerCourseRegistration fires course.registered event."""
         with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
-            registration = UserCourseRegistrationFactory()
+            registration = LearnerCourseRegistrationFactory()
 
         mock_fire.assert_called_once_with(
             "course.registered",
             {
-                "user_id": registration.user_id,
-                "user_email": registration.user.email,
+                "user_id": registration.learner.user_id,
+                "user_email": registration.learner.user.email,
                 "course_id": str(registration.collection_id),
                 "course_title": registration.collection.title,
                 "registered_at": registration.registered_at.isoformat(),
@@ -31,8 +31,8 @@ class TestCourseRegisteredWebhookEvent:
     def test_saving_existing_registration_does_not_fire_webhook(
         self, mock_site_context: object
     ) -> None:
-        """Saving an existing UserCourseRegistration does not fire the event again."""
-        registration = UserCourseRegistrationFactory()
+        """Saving an existing LearnerCourseRegistration does not fire the event again."""
+        registration = LearnerCourseRegistrationFactory()
 
         with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
             registration.is_active = False

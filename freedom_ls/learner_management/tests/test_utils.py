@@ -9,13 +9,16 @@ exercised through both to keep them from drifting apart.
 from __future__ import annotations
 
 import uuid
+from typing import cast
 
 import pytest
 
 from django.contrib.auth.models import AnonymousUser
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import Course
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -23,14 +26,23 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.models import (
+    Cohort,
+    Learner,
+    LearnerCourseRegistration,
+)
 from freedom_ls.learner_management.queries import is_registered_for_course_expression
 from freedom_ls.learner_management.utils import is_registered_for_course
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 
 
-def _make_learner(user, *, is_active=True, organisation=None):
-    learner = LearnerFactory(
-        user=user, organisation=organisation or OrganisationFactory()
+def _make_learner(
+    user: User, *, is_active: bool = True, organisation: Organisation | None = None
+) -> Learner:
+    learner = cast(
+        Learner,
+        LearnerFactory(user=user, organisation=organisation or OrganisationFactory()),
     )
     if not is_active:
         learner.is_active = False
@@ -38,18 +50,30 @@ def _make_learner(user, *, is_active=True, organisation=None):
     return learner
 
 
-def _register_directly(learner, course, *, is_active=True):
-    return LearnerCourseRegistrationFactory(
-        learner=learner, collection=course, is_active=is_active
+def _register_directly(
+    learner: Learner, course: Course, *, is_active: bool = True
+) -> LearnerCourseRegistration:
+    return cast(
+        LearnerCourseRegistration,
+        LearnerCourseRegistrationFactory(
+            learner=learner, collection=course, is_active=is_active
+        ),
     )
 
 
-def _register_via_cohort(learner, course, *, cohort=None, is_active=True):
+def _register_via_cohort(
+    learner: Learner,
+    course: Course,
+    *,
+    cohort: Cohort | None = None,
+    is_active: bool = True,
+) -> Cohort:
     """Put ``learner`` in ``cohort`` (a new one by default) and register that
     cohort for ``course``. Returns the cohort so a caller can add a second
     member to it."""
-    cohort = cohort or CohortFactory(
-        organisation=learner.organisation, name=f"Cohort {uuid.uuid4()}"
+    cohort = cohort or cast(
+        Cohort,
+        CohortFactory(organisation=learner.organisation, name=f"Cohort {uuid.uuid4()}"),
     )
     CohortMembershipFactory(learner=learner, cohort=cohort)
     CohortCourseRegistrationFactory(
@@ -58,10 +82,8 @@ def _register_via_cohort(learner, course, *, cohort=None, is_active=True):
     return cohort
 
 
-def _expression_result(user, course) -> bool:
+def _expression_result(user: User, course: Course) -> bool:
     """Evaluate is_registered_for_course_expression for one course."""
-    from freedom_ls.content_engine.models import Course
-
     return bool(
         Course.objects.filter(pk=course.pk)
         .annotate(_registered=is_registered_for_course_expression(user))
@@ -70,7 +92,7 @@ def _expression_result(user, course) -> bool:
     )
 
 
-def _assert_both_functions_agree(user, course, *, expected: bool) -> None:
+def _assert_both_functions_agree(user: User, course: Course, *, expected: bool) -> None:
     assert is_registered_for_course(user, course) is expected
     assert _expression_result(user, course) is expected
 

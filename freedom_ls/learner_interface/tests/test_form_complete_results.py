@@ -15,7 +15,7 @@ from freedom_ls.content_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.content_engine.models import FormStrategy
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
@@ -54,7 +54,9 @@ def _checkbox_quiz(**form_kwargs):
 
 def _registered_learner(course):
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+    LearnerCourseRegistrationFactory(
+        learner__user=user, collection=course, is_active=True
+    )
     return user
 
 

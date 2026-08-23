@@ -33,7 +33,7 @@ from freedom_ls.learner_progress.models import TopicProgress
 def _make_user(email: str, cohort: Cohort) -> User:
     """Create a user with a cohort membership."""
     user: User = UserFactory(email=email)
-    CohortMembershipFactory(user=user, cohort=cohort)
+    CohortMembershipFactory(learner__user=user, cohort=cohort)
     return user
 
 

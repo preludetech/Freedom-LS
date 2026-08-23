@@ -23,15 +23,11 @@ from django.http import HttpRequest
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.views import ListViewConfig, interface_config
-from freedom_ls.learner_management.factories import (
-    CohortFactory,
-    CohortMembershipFactory,
-)
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
+from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -48,11 +44,8 @@ def _seed_instance(config: type[ListViewConfig], organisation: Organisation) -> 
     """
     if config.model is Cohort:
         return cast(Model, CohortFactory(organisation=organisation))
-    if config.model is User:
-        cohort = CohortFactory(organisation=organisation)
-        user = cast(Model, UserFactory())
-        CohortMembershipFactory(cohort=cohort, user=user)
-        return user
+    if config.model is Learner:
+        return cast(Model, LearnerFactory(organisation=organisation))
     if config.model is Course:
         return cast(Model, CourseFactory())
     raise NotImplementedError(

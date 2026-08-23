@@ -16,6 +16,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
+from freedom_ls.learner_management.utils import is_registered_for_course
 from freedom_ls.organisations.utils import get_default_organisation
 
 
@@ -81,8 +82,10 @@ class TestInitiateCourseAccessSelfRegistration:
             "learner_interface:initiate_course_access",
             kwargs={"course_slug": course.slug},
         )
+        assert is_registered_for_course(user, course) is False
 
         client.post(url)
 
         learner = Learner.objects.get(user=user, organisation=default_organisation)
         assert learner.is_active is True
+        assert is_registered_for_course(user, course) is True

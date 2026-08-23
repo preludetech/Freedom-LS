@@ -15,7 +15,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_interface.utils import CourseListingStatus
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 
 # --- access + base annotations ---
@@ -34,7 +34,7 @@ def test_all_courses_started_course_has_progress_percentage(
 ):
     """Started courses in the all_courses view should have progress_percentage for progress bars."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
@@ -90,7 +90,7 @@ def test_all_courses_registered_zero_percent_has_registered_status(
 ):
     """A registered-but-not-started course has listing_status=REGISTERED and 0% progress."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
@@ -108,7 +108,7 @@ def test_all_courses_in_progress_has_in_progress_status(
 ):
     """A started course has listing_status=IN_PROGRESS and progress_percentage > 0."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
     CourseProgressFactory(
         user=user, course=courses[0], progress_percentage=40, completed_time=None
     )
@@ -129,7 +129,7 @@ def test_all_courses_complete_has_complete_status(
 ):
     """A completed course has listing_status=COMPLETE."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
     CourseProgressFactory(
         user=user,
         course=courses[0],

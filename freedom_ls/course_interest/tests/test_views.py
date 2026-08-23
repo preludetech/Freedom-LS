@@ -14,7 +14,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_interest.models import CourseInterest
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
 # ---------------------------------------------------------------------------
 # express_interest view
@@ -125,7 +125,9 @@ class TestExpressInterestOnHiddenCourse:
         """A registered learner on a hidden (non-coming-soon) course gets the 422 no-op."""
         user = UserFactory()
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
-        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, is_active=True
+        )
         client.force_login(user)
 
         url = reverse(
@@ -217,7 +219,9 @@ class TestRemoveInterestOnHiddenCourse:
         """A registered learner on a hidden course can still remove interest (200)."""
         user = UserFactory()
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
-        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, is_active=True
+        )
         client.force_login(user)
 
         url = reverse(

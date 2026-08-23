@@ -14,7 +14,7 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import Course, CoursePart
 from freedom_ls.learner_management.factories import (
-    UserCourseRegistrationFactory,
+    LearnerCourseRegistrationFactory,
 )
 from freedom_ls.learner_progress.models import TopicProgress
 
@@ -93,7 +93,7 @@ def authenticated_client_for(mock_site_context):
 
     def _make(course: Course) -> Client:
         user = UserFactory()
-        UserCourseRegistrationFactory(user=user, collection=course)
+        LearnerCourseRegistrationFactory(learner__user=user, collection=course)
         for item in course.viewable_items():
             TopicProgress.objects.create(
                 user=user, topic=item, complete_time=timezone.now()

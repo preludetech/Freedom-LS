@@ -84,6 +84,7 @@ class TestCohortMembershipInlineLearnerField:
         )
 
         assert field is not None
+        assert field.queryset is not None
         queryset = field.queryset
         assert own_learner in queryset
         assert other_learner not in queryset
@@ -106,4 +107,5 @@ class TestCohortMembershipInlineLearnerField:
         )
 
         assert field is not None
+        assert field.queryset is not None
         assert learner in field.queryset

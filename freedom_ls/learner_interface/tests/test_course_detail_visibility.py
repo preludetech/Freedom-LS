@@ -18,7 +18,10 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_interest.factories import CourseInterestFactory
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import (
+    LearnerCourseRegistrationFactory,
+    LearnerFactory,
+)
 from freedom_ls.organisations.factories import OrganisationFactory
 
 
@@ -46,12 +49,32 @@ def test_hidden_course_registered_user_gets_200(
 ):
     course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+    LearnerCourseRegistrationFactory(
+        learner__user=user, collection=course, is_active=True
+    )
     client = logged_in_client(user)
 
     response = client.get(_detail_url(course))
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_hidden_course_removed_learner_gets_404(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    """A removed learner's active registration grants nothing: the hidden
+    course 404s again, exactly as it would for an unregistered user."""
+    course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
+    learner = LearnerFactory()
+    LearnerCourseRegistrationFactory(learner=learner, collection=course, is_active=True)
+    learner.is_active = False
+    learner.save()
+    client = logged_in_client(learner.user)
+
+    response = client.get(_detail_url(course))
+
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db
@@ -62,17 +85,17 @@ def test_hidden_course_registered_through_two_organisations_gets_200(
     organisation. The detail page must still render, not 500."""
     course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
     user = UserFactory()
-    UserCourseRegistrationFactory(
-        user=user,
+    LearnerCourseRegistrationFactory(
+        learner__user=user,
         collection=course,
         is_active=True,
-        organisation=OrganisationFactory(),
+        learner__organisation=OrganisationFactory(),
     )
-    UserCourseRegistrationFactory(
-        user=user,
+    LearnerCourseRegistrationFactory(
+        learner__user=user,
         collection=course,
         is_active=True,
-        organisation=OrganisationFactory(),
+        learner__organisation=OrganisationFactory(),
     )
     client = logged_in_client(user)
 
@@ -146,7 +169,9 @@ def test_coming_soon_registered_user_gets_generic_cta_not_express_interest(
         visibility=CourseVisibility.COMING_SOON, slug="coming-soon-course"
     )
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+    LearnerCourseRegistrationFactory(
+        learner__user=user, collection=course, is_active=True
+    )
     client = logged_in_client(user)
 
     response = client.get(_detail_url(course))

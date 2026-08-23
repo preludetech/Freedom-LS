@@ -4,38 +4,40 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import TopicFactory
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerFactory,
     UserCohortDeadlineOverrideFactory,
 )
-from freedom_ls.learner_management.models import UserCohortDeadlineOverride
+from freedom_ls.learner_management.models import (
+    CohortMembership,
+    UserCohortDeadlineOverride,
+)
 
 
 @pytest.mark.django_db
 def test_create_override_with_content_item(mock_site_context):
     """Override can be created for a user in the cohort with a content item."""
     topic = TopicFactory()
-    user = UserFactory()
     cohort = CohortFactory()
-    CohortMembershipFactory(user=user, cohort=cohort)
+    membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
     deadline_dt = timezone.now() + timezone.timedelta(days=7)
 
     override: UserCohortDeadlineOverride = UserCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
-        user=user,
+        learner=membership.learner,
         content_item=topic,
         deadline=deadline_dt,
         is_hard_deadline=True,
     )
 
     assert override.cohort_course_registration == cohort_course_reg
-    assert override.user == user
+    assert override.learner == membership.learner
     assert override.content_item == topic
     assert override.is_hard_deadline is True
 
@@ -43,14 +45,13 @@ def test_create_override_with_content_item(mock_site_context):
 @pytest.mark.django_db
 def test_create_override_for_whole_course(mock_site_context):
     """Override with null content_item applies to the whole course."""
-    user = UserFactory()
     cohort = CohortFactory()
-    CohortMembershipFactory(user=user, cohort=cohort)
+    membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
     override: UserCohortDeadlineOverride = UserCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
-        user=user,
+        learner=membership.learner,
     )
 
     assert override.content_item is None
@@ -58,16 +59,15 @@ def test_create_override_for_whole_course(mock_site_context):
 
 @pytest.mark.django_db
 def test_str_with_content_item(mock_site_context):
-    """__str__ includes user, cohort, and content item."""
+    """__str__ includes learner, cohort, and content item."""
     topic = TopicFactory(title="Test Topic")
     cohort = CohortFactory(name="Test Cohort")
-    user = UserFactory()
-    CohortMembershipFactory(user=user, cohort=cohort)
+    membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
     override = UserCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
-        user=user,
+        learner=membership.learner,
         content_item=topic,
     )
 
@@ -80,13 +80,12 @@ def test_str_with_content_item(mock_site_context):
 def test_str_without_content_item(mock_site_context):
     """__str__ shows 'Whole course' when content_item is null."""
     cohort = CohortFactory(name="Test Cohort")
-    user = UserFactory()
-    CohortMembershipFactory(user=user, cohort=cohort)
+    membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
     override = UserCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
-        user=user,
+        learner=membership.learner,
     )
 
     assert "Whole course" in str(override)
@@ -94,16 +93,15 @@ def test_str_without_content_item(mock_site_context):
 
 @pytest.mark.django_db
 def test_unique_constraint_prevents_duplicate_item_override(mock_site_context):
-    """Cannot create two overrides for the same user + content item."""
+    """Cannot create two overrides for the same learner + content item."""
     topic = TopicFactory()
-    user = UserFactory()
     cohort = CohortFactory()
-    CohortMembershipFactory(user=user, cohort=cohort)
+    membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
     UserCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
-        user=user,
+        learner=membership.learner,
         content_item=topic,
         deadline=timezone.now() + timezone.timedelta(days=7),
     )
@@ -111,7 +109,7 @@ def test_unique_constraint_prevents_duplicate_item_override(mock_site_context):
     with pytest.raises(IntegrityError):
         UserCohortDeadlineOverrideFactory(
             cohort_course_registration=cohort_course_reg,
-            user=user,
+            learner=membership.learner,
             content_item=topic,
             deadline=timezone.now() + timezone.timedelta(days=14),
         )
@@ -120,19 +118,18 @@ def test_unique_constraint_prevents_duplicate_item_override(mock_site_context):
 @pytest.mark.django_db
 def test_clean_prevents_duplicate_course_level_override(mock_site_context):
     """clean() raises ValidationError for duplicate course-level overrides."""
-    user = UserFactory()
     cohort = CohortFactory()
-    CohortMembershipFactory(user=user, cohort=cohort)
+    membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
     UserCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
-        user=user,
+        learner=membership.learner,
     )
 
     duplicate = UserCohortDeadlineOverride(
         cohort_course_registration=cohort_course_reg,
-        user=user,
+        learner=membership.learner,
         deadline=timezone.now() + timezone.timedelta(days=14),
     )
 
@@ -142,14 +139,14 @@ def test_clean_prevents_duplicate_course_level_override(mock_site_context):
 
 @pytest.mark.django_db
 def test_clean_validates_user_in_cohort(mock_site_context):
-    """clean() raises ValidationError if user is not a member of the cohort."""
-    user = UserFactory()
+    """clean() raises ValidationError if the learner is not a member of the cohort."""
     cohort_course_reg = CohortCourseRegistrationFactory()
+    learner = LearnerFactory(organisation=cohort_course_reg.cohort.organisation)
 
-    # user is NOT in the cohort (no membership created)
+    # learner is NOT in the cohort (no membership created)
     override = UserCohortDeadlineOverride(
         cohort_course_registration=cohort_course_reg,
-        user=user,
+        learner=learner,
         deadline=timezone.now() + timezone.timedelta(days=7),
     )
 

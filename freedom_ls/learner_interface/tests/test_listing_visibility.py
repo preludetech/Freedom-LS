@@ -24,8 +24,9 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.learner_management.factories import (
+    LearnerCourseRegistrationFactory,
+    LearnerFactory,
     RecommendedCourseFactory,
-    UserCourseRegistrationFactory,
 )
 
 # --- all_courses ---
@@ -89,6 +90,26 @@ def test_all_courses_hidden_course_absent_for_unregistered(
 
 
 @pytest.mark.django_db
+def test_all_courses_hidden_course_absent_for_removed_learner(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    """A removed learner's active registration grants nothing, so filter_visible
+    must drop the hidden course exactly as it would for an unregistered user."""
+    course = course_with_topic(
+        visibility=CourseVisibility.HIDDEN, slug="hid", title="Hidden Course"
+    )
+    learner = LearnerFactory()
+    LearnerCourseRegistrationFactory(learner=learner, collection=course, is_active=True)
+    learner.is_active = False
+    learner.save()
+    client = logged_in_client(learner.user)
+
+    response = client.get(reverse("learner_interface:courses"))
+
+    assert "Hidden Course" not in response.content.decode()
+
+
+@pytest.mark.django_db
 def test_all_courses_coming_soon_registered_keeps_registered_status(
     mock_site_context, course_with_topic, logged_in_client
 ):
@@ -98,7 +119,9 @@ def test_all_courses_coming_soon_registered_keeps_registered_status(
         visibility=CourseVisibility.COMING_SOON, slug="cs", title="Coming Soon Course"
     )
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+    LearnerCourseRegistrationFactory(
+        learner__user=user, collection=course, is_active=True
+    )
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
@@ -209,7 +232,9 @@ def test_dashboard_hidden_recommended_present_for_registered(
     )
     user = UserFactory()
     RecommendedCourseFactory(user=user, collection=course)
-    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+    LearnerCourseRegistrationFactory(
+        learner__user=user, collection=course, is_active=True
+    )
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -239,7 +264,9 @@ def test_dashboard_hidden_present_for_registered_user(
         visibility=CourseVisibility.HIDDEN, slug="hid", title="Hidden Course"
     )
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+    LearnerCourseRegistrationFactory(
+        learner__user=user, collection=course, is_active=True
+    )
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))

@@ -17,8 +17,9 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.learner_management.factories import (
+    LearnerCourseRegistrationFactory,
+    LearnerFactory,
     RecommendedCourseFactory,
-    UserCourseRegistrationFactory,
 )
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -42,7 +43,7 @@ def test_dashboard_authenticated_returns_200_with_user_label(
 def test_dashboard_current_courses(mock_site_context, courses, logged_in_client):
     """Registered non-completed courses appear under registered_courses."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -60,11 +61,15 @@ def test_dashboard_dedupes_a_course_registered_through_two_organisations(
     """A learner can hold two registrations for one course, one per
     organisation. The dashboard still lists that course exactly once."""
     user = UserFactory()
-    UserCourseRegistrationFactory(
-        user=user, collection=courses[0], organisation=OrganisationFactory()
+    LearnerCourseRegistrationFactory(
+        learner__user=user,
+        collection=courses[0],
+        learner__organisation=OrganisationFactory(),
     )
-    UserCourseRegistrationFactory(
-        user=user, collection=courses[0], organisation=OrganisationFactory()
+    LearnerCourseRegistrationFactory(
+        learner__user=user,
+        collection=courses[0],
+        learner__organisation=OrganisationFactory(),
     )
     client = logged_in_client(user)
 
@@ -82,7 +87,7 @@ def test_dashboard_current_courses_have_progress_percentage(
 ):
     """In-progress courses show progress_percentage attribute for progress bars."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -95,7 +100,7 @@ def test_dashboard_current_courses_have_progress_percentage(
 def test_dashboard_completed_courses(mock_site_context, courses, logged_in_client):
     """Completed courses surface in completed_courses, not registered_courses."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
     CourseProgressFactory(user=user, course=courses[0], completed_time=timezone.now())
     client = logged_in_client(user)
 
@@ -104,6 +109,26 @@ def test_dashboard_completed_courses(mock_site_context, courses, logged_in_clien
     assert courses[0] in response.context["completed_courses"]
     assert courses[0] not in list(response.context["registered_courses"])
     assert courses[0].title in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_dashboard_removed_learner_lists_course_in_neither_section(
+    mock_site_context, courses, logged_in_client
+):
+    """A removed learner's active registration grants nothing, so the course
+    must not surface as either current or completed."""
+    user = UserFactory()
+    learner = LearnerFactory(user=user)
+    LearnerCourseRegistrationFactory(learner=learner, collection=courses[0])
+    learner.is_active = False
+    learner.save()
+    client = logged_in_client(user)
+
+    response = client.get(reverse("learner_interface:dashboard"))
+
+    assert response.status_code == 200
+    assert courses[0] not in list(response.context["registered_courses"])
+    assert courses[0] not in list(response.context["completed_courses"])
 
 
 @pytest.mark.django_db
@@ -127,8 +152,8 @@ def test_dashboard_annotates_accent_on_every_course(
 ):
     """Every current/completed/recommended course gets an accent_slot_key."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
-    UserCourseRegistrationFactory(user=user, collection=courses[1])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[1])
     CourseProgressFactory(user=user, course=courses[1], completed_time=timezone.now())
     RecommendedCourseFactory(user=user, collection=courses[2])
     client = logged_in_client(user)
@@ -153,8 +178,8 @@ def test_dashboard_available_excludes_registered_and_completed(
 ):
     """Available list omits both in-progress and completed registrations."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
-    UserCourseRegistrationFactory(user=user, collection=courses[1])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[1])
     CourseProgressFactory(user=user, course=courses[1], completed_time=timezone.now())
     client = logged_in_client(user)
 
@@ -260,8 +285,8 @@ def test_dashboard_available_section_hidden_when_empty(
     """With no eligible courses, the whole section (heading + link) disappears."""
     user = UserFactory()
     # Register two and recommend the third -> nothing left to surface.
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
-    UserCourseRegistrationFactory(user=user, collection=courses[1])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[1])
     RecommendedCourseFactory(user=user, collection=courses[2])
     client = logged_in_client(user)
 
@@ -307,7 +332,7 @@ def test_dashboard_completed_course_in_history_not_available(
 ):
     """A completed course shows under Learning History, never under Available."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
     CourseProgressFactory(user=user, course=courses[0], completed_time=timezone.now())
     client = logged_in_client(user)
 

@@ -25,7 +25,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
-    UserCourseRegistrationFactory,
+    LearnerCourseRegistrationFactory,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -58,25 +58,29 @@ class TestCrossOrganisationIsolation:
 
         cohort_a = CohortFactory(organisation=organisation_a, name="Cohort A Only")
         member_a = UserFactory(first_name="MemberOfA", last_name="Only")
-        CohortMembershipFactory(cohort=cohort_a, user=member_a)
+        CohortMembershipFactory(cohort=cohort_a, learner__user=member_a)
 
         cohort_b = CohortFactory(organisation=organisation_b, name="Cohort B Only")
         member_b = UserFactory(first_name="MemberOfB", last_name="Only")
-        CohortMembershipFactory(cohort=cohort_b, user=member_b)
+        CohortMembershipFactory(cohort=cohort_b, learner__user=member_b)
 
         # A learner studying through both organisations. Visible to this
         # educator through A, so A's own list legitimately shows the row --
         # what must not appear in it is anything belonging to B.
         shared = UserFactory(first_name="SharedBetween", last_name="Both")
-        CohortMembershipFactory(cohort=cohort_a, user=shared)
-        CohortMembershipFactory(cohort=cohort_b, user=shared)
+        CohortMembershipFactory(cohort=cohort_a, learner__user=shared)
+        CohortMembershipFactory(cohort=cohort_b, learner__user=shared)
         course_a = CourseFactory(title="Course A Only")
         course_b = CourseFactory(title="Course B Only")
-        UserCourseRegistrationFactory(
-            user=shared, organisation=organisation_a, collection=course_a
+        LearnerCourseRegistrationFactory(
+            learner__user=shared,
+            learner__organisation=organisation_a,
+            collection=course_a,
         )
-        UserCourseRegistrationFactory(
-            user=shared, organisation=organisation_b, collection=course_b
+        LearnerCourseRegistrationFactory(
+            learner__user=shared,
+            learner__organisation=organisation_b,
+            collection=course_b,
         )
 
         return SimpleNamespace(

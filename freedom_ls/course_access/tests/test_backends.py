@@ -10,7 +10,7 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
-    UserCourseRegistrationFactory,
+    LearnerCourseRegistrationFactory,
 )
 
 
@@ -130,12 +130,14 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
     def test_registered_free_decision_is_accessible_for_free(self, mock_site_context):
         from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
         from freedom_ls.learner_management.factories import (
-            UserCourseRegistrationFactory,
+            LearnerCourseRegistrationFactory,
         )
 
         course = CourseFactory(access_config={"access_type": "free"})
         user = UserFactory()
-        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, is_active=True
+        )
         backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=user, course=course)
 
@@ -205,7 +207,9 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
 
         course = CourseFactory(access_config={"access_type": "free"})
         user = UserFactory()
-        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, is_active=True
+        )
         backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=user, course=course)
 
@@ -222,7 +226,9 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
 
         course = CourseFactory(slug="my-course", access_config={"access_type": "free"})
         user = UserFactory()
-        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, is_active=True
+        )
         backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=user, course=course)
 
@@ -238,7 +244,7 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
         course = CourseFactory(access_config={"access_type": "free"})
         user = UserFactory()
         cohort = CohortFactory()
-        CohortMembershipFactory(user=user, cohort=cohort)
+        CohortMembershipFactory(learner__user=user, cohort=cohort)
         CohortCourseRegistrationFactory(
             cohort=cohort, collection=course, is_active=True
         )

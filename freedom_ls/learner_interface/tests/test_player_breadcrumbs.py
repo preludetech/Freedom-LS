@@ -9,7 +9,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
 
 def _breadcrumb_nav(html: str) -> str:
@@ -25,7 +25,7 @@ def test_first_crumb_links_to_course_detail_not_item_one(mock_site_context):
     topic = TopicFactory(title="Only Topic", slug="only-topic", content="x")
     course.items.create(child=topic, order=0)
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
 
     client = Client()
     client.force_login(user)

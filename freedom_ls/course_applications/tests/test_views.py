@@ -16,7 +16,7 @@ if app_not_installed("freedom_ls.course_applications"):
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
 # ---------------------------------------------------------------------------
 # apply view
@@ -203,7 +203,9 @@ class TestApplyViewVisibilityGate:
         """A registered learner still reaches the apply page for a hidden course."""
         user = UserFactory()
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
-        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, is_active=True
+        )
         client.force_login(user)
 
         response = client.get(self._apply_url(course))

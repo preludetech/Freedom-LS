@@ -25,7 +25,7 @@ from freedom_ls.learner_interface.utils import (
     get_item_part,
     get_resume_index,
 )
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
@@ -62,7 +62,9 @@ def course_structure(mock_site_context):
 @pytest.fixture
 def enrolled_user(mock_site_context, course_structure):
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_structure["course"])
+    LearnerCourseRegistrationFactory(
+        learner__user=user, collection=course_structure["course"]
+    )
     return user
 
 
@@ -303,7 +305,7 @@ def test_viewing_form_does_not_create_form_progress(mock_site_context):
     FormPageFactory(form=form, title="Page 1", slug="page-1", order=0)
     course.items.create(child=form, order=0)
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
 
     client = Client()
     client.force_login(user)
@@ -473,7 +475,7 @@ def test_player_page_query_count_does_not_grow_with_items(
     more slack than that would let a real N+1 hide inside it.
     """
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=big_course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=big_course)
     client = Client()
     client.force_login(user)
     url = reverse(
@@ -496,7 +498,7 @@ def test_get_course_index_status_semantics_preserved(mock_site_context):
     """
     course = CourseFactory(title="Status Course", slug="status-course")
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     now = timezone.now()
 
     topic_complete = TopicFactory(title="T complete", slug="t-complete", content="x")
@@ -570,7 +572,7 @@ def test_checkbox_quiz_ticking_every_option_blocks_navigation_as_failed(
     FAILED and block progression via `next_status`."""
     course = CourseFactory(title="Checkbox Course", slug="checkbox-course")
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
 
     quiz = FormFactory(
         title="Checkbox quiz",

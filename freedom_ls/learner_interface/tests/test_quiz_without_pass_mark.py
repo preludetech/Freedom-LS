@@ -16,7 +16,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import FormFactory
 from freedom_ls.content_engine.models import FormStrategy
 from freedom_ls.learner_interface.utils import get_course_index
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.factories import FormProgressFactory
 
 from .conftest import course_with_form
@@ -34,7 +34,9 @@ def completed_quiz_no_pass_mark(mock_site_context):
         form, title="No Pass Mark Course", slug="no-pass-mark-course"
     )
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+    LearnerCourseRegistrationFactory(
+        learner__user=user, collection=course, is_active=True
+    )
     FormProgressFactory(
         user=user,
         form=form,

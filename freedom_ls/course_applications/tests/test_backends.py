@@ -168,14 +168,16 @@ class TestGetAccess:
             ApplicationCourseAccessBackend,
         )
         from freedom_ls.learner_management.factories import (
-            UserCourseRegistrationFactory,
+            LearnerCourseRegistrationFactory,
         )
 
         user = UserFactory()
         course = CourseFactory()
         course.access_config = {"access_type": "application_gated"}
         course.save()
-        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, is_active=True
+        )
 
         backend = ApplicationCourseAccessBackend()
         decision = backend.get_access(user=user, course=course)

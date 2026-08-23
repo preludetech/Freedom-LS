@@ -13,7 +13,7 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.learner_interface.templatetags.course_storage_keys import (
     course_part_storage_key,
 )
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
 from ..conftest import reverse_url
 
@@ -32,8 +32,8 @@ def test_toc_course_part_expands_and_collapses_on_course_detail_page(
     the retired course start page, so on detail pages clicking the toggle did nothing.
     """
     course = CourseFactory(title="Test Course", slug="test-course")
-    UserCourseRegistrationFactory(
-        user=logged_in_user, collection=course, is_active=True
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, collection=course, is_active=True
     )
     landing_topic = TopicFactory(
         title="Landing Topic",
@@ -93,8 +93,8 @@ def test_toc_course_part_expand_state_persists_across_navigation(
 ):
     """Expanding a course part writes to localStorage and persists across navigation."""
     course = CourseFactory(title="Test Course", slug="test-course")
-    UserCourseRegistrationFactory(
-        user=logged_in_user, collection=course, is_active=True
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, collection=course, is_active=True
     )
     landing_topic = TopicFactory(
         title="Landing Topic",
@@ -178,8 +178,8 @@ def test_back_button_closes_mobile_bottom_sheet(
     learner on the same page — it must NOT perform a normal navigation away.
     """
     course = CourseFactory(title="Test Course", slug="test-course")
-    UserCourseRegistrationFactory(
-        user=logged_in_user, collection=course, is_active=True
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, collection=course, is_active=True
     )
     landing_topic = TopicFactory(
         title="Landing Topic",
@@ -244,8 +244,8 @@ def test_course_part_toggle_does_not_announce_chevron_state(
     so a screen reader never announces "expand Chapter One".
     """
     course = CourseFactory(title="Test Course", slug="test-course")
-    UserCourseRegistrationFactory(
-        user=logged_in_user, collection=course, is_active=True
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, collection=course, is_active=True
     )
     landing_topic = TopicFactory(
         title="Landing Topic",

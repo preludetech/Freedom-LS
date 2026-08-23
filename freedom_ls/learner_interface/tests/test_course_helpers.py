@@ -15,8 +15,8 @@ from freedom_ls.learner_interface.utils import (
     get_recommended_courses,
 )
 from freedom_ls.learner_management.factories import (
+    LearnerCourseRegistrationFactory,
     RecommendedCourseFactory,
-    UserCourseRegistrationFactory,
 )
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 
@@ -28,7 +28,9 @@ def test_get_all_courses_returns_all(mock_site_context):
     """get_all_courses returns all courses regardless of user."""
     courses = CourseFactory.create_batch(3)
     result = get_all_courses()
-    assert list(result) == courses
+    # get_all_courses carries no ordering contract, so compare membership
+    # rather than row order.
+    assert set(result) == set(courses)
 
 
 @pytest.mark.django_db
@@ -63,7 +65,7 @@ def test_get_completed_courses_no_completed(mock_site_context):
     """get_completed_courses returns empty list when no courses are completed."""
     user = UserFactory()
     course = CourseFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     result = get_completed_courses(user)
     assert result == []
 
@@ -74,8 +76,8 @@ def test_get_completed_courses_returns_completed(mock_site_context):
     user = UserFactory()
     course_a = CourseFactory()
     course_b = CourseFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_a)
-    UserCourseRegistrationFactory(user=user, collection=course_b)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_a)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_b)
 
     # Complete course_a only
     CourseProgressFactory(user=user, course=course_a, completed_time=timezone.now())
@@ -111,7 +113,7 @@ def test_get_current_courses_returns_non_completed_registered(mock_site_context)
     course: Course = CourseFactory()
     topic = TopicFactory(content="content")
     course.items.create(child=topic, order=0)
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
 
     result = get_current_courses(user)
     assert len(result) == 1
@@ -125,7 +127,7 @@ def test_get_current_courses_excludes_completed(mock_site_context):
     course: Course = CourseFactory()
     topic = TopicFactory(content="content")
     course.items.create(child=topic, order=0)
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     CourseProgressFactory(user=user, course=course, completed_time=timezone.now())
 
     result = get_current_courses(user)
@@ -139,7 +141,7 @@ def test_get_current_courses_have_progress_percentage(mock_site_context):
     course: Course = CourseFactory()
     topic = TopicFactory(content="content")
     course.items.create(child=topic, order=0)
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
 
     result = get_current_courses(user)
     assert len(result) == 1

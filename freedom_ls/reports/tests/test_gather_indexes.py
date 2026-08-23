@@ -128,8 +128,8 @@ class TestLoadRoster:
         cohort = CohortFactory()
         zeta = UserFactory(first_name="Ada", last_name="Zeta")
         alpha = UserFactory(first_name="Bo", last_name="Alpha")
-        CohortMembershipFactory(cohort=cohort, user=zeta)
-        CohortMembershipFactory(cohort=cohort, user=alpha)
+        CohortMembershipFactory(cohort=cohort, learner__user=zeta)
+        CohortMembershipFactory(cohort=cohort, learner__user=alpha)
 
         roster = load_roster(cohort, mock_site_context.pk)
 
@@ -138,7 +138,7 @@ class TestLoadRoster:
     def test_a_learner_with_no_surname_is_keyed_by_their_email(self, mock_site_context):
         cohort = CohortFactory()
         unnamed = UserFactory(first_name="", last_name="", email="aaa@example.test")
-        CohortMembershipFactory(cohort=cohort, user=unnamed)
+        CohortMembershipFactory(cohort=cohort, learner__user=unnamed)
 
         roster = load_roster(cohort, mock_site_context.pk)
 
@@ -147,8 +147,8 @@ class TestLoadRoster:
     @override_settings(REPORTS_MAX_LEARNERS=1)
     def test_a_cohort_over_the_limit_is_refused(self, mock_site_context):
         cohort = CohortFactory()
-        CohortMembershipFactory(cohort=cohort, user=UserFactory())
-        CohortMembershipFactory(cohort=cohort, user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
 
         with pytest.raises(ReportTooLargeError, match="exceeding"):
             load_roster(cohort, mock_site_context.pk)
@@ -156,8 +156,8 @@ class TestLoadRoster:
     @override_settings(REPORTS_MAX_LEARNERS=2)
     def test_a_cohort_exactly_at_the_limit_is_allowed(self, mock_site_context):
         cohort = CohortFactory()
-        CohortMembershipFactory(cohort=cohort, user=UserFactory())
-        CohortMembershipFactory(cohort=cohort, user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
 
         assert len(load_roster(cohort, mock_site_context.pk).learner_ids) == 2
 
@@ -165,8 +165,8 @@ class TestLoadRoster:
         self, mock_site_context, django_assert_num_queries
     ):
         cohort = CohortFactory()
-        CohortMembershipFactory(cohort=cohort, user=UserFactory())
-        CohortMembershipFactory(cohort=cohort, user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
+        CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
 
         with django_assert_num_queries(1):
             roster = load_roster(cohort, mock_site_context.pk)
@@ -561,7 +561,7 @@ def _cohort_with_one_completed_quiz(*, learner_count: int):
     ]
     for _ in range(learner_count):
         learner = UserFactory()
-        CohortMembershipFactory(cohort=cohort, user=learner)
+        CohortMembershipFactory(cohort=cohort, learner__user=learner)
         TopicProgressFactory(user=learner, topic=topic, complete_time=timezone.now())
         sitting = FormProgressFactory(
             user=learner,

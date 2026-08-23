@@ -15,7 +15,7 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
 from freedom_ls.learner_management.factories import (
-    UserCourseRegistrationFactory,
+    LearnerCourseRegistrationFactory,
 )
 
 
@@ -86,8 +86,8 @@ def course_with_nested_structure(mock_site_context, request):
 def authenticated_client(mock_site_context, course_with_nested_structure):
     """Create an authenticated test client with a user registered for the test course."""
     user = UserFactory()
-    UserCourseRegistrationFactory(
-        user=user, collection=course_with_nested_structure["course"]
+    LearnerCourseRegistrationFactory(
+        learner__user=user, collection=course_with_nested_structure["course"]
     )
     client = Client()
     client.force_login(user)

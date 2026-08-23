@@ -22,7 +22,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import CourseVisibility, FormStrategy, Topic
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
@@ -88,7 +88,9 @@ def gated_course(mock_site_context) -> dict:
 @pytest.fixture
 def learner(mock_site_context, gated_course, client):
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=gated_course["course"])
+    LearnerCourseRegistrationFactory(
+        learner__user=user, collection=gated_course["course"]
+    )
     client.force_login(user)
     return user
 
@@ -516,7 +518,9 @@ def parted_course(mock_site_context) -> dict:
 @pytest.fixture
 def parted_learner(mock_site_context, parted_course, client):
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=parted_course["course"])
+    LearnerCourseRegistrationFactory(
+        learner__user=user, collection=parted_course["course"]
+    )
     client.force_login(user)
     return user
 
@@ -572,7 +576,7 @@ def near_miss_course(mock_site_context, client) -> dict:
     course.items.create(child=topic_after, order=2)
 
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     client.force_login(user)
 
     _complete_topic(user, topic_intro)

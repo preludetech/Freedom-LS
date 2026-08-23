@@ -26,7 +26,7 @@ from freedom_ls.learner_interface.utils import (
     CourseListingStatus,
     get_course_listing,
 )
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 
 
@@ -50,7 +50,7 @@ def test_registered_zero_percent_course_has_registered_status(mock_site_context)
     """A registered course with a 0% CourseProgress row is classified as REGISTERED."""
     user = UserFactory()
     course = CourseFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     CourseProgressFactory(user=user, course=course, progress_percentage=0)
 
     entries = get_course_listing(user)
@@ -67,7 +67,7 @@ def test_registered_missing_progress_row_has_registered_status(mock_site_context
     """A registered course with no CourseProgress row is treated as 0% → REGISTERED."""
     user = UserFactory()
     course = CourseFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     # Deliberately no CourseProgressFactory call — row is absent.
 
     entries = get_course_listing(user)
@@ -84,7 +84,7 @@ def test_in_progress_course_has_in_progress_status(mock_site_context):
     """A registered course with >0% progress and no completed_time is IN_PROGRESS."""
     user = UserFactory()
     course = CourseFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     CourseProgressFactory(
         user=user, course=course, progress_percentage=50, completed_time=None
     )
@@ -103,7 +103,7 @@ def test_completed_course_has_complete_status(mock_site_context):
     """A registered course with completed_time set is classified as COMPLETE."""
     user = UserFactory()
     course = CourseFactory()
-    UserCourseRegistrationFactory(user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     CourseProgressFactory(
         user=user,
         course=course,
@@ -175,10 +175,10 @@ def test_multiple_courses_all_classified_independently(mock_site_context):
     not_registered_course = CourseFactory()
 
     registered_course = CourseFactory()
-    UserCourseRegistrationFactory(user=user, collection=registered_course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=registered_course)
 
     complete_course = CourseFactory()
-    UserCourseRegistrationFactory(user=user, collection=complete_course)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=complete_course)
     CourseProgressFactory(
         user=user,
         course=complete_course,

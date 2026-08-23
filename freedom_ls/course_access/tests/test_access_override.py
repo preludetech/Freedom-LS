@@ -17,7 +17,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_access.backends import AccessBadge, FreeOnlyCourseAccessBackend
 from freedom_ls.course_access.loader import get_course_access_backend
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
@@ -118,7 +118,9 @@ class TestAccessOverrideOnGatedCourse:
     ):
         course = CourseFactory(access_config={"access_type": "application_gated"})
         user = UserFactory()
-        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, is_active=True
+        )
         with override_settings(
             COURSE_ACCESS_BACKEND=APPLICATION_BACKEND,
             OVERRIDE_COURSE_ACCESS_TO_FREE=True,
@@ -240,7 +242,9 @@ class TestFreeOnlyGetAccessExtractionUnaffectedByOverride:
     ):
         course = CourseFactory(access_config={"access_type": "free"})
         user = UserFactory()
-        UserCourseRegistrationFactory(user=user, collection=course, is_active=True)
+        LearnerCourseRegistrationFactory(
+            learner__user=user, collection=course, is_active=True
+        )
         with override_settings(OVERRIDE_COURSE_ACCESS_TO_FREE=True):
             decision = FreeOnlyCourseAccessBackend().get_access(
                 user=user, course=course

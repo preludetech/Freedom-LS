@@ -16,8 +16,8 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.learner_management.factories import (
+    LearnerCourseRegistrationFactory,
     RecommendedCourseFactory,
-    UserCourseRegistrationFactory,
 )
 from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
@@ -57,7 +57,7 @@ def test_registered_card_for_zero_progress(
     Registered card variant, not the In progress one. The old ambiguous
     "Not started" label (shared with unregistered courses) is retired."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     # No progress => percentage stays 0.
     client = logged_in_client(user)
     response = client.get(reverse("learner_interface:dashboard"))
@@ -74,7 +74,7 @@ def test_registered_card_shows_empty_progress_bar(
     """The Registered card always renders an empty (0%) progress bar so it
     visually anchors next to in-progress cards in a mixed grid row."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     client = logged_in_client(user)
     response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
@@ -90,7 +90,7 @@ def test_in_progress_card_when_progress_above_zero(
     """A course whose first topic is complete (>0 progress) renders the
     In progress card with the Next up line."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     # Mark first topic complete to push progress >0%.
     first_topic = course_with_topics.children()[0]
     TopicProgressFactory(user=user, topic=first_topic, complete_time=timezone.now())
@@ -109,7 +109,7 @@ def test_complete_card_for_completed_course(
 ):
     """A completed course renders the Completed eyebrow."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     CourseProgressFactory(
         user=user,
         course=course_with_topics,
@@ -222,7 +222,7 @@ def test_course_detail_has_start_button_when_registered_zero_progress(
     """A registered learner with 0 progress lands on the detail page
     and sees a Start course button pointing to the first item."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     client = logged_in_client(user)
     response = client.get(
         reverse(
@@ -246,7 +246,7 @@ def test_course_detail_shows_continue_when_registered_with_progress(
     """A registered learner with partial (>0) progress and no completion
     sees a 'Continue' CTA."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     CourseProgressFactory(
         user=user,
         course=course_with_topics,
@@ -272,7 +272,7 @@ def test_course_detail_shows_review_course_when_completed(
     """A registered learner who has completed the course sees a
     'Review course' CTA."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     CourseProgressFactory(
         user=user,
         course=course_with_topics,
@@ -392,7 +392,7 @@ def test_registered_card_does_not_link_to_register_url(
     registering again would be a no-op redirect. Registered courses render
     the progress card (no preview modal), so the register link is absent."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -413,7 +413,7 @@ def test_registered_zero_progress_card_links_title_to_first_item(
     the "Registered" eyebrow, a 0% progress bar, and a title that links
     straight to the first course item via the "Next up" target."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -457,7 +457,7 @@ def test_registered_zero_progress_card_shows_details_link(
     """The Registered (0%) card includes an explicit "Details" link to
     course_detail, distinct from the progress-aware title link."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -478,7 +478,7 @@ def test_in_progress_card_shows_details_link(
     """The In-progress card includes an explicit "Details" link to
     course_detail."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     first_topic = course_with_topics.children()[0]
     TopicProgressFactory(user=user, topic=first_topic, complete_time=timezone.now())
     CourseProgressFactory(user=user, course=course_with_topics, progress_percentage=33)
@@ -502,7 +502,7 @@ def test_complete_card_shows_details_link(
     """The Completed card includes an explicit "Details" link to
     course_detail."""
     user = UserFactory()
-    UserCourseRegistrationFactory(user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     CourseProgressFactory(
         user=user,
         course=course_with_topics,
