@@ -17,13 +17,14 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.learner_management.models import (
-    Cohort,
-    CohortCourseRegistration,
-    CohortMembership,
-    Learner,
-    LearnerCourseRegistration,
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
+    LearnerFactory,
 )
+from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_management.queries import (
     all_cohorts_visible_to,
     can_view_cohort,
@@ -36,21 +37,19 @@ from freedom_ls.learner_management.queries import (
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
-# Direct-creation stopgaps for Learner-based enrolment models:
-# learner_management.factories still imports the pre-rename model names and
-# is rewritten in a later batch, so its factories cannot be used here yet.
-
 
 def _make_learner(user, *, is_active=True, organisation=None):
-    return Learner.objects.create(
-        user=user,
-        organisation=organisation or OrganisationFactory(),
-        is_active=is_active,
+    learner = LearnerFactory(
+        user=user, organisation=organisation or OrganisationFactory()
     )
+    if not is_active:
+        learner.is_active = False
+        learner.save()
+    return learner
 
 
 def _make_cohort(*, organisation=None, name=None):
-    return Cohort.objects.create(
+    return CohortFactory(
         organisation=organisation or OrganisationFactory(),
         name=name or f"Cohort {uuid.uuid4()}",
     )
@@ -58,7 +57,7 @@ def _make_cohort(*, organisation=None, name=None):
 
 def _make_registration(user, course, *, organisation=None, is_active=True):
     learner = _make_learner(user, organisation=organisation)
-    return LearnerCourseRegistration.objects.create(
+    return LearnerCourseRegistrationFactory(
         learner=learner, collection=course, is_active=is_active
     )
 
@@ -422,7 +421,7 @@ class TestLearnersVisibleTo:
         removed_learner = _make_learner(
             UserFactory(), organisation=organisation, is_active=False
         )
-        CohortMembership.objects.create(learner=removed_learner, cohort=cohort)
+        CohortMembershipFactory(learner=removed_learner, cohort=cohort)
         role_holder = UserFactory()
         assign_object_role(role_holder, organisation, "organisation_staff")
 
@@ -443,9 +442,9 @@ class TestLearnersVisibleTo:
         granted_cohort = _make_cohort(organisation=organisation)
         other_cohort = _make_cohort(organisation=organisation)
         granted_member = _make_learner(UserFactory(), organisation=organisation)
-        CohortMembership.objects.create(learner=granted_member, cohort=granted_cohort)
+        CohortMembershipFactory(learner=granted_member, cohort=granted_cohort)
         other_member = _make_learner(UserFactory(), organisation=organisation)
-        CohortMembership.objects.create(learner=other_member, cohort=other_cohort)
+        CohortMembershipFactory(learner=other_member, cohort=other_cohort)
         # Associated with the organisation directly, no cohort at all -- only
         # an organisation-role holder would see this one.
         unassociated_learner = _make_learner(UserFactory(), organisation=organisation)
@@ -491,8 +490,8 @@ class TestOrganisationForLearnerCourse:
         individual_organisation = OrganisationFactory()
         cohort = _make_cohort(organisation=cohort_organisation)
         cohort_learner = _make_learner(user, organisation=cohort_organisation)
-        CohortMembership.objects.create(learner=cohort_learner, cohort=cohort)
-        CohortCourseRegistration.objects.create(cohort=cohort, collection=course)
+        CohortMembershipFactory(learner=cohort_learner, cohort=cohort)
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         _make_registration(user, course, organisation=individual_organisation)
 
         assert organisation_for_learner_course(user, course) == cohort_organisation
@@ -522,10 +521,10 @@ class TestOrganisationForLearnerCourse:
             removed_user, organisation=organisation, is_active=False
         )
         cohort = _make_cohort(organisation=organisation)
-        CohortMembership.objects.create(learner=removed_learner, cohort=cohort)
-        CohortCourseRegistration.objects.create(cohort=cohort, collection=course)
+        CohortMembershipFactory(learner=removed_learner, cohort=cohort)
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         other_learner = _make_learner(UserFactory(), organisation=organisation)
-        CohortMembership.objects.create(learner=other_learner, cohort=cohort)
+        CohortMembershipFactory(learner=other_learner, cohort=cohort)
 
         assert organisation_for_learner_course(removed_user, course) is None
 
@@ -545,8 +544,8 @@ class TestOrganisationForLearnerCourseQueryCount:
         organisation = OrganisationFactory()
         cohort = _make_cohort(organisation=organisation)
         cohort_learner = _make_learner(user, organisation=organisation)
-        CohortMembership.objects.create(learner=cohort_learner, cohort=cohort)
-        CohortCourseRegistration.objects.create(cohort=cohort, collection=course)
+        CohortMembershipFactory(learner=cohort_learner, cohort=cohort)
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         for _ in range(duplicates):
             _make_registration(user, course)
 

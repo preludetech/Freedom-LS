@@ -1,26 +1,58 @@
 """Factories for learner_management models."""
 
 from datetime import timedelta
+from typing import cast
 
 import factory
 
 from django.contrib.contenttypes.models import ContentType
+from django.db import models as django_models
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortDeadline,
     CohortMembership,
+    Learner,
+    LearnerCourseRegistration,
     LearnerDeadline,
     RecommendedCourse,
     UserCohortDeadlineOverride,
-    UserCourseRegistration,
 )
+from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
+
+
+class LearnerFactory(SiteAwareFactory):
+    """Factory for creating Learner instances.
+
+    Delegates to ensure_learner so that repeated calls with the same
+    user/organisation return the existing row rather than violating
+    unique_learner_per_organisation.
+    """
+
+    class Meta:
+        model = Learner
+
+    user = factory.SubFactory(UserFactory)
+    organisation = factory.SubFactory(OrganisationFactory)
+
+    @classmethod
+    def _create(
+        cls,
+        model_class: type[django_models.Model],
+        *args: object,
+        **kwargs: object,
+    ) -> django_models.Model:
+        return ensure_learner(
+            cast(User, kwargs["user"]), cast(Organisation, kwargs["organisation"])
+        )
 
 
 class CohortFactory(SiteAwareFactory):
@@ -39,18 +71,17 @@ class CohortMembershipFactory(SiteAwareFactory):
     class Meta:
         model = CohortMembership
 
-    user = factory.SubFactory(UserFactory)
+    learner = factory.SubFactory(LearnerFactory)
     cohort = factory.SubFactory(CohortFactory)
 
 
-class UserCourseRegistrationFactory(SiteAwareFactory):
-    """Factory for creating UserCourseRegistration instances."""
+class LearnerCourseRegistrationFactory(SiteAwareFactory):
+    """Factory for creating LearnerCourseRegistration instances."""
 
     class Meta:
-        model = UserCourseRegistration
+        model = LearnerCourseRegistration
 
-    organisation = factory.SubFactory(OrganisationFactory)
-    user = factory.SubFactory(UserFactory)
+    learner = factory.SubFactory(LearnerFactory)
     collection = factory.SubFactory(CourseFactory)
     is_active = True
 
@@ -110,7 +141,7 @@ class LearnerDeadlineFactory(SiteAwareFactory):
     class Params:
         content_item = None
 
-    learner_course_registration = factory.SubFactory(UserCourseRegistrationFactory)
+    learner_course_registration = factory.SubFactory(LearnerCourseRegistrationFactory)
     deadline = factory.LazyFunction(lambda: timezone.now() + timedelta(days=30))
     is_hard_deadline = False
 
@@ -141,7 +172,7 @@ class UserCohortDeadlineOverrideFactory(SiteAwareFactory):
         content_item = None
 
     cohort_course_registration = factory.SubFactory(CohortCourseRegistrationFactory)
-    user = factory.SubFactory(UserFactory)
+    learner = factory.SubFactory(LearnerFactory)
     deadline = factory.LazyFunction(lambda: timezone.now() + timedelta(days=30))
     is_hard_deadline = False
 

@@ -8,6 +8,7 @@ from django.core.management.base import BaseCommand
 
 from freedom_ls.accounts.models import User
 from freedom_ls.learner_management.models import Cohort, CohortMembership
+from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.organisations.utils import get_default_organisation
 
 # from app_authentication.models import Client
@@ -159,8 +160,9 @@ class Command(BaseCommand):
             if created_cohorts and created_users:
                 first_cohort = created_cohorts[0]
                 for learner_user in created_users:
+                    learner = ensure_learner(learner_user, first_cohort.organisation)
                     _membership, created = CohortMembership.objects.get_or_create(
-                        user=learner_user,
+                        learner=learner,
                         cohort=first_cohort,
                         site=site,
                     )

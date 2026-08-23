@@ -6,13 +6,9 @@ import pytest
 
 from django.core.exceptions import ValidationError
 
-from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
+from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
+from freedom_ls.learner_management.models import CohortMembership
 from freedom_ls.organisations.factories import OrganisationFactory
-
-# Cohort is created directly rather than through CohortFactory: factories.py
-# still imports the pre-rename model names, so importing it here would break
-# collection of this file.
 
 
 @pytest.mark.django_db
@@ -20,10 +16,8 @@ class TestCohortMembershipClean:
     def test_rejects_a_learner_and_cohort_in_different_organisations(
         self, mock_site_context
     ):
-        learner = Learner.objects.create(
-            user=UserFactory(), organisation=OrganisationFactory()
-        )
-        cohort = Cohort.objects.create(
+        learner = LearnerFactory(organisation=OrganisationFactory())
+        cohort = CohortFactory(
             organisation=OrganisationFactory(), name="Year 10 Science"
         )
 
@@ -36,8 +30,8 @@ class TestCohortMembershipClean:
         self, mock_site_context
     ):
         organisation = OrganisationFactory()
-        learner = Learner.objects.create(user=UserFactory(), organisation=organisation)
-        cohort = Cohort.objects.create(organisation=organisation, name="Year 10 Maths")
+        learner = LearnerFactory(organisation=organisation)
+        cohort = CohortFactory(organisation=organisation, name="Year 10 Maths")
 
         membership = CohortMembership(learner=learner, cohort=cohort)
 

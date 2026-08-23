@@ -16,12 +16,12 @@ from django.contrib.auth.models import AnonymousUser
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.learner_management.models import (
-    Cohort,
-    CohortCourseRegistration,
-    CohortMembership,
-    Learner,
-    LearnerCourseRegistration,
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
+    LearnerFactory,
 )
 from freedom_ls.learner_management.queries import is_registered_for_course_expression
 from freedom_ls.learner_management.utils import is_registered_for_course
@@ -29,21 +29,17 @@ from freedom_ls.organisations.factories import OrganisationFactory
 
 
 def _make_learner(user, *, is_active=True, organisation=None):
-    """Create a Learner directly.
-
-    learner_management.factories.LearnerFactory still imports the pre-rename
-    model names and is rewritten in a later batch, so it cannot be used here
-    yet -- this stopgap goes away once it is.
-    """
-    return Learner.objects.create(
-        user=user,
-        organisation=organisation or OrganisationFactory(),
-        is_active=is_active,
+    learner = LearnerFactory(
+        user=user, organisation=organisation or OrganisationFactory()
     )
+    if not is_active:
+        learner.is_active = False
+        learner.save()
+    return learner
 
 
 def _register_directly(learner, course, *, is_active=True):
-    return LearnerCourseRegistration.objects.create(
+    return LearnerCourseRegistrationFactory(
         learner=learner, collection=course, is_active=is_active
     )
 
@@ -52,11 +48,11 @@ def _register_via_cohort(learner, course, *, cohort=None, is_active=True):
     """Put ``learner`` in ``cohort`` (a new one by default) and register that
     cohort for ``course``. Returns the cohort so a caller can add a second
     member to it."""
-    cohort = cohort or Cohort.objects.create(
+    cohort = cohort or CohortFactory(
         organisation=learner.organisation, name=f"Cohort {uuid.uuid4()}"
     )
-    CohortMembership.objects.create(learner=learner, cohort=cohort)
-    CohortCourseRegistration.objects.create(
+    CohortMembershipFactory(learner=learner, cohort=cohort)
+    CohortCourseRegistrationFactory(
         cohort=cohort, collection=course, is_active=is_active
     )
     return cohort
@@ -148,7 +144,7 @@ class TestIsRegisteredForCourse:
         other_learner = _make_learner(
             UserFactory(), organisation=removed_learner.organisation
         )
-        CohortMembership.objects.create(learner=other_learner, cohort=cohort)
+        CohortMembershipFactory(learner=other_learner, cohort=cohort)
 
         assert is_registered_for_course(removed_user, course) is False
 
@@ -252,7 +248,7 @@ class TestIsRegisteredForCourseAgreesWithItsExpression:
         other_learner = _make_learner(
             UserFactory(), organisation=removed_learner.organisation
         )
-        CohortMembership.objects.create(learner=other_learner, cohort=cohort)
+        CohortMembershipFactory(learner=other_learner, cohort=cohort)
 
         _assert_both_functions_agree(removed_user, course, expected=False)
 
