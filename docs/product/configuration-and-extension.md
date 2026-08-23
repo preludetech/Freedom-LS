@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-08-21_
+_Last updated: 2026-08-23_
 
 ## Summary
 
@@ -10,6 +10,7 @@ _Last updated: 2026-08-21_
 - Course access is a pluggable backend, so a deployment can offer free enrolment, application-gated courses, or a model of its own.
 - FLS is designed to be installed into a host Django project, which retains override priority at every layer.
 - An opt-in conformance suite lets a downstream project verify it has wired FLS up correctly.
+- Common wiring mistakes are reported by Django's configuration checks at boot, rather than as a runtime error on a learner's first request.
 
 ## Branding
 
@@ -104,6 +105,12 @@ The suite confirms that:
 - The database schema and the code's data model are in step, with no model change left un-migrated.
 
 The checks need no database connection or network access, so they are cheap enough to run in an ordinary test run. A concrete project should run them as a pre-launch check — see [deployment](./deployment.md).
+
+## Boot-Time System Checks
+
+Some wiring mistakes are caught earlier still. FLS registers checks with Django's own configuration-check framework, so they run automatically on every `manage.py check`, `runserver`, and `migrate` — unlike the conformance suite above, which is opt-in and runs in a test suite. Two integration mistakes now fail at boot rather than as a runtime error on a learner's first request: pointing `COURSE_ACCESS_BACKEND` at one of FLS's own backends whose app has been removed from the project is an error, and wiring a sitemap URL without Django's sitemaps app installed is a warning — a warning rather than an error because a deployment supplying its own sitemap page is a legitimate configuration. A deployment's own custom backend is left alone, and removing an FLS app removes that app's checks with it.
+
+Each check identifies exactly one condition, so a deployment can silence one precisely through Django's standard silenced-checks setting. As part of that, a course-access error ID that previously covered two conditions was split: a deployment silencing `freedom_ls_course_access.E001` because of course access-configuration validation must move that entry to `freedom_ls_course_access.E002`, or it will keep suppressing the unset-required-setting error too.
 
 ## Settings Reference
 

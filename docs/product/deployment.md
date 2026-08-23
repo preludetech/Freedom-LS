@@ -1,6 +1,6 @@
 # Deployment
 
-_Last updated: 2026-08-21_
+_Last updated: 2026-08-23_
 
 ## Summary
 
@@ -113,4 +113,4 @@ FLS is never deployed standalone. A production deployment is a **concrete projec
 
 The starting point is the template repo, `git@github.com:preludetech/freedom-ls-concrete-template.git`, a GitHub template repository you clone to begin a new project. It carries the Caddy and Docker Compose scaffolding and its own README for the step-by-step.
 
-Before deploying, run the FLS conformance suite against the concrete project's own settings as a pre-launch check — see [configuration and extension](./configuration-and-extension.md).
+Before deploying, run the FLS conformance suite against the concrete project's own settings as a pre-launch check. The standard Django commands the operator already runs — `check`, `runserver`, `migrate` — also catch a number of FLS wiring mistakes at boot rather than leaving them to surface as a runtime error for a learner. See [configuration and extension](./configuration-and-extension.md) for both.
