@@ -4,13 +4,12 @@ Check IDs follow Django's convention: ``app_label.severity + number``.
 E = Error, W = Warning. Checks run automatically on runserver, migrate, test,
 and ``manage.py check``.
 
-E001 — Either COURSE_ACCESS_BACKEND is unset (required), or a Course has an
-       access_config that the active backend rejects. The two never fire in the
-       same run: an unset backend short-circuits before any Course is checked.
-       The latter surfaces config invalidated by a COURSE_ACCESS_BACKEND swap
-       at manage.py check time.
-W001 — A dev/staging-only preview override (OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE
-       or OVERRIDE_COURSE_ACCESS_TO_FREE) is left on while DEBUG is False.
+E001 — A required setting is unset (emitted by the shared
+       ``required_settings_errors`` helper).
+E002 — A Course has an access_config the active backend rejects, typically
+       after a COURSE_ACCESS_BACKEND swap.
+E003 — The configured FLS backend's app is not installed.
+W001 — A dev/staging preview override is on while DEBUG is False.
 """
 
 from __future__ import annotations
@@ -27,7 +26,7 @@ from freedom_ls.base.app_settings import required_settings_errors
 def check_course_access_configs(
     app_configs: Sequence[AppConfig] | None, **kwargs: object
 ) -> list[CheckMessage]:
-    """E001: Check that every Course.access_config is valid for the active backend.
+    """E002: Check that every Course.access_config is valid for the active backend.
 
     Uses local imports inside the function to avoid touching the app registry
     or DB at import time. Wraps DB access in try/except so that a fresh
@@ -66,11 +65,43 @@ def check_course_access_configs(
                         "This can happen after swapping the backend to one that does not "
                         "recognise the previously-stored access_type."
                     ),
-                    id="freedom_ls_course_access.E001",
+                    id="freedom_ls_course_access.E002",
                 )
             )
 
     return errors
+
+
+@register()
+def check_course_access_backend_app_installed(
+    app_configs: Sequence[AppConfig] | None, **kwargs: object
+) -> list[CheckMessage]:
+    """E003: warn when COURSE_ACCESS_BACKEND names an app that isn't installed."""
+    from django.apps import apps
+
+    from freedom_ls.course_access.config import config
+
+    if app_configs is not None and not any(
+        c.label == "freedom_ls_course_access" for c in app_configs
+    ):
+        return []
+    if config.missing_required():
+        # An unset backend is E001's business.
+        return []
+    dotted = config.COURSE_ACCESS_BACKEND
+    if not dotted.startswith("freedom_ls."):
+        # A downstream's own backend lives outside any FLS app; whether it
+        # loads is the conformance suite's question, not this check's.
+        return []
+    if apps.get_containing_app_config(dotted.rsplit(".", 1)[0]) is None:
+        return [
+            Error(
+                f"COURSE_ACCESS_BACKEND {dotted!r} is not provided by any installed app.",
+                hint="Add the backend's app to INSTALLED_APPS, or point COURSE_ACCESS_BACKEND at a backend you have installed.",
+                id="freedom_ls_course_access.E003",
+            )
+        ]
+    return []
 
 
 @register(Tags.security)
