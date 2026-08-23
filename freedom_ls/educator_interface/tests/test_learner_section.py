@@ -12,6 +12,9 @@ from typing import cast
 
 import pytest
 
+from django.db import connection
+from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -23,7 +26,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -40,6 +43,35 @@ def _make_cohort(*, organisation: Organisation) -> Cohort:
     )
 
 
+def _make_learner(*, organisation: Organisation, **user_fields: str) -> Learner:
+    """A learner in ``organisation``, named by default so the tests can assert
+    on what the rendered row says."""
+    return cast(
+        Learner,
+        LearnerFactory(
+            user=UserFactory(
+                **{"first_name": "Ada", "last_name": "Lovelace", **user_fields}
+            ),
+            organisation=organisation,
+        ),
+    )
+
+
+@pytest.fixture
+def educator_client(logged_in_client):
+    """Factory: a logged-in staff educator holding ``role`` on ``target`` --
+    the organisation for a role holder, a cohort for a grant-only educator."""
+
+    def _make(
+        target: Organisation | Cohort, role: str = "organisation_staff"
+    ) -> Client:
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, target, role)
+        return cast(Client, logged_in_client(educator))
+
+    return _make
+
+
 def _learners_url(organisation_slug: str, path_string: str = "learners") -> str:
     return reverse(
         "educator_interface:interface",
@@ -49,18 +81,12 @@ def _learners_url(organisation_slug: str, path_string: str = "learners") -> str:
 
 @pytest.mark.django_db
 def test_learners_section_lists_a_learner_visible_to_an_organisation_role_holder(
-    logged_in_client,
+    educator_client,
 ):
     organisation = OrganisationFactory()
-    LearnerFactory(
-        user=UserFactory(first_name="Ada", last_name="Lovelace"),
-        organisation=organisation,
-    )
-    educator = UserFactory(staff=True)
-    assign_object_role(educator, organisation, "organisation_staff")
-    client = logged_in_client(educator)
+    _make_learner(organisation=organisation)
 
-    response = client.get(_learners_url(organisation.slug))
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -69,37 +95,33 @@ def test_learners_section_lists_a_learner_visible_to_an_organisation_role_holder
 
 
 @pytest.mark.django_db
-def test_learners_list_excludes_a_learner_from_another_organisation(logged_in_client):
+def test_learners_list_excludes_a_learner_from_another_organisation(educator_client):
+    """Paired with a learner who should appear: absence alone would also hold
+    on a 404, a login redirect or an error page."""
     organisation = OrganisationFactory()
-    LearnerFactory(
-        user=UserFactory(first_name="Grace", last_name="Hopper"),
-        organisation=OrganisationFactory(),
+    _make_learner(organisation=organisation)
+    _make_learner(
+        organisation=OrganisationFactory(), first_name="Grace", last_name="Hopper"
     )
-    educator = UserFactory(staff=True)
-    assign_object_role(educator, organisation, "organisation_staff")
-    client = logged_in_client(educator)
 
-    response = client.get(_learners_url(organisation.slug))
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
 
-    assert "Grace" not in response.content.decode()
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "Ada" in content
+    assert "Grace" not in content
 
 
 @pytest.mark.django_db
 def test_learner_detail_page_renders_the_underlying_users_name_and_email(
-    logged_in_client,
+    educator_client,
 ):
     organisation = OrganisationFactory()
-    learner = LearnerFactory(
-        user=UserFactory(
-            first_name="Ada", last_name="Lovelace", email="ada@example.com"
-        ),
-        organisation=organisation,
-    )
-    educator = UserFactory(staff=True)
-    assign_object_role(educator, organisation, "organisation_staff")
-    client = logged_in_client(educator)
+    learner = _make_learner(organisation=organisation, email="ada@example.com")
 
-    response = client.get(_learners_url(organisation.slug, f"learners/{learner.pk}"))
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug, f"learners/{learner.pk}")
+    )
 
     assert response.status_code == 200
     content = response.content.decode()
@@ -109,20 +131,16 @@ def test_learner_detail_page_renders_the_underlying_users_name_and_email(
 
 @pytest.mark.django_db
 def test_learners_list_renders_a_registered_course_through_the_renamed_cell_template(
-    logged_in_client,
+    educator_client,
 ):
     organisation = OrganisationFactory()
-    course = CourseFactory(title="Intro to Freedom")
-    learner = LearnerFactory(
-        user=UserFactory(first_name="Ada", last_name="Lovelace"),
-        organisation=organisation,
+    LearnerCourseRegistrationFactory(
+        learner=_make_learner(organisation=organisation),
+        collection=CourseFactory(title="Intro to Freedom"),
+        is_active=True,
     )
-    LearnerCourseRegistrationFactory(learner=learner, collection=course, is_active=True)
-    educator = UserFactory(staff=True)
-    assign_object_role(educator, organisation, "organisation_staff")
-    client = logged_in_client(educator)
 
-    response = client.get(_learners_url(organisation.slug))
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
 
     assert response.status_code == 200
     assert "Intro to Freedom" in response.content.decode()
@@ -130,19 +148,16 @@ def test_learners_list_renders_a_registered_course_through_the_renamed_cell_temp
 
 @pytest.mark.django_db
 def test_cohort_only_educator_cannot_open_a_learner_outside_their_cohort(
-    logged_in_client,
+    educator_client,
 ):
     """LearnerConfig.authorise_instance is backed by learners_visible_to, so a
     cohort-scoped educator who can reach the organisation at all still gets a
     404 for a learner outside the cohort they hold a grant on."""
     organisation = OrganisationFactory()
     granted_cohort = _make_cohort(organisation=organisation)
-    outside_learner = LearnerFactory(user=UserFactory(), organisation=organisation)
-    educator = UserFactory(staff=True)
-    assign_object_role(educator, granted_cohort, "instructor")
-    client = logged_in_client(educator)
+    outside_learner = _make_learner(organisation=organisation)
 
-    response = client.get(
+    response = educator_client(granted_cohort, "instructor").get(
         _learners_url(organisation.slug, f"learners/{outside_learner.pk}")
     )
 
@@ -151,20 +166,16 @@ def test_cohort_only_educator_cannot_open_a_learner_outside_their_cohort(
 
 @pytest.mark.django_db
 def test_cohort_only_educator_can_open_a_member_of_their_own_cohort(
-    logged_in_client,
+    educator_client,
 ):
     organisation = OrganisationFactory()
     granted_cohort = _make_cohort(organisation=organisation)
-    member = LearnerFactory(
-        user=UserFactory(first_name="Ada", last_name="Lovelace"),
-        organisation=organisation,
-    )
+    member = _make_learner(organisation=organisation)
     CohortMembershipFactory(learner=member, cohort=granted_cohort)
-    educator = UserFactory(staff=True)
-    assign_object_role(educator, granted_cohort, "instructor")
-    client = logged_in_client(educator)
 
-    response = client.get(_learners_url(organisation.slug, f"learners/{member.pk}"))
+    response = educator_client(granted_cohort, "instructor").get(
+        _learners_url(organisation.slug, f"learners/{member.pk}")
+    )
 
     assert response.status_code == 200
     assert "Ada" in response.content.decode()
@@ -188,18 +199,10 @@ class TestLearnerDataTableQueryCost:
                 learner=learner, collection=CourseFactory(), is_active=True
             )
 
-    @pytest.mark.parametrize("learner_count", [1, 4])
-    def test_query_count_does_not_grow_with_learner_count(
-        self,
-        mock_site_context,
-        site_aware_request,
-        django_assert_max_num_queries,
-        learner_count,
-    ):
+    def _render_query_count(self, site_aware_request, learner_count: int) -> int:
         organisation = OrganisationFactory()
         educator = UserFactory(staff=True)
         assign_object_role(educator, organisation, "organisation_staff")
-
         self._seed_learners(organisation, learner_count)
 
         request = site_aware_request.get("/")
@@ -207,5 +210,15 @@ class TestLearnerDataTableQueryCost:
         request.organisation = organisation
         request.panel_url_kwargs = {"organisation_slug": organisation.slug}
 
-        with django_assert_max_num_queries(11):
+        with CaptureQueriesContext(connection) as captured:
             LearnerDataTable.render(request)
+        return len(captured.captured_queries)
+
+    def test_query_count_does_not_grow_with_learner_count(self, site_aware_request):
+        """Compares the two row counts rather than bounding both by a ceiling:
+        a ceiling with any slack in it lets one extra query per row hide under
+        the bound, which is the only thing this test exists to catch."""
+        one_learner = self._render_query_count(site_aware_request, learner_count=1)
+        four_learners = self._render_query_count(site_aware_request, learner_count=4)
+
+        assert one_learner == four_learners

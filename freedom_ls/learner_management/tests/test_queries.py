@@ -327,6 +327,20 @@ class TestAllCohortsVisibleTo:
 
         assert list(all_cohorts_visible_to(user)) == []
 
+    def test_it_agrees_with_cohorts_visible_to_within_one_organisation(
+        self, mock_site_context
+    ):
+        """The two helpers must never disagree about a single cohort."""
+        organisation = OrganisationFactory()
+        granted = _make_cohort(organisation=organisation)
+        _make_cohort(organisation=organisation)
+        user = UserFactory()
+        assign_object_role(user, granted, "instructor")
+
+        assert set(all_cohorts_visible_to(user)) == set(
+            cohorts_visible_to(user, organisation)
+        )
+
 
 @pytest.mark.django_db
 class TestCanViewCohort:

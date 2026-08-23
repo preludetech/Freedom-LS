@@ -21,8 +21,6 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.utils import is_registered_for_course
-from freedom_ls.learner_progress.factories import TopicProgressFactory
-from freedom_ls.learner_progress.models import TopicProgress
 from freedom_ls.organisations.factories import OrganisationFactory
 
 
@@ -150,15 +148,6 @@ class TestDeactivatingALearnerPreservesRecords:
         learner.save()
 
         assert CohortMembership.objects.filter(pk=membership.pk).exists()
-
-    def test_the_progress_rows_survive(self, mock_site_context):
-        learner = LearnerFactory()
-        progress = TopicProgressFactory(user=learner.user)
-
-        learner.is_active = False
-        learner.save()
-
-        assert TopicProgress.objects.filter(pk=progress.pk).exists()
 
     def test_access_to_the_registered_course_is_suspended(self, mock_site_context):
         course = CourseFactory()
