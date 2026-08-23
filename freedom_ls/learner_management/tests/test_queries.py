@@ -29,9 +29,9 @@ from freedom_ls.learner_management.queries import (
     can_view_cohort,
     cohorts_visible_to,
     latest_registration,
+    learners_visible_to,
     organisation_for_learner_course,
     organisations_accessible_to,
-    users_visible_to,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -387,115 +387,89 @@ class TestCanViewCohort:
 
 
 @pytest.mark.django_db
-@pytest.mark.skip(
-    reason=(
-        "users_visible_to's individual-registration branch resolves "
-        "usercourseregistration__organisation, a reverse relation that no "
-        "longer exists now that LearnerCourseRegistration points at Learner "
-        "instead of User and has dropped its own organisation field. "
-        "learners_visible_to (a later batch) replaces this function and its "
-        "tests; fixing it here would be doing that batch's work early."
-    )
-)
-class TestUsersVisibleTo:
+class TestLearnersVisibleTo:
     """Members of visible cohorts, plus — for an organisation-role holder
-    only — individually-registered learners with no cohort at all."""
+    only — every learner associated with the organisation."""
 
-    def test_role_holder_sees_cohort_members(self, mock_site_context):
-        organisation = OrganisationFactory()
-        cohort = _make_cohort(organisation=organisation)
-        member = UserFactory()
-        member_learner = _make_learner(member, organisation=organisation)
-        CohortMembership.objects.create(learner=member_learner, cohort=cohort)
-        UserFactory()  # decoy: in no cohort of this organisation
-        role_holder = UserFactory()
-        assign_object_role(role_holder, organisation, "organisation_staff")
-
-        assert set(users_visible_to(role_holder, organisation)) == {member}
-
-    def test_a_member_who_is_also_registered_individually_appears_once(
+    def test_learner_with_no_enrolment_is_visible_to_an_organisation_role_holder(
         self, mock_site_context
     ):
-        """Two routes to visibility, one row -- without distinct() the join
-        would return the learner twice and the users list would repeat them."""
         organisation = OrganisationFactory()
-        cohort = _make_cohort(organisation=organisation)
-        learner_user = UserFactory()
-        learner = _make_learner(learner_user, organisation=organisation)
-        CohortMembership.objects.create(learner=learner, cohort=cohort)
-        LearnerCourseRegistration.objects.create(
-            learner=learner, collection=CourseFactory()
-        )
+        learner = _make_learner(UserFactory(), organisation=organisation)
         role_holder = UserFactory()
         assign_object_role(role_holder, organisation, "organisation_staff")
 
-        assert (
-            list(users_visible_to(role_holder, organisation)).count(learner_user) == 1
-        )
+        assert set(learners_visible_to(role_holder, organisation)) == {learner}
 
-    def test_guardian_grant_only_sees_members_of_the_granted_cohort_only(
+    def test_inactive_learner_is_not_visible_to_an_organisation_role_holder(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        _make_learner(UserFactory(), organisation=organisation, is_active=False)
+        role_holder = UserFactory()
+        assign_object_role(role_holder, organisation, "organisation_staff")
+
+        assert list(learners_visible_to(role_holder, organisation)) == []
+
+    def test_removed_learner_still_in_a_visible_cohort_is_not_visible(
+        self, mock_site_context
+    ):
+        """Pins is_active sitting outside both Q branches: a removed learner
+        who still holds a membership in a visible cohort must not reappear
+        through the cohort branch."""
+        organisation = OrganisationFactory()
+        cohort = _make_cohort(organisation=organisation)
+        removed_learner = _make_learner(
+            UserFactory(), organisation=organisation, is_active=False
+        )
+        CohortMembership.objects.create(learner=removed_learner, cohort=cohort)
+        role_holder = UserFactory()
+        assign_object_role(role_holder, organisation, "organisation_staff")
+
+        assert list(learners_visible_to(role_holder, organisation)) == []
+
+    def test_learner_in_another_organisation_is_not_visible(self, mock_site_context):
+        organisation = OrganisationFactory()
+        _make_learner(UserFactory(), organisation=OrganisationFactory())
+        role_holder = UserFactory()
+        assign_object_role(role_holder, organisation, "organisation_staff")
+
+        assert list(learners_visible_to(role_holder, organisation)) == []
+
+    def test_cohort_only_educator_sees_exactly_their_cohorts_members(
         self, mock_site_context
     ):
         organisation = OrganisationFactory()
         granted_cohort = _make_cohort(organisation=organisation)
         other_cohort = _make_cohort(organisation=organisation)
-        granted_member = UserFactory()
-        other_member = UserFactory()
-        CohortMembership.objects.create(
-            learner=_make_learner(granted_member, organisation=organisation),
-            cohort=granted_cohort,
-        )
-        CohortMembership.objects.create(
-            learner=_make_learner(other_member, organisation=organisation),
-            cohort=other_cohort,
-        )
+        granted_member = _make_learner(UserFactory(), organisation=organisation)
+        CohortMembership.objects.create(learner=granted_member, cohort=granted_cohort)
+        other_member = _make_learner(UserFactory(), organisation=organisation)
+        CohortMembership.objects.create(learner=other_member, cohort=other_cohort)
+        # Associated with the organisation directly, no cohort at all -- only
+        # an organisation-role holder would see this one.
+        unassociated_learner = _make_learner(UserFactory(), organisation=organisation)
         educator = UserFactory()
         assign_object_role(educator, granted_cohort, "instructor")
 
-        visible = users_visible_to(educator, organisation)
+        visible = learners_visible_to(educator, organisation)
 
-        assert granted_member in visible
+        assert set(visible) == {granted_member}
         assert other_member not in visible
+        assert unassociated_learner not in visible
 
-    def test_individually_registered_learner_visible_to_the_role_holder(
-        self, mock_site_context
-    ):
+    def test_anonymous_user_sees_no_learners(self, mock_site_context):
         organisation = OrganisationFactory()
-        learner_user = UserFactory()
-        _make_registration(learner_user, CourseFactory(), organisation=organisation)
-        # decoy: registered, but through a different organisation
-        _make_registration(
-            UserFactory(), CourseFactory(), organisation=OrganisationFactory()
-        )
-        role_holder = UserFactory()
-        assign_object_role(role_holder, organisation, "organisation_staff")
+        _make_learner(UserFactory(), organisation=organisation)
 
-        assert set(users_visible_to(role_holder, organisation)) == {learner_user}
+        assert list(learners_visible_to(AnonymousUser(), organisation)) == []
 
-    def test_individually_registered_learner_not_visible_to_guardian_grant_only_educator(
-        self, mock_site_context
-    ):
+    def test_user_with_neither_role_nor_grant_sees_no_learners(self, mock_site_context):
         organisation = OrganisationFactory()
-        learner_user = UserFactory()
-        _make_registration(learner_user, CourseFactory(), organisation=organisation)
-        cohort = _make_cohort(organisation=organisation)
-        educator = UserFactory()
-        assign_object_role(educator, cohort, "instructor")
-
-        assert learner_user not in users_visible_to(educator, organisation)
-
-    def test_anonymous_user_sees_no_users(self, mock_site_context):
-        organisation = OrganisationFactory()
-        _make_registration(UserFactory(), CourseFactory(), organisation=organisation)
-
-        assert list(users_visible_to(AnonymousUser(), organisation)) == []
-
-    def test_user_with_neither_role_nor_grant_sees_no_users(self, mock_site_context):
-        organisation = OrganisationFactory()
-        _make_registration(UserFactory(), CourseFactory(), organisation=organisation)
+        _make_learner(UserFactory(), organisation=organisation)
         user = UserFactory()
 
-        assert list(users_visible_to(user, organisation)) == []
+        assert list(learners_visible_to(user, organisation)) == []
 
 
 @pytest.mark.django_db

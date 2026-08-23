@@ -1,4 +1,4 @@
-{% for reg in object.usercourseregistration_set.all %}
+{% for reg in object.learnercourseregistration_set.all %}
     {{ reg.collection.title }}
     {% if not forloop.last %}
         ,

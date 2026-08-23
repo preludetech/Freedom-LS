@@ -12,7 +12,11 @@ if TYPE_CHECKING:
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
-    from freedom_ls.learner_management.models import Cohort, LearnerCourseRegistration
+    from freedom_ls.learner_management.models import (
+        Cohort,
+        Learner,
+        LearnerCourseRegistration,
+    )
     from freedom_ls.organisations.models import Organisation
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
@@ -202,26 +206,29 @@ def can_view_cohort(user: RequestUser, cohort: Cohort) -> bool:
     return all_cohorts_visible_to(user).filter(pk=cohort.pk).exists()
 
 
-def users_visible_to(user: RequestUser, organisation: Organisation) -> QuerySet[User]:
-    """Users this person may see within an organisation.
+def learners_visible_to(
+    user: RequestUser, organisation: Organisation
+) -> QuerySet[Learner]:
+    """Learners this person may see within an organisation.
 
     Built on cohorts_visible_to — cohort visibility is never re-derived here.
     Members of visible cohorts, plus, for an organisation-role holder only,
-    learners who hold an individual registration in the organisation and
-    belong to no cohort at all. A per-cohort guardian grant says nothing
-    about people outside that cohort, so widening it to cover individual
-    learners would hand a cohort-scoped educator the whole organisation's
-    roster of individually-registered learners; only an organisation-role
-    holder sees both.
+    learners associated with the organisation. A per-cohort guardian grant
+    says nothing about people outside that cohort, so widening it to cover
+    every learner in the organisation would hand a cohort-scoped educator the
+    whole organisation's roster; only an organisation-role holder sees both.
     """
-    from freedom_ls.accounts.models import User
+    from freedom_ls.learner_management.models import Learner
 
     if not user.is_authenticated:
-        return User.objects.none()
+        return Learner.objects.none()
 
     visible = Q(cohortmembership__cohort__in=cohorts_visible_to(user, organisation))
     if cast("User", user).has_perm(
         "freedom_ls_organisations.view_organisation", organisation
     ):
-        visible |= Q(usercourseregistration__organisation=organisation)
-    return User.objects.filter(visible).distinct()
+        visible |= Q(organisation=organisation)
+    # is_active sits outside both branches: a removed learner must not
+    # reappear just because they still hold a membership in a visible
+    # cohort, or still belong to the organisation.
+    return Learner.objects.filter(visible, is_active=True).distinct()

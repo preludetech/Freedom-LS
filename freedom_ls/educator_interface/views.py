@@ -15,7 +15,6 @@ from django.db.models import (
     IntegerField,
     Model,
     OuterRef,
-    Prefetch,
     Q,
     QuerySet,
     Subquery,
@@ -38,13 +37,14 @@ from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortDeadline,
     CohortMembership,
+    Learner,
+    LearnerCourseRegistration,
     UserCohortDeadlineOverride,
-    UserCourseRegistration,
 )
 from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
+    learners_visible_to,
     organisations_accessible_to,
-    users_visible_to,
 )
 from freedom_ls.learner_progress.models import (
     CourseProgress,
@@ -148,36 +148,21 @@ class CohortDataTable(DataTable):
         ]
 
 
-class UserDataTable(DataTable):
-    search_fields = ["first_name", "last_name", "email"]
+class LearnerDataTable(DataTable):
+    search_fields = ["user__first_name", "user__last_name", "user__email"]
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         request = cast(_OrganisationScopedRequest, request)
         organisation = request.organisation
-        # users_visible_to scopes which rows appear, but the Cohorts and
-        # Registered Courses cells render separate relations that it does not
-        # touch. A learner who studies through two organisations — the case
-        # organisations exist to separate — would otherwise list both here.
-        # The cells read these relations through .all(), so filtering the
-        # prefetch is what scopes them.
         return (
-            users_visible_to(request.user, organisation)
+            learners_visible_to(request.user, organisation)
+            .select_related("user")
             .prefetch_related(
-                Prefetch(
-                    "cohortmembership_set",
-                    queryset=CohortMembership.objects.filter(
-                        cohort__in=cohorts_visible_to(request.user, organisation)
-                    ).select_related("cohort"),
-                ),
-                Prefetch(
-                    "usercourseregistration_set",
-                    queryset=UserCourseRegistration.objects.filter(
-                        organisation=organisation
-                    ).select_related("collection"),
-                ),
+                "cohortmembership_set__cohort",
+                "learnercourseregistration_set__collection",
             )
-            .order_by("first_name", "last_name")
+            .order_by("user__first_name", "user__last_name")
         )
 
     @staticmethod
@@ -186,25 +171,25 @@ class UserDataTable(DataTable):
             {
                 "header": "First Name",
                 "template": "cotton/data-table-cells/link.html",
-                "text_attr": "first_name",
+                "text_attr": "user.first_name",
                 "url_name": "educator_interface:interface",
-                "url_path_template": "users/{pk}",
+                "url_path_template": "learners/{pk}",
                 "sortable": True,
                 "htmx_nav": True,
             },
             {
                 "header": "Last Name",
                 "template": "cotton/data-table-cells/link.html",
-                "text_attr": "last_name",
+                "text_attr": "user.last_name",
                 "url_name": "educator_interface:interface",
-                "url_path_template": "users/{pk}",
+                "url_path_template": "learners/{pk}",
                 "sortable": True,
                 "htmx_nav": True,
             },
             {
                 "header": "Email",
                 "template": "cotton/data-table-cells/text.html",
-                "attr": "email",
+                "attr": "user.email",
                 # "sortable": True,
             },
             {
@@ -216,31 +201,31 @@ class UserDataTable(DataTable):
             },
             {
                 "header": "Registered Courses",
-                "template": "educator_interface/data-table-cells/user_courses.html",
+                "template": "educator_interface/data-table-cells/learner_courses.html",
             },
         ]
 
 
-class UserDetailsPanel(InstanceDetailsPanel):
+class LearnerDetailsPanel(InstanceDetailsPanel):
     fields = [
-        "first_name",
-        "last_name",
-        "email",
+        "user.first_name",
+        "user.last_name",
+        "user.email",
     ]
 
 
-class UserCohortsPanel(DataTablePanel):
+class LearnerCohortsPanel(DataTablePanel):
     title = "Cohorts"
     data_table = CohortDataTable
 
     def get_filters(self) -> dict:
-        return {"cohortmembership__user": self.instance}
+        return {"cohortmembership__learner": self.instance}
 
 
-class UserInstanceView(InstanceView):
+class LearnerInstanceView(InstanceView):
     panels = {
-        "details": UserDetailsPanel,
-        "cohorts": UserCohortsPanel,
+        "details": LearnerDetailsPanel,
+        "cohorts": LearnerCohortsPanel,
     }
 
 
@@ -283,7 +268,7 @@ class CohortCourseRegistrationDataTable(DataTable):
 
 class CohortLearnersPanel(DataTablePanel):
     title = "Learners"
-    data_table = UserDataTable
+    data_table = LearnerDataTable
 
     def get_filters(self) -> dict:
         return {"cohortmembership__cohort": self.instance}
@@ -848,12 +833,12 @@ class CohortConfig(ListViewConfig):
             raise OrganisationScopeDenied
 
 
-class UserConfig(ListViewConfig):
-    url_name = "users"
-    menu_label = "Users"
-    model = User
-    list_view = UserDataTable
-    instance_view = UserInstanceView
+class LearnerConfig(ListViewConfig):
+    url_name = "learners"
+    menu_label = "Learners"
+    model = Learner
+    list_view = LearnerDataTable
+    instance_view = LearnerInstanceView
 
     required_request_attrs = ("organisation",)
 
@@ -861,7 +846,7 @@ class UserConfig(ListViewConfig):
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
         organisation = cast(_OrganisationScopedRequest, request).organisation
         if (
-            not users_visible_to(request.user, organisation)
+            not learners_visible_to(request.user, organisation)
             .filter(pk=instance.pk)
             .exists()
         ):
@@ -1015,7 +1000,7 @@ class CourseLearnerRegistrationDataTable(DataTable):
         # one organisation each and must not leak across them.
         organisation = cast(_OrganisationScopedRequest, request).organisation
         return (
-            UserCourseRegistration.objects.select_related("user", "collection")
+            LearnerCourseRegistration.objects.select_related("user", "collection")
             .filter(organisation=organisation)
             .order_by("user__first_name", "user__last_name")
         )
@@ -1145,7 +1130,7 @@ class CourseConfig(ListViewConfig):
 
 
 interface_config: dict[str, type[ListViewConfig]] = {
-    config.url_name: config for config in [CohortConfig, UserConfig, CourseConfig]
+    config.url_name: config for config in [CohortConfig, LearnerConfig, CourseConfig]
 }
 
 
