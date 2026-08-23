@@ -87,6 +87,13 @@ class TestLearnerAdminSave:
 
 @pytest.mark.django_db
 class TestCohortMembershipInlineLearnerField:
+    """Covers formfield_for_foreignkey's queryset only. The inline declares
+    `learner` in autocomplete_fields, so the options a person actually sees are
+    served by AutocompleteJsonView from LearnerAdmin.get_search_results, which
+    never receives this queryset -- these tests passing is not evidence that
+    the rendered dropdown is scoped. See QA bug B1.
+    """
+
     def test_offers_only_learners_from_the_cohorts_organisation(
         self, mock_site_context
     ) -> None:
