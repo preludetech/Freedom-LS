@@ -80,4 +80,5 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 15. Cleanup
 
 - [ ] (cmd) Run `/sdd:finish_worktree` to clean up the worktree
+- [ ] (cmd) In the same commit, archive `2. in progress/fls-test-portability-part-2/` to `3. done/` and rewrite its ~30 literal path references (across ~8 spec directories) plus the 5 `spec_dd/` files citing the never-existent `2. in progress/test_portability_3_system_checks/`
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved

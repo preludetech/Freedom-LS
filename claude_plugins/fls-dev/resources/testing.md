@@ -38,7 +38,7 @@ Where the generic resource uses `myapp` / `articles` / `subscriptions`, FLS's co
 FLS's own `uv run pytest` runs everything except `ci_only` — it must exercise `fls_internal` and `playwright` tests against FLS's own settings, since that *is* FLS regression testing. A concrete downstream project instead runs:
 
 ```bash
-uv run pytest -m "not playwright and not fls_internal and not ci_only"
+uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint"
 ```
 
 to get only the portable contract set.
