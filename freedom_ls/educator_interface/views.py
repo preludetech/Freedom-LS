@@ -29,7 +29,6 @@ from django.utils import timezone as tz
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
-from freedom_ls.course_interest.models import CourseInterest
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.learner_management.models import (
@@ -348,7 +347,7 @@ class CohortCourseProgressPanel(Panel):
         """Return a paginated page of cohort memberships annotated with progress."""
         progress_subquery = Subquery(
             CourseProgress.objects.filter(
-                user=OuterRef("user"),
+                user=OuterRef("learner__user"),
                 course=course,
             ).values("progress_percentage")[:1],
             output_field=IntegerField(),
@@ -356,9 +355,9 @@ class CohortCourseProgressPanel(Panel):
 
         memberships = (
             CohortMembership.objects.filter(cohort=cohort)
-            .select_related("user")
+            .select_related("learner__user")
             .annotate(progress=Coalesce(progress_subquery, Value(0)))
-            .order_by("progress", "user__email")
+            .order_by("progress", "learner__user__email")
         )
 
         learner_paginator = Paginator(memberships, self.LEARNER_PAGE_SIZE)
@@ -451,15 +450,19 @@ class CohortCourseProgressPanel(Panel):
         learner_override_map: dict[
             tuple[int, int | None, UUID | None], UserCohortDeadlineOverride
         ] = {}
-        user_ids = [m.user_id for m in learner_page.object_list]
+        user_ids = [m.learner.user_id for m in learner_page.object_list]
         if user_ids:
-            overrides = UserCohortDeadlineOverride.objects.filter(
-                cohort_course_registration=selected_reg,
-                user_id__in=user_ids,
-            ).filter(deadline_q)
+            overrides = (
+                UserCohortDeadlineOverride.objects.filter(
+                    cohort_course_registration=selected_reg,
+                    learner__user_id__in=user_ids,
+                )
+                .filter(deadline_q)
+                .select_related("learner")
+            )
             for ovr in overrides:
                 learner_override_map[
-                    (ovr.user_id, ovr.content_type_id, ovr.object_id)
+                    (ovr.learner.user_id, ovr.content_type_id, ovr.object_id)
                 ] = ovr
 
         return course_deadline, deadline_map, learner_override_map, topic_ct, form_ct
@@ -588,7 +591,7 @@ class CohortCourseProgressPanel(Panel):
         now = tz.now()
         rows = []
         for membership in learner_page.object_list:
-            user = membership.user
+            user = membership.learner.user
             cells = [
                 self._build_cell(
                     item,
@@ -615,7 +618,7 @@ class CohortCourseProgressPanel(Panel):
                         "educator_interface:interface",
                         kwargs={
                             "organisation_slug": organisation_slug,
-                            "path_string": f"users/{user.pk}",
+                            "path_string": f"learners/{membership.learner_id}",
                         },
                     ),
                     "progress": membership.progress,
@@ -679,7 +682,7 @@ class CohortCourseProgressPanel(Panel):
             request.GET.get("page", 1),
         )
 
-        visible_user_ids = [m.user.id for m in learner_page.object_list]
+        visible_user_ids = [m.learner.user_id for m in learner_page.object_list]
 
         topic_progress_map, form_progress_map = self._fetch_progress_maps(
             visible_user_ids,
@@ -865,15 +868,15 @@ class CourseDataTable(DataTable):
                     distinct=True,
                 ),
                 direct_learner_count=Count(
-                    "user_registrations",
-                    filter=Q(user_registrations__is_active=True),
+                    "learner_registrations",
+                    filter=Q(learner_registrations__is_active=True),
                     distinct=True,
                 ),
                 interest_count=Count("interests", distinct=True),
             )
             .prefetch_related(
-                "cohort_registrations__cohort__cohortmembership_set",
-                "user_registrations",
+                "cohort_registrations__cohort__cohortmembership_set__learner",
+                "learner_registrations__learner",
             )
             .order_by("title")
         )
@@ -891,11 +894,14 @@ class CourseDataTable(DataTable):
                 if not cohort_reg.is_active:
                     continue
                 cohort_user_ids.update(
-                    m.user_id for m in cohort_reg.cohort.cohortmembership_set.all()
+                    m.learner.user_id
+                    for m in cohort_reg.cohort.cohortmembership_set.all()
                 )
 
             direct_user_ids = {
-                reg.user_id for reg in course.user_registrations.all() if reg.is_active
+                reg.learner.user_id
+                for reg in course.learner_registrations.all()
+                if reg.is_active
             }
 
             course.total_learner_count = len(cohort_user_ids | direct_user_ids)
@@ -1000,9 +1006,11 @@ class CourseLearnerRegistrationDataTable(DataTable):
         # one organisation each and must not leak across them.
         organisation = cast(_OrganisationScopedRequest, request).organisation
         return (
-            LearnerCourseRegistration.objects.select_related("user", "collection")
-            .filter(organisation=organisation)
-            .order_by("user__first_name", "user__last_name")
+            LearnerCourseRegistration.objects.select_related(
+                "learner__user", "collection"
+            )
+            .filter(learner__organisation=organisation)
+            .order_by("learner__user__first_name", "learner__user__last_name")
         )
 
     @staticmethod
@@ -1011,23 +1019,23 @@ class CourseLearnerRegistrationDataTable(DataTable):
             {
                 "header": "First Name",
                 "template": "cotton/data-table-cells/link.html",
-                "text_attr": "user.first_name",
+                "text_attr": "learner.user.first_name",
                 "url_name": "educator_interface:interface",
-                "url_path_template": "users/{user.pk}",
+                "url_path_template": "learners/{learner.pk}",
                 "htmx_nav": True,
             },
             {
                 "header": "Last Name",
                 "template": "cotton/data-table-cells/link.html",
-                "text_attr": "user.last_name",
+                "text_attr": "learner.user.last_name",
                 "url_name": "educator_interface:interface",
-                "url_path_template": "users/{user.pk}",
+                "url_path_template": "learners/{learner.pk}",
                 "htmx_nav": True,
             },
             {
                 "header": "Email",
                 "template": "cotton/data-table-cells/text.html",
-                "attr": "user.email",
+                "attr": "learner.user.email",
             },
             {
                 "header": "Active",
@@ -1050,59 +1058,11 @@ class CourseLearnerRegistrationsPanel(DataTablePanel):
         return {"collection": self.instance}
 
 
-class CourseInterestDataTable(DataTable):
-    @staticmethod
-    def get_queryset(request: HttpRequest) -> QuerySet:
-        return CourseInterest.objects.select_related("user").order_by(
-            "user__first_name", "user__last_name"
-        )
-
-    @staticmethod
-    def get_columns() -> list[dict[str, object]]:
-        return [
-            {
-                "header": "First Name",
-                "template": "cotton/data-table-cells/link.html",
-                "text_attr": "user.first_name",
-                "url_name": "educator_interface:interface",
-                "url_path_template": "users/{user.pk}",
-                "htmx_nav": True,
-            },
-            {
-                "header": "Last Name",
-                "template": "cotton/data-table-cells/link.html",
-                "text_attr": "user.last_name",
-                "url_name": "educator_interface:interface",
-                "url_path_template": "users/{user.pk}",
-                "htmx_nav": True,
-            },
-            {
-                "header": "Email",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "user.email",
-            },
-            {
-                "header": "Interested",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "created_at",
-            },
-        ]
-
-
-class CourseInterestPanel(DataTablePanel):
-    title = "Interested Learners"
-    data_table = CourseInterestDataTable
-
-    def get_filters(self) -> dict:
-        return {"course": self.instance}
-
-
 class CourseInstanceView(InstanceView):
     panels = {
         "details": CourseDetailsPanel,
         "cohorts": CourseCohortRegistrationsPanel,
         "learners": CourseLearnerRegistrationsPanel,
-        "interest": CourseInterestPanel,
     }
 
 

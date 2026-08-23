@@ -84,9 +84,11 @@ def test_ordinary_navigation_leaves_the_live_region_in_place(
     announcer = page.locator("#scope-announcer")
     expect(announcer).to_have_count(1)
 
-    page.get_by_role("link", name="Users").click()
+    page.get_by_role("link", name="Learners").click()
 
-    expect(page).to_have_url(_interface_url(live_server, organisation_a.slug, "users"))
+    expect(page).to_have_url(
+        _interface_url(live_server, organisation_a.slug, "learners")
+    )
     expect(announcer).to_have_count(1)
 
 
@@ -97,7 +99,7 @@ def test_keyboard_switch_moves_focus_and_announces_in_place(
 ):
     page = educator_logged_in_page
     organisation_a, organisation_b = two_organisations
-    page.goto(_interface_url(live_server, organisation_a.slug, "users"))
+    page.goto(_interface_url(live_server, organisation_a.slug, "learners"))
     announcer = page.locator("#scope-announcer")
 
     page.get_by_role("button", name="Switch organisation").focus()
@@ -111,7 +113,9 @@ def test_keyboard_switch_moves_focus_and_announces_in_place(
 
     page.keyboard.press("Enter")
 
-    expect(page).to_have_url(_interface_url(live_server, organisation_b.slug, "users"))
+    expect(page).to_have_url(
+        _interface_url(live_server, organisation_b.slug, "learners")
+    )
     # Still the same element, now carrying the new text — the whole point of
     # announcing into the live region rather than replacing it.
     expect(announcer).to_have_count(1)

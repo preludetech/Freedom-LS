@@ -1,16 +1,26 @@
 from __future__ import annotations
 
+import uuid
+
 import pytest
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
-from freedom_ls.educator_interface.views import (
-    CourseDataTable,
-    CourseInterestPanel,
+from freedom_ls.educator_interface.views import CourseDataTable
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    CohortMembership,
+    Learner,
+    LearnerCourseRegistration,
 )
+from freedom_ls.organisations.factories import OrganisationFactory
+
+# Direct-creation stopgap for Learner-based enrolment models: learner_management
+# factories still import the pre-rename model names and are rewritten in a
+# later batch, so those factories cannot be used here yet.
 
 # -- Task 5.1: visibility column + interest count -----------------------
 
@@ -97,58 +107,56 @@ def test_course_table_renders_visibility_and_interest_columns(
     assert "Visibility" in html
 
 
-# -- Task 5.2: interested-learners drill-down panel ---------------------
-
-
-def _make_interest(course: Course, first_name: str) -> User:
-    user: User = UserFactory(first_name=first_name)
-    CourseInterestFactory(course=course, user=user)
-    return user
+# -- Query cost: total_learner_count must not grow with N ---------------
 
 
 @pytest.mark.django_db
-def test_interest_panel_lists_only_users_interested_in_this_course(
-    mock_site_context, panel_request
-):
-    """The panel lists exactly the users who expressed interest in the course."""
-    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-    _make_interest(course, "Interested")
+class TestCourseTableTotalLearnerCountQueryCost:
+    """total_learner_count unions cohort members with direct registrants to
+    count unique people. The prefetch in CourseDataTable.get_queryset is what
+    keeps that union's cost from growing with how many cohorts or direct
+    registrations a course carries."""
 
-    other_course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-    _make_interest(other_course, "Elsewhere")
+    @pytest.mark.parametrize("registration_count", [1, 4])
+    def test_query_count_does_not_grow_with_registration_count(
+        self,
+        mock_site_context,
+        site_aware_request,
+        django_assert_max_num_queries,
+        registration_count,
+    ):
+        course = CourseFactory()
+        organisation = OrganisationFactory()
+        for _ in range(registration_count):
+            cohort = Cohort.objects.create(
+                organisation=organisation, name=f"Cohort {uuid.uuid4()}"
+            )
+            cohort_learner = Learner.objects.create(
+                user=UserFactory(), organisation=organisation
+            )
+            CohortMembership.objects.create(learner=cohort_learner, cohort=cohort)
+            CohortCourseRegistration.objects.create(cohort=cohort, collection=course)
 
-    educator = UserFactory(staff=True)
-    panel = CourseInterestPanel(course)
-    request = panel_request()
-    request.user = educator
-    content = panel.get_content(request)
+            direct_learner = Learner.objects.create(
+                user=UserFactory(), organisation=organisation
+            )
+            LearnerCourseRegistration.objects.create(
+                learner=direct_learner, collection=course, is_active=True
+            )
 
-    assert "Interested" in content
-    assert "Elsewhere" not in content
+        request = site_aware_request.get("/")
+        columns = CourseDataTable._prepare_columns()
 
-
-@pytest.mark.django_db
-def test_interest_panel_shows_interest_timestamp(mock_site_context, panel_request):
-    """The panel exposes when each interest was expressed."""
-    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-    user = _make_interest(course, "Timestamped")
-    interest = course.interests.get(user=user)
-
-    educator = UserFactory(staff=True)
-    panel = CourseInterestPanel(course)
-    request = panel_request()
-    request.user = educator
-    content = panel.get_content(request)
-
-    assert str(interest.created_at.year) in content
+        with django_assert_max_num_queries(8):
+            CourseDataTable.get_rows(request, columns)
 
 
-@pytest.mark.django_db
-def test_interest_panel_is_wired_into_course_instance_view():
-    """CourseInstanceView exposes the interest panel so it is reachable."""
+def test_course_instance_view_has_no_interest_panel():
+    """The interested-learners drill-down panel is gone; CourseInterest is
+    curated through the Django admin instead."""
     from freedom_ls.educator_interface.views import CourseInstanceView
 
-    assert CourseInstanceView.panels["interest"] is CourseInterestPanel
+    assert "interest" not in CourseInstanceView.panels
 
 
 # -- Task 5.3: visibility is content-file-only, not educator/admin editable --

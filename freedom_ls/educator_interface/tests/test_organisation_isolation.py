@@ -117,7 +117,7 @@ class TestCrossOrganisationIsolation:
         self, isolation
     ):
         response = isolation.client.get(
-            _interface_url(isolation.organisation_a.slug, "users")
+            _interface_url(isolation.organisation_a.slug, "learners")
         )
 
         assert response.status_code == 200
@@ -131,7 +131,7 @@ class TestCrossOrganisationIsolation:
         """The row for a learner shared between both organisations is scoped,
         but the Cohorts cell renders a relation of its own that is not."""
         response = isolation.client.get(
-            _interface_url(isolation.organisation_a.slug, "users")
+            _interface_url(isolation.organisation_a.slug, "learners")
         )
 
         assert response.status_code == 200
@@ -145,7 +145,7 @@ class TestCrossOrganisationIsolation:
     ):
         """Same leak, through the Registered Courses cell."""
         response = isolation.client.get(
-            _interface_url(isolation.organisation_a.slug, "users")
+            _interface_url(isolation.organisation_a.slug, "learners")
         )
 
         assert response.status_code == 200
@@ -156,7 +156,7 @@ class TestCrossOrganisationIsolation:
     def test_user_detail_404s_when_requested_through_organisation_a(self, isolation):
         response = isolation.client.get(
             _interface_url(
-                isolation.organisation_a.slug, f"users/{isolation.member_b.pk}"
+                isolation.organisation_a.slug, f"learners/{isolation.member_b.pk}"
             )
         )
 

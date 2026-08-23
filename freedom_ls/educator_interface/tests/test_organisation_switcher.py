@@ -111,16 +111,16 @@ class TestSwitchOnAListPage:
     def test_switcher_links_keep_the_visitor_on_the_same_section(
         self, logged_in_client
     ):
-        """Switching from the users list must land on the other organisation's
-        users list, not bounce the visitor back to cohorts."""
+        """Switching from the learners list must land on the other organisation's
+        learners list, not bounce the visitor back to cohorts."""
         organisation_a, organisation_b, _cohort_a, educator = (
             _two_organisation_educator()
         )
         client = logged_in_client(educator)
 
-        response = client.get(_interface_url(organisation_a.slug, "users"))
+        response = client.get(_interface_url(organisation_a.slug, "learners"))
 
-        assert _interface_url(organisation_b.slug, "users") in _switcher(response)
+        assert _interface_url(organisation_b.slug, "learners") in _switcher(response)
 
 
 @pytest.mark.django_db
