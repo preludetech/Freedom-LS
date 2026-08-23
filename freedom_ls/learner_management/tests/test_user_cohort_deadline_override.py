@@ -138,7 +138,7 @@ def test_clean_prevents_duplicate_course_level_override(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_clean_validates_user_in_cohort(mock_site_context):
+def test_clean_validates_learner_in_cohort(mock_site_context):
     """clean() raises ValidationError if the learner is not a member of the cohort."""
     cohort_course_reg = CohortCourseRegistrationFactory()
     learner = LearnerFactory(organisation=cohort_course_reg.cohort.organisation)

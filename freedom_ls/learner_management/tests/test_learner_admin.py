@@ -2,19 +2,49 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from django.contrib import admin
-from django.test import Client, RequestFactory
+from django.db.models import QuerySet
+from django.forms import ModelChoiceField
+from django.http import HttpRequest
+from django.test import RequestFactory
 from django.urls import reverse
 from django.urls.resolvers import ResolverMatch
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_management.admin import CohortMembershipInline, LearnerAdmin
+from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
 from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
 from freedom_ls.organisations.factories import OrganisationFactory
 
 ADD_URL_NAME = "admin:freedom_ls_learner_management_learner_add"
+
+
+def _request_for_cohort(cohort: Cohort | None) -> HttpRequest:
+    """An admin request whose resolver match names ``cohort``, or none of them
+    -- the add page, which carries no object_id."""
+    request = RequestFactory().get("/")
+    request.resolver_match = ResolverMatch(
+        func=lambda *args, **kwargs: None,
+        args=(),
+        kwargs={} if cohort is None else {"object_id": str(cohort.pk)},
+    )
+    return request
+
+
+def _learner_choices(request: HttpRequest) -> QuerySet[Learner]:
+    """The learners the inline's learner dropdown offers on ``request``."""
+    inline = CohortMembershipInline(Cohort, admin.site)
+    field = cast(
+        "ModelChoiceField[Learner]",
+        inline.formfield_for_foreignkey(
+            CohortMembership._meta.get_field("learner"), request
+        ),
+    )
+    return cast("QuerySet[Learner]", field.queryset)
 
 
 @pytest.fixture
@@ -23,11 +53,10 @@ def admin_instance() -> LearnerAdmin:
 
 
 @pytest.fixture
-def staff_client(mock_site_context, db):
-    user = UserFactory(superuser=True)
-    client = Client()
-    client.force_login(user)
-    return client
+def staff_client(mock_site_context, logged_in_client):
+    """The Django admin as a superuser -- these admin classes carry no
+    role-based narrowing of their own."""
+    return logged_in_client(UserFactory(superuser=True))
 
 
 class TestDeletePermission:
@@ -63,49 +92,20 @@ class TestCohortMembershipInlineLearnerField:
     ) -> None:
         own_organisation = OrganisationFactory()
         other_organisation = OrganisationFactory()
-        cohort = Cohort.objects.create(organisation=own_organisation, name="Cohort A")
-        own_learner = Learner.objects.create(
-            user=UserFactory(), organisation=own_organisation
-        )
-        other_learner = Learner.objects.create(
-            user=UserFactory(), organisation=other_organisation
-        )
+        cohort = CohortFactory(organisation=own_organisation, name="Cohort A")
+        own_learner = LearnerFactory(organisation=own_organisation)
+        LearnerFactory(organisation=other_organisation)
 
-        request = RequestFactory().get("/")
-        request.resolver_match = ResolverMatch(
-            func=lambda *args, **kwargs: None,
-            args=(),
-            kwargs={"object_id": str(cohort.pk)},
-        )
+        choices = _learner_choices(_request_for_cohort(cohort))
 
-        inline = CohortMembershipInline(Cohort, admin.site)
-        field = inline.formfield_for_foreignkey(
-            CohortMembership._meta.get_field("learner"), request
-        )
-
-        assert field is not None
-        assert field.queryset is not None
-        queryset = field.queryset
-        assert own_learner in queryset
-        assert other_learner not in queryset
+        assert list(choices) == [own_learner]
 
     def test_offers_every_learner_when_adding_a_brand_new_cohort(
         self, mock_site_context
     ) -> None:
         """No `object_id` on the add page, so the queryset is left at its default."""
-        organisation = OrganisationFactory()
-        learner = Learner.objects.create(user=UserFactory(), organisation=organisation)
+        learner = LearnerFactory(organisation=OrganisationFactory())
 
-        request = RequestFactory().get("/")
-        request.resolver_match = ResolverMatch(
-            func=lambda *args, **kwargs: None, args=(), kwargs={}
-        )
+        choices = _learner_choices(_request_for_cohort(None))
 
-        inline = CohortMembershipInline(Cohort, admin.site)
-        field = inline.formfield_for_foreignkey(
-            CohortMembership._meta.get_field("learner"), request
-        )
-
-        assert field is not None
-        assert field.queryset is not None
-        assert learner in field.queryset
+        assert learner in choices

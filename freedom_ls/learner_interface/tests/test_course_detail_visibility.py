@@ -66,10 +66,8 @@ def test_hidden_course_removed_learner_gets_404(
     """A removed learner's active registration grants nothing: the hidden
     course 404s again, exactly as it would for an unregistered user."""
     course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
-    learner = LearnerFactory()
+    learner = LearnerFactory(is_active=False)
     LearnerCourseRegistrationFactory(learner=learner, collection=course, is_active=True)
-    learner.is_active = False
-    learner.save()
     client = logged_in_client(learner.user)
 
     response = client.get(_detail_url(course))

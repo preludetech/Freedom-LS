@@ -117,12 +117,9 @@ def test_dashboard_removed_learner_lists_course_in_neither_section(
 ):
     """A removed learner's active registration grants nothing, so the course
     must not surface as either current or completed."""
-    user = UserFactory()
-    learner = LearnerFactory(user=user)
+    learner = LearnerFactory(is_active=False)
     LearnerCourseRegistrationFactory(learner=learner, collection=courses[0])
-    learner.is_active = False
-    learner.save()
-    client = logged_in_client(user)
+    client = logged_in_client(learner.user)
 
     response = client.get(reverse("learner_interface:dashboard"))
 

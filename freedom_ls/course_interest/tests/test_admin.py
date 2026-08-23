@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import pytest
 
-from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -20,11 +19,10 @@ CHANGELIST_URL_NAME = "admin:freedom_ls_course_interest_courseinterest_changelis
 
 
 @pytest.fixture
-def staff_client(mock_site_context, db):
-    user = UserFactory(superuser=True)
-    client = Client()
-    client.force_login(user)
-    return client
+def staff_client(mock_site_context, logged_in_client):
+    """The Django admin as a superuser -- these admin classes carry no
+    role-based narrowing of their own."""
+    return logged_in_client(UserFactory(superuser=True))
 
 
 @pytest.mark.django_db

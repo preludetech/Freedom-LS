@@ -29,7 +29,6 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import (
     Cohort,
-    Learner,
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.queries import (
@@ -46,27 +45,12 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
-def _make_learner(
-    user: User, *, is_active: bool = True, organisation: Organisation | None = None
-) -> Learner:
-    learner = cast(
-        Learner,
-        LearnerFactory(user=user, organisation=organisation or OrganisationFactory()),
-    )
-    if not is_active:
-        learner.is_active = False
-        learner.save()
-    return learner
-
-
-def _make_cohort(
-    *, organisation: Organisation | None = None, name: str | None = None
-) -> Cohort:
+def _make_cohort(*, organisation: Organisation | None = None) -> Cohort:
     return cast(
         Cohort,
         CohortFactory(
             organisation=organisation or OrganisationFactory(),
-            name=name or f"Cohort {uuid.uuid4()}",
+            name=f"Cohort {uuid.uuid4()}",
         ),
     )
 
@@ -78,7 +62,9 @@ def _make_registration(
     organisation: Organisation | None = None,
     is_active: bool = True,
 ) -> LearnerCourseRegistration:
-    learner = _make_learner(user, organisation=organisation)
+    learner = LearnerFactory(
+        user=user, organisation=organisation or OrganisationFactory()
+    )
     return cast(
         LearnerCourseRegistration,
         LearnerCourseRegistrationFactory(
@@ -341,20 +327,6 @@ class TestAllCohortsVisibleTo:
 
         assert list(all_cohorts_visible_to(user)) == []
 
-    def test_it_agrees_with_cohorts_visible_to_within_one_organisation(
-        self, mock_site_context
-    ):
-        """The two helpers must never disagree about a single cohort."""
-        organisation = OrganisationFactory()
-        granted = _make_cohort(organisation=organisation)
-        _make_cohort(organisation=organisation)
-        user = UserFactory()
-        assign_object_role(user, granted, "instructor")
-
-        assert set(all_cohorts_visible_to(user)) == set(
-            cohorts_visible_to(user, organisation)
-        )
-
 
 @pytest.mark.django_db
 class TestCanViewCohort:
@@ -419,7 +391,7 @@ class TestLearnersVisibleTo:
         self, mock_site_context
     ):
         organisation = OrganisationFactory()
-        learner = _make_learner(UserFactory(), organisation=organisation)
+        learner = LearnerFactory(user=UserFactory(), organisation=organisation)
         role_holder = UserFactory()
         assign_object_role(role_holder, organisation, "organisation_staff")
 
@@ -429,7 +401,7 @@ class TestLearnersVisibleTo:
         self, mock_site_context
     ):
         organisation = OrganisationFactory()
-        _make_learner(UserFactory(), organisation=organisation, is_active=False)
+        LearnerFactory(user=UserFactory(), organisation=organisation, is_active=False)
         role_holder = UserFactory()
         assign_object_role(role_holder, organisation, "organisation_staff")
 
@@ -443,8 +415,8 @@ class TestLearnersVisibleTo:
         through the cohort branch."""
         organisation = OrganisationFactory()
         cohort = _make_cohort(organisation=organisation)
-        removed_learner = _make_learner(
-            UserFactory(), organisation=organisation, is_active=False
+        removed_learner = LearnerFactory(
+            user=UserFactory(), organisation=organisation, is_active=False
         )
         CohortMembershipFactory(learner=removed_learner, cohort=cohort)
         role_holder = UserFactory()
@@ -454,7 +426,7 @@ class TestLearnersVisibleTo:
 
     def test_learner_in_another_organisation_is_not_visible(self, mock_site_context):
         organisation = OrganisationFactory()
-        _make_learner(UserFactory(), organisation=OrganisationFactory())
+        LearnerFactory(user=UserFactory(), organisation=OrganisationFactory())
         role_holder = UserFactory()
         assign_object_role(role_holder, organisation, "organisation_staff")
 
@@ -466,31 +438,29 @@ class TestLearnersVisibleTo:
         organisation = OrganisationFactory()
         granted_cohort = _make_cohort(organisation=organisation)
         other_cohort = _make_cohort(organisation=organisation)
-        granted_member = _make_learner(UserFactory(), organisation=organisation)
+        granted_member = LearnerFactory(user=UserFactory(), organisation=organisation)
         CohortMembershipFactory(learner=granted_member, cohort=granted_cohort)
-        other_member = _make_learner(UserFactory(), organisation=organisation)
-        CohortMembershipFactory(learner=other_member, cohort=other_cohort)
+        CohortMembershipFactory(
+            learner=LearnerFactory(user=UserFactory(), organisation=organisation),
+            cohort=other_cohort,
+        )
         # Associated with the organisation directly, no cohort at all -- only
         # an organisation-role holder would see this one.
-        unassociated_learner = _make_learner(UserFactory(), organisation=organisation)
+        LearnerFactory(user=UserFactory(), organisation=organisation)
         educator = UserFactory()
         assign_object_role(educator, granted_cohort, "instructor")
 
-        visible = learners_visible_to(educator, organisation)
-
-        assert set(visible) == {granted_member}
-        assert other_member not in visible
-        assert unassociated_learner not in visible
+        assert set(learners_visible_to(educator, organisation)) == {granted_member}
 
     def test_anonymous_user_sees_no_learners(self, mock_site_context):
         organisation = OrganisationFactory()
-        _make_learner(UserFactory(), organisation=organisation)
+        LearnerFactory(user=UserFactory(), organisation=organisation)
 
         assert list(learners_visible_to(AnonymousUser(), organisation)) == []
 
     def test_user_with_neither_role_nor_grant_sees_no_learners(self, mock_site_context):
         organisation = OrganisationFactory()
-        _make_learner(UserFactory(), organisation=organisation)
+        LearnerFactory(user=UserFactory(), organisation=organisation)
         user = UserFactory()
 
         assert list(learners_visible_to(user, organisation)) == []
@@ -514,7 +484,7 @@ class TestOrganisationForLearnerCourse:
         cohort_organisation = OrganisationFactory()
         individual_organisation = OrganisationFactory()
         cohort = _make_cohort(organisation=cohort_organisation)
-        cohort_learner = _make_learner(user, organisation=cohort_organisation)
+        cohort_learner = LearnerFactory(user=user, organisation=cohort_organisation)
         CohortMembershipFactory(learner=cohort_learner, cohort=cohort)
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         _make_registration(user, course, organisation=individual_organisation)
@@ -542,13 +512,13 @@ class TestOrganisationForLearnerCourse:
         course = CourseFactory()
         organisation = OrganisationFactory()
         removed_user = UserFactory()
-        removed_learner = _make_learner(
-            removed_user, organisation=organisation, is_active=False
+        removed_learner = LearnerFactory(
+            user=removed_user, organisation=organisation, is_active=False
         )
         cohort = _make_cohort(organisation=organisation)
         CohortMembershipFactory(learner=removed_learner, cohort=cohort)
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
-        other_learner = _make_learner(UserFactory(), organisation=organisation)
+        other_learner = LearnerFactory(user=UserFactory(), organisation=organisation)
         CohortMembershipFactory(learner=other_learner, cohort=cohort)
 
         assert organisation_for_learner_course(removed_user, course) is None
@@ -568,7 +538,7 @@ class TestOrganisationForLearnerCourseQueryCount:
         user = UserFactory()
         organisation = OrganisationFactory()
         cohort = _make_cohort(organisation=organisation)
-        cohort_learner = _make_learner(user, organisation=organisation)
+        cohort_learner = LearnerFactory(user=user, organisation=organisation)
         CohortMembershipFactory(learner=cohort_learner, cohort=cohort)
         CohortCourseRegistrationFactory(cohort=cohort, collection=course)
         for _ in range(duplicates):

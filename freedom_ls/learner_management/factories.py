@@ -34,7 +34,8 @@ class LearnerFactory(SiteAwareFactory):
 
     Delegates to ensure_learner so that repeated calls with the same
     user/organisation return the existing row rather than violating
-    unique_learner_per_organisation.
+    unique_learner_per_organisation. ensure_learner always reactivates, so
+    ``is_active=False`` is applied afterwards to build a removed learner.
     """
 
     class Meta:
@@ -42,6 +43,7 @@ class LearnerFactory(SiteAwareFactory):
 
     user = factory.SubFactory(UserFactory)
     organisation = factory.SubFactory(OrganisationFactory)
+    is_active = True
 
     @classmethod
     def _create(
@@ -50,9 +52,13 @@ class LearnerFactory(SiteAwareFactory):
         *args: object,
         **kwargs: object,
     ) -> django_models.Model:
-        return ensure_learner(
+        learner = ensure_learner(
             cast(User, kwargs["user"]), cast(Organisation, kwargs["organisation"])
         )
+        if not kwargs.get("is_active", True):
+            learner.is_active = False
+            learner.save(update_fields=["is_active"])
+        return learner
 
 
 class CohortFactory(SiteAwareFactory):

@@ -11,6 +11,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.learner_management.factories import (
     CohortFactory,
+    CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
@@ -21,6 +22,7 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.utils import is_registered_for_course
 from freedom_ls.learner_progress.factories import TopicProgressFactory
+from freedom_ls.learner_progress.models import TopicProgress
 from freedom_ls.organisations.factories import OrganisationFactory
 
 
@@ -127,28 +129,43 @@ class TestDeactivatingALearnerPreservesRecords:
     """Removal is soft and never cascades: every enrolment and progress row a
     removed learner held stays exactly as it was. Only access is suspended."""
 
-    def test_deactivating_a_learner_leaves_registrations_memberships_and_progress_untouched(
-        self, mock_site_context
-    ):
-        course = CourseFactory()
-        organisation = OrganisationFactory()
-        learner = LearnerFactory(organisation=organisation)
-        cohort = CohortFactory(organisation=organisation)
-        membership = CohortMembership.objects.create(learner=learner, cohort=cohort)
-        registration = LearnerCourseRegistrationFactory(
-            learner=learner, collection=course
-        )
-        progress = TopicProgressFactory(user=learner.user)
-
-        assert is_registered_for_course(learner.user, course) is True
+    def test_the_course_registration_stays_active(self, mock_site_context):
+        learner = LearnerFactory()
+        registration = LearnerCourseRegistrationFactory(learner=learner)
 
         learner.is_active = False
         learner.save()
 
         registration.refresh_from_db()
-        membership.refresh_from_db()
-        progress.refresh_from_db()
         assert registration.is_active is True
+
+    def test_the_cohort_membership_survives(self, mock_site_context):
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation)
+        membership = CohortMembershipFactory(
+            learner=learner, cohort=CohortFactory(organisation=organisation)
+        )
+
+        learner.is_active = False
+        learner.save()
+
         assert CohortMembership.objects.filter(pk=membership.pk).exists()
-        assert progress.pk is not None
+
+    def test_the_progress_rows_survive(self, mock_site_context):
+        learner = LearnerFactory()
+        progress = TopicProgressFactory(user=learner.user)
+
+        learner.is_active = False
+        learner.save()
+
+        assert TopicProgress.objects.filter(pk=progress.pk).exists()
+
+    def test_access_to_the_registered_course_is_suspended(self, mock_site_context):
+        course = CourseFactory()
+        learner = LearnerFactory()
+        LearnerCourseRegistrationFactory(learner=learner, collection=course)
+
+        learner.is_active = False
+        learner.save()
+
         assert is_registered_for_course(learner.user, course) is False

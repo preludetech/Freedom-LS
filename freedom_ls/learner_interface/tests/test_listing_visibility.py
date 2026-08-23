@@ -98,10 +98,8 @@ def test_all_courses_hidden_course_absent_for_removed_learner(
     course = course_with_topic(
         visibility=CourseVisibility.HIDDEN, slug="hid", title="Hidden Course"
     )
-    learner = LearnerFactory()
+    learner = LearnerFactory(is_active=False)
     LearnerCourseRegistrationFactory(learner=learner, collection=course, is_active=True)
-    learner.is_active = False
-    learner.save()
     client = logged_in_client(learner.user)
 
     response = client.get(reverse("learner_interface:courses"))

@@ -370,10 +370,8 @@ def test_view_course_item_removed_learner_redirects_to_course_detail(
     """A removed learner's active registration grants nothing: view_course_item
     redirects to course_detail exactly as it would for an unregistered user."""
     course = course_with_topic(access_type="free")
-    learner = LearnerFactory()
+    learner = LearnerFactory(is_active=False)
     LearnerCourseRegistrationFactory(learner=learner, collection=course)
-    learner.is_active = False
-    learner.save()
     client = logged_in_client(learner.user)
 
     url = reverse(
@@ -457,10 +455,8 @@ def test_course_home_removed_learner_redirects_to_course_detail(
     """A removed learner's active registration grants nothing: course_home
     redirects to course_detail exactly as it would for an unregistered user."""
     course = course_with_topic(access_type="free")
-    learner = LearnerFactory()
+    learner = LearnerFactory(is_active=False)
     LearnerCourseRegistrationFactory(learner=learner, collection=course)
-    learner.is_active = False
-    learner.save()
     client = logged_in_client(learner.user)
 
     url = reverse("learner_interface:course_home", kwargs={"course_slug": course.slug})

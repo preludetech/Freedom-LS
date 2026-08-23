@@ -13,6 +13,10 @@ from freedom_ls.organisations.factories import OrganisationFactory
 
 @pytest.mark.django_db
 class TestLearnerUniqueness:
+    """Learner.objects.create, not LearnerFactory: the factory delegates to
+    ensure_learner, which is idempotent by design and so can never produce the
+    duplicate row these tests need."""
+
     def test_duplicate_user_and_organisation_is_rejected(self, mock_site_context):
         user = UserFactory()
         organisation = OrganisationFactory()

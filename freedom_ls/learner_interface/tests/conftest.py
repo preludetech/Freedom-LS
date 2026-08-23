@@ -24,7 +24,6 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.organisations.factories import OrganisationFactory
 
 
 @pytest.fixture
@@ -80,6 +79,6 @@ def course_with_form(
 def register_user_for_course(course: Course, user: User | None = None) -> User:
     """Register a user (creating one if not given) for `course`; return the user."""
     resolved_user: User = UserFactory() if user is None else user
-    learner = LearnerFactory(user=resolved_user, organisation=OrganisationFactory())
+    learner = LearnerFactory(user=resolved_user)
     LearnerCourseRegistrationFactory(learner=learner, collection=course, is_active=True)
     return resolved_user

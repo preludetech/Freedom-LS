@@ -12,6 +12,10 @@ from freedom_ls.organisations.factories import OrganisationFactory
 
 @pytest.mark.django_db
 class TestEnsureLearner:
+    """Arranged with Learner.objects.create, not LearnerFactory: the factory
+    delegates to ensure_learner, so building the starting state with it would
+    test the function against itself."""
+
     def test_calling_twice_creates_one_row(self, mock_site_context):
         user = UserFactory()
         organisation = OrganisationFactory()

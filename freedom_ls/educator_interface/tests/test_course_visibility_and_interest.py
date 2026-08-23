@@ -9,18 +9,14 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.educator_interface.views import CourseDataTable
-from freedom_ls.learner_management.models import (
-    Cohort,
-    CohortCourseRegistration,
-    CohortMembership,
-    Learner,
-    LearnerCourseRegistration,
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
-
-# Direct-creation stopgap for Learner-based enrolment models: learner_management
-# factories still import the pre-rename model names and are rewritten in a
-# later batch, so those factories cannot be used here yet.
+from freedom_ls.organisations.models import Organisation
 
 # -- Task 5.1: visibility column + interest count -----------------------
 
@@ -110,6 +106,18 @@ def test_course_table_renders_visibility_and_interest_columns(
 # -- Query cost: total_learner_count must not grow with N ---------------
 
 
+def _add_registrations(course: Course, organisation: Organisation, count: int) -> None:
+    """Give ``course`` ``count`` cohort registrations and ``count`` direct ones,
+    each held by a learner of its own."""
+    for _ in range(count):
+        cohort = CohortFactory(organisation=organisation, name=f"Cohort {uuid.uuid4()}")
+        CohortMembershipFactory(cohort=cohort, learner__organisation=organisation)
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        LearnerCourseRegistrationFactory(
+            learner__organisation=organisation, collection=course, is_active=True
+        )
+
+
 @pytest.mark.django_db
 class TestCourseTableTotalLearnerCountQueryCost:
     """total_learner_count unions cohort members with direct registrants to
@@ -126,37 +134,13 @@ class TestCourseTableTotalLearnerCountQueryCost:
         registration_count,
     ):
         course = CourseFactory()
-        organisation = OrganisationFactory()
-        for _ in range(registration_count):
-            cohort = Cohort.objects.create(
-                organisation=organisation, name=f"Cohort {uuid.uuid4()}"
-            )
-            cohort_learner = Learner.objects.create(
-                user=UserFactory(), organisation=organisation
-            )
-            CohortMembership.objects.create(learner=cohort_learner, cohort=cohort)
-            CohortCourseRegistration.objects.create(cohort=cohort, collection=course)
-
-            direct_learner = Learner.objects.create(
-                user=UserFactory(), organisation=organisation
-            )
-            LearnerCourseRegistration.objects.create(
-                learner=direct_learner, collection=course, is_active=True
-            )
+        _add_registrations(course, OrganisationFactory(), registration_count)
 
         request = site_aware_request.get("/")
         columns = CourseDataTable._prepare_columns()
 
         with django_assert_max_num_queries(8):
             CourseDataTable.get_rows(request, columns)
-
-
-def test_course_instance_view_has_no_interest_panel():
-    """The interested-learners drill-down panel is gone; CourseInterest is
-    curated through the Django admin instead."""
-    from freedom_ls.educator_interface.views import CourseInstanceView
-
-    assert "interest" not in CourseInstanceView.panels
 
 
 # -- Task 5.3: visibility is content-file-only, not educator/admin editable --

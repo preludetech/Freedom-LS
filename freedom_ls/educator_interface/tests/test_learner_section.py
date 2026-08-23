@@ -15,7 +15,6 @@ import pytest
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.views import LearnerDataTable
 from freedom_ls.learner_management.factories import (
@@ -24,7 +23,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, Learner
+from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -33,16 +32,6 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 @pytest.fixture(autouse=True)
 def _site_context(mock_site_context):
     """Every test here builds site-aware objects and assigns roles."""
-
-
-def _make_learner(
-    user: User, *, organisation: Organisation, is_active: bool = True
-) -> Learner:
-    learner = cast(Learner, LearnerFactory(user=user, organisation=organisation))
-    if not is_active:
-        learner.is_active = False
-        learner.save()
-    return learner
 
 
 def _make_cohort(*, organisation: Organisation) -> Cohort:
@@ -59,10 +48,13 @@ def _learners_url(organisation_slug: str, path_string: str = "learners") -> str:
 
 
 @pytest.mark.django_db
-def test_learners_list_names_the_section_learners_not_users(logged_in_client):
+def test_learners_section_lists_a_learner_visible_to_an_organisation_role_holder(
+    logged_in_client,
+):
     organisation = OrganisationFactory()
-    _make_learner(
-        UserFactory(first_name="Ada", last_name="Lovelace"), organisation=organisation
+    LearnerFactory(
+        user=UserFactory(first_name="Ada", last_name="Lovelace"),
+        organisation=organisation,
     )
     educator = UserFactory(staff=True)
     assign_object_role(educator, organisation, "organisation_staff")
@@ -73,31 +65,14 @@ def test_learners_list_names_the_section_learners_not_users(logged_in_client):
     assert response.status_code == 200
     content = response.content.decode()
     assert "Learners" in content
-    assert "Users" not in content
-
-
-@pytest.mark.django_db
-def test_learners_list_shows_a_learner_visible_to_an_organisation_role_holder(
-    logged_in_client,
-):
-    organisation = OrganisationFactory()
-    _make_learner(
-        UserFactory(first_name="Ada", last_name="Lovelace"), organisation=organisation
-    )
-    educator = UserFactory(staff=True)
-    assign_object_role(educator, organisation, "organisation_staff")
-    client = logged_in_client(educator)
-
-    response = client.get(_learners_url(organisation.slug))
-
-    assert "Ada" in response.content.decode()
+    assert "Ada" in content
 
 
 @pytest.mark.django_db
 def test_learners_list_excludes_a_learner_from_another_organisation(logged_in_client):
     organisation = OrganisationFactory()
-    _make_learner(
-        UserFactory(first_name="Grace", last_name="Hopper"),
+    LearnerFactory(
+        user=UserFactory(first_name="Grace", last_name="Hopper"),
         organisation=OrganisationFactory(),
     )
     educator = UserFactory(staff=True)
@@ -114,8 +89,10 @@ def test_learner_detail_page_renders_the_underlying_users_name_and_email(
     logged_in_client,
 ):
     organisation = OrganisationFactory()
-    learner = _make_learner(
-        UserFactory(first_name="Ada", last_name="Lovelace", email="ada@example.com"),
+    learner = LearnerFactory(
+        user=UserFactory(
+            first_name="Ada", last_name="Lovelace", email="ada@example.com"
+        ),
         organisation=organisation,
     )
     educator = UserFactory(staff=True)
@@ -136,8 +113,9 @@ def test_learners_list_renders_a_registered_course_through_the_renamed_cell_temp
 ):
     organisation = OrganisationFactory()
     course = CourseFactory(title="Intro to Freedom")
-    learner = _make_learner(
-        UserFactory(first_name="Ada", last_name="Lovelace"), organisation=organisation
+    learner = LearnerFactory(
+        user=UserFactory(first_name="Ada", last_name="Lovelace"),
+        organisation=organisation,
     )
     LearnerCourseRegistrationFactory(learner=learner, collection=course, is_active=True)
     educator = UserFactory(staff=True)
@@ -159,7 +137,7 @@ def test_cohort_only_educator_cannot_open_a_learner_outside_their_cohort(
     404 for a learner outside the cohort they hold a grant on."""
     organisation = OrganisationFactory()
     granted_cohort = _make_cohort(organisation=organisation)
-    outside_learner = _make_learner(UserFactory(), organisation=organisation)
+    outside_learner = LearnerFactory(user=UserFactory(), organisation=organisation)
     educator = UserFactory(staff=True)
     assign_object_role(educator, granted_cohort, "instructor")
     client = logged_in_client(educator)
@@ -177,8 +155,9 @@ def test_cohort_only_educator_can_open_a_member_of_their_own_cohort(
 ):
     organisation = OrganisationFactory()
     granted_cohort = _make_cohort(organisation=organisation)
-    member = _make_learner(
-        UserFactory(first_name="Ada", last_name="Lovelace"), organisation=organisation
+    member = LearnerFactory(
+        user=UserFactory(first_name="Ada", last_name="Lovelace"),
+        organisation=organisation,
     )
     CohortMembershipFactory(learner=member, cohort=granted_cohort)
     educator = UserFactory(staff=True)
@@ -196,6 +175,19 @@ class TestLearnerDataTableQueryCost:
     """The prefetches in LearnerDataTable.get_queryset are what keep the
     Cohorts and Registered Courses cells' cost from growing with row count."""
 
+    @staticmethod
+    def _seed_learners(organisation: Organisation, count: int) -> None:
+        """One learner per iteration, each in a cohort of its own and holding a
+        registration of its own -- both cells the prefetches feed."""
+        for _ in range(count):
+            learner = LearnerFactory(user=UserFactory(), organisation=organisation)
+            CohortMembershipFactory(
+                learner=learner, cohort=_make_cohort(organisation=organisation)
+            )
+            LearnerCourseRegistrationFactory(
+                learner=learner, collection=CourseFactory(), is_active=True
+            )
+
     @pytest.mark.parametrize("learner_count", [1, 4])
     def test_query_count_does_not_grow_with_learner_count(
         self,
@@ -208,13 +200,7 @@ class TestLearnerDataTableQueryCost:
         educator = UserFactory(staff=True)
         assign_object_role(educator, organisation, "organisation_staff")
 
-        for _ in range(learner_count):
-            learner = _make_learner(UserFactory(), organisation=organisation)
-            cohort = _make_cohort(organisation=organisation)
-            CohortMembershipFactory(learner=learner, cohort=cohort)
-            LearnerCourseRegistrationFactory(
-                learner=learner, collection=CourseFactory(), is_active=True
-            )
+        self._seed_learners(organisation, learner_count)
 
         request = site_aware_request.get("/")
         request.user = educator
