@@ -6,6 +6,7 @@ _Last updated: 2026-08-23_
 
 - A single Freedom LS installation serves multiple sites (domains) from one database. Each site's data is isolated automatically at the query layer.
 - Within a site, an **organisation** is a grouping layer for cohorts and course registrations — not an isolation boundary. Every site has at least one organisation automatically; groups needing genuine data isolation still need separate sites, not separate organisations.
+- People are associated with organisations as learners in their own right, before any enrolment, and one person can be a learner of several organisations on a site while keeping a single account. See [Organisations](#organisations).
 - Isolation is not opt-in per query: every database read during a request is scoped to the site matching the request's host, and new records are assigned to that site on save.
 - Users are site-scoped — the same email address can hold separate accounts on different sites.
 - Isolation is enforced in the application, not the database. All tenants share one PostgreSQL database and schema.
@@ -46,6 +47,8 @@ A site can be subdivided into one or more **organisations** — a grouping and s
 
 Every site has at least one organisation, named after the site itself and created automatically — for existing sites on upgrade, and for every new site from then on. A single-organisation deployment needs no configuration and behaves as it did before organisations existed. Organisation names are unique within a site.
 
+**People are associated with organisations as learners.** Someone can belong to an organisation as a learner before, and independently of, any cohort membership or course registration, and every cohort membership and course registration belongs to one of those associations — an enrolment with no organisation behind it cannot exist. The same person can be a learner of several organisations on one site, keeping one account and one set of profile fields; each organisation sees only its own association, which is scoping within the site rather than an isolation boundary of its own. An organisation can mark a learner removed, which withdraws their access to courses held through that organisation while leaving their enrolments and progress history intact; it is never a hard delete. See [admin interface](./admin-interface.md#learner-rosters) for how learners are added and removed.
+
 Staff can be granted a role scoped to a single organisation, which gives them access to everything in it without a separate grant per cohort. This sits alongside FLS's existing per-cohort grants rather than replacing them — see [educator interface](./educator-interface.md#access-control).
 
 This is the canonical statement of what an organisation is and is not; other docs link here rather than restating it.
@@ -57,7 +60,6 @@ This is the canonical statement of what an organisation is and is not; other doc
 - **Site-aware user groups are not available.** A site-scoped equivalent of Django's groups is drafted but not enabled; permissions are granted per user. See [roadmap](./roadmap.md).
 - **Organisations cannot be deleted or merged**, and there is no nested (parent/child) organisation structure.
 - **No per-organisation domain, subdomain, colours, or theme.** All organisations on a site share the site's domain and branding; the only visual distinction is a small logo (or initials monogram) and name in the course player — see [learner experience](./learner-experience.md).
-- **No standalone organisation membership.** A learner's organisation is derived from their cohort or individual course registration, not from a membership record they hold.
 - **Courses, course interest, applications, and recommendations are not organisation-scoped** in this release — they remain shared across the whole site. See [roadmap](./roadmap.md).
 
 ## Per-Site Configuration

@@ -1,27 +1,27 @@
 # Roadmap
 
-_Last updated: 2026-08-21_
+_Last updated: 2026-08-23_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
 - **Half-built:** course applications (apply flow built; review/approval and authored form not built), role-based access control (built but not wired into access decisions), xAPI (non-functional stub), site-aware user groups (drafted, disabled).
 - **Not built:** 2FA/MFA, educator-interface management actions, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
-- **Known defect:** the educator interface's Courses list is still unfiltered and course detail pages are still not permission-checked. Cohort and user detail pages are now checked.
+- **Known defect:** the educator interface's Courses list is still unfiltered and course detail pages are still not permission-checked. Cohort and learner detail pages are now checked.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
 ## Educator Interface Authorisation Gap
 
 **Status: Partially fixed.**
 
-The educator interface's Cohorts and Users listings are filtered by permission, and their detail pages are now permission-checked and deny by default: a user without access gets "not found" rather than the underlying data. What remains unfixed:
+The educator interface's Cohorts and Learners listings are filtered by permission, and their detail pages are now permission-checked and deny by default: a user without access gets "not found" rather than the underlying data. What remains unfixed:
 
 - **The Courses list is still entirely unfiltered** — every course on the site, including those authored as hidden, is visible to any authenticated user.
 - **Course detail pages are still not permission-checked.**
 
 Reads only — create, rename, and delete actions have always checked object-level permission, so this remains a disclosure defect rather than a route to modifying data. Site isolation is unaffected: the gap is within a single tenant, never across tenants.
 
-The fix is a permission filter on the Courses list and a permission check on course detail pages, matching what now governs the Cohorts and Users sections. See [educator interface](./educator-interface.md#access-control).
+The fix is a permission filter on the Courses list and a permission check on course detail pages, matching what now governs the Cohorts and Learners sections. See [educator interface](./educator-interface.md#access-control).
 
 ## Organisation Deferrals
 
@@ -29,9 +29,12 @@ The fix is a permission filter on the Courses list and a permission check on cou
 
 Organisations shipped as a grouping layer between a site and its cohorts and registrations; see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations) for what an organisation is and where the isolation boundary actually sits. Several capabilities were deliberately left out rather than overlooked:
 
-- **No delete or merge** — an organisation cannot be removed or combined with another once created.
+- **No delete or merge** — an organisation cannot be removed or combined with another once created, and a learner's association with one can only be deactivated, never deleted.
 - **No nested organisations** — the structure is flat, with no parent/child relationship.
-- **No organisation membership** — a learner's organisation is derived from their cohort or course registrations, not from a membership they hold.
+- **No roster management in the educator interface** — associating a learner with an organisation, or marking one removed, is done in the Django admin only; there is no add-, remove-, or suspend-learner action there, and no "show removed learners" filter.
+- **No bulk add or remove, and no CSV import of learners.**
+- **No cross-organisation view** — nothing shows one person's associations across every organisation they study with, though a person can hold several.
+- **No notification when a learner is removed** — neither the learner nor anyone else is told, even though courses held through that organisation stop opening for them.
 - **No per-organisation domain, subdomain, colours, or theme**, and no organisation branding in emails or certificates.
 - **The educator interface's Courses section is not organisation-scoped** — it shows the same list regardless of which organisation is selected. The separate, pre-existing filtering defect on that same list is covered above.
 - **The organisation switcher has no search, recents, or favourites** — it is a flat list.
@@ -121,6 +124,7 @@ A site-scoped equivalent of Django's groups is written but commented out, so gro
 These operations must be performed in the Django admin by an administrator:
 
 - **Cohort membership** — adding or removing learners.
+- **Organisation membership** — associating a learner with an organisation, or marking one removed.
 - **Course registration** — registering a cohort or an individual learner for a course.
 - **Deadlines** — cohort deadlines, per-learner deadlines, and overrides.
 

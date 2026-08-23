@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-08-21_
+_Last updated: 2026-08-23_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -33,7 +33,7 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 
 ### Educator Interface Authorisation (narrowed defect)
 
-The educator interface grants educators permission on specific cohorts, or on a whole organisation. Its Cohorts and Users listings and their detail pages are now permission-checked and **deny by default**: a visitor without the right grant gets the same not-found response as a record that does not exist, so cohort, user, and organisation identifiers cannot be enumerated by guessing URLs.
+The educator interface grants educators permission on specific cohorts, or on a whole organisation. Its Cohorts and Learners listings and their detail pages are now permission-checked and **deny by default**: a visitor without the right grant gets the same not-found response as a record that does not exist, so cohort, learner, and organisation identifiers cannot be enumerated by guessing URLs.
 
 **What remains unfixed.** The Courses section is unchanged. Any authenticated user on a site still sees every course on it, including ones authored as hidden, and course detail pages are still not permission-checked.
 
