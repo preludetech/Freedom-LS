@@ -1,6 +1,9 @@
 from unfold.admin import TabularInline
 
+from django import forms
 from django.contrib import admin
+from django.db import models
+from django.http import HttpRequest
 
 from freedom_ls.site_aware_models.admin import (
     GuardedSiteAwareModelAdmin,
@@ -12,18 +15,52 @@ from .models import (
     CohortCourseRegistration,
     CohortDeadline,
     CohortMembership,
+    Learner,
+    LearnerCourseRegistration,
     LearnerDeadline,
     RecommendedCourse,
     UserCohortDeadlineOverride,
-    UserCourseRegistration,
 )
+
+
+@admin.register(Learner)
+class LearnerAdmin(SiteAwareModelAdmin):
+    list_display = ["user", "organisation", "is_active", "created_at"]
+    list_filter = ["organisation", "is_active"]
+    readonly_fields = ["created_at"]
+    search_fields = ["user__first_name", "user__last_name", "user__email"]
+    autocomplete_fields = ["user", "organisation"]
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: Learner | None = None
+    ) -> bool:
+        return False
 
 
 class CohortMembershipInline(TabularInline):
     model = CohortMembership
     extra = 1
-    autocomplete_fields = ["user"]
-    fields = ["user"]
+    autocomplete_fields = ["learner"]
+    fields = ["learner"]
+
+    def formfield_for_foreignkey(
+        self,
+        db_field: models.ForeignKey,
+        request: HttpRequest,
+        **kwargs: object,
+    ) -> forms.ModelChoiceField | None:
+        # Narrows the dropdown to the cohort's own organisation on the change
+        # page only -- `object_id` isn't in the URL kwargs on the add page, so
+        # a brand-new cohort still offers every learner there. Cross-org rows
+        # are rejected either way by CohortMembership.clean(); this only saves
+        # a round trip on the common case.
+        if db_field.name == "learner" and request.resolver_match:
+            cohort_id = request.resolver_match.kwargs.get("object_id")
+            if cohort_id:
+                kwargs["queryset"] = Learner.objects.filter(
+                    organisation__cohort__id=cohort_id, is_active=True
+                )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 class CohortCourseRegistrationInline(TabularInline):
@@ -60,32 +97,33 @@ class LearnerDeadlineInline(TabularInline):
     verbose_name_plural = "Deadlines"
 
 
-@admin.register(UserCourseRegistration)
-class UserCourseRegistrationAdmin(SiteAwareModelAdmin):
+@admin.register(LearnerCourseRegistration)
+class LearnerCourseRegistrationAdmin(SiteAwareModelAdmin):
     list_display = ["get_user_name", "collection", "is_active", "registered_at"]
-    list_select_related = ["user", "collection"]
+    list_select_related = ["learner__user", "collection"]
     list_filter = ["is_active", "registered_at"]
     search_fields = [
-        "user__email",
-        "user__first_name",
-        "user__last_name",
+        "learner__user__email",
+        "learner__user__first_name",
+        "learner__user__last_name",
         "collection__title",
     ]
-    autocomplete_fields = ["organisation", "user", "collection"]
+    autocomplete_fields = ["learner", "collection"]
     readonly_fields = ["registered_at"]
     inlines = [LearnerDeadlineInline]
 
     fieldsets = (
-        (None, {"fields": ("organisation", "user", "collection", "is_active")}),
+        (None, {"fields": ("learner", "collection", "is_active")}),
         ("Timestamps", {"fields": ("registered_at",), "classes": ("collapse",)}),
     )
 
-    @admin.display(description="User", ordering="user__first_name")
-    def get_user_name(self, obj: UserCourseRegistration) -> str:
+    @admin.display(description="User", ordering="learner__user__first_name")
+    def get_user_name(self, obj: LearnerCourseRegistration) -> str:
         """Display user's full name."""
-        if obj.user.first_name or obj.user.last_name:
-            return f"{obj.user.first_name} {obj.user.last_name}".strip()
-        return obj.user.email
+        user = obj.learner.user
+        if user.first_name or user.last_name:
+            return f"{user.first_name} {user.last_name}".strip()
+        return user.email
 
 
 class CohortDeadlineInline(TabularInline):
@@ -100,8 +138,8 @@ class CohortDeadlineInline(TabularInline):
 class UserCohortDeadlineOverrideInline(TabularInline):
     model = UserCohortDeadlineOverride
     extra = 0
-    autocomplete_fields = ["user"]
-    fields = ["user", "content_type", "object_id", "deadline", "is_hard_deadline"]
+    autocomplete_fields = ["learner"]
+    fields = ["learner", "content_type", "object_id", "deadline", "is_hard_deadline"]
 
     verbose_name = "User Deadline Override"
     verbose_name_plural = "User Deadline Overrides"
@@ -174,7 +212,7 @@ class LearnerDeadlineAdmin(SiteAwareModelAdmin):
         "is_hard_deadline",
     ]
     list_select_related = [
-        "learner_course_registration__user",
+        "learner_course_registration__learner__user",
         "learner_course_registration__collection",
     ]
     list_filter = [
@@ -182,15 +220,15 @@ class LearnerDeadlineAdmin(SiteAwareModelAdmin):
         "is_hard_deadline",
     ]
     search_fields = [
-        "learner_course_registration__user__first_name",
-        "learner_course_registration__user__last_name",
+        "learner_course_registration__learner__user__first_name",
+        "learner_course_registration__learner__user__last_name",
         "learner_course_registration__collection__title",
     ]
     autocomplete_fields = ["learner_course_registration"]
 
     @admin.display(description="User")
     def get_user_name(self, obj: LearnerDeadline) -> str:
-        return str(obj.learner_course_registration.user)
+        return str(obj.learner_course_registration.learner.user)
 
     @admin.display(description="Course")
     def get_course_name(self, obj: LearnerDeadline) -> str:
@@ -212,7 +250,7 @@ class UserCohortDeadlineOverrideAdmin(SiteAwareModelAdmin):
         "is_hard_deadline",
     ]
     list_select_related = [
-        "user",
+        "learner__user",
         "cohort_course_registration__cohort",
         "cohort_course_registration__collection",
     ]
@@ -222,16 +260,16 @@ class UserCohortDeadlineOverrideAdmin(SiteAwareModelAdmin):
         "is_hard_deadline",
     ]
     search_fields = [
-        "user__first_name",
-        "user__last_name",
+        "learner__user__first_name",
+        "learner__user__last_name",
         "cohort_course_registration__cohort__name",
         "cohort_course_registration__collection__title",
     ]
-    autocomplete_fields = ["cohort_course_registration", "user"]
+    autocomplete_fields = ["cohort_course_registration", "learner"]
 
     @admin.display(description="User")
     def get_user_name(self, obj: UserCohortDeadlineOverride) -> str:
-        return str(obj.user)
+        return str(obj.learner.user)
 
     @admin.display(description="Cohort")
     def get_cohort_name(self, obj: UserCohortDeadlineOverride) -> str:

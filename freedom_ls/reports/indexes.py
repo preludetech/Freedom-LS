@@ -179,10 +179,12 @@ def load_roster(cohort: Cohort, site_id: int) -> CohortRoster:
     """The cohort's members in report order, refusing a cohort too large to render."""
     memberships = list(
         CohortMembership.objects.filter(cohort=cohort, site_id=site_id).select_related(
-            "user"
+            "learner__user"
         )
     )
-    learners_by_id: dict[int, User] = {m.user_id: m.user for m in memberships}
+    learners_by_id: dict[int, User] = {
+        m.learner.user_id: m.learner.user for m in memberships
+    }
     # One ordering, computed once, used for the summary tables and the
     # per-learner sections alike -- cohort membership query order would put the
     # summary table out of step with the Contents page and the learner
