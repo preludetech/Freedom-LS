@@ -60,7 +60,6 @@ flowchart TB
     deployment --> base
     educator_interface --> accounts
     educator_interface --> content_engine
-    educator_interface --> course_interest
     educator_interface --> learner_management
     educator_interface --> learner_progress
     educator_interface --> organisations
@@ -120,9 +119,11 @@ flowchart TB
     base -.-> role_based_permissions
     course_access -.-> course_applications
     course_interest -.-> learner_management
+    educator_interface -.-> course_interest
     educator_interface -.-> role_based_permissions
     learner_interface -.-> course_applications
     learner_interface -.-> role_based_permissions
+    learner_management -.-> learner_progress
     learner_management -.-> role_based_permissions
     markdown_rendering -.-> content_engine
     organisations -.-> accounts
@@ -148,11 +149,11 @@ flowchart TB
 | course_applications | accounts, content_engine, course_access, learner_management, site_aware_models | — |
 | course_interest | accounts, content_engine, course_access, site_aware_models | learner_management |
 | deployment | base | — |
-| educator_interface | accounts, content_engine, course_interest, learner_management, learner_progress, organisations, panel_framework, site_aware_models | role_based_permissions |
+| educator_interface | accounts, content_engine, learner_management, learner_progress, organisations, panel_framework, site_aware_models | course_interest, role_based_permissions |
 | health | base | — |
 | icons | base | — |
 | learner_interface | accounts, content_engine, course_access, course_interest, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, role_based_permissions |
-| learner_management | accounts, base, content_engine, organisations, site_aware_models, webhooks | role_based_permissions |
+| learner_management | accounts, base, content_engine, organisations, site_aware_models, webhooks | learner_progress, role_based_permissions |
 | learner_progress | accounts, content_engine, learner_management, site_aware_models | — |
 | markdown_rendering | base | content_engine |
 | organisations | base, site_aware_models | accounts, role_based_permissions |
