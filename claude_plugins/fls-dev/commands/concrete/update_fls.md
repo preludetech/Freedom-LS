@@ -87,7 +87,17 @@ For each path in `changed_template_paths`, check whether the concrete project sh
 
 **Flag** every such override for human review — report the path and that its upstream source changed. **Do not auto-merge**; re-applying customisations is a human decision.
 
-## 3g. Post-flight conflict check
+## 3g. System check
+
+After applying the integration, run FreedomLS's system checks to catch configuration drift the pointer move introduced:
+
+```
+uv run python manage.py check
+```
+
+No `--deploy` or `--tag` is needed — FLS registers no `deploy=True` checks, so a plain `check` already covers everything relevant. `migrate` and `makemigrations` already run this same check set internally, so this isn't the only place a failure would surface — running it directly here is about attribution (a configuration `Error` would otherwise read as a migration-gate failure) and warning visibility (only a direct `check` sets `display_num_errors`). Errors abort the run: stop and resolve them. Warnings do not abort, but read and act on them rather than skimming past.
+
+## 3h. Post-flight conflict check
 
 After applying the integration, confirm no migrations are missing or in conflict:
 
@@ -97,9 +107,23 @@ uv run python manage.py makemigrations --check
 
 A non-zero result here means the integration left the migration state inconsistent (e.g. a model change with no migration). Resolve it before committing.
 
-## 3h. Verify
+## 3i. Verify
 
-Run the portable contract test set and confirm everything passes — this is the concrete project's own suite, so it deselects FLS's browser tests, brand/demo-coupled tests, and slow-only tests (the downstream is verifying its own wiring, not re-running FLS's regression suite):
+Before running the test suite, confirm the concrete project has a `tests/` file that imports `freedom_ls.contrib.conformance` — without one, the pytest run below collects zero conformance probes and proves nothing about the project's wiring, silently rather than as a collection error. If no such file exists, add one from the opt-in snippet below, note that it was added, and continue:
+
+```
+from freedom_ls.contrib.conformance import *          # simple
+# or, collision-safe (recommended):
+from freedom_ls.contrib import conformance
+test_fls_namespace_reverses = conformance.test_fls_namespace_reverses
+
+# Prune an internal-tier route you have customised while keeping its app:
+conformance.drop("learner_interface:courses")
+```
+
+Stop and report only if the file cannot be written.
+
+Run the portable contract test set and confirm everything passes — this is where the conformance suite above actually runs, alongside the concrete project's own suite, which deselects FLS's browser tests, brand/demo-coupled tests, and slow-only tests (the downstream is verifying its own wiring, not re-running FLS's regression suite):
 
 ```
 uv run pytest -m "not playwright and not fls_internal and not ci_only"
@@ -107,7 +131,7 @@ uv run pytest -m "not playwright and not fls_internal and not ci_only"
 
 If there are front-end changes, use the Playwright MCP to verify things work visually.
 
-## 3i. Commit
+## 3j. Commit
 
 Commit the submodule update and any integration changes together (including the updated `uv.lock`) before moving to the next spec. Use a commit message like: `Update FLS: <spec-name>`.
 
@@ -123,7 +147,7 @@ After all completed specs have been integrated:
 
 # Rollback: recovering from a spec that fails mid-integration
 
-If a spec fails partway through Step 3 — tests won't pass, a migration conflicts, an override can't be reconciled — return to the last known-good state rather than committing a broken integration. The last good state is the previous `Update FLS: <spec-name>` commit (or the pre-update HEAD if this was the first spec).
+If a spec fails partway through Step 3 — tests won't pass, a system check fails, a migration conflicts, an override can't be reconciled — return to the last known-good state rather than committing a broken integration. The last good state is the previous `Update FLS: <spec-name>` commit (or the pre-update HEAD if this was the first spec).
 
 1. Discard the in-progress integration changes in the concrete project (working tree and index):
    ```
@@ -164,7 +188,9 @@ for spec in pending_completed_specs (chronological):
     if notes.requires_npm_install:       mirror notes.changed_npm_packages into package.json && npm install
     if notes.requires_tailwind_rebuild:  npm run tailwind_build
     if notes.requires_template_review:   flag drift for notes.changed_template_paths (no auto-merge)
+    manage.py check                      # catch config drift the pointer move introduced
     makemigrations --check               # catch conflicts introduced by this spec
+    if no tests/ file imports freedom_ls.contrib.conformance: write one, note it, continue
     uv run pytest -m "not playwright and not fls_internal and not ci_only"  # test gate
     commit "Update FLS: <spec>"          # includes uv.lock
 # on failure mid-spec: follow the rollback procedure above
