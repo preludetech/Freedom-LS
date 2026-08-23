@@ -16,11 +16,16 @@ from django.urls.resolvers import ResolverMatch
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_management.admin import CohortMembershipInline, LearnerAdmin
-from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
+from freedom_ls.learner_management.factories import (
+    CohortFactory,
+    CohortMembershipFactory,
+    LearnerFactory,
+)
 from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
 from freedom_ls.organisations.factories import OrganisationFactory
 
 ADD_URL_NAME = "admin:freedom_ls_learner_management_learner_add"
+COHORT_CHANGE_URL_NAME = "admin:freedom_ls_learner_management_cohort_change"
 
 
 def _request_for_cohort(cohort: Cohort | None) -> HttpRequest:
@@ -50,13 +55,6 @@ def _learner_choices(request: HttpRequest) -> QuerySet[Learner]:
 @pytest.fixture
 def admin_instance() -> LearnerAdmin:
     return LearnerAdmin(Learner, admin.site)
-
-
-@pytest.fixture
-def staff_client(mock_site_context, logged_in_client):
-    """The Django admin as a superuser -- these admin classes carry no
-    role-based narrowing of their own."""
-    return logged_in_client(UserFactory(superuser=True))
 
 
 class TestDeletePermission:
@@ -107,6 +105,19 @@ class TestCohortMembershipInlineLearnerField:
 
         assert list(choices) == [own_learner]
 
+    def test_offers_a_removed_learner_from_the_cohorts_organisation(
+        self, mock_site_context
+    ) -> None:
+        """This queryset also validates the inline rows that already exist, so
+        excluding removed learners would make a cohort holding one unsavable."""
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation, name="Cohort A")
+        removed = LearnerFactory(organisation=organisation, is_active=False)
+
+        choices = _learner_choices(_request_for_cohort(cohort))
+
+        assert removed in choices
+
     def test_offers_every_learner_when_adding_a_brand_new_cohort(
         self, mock_site_context
     ) -> None:
@@ -116,3 +127,60 @@ class TestCohortMembershipInlineLearnerField:
         choices = _learner_choices(_request_for_cohort(None))
 
         assert learner in choices
+
+
+def _cohort_change_payload(
+    cohort: Cohort, membership: CohortMembership
+) -> dict[str, str]:
+    """A minimal, unmodified round-trip of the cohort change form: the cohort's
+    own fields plus the one membership inline row, resubmitted as-is."""
+    return {
+        "name": cohort.name,
+        "organisation": str(cohort.organisation_id),
+        "cohortmembership_set-TOTAL_FORMS": "1",
+        "cohortmembership_set-INITIAL_FORMS": "1",
+        "cohortmembership_set-MIN_NUM_FORMS": "0",
+        "cohortmembership_set-MAX_NUM_FORMS": "1000",
+        "cohortmembership_set-0-id": str(membership.pk),
+        "cohortmembership_set-0-cohort": str(cohort.pk),
+        "cohortmembership_set-0-learner": str(membership.learner_id),
+        "course_registrations-TOTAL_FORMS": "0",
+        "course_registrations-INITIAL_FORMS": "0",
+        "course_registrations-MIN_NUM_FORMS": "0",
+        "course_registrations-MAX_NUM_FORMS": "1000",
+    }
+
+
+@pytest.mark.django_db
+class TestCohortChangePageWithARemovedLearner:
+    """The admin is the only place a learner is removed, so it must not then
+    refuse to save the cohorts that learner still belongs to."""
+
+    def test_the_cohort_still_saves(self, staff_client) -> None:
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation, name="Cohort A")
+        removed = LearnerFactory(organisation=organisation, is_active=False)
+        membership = CohortMembershipFactory(cohort=cohort, learner=removed)
+
+        response = staff_client.post(
+            reverse(COHORT_CHANGE_URL_NAME, args=[cohort.pk]),
+            _cohort_change_payload(cohort, membership),
+        )
+
+        assert response.status_code == 302
+
+    def test_an_edit_made_on_the_page_is_persisted(self, staff_client) -> None:
+        """Renaming proves the form actually saved. Asserting the membership
+        merely survived would pass on the rejected save too, since a rejected
+        save deletes nothing."""
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation, name="Cohort A")
+        removed = LearnerFactory(organisation=organisation, is_active=False)
+        membership = CohortMembershipFactory(cohort=cohort, learner=removed)
+        payload = _cohort_change_payload(cohort, membership)
+        payload["name"] = "Renamed Cohort"
+
+        staff_client.post(reverse(COHORT_CHANGE_URL_NAME, args=[cohort.pk]), payload)
+
+        cohort.refresh_from_db()
+        assert cohort.name == "Renamed Cohort"

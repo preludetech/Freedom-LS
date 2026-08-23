@@ -557,7 +557,10 @@ def initiate_course_access(request, course_slug):
         # framework absent, which FLS always has installed.
         get_default_organisation(cast(Site, get_cached_site(request))),
     )
-    LearnerCourseRegistration.objects.get_or_create(
+    # update_or_create, not get_or_create: defaults only apply on create, so a
+    # registration an admin had deactivated would stay inactive and the learner
+    # would be bounced back out of the course they just asked to enter.
+    LearnerCourseRegistration.objects.update_or_create(
         learner=learner,
         collection=course,
         defaults={"is_active": True},

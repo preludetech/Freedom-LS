@@ -72,12 +72,20 @@ class CohortFactory(SiteAwareFactory):
 
 
 class CohortMembershipFactory(SiteAwareFactory):
-    """Factory for creating CohortMembership instances."""
+    """Factory for creating CohortMembership instances.
+
+    The learner defaults into the cohort's own organisation. Left to build its
+    own, it would land in a third organisation and silently persist a row that
+    CohortMembership.clean() rejects -- factories never call full_clean. Pass
+    an explicit ``learner`` to build a cross-organisation row deliberately.
+    """
 
     class Meta:
         model = CohortMembership
 
-    learner = factory.SubFactory(LearnerFactory)
+    learner = factory.SubFactory(
+        LearnerFactory, organisation=factory.SelfAttribute("..cohort.organisation")
+    )
     cohort = factory.SubFactory(CohortFactory)
 
 

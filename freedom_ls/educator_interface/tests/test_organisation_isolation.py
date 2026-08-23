@@ -26,6 +26,7 @@ from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
+    LearnerFactory,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -56,32 +57,31 @@ class TestCrossOrganisationIsolation:
         educator = UserFactory(staff=True)
         assign_object_role(educator, organisation_a, "organisation_staff")
 
+        # Each Learner is built explicitly so the tests can address the row
+        # itself: the detail URLs resolve a Learner pk, not a User pk.
         cohort_a = CohortFactory(organisation=organisation_a, name="Cohort A Only")
         member_a = UserFactory(first_name="MemberOfA", last_name="Only")
-        CohortMembershipFactory(cohort=cohort_a, learner__user=member_a)
+        learner_a = LearnerFactory(user=member_a, organisation=organisation_a)
+        CohortMembershipFactory(cohort=cohort_a, learner=learner_a)
 
         cohort_b = CohortFactory(organisation=organisation_b, name="Cohort B Only")
         member_b = UserFactory(first_name="MemberOfB", last_name="Only")
-        CohortMembershipFactory(cohort=cohort_b, learner__user=member_b)
+        learner_b = LearnerFactory(user=member_b, organisation=organisation_b)
+        CohortMembershipFactory(cohort=cohort_b, learner=learner_b)
 
-        # A learner studying through both organisations. Visible to this
-        # educator through A, so A's own list legitimately shows the row --
-        # what must not appear in it is anything belonging to B.
+        # A learner studying through both organisations -- one Learner row per
+        # organisation for the one user. Visible to this educator through A, so
+        # A's own list legitimately shows the row -- what must not appear in it
+        # is anything belonging to B.
         shared = UserFactory(first_name="SharedBetween", last_name="Both")
-        CohortMembershipFactory(cohort=cohort_a, learner__user=shared)
-        CohortMembershipFactory(cohort=cohort_b, learner__user=shared)
+        shared_in_a = LearnerFactory(user=shared, organisation=organisation_a)
+        shared_in_b = LearnerFactory(user=shared, organisation=organisation_b)
+        CohortMembershipFactory(cohort=cohort_a, learner=shared_in_a)
+        CohortMembershipFactory(cohort=cohort_b, learner=shared_in_b)
         course_a = CourseFactory(title="Course A Only")
         course_b = CourseFactory(title="Course B Only")
-        LearnerCourseRegistrationFactory(
-            learner__user=shared,
-            learner__organisation=organisation_a,
-            collection=course_a,
-        )
-        LearnerCourseRegistrationFactory(
-            learner__user=shared,
-            learner__organisation=organisation_b,
-            collection=course_b,
-        )
+        LearnerCourseRegistrationFactory(learner=shared_in_a, collection=course_a)
+        LearnerCourseRegistrationFactory(learner=shared_in_b, collection=course_b)
 
         return SimpleNamespace(
             organisation_a=organisation_a,
@@ -90,6 +90,8 @@ class TestCrossOrganisationIsolation:
             cohort_b=cohort_b,
             member_a=member_a,
             member_b=member_b,
+            learner_a=learner_a,
+            learner_b=learner_b,
             shared=shared,
             course_a=course_a,
             course_b=course_b,
@@ -157,10 +159,23 @@ class TestCrossOrganisationIsolation:
         assert isolation.course_a.title in content
         assert isolation.course_b.title not in content
 
-    def test_user_detail_404s_when_requested_through_organisation_a(self, isolation):
+    def test_learner_detail_is_reachable_for_organisation_as_own_learner(
+        self, isolation
+    ):
+        """The positive half of the pair below: without it, a 404 proves
+        nothing about scoping."""
         response = isolation.client.get(
             _interface_url(
-                isolation.organisation_a.slug, f"learners/{isolation.member_b.pk}"
+                isolation.organisation_a.slug, f"learners/{isolation.learner_a.pk}"
+            )
+        )
+
+        assert response.status_code == 200
+
+    def test_learner_detail_404s_when_requested_through_organisation_a(self, isolation):
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug, f"learners/{isolation.learner_b.pk}"
             )
         )
 
@@ -225,3 +240,31 @@ class TestGuardianGrantOnlyEducatorIsNotLockedOut:
         )
 
         assert response.status_code == 200
+
+    def test_learners_list_cohort_cell_names_only_the_granted_cohort(
+        self, logged_in_client
+    ):
+        """The learner row is legitimately visible through the granted cohort,
+        but the Cohorts cell renders a relation of its own. Organisation
+        scoping does not narrow it -- both cohorts belong to the same
+        organisation -- so only the grant can."""
+        organisation = OrganisationFactory()
+        granted_cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
+        ungranted_cohort = CohortFactory(organisation=organisation, name="Beta Cohort")
+        learner = LearnerFactory(
+            user=UserFactory(first_name="Studies", last_name="InBoth"),
+            organisation=organisation,
+        )
+        CohortMembershipFactory(cohort=granted_cohort, learner=learner)
+        CohortMembershipFactory(cohort=ungranted_cohort, learner=learner)
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, granted_cohort, "instructor")
+        client = logged_in_client(educator)
+
+        response = client.get(_interface_url(organisation.slug, "learners"))
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "Studies" in content
+        assert "Alpha Cohort" in content
+        assert "Beta Cohort" not in content

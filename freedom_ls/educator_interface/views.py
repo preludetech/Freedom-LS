@@ -15,6 +15,7 @@ from django.db.models import (
     IntegerField,
     Model,
     OuterRef,
+    Prefetch,
     Q,
     QuerySet,
     Subquery,
@@ -158,7 +159,18 @@ class LearnerDataTable(DataTable):
             learners_visible_to(request.user, organisation)
             .select_related("user")
             .prefetch_related(
-                "cohortmembership_set__cohort",
+                # A Learner belongs to exactly one organisation, so the course
+                # registrations hanging off it are already organisation-local.
+                # Its cohort memberships are not narrowed by that: an educator
+                # holding a grant on one cohort would otherwise have the
+                # organisation's other cohorts named -- and linked -- in the
+                # Cohorts cell, which reads this relation through .all().
+                Prefetch(
+                    "cohortmembership_set",
+                    queryset=CohortMembership.objects.filter(
+                        cohort__in=cohorts_visible_to(request.user, organisation)
+                    ).select_related("cohort"),
+                ),
                 "learnercourseregistration_set__collection",
             )
             .order_by("user__first_name", "user__last_name")

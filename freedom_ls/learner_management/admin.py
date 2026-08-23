@@ -51,16 +51,19 @@ class CohortMembershipInline(TabularInline):
         request: HttpRequest,
         **kwargs: object,
     ) -> forms.ModelChoiceField | None:
-        # Narrows the dropdown to the cohort's own organisation on the change
-        # page only -- `object_id` isn't in the URL kwargs on the add page, so
-        # a brand-new cohort still offers every learner there. Cross-org rows
-        # are rejected either way by CohortMembership.clean(); this only saves
-        # a round trip on the common case.
+        # Constrains server-side validation of a submitted learner to the
+        # cohort's own organisation, on the change page only -- `object_id`
+        # isn't in the URL kwargs on the add page. It does not narrow what a
+        # person is offered: `learner` is in autocomplete_fields, so the
+        # options come from LearnerAdmin's autocomplete endpoint, which never
+        # sees this queryset. Removed learners must stay in it -- the queryset
+        # also validates the inline rows that already exist, so excluding them
+        # would make a cohort holding one impossible to save.
         if db_field.name == "learner" and request.resolver_match:
             cohort_id = request.resolver_match.kwargs.get("object_id")
             if cohort_id:
                 kwargs["queryset"] = Learner.objects.filter(
-                    organisation__cohort__id=cohort_id, is_active=True
+                    organisation__cohort__id=cohort_id
                 )
         return cast(
             "forms.ModelChoiceField | None",

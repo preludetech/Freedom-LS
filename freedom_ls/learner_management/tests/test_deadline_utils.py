@@ -17,6 +17,7 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
     LearnerDeadlineFactory,
+    LearnerFactory,
     UserCohortDeadlineOverrideFactory,
 )
 from freedom_ls.learner_management.models import CohortMembership
@@ -409,3 +410,88 @@ def test_no_deadlines_not_locked(mock_site_context):
     topic = TopicFactory()
 
     assert is_item_locked_by_deadline(user, course, topic, is_completed=False) is False
+
+
+@pytest.mark.django_db
+def test_removed_learners_cohort_deadline_does_not_unlock_the_item(mock_site_context):
+    """The most permissive hard deadline governs, so a generous deadline held
+    through an organisation the user was removed from would otherwise keep the
+    item open past the expired deadline of the one they are still active in."""
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    organisation_a = OrganisationFactory()
+    organisation_b = OrganisationFactory()
+    cohort_a = CohortFactory(organisation=organisation_a, name="Cohort Left")
+    cohort_b = CohortFactory(organisation=organisation_b, name="Cohort Current")
+    CohortMembershipFactory(
+        cohort=cohort_a,
+        learner=LearnerFactory(user=user, organisation=organisation_a, is_active=False),
+    )
+    CohortMembershipFactory(
+        cohort=cohort_b,
+        learner=LearnerFactory(user=user, organisation=organisation_b),
+    )
+    CohortDeadlineFactory(
+        cohort_course_registration=CohortCourseRegistrationFactory(
+            cohort=cohort_a, collection=course
+        ),
+        content_item=topic,
+        deadline=timezone.now() + timedelta(days=7),
+        is_hard_deadline=True,
+    )
+    CohortDeadlineFactory(
+        cohort_course_registration=CohortCourseRegistrationFactory(
+            cohort=cohort_b, collection=course
+        ),
+        content_item=topic,
+        deadline=timezone.now() - timedelta(days=1),
+        is_hard_deadline=True,
+    )
+
+    assert is_item_locked_by_deadline(user, course, topic, is_completed=False) is True
+
+
+@pytest.mark.django_db
+def test_a_removed_learners_cohort_contributes_no_deadline(mock_site_context):
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    CohortMembershipFactory(
+        cohort=cohort,
+        learner=LearnerFactory(user=user, organisation=organisation, is_active=False),
+    )
+    CohortDeadlineFactory(
+        cohort_course_registration=CohortCourseRegistrationFactory(
+            cohort=cohort, collection=course
+        ),
+        content_item=topic,
+        deadline=timezone.now() + timedelta(days=7),
+        is_hard_deadline=True,
+    )
+
+    assert get_effective_deadlines(user, course, content_item=topic) == []
+
+
+@pytest.mark.django_db
+def test_a_removed_learners_own_registration_contributes_no_deadline(
+    mock_site_context,
+):
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    removed = LearnerFactory(
+        user=user, organisation=OrganisationFactory(), is_active=False
+    )
+    LearnerDeadlineFactory(
+        learner_course_registration=LearnerCourseRegistrationFactory(
+            learner=removed, collection=course
+        ),
+        content_item=topic,
+        deadline=timezone.now() + timedelta(days=7),
+        is_hard_deadline=True,
+    )
+
+    assert get_effective_deadlines(user, course, content_item=topic) == []

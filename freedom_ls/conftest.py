@@ -11,6 +11,8 @@ from django.contrib.sites.models import Site
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
+from freedom_ls.accounts.factories import UserFactory
+
 # Re-export Playwright fixtures (logged_in_page, reset_local_storage) so
 # tests can consume them without importing the fixtures module directly.
 from freedom_ls.tests.playwright_fixtures import *  # noqa: F403
@@ -167,6 +169,13 @@ def logged_in_client():
         return client
 
     return _make
+
+
+@pytest.fixture
+def staff_client(mock_site_context, logged_in_client):
+    """The Django admin as a superuser -- admin classes under test here carry
+    no role-based narrowing of their own."""
+    return logged_in_client(UserFactory(superuser=True))
 
 
 @pytest.fixture

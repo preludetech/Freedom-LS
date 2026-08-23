@@ -57,9 +57,13 @@ def get_effective_deadlines(
     results: list[EffectiveDeadline] = []
 
     # --- Cohort-based registrations ---
-    cohort_ids = CohortMembership.objects.filter(learner__user=user).values_list(
-        "cohort_id", flat=True
-    )
+    # learner__is_active: a Learner removed from an organisation keeps its
+    # membership and registration rows, and is_item_locked_by_deadline takes
+    # the most permissive hard deadline across all of them -- so a stale
+    # deadline would otherwise unlock content past a live one.
+    cohort_ids = CohortMembership.objects.filter(
+        learner__user=user, learner__is_active=True
+    ).values_list("cohort_id", flat=True)
 
     cohort_regs = CohortCourseRegistration.objects.filter(
         cohort_id__in=cohort_ids,
@@ -75,6 +79,7 @@ def get_effective_deadlines(
     # --- Individual learner registrations ---
     learner_regs = LearnerCourseRegistration.objects.filter(
         learner__user=user,
+        learner__is_active=True,
         collection=course,
         is_active=True,
     )
@@ -207,9 +212,9 @@ def get_course_deadlines(
     """
     # Gather all registrations
     cohort_ids = list(
-        CohortMembership.objects.filter(learner__user=user).values_list(
-            "cohort_id", flat=True
-        )
+        CohortMembership.objects.filter(
+            learner__user=user, learner__is_active=True
+        ).values_list("cohort_id", flat=True)
     )
 
     cohort_regs = list(
@@ -220,7 +225,10 @@ def get_course_deadlines(
 
     learner_regs = list(
         LearnerCourseRegistration.objects.filter(
-            learner__user=user, collection=course, is_active=True
+            learner__user=user,
+            learner__is_active=True,
+            collection=course,
+            is_active=True,
         )
     )
 
