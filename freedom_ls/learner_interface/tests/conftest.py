@@ -20,7 +20,8 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, Form
-from freedom_ls.learner_management.factories import UserCourseRegistrationFactory
+from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
+from freedom_ls.organisations.factories import OrganisationFactory
 
 
 @pytest.fixture
@@ -74,7 +75,18 @@ def course_with_form(
 
 
 def register_user_for_course(course: Course, user: User | None = None) -> User:
-    """Register a user (creating one if not given) for `course`; return the user."""
+    """Register a user (creating one if not given) for `course`; return the user.
+
+    Builds the Learner and LearnerCourseRegistration directly rather than
+    through learner_management.factories: that module still imports the
+    pre-rename model names and is rewritten in a later batch, so its
+    factories cannot be used here yet.
+    """
     resolved_user: User = UserFactory() if user is None else user
-    UserCourseRegistrationFactory(user=resolved_user, collection=course, is_active=True)
+    learner = Learner.objects.create(
+        user=resolved_user, organisation=OrganisationFactory()
+    )
+    LearnerCourseRegistration.objects.create(
+        learner=learner, collection=course, is_active=True
+    )
     return resolved_user

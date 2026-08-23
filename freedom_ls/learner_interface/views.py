@@ -31,10 +31,11 @@ from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.learner_management.config import config
 from freedom_ls.learner_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.learner_management.models import (
+    LearnerCourseRegistration,
     RecommendedCourse,
-    UserCourseRegistration,
 )
 from freedom_ls.learner_management.queries import organisation_for_learner_course
+from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
@@ -545,21 +546,21 @@ def initiate_course_access(request, course_slug):
             else redirect("learner_interface:course_detail", course_slug=course_slug)
         )
 
-    # Create the course registration directly with user. No organisation is in
-    # scope for a self-service registration, so it lands on the Site's default
-    # Organisation — guaranteed to exist by the post_save receiver that gives
-    # every Site one.
-    UserCourseRegistration.objects.get_or_create(
-        user=request.user,
+    # Create the course registration directly on the learner. No organisation
+    # is in scope for a self-service registration, so it lands on the Site's
+    # default Organisation — guaranteed to exist by the post_save receiver
+    # that gives every Site one. ensure_learner reactivates a removed learner,
+    # so re-registering is a live signal of re-association.
+    learner = ensure_learner(
+        request.user,
+        # get_cached_site's RequestSite branch only applies with the Sites
+        # framework absent, which FLS always has installed.
+        get_default_organisation(cast(Site, get_cached_site(request))),
+    )
+    LearnerCourseRegistration.objects.get_or_create(
+        learner=learner,
         collection=course,
-        defaults={
-            "is_active": True,
-            # get_cached_site's RequestSite branch only applies with the Sites
-            # framework absent, which FLS always has installed.
-            "organisation": get_default_organisation(
-                cast(Site, get_cached_site(request))
-            ),
-        },
+        defaults={"is_active": True},
     )
 
     # Delete any existing RecommendedCourse for this user and course

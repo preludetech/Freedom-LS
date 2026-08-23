@@ -6,7 +6,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, cast
 
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q, QuerySet
+from django.db.models import QuerySet
 from django.http import Http404
 from django.urls import reverse
 from django.utils import timezone
@@ -24,11 +24,8 @@ from freedom_ls.learner_management.deadline_utils import (
     EffectiveDeadline,
     get_course_deadlines,
 )
-from freedom_ls.learner_management.models import (
-    CohortCourseRegistration,
-    RecommendedCourse,
-    UserCourseRegistration,
-)
+from freedom_ls.learner_management.models import RecommendedCourse
+from freedom_ls.learner_management.queries import is_registered_for_course_expression
 from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,
@@ -261,13 +258,11 @@ def get_is_registered(user: RequestUser, course: Course) -> bool:
 
 def get_course_registrations(user: RequestUser) -> list[Course]:
     """Get all courses a user is registered for (directly or via cohort)."""
-    direct = UserCourseRegistration.objects.filter(
-        user=user, is_active=True
-    ).values_list("collection", flat=True)
-    cohort = CohortCourseRegistration.objects.filter(
-        cohort__cohortmembership__user=user, is_active=True
-    ).values_list("collection", flat=True)
-    return list(Course.objects.filter(Q(pk__in=direct) | Q(pk__in=cohort)).distinct())
+    return list(
+        Course.objects.annotate(
+            _is_registered=is_registered_for_course_expression(user)
+        ).filter(_is_registered=True)
+    )
 
 
 def get_resume_index(user: RequestUser, course: Course) -> int:

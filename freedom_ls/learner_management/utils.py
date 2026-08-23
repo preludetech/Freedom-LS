@@ -77,18 +77,26 @@ def is_registered_for_course(user: RequestUser, course: Course) -> bool:
     """
     from freedom_ls.learner_management.models import (
         CohortCourseRegistration,
-        UserCourseRegistration,
+        LearnerCourseRegistration,
     )
 
     if not user.is_authenticated:
         return False
-    direct = UserCourseRegistration.objects.filter(
-        user=user, collection=course, is_active=True
+    direct = LearnerCourseRegistration.objects.filter(
+        learner__user=user, learner__is_active=True, collection=course, is_active=True
     ).exists()
     if direct:
         return True
+    # Both cohort conditions must sit in one filter() call: several conditions
+    # on a multi-valued relation within one filter() apply to the same joined
+    # row, but split across two calls they can match different rows of the
+    # cohort's memberships -- so a cohort holding this user's removed Learner
+    # alongside a second, active Learner would otherwise grant access.
     cohort = CohortCourseRegistration.objects.filter(
-        cohort__cohortmembership__user=user, collection=course, is_active=True
+        cohort__cohortmembership__learner__user=user,
+        cohort__cohortmembership__learner__is_active=True,
+        collection=course,
+        is_active=True,
     ).exists()
     return cohort
 

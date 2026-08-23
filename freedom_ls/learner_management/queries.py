@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
-    from freedom_ls.learner_management.models import Cohort, UserCourseRegistration
+    from freedom_ls.learner_management.models import Cohort, LearnerCourseRegistration
     from freedom_ls.organisations.models import Organisation
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
@@ -39,23 +39,31 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
     # which imports these models locally to avoid a module-load import cycle.
     from freedom_ls.learner_management.models import (
         CohortCourseRegistration,
-        UserCourseRegistration,
+        LearnerCourseRegistration,
     )
 
     return Exists(
-        UserCourseRegistration.objects.filter(
-            collection=OuterRef("pk"), user=user, is_active=True
+        LearnerCourseRegistration.objects.filter(
+            collection=OuterRef("pk"),
+            learner__user=user,
+            learner__is_active=True,
+            is_active=True,
         )
     ) | Exists(
+        # Both cohort conditions must sit in this one filter() call -- see
+        # is_registered_for_course (utils.py) for why a split would leak
+        # access through a cohort holding both a removed and an active
+        # Learner for this user.
         CohortCourseRegistration.objects.filter(
             collection=OuterRef("pk"),
-            cohort__cohortmembership__user=user,
+            cohort__cohortmembership__learner__user=user,
+            cohort__cohortmembership__learner__is_active=True,
             is_active=True,
         )
     )
 
 
-def latest_registration(user: User, course: Course) -> UserCourseRegistration | None:
+def latest_registration(user: User, course: Course) -> LearnerCourseRegistration | None:
     """Most recent active registration, else most recent of any status.
 
     A learner can hold more than one registration for the same course, one
@@ -64,11 +72,11 @@ def latest_registration(user: User, course: Course) -> UserCourseRegistration | 
     boolean sorts every active row ahead of every inactive one, so recency
     only breaks ties within whichever group is present.
     """
-    from freedom_ls.learner_management.models import UserCourseRegistration
+    from freedom_ls.learner_management.models import LearnerCourseRegistration
 
     return (
-        UserCourseRegistration.objects.filter(user=user, collection=course)
-        .select_related("organisation")
+        LearnerCourseRegistration.objects.filter(learner__user=user, collection=course)
+        .select_related("learner__organisation")
         .order_by("-is_active", "-registered_at")
         .first()
     )
@@ -89,7 +97,8 @@ def organisation_for_learner_course(user: User, course: Course) -> Organisation 
     cohort_registration: CohortCourseRegistration | None = (
         CohortCourseRegistration.objects.filter(
             collection=course,
-            cohort__cohortmembership__user=user,
+            cohort__cohortmembership__learner__user=user,
+            cohort__cohortmembership__learner__is_active=True,
             is_active=True,
         )
         .select_related("cohort__organisation")
@@ -99,7 +108,7 @@ def organisation_for_learner_course(user: User, course: Course) -> Organisation 
         return cohort_registration.cohort.organisation
 
     registration = latest_registration(user, course)
-    return registration.organisation if registration is not None else None
+    return registration.learner.organisation if registration is not None else None
 
 
 def organisations_accessible_to(user: RequestUser) -> QuerySet[Organisation]:
