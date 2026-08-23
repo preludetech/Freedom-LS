@@ -13,6 +13,22 @@ from freedom_ls.site_aware_models.models import SiteAwareModel
 User = get_user_model()
 
 
+def _relations_are_set(instance: models.Model, *field_names: str) -> bool:
+    """Whether every named foreign key on ``instance`` resolves.
+
+    An unset one means the form already holds a field-level error for it -- an
+    invalid choice in an admin inline, say. Callers return early on False so
+    that error surfaces instead of a RelatedObjectDoesNotExist crash out of
+    clean().
+    """
+    try:
+        for field_name in field_names:
+            getattr(instance, field_name)
+    except ObjectDoesNotExist:
+        return False
+    return True
+
+
 class Cohort(SiteAwareModel):
     organisation = models.ForeignKey(
         "freedom_ls_organisations.Organisation",
@@ -78,15 +94,9 @@ class CohortMembership(SiteAwareModel):
 
     def clean(self) -> None:
         super().clean()
-        try:
-            learner = self.learner
-            cohort = self.cohort
-        except ObjectDoesNotExist:
-            # A field-level validation error already exists for the unset
-            # foreign key (e.g. an invalid choice in an admin inline); let
-            # that surface instead of a RelatedObjectDoesNotExist crash.
+        if not _relations_are_set(self, "learner", "cohort"):
             return
-        if learner.organisation_id != cohort.organisation_id:
+        if self.learner.organisation_id != self.cohort.organisation_id:
             raise ValidationError(
                 "Learner and cohort must belong to the same organisation."
             )
@@ -308,6 +318,9 @@ class UserCohortDeadlineOverride(SiteAwareModel):
 
     def clean(self) -> None:
         super().clean()
+        if not _relations_are_set(self, "learner", "cohort_course_registration"):
+            return
+
         # Validate the learner is a member of the cohort
         if not CohortMembership.objects.filter(
             learner=self.learner,

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from typing import cast
+from urllib.parse import parse_qsl
+from uuid import uuid4
 
 import pytest
 
 from django.contrib import admin
-from django.db.models import QuerySet
+from django.contrib.admin.widgets import AutocompleteSelect
+from django.db.models import Model, QuerySet
 from django.forms import ModelChoiceField
 from django.http import HttpRequest
 from django.test import RequestFactory
@@ -15,17 +18,36 @@ from django.urls import reverse
 from django.urls.resolvers import ResolverMatch
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.learner_management.admin import CohortMembershipInline, LearnerAdmin
+from freedom_ls.learner_management.admin import (
+    SCOPE_TO_MEMBERS_OF_COHORT,
+    SCOPE_TO_ORGANISATION_OF_COHORT,
+    CohortMembershipInline,
+    LearnerAdmin,
+    UserCohortDeadlineOverrideInline,
+)
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    CohortMembership,
+    Learner,
+    LearnerCourseRegistration,
+    UserCohortDeadlineOverride,
+)
 from freedom_ls.organisations.factories import OrganisationFactory
 
 ADD_URL_NAME = "admin:freedom_ls_learner_management_learner_add"
+AUTOCOMPLETE_URL_NAME = "admin:autocomplete"
 COHORT_CHANGE_URL_NAME = "admin:freedom_ls_learner_management_cohort_change"
+LEARNER_CHANGELIST_URL_NAME = "admin:freedom_ls_learner_management_learner_changelist"
+REGISTRATION_CHANGE_URL_NAME = (
+    "admin:freedom_ls_learner_management_cohortcourseregistration_change"
+)
 
 
 def _request_for_cohort(cohort: Cohort | None) -> HttpRequest:
@@ -40,16 +62,64 @@ def _request_for_cohort(cohort: Cohort | None) -> HttpRequest:
     return request
 
 
-def _learner_choices(request: HttpRequest) -> QuerySet[Learner]:
-    """The learners the inline's learner dropdown offers on ``request``."""
+def _request_for_cohort_course_registration(
+    registration: CohortCourseRegistration,
+) -> HttpRequest:
+    """An admin request whose resolver match names ``registration``."""
+    request = RequestFactory().get("/")
+    request.resolver_match = ResolverMatch(
+        func=lambda *args, **kwargs: None,
+        args=(),
+        kwargs={"object_id": str(registration.pk)},
+    )
+    return request
+
+
+def _learner_field(request: HttpRequest) -> ModelChoiceField[Learner]:
+    """The inline's learner form field as built on ``request``."""
     inline = CohortMembershipInline(Cohort, admin.site)
-    field = cast(
+    return cast(
         "ModelChoiceField[Learner]",
         inline.formfield_for_foreignkey(
             CohortMembership._meta.get_field("learner"), request
         ),
     )
-    return cast("QuerySet[Learner]", field.queryset)
+
+
+def _learner_choices(request: HttpRequest) -> QuerySet[Learner]:
+    """The learners the inline's learner dropdown validates against."""
+    return cast("QuerySet[Learner]", _learner_field(request).queryset)
+
+
+def _autocomplete_request(
+    field: ModelChoiceField[Learner], model: type[Model], term: str = ""
+) -> tuple[str, dict[str, str]]:
+    """The URL and params the rendered dropdown for ``field`` actually fetches.
+
+    The widget supplies the URL through data-ajax--url; admin/js/autocomplete.js
+    appends the rest. Deriving them from the widget rather than hardcoding them
+    is what keeps these tests honest -- a widget that stops naming its scope
+    stops narrowing the results here too.
+    """
+    widget = cast("AutocompleteSelect", field.widget)
+    url, _, query = widget.get_url().partition("?")
+    params = dict(parse_qsl(query))
+    params.update(
+        {
+            "term": term,
+            "app_label": model._meta.app_label,
+            "model_name": model._meta.model_name or "",
+            "field_name": "learner",
+        }
+    )
+    return url, params
+
+
+def _offered_ids(staff_client, url: str, params: dict) -> set[str]:
+    """The learner ids the autocomplete endpoint returns for ``params``."""
+    response = staff_client.get(url, params)
+    assert response.status_code == 200
+    return {result["id"] for result in response.json()["results"]}
 
 
 @pytest.fixture
@@ -85,11 +155,9 @@ class TestLearnerAdminSave:
 
 @pytest.mark.django_db
 class TestCohortMembershipInlineLearnerField:
-    """Covers formfield_for_foreignkey's queryset only. The inline declares
-    `learner` in autocomplete_fields, so the options a person actually sees are
-    served by AutocompleteJsonView from LearnerAdmin.get_search_results, which
-    never receives this queryset -- these tests passing is not evidence that
-    the rendered dropdown is scoped. See QA bug B1.
+    """Covers formfield_for_foreignkey's queryset only -- what validates the
+    learner that comes back. The options a person is actually offered come from
+    the autocomplete endpoint; TestLearnerAutocompleteEndpoint covers those.
     """
 
     def test_offers_only_learners_from_the_cohorts_organisation(
@@ -129,6 +197,213 @@ class TestCohortMembershipInlineLearnerField:
         assert learner in choices
 
 
+@pytest.mark.django_db
+class TestLearnerAutocompleteEndpoint:
+    """The options a person is actually offered.
+
+    autocomplete_fields routes the dropdown through the shared
+    admin:autocomplete endpoint, which builds its results from
+    LearnerAdmin.get_search_results and never sees the inline's narrowed
+    formfield queryset. These tests exercise that endpoint the way the browser
+    does, so they -- not the queryset tests above -- are what proves the
+    dropdown is scoped.
+    """
+
+    def test_a_cohorts_dropdown_omits_another_organisations_learner(
+        self, staff_client
+    ) -> None:
+        own_organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=own_organisation, name="Cohort A")
+        own_learner = LearnerFactory(organisation=own_organisation)
+        foreign_learner = LearnerFactory(organisation=OrganisationFactory())
+        url, params = _autocomplete_request(
+            _learner_field(_request_for_cohort(cohort)), CohortMembership
+        )
+
+        offered = _offered_ids(staff_client, url, params)
+
+        assert str(own_learner.pk) in offered
+        assert str(foreign_learner.pk) not in offered
+
+    def test_it_still_offers_the_cohorts_own_removed_learner(
+        self, staff_client
+    ) -> None:
+        """Removing a learner must not make the cohorts holding them unsavable
+        -- see TestCohortChangePageWithARemovedLearner."""
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation, name="Cohort A")
+        removed = LearnerFactory(organisation=organisation, is_active=False)
+        url, params = _autocomplete_request(
+            _learner_field(_request_for_cohort(cohort)), CohortMembership
+        )
+
+        assert str(removed.pk) in _offered_ids(staff_client, url, params)
+
+    def test_the_add_page_dropdown_offers_every_learner(self, staff_client) -> None:
+        """No cohort exists yet, so there is nothing to scope to. Picking wrong
+        is caught by CohortMembership.clean() on save."""
+        learners = [
+            LearnerFactory(organisation=OrganisationFactory()) for _ in range(2)
+        ]
+        url, params = _autocomplete_request(
+            _learner_field(_request_for_cohort(None)), CohortMembership
+        )
+
+        offered = _offered_ids(staff_client, url, params)
+
+        assert SCOPE_TO_ORGANISATION_OF_COHORT not in params
+        assert {str(learner.pk) for learner in learners} <= offered
+
+    def test_a_scope_that_is_not_a_uuid_offers_nothing(self, staff_client) -> None:
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation, name="Cohort A")
+        LearnerFactory(organisation=organisation)
+        url, params = _autocomplete_request(
+            _learner_field(_request_for_cohort(cohort)), CohortMembership
+        )
+        params[SCOPE_TO_ORGANISATION_OF_COHORT] = "not-a-uuid"
+
+        assert _offered_ids(staff_client, url, params) == set()
+
+    def test_a_scope_naming_no_cohort_offers_nothing(self, staff_client) -> None:
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation, name="Cohort A")
+        LearnerFactory(organisation=organisation)
+        url, params = _autocomplete_request(
+            _learner_field(_request_for_cohort(cohort)), CohortMembership
+        )
+        params[SCOPE_TO_ORGANISATION_OF_COHORT] = str(uuid4())
+
+        assert _offered_ids(staff_client, url, params) == set()
+
+    def test_an_unscoped_learner_dropdown_is_left_alone(self, staff_client) -> None:
+        """LearnerCourseRegistration has no parent organisation to scope to, so
+        its learner dropdown still offers every learner on the site. Guards
+        against a fix that narrows the shared endpoint for everyone."""
+        learners = [
+            LearnerFactory(organisation=OrganisationFactory()) for _ in range(2)
+        ]
+
+        offered = _offered_ids(
+            staff_client,
+            reverse(AUTOCOMPLETE_URL_NAME),
+            {
+                "term": "",
+                "app_label": LearnerCourseRegistration._meta.app_label,
+                "model_name": LearnerCourseRegistration._meta.model_name or "",
+                "field_name": "learner",
+            },
+        )
+
+        assert {str(learner.pk) for learner in learners} <= offered
+
+
+@pytest.mark.django_db
+class TestLearnerChangelistSearch:
+    def test_searching_learners_is_unaffected_by_the_scoping(
+        self, staff_client
+    ) -> None:
+        """get_search_results is shared with the changelist, which must keep
+        seeing every learner on the site."""
+        learners = [
+            LearnerFactory(
+                organisation=OrganisationFactory(),
+                user=UserFactory(last_name="Scopetest"),
+            )
+            for _ in range(2)
+        ]
+
+        response = staff_client.get(
+            reverse(LEARNER_CHANGELIST_URL_NAME), {"q": "Scopetest"}
+        )
+
+        assert set(response.context["cl"].queryset) == set(learners)
+
+
+@pytest.mark.django_db
+class TestCohortChangePageDropdown:
+    def test_the_rendered_dropdown_url_names_the_cohorts_scope(
+        self, staff_client
+    ) -> None:
+        """Proves the scoped widget survives the whole admin stack -- unfold's
+        own formfield_for_foreignkey, RelatedFieldWidgetWrapper and unfold's
+        wrapper template -- not just a direct call to the inline."""
+        cohort = CohortFactory(organisation=OrganisationFactory(), name="Cohort A")
+
+        response = staff_client.get(reverse(COHORT_CHANGE_URL_NAME, args=[cohort.pk]))
+
+        assert (
+            f"{SCOPE_TO_ORGANISATION_OF_COHORT}={cohort.pk}"
+            in response.content.decode()
+        )
+
+
+def _override_learner_field(
+    request: HttpRequest,
+) -> ModelChoiceField[Learner]:
+    """The deadline-override inline's learner form field on ``request``."""
+    inline = UserCohortDeadlineOverrideInline(CohortCourseRegistration, admin.site)
+    return cast(
+        "ModelChoiceField[Learner]",
+        inline.formfield_for_foreignkey(
+            UserCohortDeadlineOverride._meta.get_field("learner"), request
+        ),
+    )
+
+
+@pytest.mark.django_db
+class TestDeadlineOverrideLearnerDropdown:
+    """UserCohortDeadlineOverride.clean() requires the learner to be a member of
+    the registration's cohort, so the dropdown offers exactly those."""
+
+    def test_it_omits_a_learner_who_is_not_in_the_cohort(self, staff_client) -> None:
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation, name="Cohort A")
+        registration = CohortCourseRegistrationFactory(cohort=cohort)
+        member = CohortMembershipFactory(cohort=cohort).learner
+        non_member = LearnerFactory(organisation=organisation)
+        url, params = _autocomplete_request(
+            _override_learner_field(
+                _request_for_cohort_course_registration(registration)
+            ),
+            UserCohortDeadlineOverride,
+        )
+
+        offered = _offered_ids(staff_client, url, params)
+
+        assert str(member.pk) in offered
+        assert str(non_member.pk) not in offered
+
+    def test_the_rendered_dropdown_url_names_the_cohorts_scope(
+        self, staff_client
+    ) -> None:
+        cohort = CohortFactory(organisation=OrganisationFactory(), name="Cohort A")
+        registration = CohortCourseRegistrationFactory(cohort=cohort)
+
+        response = staff_client.get(
+            reverse(REGISTRATION_CHANGE_URL_NAME, args=[registration.pk])
+        )
+
+        assert f"{SCOPE_TO_MEMBERS_OF_COHORT}={cohort.pk}" in response.content.decode()
+
+    def test_the_field_queryset_matches_what_the_dropdown_offers(
+        self, mock_site_context
+    ) -> None:
+        """The widget scopes the options; this queryset is what validates the
+        learner that comes back. They must agree."""
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation, name="Cohort A")
+        registration = CohortCourseRegistrationFactory(cohort=cohort)
+        member = CohortMembershipFactory(cohort=cohort).learner
+        LearnerFactory(organisation=organisation)
+
+        field = _override_learner_field(
+            _request_for_cohort_course_registration(registration)
+        )
+
+        assert list(field.queryset) == [member]
+
+
 def _cohort_change_payload(
     cohort: Cohort, membership: CohortMembership
 ) -> dict[str, str]:
@@ -148,6 +423,30 @@ def _cohort_change_payload(
         "course_registrations-INITIAL_FORMS": "0",
         "course_registrations-MIN_NUM_FORMS": "0",
         "course_registrations-MAX_NUM_FORMS": "1000",
+    }
+
+
+def _registration_change_payload(
+    registration: CohortCourseRegistration, learner: Learner
+) -> dict[str, str]:
+    """The registration change form with one new deadline-override row for
+    ``learner``."""
+    return {
+        "cohort": str(registration.cohort_id),
+        "collection": str(registration.collection_id),
+        "is_active": "on",
+        "cohortdeadline_set-TOTAL_FORMS": "0",
+        "cohortdeadline_set-INITIAL_FORMS": "0",
+        "cohortdeadline_set-MIN_NUM_FORMS": "0",
+        "cohortdeadline_set-MAX_NUM_FORMS": "1000",
+        "deadline_overrides-TOTAL_FORMS": "1",
+        "deadline_overrides-INITIAL_FORMS": "0",
+        "deadline_overrides-MIN_NUM_FORMS": "0",
+        "deadline_overrides-MAX_NUM_FORMS": "1000",
+        "deadline_overrides-0-learner": str(learner.pk),
+        "deadline_overrides-0-deadline_0": "2030-01-01",
+        "deadline_overrides-0-deadline_1": "12:00:00",
+        "deadline_overrides-0-is_hard_deadline": "on",
     }
 
 
@@ -184,3 +483,26 @@ class TestCohortChangePageWithARemovedLearner:
 
         cohort.refresh_from_db()
         assert cohort.name == "Renamed Cohort"
+
+
+@pytest.mark.django_db
+class TestDeadlineOverrideChangePageWithAnOutOfCohortLearner:
+    """Narrowing the inline's queryset means an out-of-cohort learner now fails
+    field validation, leaving cleaned_data without one. clean() must survive
+    that and let the field error surface -- the crash QA bug B2 described."""
+
+    def test_it_is_a_validation_error_not_a_crash(self, staff_client) -> None:
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation, name="Cohort A")
+        registration = CohortCourseRegistrationFactory(cohort=cohort)
+        non_member = LearnerFactory(organisation=organisation)
+
+        response = staff_client.post(
+            reverse(REGISTRATION_CHANGE_URL_NAME, args=[registration.pk]),
+            _registration_change_payload(registration, non_member),
+        )
+
+        assert response.status_code == 200
+        assert not UserCohortDeadlineOverride.objects.filter(
+            learner=non_member
+        ).exists()

@@ -1,9 +1,13 @@
 from typing import cast
+from urllib.parse import urlencode
+from uuid import UUID
 
 from unfold.admin import TabularInline
 
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.sites import AdminSite
+from django.contrib.admin.widgets import AutocompleteSelect
 from django.db import models
 from django.http import HttpRequest
 
@@ -24,6 +28,70 @@ from .models import (
     UserCohortDeadlineOverride,
 )
 
+SCOPE_TO_ORGANISATION_OF_COHORT = "organisation_of_cohort"
+SCOPE_TO_MEMBERS_OF_COHORT = "members_of_cohort"
+
+_SCOPE_LOOKUPS = {
+    SCOPE_TO_ORGANISATION_OF_COHORT: "organisation__cohort__id",
+    SCOPE_TO_MEMBERS_OF_COHORT: "cohortmembership__cohort_id",
+}
+
+
+def narrow_learners(
+    learners: models.QuerySet[Learner], scope: str, cohort_id: str | UUID
+) -> models.QuerySet[Learner]:
+    """The learners a cohort admits under ``scope``, removed ones included.
+
+    One definition for both halves of the rule -- the options a dropdown offers
+    and the queryset that validates what comes back. If they drifted, someone
+    would be offered a learner the form then refuses.
+    """
+    return learners.filter(**{_SCOPE_LOOKUPS[scope]: cohort_id})
+
+
+def _cohort_of_registration(registration_id: str | None) -> UUID | None:
+    """The cohort a CohortCourseRegistration belongs to, by its admin
+    ``object_id``. None when the id is absent or does not name a registration
+    on this site -- the change view 404s on it moments later anyway."""
+    if not registration_id:
+        return None
+    try:
+        pk = UUID(registration_id)
+    except ValueError:
+        return None
+    return (
+        CohortCourseRegistration.objects.filter(pk=pk)
+        .values_list("cohort_id", flat=True)
+        .first()
+    )
+
+
+class ScopedLearnerAutocompleteSelect(AutocompleteSelect):
+    """Names a cohort scope on the autocomplete URL's querystring.
+
+    Every learner dropdown in the admin is served by one shared endpoint, which
+    builds its results from LearnerAdmin.get_search_results and never sees an
+    inline's narrowed formfield queryset. The scope has to travel in the URL
+    for that endpoint to be able to honour it.
+    """
+
+    def __init__(
+        self,
+        field: models.ForeignKey,
+        admin_site: AdminSite,
+        scope: str,
+        cohort_id: str | UUID,
+    ) -> None:
+        super().__init__(field, admin_site)
+        self.scope = scope
+        self.cohort_id = cohort_id
+
+    def get_url(self) -> str:
+        # select2 fetches this through jQuery.ajax, which appends its own
+        # term/page/app_label/model_name/field_name to a URL that already
+        # carries a querystring rather than replacing it.
+        return f"{super().get_url()}?{urlencode({self.scope: str(self.cohort_id)})}"
+
 
 @admin.register(Learner)
 class LearnerAdmin(SiteAwareModelAdmin):
@@ -38,6 +106,44 @@ class LearnerAdmin(SiteAwareModelAdmin):
     ) -> bool:
         return False
 
+    def get_search_results(
+        self,
+        request: HttpRequest,
+        queryset: models.QuerySet[Learner],
+        search_term: str,
+    ) -> tuple[models.QuerySet[Learner], bool]:
+        """Honour the cohort scope a learner dropdown put on its URL.
+
+        The scope arrives as a query param because one endpoint serves every
+        learner dropdown in the admin. Only ScopedLearnerAutocompleteSelect
+        emits these param names -- the changelist rejects GET params it does
+        not recognise before it gets here -- so their presence is enough to
+        tell the two apart.
+
+        The filter can only intersect what get_queryset already returned, which
+        the site-aware manager has narrowed to the current site. A tampered
+        param can therefore empty the results or swap them for another
+        organisation's learners, both of which this staff user can already read
+        off the Learners changelist; it can never widen them.
+        """
+        queryset, may_have_duplicates = super().get_search_results(
+            request, queryset, search_term
+        )
+        for scope in _SCOPE_LOOKUPS:
+            raw_cohort_id = request.GET.get(scope)
+            if raw_cohort_id is None:
+                continue
+            try:
+                cohort_id = UUID(raw_cohort_id)
+            except ValueError:
+                # A scope that is present but unusable means a hand-edited URL.
+                # Offer nothing: falling through unscoped would reopen the very
+                # gap this closes, and the ORM would reject it anyway on a UUID
+                # primary key.
+                return queryset.none(), may_have_duplicates
+            queryset = narrow_learners(queryset, scope, cohort_id)
+        return queryset, may_have_duplicates
+
 
 class CohortMembershipInline(TabularInline):
     model = CohortMembership
@@ -51,19 +157,25 @@ class CohortMembershipInline(TabularInline):
         request: HttpRequest,
         **kwargs: object,
     ) -> forms.ModelChoiceField | None:
-        # Constrains server-side validation of a submitted learner to the
-        # cohort's own organisation, on the change page only -- `object_id`
-        # isn't in the URL kwargs on the add page. It does not narrow what a
-        # person is offered: `learner` is in autocomplete_fields, so the
-        # options come from LearnerAdmin's autocomplete endpoint, which never
-        # sees this queryset. Removed learners must stay in it -- the queryset
-        # also validates the inline rows that already exist, so excluding them
-        # would make a cohort holding one impossible to save.
+        # Two halves of one rule, both on the change page only -- `object_id`
+        # isn't in the URL kwargs on the add page, and there is no cohort to
+        # scope to until the form is saved. The queryset validates the learner
+        # that comes back; the widget scopes the options offered, which
+        # otherwise come unfiltered from the shared autocomplete endpoint.
+        # Removed learners must stay in the queryset -- it also validates the
+        # inline rows that already exist, so excluding them would make a cohort
+        # holding one impossible to save.
         if db_field.name == "learner" and request.resolver_match:
             cohort_id = request.resolver_match.kwargs.get("object_id")
             if cohort_id:
-                kwargs["queryset"] = Learner.objects.filter(
-                    organisation__cohort__id=cohort_id
+                kwargs["queryset"] = narrow_learners(
+                    Learner.objects.all(), SCOPE_TO_ORGANISATION_OF_COHORT, cohort_id
+                )
+                kwargs["widget"] = ScopedLearnerAutocompleteSelect(
+                    db_field,
+                    self.admin_site,
+                    SCOPE_TO_ORGANISATION_OF_COHORT,
+                    cohort_id,
                 )
         return cast(
             "forms.ModelChoiceField | None",
@@ -151,6 +263,33 @@ class UserCohortDeadlineOverrideInline(TabularInline):
 
     verbose_name = "User Deadline Override"
     verbose_name_plural = "User Deadline Overrides"
+
+    def formfield_for_foreignkey(
+        self,
+        db_field: models.ForeignKey,
+        request: HttpRequest,
+        **kwargs: object,
+    ) -> forms.ModelChoiceField | None:
+        # An override only makes sense for a member of the registration's own
+        # cohort, which is what the model already insists on. Scope both the
+        # options offered and the queryset that validates them to those
+        # members. The parent's `object_id` names the registration, not the
+        # cohort, so the cohort is looked up; on the add page there is no
+        # `object_id` and therefore nothing to scope to.
+        if db_field.name == "learner" and request.resolver_match:
+            registration_id = request.resolver_match.kwargs.get("object_id")
+            cohort_id = _cohort_of_registration(registration_id)
+            if cohort_id:
+                kwargs["queryset"] = narrow_learners(
+                    Learner.objects.all(), SCOPE_TO_MEMBERS_OF_COHORT, cohort_id
+                )
+                kwargs["widget"] = ScopedLearnerAutocompleteSelect(
+                    db_field, self.admin_site, SCOPE_TO_MEMBERS_OF_COHORT, cohort_id
+                )
+        return cast(
+            "forms.ModelChoiceField | None",
+            super().formfield_for_foreignkey(db_field, request, **kwargs),
+        )
 
 
 @admin.register(CohortCourseRegistration)

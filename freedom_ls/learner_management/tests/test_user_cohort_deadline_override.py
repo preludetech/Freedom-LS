@@ -152,3 +152,26 @@ def test_clean_validates_learner_in_cohort(mock_site_context):
 
     with pytest.raises(ValidationError, match="not a member"):
         override.clean()
+
+
+@pytest.mark.django_db
+def test_clean_does_not_raise_when_learner_is_unset(mock_site_context):
+    """An unset learner means a field-level error already exists (an invalid
+    choice in the admin inline); clean() must let that surface rather than
+    crashing on the missing relation."""
+    override = UserCohortDeadlineOverride(
+        cohort_course_registration=CohortCourseRegistrationFactory(),
+        deadline=timezone.now() + timezone.timedelta(days=7),
+    )
+
+    override.clean()
+
+
+@pytest.mark.django_db
+def test_clean_does_not_raise_when_the_registration_is_unset(mock_site_context):
+    override = UserCohortDeadlineOverride(
+        learner=LearnerFactory(),
+        deadline=timezone.now() + timezone.timedelta(days=7),
+    )
+
+    override.clean()
