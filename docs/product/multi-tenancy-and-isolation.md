@@ -55,7 +55,6 @@ This is the canonical statement of what an organisation is and is not; other doc
 - **Application-layer, not database-layer.** All tenants share a single PostgreSQL database and schema. Separate schemas or separate databases per tenant are not provided. Deployments needing physical separation should run a separate FLS installation per tenant.
 - **Management commands run without a request**, so there is no site to scope to and the filter does not apply — commands see all sites' records and must filter explicitly. This is deliberate: it is what lets a command load content or run maintenance across sites.
 - **Site-aware user groups are not available.** A site-scoped equivalent of Django's groups is drafted but not enabled; permissions are granted per user. See [roadmap](./roadmap.md).
-- **The cohort admin page is not site-filtered** the way other admin pages are. This is a known gap and is tracked.
 - **Organisations cannot be deleted or merged**, and there is no nested (parent/child) organisation structure.
 - **No per-organisation domain, subdomain, colours, or theme.** All organisations on a site share the site's domain and branding; the only visual distinction is a small logo (or initials monogram) and name in the course player — see [learner experience](./learner-experience.md).
 - **No standalone organisation membership.** A learner's organisation is derived from their cohort or individual course registration, not from a membership record they hold.
