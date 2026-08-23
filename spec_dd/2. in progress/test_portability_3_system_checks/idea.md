@@ -3,23 +3,30 @@
 ## Origin
 
 This idea was split out of the `fls-test-portability-part-2` effort. It is
-**Layer 4** — new `django.core.checks` so `manage.py check` *fails at boot* on the
+**Layer 4** — new `django.core.checks` so `manage.py check` *fails at boot* on
 static config gaps that today only surface as a runtime 500. This is the
-shift-left complement to the conformance suite.
+shift-left complement to the Layer-3 conformance suite (shipped).
 
 The full motivation (`manage.py check` passing clean while the site was broken)
-and design rationale live in the referenced source files below — not duplicated
-here.
+lives in the referenced source files below — not duplicated here.
+
+> **Revised 2026-08-23.** This slice was trimmed after three later specs landed.
+> See `1. spec.md`'s revision note for the detail. In short: the originally
+> headline check (a second "is `COURSE_ACCESS_BACKEND` set" error) is redundant —
+> `freedom_ls_course_access.E001` already does it; the proposed pinned
+> `AUTH_USER_MODEL` check was dropped; and the two surviving checks were rehomed
+> and corrected. Read `1. spec.md` and `2. plan.md` for current scope; the
+> references below are historical context.
 
 ## References (source of truth — relative to `spec_dd/`)
 
 - `2. in progress/fls-test-portability-part-2/idea.md` — the umbrella Part-2 idea
-  (§ "Layer 4").
-- `2. in progress/fls-test-portability-part-2/1. spec.md` — **§ "Layer 4"**,
-  "Conventions (from the existing check modules)", "Layer 3 vs Layer 4 division",
-  and decisions **D3, D7, D8**.
+  (§ "Layer 4"). See also its `SUPERSEDED.md`.
+- `2. in progress/fls-test-portability-part-2/1. spec.md` — **§ "Layer 4"** and
+  decisions **D3, D7, D8**. Pre-revision text; this slice's own `1. spec.md`
+  supersedes its scope.
 - `2. in progress/fls-test-portability-part-2/2. plan.md` — **§ "Layer 4"**
-  (T4.1–T4.4) for the check bodies, `ready()` wiring, and check tests.
+  (T4.1–T4.4). Superseded by this slice's `2. plan.md`.
 - Research:
   - `2. in progress/fls-test-portability-part-2/research_django_system_checks.md`
     — how Django's own `admin.check_dependencies` resolves apps without importing.
@@ -29,40 +36,36 @@ here.
 
 ## Scope of this slice (Layer 4)
 
-Summarised from spec/plan § "Layer 4" — see there for full detail:
+Three changes, all in apps that already ship checks or already exist:
 
-- New `freedom_ls/student_interface/checks.py`, registered from a new
-  `StudentInterfaceConfig.ready()` (`from . import checks  # noqa: F401`). All
-  conditional on `student_interface` being installed:
-  - **`freedom_ls_student_interface.E001`** — installed but `COURSE_ACCESS_BACKEND`
-    unset → Error.
-  - **`freedom_ls_student_interface.E002`** — configured backend's containing app
-    not in `INSTALLED_APPS` → Error (resolve via `apps.get_containing_app_config`,
-    no import — checks must never raise).
-  - **`freedom_ls_student_interface.W001`** — sitemaps wired but
-    `django.contrib.sitemaps` absent → Warning.
-- Extend `freedom_ls/accounts/checks.py` with **`freedom_ls_accounts.E003`** —
-  `AUTH_USER_MODEL != "freedom_ls_accounts.User"` → Error (conditional on
-  `accounts` installed).
-- Conventions (D3): **app-label-namespaced IDs** (not `icons/checks.py`'s flat
-  `freedom_ls.E00N`); `@register()` at import; no `Tags.database`, no
-  `deploy=True`; `settings`+`apps` reads only, no DB; honour the `app_configs`
-  contract; checks must never raise.
-- TDD-first check tests mirroring `course_access/tests/test_checks.py`, incl. the
-  criterion-#7 override-friendliness cases (app-absent → `[]`).
+- **`freedom_ls_course_access.E003`** (new) — `COURSE_ACCESS_BACKEND` names an
+  FLS-shipped backend whose app is not in `INSTALLED_APPS` → Error. Scoped to
+  `freedom_ls.` dotted paths so a downstream's own backend never false-positives.
+- **`freedom_ls_learner_interface.W001`** (new) — a `sitemap` URL is wired but
+  `django.contrib.sitemaps` is absent → Warning. Needs a new
+  `learner_interface/checks.py` and a `LearnerInterfaceConfig.ready()`.
+- **Split the overloaded `freedom_ls_course_access.E001`** — it currently means
+  both "required setting unset" and "invalid `Course.access_config`", so
+  `SILENCED_SYSTEM_CHECKS` cannot target either precisely. Re-ID the second to
+  `.E002`. This is a fix to already-merged code and is downstream-visible.
+
+Not in scope: a second required-setting check (already covered by E001), a
+pinned-`AUTH_USER_MODEL` check (dropped), and renumbering `icons/checks.py`'s
+flat IDs (deliberate non-fix per D3).
 
 ## Dependencies between the split-out slices
 
-- **`per-app-settings-config-convention` (Layer 0)** — the Part-2 *plan*
-  single-sources E001 from Layer 0's `course_access.config` REQUIRED declaration
-  via `required_settings_errors(...)`. The *original spec*'s E001 reads settings
-  directly, so this slice **can ship without Layer 0**. Decide the framing when
-  speccing: land Layer 0 first for the single-sourced version, or implement the
-  standalone read-settings-directly version.
-- **`fls-conformance-suite` (Layer 3)** — complementary (D8 division): checks own
-  static config-shape questions, the suite owns behavioural ones. Neither strictly
-  requires the other.
-- **`conformance-upgrade-notes-and-docs` (Layers 5/6)** — Layer 5's
-  hard-requirement upgrade-notes guidance pairs with these checks (it points the
-  downstream at `manage.py check`).
+- **`per-app config.py settings convention` (Layer 0)** — shipped 2026-07-10.
+  This slice depends on it: `required_settings_errors` and
+  `freedom_ls_course_access.E001` both come from it, and its arrival is what made
+  the original E001 proposal redundant.
+- **`test_portability_2_conformance_suite` (Layer 3)** — shipped. Complementary
+  per D8: checks own static config-shape questions, the suite owns behavioural
+  ones. Neither requires the other.
+- **`test_portability_4_upgrade_notes_and_docs` (Layers 5/6)** — should land
+  after this slice: its `update_fls.md` edit tells downstreams to run
+  `manage.py check` as an upgrade signal, and its upgrade-notes guidance points
+  at these checks.
 - Assumes Part 1 (marker taxonomy, collection-safety, de-branding) is present.
+- The umbrella's `PREREQUISITE_learner-terminology-rename.md` has been applied to
+  this slice's spec and plan; no further translation is needed.

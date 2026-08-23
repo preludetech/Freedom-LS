@@ -10,6 +10,12 @@ that surrounds the conformance suite and system checks.
 The full motivation and rationale live in the referenced source files below — not
 duplicated here.
 
+> **Revised 2026-08-23.** Two corrections after later specs landed:
+> `split-claude-plugin` (done 2026-07-28) moved every `fls-claude-plugin/…` file
+> to `claude_plugins/fls-dev/…`, and one task in `2. plan.md` belonged to the
+> Layer-0 slice rather than here. Paths updated and that task removed; see
+> `1. spec.md` and `2. plan.md`.
+
 ## References (source of truth — relative to `spec_dd/`)
 
 - `2. in progress/fls-test-portability-part-2/idea.md` — the umbrella Part-2 idea
@@ -27,17 +33,18 @@ duplicated here.
 
 Summarised from spec/plan § "Layer 5" / "Layer 6" — see there for full detail:
 
-- **Layer 5 — `commands/sdd/update_upgrade_notes.md`:** add guidance to recognise
+- **Layer 5 — `claude_plugins/fls-dev/commands/update_upgrade_notes.md`:** add guidance to recognise
   a **hard/required** settings change (vs optional/informational). When a spec
   introduces a hard config requirement, set `requires_settings_change: true` with
   the specific keys in `changed_settings`; when the spec also adds a Layer-4 check
   enforcing it, say so in the notes. **No new schema flag** (D6) —
   `requires_settings_change` + `changed_settings` suffices.
-- **Layer 6 — `commands/concrete/update_fls.md`:** add to the verification steps
-  (a) invoke the conformance suite as the positive signal, and (b) run `uv run
-  python manage.py check` so system-check failures surface during an upgrade. Use
-  the documented port pattern for any runserver step (do not hardcode 8000).
-- **Layer 6 — `fls-claude-plugin/resources/template_repo_manifest.md`:** the
+- **Layer 6 — `claude_plugins/fls-dev/commands/concrete/update_fls.md`:** add to
+  the verification steps (a) invoke the conformance suite as the positive signal,
+  and (b) run `uv run python manage.py check` so system-check failures surface
+  during an upgrade. Use the documented port pattern for any runserver step (do
+  not hardcode 8000).
+- **Layer 6 — `claude_plugins/fls-dev/resources/template_repo_manifest.md`:** the
   `urls.py` checklist is out of sync with `config/urls.py` (omits `applications/`,
   `interest/`, sitemap/robots). The **actual manifest edit is
   `/update_template_repo`'s job (SDD step 12), NOT this slice** — this idea only
@@ -45,12 +52,15 @@ Summarised from spec/plan § "Layer 5" / "Layer 6" — see there for full detail
 
 ## Dependencies between the split-out slices
 
-- **`fls-conformance-suite` (Layer 3)** — the `update_fls.md` edit invokes the
-  conformance suite, so that slice should exist (or land together) for the
-  instruction to be real.
-- **`fls-integration-system-checks` (Layer 4)** — the Layer-5 hard-requirement
-  guidance points downstreams at `manage.py check`; it pairs with those checks.
-- Independent of the Layer 0 settings-convention refactor.
-- Use the `fls:claude-code-authoring` skill for the slash-command edits.
+- **`test_portability_2_conformance_suite` (Layer 3)** — **shipped**
+  (`freedom_ls/contrib/conformance/`). The `update_fls.md` edit invokes it, so
+  the instruction is now real.
+- **`test_portability_3_system_checks` (Layer 4)** — **land this slice after
+  it.** The Layer-5 hard-requirement guidance points downstreams at
+  `manage.py check`, and after that slice's trim the checks to reference are
+  `freedom_ls_course_access.E003` and `freedom_ls_learner_interface.W001`, plus
+  its downstream-visible `freedom_ls_course_access.E001` → `.E002` re-ID.
+- Independent of the Layer 0 settings-convention refactor (shipped 2026-07-10).
+- Use the `sdd:claude-code-authoring` skill for the slash-command edits.
 - Assumes Part 1 already switched the bare `uv run pytest` call sites to the
   documented marker selection.
