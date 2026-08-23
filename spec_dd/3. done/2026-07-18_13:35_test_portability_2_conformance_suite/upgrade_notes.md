@@ -46,5 +46,5 @@ Once imported, `pytest` runs the suite against your project's real settings. It 
 The suite only checks the FLS pieces you kept:
 
 - Probes for an FLS app you removed from `INSTALLED_APPS` **skip** rather than fail.
-- If you keep an FLS app but customise one of its internal routes, prune that individual probe (skip, not fail) with `conformance.drop("student_interface:courses")` — call it before collection (e.g. in your `conftest.py`). Contract-tier routes that other FLS code depends on cannot be pruned and still hard-fail if they don't reverse.
+- If you keep an FLS app but customise one of its internal routes, prune that individual probe (skip, not fail) with `conformance.drop("learner_interface:courses")` — call it before collection (e.g. in your `conftest.py`). Contract-tier routes that other FLS code depends on cannot be pruned and still hard-fail if they don't reverse.
 - The `sitemap` and `robots_txt` reference-URL probes are required: replicate FLS's reference sitemap/robots wiring in your project root, or these fail.

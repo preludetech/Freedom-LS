@@ -5,14 +5,14 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 1. Idea
 
 - [x] (user) Write the idea file in this directory
-- [ ] (cmd) Optionally run `/sdd:improve_idea` to research and refine the idea
+- [x] (cmd) Optionally run `/sdd:improve_idea` to research and refine the idea
 - [ ] (user) Review the refined idea and edit as needed
 
 ## 2. Spec
 
 - [x] (cmd) Run `/sdd:spec_from_idea` to generate the spec
 - [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/sdd:spec_review` to sanity-check the spec
+- [x] (cmd) Run `/sdd:spec_review` to sanity-check the spec
 - [ ] (user) Address any issues raised by the review
 
 ## 3. Threat model

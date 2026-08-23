@@ -14,8 +14,8 @@ undivided effort and should not be worked through.
 | 0 — per-app settings convention | `3. done/2026-07-10_05:19_per-app config.py settings convention` | shipped 2026-07-10 |
 | 1, 2, 6 (Part-1 portion) | `3. done/2026-07-09_09:37_fls-test-portability-part1` | shipped 2026-07-09 |
 | 3 — conformance suite | `3. done/2026-07-18_13:35_test_portability_2_conformance_suite` | shipped 2026-07-18 |
-| 4 — system checks | `2. in progress/test_portability_3_system_checks` | not started |
-| 5, 6 (Part-2 portion) | `1. next/test_portability_4_upgrade_notes_and_docs` | not started |
+| 4 — system checks | `3. done/2026-08-23_16:23_fls-integration-system-checks` | shipped 2026-08-23 |
+| 5, 6 (Part-2 portion) | `2. in progress/test_portability_4_upgrade_notes_and_docs` | in progress |
 
 ## What this directory is still for
 
