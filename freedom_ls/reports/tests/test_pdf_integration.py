@@ -22,11 +22,18 @@ from uuid import uuid4
 
 import pytest
 from fontTools.ttLib import TTFont
+from PIL import Image
 from pypdf import PdfReader
 from pypdf._page import PageObject
 from pypdf.generic import Destination
 from pypdf.types import OutlineType
 
+from django.core.files.base import ContentFile
+from django.test import override_settings
+
+from freedom_ls.learner_management.factories import CohortFactory
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.reports.gather import (
     CohortReportData,
     CompletedItem,
@@ -36,6 +43,7 @@ from freedom_ls.reports.gather import (
     QuizWrongAnswers,
     SelectedOption,
     WrongAnswer,
+    gather_cohort_report_data,
 )
 from freedom_ls.reports.render import render_report_pdf
 from freedom_ls.reports.tests.conftest import requires_tailwind_bundle
@@ -476,6 +484,28 @@ def _colours_behind(filled: list[tuple[str, Rect]], box: Rect) -> set[str]:
     }
 
 
+def _png_bytes(width: int = 64, height: int = 32) -> bytes:
+    """A genuine, decodable PNG for an organisation's logo field."""
+    buf = io.BytesIO()
+    Image.new("RGB", (width, height), color=(200, 30, 90)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _page_has_image_xobject(page: PageObject) -> bool:
+    resources = page.get("/Resources")
+    xobjects = resources.get("/XObject") if resources is not None else None
+    if xobjects is None:
+        return False
+    return any(
+        xobject.get_object().get("/Subtype") == "/Image"
+        for xobject in xobjects.values()
+    )
+
+
+def _any_page_has_image_xobject(reader: PdfReader) -> bool:
+    return any(_page_has_image_xobject(page) for page in reader.pages)
+
+
 class TestRenderReportPdf:
     def test_output_parses_as_a_well_formed_pdf(self, report_pdf_bytes: bytes) -> None:
         reader = _reader(report_pdf_bytes)
@@ -694,3 +724,89 @@ class TestRenderReportPdf:
         data = full_report_data()
 
         assert data.cohort_name in _joined_text(reader)
+
+
+@pytest.mark.django_db
+class TestOrganisationBranding:
+    """Proof that the organisation's brand reaches the rendered PDF itself.
+
+    Everything above renders `full_report_data()`, a pure dataclass tree; these
+    tests are the only place in the app that runs the whole pipeline --
+    `gather_cohort_report_data()` against real rows, through
+    `render_report_pdf()` -- so they are the only place that can prove the
+    logo never goes through `.path()`, or that a real WeasyPrint document
+    metadata dictionary carries what the templates set.
+    """
+
+    def test_an_organisation_logo_embeds_in_the_rendered_pdf(
+        self, mock_site_context, pathless_default_storage
+    ) -> None:
+        organisation = OrganisationFactory()
+        organisation.logo.save("logo.png", ContentFile(_png_bytes()))
+        cohort = CohortFactory(organisation=organisation)
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+        reader = _reader(render_report_pdf(data))
+
+        assert _any_page_has_image_xobject(reader)
+
+    def test_pdf_metadata_names_the_organisation_and_the_site(
+        self, mock_site_context
+    ) -> None:
+        cohort = CohortFactory(
+            organisation=OrganisationFactory(name="Northside College")
+        )
+
+        with override_settings(HEADER_TITLE=None):
+            data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+        metadata = _reader(render_report_pdf(data)).metadata
+
+        assert metadata is not None
+        assert metadata.author == "Northside College"
+        assert metadata.creator == mock_site_context.name
+        # WeasyPrint joins every <meta name="author"> tag it finds with ", "
+        # into one /Author field, so a second one -- the site, say -- would
+        # read as "Org, Site" rather than naming the organisation alone.
+        assert ", " not in metadata.author
+
+    def test_the_cover_page_carries_no_powered_by_margin_box(
+        self, mock_site_context
+    ) -> None:
+        cohort = CohortFactory(organisation=OrganisationFactory())
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+        cover_text = _reader(render_report_pdf(data)).pages[0].extract_text()
+
+        # Once, on the band -- not twice, which is what a base @page
+        # `@bottom-center` would print if `@page :first` had not cleared it.
+        assert cover_text.count("Powered by") == 1
+
+    def test_an_interior_page_carries_the_powered_by_footer(
+        self, mock_site_context
+    ) -> None:
+        cohort = CohortFactory(
+            organisation=OrganisationFactory(name="Northside College")
+        )
+
+        with override_settings(HEADER_TITLE=None):
+            data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+        reader = _reader(render_report_pdf(data))
+        # Page 0 is the cover; the report's second section is the first page
+        # that carries the interior footer.
+        interior_text = reader.pages[1].extract_text()
+
+        assert f"Powered by {mock_site_context.name}" in interior_text
+        assert (
+            f"{data.organisation.footer_name} · {data.cohort_name} · "
+            "Cohort progress report"
+        ) in interior_text
+
+    def test_the_house_organisation_gets_no_powered_by_mark_anywhere(
+        self, mock_site_context
+    ) -> None:
+        cohort = CohortFactory(organisation=get_default_organisation(mock_site_context))
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+        reader = _reader(render_report_pdf(data))
+
+        assert "Powered by" not in _joined_text(reader)
