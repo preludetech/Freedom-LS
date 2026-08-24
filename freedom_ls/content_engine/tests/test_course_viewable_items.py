@@ -5,10 +5,10 @@ import pytest
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartFactory,
-    FormFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, CoursePart
+from freedom_ls.form_engine.factories import FormFactory
 
 
 @pytest.mark.django_db

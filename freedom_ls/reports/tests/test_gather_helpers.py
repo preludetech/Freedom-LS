@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from freedom_ls.content_engine.models import QuestionType
+from freedom_ls.form_engine.models import QuestionType
 from freedom_ls.reports.gather import (
     CompletionStats,
     QuizTallies,

@@ -41,7 +41,7 @@ def test_toc_in_development_with_assessments_shows_only_assessments_line(
     mock_site_context, course_with_topic
 ):
     """Flag on with assessments: panel shows only 'Includes assessments'."""
-    from freedom_ls.content_engine.factories import FormFactory
+    from freedom_ls.form_engine.factories import FormFactory
 
     course = course_with_topic(
         access_type="free", table_of_contents_in_development=True

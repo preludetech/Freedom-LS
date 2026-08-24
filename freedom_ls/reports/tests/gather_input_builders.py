@@ -26,14 +26,14 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.models import (
+from freedom_ls.content_engine.models import Topic
+from freedom_ls.form_engine.models import (
     Form,
     FormPage,
     FormQuestion,
     FormStrategy,
     QuestionOption,
     QuestionType,
-    Topic,
 )
 from freedom_ls.learner_progress.models import FormProgress
 from freedom_ls.reports.indexes import (

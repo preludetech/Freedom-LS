@@ -20,13 +20,15 @@ from freedom_ls.content_engine.factories import (
     ActivityFactory,
     ContentCollectionItemFactory,
     CourseFactory,
+    TopicFactory,
+)
+from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
     QuestionOptionFactory,
-    TopicFactory,
 )
-from freedom_ls.content_engine.models import FormStrategy, QuestionType
+from freedom_ls.form_engine.models import FormStrategy, QuestionType
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,

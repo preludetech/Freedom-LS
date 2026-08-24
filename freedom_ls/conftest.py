@@ -204,12 +204,14 @@ def course_with_scored_quiz(mock_site_context):
     from freedom_ls.content_engine.factories import (
         ContentCollectionItemFactory,
         CourseFactory,
+    )
+    from freedom_ls.form_engine.factories import (
         FormFactory,
         FormPageFactory,
         FormQuestionFactory,
         QuestionOptionFactory,
     )
-    from freedom_ls.content_engine.models import FormStrategy
+    from freedom_ls.form_engine.models import FormStrategy
 
     def _make(*, pass_percentage: int | None = 80, **course_kwargs) -> tuple:
         course = CourseFactory(**course_kwargs)

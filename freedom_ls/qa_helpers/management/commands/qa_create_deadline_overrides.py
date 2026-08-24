@@ -7,7 +7,8 @@ import djclick as click
 from django.contrib.sites.models import Site
 from django.utils import timezone
 
-from freedom_ls.content_engine.models import Form, Topic
+from freedom_ls.content_engine.models import Topic
+from freedom_ls.form_engine.models import Form
 from freedom_ls.learner_management.factories import UserCohortDeadlineOverrideFactory
 from freedom_ls.learner_management.models import (
     CohortCourseRegistration,

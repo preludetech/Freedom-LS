@@ -11,7 +11,7 @@ import pytest
 from django.http import QueryDict
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import (
+from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,

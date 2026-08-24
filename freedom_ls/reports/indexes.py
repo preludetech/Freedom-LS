@@ -27,13 +27,13 @@ from django.db.models import Count, F, Window
 from django.db.models.functions import RowNumber
 
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.models import (
+from freedom_ls.content_engine.models import Topic
+from freedom_ls.form_engine.models import (
     FREE_TEXT_QUESTION_TYPES,
     Form,
     FormQuestion,
     FormStrategy,
     QuestionOption,
-    Topic,
 )
 from freedom_ls.learner_management.models import (
     Cohort,

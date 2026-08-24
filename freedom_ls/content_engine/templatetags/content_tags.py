@@ -6,7 +6,8 @@ from django.utils.html import escape
 from django.utils.safestring import SafeString
 
 from freedom_ls.content_engine.config import config
-from freedom_ls.content_engine.models import File, Form, Topic
+from freedom_ls.content_engine.models import File, Topic
+from freedom_ls.form_engine.models import Form
 from freedom_ls.icons.render import render_icon
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 

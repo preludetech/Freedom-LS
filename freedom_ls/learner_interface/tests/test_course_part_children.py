@@ -9,10 +9,11 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartFactory,
-    FormFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course, CoursePart, FormStrategy
+from freedom_ls.content_engine.models import Course, CoursePart
+from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_interface.utils import (
     BLOCKED,
     FAILED,

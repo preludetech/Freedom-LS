@@ -13,14 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from freedom_ls.content_engine.models import (
-    Course,
-    CourseVisibility,
-    Form,
-    FormQuestion,
-    FormStrategy,
-    Topic,
-)
+from freedom_ls.content_engine.models import Course, CourseVisibility, Topic
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_access.overrides import (
     is_coming_soon_for_display,
@@ -28,6 +21,7 @@ from freedom_ls.course_access.overrides import (
 )
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.queries import stamp_interest
+from freedom_ls.form_engine.models import Form, FormQuestion, FormStrategy
 from freedom_ls.learner_management.config import config
 from freedom_ls.learner_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.learner_management.models import (

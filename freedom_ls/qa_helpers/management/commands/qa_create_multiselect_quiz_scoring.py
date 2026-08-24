@@ -42,15 +42,15 @@ from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.factories import (
-    CourseFactory,
+from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import Course
+from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.content_engine.models import (
-    Course,
+from freedom_ls.form_engine.models import (
     Form,
     FormPage,
     FormQuestion,

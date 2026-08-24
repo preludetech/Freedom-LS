@@ -13,13 +13,16 @@ from freedom_ls.conftest import reverse_url
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
+    TopicFactory,
+)
+from freedom_ls.content_engine.models import Course
+from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
     QuestionOptionFactory,
-    TopicFactory,
 )
-from freedom_ls.content_engine.models import Course, Form
+from freedom_ls.form_engine.models import Form
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,

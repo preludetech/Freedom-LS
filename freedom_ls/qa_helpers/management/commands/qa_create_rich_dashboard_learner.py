@@ -26,7 +26,8 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.models import Course, Form, Topic
+from freedom_ls.content_engine.models import Course, Topic
+from freedom_ls.form_engine.models import Form
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     RecommendedCourseFactory,

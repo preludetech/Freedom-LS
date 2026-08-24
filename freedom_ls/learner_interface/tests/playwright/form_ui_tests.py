@@ -1,7 +1,7 @@
 import pytest
 from playwright.sync_api import Page
 
-from freedom_ls.content_engine.factories import (
+from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,

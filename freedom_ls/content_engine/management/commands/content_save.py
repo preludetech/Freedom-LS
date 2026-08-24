@@ -29,17 +29,19 @@ from freedom_ls.content_engine.models import (
     Course,
     CoursePart,
     File,
-    Form,
-    FormContent,
-    FormPage,
-    FormQuestion,
-    QuestionOption,
     Topic,
 )
 from freedom_ls.content_engine.validate import (
     get_all_files,
     parse_single_file,
     validate,
+)
+from freedom_ls.form_engine.models import (
+    Form,
+    FormContent,
+    FormPage,
+    FormQuestion,
+    QuestionOption,
 )
 from freedom_ls.site_aware_models.slugs import get_unique_slug
 

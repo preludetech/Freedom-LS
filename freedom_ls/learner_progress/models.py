@@ -10,14 +10,13 @@ from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.db import models
 from django.utils import timezone
 
-from freedom_ls.content_engine.models import (
+from freedom_ls.content_engine.models import Course, Topic
+from freedom_ls.form_engine.models import (
     FREE_TEXT_QUESTION_TYPES,
-    Course,
     Form,
     FormQuestion,
     FormStrategy,
     QuestionOption,
-    Topic,
 )
 from freedom_ls.learner_progress.scoring import is_quiz_answer_correct
 from freedom_ls.learner_progress.submissions import (

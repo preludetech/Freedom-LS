@@ -38,21 +38,21 @@ from django.contrib.sites.models import Site
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
+    TopicFactory,
+)
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
+from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
     QuestionOptionFactory,
-    TopicFactory,
 )
-from freedom_ls.content_engine.models import (
-    ContentCollectionItem,
-    Course,
+from freedom_ls.form_engine.models import (
     Form,
     FormPage,
     FormQuestion,
     FormStrategy,
     QuestionType,
-    Topic,
 )
 
 # Deliberately not in alphabetical order: the report orders quiz columns by

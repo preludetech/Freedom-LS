@@ -11,14 +11,8 @@ from django.http import Http404
 from django.urls import reverse
 from django.utils import timezone
 
-from freedom_ls.content_engine.models import (
-    Course,
-    CoursePart,
-    Form,
-    FormQuestion,
-    FormStrategy,
-    Topic,
-)
+from freedom_ls.content_engine.models import Course, CoursePart, Topic
+from freedom_ls.form_engine.models import Form, FormQuestion, FormStrategy
 from freedom_ls.learner_management.config import config
 from freedom_ls.learner_management.deadline_utils import (
     EffectiveDeadline,

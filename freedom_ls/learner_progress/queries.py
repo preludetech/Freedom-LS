@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from uuid import UUID
 
-from freedom_ls.content_engine.models import FormStrategy
+from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_progress.models import FormProgress
 
 

@@ -6,13 +6,13 @@ import pytest
 
 from django.urls import reverse
 
-from freedom_ls.content_engine.factories import (
+from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.content_engine.models import Form, FormStrategy
+from freedom_ls.form_engine.models import Form, FormStrategy
 from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,

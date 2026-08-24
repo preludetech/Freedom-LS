@@ -15,13 +15,16 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartFactory,
+    TopicFactory,
+)
+from freedom_ls.content_engine.models import CourseVisibility, Topic
+from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
     QuestionOptionFactory,
-    TopicFactory,
 )
-from freedom_ls.content_engine.models import CourseVisibility, FormStrategy, Topic
+from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.factories import (
     FormProgressFactory,

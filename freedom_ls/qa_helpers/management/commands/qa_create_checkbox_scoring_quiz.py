@@ -49,12 +49,14 @@ from django.contrib.sites.models import Site
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
+)
+from freedom_ls.content_engine.models import Course
+from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
 )
-from freedom_ls.content_engine.models import (
-    Course,
+from freedom_ls.form_engine.models import (
     Form,
     FormPage,
     FormQuestion,

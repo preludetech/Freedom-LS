@@ -8,7 +8,7 @@ import pytest
 from freedom_ls.content_engine.management.commands.content_save import (
     save_content_to_db,
 )
-from freedom_ls.content_engine.models import Form
+from freedom_ls.form_engine.models import Form
 
 
 def _write_quiz_course(course_dir: Path, *, submit_on_exit_line: str) -> None:

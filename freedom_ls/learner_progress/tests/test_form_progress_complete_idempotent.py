@@ -3,7 +3,7 @@
 import pytest
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import FormFactory
+from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.learner_progress.factories import FormProgressFactory
 from freedom_ls.learner_progress.models import FormProgress
 

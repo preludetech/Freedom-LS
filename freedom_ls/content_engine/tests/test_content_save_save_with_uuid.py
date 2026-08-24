@@ -3,7 +3,6 @@
 import pytest
 import yaml
 
-from freedom_ls.content_engine.factories import FormFactory
 from freedom_ls.content_engine.management.commands.content_save import (
     PreservingDumper,
     markdown_translate,
@@ -11,8 +10,9 @@ from freedom_ls.content_engine.management.commands.content_save import (
     save_form_page,
     save_form_question,
 )
-from freedom_ls.content_engine.models import FormPage
 from freedom_ls.content_engine.validate import parse_single_file
+from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.models import FormPage
 
 
 def test_preserving_dumper_uses_literal_style_for_html_content():
@@ -253,7 +253,7 @@ options:
     # Verify UUIDs were added
     # OPTIONS DO HAVE UUIDS
     # Get the options from the database
-    from freedom_ls.content_engine.models import QuestionOption
+    from freedom_ls.form_engine.models import QuestionOption
 
     db_options = list(
         QuestionOption.objects.filter(question=question).order_by("order")

@@ -29,9 +29,10 @@ from django.urls import reverse
 from django.utils import timezone as tz
 
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
+from freedom_ls.content_engine.models import Course, CoursePart, Topic
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.forms import CohortForm
+from freedom_ls.form_engine.models import Form
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,

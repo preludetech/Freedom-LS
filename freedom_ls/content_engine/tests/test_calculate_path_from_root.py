@@ -1,7 +1,7 @@
 import pytest
 
-from freedom_ls.content_engine.factories import FormFactory
-from freedom_ls.content_engine.models import Form
+from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.models import Form
 
 test_data = [
     (

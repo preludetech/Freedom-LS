@@ -40,17 +40,16 @@ from django.contrib.sites.models import Site
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
-    FormFactory,
-    FormPageFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
     CourseVisibility,
-    Form,
     Topic,
 )
+from freedom_ls.form_engine.factories import FormFactory, FormPageFactory
+from freedom_ls.form_engine.models import Form
 
 TOC_NO_ASSESSMENT_SLUG = "qa-toc-in-development"
 TOC_WITH_ASSESSMENT_SLUG = "qa-toc-in-development-with-assessment"

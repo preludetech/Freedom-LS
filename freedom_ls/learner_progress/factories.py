@@ -3,12 +3,8 @@
 import factory
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import (
-    CourseFactory,
-    FormFactory,
-    FormQuestionFactory,
-    TopicFactory,
-)
+from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.form_engine.factories import FormFactory, FormQuestionFactory
 from freedom_ls.learner_progress.models import (
     CourseProgress,
     FormProgress,

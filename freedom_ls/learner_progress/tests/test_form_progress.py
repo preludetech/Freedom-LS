@@ -7,7 +7,7 @@ import pytest
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import (
+from freedom_ls.form_engine.factories import (
     FormContentFactory,
     FormFactory,
     FormPageFactory,

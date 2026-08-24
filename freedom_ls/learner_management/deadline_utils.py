@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
-from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
+from freedom_ls.content_engine.models import Course, CoursePart, Topic
+from freedom_ls.form_engine.models import Form
 from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortDeadline,

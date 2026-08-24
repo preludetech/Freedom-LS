@@ -7,7 +7,7 @@ import djclick as click
 from django.contrib.sites.models import Site
 from django.utils import timezone
 
-from freedom_ls.content_engine.models import Form
+from freedom_ls.form_engine.models import Form
 from freedom_ls.learner_management.models import CohortMembership
 from freedom_ls.learner_progress.factories import FormProgressFactory
 from freedom_ls.learner_progress.models import FormProgress

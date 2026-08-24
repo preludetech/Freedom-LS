@@ -7,12 +7,14 @@ from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
     File,
+    Topic,
+)
+from freedom_ls.form_engine.models import (
     Form,
     FormContent,
     FormPage,
     FormQuestion,
     QuestionOption,
-    Topic,
 )
 
 

@@ -3,10 +3,11 @@ import pytest
 from freedom_ls.content_engine.factories import (
     CourseFactory,
     CoursePartFactory,
-    FormFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course, CoursePart, Form, Topic
+from freedom_ls.content_engine.models import Course, CoursePart, Topic
+from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.models import Form
 from freedom_ls.learner_management.utils import calculate_course_progress_percentage
 
 

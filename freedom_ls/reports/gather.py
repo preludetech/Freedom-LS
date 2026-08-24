@@ -20,12 +20,12 @@ from uuid import UUID
 
 from django.utils import timezone
 
-from freedom_ls.content_engine.models import (
+from freedom_ls.content_engine.models import Topic
+from freedom_ls.form_engine.models import (
     FREE_TEXT_QUESTION_TYPES,
     Form,
     FormQuestion,
     FormStrategy,
-    Topic,
 )
 from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.learner_progress.models import FormProgress
