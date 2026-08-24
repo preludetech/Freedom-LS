@@ -13,6 +13,8 @@ the already-gathered `CohortReportData` tree and only renders it.
 
 from __future__ import annotations
 
+import base64
+import binascii
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
@@ -21,6 +23,7 @@ from urllib.request import url2pathname
 from django.contrib.staticfiles import finders
 from django.template.loader import render_to_string
 
+from freedom_ls.organisations.validators import LOGO_MIME_TYPES, MAX_BYTES
 from freedom_ls.reports.config import config
 from freedom_ls.reports.gather import CohortReportData
 from freedom_ls.site_aware_models.config import config as site_config
@@ -200,6 +203,46 @@ def build_report_html(data: CohortReportData) -> str:
     return html
 
 
+# The mediatypes this app itself emits, derived from the one list that decides
+# which image formats an organisation may upload -- so dropping a format there
+# closes it here too, rather than leaving a fetcher that still accepts it.
+_ALLOWED_DATA_URI_MEDIATYPES = frozenset(LOGO_MIME_TYPES.values())
+
+
+def _validate_report_data_uri(payload: str) -> None:
+    """Refuse any `data:` URI that is not one this app itself emits.
+
+    Narrow to the three image mediatypes the organisation-logo loader
+    produces, base64 only, under the same 2 MiB cap the upload validator
+    enforces. FLS's own path can never reach the cap -- the loader refuses to
+    build a URI from more than MAX_BYTES of source bytes -- so this exists
+    for a future caller that reuses this fetcher for an image source nobody
+    has validated.
+    """
+    from weasyprint.urls import FatalURLFetchingError
+
+    if "," not in payload:
+        raise FatalURLFetchingError(f"Malformed data URI: {payload!r}")
+    metadata, _, data = payload.partition(",")
+
+    parts = metadata.split(";")
+    mediatype, encodings = parts[0], parts[1:]
+    if mediatype not in _ALLOWED_DATA_URI_MEDIATYPES:
+        raise FatalURLFetchingError(f"Disallowed data URI mediatype: {mediatype!r}")
+    if encodings != ["base64"]:
+        raise FatalURLFetchingError(f"Data URI must be base64-encoded: {payload!r}")
+
+    try:
+        decoded = base64.b64decode(data, validate=True)
+    except binascii.Error as exc:
+        raise FatalURLFetchingError(
+            f"Malformed base64 in data URI: {payload!r}"
+        ) from exc
+
+    if len(decoded) > MAX_BYTES:
+        raise FatalURLFetchingError("Data URI payload exceeds the size cap.")
+
+
 def _restrictive_url_fetcher(
     allowed_paths: set[Path],
 ) -> Callable[[str], URLFetcherResponse]:
@@ -232,6 +275,16 @@ def _restrictive_url_fetcher(
     An exact-file allowlist rather than a trusted directory, because every
     file the document may read is known before rendering starts. Nothing in
     the report resolves a file path at render time.
+
+    A `data:` URI is also allowed, within a narrow allowlist of its own, and
+    this does not widen what the fetcher can reach. Every other scheme this
+    fetcher accepts points *at* something external -- a path on disk that
+    could, if the allowlist were ever wrong, resolve outside the files named
+    above. A `data:` URI carries its own bytes inline instead of pointing
+    anywhere; there is no location for it to resolve to other than the
+    request itself. Accepting the scheme therefore cannot make a new
+    resource reachable -- it still resolves zero external resources, just
+    like the exact-file allowlist above it.
     """
 
     def fetch(url: str) -> URLFetcherResponse:
@@ -242,6 +295,9 @@ def _restrictive_url_fetcher(
             path = Path(url2pathname(parsed.path)).resolve()
             if path in allowed_paths:
                 return default_url_fetcher(url)
+        elif parsed.scheme == "data":
+            _validate_report_data_uri(parsed.path)
+            return default_url_fetcher(url)
         raise FatalURLFetchingError(f"External resource fetch refused: {url}")
 
     return fetch

@@ -9,6 +9,7 @@ ORM access, so none of these tests need `django_db` or `mock_site_context`.
 
 from __future__ import annotations
 
+import base64
 import re
 
 import pytest
@@ -16,6 +17,7 @@ import pytest
 from django.test import override_settings
 from django.utils import timezone
 
+from freedom_ls.organisations.validators import MAX_BYTES
 from freedom_ls.reports.render import (
     ReportRenderError,
     _extract_theme_tokens_from_css,
@@ -276,6 +278,45 @@ class TestRestrictiveUrlFetcher:
         fetch = _restrictive_url_fetcher({allowed})
 
         assert fetch(allowed.as_uri()) is not None
+
+    def test_allows_a_data_uri_with_an_allowed_mediatype(self) -> None:
+        fetch = _restrictive_url_fetcher(set())
+        payload = base64.b64encode(b"not a real image, just bytes").decode("ascii")
+
+        assert fetch(f"data:image/png;base64,{payload}") is not None
+
+    def test_allows_the_other_two_allowed_mediatypes(self) -> None:
+        fetch = _restrictive_url_fetcher(set())
+        payload = base64.b64encode(b"not a real image, just bytes").decode("ascii")
+
+        assert fetch(f"data:image/jpeg;base64,{payload}") is not None
+        assert fetch(f"data:image/webp;base64,{payload}") is not None
+
+    def test_refuses_a_data_uri_with_a_disallowed_mediatype(self) -> None:
+        fetch = _restrictive_url_fetcher(set())
+        payload = base64.b64encode(b"<svg></svg>").decode("ascii")
+
+        with pytest.raises(_fatal_url_fetching_error()):
+            fetch(f"data:image/svg+xml;base64,{payload}")
+
+    def test_refuses_a_non_base64_data_uri(self) -> None:
+        fetch = _restrictive_url_fetcher(set())
+
+        with pytest.raises(_fatal_url_fetching_error()):
+            fetch("data:image/png,%3Csvg%3E%3C%2Fsvg%3E")
+
+    def test_refuses_an_oversized_data_uri(self) -> None:
+        fetch = _restrictive_url_fetcher(set())
+        oversized = base64.b64encode(b"0" * (MAX_BYTES + 1)).decode("ascii")
+
+        with pytest.raises(_fatal_url_fetching_error()):
+            fetch(f"data:image/png;base64,{oversized}")
+
+    def test_refuses_a_malformed_data_uri(self) -> None:
+        fetch = _restrictive_url_fetcher(set())
+
+        with pytest.raises(_fatal_url_fetching_error()):
+            fetch("data:image/png;base64,not-valid-base64!!!")
 
 
 @requires_tailwind_bundle
