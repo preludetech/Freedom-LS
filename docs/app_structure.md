@@ -120,6 +120,7 @@ flowchart TB
     reports --> form_engine
     reports --> learner_management
     reports --> learner_progress
+    reports --> organisations
     reports --> site_aware_models
     role_based_permissions --> accounts
     role_based_permissions --> base
@@ -143,7 +144,6 @@ flowchart TB
     markdown_rendering -.-> content_engine
     organisations -.-> accounts
     organisations -.-> role_based_permissions
-    reports -.-> organisations
     reports -.-> role_based_permissions
     role_based_permissions -.-> learner_management
     site_aware_models -.-> accounts
@@ -176,7 +176,7 @@ flowchart TB
 | organisations | base, site_aware_models | accounts, role_based_permissions |
 | panel_framework | — | — |
 | qa_helpers | accounts, content_engine, course_applications, form_engine, learner_management, learner_progress, organisations, reports, role_based_permissions, site_aware_models | — |
-| reports | accounts, base, content_engine, form_engine, learner_management, learner_progress, site_aware_models | organisations, role_based_permissions |
+| reports | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations, site_aware_models | role_based_permissions |
 | role_based_permissions | accounts, base, site_aware_models | learner_management |
 | site_aware_models | base | accounts, content_engine, learner_management |
 | webhooks | base, site_aware_models | accounts |

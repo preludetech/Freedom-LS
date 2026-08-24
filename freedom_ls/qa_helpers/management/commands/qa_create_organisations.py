@@ -1,16 +1,22 @@
-"""Seed two Organisations for QA of the switcher and logo/monogram rendering.
+"""Seed four Organisations for QA of the switcher and logo/monogram rendering.
 
 Superseded for a full QA pass by ``qa_create_organisation_scenarios``, which
 also seeds the cohorts and personas; this command remains as the smallest
 possible organisations-only seed.
 
-Creates (idempotently) two Organisations on the given site, in addition to
+Creates (idempotently) four Organisations on the given site, in addition to
 the site's own default Organisation:
 
 1. "RPAS Training" — carries a logo, so the logo rendering path is exercised.
 2. "Northside" — no logo, so the monogram fallback is exercised. The short
    name is deliberate: the monogram QA renames it to "Northside Academy" and
    expects the initials to change from "NO" to "NA" while the slug stays put.
+3. A ~150-character name — long enough to force the report cover's condensed
+   wordmark class and to exercise footer truncation.
+4. A Cyrillic name — DejaVu Sans (the report's font) covers this script, so
+   the render shows real glyphs rather than tofu boxes, isolating the
+   download-filename behaviour for a non-Latin name from a missing-glyph
+   render.
 
 Usage:
     uv run python manage.py qa_create_organisations
@@ -32,13 +38,25 @@ LOGO_PATH = Path(__file__).resolve().parent.parent.parent / "fixtures" / "RT-log
 
 WITH_LOGO_NAME = "RPAS Training"
 WITHOUT_LOGO_NAME = "Northside"
+LONG_NAME = (
+    "The Northern Federation of Colleges, Universities, Technical Institutes "
+    "and Vocational Training Academies for Professional and Continuing Education"
+)
+NON_LATIN_NAME = "Восточно-Европейская Академия Непрерывного Образования"
 
 
 def _ensure_organisation(site: Site, name: str) -> tuple[Organisation, bool]:
     organisation, created = Organisation.objects.get_or_create(
         site=site,
         name=name,
-        defaults={"slug": get_unique_slug(Organisation, site, slugify(name))},
+        # allow_unicode=True: the default slugify() strips non-Latin
+        # characters entirely, which would leave NON_LATIN_NAME with an
+        # empty base slug. Harmless for the existing ASCII names above.
+        defaults={
+            "slug": get_unique_slug(
+                Organisation, site, slugify(name, allow_unicode=True)
+            )
+        },
     )
     return organisation, created
 
@@ -46,7 +64,7 @@ def _ensure_organisation(site: Site, name: str) -> tuple[Organisation, bool]:
 @click.command()
 @click.argument("site_name", default="DemoDev")
 def command(site_name: str) -> None:
-    """Seed two QA Organisations on SITE_NAME (default: DemoDev)."""
+    """Seed four QA Organisations on SITE_NAME (default: DemoDev)."""
     try:
         site = Site.objects.get(name=site_name)
     except Site.DoesNotExist as e:
@@ -67,5 +85,19 @@ def command(site_name: str) -> None:
     click.secho(
         f"{verb} organisation '{WITHOUT_LOGO_NAME}' "
         f"(no logo — initials {without_logo.initials!r})",
+        fg="green",
+    )
+
+    _, created = _ensure_organisation(site, LONG_NAME)
+    verb = "Created" if created else "Reused"
+    click.secho(
+        f"{verb} organisation '{LONG_NAME}' (long name — condensed wordmark / footer truncation)",
+        fg="green",
+    )
+
+    _, created = _ensure_organisation(site, NON_LATIN_NAME)
+    verb = "Created" if created else "Reused"
+    click.secho(
+        f"{verb} organisation '{NON_LATIN_NAME}' (non-Latin name — unicode download filename)",
         fg="green",
     )
