@@ -142,14 +142,20 @@ class CompletionStats:
 
 # Character budgets for the cover wordmark and the footer identity line. Each
 # is paired with a specific print.css rule -- the wordmark slot's width cap,
-# the footer row's fixed height -- that a downstream project cannot change
-# independently of the number here, so these stay plain constants rather than
-# a ReportsConfig Setting: a Setting would let the two drift out of step with
-# the CSS they describe, and letting a downstream override just the number
-# is not a degree of freedom the layout actually has.
+# and the width the identity line has left beside the centred "Powered by"
+# box -- that a downstream project cannot change independently of the number
+# here, so these stay plain constants rather than a ReportsConfig Setting: a
+# Setting would let the two drift out of step with the CSS they describe, and
+# letting a downstream override just the number is not a degree of freedom the
+# layout actually has.
+#
+# All three were set by rendering a ladder of real names -- short, at each
+# threshold, 150 characters, one unbroken 100-character token, and Cyrillic --
+# and reading the output, because a character count predicts neither how wide
+# a name sets nor how many lines it takes.
 WORDMARK_FULL_MAX_CHARS = 42
 WORDMARK_CONDENSED_MAX_CHARS = 87
-FOOTER_ORGANISATION_MAX_CHARS = 40
+FOOTER_ORGANISATION_MAX_CHARS = 30
 
 
 def _wordmark_size_class(name: str) -> str:

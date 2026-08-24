@@ -128,6 +128,11 @@ touches. */
   font-family: var(--report-font-body);
   font-size: 7pt;
   color: var(--color-muted);
+  /* Keeps this line clear of the centred "Powered by" box beside it. Only the
+     organisation name in this line is held to a character budget -- the cohort
+     name is whatever an administrator typed -- so the budget alone cannot
+     promise a gap, and without one the two strings render touching. */
+  padding-right: 10mm;
 }
 
 /* Block-level and declared before the cover, for the same two reasons as
@@ -614,6 +619,11 @@ h3.confusion-heading {
 }
 .title-page .cover-meta dd {
   margin: 0 0 2.5pt 30mm;
+  /* The organisation row states the name in full, unlike the wordmark above
+     it, so nothing has shortened it by the time it is set here. An
+     organisation name carries no spaces of its own accord, and one long
+     unbroken token would otherwise set past the right edge of the page. */
+  overflow-wrap: break-word;
 }
 .title-page .caveat {
   font-size: 8pt;
