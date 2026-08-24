@@ -45,6 +45,7 @@ from freedom_ls.reports.indexes import (
     load_cohort,
     load_distractor_rows,
     load_first_attempt_ids,
+    load_organisation_logo_data_uri,
     load_progress_index,
     load_quiz_questions,
     load_registrations,
@@ -64,6 +65,7 @@ from freedom_ls.reports.report_data import (
     CourseSection,
     LearnerDetail,
     LearnerRow,
+    OrganisationBrand,
     QuizAttempt,
     QuizColumn,
     QuizConfusion,
@@ -91,6 +93,7 @@ __all__ = [
     "CourseSection",
     "LearnerDetail",
     "LearnerRow",
+    "OrganisationBrand",
     "QuizAttempt",
     "QuizColumn",
     "QuizConfusion",
@@ -774,8 +777,19 @@ def gather_cohort_report_data(
 
     return CohortReportData(
         cohort_name=cohort.name,
-        organisation_name=cohort.organisation.name,
+        organisation=OrganisationBrand(
+            name=cohort.organisation.name,
+            logo_data_uri=load_organisation_logo_data_uri(cohort.organisation),
+            wordmark_size_class=_wordmark_size_class(cohort.organisation.name),
+            wordmark_name=_truncate_to_budget(
+                cohort.organisation.name, WORDMARK_CONDENSED_MAX_CHARS
+            ),
+            footer_name=_truncate_to_budget(
+                cohort.organisation.name, FOOTER_ORGANISATION_MAX_CHARS
+            ),
+        ),
         site_name=resolve_site_name(site_id),
+        show_powered_by=not cohort.organisation.is_default,
         generated_at=now,
         requested_by_name=requested_by_name,
         courses=course_sections,

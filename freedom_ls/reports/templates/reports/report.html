@@ -1,6 +1,6 @@
 {% comment %}
 Required context: data (CohortReportData), theme_tokens (str), font_css (str),
-print_css (str), site_logo_url (str|None).
+print_css (str).
 
 This is the document shell only — doctype, head, the page furniture every page
 shares, and one {% include %} per section in reading order. No loop, no
@@ -16,6 +16,15 @@ no cotton components.
 <head>
 <meta charset="utf-8">
 <title>{{ data.cohort_name }} — Cohort progress report</title>
+{% comment %}The PDF's document-properties panel, so it agrees with the cover:
+the organisation authored the record, the platform generated the file.
+
+Exactly one author tag. WeasyPrint keeps every `author` meta it finds and joins
+them with ", " into the PDF's /Author field rather than taking the first, so
+adding the site as a second author would read as "Org, Site" in every PDF
+reader.{% endcomment %}
+<meta name="author" content="{{ data.organisation.name }}">
+<meta name="generator" content="{{ data.site_name }}">
 {% comment %}theme_tokens, font_css and print_css are server-generated CSS
 strings — the role-token block extracted from the compiled Tailwind bundle, the
 @font-face rules built from the configured faces, and this app's own
@@ -29,16 +38,25 @@ and content() rules into HTML entities and break the CSS.{% endcomment %}
 <body>
 {% comment %}The line print.css draws in the footer of every page but the
 cover. It is a running element rather than a CSS `content:` string because the
-cohort and site names are typed by an administrator: as markup Django escapes
-them, whereas interpolating them into the stylesheet would let a quotation mark
-in a cohort name break every rule after it.
+cohort and organisation names are typed by an administrator: as markup Django
+escapes them, whereas interpolating them into the stylesheet would let a
+quotation mark in a cohort name break every rule after it.
 
 It must stay a block-level element and it must come before the cover — see the
 note on .footer-identity in print.css.{% endcomment %}
 <div class="footer-identity">
-  <span class="footer-org">{{ data.site_name }} · {{ data.organisation_name }} · Cohort progress report · {{ data.cohort_name }}</span>
+  <span class="footer-org">{{ data.organisation.footer_name }} · {{ data.cohort_name }} · Cohort progress report</span>
 </div>
-{% include "reports/partials/title_page.html" with data=data site_logo_url=site_logo_url only %}
+{% comment %}The platform's attribution, drawn in its own footer margin box so
+it never competes with the identity line above for one line's width. A running
+element for the same reason that one is: the site's display name is
+administrator-configured, and it must be escaped as markup rather than
+interpolated into the stylesheet. Block-level, and before the cover, for the
+same two reasons again.{% endcomment %}
+{% if data.show_powered_by %}
+<div class="footer-powered-by">Powered by {{ data.site_name }}</div>
+{% endif %}
+{% include "reports/partials/title_page.html" with data=data only %}
 {% include "reports/partials/at_a_glance.html" with data=data attention=data.attention_list only %}
 {% include "reports/partials/contents.html" with data=data only %}
 {% include "reports/partials/summary_tables.html" with courses=data.courses only %}

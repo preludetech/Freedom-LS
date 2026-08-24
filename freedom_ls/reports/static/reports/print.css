@@ -56,6 +56,14 @@ touches. */
   @bottom-left {
     content: element(footer-identity);
   }
+  /* The platform's attribution, in a box of its own rather than folded into
+     the identity line, so the two strings never fight over one line's width
+     and the identity line can grow without displacing the mark. No font
+     properties here: the running element carries its own styling into the
+     box, and restating it would be two copies free to drift apart. */
+  @bottom-center {
+    content: element(footer-powered-by);
+  }
   @bottom-right {
     content: "Page " counter(page) " of " counter(pages);
     font-family: var(--report-font-mono);
@@ -81,6 +89,13 @@ touches. */
     content: none;
   }
   @bottom-left {
+    content: none;
+  }
+  /* Cleared by name like every box above it -- there is no wildcard here.
+     Without this line the cover carries "Powered by <site>" in its bottom
+     margin as well as on its band, saying it twice on the one page that
+     already leads with the mark. */
+  @bottom-center {
     content: none;
   }
   @bottom-right {
@@ -110,6 +125,18 @@ touches. */
 .footer-identity {
   display: block;
   position: running(footer-identity);
+  font-family: var(--report-font-body);
+  font-size: 7pt;
+  color: var(--color-muted);
+}
+
+/* Block-level and declared before the cover, for the same two reasons as
+   .footer-identity above. Set in the same document-furniture register as its
+   neighbours in the footer row: the mark is provenance on an extracted page,
+   not a second heading. */
+.footer-powered-by {
+  display: block;
+  position: running(footer-powered-by);
   font-family: var(--report-font-body);
   font-size: 7pt;
   color: var(--color-muted);
@@ -486,31 +513,55 @@ h3.confusion-heading {
   position: relative;
   padding: 20mm 20mm 0;
 }
-/* The tenant's own identity, top right per the report's design brief. Both
-   parts are optional in the template, so neither may reserve space. */
+/* The organisation's own identity, top left: the primary brand owns the most
+   prominent corner, and the platform is reduced to the mark on the band below.
+   Unlike the site brand this replaced, the slot always has content -- an
+   organisation always has a name, and the wordmark fills the slot whenever
+   there is no logo -- so it may reserve space. It reserves space for the brand
+   alone: there is no descriptor or strapline line on an Organisation to set
+   under it. */
 .title-page .cover-brand {
-  text-align: right;
+  text-align: left;
 }
 .title-page .cover-logo {
-  max-height: 12mm;
-  max-width: 55mm;
-  vertical-align: middle;
-  margin-right: 4pt;
+  /* Contained, never cropped or distorted: a clipped wordmark or a clipped
+     badge ring reads as broken rather than styled. max-height plus max-width,
+     with no width/height attributes on the element, is what preserves the
+     intrinsic ratio under WeasyPrint; object-fit is browser-only and nothing
+     here relies on it. Larger than the site mark it replaced, so an uploaded
+     logo visibly outweighs the demoted mark on the band. */
+  max-height: 16mm;
+  max-width: 70mm;
 }
-.title-page .cover-site {
+/* The name standing in for a logo. The width cap is what makes gather.py's
+   character budgets mean anything -- without it the wordmark runs to the
+   cover's full text column and the budgets describe a slot that does not
+   exist. Set in the deployment's own primary token: an Organisation carries no
+   brand colour of its own. */
+.title-page .cover-wordmark {
+  display: block;
   font-family: var(--report-font-display);
-  font-size: 13pt;
   font-weight: 700;
   color: var(--color-primary);
-  vertical-align: middle;
+  max-width: 70mm;
+  /* The budget behind the name is a character count, and a count cannot tell
+     one 90-character word from twelve short ones. This keeps an unbroken token
+     inside the box whatever its shape. */
+  overflow-wrap: break-word;
+}
+.title-page .cover-wordmark--full {
+  font-size: 18pt;
+}
+.title-page .cover-wordmark--condensed {
+  font-size: 13pt;
 }
 .title-page .cover-accent {
   height: 2.5pt;
   width: 34pt;
   background: var(--color-accent);
-  /* Sits under the identity it belongs to, which is set against the right
+  /* Sits under the identity it belongs to, which is set against the left
      margin. */
-  margin: 8pt 0 0 auto;
+  margin: 8pt auto 0 0;
 }
 .title-page .cover-body {
   margin-top: 45mm;
@@ -581,9 +632,17 @@ h3.confusion-heading {
   color: var(--color-on-primary);
   padding: 6mm 20mm 0;
 }
+/* Two tiers, not one uniform size: set at a single size the mark reads as the
+   brand above it under a different label, rather than as subordinate to it. */
+.title-page .band-powered-by {
+  font-family: var(--report-font-body);
+  font-size: 7.5pt;
+  opacity: 0.75;
+  margin-right: 4pt;
+}
 .title-page .band-site {
   font-family: var(--report-font-display);
-  font-size: 11pt;
+  font-size: 10.5pt;
   font-weight: 700;
 }
 

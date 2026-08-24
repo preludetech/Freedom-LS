@@ -37,6 +37,7 @@ from freedom_ls.reports.tests.report_data_builders import (
     cohort_report_data,
     course_section_defaults,
     learner_detail,
+    organisation_brand,
     summary_row,
 )
 
@@ -1253,26 +1254,43 @@ class TestQuizAttemptsTable:
 
 
 class TestCoverBranding:
-    def test_names_the_site_and_omits_an_unconfigured_logo(self) -> None:
-        data = cohort_report_data(site_name="Bright Academy")
-
-        html = render_to_string(
-            "reports/partials/title_page.html",
-            {"data": data, "site_logo_url": None},
+    def test_an_organisation_without_a_logo_gets_a_wordmark(self) -> None:
+        data = cohort_report_data(
+            organisation=organisation_brand(wordmark_name="Northside College")
         )
 
-        assert "Bright Academy" in html
+        html = render_to_string("reports/partials/title_page.html", {"data": data})
+
+        assert "cover-wordmark" in html
         assert "<img" not in html
 
-    def test_renders_the_site_logo_when_configured(self) -> None:
-        data = cohort_report_data(site_name="Bright Academy")
-
-        html = render_to_string(
-            "reports/partials/title_page.html",
-            {"data": data, "site_logo_url": "file:///tmp/site.png"},
+    def test_an_organisation_logo_is_rendered_from_its_data_uri(self) -> None:
+        data = cohort_report_data(
+            organisation=organisation_brand(
+                logo_data_uri="data:image/png;base64,aGVsbG8="
+            )
         )
 
-        assert 'src="file:///tmp/site.png"' in html
+        html = render_to_string("reports/partials/title_page.html", {"data": data})
+
+        assert 'src="data:image/png;base64,aGVsbG8="' in html
+        assert "cover-wordmark" not in html
+
+    def test_the_band_carries_the_platform_mark(self) -> None:
+        data = cohort_report_data(site_name="Bright Academy", show_powered_by=True)
+
+        html = render_to_string("reports/partials/title_page.html", {"data": data})
+
+        assert "Powered by" in html
+        assert "Bright Academy" in html
+
+    def test_the_band_is_blank_for_the_house_organisation(self) -> None:
+        data = cohort_report_data(site_name="Bright Academy", show_powered_by=False)
+
+        html = render_to_string("reports/partials/title_page.html", {"data": data})
+
+        assert "Powered by" not in html
+        assert "Bright Academy" not in html
 
     def test_course_card_states_each_course_scale(self) -> None:
         data = cohort_report_data(
@@ -1281,9 +1299,6 @@ class TestCoverBranding:
             ]
         )
 
-        html = render_to_string(
-            "reports/partials/title_page.html",
-            {"data": data, "site_logo_url": None},
-        )
+        html = render_to_string("reports/partials/title_page.html", {"data": data})
 
         assert "24 items" in html

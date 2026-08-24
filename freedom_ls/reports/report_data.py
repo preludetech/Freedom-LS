@@ -219,14 +219,37 @@ class CourseSection:
 
 
 @dataclasses.dataclass(frozen=True)
+class OrganisationBrand:
+    """The organisation's identity as the report renders it — resolved, never a model."""
+
+    # The full name, as the cover metadata list states it.
+    name: str
+    # A base64 `data:` URI, or None when there is no usable logo and the
+    # wordmark stands in its place.
+    logo_data_uri: str | None
+    # "full" | "condensed" — meaningful only when logo_data_uri is None.
+    wordmark_size_class: str
+    # The name at the length the cover wordmark slot can hold.
+    wordmark_name: str
+    # The name at the length the footer identity line can hold, which is
+    # shorter still.
+    footer_name: str
+
+
+@dataclasses.dataclass(frozen=True)
 class CohortReportData:
     cohort_name: str
-    # Which organisation's cohort this is. Cohort names are unique per
-    # organisation rather than per site, so the name alone does not identify a
-    # cohort on a site running more than one.
-    organisation_name: str
+    # Which organisation's cohort this is, and the brand the document leads
+    # with. Cohort names are unique per organisation rather than per site, so
+    # the name alone does not identify a cohort on a site running more than one.
+    organisation: OrganisationBrand
     # Who the report is from: the tenant's own display name.
     site_name: str
+    # Whether the platform's "Powered by" attribution mark is drawn. A fact
+    # about the platform rather than about the organisation, so it sits here
+    # and not on the brand: a site's own house organisation is already the
+    # platform, and marking it as powered by itself says the same thing twice.
+    show_powered_by: bool
     generated_at: datetime
     requested_by_name: str
     courses: list[CourseSection]

@@ -26,7 +26,6 @@ from django.template.loader import render_to_string
 from freedom_ls.organisations.validators import LOGO_MIME_TYPES, MAX_BYTES
 from freedom_ls.reports.config import config
 from freedom_ls.reports.gather import CohortReportData
-from freedom_ls.site_aware_models.config import config as site_config
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -162,28 +161,11 @@ def build_font_css() -> tuple[str, set[Path]]:
     return "\n".join([*rules, stacks]), font_paths
 
 
-def _resolve_logo(static_path: str | None) -> tuple[str | None, Path | None]:
-    """Resolve an optional logo static path to a `file://` URL and its file.
-
-    An unset path is not a problem -- a fresh FLS install configures no logo,
-    and the report is designed to read as complete without one. A path that is
-    set but cannot be resolved is a misconfiguration, and raises rather than
-    rendering a report with a hole where somebody expected their logo.
-    """
-    if not static_path:
-        return None, None
-    path = _find_static(static_path).resolve()
-    return path.as_uri(), path
-
-
 def _build_document(data: CohortReportData) -> tuple[str, set[Path]]:
     """Render the report to HTML, and collect every local file it may read."""
     print_css = _find_static("reports/print.css").read_text()
     theme_tokens = extract_theme_tokens()
     font_css, allowed_paths = build_font_css()
-    site_logo_url, site_logo_path = _resolve_logo(site_config.HEADER_LOGO_STATIC_PATH)
-    if site_logo_path:
-        allowed_paths.add(site_logo_path)
     html = render_to_string(
         "reports/report.html",
         {
@@ -191,7 +173,6 @@ def _build_document(data: CohortReportData) -> tuple[str, set[Path]]:
             "theme_tokens": theme_tokens,
             "font_css": font_css,
             "print_css": print_css,
-            "site_logo_url": site_logo_url,
         },
     )
     return html, allowed_paths
@@ -252,9 +233,9 @@ def _restrictive_url_fetcher(
     WeasyPrint's default fetcher -- which follows any `http(s)://` or
     `file://` URL it is given -- is an SSRF and local-file-read surface.
 
-    WeasyPrint 69.0 ships `weasyprint.urls.URLFetcher` with the
-    `allowed_protocols` / `allow_redirects` constructor arguments the plan
-    named, but verified empirically against the installed version: raising
+    WeasyPrint 69.0 ships `weasyprint.urls.URLFetcher` with
+    `allowed_protocols` / `allow_redirects` constructor arguments, but
+    verified empirically against the installed version: raising
     from inside a fetcher -- whether that class or a plain callable -- is
     caught and only logged by `weasyprint.urls.fetch()`, never propagated,
     unless the exception is a `weasyprint.urls.FatalURLFetchingError` (a
@@ -265,11 +246,10 @@ def _restrictive_url_fetcher(
     So this fetcher raises `FatalURLFetchingError` directly, and
     `render_report_pdf()` re-raises it as `ReportRenderError`.
 
-    The document does legitimately reference a few local files -- the
-    configured font faces and, when a project sets them, the site and
-    "powered by" logos -- so the fetcher cannot refuse every URL
-    unconditionally. It allows exactly those files, named up front by
-    `_build_document()`, and refuses everything else: any other file path,
+    The document does legitimately reference some local files -- the
+    configured font faces, and nothing else -- so the fetcher cannot refuse
+    every URL unconditionally. It allows exactly those files, named up front
+    by `_build_document()`, and refuses everything else: any other file path,
     and any `http(s)` URL that author-supplied text might carry.
 
     An exact-file allowlist rather than a trusted directory, because every

@@ -20,6 +20,7 @@ from freedom_ls.reports.gather import (
     CourseSection,
     LearnerDetail,
     LearnerRow,
+    OrganisationBrand,
     QuizColumn,
     QuizConfusion,
     SummaryRow,
@@ -89,11 +90,24 @@ def summary_row(row: LearnerRow, quizzes: list[QuizColumn]) -> SummaryRow:
     )
 
 
+def organisation_brand(**overrides: object) -> OrganisationBrand:
+    defaults: dict[str, object] = {
+        "name": "Northside College",
+        "logo_data_uri": None,
+        "wordmark_size_class": "full",
+        "wordmark_name": "Northside College",
+        "footer_name": "Northside College",
+    }
+    defaults.update(overrides)
+    return OrganisationBrand(**defaults)
+
+
 def cohort_report_data(**overrides: object) -> CohortReportData:
     defaults: dict[str, object] = {
         "cohort_name": "Cohort A",
-        "organisation_name": "Northside College",
+        "organisation": organisation_brand(),
         "site_name": "Test Academy",
+        "show_powered_by": True,
         "generated_at": GENERATED_AT,
         "requested_by_name": "Jamie Educator",
         "courses": [],

@@ -35,9 +35,20 @@ from freedom_ls.learner_progress.factories import (
     TopicProgressFactory,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.reports.gather import gather_cohort_report_data
+from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.reports.gather import (
+    FOOTER_ORGANISATION_MAX_CHARS,
+    WORDMARK_CONDENSED_MAX_CHARS,
+    gather_cohort_report_data,
+)
 
 pytestmark = pytest.mark.django_db
+
+# Organisation.name allows 150 characters, and this is one of exactly that
+# length, so both the wordmark and the footer budget have to cut it.
+LONG_ORG_NAME = (
+    "Northside College of Advanced Hydrology and Environmental Science " * 3
+)[:150]
 
 # Established empirically: the number of queries gather_cohort_report_data
 # issues for one course with one quiz, regardless of how many learners or
@@ -959,7 +970,7 @@ class TestFlagSeverity:
         assert flags["no_activity"] == "error"
 
 
-class TestOrganisationName:
+class TestOrganisationBrand:
     def test_the_cohorts_organisation_is_carried_onto_the_report(
         self, mock_site_context
     ):
@@ -969,7 +980,60 @@ class TestOrganisationName:
 
         data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
-        assert data.organisation_name == "Northside College"
+        assert data.organisation.name == "Northside College"
+
+    def test_a_short_name_is_carried_whole_into_every_slot(self, mock_site_context):
+        cohort = CohortFactory(
+            organisation=OrganisationFactory(name="Northside College")
+        )
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.organisation.wordmark_name == "Northside College"
+        assert data.organisation.footer_name == "Northside College"
+        assert data.organisation.wordmark_size_class == "full"
+
+    def test_a_long_name_is_kept_in_full_and_cut_for_each_slot(self, mock_site_context):
+        cohort = CohortFactory(organisation=OrganisationFactory(name=LONG_ORG_NAME))
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.organisation.name == LONG_ORG_NAME
+        assert len(data.organisation.wordmark_name) <= WORDMARK_CONDENSED_MAX_CHARS
+        assert len(data.organisation.footer_name) <= FOOTER_ORGANISATION_MAX_CHARS
+        assert len(data.organisation.wordmark_name) > len(data.organisation.footer_name)
+
+    def test_a_long_name_is_set_at_the_condensed_size(self, mock_site_context):
+        cohort = CohortFactory(organisation=OrganisationFactory(name=LONG_ORG_NAME))
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.organisation.wordmark_size_class == "condensed"
+
+    def test_an_organisation_without_a_logo_has_no_data_uri(self, mock_site_context):
+        cohort = CohortFactory(organisation=OrganisationFactory())
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.organisation.logo_data_uri is None
+
+
+class TestPoweredByAttribution:
+    def test_an_ordinary_organisation_carries_the_platform_mark(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory(organisation=OrganisationFactory())
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.show_powered_by is True
+
+    def test_the_sites_own_house_organisation_does_not(self, mock_site_context):
+        cohort = CohortFactory(organisation=get_default_organisation(mock_site_context))
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.show_powered_by is False
 
 
 class TestSiteName:

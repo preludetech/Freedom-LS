@@ -32,6 +32,7 @@ from freedom_ls.reports.tests.report_data_builders import (
     cohort_report_data,
     course_section,
     full_report_data,
+    organisation_brand,
 )
 
 # Deliberately fake values, not the real bundle's hex codes -- this is a
@@ -319,33 +320,120 @@ class TestRestrictiveUrlFetcher:
             fetch("data:image/png;base64,not-valid-base64!!!")
 
 
+def _body_of(html: str) -> str:
+    """Everything after <body>, which is the only part that is markup.
+
+    build_report_html() inlines print.css into <head>, so a bare substring
+    search over the whole document also matches the stylesheet's own class
+    names and comment prose -- and would pass whether or not anything was
+    actually drawn.
+    """
+    return html.split("<body>")[1]
+
+
+A_LOGO_DATA_URI = "data:image/png;base64,aGVsbG8="
+
+# 150 characters, the longest name an Organisation can carry.
+A_LONG_ORGANISATION_NAME = (
+    "Northside College of Advanced Hydrology and Environmental Science " * 3
+)[:150]
+
+
 @requires_tailwind_bundle
 class TestBrandingOnTheCover:
-    def test_site_logo_is_omitted_when_no_path_is_configured(self) -> None:
-        with override_settings(HEADER_LOGO_STATIC_PATH=None):
-            html = build_report_html(full_report_data())
+    def test_a_logo_is_rendered_in_the_brand_slot(self) -> None:
+        data = cohort_report_data(
+            organisation=organisation_brand(logo_data_uri=A_LOGO_DATA_URI)
+        )
 
+        html = build_report_html(data)
+
+        assert f'<img class="cover-logo" src="{A_LOGO_DATA_URI}"' in html
+
+    def test_a_logo_replaces_the_wordmark_rather_than_joining_it(self) -> None:
+        data = cohort_report_data(
+            organisation=organisation_brand(logo_data_uri=A_LOGO_DATA_URI)
+        )
+
+        html = build_report_html(data)
+
+        assert "cover-wordmark" not in _body_of(html)
+
+    def test_an_organisation_without_a_logo_gets_a_wordmark(self) -> None:
+        data = cohort_report_data(
+            organisation=organisation_brand(wordmark_name="Northside College")
+        )
+
+        html = build_report_html(data)
+
+        assert "cover-wordmark" in _body_of(html)
         assert '<img class="cover-logo"' not in html
 
-    def test_site_logo_is_rendered_when_configured(self) -> None:
-        with override_settings(HEADER_LOGO_STATIC_PATH="reports/print.css"):
-            html = build_report_html(full_report_data())
-
-        assert '<img class="cover-logo"' in html
-        assert "file://" in html
-
-    def test_configured_but_unresolvable_logo_raises(self) -> None:
-        with (
-            override_settings(HEADER_LOGO_STATIC_PATH="nowhere/missing-logo.png"),
-            pytest.raises(ReportRenderError, match=re.escape("missing-logo.png")),
-        ):
-            build_report_html(full_report_data())
-
-    def test_site_name_appears_on_the_cover_and_in_the_page_footer(self) -> None:
-        html = build_report_html(cohort_report_data(site_name="Bright Academy"))
-
-        assert "Bright Academy" in html
-        assert (
-            "Bright Academy · Northside College · Cohort progress report · Cohort A"
-            in html
+    def test_the_wordmark_carries_the_size_class_from_the_data(self) -> None:
+        data = cohort_report_data(
+            organisation=organisation_brand(wordmark_size_class="condensed")
         )
+
+        html = build_report_html(data)
+
+        assert "cover-wordmark--condensed" in _body_of(html)
+
+    def test_the_wordmark_is_cut_while_the_metadata_row_states_the_name_whole(
+        self,
+    ) -> None:
+        data = cohort_report_data(
+            organisation=organisation_brand(
+                name=A_LONG_ORGANISATION_NAME,
+                wordmark_name="Northside College of Advanced Hydrology…",
+            )
+        )
+
+        html = build_report_html(data)
+
+        brand_slot = html.split('class="cover-brand"')[1].split("</div>")[0]
+        metadata_row = html.split("<dt>Organisation</dt>")[1].split("<dt>")[0]
+        assert brand_slot.count("Northside College of Advanced Hydrology…") == 1
+        assert A_LONG_ORGANISATION_NAME not in brand_slot
+        assert A_LONG_ORGANISATION_NAME in metadata_row
+
+    def test_the_footer_identity_line_leads_with_the_organisation(self) -> None:
+        html = build_report_html(cohort_report_data())
+
+        assert "Northside College · Cohort A · Cohort progress report" in html
+
+    def test_the_platform_mark_appears_on_the_band_and_in_the_footer(self) -> None:
+        data = cohort_report_data(site_name="Bright Academy", show_powered_by=True)
+
+        html = build_report_html(data)
+
+        assert _body_of(html).count("Powered by") == 2
+
+    def test_the_house_organisation_gets_no_platform_mark(self) -> None:
+        data = cohort_report_data(site_name="Bright Academy", show_powered_by=False)
+
+        html = build_report_html(data)
+
+        assert "Powered by" not in _body_of(html)
+
+    def test_an_organisation_name_is_escaped_on_the_cover(self) -> None:
+        data = cohort_report_data(
+            organisation=organisation_brand(name="Ampersand <script> & Co")
+        )
+
+        html = build_report_html(data)
+
+        assert "<script>" not in html
+        assert "Ampersand &lt;script&gt; &amp; Co" in html
+
+    def test_an_organisation_name_is_escaped_in_the_footer_running_element(
+        self,
+    ) -> None:
+        data = cohort_report_data(
+            organisation=organisation_brand(footer_name="Ampersand <script> & Co")
+        )
+
+        html = build_report_html(data)
+
+        footer = html.split('class="footer-identity"')[1]
+        assert "<script>" not in footer
+        assert "Ampersand &lt;script&gt; &amp; Co" in footer
