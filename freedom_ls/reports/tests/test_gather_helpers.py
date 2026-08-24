@@ -15,6 +15,9 @@ import pytest
 
 from freedom_ls.form_engine.models import QuestionType
 from freedom_ls.reports.gather import (
+    FOOTER_ORGANISATION_MAX_CHARS,
+    WORDMARK_CONDENSED_MAX_CHARS,
+    WORDMARK_FULL_MAX_CHARS,
     CompletionStats,
     QuizTallies,
     _abbreviate_quiz_title,
@@ -31,7 +34,9 @@ from freedom_ls.reports.gather import (
     _latest_completion,
     _quiz_result_for,
     _score_attempt,
+    _truncate_to_budget,
     _unique_abbreviations,
+    _wordmark_size_class,
     build_confusion_block,
     build_wrong_answers_by_user_quiz,
     tally_quiz_answers,
@@ -166,6 +171,86 @@ class TestUniqueAbbreviations:
 
     def test_an_empty_title_list_yields_no_abbreviations(self) -> None:
         assert _unique_abbreviations([]) == []
+
+
+class TestWordmarkSizeClass:
+    def test_a_short_name_is_full_size(self) -> None:
+        assert _wordmark_size_class("Northside College") == "full"
+
+    def test_a_name_exactly_at_the_full_threshold_is_full_size(self) -> None:
+        name = "N" * WORDMARK_FULL_MAX_CHARS
+
+        assert _wordmark_size_class(name) == "full"
+
+    def test_a_name_one_character_past_the_full_threshold_is_condensed(self) -> None:
+        name = "N" * (WORDMARK_FULL_MAX_CHARS + 1)
+
+        assert _wordmark_size_class(name) == "condensed"
+
+    def test_a_name_past_the_condensed_threshold_is_still_condensed(self) -> None:
+        name = "N" * (WORDMARK_CONDENSED_MAX_CHARS + 50)
+
+        assert _wordmark_size_class(name) == "condensed"
+
+    def test_an_empty_name_is_full_size(self) -> None:
+        assert _wordmark_size_class("") == "full"
+
+
+class TestTruncateToBudget:
+    def test_text_under_the_budget_is_returned_unchanged(self) -> None:
+        assert _truncate_to_budget("Orbit College", max_chars=20) == "Orbit College"
+
+    def test_text_exactly_at_the_budget_is_unchanged_with_no_ellipsis(self) -> None:
+        text = "N" * 10
+
+        assert _truncate_to_budget(text, max_chars=10) == text
+
+    def test_text_one_character_over_the_budget_is_truncated_with_an_ellipsis(
+        self,
+    ) -> None:
+        text = "N" * 11
+
+        result = _truncate_to_budget(text, max_chars=10)
+
+        assert result == "N" * 9 + "…"
+        assert len(result) <= 10
+
+    def test_the_truncated_result_never_exceeds_the_budget(self) -> None:
+        text = "N" * 200
+
+        result = _truncate_to_budget(text, max_chars=10)
+
+        assert len(result) <= 10
+
+    def test_three_periods_are_not_appended(self) -> None:
+        text = "N" * 200
+
+        result = _truncate_to_budget(text, max_chars=10)
+
+        assert "..." not in result
+
+    def test_a_cut_landing_on_a_space_does_not_leave_a_dangling_space(self) -> None:
+        result = _truncate_to_budget("Alpha Beta", max_chars=7)
+
+        assert result == "Alpha…"
+
+    def test_an_empty_string_returns_an_empty_string(self) -> None:
+        assert _truncate_to_budget("", max_chars=10) == ""
+
+    def test_a_budget_of_one_does_not_exceed_one_character(self) -> None:
+        result = _truncate_to_budget("Northside College", max_chars=1)
+
+        assert len(result) <= 1
+
+    def test_the_wordmark_and_footer_budgets_produce_different_lengths(self) -> None:
+        name = "N" * 150
+
+        wordmark_result = _truncate_to_budget(name, WORDMARK_CONDENSED_MAX_CHARS)
+        footer_result = _truncate_to_budget(name, FOOTER_ORGANISATION_MAX_CHARS)
+
+        assert len(wordmark_result) <= WORDMARK_CONDENSED_MAX_CHARS
+        assert len(footer_result) <= FOOTER_ORGANISATION_MAX_CHARS
+        assert len(wordmark_result) != len(footer_result)
 
 
 class TestChunkQuizColumns:

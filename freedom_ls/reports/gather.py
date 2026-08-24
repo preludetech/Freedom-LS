@@ -137,6 +137,41 @@ class CompletionStats:
     complete_count: int
 
 
+# Character budgets for the cover wordmark and the footer identity line. Each
+# is paired with a specific print.css rule -- the wordmark slot's width cap,
+# the footer row's fixed height -- that a downstream project cannot change
+# independently of the number here, so these stay plain constants rather than
+# a ReportsConfig Setting: a Setting would let the two drift out of step with
+# the CSS they describe, and letting a downstream override just the number
+# is not a degree of freedom the layout actually has.
+WORDMARK_FULL_MAX_CHARS = 42
+WORDMARK_CONDENSED_MAX_CHARS = 87
+FOOTER_ORGANISATION_MAX_CHARS = 40
+
+
+def _wordmark_size_class(name: str) -> str:
+    """Which of print.css's two wordmark sizes this name is set at.
+
+    WeasyPrint implements neither `text-overflow` nor `block-ellipsis`, so the
+    stylesheet cannot rescue a long name at render time -- the size is a
+    decision, made here, and asserted in a unit test.
+    """
+    return "full" if len(name) <= WORDMARK_FULL_MAX_CHARS else "condensed"
+
+
+def _truncate_to_budget(text: str, max_chars: int) -> str:
+    """`text` cut to `max_chars`, ending in a single ellipsis when it had to be.
+
+    The cover wordmark slot and the footer identity line both hold a fixed
+    amount of the organisation's name and neither can grow, so both need this;
+    only the budget differs. One ellipsis character rather than three periods,
+    because three periods cost three of the characters the budget was counting.
+    """
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 1].rstrip() + "…"
+
+
 def _abbreviate_quiz_title(title: str) -> str:
     """Short column-header form of a quiz title; the legend under the table spells it out.
 
