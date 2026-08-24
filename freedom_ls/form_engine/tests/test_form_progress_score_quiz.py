@@ -1,3 +1,5 @@
+"""Tests for the QUIZ strategy: correct-option matching, scoring and review."""
+
 import pytest
 
 from freedom_ls.accounts.factories import UserFactory
@@ -9,7 +11,44 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormProgress, FormStrategy, QuestionAnswer
+from freedom_ls.form_engine.models import (
+    Form,
+    FormPage,
+    FormProgress,
+    FormQuestion,
+    FormStrategy,
+    QuestionAnswer,
+    QuestionOption,
+)
+
+
+def _multiple_choice_question(
+    page: FormPage, *, question: str, order: int
+) -> tuple[FormQuestion, QuestionOption, QuestionOption]:
+    """A question with one correct option and one incorrect one, in that order."""
+    form_question: FormQuestion = FormQuestionFactory(
+        form_page=page,
+        question=question,
+        type="multiple_choice",
+        order=order,
+    )
+    correct_option: QuestionOption = QuestionOptionFactory(
+        question=form_question, text="right", value="1", order=0, correct=True
+    )
+    wrong_option: QuestionOption = QuestionOptionFactory(
+        question=form_question, text="wrong", value="2", order=1, correct=False
+    )
+    return form_question, correct_option, wrong_option
+
+
+def _answer(
+    form_progress: FormProgress, question: FormQuestion, *options: QuestionOption
+) -> QuestionAnswer:
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=form_progress, question=question
+    )
+    answer.selected_options.add(*options)
+    return answer
 
 
 @pytest.mark.parametrize(
@@ -44,10 +83,7 @@ def test_score_quiz_single_question(mock_site_context, select_correct, expected_
     )
 
     form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-    answer: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question
-    )
-    answer.selected_options.add(correct_option if select_correct else wrong_option)
+    _answer(form_progress, question, correct_option if select_correct else wrong_option)
 
     form_progress.score_quiz()
 
@@ -59,163 +95,59 @@ def test_score_quiz_single_question(mock_site_context, select_correct, expected_
 
 @pytest.mark.django_db
 def test_score_quiz_multiple_questions_mixed_answers(mock_site_context):
-    """Test quiz scoring with multiple questions and mixed correct/incorrect answers."""
-    user = UserFactory()
+    """Two right and one wrong out of three questions scores 2 of 3."""
     form = FormFactory()
-
-    # Create a page
     page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
-
-    # Question 1
-    question1 = FormQuestionFactory(
-        form_page=page,
-        question="What is 2 + 2?",
-        type="multiple_choice",
-        order=0,
+    question_1, correct_1, _wrong_1 = _multiple_choice_question(
+        page, question="What is 2 + 2?", order=0
     )
-    correct_option1 = QuestionOptionFactory(
-        question=question1, text="4", value="4", order=0, correct=True
+    question_2, _correct_2, wrong_2 = _multiple_choice_question(
+        page, question="What is 3 + 3?", order=1
     )
-    QuestionOptionFactory(
-        question=question1, text="3", value="3", order=1, correct=False
+    question_3, correct_3, _wrong_3 = _multiple_choice_question(
+        page, question="What is 4 + 4?", order=2
     )
 
-    # Question 2
-    question2 = FormQuestionFactory(
-        form_page=page,
-        question="What is 3 + 3?",
-        type="multiple_choice",
-        order=1,
-    )
-    QuestionOptionFactory(
-        question=question2, text="6", value="6", order=0, correct=True
-    )
-    incorrect_option2 = QuestionOptionFactory(
-        question=question2, text="5", value="5", order=1, correct=False
-    )
+    form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
+    _answer(form_progress, question_1, correct_1)
+    _answer(form_progress, question_2, wrong_2)
+    _answer(form_progress, question_3, correct_3)
 
-    # Question 3
-    question3 = FormQuestionFactory(
-        form_page=page,
-        question="What is 4 + 4?",
-        type="multiple_choice",
-        order=2,
-    )
-    correct_option3 = QuestionOptionFactory(
-        question=question3, text="8", value="8", order=0, correct=True
-    )
-    QuestionOptionFactory(
-        question=question3, text="7", value="7", order=1, correct=False
-    )
-
-    # Create form progress
-    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-
-    # Answer Q1 correctly
-    answer1: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question1
-    )
-    answer1.selected_options.add(correct_option1)
-
-    # Answer Q2 incorrectly
-    answer2: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question2
-    )
-    answer2.selected_options.add(incorrect_option2)
-
-    # Answer Q3 correctly
-    answer3: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question3
-    )
-    answer3.selected_options.add(correct_option3)
-
-    # Call the scoring method
     form_progress.score_quiz()
 
-    # Verify the score: 2 out of 3 correct
     form_progress.refresh_from_db()
-    assert form_progress.scores is not None
-    assert form_progress.scores["score"] == 2
-    assert form_progress.scores["max_score"] == 3
+    assert form_progress.scores == {"score": 2, "max_score": 3}
 
 
 @pytest.mark.django_db
 def test_score_quiz_includes_unanswered_questions_in_max_score(
     mock_site_context,
 ):
-    """Test that max_score includes all questions, even unanswered ones."""
-    user = UserFactory()
+    """A question the learner skipped still raises the score ceiling."""
     form = FormFactory()
-
-    # Create a page
     page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
+    answered_question, correct_option, _wrong_option = _multiple_choice_question(
+        page, question="What is 2 + 2?", order=0
+    )
+    _multiple_choice_question(page, question="What is 3 + 3?", order=1)
+    _multiple_choice_question(page, question="What is 4 + 4?", order=2)
 
-    # Question 1
-    question1 = FormQuestionFactory(
-        form_page=page,
-        question="What is 2 + 2?",
-        type="multiple_choice",
-        order=0,
-    )
-    correct_option1 = QuestionOptionFactory(
-        question=question1, text="4", value="4", order=0, correct=True
-    )
-    QuestionOptionFactory(
-        question=question1, text="3", value="3", order=1, correct=False
-    )
+    form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
+    _answer(form_progress, answered_question, correct_option)
 
-    # Question 2 (will be unanswered)
-    question2 = FormQuestionFactory(
-        form_page=page,
-        question="What is 3 + 3?",
-        type="multiple_choice",
-        order=1,
-    )
-    QuestionOptionFactory(
-        question=question2, text="6", value="6", order=0, correct=True
-    )
-    QuestionOptionFactory(
-        question=question2, text="5", value="5", order=1, correct=False
-    )
-
-    # Question 3 (will also be unanswered)
-    question3 = FormQuestionFactory(
-        form_page=page,
-        question="What is 4 + 4?",
-        type="multiple_choice",
-        order=2,
-    )
-    QuestionOptionFactory(
-        question=question3, text="8", value="8", order=0, correct=True
-    )
-    QuestionOptionFactory(
-        question=question3, text="7", value="7", order=1, correct=False
-    )
-
-    # Create form progress
-    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-
-    # Answer ONLY question 1 correctly (leave Q2 and Q3 unanswered)
-    answer1: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question1
-    )
-    answer1.selected_options.add(correct_option1)
-
-    # Call the scoring method
     form_progress.score_quiz()
 
-    # Verify the score: 1 out of 3 (max_score should include unanswered questions)
     form_progress.refresh_from_db()
-    assert form_progress.scores is not None
-    assert form_progress.scores["score"] == 1
-    assert form_progress.scores["max_score"] == 3  # All 3 questions count toward max
+    assert form_progress.scores == {"score": 1, "max_score": 3}
 
 
 # Checkbox (multi-select) scoring: exact match, all-or-nothing.
 
 
 @pytest.fixture
-def checkbox_attempt(mock_site_context):
+def checkbox_attempt(
+    mock_site_context,
+) -> tuple[FormProgress, QuestionAnswer, FormQuestion, list[QuestionOption]]:
     """An unanswered attempt at a quiz whose one question has 2 correct options of 4.
 
     Returns (form_progress, answer, question, options) where `options` is
@@ -231,25 +163,29 @@ def checkbox_attempt(mock_site_context):
     return form_progress, answer, question, options
 
 
-def _build_checkbox_question_two_of_four(form):
+def _build_checkbox_question_two_of_four(
+    form: Form,
+) -> tuple[
+    FormQuestion, QuestionOption, QuestionOption, QuestionOption, QuestionOption
+]:
     """Checkbox question with 2 correct options of 4, mirroring the qa_helpers fixture shape."""
     page = FormPageFactory(form=form, title="Quiz Page 1", order=0)
-    question = FormQuestionFactory(
+    question: FormQuestion = FormQuestionFactory(
         form_page=page,
         question="Select all prime numbers",
         type="checkboxes",
         order=0,
     )
-    correct_option_1 = QuestionOptionFactory(
+    correct_option_1: QuestionOption = QuestionOptionFactory(
         question=question, text="2", value="2", order=0, correct=True
     )
-    correct_option_2 = QuestionOptionFactory(
+    correct_option_2: QuestionOption = QuestionOptionFactory(
         question=question, text="3", value="3", order=1, correct=True
     )
-    wrong_option_1 = QuestionOptionFactory(
+    wrong_option_1: QuestionOption = QuestionOptionFactory(
         question=question, text="4", value="4", order=2, correct=False
     )
-    wrong_option_2 = QuestionOptionFactory(
+    wrong_option_2: QuestionOption = QuestionOptionFactory(
         question=question, text="6", value="6", order=3, correct=False
     )
     return question, correct_option_1, correct_option_2, wrong_option_1, wrong_option_2
@@ -379,12 +315,8 @@ def test_get_incorrect_quiz_answers_agrees_with_score_quiz_on_a_blank_question(
         question=blank_question, text="Paris", value="paris", order=0, correct=True
     )
 
-    answer: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=FormProgressFactory(user=user, form=form),
-        question=answered_question,
-    )
-    answer.selected_options.add(correct_1, correct_2)
-    form_progress = answer.form_progress
+    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    _answer(form_progress, answered_question, correct_1, correct_2)
 
     form_progress.score_quiz()
 
@@ -408,10 +340,7 @@ def test_compute_quiz_scores_returns_the_figures_without_storing_them(
     form_progress: FormProgress = FormProgressFactory(
         user=user, form=form, scores={"score": 99, "max_score": 99}
     )
-    answer: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question
-    )
-    answer.selected_options.add(correct_1, correct_2)
+    _answer(form_progress, question, correct_1, correct_2)
 
     computed = form_progress.compute_quiz_scores()
 
@@ -443,10 +372,7 @@ def test_score_quiz_checkbox_correct_plus_null_correct_option_scores_one(
     )
 
     form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-    answer: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question
-    )
-    answer.selected_options.add(correct_option, null_option)
+    _answer(form_progress, question, correct_option, null_option)
 
     form_progress.score_quiz()
 
@@ -474,10 +400,7 @@ def test_score_quiz_checkbox_only_null_correct_option_scores_zero(mock_site_cont
     )
 
     form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-    answer: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question
-    )
-    answer.selected_options.add(null_option)
+    _answer(form_progress, question, null_option)
 
     form_progress.score_quiz()
 
@@ -509,10 +432,7 @@ def test_score_quiz_checkbox_no_correct_option_at_all_scores_zero(mock_site_cont
     )
 
     form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-    answer: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question
-    )
-    answer.selected_options.add(option_1, option_2)
+    _answer(form_progress, question, option_1, option_2)
 
     form_progress.score_quiz()
 
@@ -542,11 +462,9 @@ def test_score_quiz_free_text_question_scores_zero(mock_site_context, question_t
     )
 
     form_progress: FormProgress = FormProgressFactory(user=user, form=form)
-    answer: QuestionAnswer = QuestionAnswerFactory(
-        form_progress=form_progress, question=question
+    QuestionAnswerFactory(
+        form_progress=form_progress, question=question, text_answer="Some free text"
     )
-    answer.text_answer = "Some free text"
-    answer.save()
 
     form_progress.score_quiz()
 

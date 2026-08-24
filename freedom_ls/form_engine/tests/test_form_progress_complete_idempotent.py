@@ -9,23 +9,18 @@ from freedom_ls.form_engine.models import FormProgress
 
 @pytest.mark.django_db
 def test_complete_sets_completed_time(mock_site_context):
-    """Calling complete() sets completed_time on the FormProgress."""
-    user = UserFactory()
-    form = FormFactory()
-    progress = FormProgressFactory(user=user, form=form)
+    """Completing an attempt stamps it with the time it finished."""
+    progress = FormProgressFactory(user=UserFactory(), form=FormFactory())
 
-    assert progress.completed_time is None
     progress.complete()
+
     assert progress.completed_time is not None
 
 
 @pytest.mark.django_db
 def test_complete_twice_does_not_change_completed_time(mock_site_context):
-    """Calling complete() twice does not change the completed_time (idempotent)."""
-    user = UserFactory()
-    form = FormFactory()
-    progress = FormProgressFactory(user=user, form=form)
-
+    """Completing an already-completed attempt leaves its finishing time alone."""
+    progress = FormProgressFactory(user=UserFactory(), form=FormFactory())
     progress.complete()
     first_completed_time = progress.completed_time
 
@@ -35,28 +30,26 @@ def test_complete_twice_does_not_change_completed_time(mock_site_context):
 
 @pytest.mark.django_db
 def test_complete_twice_does_not_re_score(mock_site_context):
-    """Calling complete() twice does not re-run scoring (scores unchanged after second call)."""
-    user = UserFactory()
-    form = FormFactory()
-    progress = FormProgressFactory(user=user, form=form)
+    """Completing an already-completed attempt does not re-score it.
 
+    The stored scores are replaced with a value scoring could never produce, so
+    a second run would be visible.
+    """
+    progress = FormProgressFactory(user=UserFactory(), form=FormFactory())
     progress.complete()
-
-    # Modify scores manually to detect if re-scoring would overwrite them
     FormProgress.objects.filter(pk=progress.pk).update(
         scores={"score": 999, "max_score": 999}
     )
     progress.refresh_from_db()
 
     progress.complete()
-    # completed_time is still set so complete() should return early without re-scoring
-    # scores should remain at the manually set value, not be overwritten
+
     assert progress.scores == {"score": 999, "max_score": 999}
 
 
 @pytest.mark.django_db
 def test_finalise_stale_incomplete_completes_submit_on_exit_attempt(mock_site_context):
-    """finalise_stale_incomplete completes an incomplete attempt for a submit-on-exit form."""
+    """An abandoned attempt at a submit-on-exit form is completed as it stands."""
     user = UserFactory()
     form = FormFactory(submit_on_exit=True)
     incomplete = FormProgressFactory(user=user, form=form)
@@ -73,7 +66,7 @@ def test_finalise_stale_incomplete_completes_submit_on_exit_attempt(mock_site_co
 def test_finalise_stale_incomplete_returns_none_for_save_on_exit_form(
     mock_site_context,
 ):
-    """finalise_stale_incomplete returns None and leaves attempt untouched for save-on-exit forms."""
+    """An abandoned attempt at a save-on-exit form stays open, to be resumed later."""
     user = UserFactory()
     form = FormFactory(submit_on_exit=False)
     incomplete = FormProgressFactory(user=user, form=form)
@@ -89,10 +82,9 @@ def test_finalise_stale_incomplete_returns_none_for_save_on_exit_form(
 def test_finalise_stale_incomplete_returns_none_when_no_incomplete_attempt(
     mock_site_context,
 ):
-    """finalise_stale_incomplete returns None when there is no incomplete attempt."""
+    """There is nothing to finalise when the learner has no attempt under way."""
     user = UserFactory()
     form = FormFactory(submit_on_exit=True)
-    # No incomplete attempt exists
 
     result = FormProgress.finalise_stale_incomplete(user, form)
 

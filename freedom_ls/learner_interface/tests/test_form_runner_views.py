@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.models import Course
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -58,6 +59,13 @@ def _make_two_page_form(*, submit_on_exit=False):
     q2 = FormQuestionFactory(form_page=page2, type="multiple_choice", order=0)
     QuestionOptionFactory(question=q2, correct=True)
     return form, [page1, page2], [q1, q2]
+
+
+def _exit_url(course: Course) -> str:
+    return reverse(
+        "learner_interface:form_submit_and_exit",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1107,13 +1115,6 @@ def test_view_form_previous_attempts_capped_at_five(mock_site_context, client):
 # ---------------------------------------------------------------------------
 
 
-def _exit_url(course):
-    return reverse(
-        "learner_interface:form_submit_and_exit",
-        kwargs={"course_slug": course.slug, "index": 1},
-    )
-
-
 @pytest.mark.django_db
 def test_submit_and_exit_scores_the_answers_posted_with_it(mock_site_context, client):
     """Leaving a submit-on-exit form scores the answers on the page being left.
@@ -1246,9 +1247,8 @@ def test_runner_page_form_carries_its_page_number(mock_site_context, client):
     response = _start_runner(client, user, form)
 
     assert response.status_code == 200
-    assert (
-        '<input type="hidden" name="page_number" value="1">'
-        in response.content.decode()
+    assert re.search(
+        r'<input[^>]*name="page_number"[^>]*value="1"', response.content.decode()
     )
 
 

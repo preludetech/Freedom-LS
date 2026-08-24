@@ -72,8 +72,8 @@ def test_backfill_survives_an_attempt_scored_under_another_strategy(
     course, form, question, right, _wrong = course_with_scored_quiz(slug="malformed")
     unreadable, readable = UserFactory(), UserFactory()
 
-    for user in (unreadable, readable):
-        CourseProgressFactory(user=user, course=course)
+    CourseProgressFactory(user=unreadable, course=course)
+    CourseProgressFactory(user=readable, course=course)
     sit_quiz(unreadable, form, question, right)
     sit_quiz(readable, form, question, right)
     FormProgress.objects.filter(user=unreadable, form=form).update(

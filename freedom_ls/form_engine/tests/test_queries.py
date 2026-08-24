@@ -1,10 +1,13 @@
 """Tests for the form_engine query helpers that read an attempt's verdict."""
 
+from __future__ import annotations
+
 import pytest
 
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -23,7 +26,7 @@ from freedom_ls.form_engine.queries import (
 NON_QUIZ_SCORES = {"Satisfaction": 5, "Recommendation": 3}
 
 
-def _quiz_attempt_with_non_quiz_scores(user=None) -> FormProgress:
+def _quiz_attempt_with_non_quiz_scores(user: User | None = None) -> FormProgress:
     """A completed QUIZ attempt holding scores that were not written by score_quiz."""
     form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=80)
     page = FormPageFactory(form=form, title="Quiz Page", order=0)

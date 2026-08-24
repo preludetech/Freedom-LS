@@ -18,9 +18,10 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
+from freedom_ls.form_engine.models import FormQuestion
 
 
-def _post_data(pairs):
+def _post_data(pairs: dict[str, list[str]]) -> QueryDict:
     """Build a QueryDict the way a browser form submission would arrive."""
     data = QueryDict(mutable=True)
     for name, values in pairs.items():
@@ -29,20 +30,25 @@ def _post_data(pairs):
 
 
 @pytest.fixture
-def choice_question(mock_site_context):
+def choice_question(mock_site_context) -> FormQuestion:
     form = FormFactory()
     page = FormPageFactory(form=form, order=0)
-    question = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="multiple_choice", order=0
+    )
     QuestionOptionFactory(question=question, text="Alpha", order=0)
     QuestionOptionFactory(question=question, text="Beta", order=1)
     return question
 
 
 @pytest.fixture
-def text_question(mock_site_context):
+def text_question(mock_site_context) -> FormQuestion:
     form = FormFactory()
     page = FormPageFactory(form=form, order=0)
-    return FormQuestionFactory(form_page=page, type="short_text", order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="short_text", order=0
+    )
+    return question
 
 
 @pytest.mark.django_db

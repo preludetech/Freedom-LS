@@ -19,19 +19,28 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.form_engine.models import (
+    Form,
+    FormQuestion,
+    FormStrategy,
+    QuestionOption,
+)
 
 
-def _quiz_with_free_text(question_type):
+def _quiz_with_free_text(
+    question_type: str,
+) -> tuple[Form, FormQuestion, QuestionOption, FormQuestion]:
     """A quiz with one answered-correctly choice question and one free-text question."""
-    form = FormFactory(strategy=FormStrategy.QUIZ)
+    form: Form = FormFactory(strategy=FormStrategy.QUIZ)
     page = FormPageFactory(form=form, order=0)
-    choice_question = FormQuestionFactory(
+    choice_question: FormQuestion = FormQuestionFactory(
         form_page=page, type="multiple_choice", order=0
     )
-    correct_option = QuestionOptionFactory(question=choice_question, correct=True)
+    correct_option: QuestionOption = QuestionOptionFactory(
+        question=choice_question, correct=True
+    )
     QuestionOptionFactory(question=choice_question, correct=False)
-    free_text_question = FormQuestionFactory(
+    free_text_question: FormQuestion = FormQuestionFactory(
         form_page=page, type=question_type, question="Explain your reasoning", order=1
     )
     return form, choice_question, correct_option, free_text_question
