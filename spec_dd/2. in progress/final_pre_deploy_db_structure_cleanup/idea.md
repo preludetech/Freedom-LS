@@ -83,7 +83,10 @@ No deadline pressure — these cost the same after deploy as before it.
 
 Stated so they read as deliberate, not as gaps.
 
-- **Extract forms into their own app.** Answered above.
+- **Extract forms into their own app.** ~~Answered above.~~ Superseded: this shipped as
+  `spec_dd/2. in progress/extract_forms_into_seperate_app/1. spec.md`, landing before this cleanup so
+  the migration reset in finding 4 now runs *after* the extraction and regenerates `0001_initial` for
+  `content_base`/`form_engine` along with everything else.
 - **Convert `accounts.User` to a UUID PK.** FK columns already agree automatically — this is not an integrity problem. The one real cost is that `User` is the only object whose identity appears in a URL as a small sequential integer. Severity is low: `email` is the actual auth key and every view goes through per-object permission checks. Defensible choice, not a broken one.
 - **Unify the GFK `object_id` types.** `UUIDField` is used where the target set is closed and guaranteed-UUID; `CharField(255)` exactly once, on `ObjectRoleAssignment`, where the target set is deliberately open. Forcing one type would be a regression — it would make it impossible to ever grant a role on a non-UUID-keyed object.
 - **Merge the three deadline models** into one polymorphic model, or split them into their own app. They are near-identical by shape but each hangs off a different registration; consolidating trades three explicit FK-typed models for one GFK on the hot deadline-lookup path.

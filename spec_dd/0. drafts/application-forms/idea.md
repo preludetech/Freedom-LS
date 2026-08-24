@@ -1,5 +1,11 @@
 # Application Forms for Application-Gated Courses
 
+> **Out of date:** the `Form`/`FormPage`/`FormQuestion`/`QuestionOption` family this draft mirrors now
+> lives in `freedom_ls/form_engine`, not `content_engine` — see
+> `spec_dd/2. in progress/extract_forms_into_seperate_app/1. spec.md`. Re-check file paths and imports
+> before building this; do not duplicate the `ApplicationConfig`/`ApplicationStep`/`ApplicationQuestion`
+> family against a stale location.
+
 Builds on top of **`applying-for-courses`** (`spec_dd/2. in progress/applying-for-courses`),
 which ships the course-access backend, the `application_gated` access type, and a
 bare **Apply** button that creates a standalone `CourseApplication` with **no form**. The

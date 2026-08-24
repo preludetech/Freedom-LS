@@ -54,12 +54,14 @@ If you are told not to implement a feature immediately then that does not mean t
 - `accounts` — Custom site-aware user model with email-based login
 - `app_authentication` — API client authentication and key management
 - `base` — Base app configuration
-- `content_engine` — Course content models (topics, forms, activities) with markdown rendering
+- `content_base` — Abstract content model bases, pydantic schema bases and the content-type registry
+- `content_engine` — Course content models (topics, activities) with markdown rendering
 - `educator_interface` — Educator views for managing cohorts and viewing learner progress
+- `form_engine` — Form definition, attempt and marking models with scoring strategies
 - `site_aware_models` — Base models and manager for multi-site support with automatic site filtering
 - `learner_interface` — Learner views for browsing courses, tracking progress, completing content
 - `learner_management` — Learner profiles, cohorts, course registrations, recommendations
-- `learner_progress` — Progress tracking for topics, forms, and courses with scoring strategies
+- `learner_progress` — Progress tracking for topics and courses
 
 ## Conventions
 

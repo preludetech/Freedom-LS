@@ -89,7 +89,7 @@ The template's `settings_base.py` begins with `from .customisation import *` (se
 - [ ] `unfold` (before `django.contrib.admin`) and all `unfold.contrib.*` entries
 - [ ] `django.contrib.admin` (after unfold)
 - [ ] `guardian`
-- [ ] All FLS apps: `freedom_ls.base`, `freedom_ls.icons`, `freedom_ls.markdown_rendering`, `freedom_ls.content_engine`, `freedom_ls.accounts`, `freedom_ls.learner_management`, `freedom_ls.learner_progress`, `freedom_ls.site_aware_models`, `freedom_ls.panel_framework`, `freedom_ls.educator_interface`, `freedom_ls.role_based_permissions`, `freedom_ls.learner_interface`
+- [ ] All FLS apps: `freedom_ls.base`, `freedom_ls.icons`, `freedom_ls.markdown_rendering`, `freedom_ls.content_base`, `freedom_ls.content_engine`, `freedom_ls.form_engine`, `freedom_ls.accounts`, `freedom_ls.learner_management`, `freedom_ls.learner_progress`, `freedom_ls.site_aware_models`, `freedom_ls.panel_framework`, `freedom_ls.educator_interface`, `freedom_ls.role_based_permissions`, `freedom_ls.learner_interface`
 - [ ] `encrypted_fields`, `django_ace`, `freedom_ls.webhooks`, `allauth`, `allauth.account`, `axes`
 - [ ] `apps.project_setup` — the scaffold's own bootstrap app (not an FLS app; see [first-run bootstrap](#appsproject_setup--first-run-bootstrap) below)
 
