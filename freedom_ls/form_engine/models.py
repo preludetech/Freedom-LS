@@ -13,29 +13,31 @@ from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 from freedom_ls.site_aware_models.models import SiteAwareModel
 
+from .enums import FREE_TEXT_QUESTION_TYPES, FormStrategy, QuestionType
+from .scoring import is_quiz_answer_correct
+from .signals import form_attempt_completed
+from .submissions import (
+    has_submitted_answer,
+    submitted_option_ids,
+    submitted_text_answer,
+)
+
 if TYPE_CHECKING:
     from django.http import QueryDict
 
-
-class QuestionType(models.TextChoices):
-    """Question type enumeration."""
-
-    MULTIPLE_CHOICE = "multiple_choice", _("Multiple Choice")
-    CHECKBOXES = "checkboxes", _("Checkboxes")
-    SHORT_TEXT = "short_text", _("Short Text")
-    LONG_TEXT = "long_text", _("Long Text")
-
-
-# Free-text questions carry no QuestionOption rows, so anything that reasons
-# about selected or correct options has to treat them separately.
-FREE_TEXT_QUESTION_TYPES = frozenset({QuestionType.SHORT_TEXT, QuestionType.LONG_TEXT})
-
-
-class FormStrategy(models.TextChoices):
-    """Form strategy enumeration."""
-
-    CATEGORY_VALUE_SUM = "CATEGORY_VALUE_SUM", _("Category Value Sum")
-    QUIZ = "QUIZ", _("Quiz")
+# Re-exported so `from freedom_ls.form_engine.models import FormStrategy` keeps
+# resolving now that the enums live in their own module.
+__all__ = [
+    "FREE_TEXT_QUESTION_TYPES",
+    "Form",
+    "FormPage",
+    "FormProgress",
+    "FormQuestion",
+    "FormStrategy",
+    "QuestionAnswer",
+    "QuestionOption",
+    "QuestionType",
+]
 
 
 class Form(TitledContent, MarkdownContent):
@@ -139,11 +141,9 @@ class FormQuestion(BaseContent):
     required = models.BooleanField(default=True)
 
     def rendered_question(self):
-        from threading import local
-
-        _thread_locals = local()
-        request = getattr(_thread_locals, "request", None)
-        return render_markdown(self.question, request)
+        # No request: cotton components embedded in question markdown render
+        # without request context, so none of them may depend on it.
+        return render_markdown(self.question, None)
 
     def question_number(self):
         """
@@ -186,14 +186,6 @@ class QuestionOption(SiteAwareModel):
     def __str__(self):
         return self.text
 
-
-from .scoring import is_quiz_answer_correct  # noqa: E402
-from .signals import form_attempt_completed  # noqa: E402
-from .submissions import (  # noqa: E402
-    has_submitted_answer,
-    submitted_option_ids,
-    submitted_text_answer,
-)
 
 User = get_user_model()
 

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from .models import QuestionOption
+if TYPE_CHECKING:
+    from .models import QuestionOption
 
 
 def is_quiz_answer_correct(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .models import FREE_TEXT_QUESTION_TYPES
+from .enums import FREE_TEXT_QUESTION_TYPES
 
 if TYPE_CHECKING:
     from django.http import QueryDict

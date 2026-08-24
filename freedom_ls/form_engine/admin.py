@@ -170,7 +170,11 @@ class FormProgressAdmin(SiteAwareModelAdmin):
     list_filter = ("completed_time", "form", "start_time")
     search_fields = ("user__email", "form__title")
     ordering = ("-start_time",)
-    readonly_fields = ("start_time", "last_updated_time", "scores")
+    # completed_time is read-only because only FormProgress.complete() may finish an
+    # attempt: it scores the attempt and sends form_attempt_completed, which is what
+    # keeps CourseProgress.progress_percentage up to date. Stamping the field
+    # directly would leave both stale.
+    readonly_fields = ("start_time", "last_updated_time", "completed_time", "scores")
     inlines = [QuestionAnswerInline]
 
     fieldsets = (

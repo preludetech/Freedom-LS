@@ -82,16 +82,12 @@ class MarkdownContent(BaseContent):
     content = models.TextField(blank=True, default="", help_text=_("Markdown content"))
 
     def rendered_content(self):
-        from threading import local
-
         if not self.content:
             return ""
 
-        _thread_locals = local()
-        request = getattr(_thread_locals, "request", None)
-        return render_markdown(
-            self.content, request, context={"content_instance": self}
-        )
+        # No request: cotton components embedded in content markdown render
+        # without request context, so none of them may depend on it.
+        return render_markdown(self.content, None, context={"content_instance": self})
 
     class Meta:
         abstract = True
