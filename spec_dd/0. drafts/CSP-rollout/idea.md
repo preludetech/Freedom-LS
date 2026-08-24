@@ -2,7 +2,9 @@
 
 ## Context
 
-As part of the Django 6.0 upgrade (see `spec_dd/1. next/01. upgrade-to-django-6/`), CSP was set up in **report-only mode**. This follow-up spec covers tightening the policy and switching to enforcing mode.
+As part of the Django 6.0 upgrade (see `spec_dd/3. done/2026-03-12_07:10_upgrade-to-django-6/`), CSP was set up in **report-only mode**. This follow-up spec covers tightening the policy and switching to enforcing mode.
+
+**Status re-checked 2026-08-24: not started.** `SECURE_CSP_REPORT_ONLY` at `config/settings_base.py:395` still carries `CSP.UNSAFE_INLINE` on both `script-src` and `style-src`, there is no `SECURE_CSP`, `settings_prod.py` does not override either, and no template uses `{{ csp_nonce }}`. One piece is already in place: `django.template.context_processors.csp` is wired (`config/settings_base.py:190`), so the nonce is available to templates the moment anything wants it.
 
 ## Goals
 

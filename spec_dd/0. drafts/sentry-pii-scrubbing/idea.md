@@ -10,12 +10,20 @@ This spec adds a `before_send` (and `before_send_transaction`) hook to the Sentr
 initialisation so PII is scrubbed/redacted before events leave the app, letting deployers keep
 Sentry on without shipping raw learner data to a third party.
 
+**Status re-checked 2026-08-24: not started.** `init_sentry` (`freedom_ls/deployment/sentry.py`)
+passes `send_default_pii` straight through with no `before_send` or `before_send_transaction`
+hook. Nothing here has been built.
+
 ## Context
 
-- The Sentry integration and the `SENTRY_SEND_DEFAULT_PII` env var are introduced by the parent
+- The Sentry integration and the `SENTRY_SEND_DEFAULT_PII` setting are introduced by the parent
   external-requirements-config spec — see
-  `spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs-external-requirements-config/idea.md`
+  `spec_dd/3. done/2026-07-11_16:01_support-concrete-project-deployment-external-requirements-config/idea.md`
   and its `research_sentry_django_integration.md`.
+- What actually shipped is milder than the sentence below assumed: `SENTRY_SEND_DEFAULT_PII`
+  defaults to `False` (`freedom_ls/deployment/config.py:27`), so a default deploy does not send
+  user email or request bodies at all. That is a config default, not scrubbing. One env var
+  flips it, and there is nothing behind it when it flips.
 - Related, broader compliance work lives in `spec_dd/0. drafts/01. privacy-compliance/` — this
   spec is narrower: only the Sentry egress path.
 
