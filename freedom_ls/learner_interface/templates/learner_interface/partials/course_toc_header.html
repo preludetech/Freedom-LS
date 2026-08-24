@@ -6,42 +6,8 @@ CourseProgress.progress_percentage — the single stored source of truth — so
 they can never disagree. No N / M counter (decision 3).
 {% endcomment %}
 <div class="sticky top-0 z-10 bg-sidepanel pb-4 mb-2 border-b border-border">
+    {% include "learner_interface/partials/course_organisation_chip.html" %}
     <p class="text-xs font-semibold uppercase tracking-wide text-muted">Course outline</p>
-    {% if course_organisation %}
-        {% comment %}
-        Co-branding mark, kept visually subordinate to the site's own header:
-        a small chip rather than a full-width banner. The chip carries its own
-        opaque surface fill regardless of the logo's own transparency or the
-        ambient background colour behind it, so a dark mark on a transparent
-        background stays legible even where a theme paints this region in a
-        solid brand colour. Height is fixed and width is capped so a
-        wide/banner-shaped logo scales down instead of pushing the header out.
-
-        The name is rendered as text beside the mark, which makes the mark
-        itself decorative — hence the empty alt and the aria-hidden monogram.
-        Labelling both would announce the organisation twice.
-        {% endcomment %}
-        <div id="course-organisation-chip"
-             class="mt-1 mb-1 flex items-center gap-2">
-            {% if course_organisation.logo %}
-                <span class="inline-flex h-8 max-w-32 shrink-0 items-center rounded-md bg-surface border border-border px-2 py-1">
-                    <img src="{{ course_organisation.logo.url }}"
-                         alt=""
-                         class="h-full w-auto max-w-full object-contain" />
-                </span>
-            {% else %}
-                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-2 text-on-surface font-semibold text-xs select-none"
-                      aria-hidden="true">
-                    {% if course_organisation.initials %}
-                        {{ course_organisation.initials }}
-                    {% else %}
-                        <c-icon name="unknown" class="size-4" />
-                    {% endif %}
-                </span>
-            {% endif %}
-            <span class="text-sm text-muted truncate">{{ course_organisation.name }}</span>
-        </div>
-    {% endif %}
     <p class="text-lg font-semibold text-on-surface">{{ course.title }}</p>
     <div class="mt-2">
         <c-course-progress-bar percentage="{{ course_progress.progress_percentage|default:0 }}"
