@@ -593,3 +593,41 @@ def test_passed_raises_value_error_when_there_are_no_questions(mock_site_context
 
     with pytest.raises(ValueError, match="no questions"):
         form_progress.passed()
+
+
+@pytest.mark.django_db
+def test_quiz_percentage_raises_value_error_when_scores_are_not_quiz_shaped(
+    mock_site_context,
+):
+    """A populated scores dict written under another strategy is not a quiz score.
+
+    Regression: the guard only rejected a falsy scores dict, so a dict with no
+    "score" key reached the subscript and raised KeyError, which no caller
+    catches. It has to read as an unscored attempt, like every other case here.
+    """
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, title="Quiz Page", order=0)
+    FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+    form_progress: FormProgress = FormProgressFactory(
+        user=UserFactory(),
+        form=form,
+        scores={"Satisfaction": 5, "Recommendation": 3},
+    )
+
+    with pytest.raises(ValueError, match="not scored as a quiz"):
+        form_progress.quiz_percentage()
+
+
+@pytest.mark.django_db
+def test_passed_raises_value_error_when_scores_are_not_quiz_shaped(mock_site_context):
+    form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+    page = FormPageFactory(form=form, title="Quiz Page", order=0)
+    FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+    form_progress: FormProgress = FormProgressFactory(
+        user=UserFactory(),
+        form=form,
+        scores={"Satisfaction": 5, "Recommendation": 3},
+    )
+
+    with pytest.raises(ValueError, match="not scored as a quiz"):
+        form_progress.passed()

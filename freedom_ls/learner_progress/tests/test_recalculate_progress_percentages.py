@@ -9,6 +9,7 @@ import pytest
 from django.core.management import call_command
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
 
@@ -53,3 +54,42 @@ def test_percentages_are_recalculated_across_batches(
     assert percentages[passed_it.pk] == 100
     assert percentages[failed_it.pk] == 0
     assert percentages[never_sat_it.pk] == 0
+
+
+@pytest.mark.django_db
+def test_backfill_survives_an_attempt_scored_under_another_strategy(
+    mock_site_context,
+    course_with_scored_quiz,
+    sit_quiz,
+):
+    """One malformed row must not abort the whole installation-wide backfill.
+
+    Regression: a completed QUIZ attempt whose scores dict carried no "score"
+    key raised KeyError out of quiz_percentage(), past the guard in
+    attempt_completes_form, and killed the command mid-batch — leaving every
+    learner after it unrecalculated.
+    """
+    course, form, question, right, _wrong = course_with_scored_quiz(slug="malformed")
+    unreadable, readable = UserFactory(), UserFactory()
+
+    for user in (unreadable, readable):
+        CourseProgressFactory(user=user, course=course)
+    sit_quiz(unreadable, form, question, right)
+    sit_quiz(readable, form, question, right)
+    FormProgress.objects.filter(user=unreadable, form=form).update(
+        scores={"Satisfaction": 5, "Recommendation": 3}
+    )
+
+    CourseProgress.objects.filter(course=course).update(progress_percentage=55)
+
+    call_command("recalculate_progress_percentages")
+
+    percentages = dict(
+        CourseProgress.objects.filter(course=course).values_list(
+            "user_id", "progress_percentage"
+        )
+    )
+    # No readable percentage means no verdict to hold against the learner, so
+    # the attempt still counts as finishing the item.
+    assert percentages[unreadable.pk] == 100
+    assert percentages[readable.pk] == 100

@@ -525,7 +525,7 @@ class CohortCourseProgressPanel(Panel):
                 cell["passed"] = (
                     fp.passed() if item.quiz_pass_percentage is not None else None
                 )
-            except (KeyError, ValueError):
+            except ValueError:
                 cell["quiz_percentage"] = None
                 cell["passed"] = None
         return cell

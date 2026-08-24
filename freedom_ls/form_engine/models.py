@@ -217,6 +217,12 @@ class FormProgress(SiteAwareModel):
             raise ValueError("This method should only work for quiz models")
         if not self.scores:
             raise ValueError("Need to score the quiz before calling this method")
+        # An attempt whose scores were written under another strategy — a form
+        # switched to QUIZ after it was sat, or a row written by hand — carries
+        # no quiz score to read. ValueError, not the natural KeyError, because
+        # that is what every caller's guard already catches.
+        if "score" not in self.scores or "max_score" not in self.scores:
+            raise ValueError("This attempt was not scored as a quiz")
 
         score: int = self.scores["score"]
         max_score: int = self.scores["max_score"]

@@ -49,10 +49,12 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: `quiz_percentage()` KeyErrors on a completed QUIZ attempt whose scores dict has no 'score' key, breaking `recalculate_progress_percentages` and cohort report generation — pre-existing on main, not a regression (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: 'Leave and submit' on a submit_on_exit form discards the current page's answers, locking in a 0% failed attempt — pre-existing on main, not a regression (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

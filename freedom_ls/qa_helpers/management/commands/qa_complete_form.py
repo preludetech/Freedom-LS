@@ -7,7 +7,6 @@ import djclick as click
 from django.contrib.sites.models import Site
 from django.utils import timezone
 
-from freedom_ls.form_engine.factories import FormProgressFactory
 from freedom_ls.form_engine.models import Form, FormProgress
 from freedom_ls.learner_management.models import CohortMembership
 
@@ -53,16 +52,15 @@ def command(
     for i, membership in enumerate(memberships):
         user = membership.learner.user
         if not FormProgress.objects.filter(form=form, user=user, site=site).exists():
-            FormProgressFactory(
-                form=form,
-                user=user,
-                site=site,
-                completed_time=now - timedelta(hours=i),
-                scores={
-                    "Satisfaction": 5 + (i % 3),
-                    "Recommendation": 3 + (i % 3),
-                },
-            )
+            progress = FormProgress.objects.create(form=form, user=user, site=site)
+            # Score through complete(), so the scores dict comes out in the shape
+            # the form's own strategy writes. A hand-rolled dict here seeds data
+            # no real attempt could produce, which readers then have to survive.
+            # complete() early-returns once completed_time is set, so the
+            # staggered timestamp is stamped after it, not passed in.
+            progress.complete()
+            progress.completed_time = now - timedelta(hours=i)
+            progress.save()
             created_count += 1
 
     click.secho(

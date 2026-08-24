@@ -30,6 +30,7 @@
 - [reference_demodev_s1_fixture_collisions.md](reference_demodev_s1_fixture_collisions.md) — demodev_s1@email.com is shared by 4 commands that overwrite each other; run order and how to repair
 - [reference_learner_deadline_admin_fixtures.md](reference_learner_deadline_admin_fixtures.md) — qa_create_learner_deadlines; the three deadline models are not interchangeable; LearnerDeadlineAdmin.search_fields has no email
 - [reference_column_pagination_scenario.md](reference_column_pagination_scenario.md) — qa_create_column_pagination_scenario; both course-progress paginators live at once WITHOUT padding functionality-demo-course-parts
+- [reference_second_site_form_engine_fixture.md](reference_second_site_form_engine_fixture.md) — qa_create_site_scoping_form: tiny form_engine tree on a 2nd Site for admin site-scoping QA; explicit site= on every factory call, _base_manager lookups, FORCE_SITE_NAME=DemoDev pins every request
 
 ## Recurring requests
 
@@ -68,3 +69,8 @@ the report which model you wrote. `qa_create_deadline_overrides` writes only the
 **Never pad `functionality-demo-course-parts` for pagination QA.** It is the shared
 course-player / resume / TOC fixture. `qa_add_course_items_for_pagination` DEFAULTS to it;
 always pass an explicit `--course-slug`, or use `qa_create_column_pagination_scenario`.
+
+**Site-scoping / multi-tenant demos need data on a SECOND site.** The dev DB is almost entirely
+DemoDev, so "prove the admin filters per site" always means seeding a small tree on Bloom (id 4).
+See [[reference_second_site_form_engine_fixture]] for the pattern; it generalises to any app whose
+models subclass SiteAwareModel.

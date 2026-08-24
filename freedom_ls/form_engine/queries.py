@@ -53,11 +53,11 @@ def completed_form_ids_by_user(
 def quiz_verdict(form: Form, form_progress: FormProgress) -> bool | None:
     """Whether a completed attempt passed, or None when there is no verdict to give.
 
-    None covers a form that is not a scored quiz at all, and a quiz whose author
-    left ``quiz_pass_percentage`` unset: the score is real, but nothing in the
-    course says what counts as passing it. Guarding here also keeps
-    ``FormProgress.passed()``, which raises on a null pass mark, from being
-    reached with one.
+    None covers a form that is not a scored quiz at all, a quiz whose author
+    left ``quiz_pass_percentage`` unset (the score is real, but nothing in the
+    course says what counts as passing it), and an attempt with no percentage to
+    read at all. Guarding here also keeps ``FormProgress.passed()``, which raises
+    on a null pass mark, from being reached with one.
 
     Every caller that decides whether a learner may move on reads the verdict
     from here, so the course index and the form's own start page cannot drift
@@ -65,7 +65,15 @@ def quiz_verdict(form: Form, form_progress: FormProgress) -> bool | None:
     """
     if form.strategy != FormStrategy.QUIZ or form.quiz_pass_percentage is None:
         return None
-    return form_progress.passed()
+    try:
+        return form_progress.passed()
+    except ValueError:
+        # An unscored attempt, a quiz whose questions were added after it was
+        # sat, or one whose scores were written under another strategy, has no
+        # percentage to measure against the pass mark. Matches how
+        # attempt_completes_form declines to hold such an attempt against the
+        # learner.
+        return None
 
 
 def count_form_questions(form: Form) -> int:

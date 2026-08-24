@@ -270,10 +270,11 @@ def _score_attempt(
 ) -> tuple[int | None, int | None, int | None, bool | None]:
     """One sitting's score, max score, percentage and verdict.
 
-    The guard proven at educator_interface/views.py: quiz_percentage() raises
-    on falsy scores, passed() raises when quiz_pass_percentage is unset, and
-    quiz_pass_percentage is genuinely nullable. One implementation, so a
-    sitting reads the same in the attempts table as in the summary cell.
+    The guard proven at educator_interface/views.py: quiz_percentage() raises on
+    anything it cannot read a percentage out of, passed() raises when
+    quiz_pass_percentage is unset, and quiz_pass_percentage is genuinely
+    nullable. One implementation, so a sitting reads the same in the attempts
+    table as in the summary cell.
     """
     score: int | None = None
     max_score: int | None = None
@@ -285,7 +286,7 @@ def _score_attempt(
             max_score = fp.scores.get("max_score")
             percentage = fp.quiz_percentage()
             passed = fp.passed() if form.quiz_pass_percentage is not None else None
-        except (KeyError, ValueError):
+        except ValueError:
             percentage = passed = None
     return score, max_score, percentage, passed
 
