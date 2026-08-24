@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from uuid import UUID
 
-from .models import Form, FormProgress, FormQuestion, FormStrategy
+from .models import Form, FormPage, FormProgress, FormQuestion, FormStrategy
 
 
 def attempt_completes_form(attempt: FormProgress) -> bool:
@@ -83,3 +83,15 @@ def count_form_questions(form: Form) -> int:
     Avoids loading all child objects into memory.
     """
     return FormQuestion.objects.filter(form_page__form=form).count()
+
+
+def page_questions(form_page: FormPage) -> list[FormQuestion]:
+    """The questions on a page, in the order the page lays them out.
+
+    A page's children interleave questions with content blocks, so the ordering
+    only survives if the questions are filtered out of `children()` rather than
+    read off the reverse relation.
+    """
+    return [
+        child for child in form_page.children() if child.content_type == "FORM_QUESTION"
+    ]

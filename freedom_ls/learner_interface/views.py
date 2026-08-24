@@ -6,7 +6,13 @@ from typing import TYPE_CHECKING, cast
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
-from django.http import Http404, HttpRequest, HttpResponse, HttpResponseRedirect
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseRedirect,
+    QueryDict,
+)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -22,7 +28,7 @@ from freedom_ls.course_access.overrides import (
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.form_engine.models import Form, FormProgress, FormQuestion, FormStrategy
-from freedom_ls.form_engine.queries import count_form_questions
+from freedom_ls.form_engine.queries import count_form_questions, page_questions
 from freedom_ls.form_engine.submissions import has_submitted_answer
 from freedom_ls.learner_management.config import config
 from freedom_ls.learner_management.deadline_utils import is_item_locked_by_deadline
@@ -950,11 +956,7 @@ def form_fill_page(request, course_slug, index, page_number):
     form_progress = FormProgress.get_latest_incomplete(user=request.user, form=form)
 
     # Get existing answers for questions on this page
-    questions = [
-        child
-        for child in form_page.children()
-        if hasattr(child, "question")  # It's a FormQuestion
-    ]
+    questions = page_questions(form_page)
 
     next_page_url = (
         reverse(
@@ -1284,6 +1286,30 @@ def course_finish(request, course_slug):
     return render(request, "learner_interface/course_finish.html", context)
 
 
+def _save_posted_page_answers(
+    form: Form, form_progress: FormProgress, post_data: QueryDict
+) -> None:
+    """Persist the runner page's answers carried by a submit-and-exit POST.
+
+    The exit dialog retargets the runner page form here, so the POST holds the
+    page the learner was standing on — named by a hidden field, because this
+    endpoint's URL has no page in it. save_answers() clears any question it is
+    handed no answer for, so only that page's questions may be passed; a POST
+    that names no usable page saves nothing rather than guessing at one.
+
+    Required answers are deliberately not enforced. Leaving scores the attempt
+    as it stands, which is the opposite of the Next/Submit path.
+    """
+    try:
+        page_number = int(post_data.get("page_number", ""))
+    except ValueError:
+        return
+    pages = list(form.pages.all())
+    if not 1 <= page_number <= len(pages):
+        return
+    form_progress.save_answers(page_questions(pages[page_number - 1]), post_data)
+
+
 @login_required
 @require_POST
 def form_submit_and_exit(request, course_slug: str, index: int):
@@ -1315,6 +1341,8 @@ def form_submit_and_exit(request, course_slug: str, index: int):
 
     form_progress = FormProgress.get_latest_incomplete(user=request.user, form=form)
     if form_progress is not None:
+        # Save before completing, so score() sees the page the learner was on.
+        _save_posted_page_answers(form, form_progress, request.POST)
         form_progress.complete()  # idempotent
 
     return redirect(

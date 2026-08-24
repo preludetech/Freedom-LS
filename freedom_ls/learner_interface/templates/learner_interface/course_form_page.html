@@ -282,13 +282,22 @@ examRunnerForm scope (no intermediate x-data between them).
                                     </c-button>
 
                                     {% if form.submit_on_exit %}
-                                        {% comment %}Submit-on-exit: POST to submit_and_exit_url{% endcomment %}
-                                        <form method="post" action="{{ submit_and_exit_url }}">
-                                            {% csrf_token %}
-                                            <c-button variant="primary" type="submit">
-                                                Leave and submit
-                                            </c-button>
-                                        </form>
+                                        {% comment %}
+                                        Submit-on-exit: submit the runner page form itself,
+                                        retargeted at submit_and_exit_url, so this page's
+                                        answers are posted with the exit and counted in the
+                                        score. formnovalidate because leaving scores the
+                                        attempt as it stands — a blank required question
+                                        must not trap the learner in the dialog.
+                                        {% endcomment %}
+                                        <c-button variant="primary"
+                                                  type="submit"
+                                                  form="runner-page-form"
+                                                  formaction="{{ submit_and_exit_url }}"
+                                                  formnovalidate
+                                                  data-testid="leave-and-submit-button">
+                                            Leave and submit
+                                        </c-button>
                                     {% else %}
                                         {% comment %}Save-on-exit: GET back to the form start page{% endcomment %}
                                         <c-button variant="primary"
@@ -412,6 +421,14 @@ examRunnerForm scope (no intermediate x-data between them).
 
                 <form id="runner-page-form" method="post" x-ref="pageForm" class="space-y-6">
                     {% csrf_token %}
+                    {% comment %}
+                    Names the page these answers belong to. The fill-page URL already
+                    carries it, but "Leave and submit" retargets this same form at the
+                    submit-and-exit endpoint, whose URL does not — and that endpoint
+                    clears any question it is handed no answer for, so it must know
+                    exactly which page it was given.
+                    {% endcomment %}
+                    <input type="hidden" name="page_number" value="{{ current_page_num }}">
 
                     {% for child in form_page.children %}
                         {% if child.content_type == 'FORM_QUESTION' %}

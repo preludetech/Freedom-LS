@@ -234,8 +234,10 @@ document.addEventListener("alpine:init", () => {
     //   x-on:keydown.escape.window="dismiss"  on the dialog panel
     //   x-show="open"  x-cloak  on the dialog panel
     //
-    // The confirm action (Leave and submit, or navigate away) is a plain form
-    // POST or anchor — no Alpine method needed for it.
+    // The confirm action needs no Alpine method. "Leave and save" is a plain
+    // anchor; "Leave and submit" is a submit button associated to the runner
+    // page form via form="runner-page-form" and retargeted with formaction, so
+    // the page's answers are posted with the exit rather than discarded.
     Alpine.data("examExitDialog", makeConfirmDialog({
         showExit(triggerEl) {
             this._openDialog(triggerEl);
@@ -291,6 +293,11 @@ document.addEventListener("alpine:init", () => {
             // Intermediate pages advance through a native submit button, which the
             // browser validates — except for checkbox groups, which it cannot.
             this._onSubmit = (event) => {
+                // "Leave and submit" submits this same form, retargeted at the
+                // exit endpoint and carrying formnovalidate. Leaving scores the
+                // attempt as it stands, so the required-checkbox gate — the JS
+                // stand-in for validation HTML cannot express — must let it past.
+                if (event.submitter?.formNoValidate) return;
                 if (this._revealMissingCheckboxGroups()) {
                     event.preventDefault();
                     // The examRunner listener runs in the capture phase, so it has

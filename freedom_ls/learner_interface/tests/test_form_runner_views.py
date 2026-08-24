@@ -1100,3 +1100,195 @@ def test_view_form_previous_attempts_capped_at_five(mock_site_context, client):
     assert completed == attempts[:5]
     assert attempts[5] not in completed
     assert attempts[6] not in completed
+
+
+# ---------------------------------------------------------------------------
+# "Leave and submit" carries the current page's answers (QA report bug 2)
+# ---------------------------------------------------------------------------
+
+
+def _exit_url(course):
+    return reverse(
+        "learner_interface:form_submit_and_exit",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+
+@pytest.mark.django_db
+def test_submit_and_exit_scores_the_answers_posted_with_it(mock_site_context, client):
+    """Leaving a submit-on-exit form scores the answers on the page being left.
+
+    Regression (QA report bug 2): the exit dialog posted its own empty form, so
+    the current page's answers were never persisted and the attempt — which a
+    submit-on-exit form will not let the learner re-sit — locked in 0%.
+    """
+    user = UserFactory()
+    form = _make_quiz_form(submit_on_exit=True)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    page = form.pages.first()
+    q1, q2 = list(page.questions.all())
+    client.post(
+        _exit_url(course),
+        {
+            "page_number": "1",
+            f"question_{q1.id}": str(q1.options.get(correct=True).id),
+            f"question_{q2.id}": str(q2.options.get(correct=False).id),
+        },
+    )
+
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.completed_time is not None
+    assert attempt.scores == {"score": 1, "max_score": 2}
+
+
+@pytest.mark.django_db
+def test_submit_and_exit_does_not_enforce_required_answers(mock_site_context, client):
+    """Leaving scores the attempt as it stands — a blank required question is
+    not a gate on the way out, unlike the Next/Submit path."""
+    user = UserFactory()
+    form = _make_quiz_form(submit_on_exit=True)
+    page = form.pages.first()
+    page.questions.update(required=True)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    q1, _q2 = list(page.questions.all())
+    response = client.post(
+        _exit_url(course),
+        {"page_number": "1", f"question_{q1.id}": str(q1.options.get(correct=True).id)},
+    )
+
+    assert response.status_code == 302
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.scores == {"score": 1, "max_score": 2}
+
+
+@pytest.mark.django_db
+def test_submit_and_exit_leaves_other_pages_answers_alone(mock_site_context, client):
+    """save_answers clears any question it is handed no answer for, so the exit
+    endpoint must scope itself to the page that was actually posted."""
+    user = UserFactory()
+    form, _pages, questions = _make_two_page_form(submit_on_exit=True)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    # Persist page 1's answer the normal way, then leave from page 2.
+    client.post(
+        reverse(
+            "learner_interface:form_fill_page",
+            kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
+        ),
+        {f"question_{questions[0].id}": str(questions[0].options.first().id)},
+    )
+    client.post(
+        _exit_url(course),
+        {
+            "page_number": "2",
+            f"question_{questions[1].id}": str(questions[1].options.first().id),
+        },
+    )
+
+    attempt = FormProgress.objects.get(user=user, form=form)
+    answered_question_ids = set(attempt.answers.values_list("question_id", flat=True))
+    assert answered_question_ids == {questions[0].id, questions[1].id}
+
+
+@pytest.mark.django_db
+def test_submit_and_exit_without_a_page_number_still_completes(
+    mock_site_context, client
+):
+    """A direct POST carrying no page context finalises what was already saved,
+    exactly as it did before the exit dialog started posting answers."""
+    user = UserFactory()
+    form = _make_quiz_form(submit_on_exit=True)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    incomplete = FormProgressFactory(user=user, form=form)
+
+    client.force_login(user)
+    response = client.post(_exit_url(course), {"page_number": "not a page"})
+
+    incomplete.refresh_from_db()
+    assert incomplete.completed_time is not None
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_runner_page_form_carries_its_page_number(mock_site_context, client):
+    """The runner page form names its page, so the exit endpoint — whose URL has
+    no page in it — knows which questions the POST belongs to."""
+    user = UserFactory()
+    form = _make_quiz_form(submit_on_exit=True)
+
+    response = _start_runner(client, user, form)
+
+    assert response.status_code == 200
+    assert (
+        '<input type="hidden" name="page_number" value="1">'
+        in response.content.decode()
+    )
+
+
+@pytest.mark.django_db
+def test_exit_dialog_leave_and_submit_targets_the_runner_page_form(
+    mock_site_context, client
+):
+    """ "Leave and submit" must submit the runner page form, retargeted at the
+    exit endpoint, rather than a second form that carries no answers."""
+    user = UserFactory()
+    form = _make_quiz_form(submit_on_exit=True)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    response = client.get(
+        reverse(
+            "learner_interface:form_fill_page",
+            kwargs={"course_slug": course.slug, "index": 1, "page_number": 1},
+        )
+    )
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    exit_url = _exit_url(course)
+
+    # No second <form> posting to the exit endpoint with no fields in it.
+    assert not re.search(rf'<form[^>]*\saction="{re.escape(exit_url)}"', content)
+
+    button_match = re.search(
+        r'<[^>]*data-testid="leave-and-submit-button"[^>]*>', content
+    )
+    assert button_match is not None
+    button = button_match.group(0)
+    assert 'form="runner-page-form"' in button
+    assert f'formaction="{exit_url}"' in button
+    # Leaving must not be blocked by the browser's required-field validation.
+    assert "formnovalidate" in button
