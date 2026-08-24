@@ -7,4 +7,7 @@ class ContentEngineConfig(AppConfig):
     label = "freedom_ls_content_engine"
 
     def ready(self) -> None:
-        from freedom_ls.content_engine import checks  # noqa: F401
+        from freedom_ls.content_engine import (
+            checks,  # noqa: F401
+            schema,  # noqa: F401
+        )

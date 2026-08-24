@@ -103,6 +103,7 @@ INSTALLED_APPS = [
     "freedom_ls.health",
     "freedom_ls.icons",
     "freedom_ls.markdown_rendering",
+    "freedom_ls.content_base",
     "freedom_ls.content_engine",
     "freedom_ls.accounts",
     "freedom_ls.organisations",

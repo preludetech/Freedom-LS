@@ -1,11 +1,10 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from freedom_ls.content_base.models import BaseContent, MarkdownContent, TitledContent
+from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 from freedom_ls.site_aware_models.models import SiteAwareModel
-
-from ..schema import ContentType as SchemaContentTypes
-from .base import BaseContent, MarkdownContent, TitledContent
 
 
 class QuestionType(models.TextChoices):

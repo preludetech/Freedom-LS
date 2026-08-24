@@ -21,6 +21,7 @@ from django.db import transaction
 from django.utils.module_loading import import_string
 from django.utils.text import slugify
 
+from freedom_ls.content_base.schema import ContentType as SchemaContentType
 from freedom_ls.content_engine.config import config
 from freedom_ls.content_engine.models import (
     Activity,
@@ -35,7 +36,6 @@ from freedom_ls.content_engine.models import (
     QuestionOption,
     Topic,
 )
-from freedom_ls.content_engine.schema import ContentType as SchemaContentType
 from freedom_ls.content_engine.validate import (
     get_all_files,
     parse_single_file,

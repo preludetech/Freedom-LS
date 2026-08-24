@@ -13,7 +13,7 @@ import frontmatter
 import yaml
 from pydantic import ValidationError
 
-from .schema import SCHEMAS
+from freedom_ls.content_base.schema import SCHEMAS
 
 logger = logging.getLogger(__name__)
 

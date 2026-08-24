@@ -1,8 +1,8 @@
 from django.db import models
 from django.urls import reverse
 
-from ..schema import ContentType as SchemaContentTypes
-from .base import MarkdownContent, TitledContent
+from freedom_ls.content_base.models import MarkdownContent, TitledContent
+from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
 
 
 class Topic(TitledContent, MarkdownContent):

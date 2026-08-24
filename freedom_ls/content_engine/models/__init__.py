@@ -1,4 +1,3 @@
-from .base import BaseContent, MarkdownContent, TitledContent
 from .courses import (
     ContentCollectionItem,
     Course,
@@ -22,7 +21,6 @@ from .topics import Activity, Topic
 __all__ = [
     "FREE_TEXT_QUESTION_TYPES",
     "Activity",
-    "BaseContent",
     "ContentCollectionItem",
     "Course",
     "CoursePart",
@@ -34,10 +32,8 @@ __all__ = [
     "FormPage",
     "FormQuestion",
     "FormStrategy",
-    "MarkdownContent",
     "QuestionOption",
     "QuestionType",
-    "TitledContent",
     "Topic",
     "file_upload_handler",
 ]

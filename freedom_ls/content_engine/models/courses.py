@@ -4,11 +4,11 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from freedom_ls.content_base.models import MarkdownContent, TitledContent
+from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
 from freedom_ls.site_aware_models.models import SiteAwareModel
 
 from ..course_accent import PALETTE
-from ..schema import ContentType as SchemaContentTypes
-from .base import MarkdownContent, TitledContent
 
 
 class DifficultyLevel(models.TextChoices):
