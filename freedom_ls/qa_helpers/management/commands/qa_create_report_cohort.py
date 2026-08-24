@@ -38,6 +38,10 @@ Usage:
     uv run python manage.py qa_create_report_cohort \
         --cohort-name "QA Report Standard Cohort" --num-learners 9 \
         --course-slug qa-report-medium-course --num-flagged 3
+    uv run python manage.py qa_create_report_cohort \
+        --cohort-name "QA Report Standard Cohort" --num-learners 9 \
+        --course-slug qa-report-medium-course \
+        --organisation-slug rpas-training-academy
 """
 
 import math
@@ -76,6 +80,7 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
 
 # 40 distinct surnames: the report sorts learners by surname, so creation order
@@ -204,6 +209,27 @@ def _get_course(site: Site, slug: str) -> Course:
         raise click.ClickException(
             f"Course '{slug}' not found on site '{site.name}'. Available: {available}"
         ) from e
+
+
+def _get_organisation(site: Site, slug: str) -> Organisation:
+    """An existing Organisation on this site, by slug.
+
+    Lookup only: a report cohort belongs to an organisation somebody already
+    set up, and silently creating one on a typo would put the fixture where
+    nobody is looking for it.
+    """
+    existing: Organisation | None = Organisation._base_manager.filter(
+        slug=slug, site=site
+    ).first()
+    if existing is None:
+        available = list(
+            Organisation._base_manager.filter(site=site).values_list("slug", flat=True)
+        )
+        raise click.ClickException(
+            f"Organisation '{slug}' not found on site '{site.name}'. "
+            f"Available: {available}"
+        )
+    return existing
 
 
 def _get_or_create_user(
@@ -548,16 +574,25 @@ def build_report_cohort(
     no_progress: bool,
     email_prefix: str,
     educator_email: str | None,
+    organisation: Organisation | None = None,
 ) -> Cohort:
     """Create or reuse the cohort, its members and their progress. Idempotent."""
     now = timezone.now()
 
+    # The site's default organisation when none is named, which is what every
+    # fixture built before organisation branding existed already assumed.
+    if organisation is None:
+        organisation = get_default_organisation(site)
+
+    # Filtered by organisation as well as name: cohort names are unique per
+    # organisation, so the same fixture name can legitimately exist in two of
+    # them, and looking one up by name alone would rebuild the wrong cohort.
     cohort = cast(
         Cohort,
-        Cohort.objects.filter(name=cohort_name, site=site).first()
-        or CohortFactory(
-            name=cohort_name, site=site, organisation=get_default_organisation(site)
-        ),
+        Cohort.objects.filter(
+            name=cohort_name, site=site, organisation=organisation
+        ).first()
+        or CohortFactory(name=cohort_name, site=site, organisation=organisation),
     )
 
     for slug in (*course_slugs, *inactive_course_slugs):
@@ -683,6 +718,14 @@ def build_report_cohort(
     default=None,
     help="Optional educator to create and grant guardian 'view_cohort' on this cohort.",
 )
+@click.option(
+    "--organisation-slug",
+    default=None,
+    help=(
+        "Slug of an existing organisation to put the cohort in "
+        "(default: the site's default organisation)."
+    ),
+)
 def command(
     site_name: str,
     cohort_name: str,
@@ -693,9 +736,13 @@ def command(
     no_progress: bool,
     email_prefix: str,
     educator_email: str | None,
+    organisation_slug: str | None,
 ) -> None:
     """Build a cohort with a controlled progress and at-risk distribution."""
     site = _get_site(site_name)
+    organisation = (
+        _get_organisation(site, organisation_slug) if organisation_slug else None
+    )
     cohort = build_report_cohort(
         site=site,
         cohort_name=cohort_name,
@@ -706,6 +753,7 @@ def command(
         no_progress=no_progress,
         email_prefix=email_prefix,
         educator_email=educator_email,
+        organisation=organisation,
     )
 
     registrations = list(
@@ -718,6 +766,11 @@ def command(
     click.secho("\n--- QA report cohort ---", fg="cyan", bold=True)
     click.secho(f"Site:     {site.name} ({site.domain})", fg="cyan")
     click.secho(f"Cohort:   {cohort.name} (pk={cohort.pk})", fg="cyan", bold=True)
+    click.secho(
+        f"Org:      {cohort.organisation.name} "
+        f"({'has logo' if cohort.organisation.logo else 'no logo'})",
+        fg="cyan",
+    )
     click.secho(f"Learners: {member_count}", fg="cyan")
     click.secho(
         f"Logins:   {email_prefix}-NN@email.com (password == email)", fg="green"

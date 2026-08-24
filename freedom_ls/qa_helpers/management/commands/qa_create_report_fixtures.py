@@ -21,6 +21,8 @@ Usage:
     uv run python manage.py qa_create_report_fixtures
     uv run python manage.py qa_create_report_fixtures --only xl-cohort-long-course
     uv run python manage.py qa_create_report_fixtures --long-course-quizzes 16
+    uv run python manage.py qa_create_report_fixtures \
+        --organisation-slug rpas-training-academy
 """
 
 import dataclasses
@@ -44,6 +46,7 @@ from freedom_ls.qa_helpers.management.commands.qa_create_organisation_scenarios 
 )
 from freedom_ls.qa_helpers.management.commands.qa_create_report_cohort import (
     _get_or_create_user,
+    _get_organisation,
     _get_site,
     build_report_cohort,
 )
@@ -55,8 +58,8 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 
 EDUCATOR_EMAIL = "qa-report-educator@email.com"
 RESTRICTED_EMAIL = "qa-report-restricted@email.com"
-# Holds an organisation role on the site's default organisation, where every
-# fixture cohort lives, and no per-cohort guardian grant at all.
+# Holds an organisation role on the organisation every fixture cohort lives in,
+# and no per-cohort guardian grant at all.
 ORG_STAFF_EMAIL = "qa-report-orgstaff@email.com"
 # Holds an organisation role on an organisation with no report cohorts in it.
 FOREIGN_ORG_STAFF_EMAIL = "qa-report-otherorg@email.com"
@@ -289,13 +292,16 @@ COURSES_BY_KEY = {fixture.key: fixture for fixture in COURSE_FIXTURES}
 COHORTS_BY_KEY = {fixture.key: fixture for fixture in COHORT_FIXTURES}
 
 
-def _reset_fixtures(site: Site, fixtures: list[CohortFixture]) -> tuple[int, int]:
+def _reset_fixtures(
+    site: Site, organisation: Organisation, fixtures: list[CohortFixture]
+) -> tuple[int, int]:
     """Delete the given fixture cohorts and their learners, cascading progress.
 
-    Scoped to QA-owned rows only: cohorts are matched by their fixture name and
-    learners by their fixture email prefix, so nothing a human created by hand
-    is touched. The QA report courses are left in place -- they are rebuilt
-    idempotently and hold no per-learner state.
+    Scoped to QA-owned rows only: cohorts are matched by their fixture name
+    within the target organisation, and learners by their fixture email prefix,
+    so nothing a human created by hand -- and no same-named fixture cohort in
+    another organisation -- is touched. The QA report courses are left in place
+    -- they are rebuilt idempotently and hold no per-learner state.
     """
     deleted_learners = 0
     for fixture in fixtures:
@@ -305,7 +311,9 @@ def _reset_fixtures(site: Site, fixtures: list[CohortFixture]) -> tuple[int, int
         deleted_learners += learners.count()
         learners.delete()
     deleted_cohorts, _ = Cohort.objects.filter(
-        name__in=[fixture.cohort_name for fixture in fixtures], site=site
+        name__in=[fixture.cohort_name for fixture in fixtures],
+        site=site,
+        organisation=organisation,
     ).delete()
     return deleted_cohorts, deleted_learners
 
@@ -363,6 +371,14 @@ def _get_or_create_foreign_organisation(site: Site) -> Organisation:
     ),
 )
 @click.option(
+    "--organisation-slug",
+    default=None,
+    help=(
+        "Slug of an existing organisation to build the matrix in "
+        "(default: the site's default organisation)."
+    ),
+)
+@click.option(
     "--reset",
     is_flag=True,
     default=False,
@@ -373,10 +389,19 @@ def _get_or_create_foreign_organisation(site: Site) -> Organisation:
     ),
 )
 def command(
-    site_name: str, only: tuple[str, ...], long_course_quizzes: int, reset: bool
+    site_name: str,
+    only: tuple[str, ...],
+    long_course_quizzes: int,
+    organisation_slug: str | None,
+    reset: bool,
 ) -> None:
     """Build the report QA fixture matrix and its two permission users."""
     site: Site = _get_site(site_name)
+    organisation = (
+        _get_organisation(site, organisation_slug)
+        if organisation_slug
+        else get_default_organisation(site)
+    )
 
     unknown = [key for key in only if key not in COHORTS_BY_KEY]
     if unknown:
@@ -389,7 +414,9 @@ def command(
     ]
 
     if reset:
-        cohorts_deleted, learners_deleted = _reset_fixtures(site, selected)
+        cohorts_deleted, learners_deleted = _reset_fixtures(
+            site, organisation, selected
+        )
         click.secho(
             f"\nReset: deleted {learners_deleted} fixture learners and "
             f"{cohorts_deleted} rows for {len(selected)} cohort(s).",
@@ -402,6 +429,13 @@ def command(
         for fixture in selected
         for key in (*fixture.course_keys, *fixture.inactive_course_keys)
     }
+
+    click.secho(
+        f"\n=== Organisation: {organisation.name} "
+        f"({'has logo' if organisation.logo else 'no logo'}) ===",
+        fg="cyan",
+        bold=True,
+    )
 
     click.secho("\n=== Building courses ===", fg="cyan", bold=True)
     for course_fixture in COURSE_FIXTURES:
@@ -455,6 +489,7 @@ def command(
             no_progress=fixture.no_progress,
             email_prefix=fixture.email_prefix,
             educator_email=EDUCATOR_EMAIL,
+            organisation=organisation,
         )
         built.append((fixture, cohort))
         click.secho(
@@ -497,7 +532,6 @@ def command(
 
     org_staff = _get_or_create_user(site, ORG_STAFF_EMAIL, "Sam", "Orgstaff")
     _grant_report_admin_access(org_staff)
-    default_organisation = get_default_organisation(site)
 
     foreign_organisation = _get_or_create_foreign_organisation(site)
     foreign_staff = _get_or_create_user(
@@ -511,12 +545,12 @@ def command(
     # shared with qa_create_organisation_scenarios rather than repeated here.
     _pin_current_site(site)
     with _site_context(site):
-        assign_object_role(org_staff, default_organisation, "organisation_staff")
+        assign_object_role(org_staff, organisation, "organisation_staff")
         assign_object_role(foreign_staff, foreign_organisation, "organisation_staff")
 
     click.secho(
         f"  Org staff  {org_staff.email} / {org_staff.email} "
-        f"(is_staff, organisation_staff on '{default_organisation.name}', "
+        f"(is_staff, organisation_staff on '{organisation.name}', "
         f"NO per-cohort grant -- must see every cohort above)",
         fg="green",
     )
