@@ -29,6 +29,7 @@
       "Bash(git stash apply:*)",
       "Bash(git stash drop:*)",
       "Bash(git rebase *)",
+      "Bash(git merge-base *)",
       "Bash(gh pr:*)",
       "Bash(ls:*)",
       "Bash(npm run tailwind_build:*)",

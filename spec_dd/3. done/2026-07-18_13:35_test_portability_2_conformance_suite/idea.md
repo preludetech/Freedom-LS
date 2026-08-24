@@ -13,21 +13,21 @@ design rationale live in the referenced source files below — not duplicated he
 
 ## References (source of truth — relative to `spec_dd/`)
 
-- `2. in progress/fls-test-portability-part-2/idea.md` — the umbrella Part-2 idea
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/idea.md` — the umbrella Part-2 idea
   (§ "Layer 3").
-- `2. in progress/fls-test-portability-part-2/1. spec.md` — **§ "Layer 3"**,
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/1. spec.md` — **§ "Layer 3"**,
   "Override-friendliness", "Opt-in surface", "Hygiene rules", "What it verifies",
   "Packaging & placement", "Acceptance node IDs", and decisions **D1, D2, D4, D5,
   D7, D9**.
-- `2. in progress/fls-test-portability-part-2/2. plan.md` — **§ "Layer 3"**
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/2. plan.md` — **§ "Layer 3"**
   (T3.1–T3.8) for the detailed probe/registry design, plus the "Ground truth
   established" URL-route table.
 - Research:
-  - `2. in progress/fls-test-portability-part-2/research_conformance_tooling.md`
+  - `3. done/2026-08-24_06:31_fls-test-portability-part-2/research_conformance_tooling.md`
     — how DRF / django-cms / Wagtail ship reusable test helpers; why not a
     `pytest11` plugin.
-  - `2. in progress/fls-test-portability-part-2/research_existing_fls_conventions.md`
-  - `2. in progress/fls-test-portability-part-2/research_django_system_checks.md`
+  - `3. done/2026-08-24_06:31_fls-test-portability-part-2/research_existing_fls_conventions.md`
+  - `3. done/2026-08-24_06:31_fls-test-portability-part-2/research_django_system_checks.md`
 
 ## Scope of this slice (Layer 3)
 

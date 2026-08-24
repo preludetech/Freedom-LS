@@ -28,7 +28,7 @@ All files under `freedom_ls/contrib/conformance/` (paths relative to repo root):
 
 ## 2. The intended downstream invocation
 
-This is option **(a)** from the sibling slice's own research (`spec_dd/2. in progress/fls-test-portability-part-2/research_conformance_tooling.md:154-179`), and it is the **only** documented mechanism — options (b) `pytest --pyargs freedom_ls.contrib.conformance` and (c) a management command were considered in that research and explicitly rejected in favour of (a); neither is mentioned anywhere in the shipped docs, spec, or code.
+This is option **(a)** from the sibling slice's own research (`spec_dd/3. done/2026-08-24_06:31_fls-test-portability-part-2/research_conformance_tooling.md:154-179`), and it is the **only** documented mechanism — options (b) `pytest --pyargs freedom_ls.contrib.conformance` and (c) a management command were considered in that research and explicitly rejected in favour of (a); neither is mentioned anywhere in the shipped docs, spec, or code.
 
 **Exact documented usage**, quoted verbatim from `spec_dd/3. done/2026-07-18_13:35_test_portability_2_conformance_suite/upgrade_notes.md:24-29`:
 

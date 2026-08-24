@@ -51,7 +51,7 @@ Add a **Django system check**, `Warning`-level, in `freedom_ls/deployment/checks
 in `freedom_ls/deployment/apps.py`'s `ready()` (same shape as `course_access`'s wiring):
 
 - **Do not** tag `deploy=True`. Per the in-repo research already done for this exact question
-  (`spec_dd/2. in progress/fls-test-portability-part-2/research_django_system_checks.md` §3):
+  (`spec_dd/3. done/2026-08-24_06:31_fls-test-portability-part-2/research_django_system_checks.md` §3):
   `deploy=True` checks are excluded from the default run and only fire under
   `manage.py check --deploy` — but the actual value here comes from firing automatically during
   the deploy pipeline's one-off `manage.py migrate` step (which always runs the default check set,
@@ -84,7 +84,7 @@ Sources: Django docs — System check framework (`Tags`, `CheckMessage`, `Warnin
 semantics): https://docs.djangoproject.com/en/6.0/topics/checks/ ·
 `SILENCED_SYSTEM_CHECKS`: https://docs.djangoproject.com/en/6.0/ref/settings/#std-setting-SILENCED_SYSTEM_CHECKS
 · in-repo precedent: `freedom_ls/course_access/checks.py`, `freedom_ls/base/app_settings.py`,
-`spec_dd/2. in progress/fls-test-portability-part-2/research_django_system_checks.md` · CI
+`spec_dd/3. done/2026-08-24_06:31_fls-test-portability-part-2/research_django_system_checks.md` · CI
 precedent: `.github/workflows/security.yml:61-86` · deploy-pipeline precedent (one-off `migrate`,
 not in entrypoint): `spec_dd/2. in progress/support-concrete-project-deployment/research_deployment_scaffolding_references.md`
 ("One-off migrations vs migrate-on-entrypoint" section).

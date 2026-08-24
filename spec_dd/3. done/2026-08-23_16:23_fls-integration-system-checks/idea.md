@@ -20,26 +20,26 @@ lives in the referenced source files below — not duplicated here.
 
 ## References (source of truth — relative to `spec_dd/`)
 
-- `2. in progress/fls-test-portability-part-2/SUPERSEDED.md` — the authoritative
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/SUPERSEDED.md` — the authoritative
   layer → slice map, and the rule that where the umbrella and a slice disagree,
   the slice wins. Read this before any of the umbrella files below.
-- `2. in progress/fls-test-portability-part-2/idea.md` — the umbrella Part-2 idea
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/idea.md` — the umbrella Part-2 idea
   (§ "Layer 4").
-- `2. in progress/fls-test-portability-part-2/1. spec.md` — **§ "Layer 4"** and
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/1. spec.md` — **§ "Layer 4"** and
   decisions **D3, D7, D8**. Pre-revision text; this slice's own `1. spec.md`
   supersedes its scope.
-- `2. in progress/fls-test-portability-part-2/2. plan.md` — **§ "Layer 4"**
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/2. plan.md` — **§ "Layer 4"**
   (T4.1–T4.4). Superseded by this slice's `2. plan.md`.
 - Research:
-  - `2. in progress/fls-test-portability-part-2/research_django_system_checks.md`
+  - `3. done/2026-08-24_06:31_fls-test-portability-part-2/research_django_system_checks.md`
     — app resolution without importing. **Caveat:** its framing of
     `admin.check_dependencies` is wrong — that check uses `apps.is_installed()`.
     The helper this slice needs is `apps.get_containing_app_config()`, whose
     in-Django precedent is `ModelBase.__new__`. `1. spec.md` carries the
     correction; do not reintroduce the original framing.
-  - `2. in progress/fls-test-portability-part-2/research_existing_fls_conventions.md`
+  - `3. done/2026-08-24_06:31_fls-test-portability-part-2/research_existing_fls_conventions.md`
     — the existing `course_access`/`base`/`accounts`/`icons` check house style.
-  - `2. in progress/fls-test-portability-part-2/research_conformance_tooling.md`
+  - `3. done/2026-08-24_06:31_fls-test-portability-part-2/research_conformance_tooling.md`
 
 ## Scope of this slice (Layer 4)
 

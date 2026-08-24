@@ -380,8 +380,8 @@ currently written assuming **exactly one plugin**:
     `/fls:sdd:update_template_repo` (note: uses the `/fls:sdd:...` **three-level** form, in contrast to
     the `/sdd:...` two-level form used inside `fls-claude-plugin/commands/sdd/*.md` itself — another
     data point for the §0.5 namespace-inconsistency flag)
-  - `spec_dd/2. in progress/fls-test-portability-part-2/`,
-    `spec_dd/2. in progress/test_portability_3_system_checks/`,
+  - `spec_dd/3. done/2026-08-24_06:31_fls-test-portability-part-2/`,
+    `spec_dd/3. done/2026-08-23_16:23_fls-integration-system-checks/`,
     `spec_dd/2. in progress/compliance-form-randomization/` — each has a `todo.md` line
     `Run \`/update_claude_plugin_fls_content\` to sync the course-author plugin` (the SDD workflow's own
     generated checklist item — will need the command name kept in sync with wherever

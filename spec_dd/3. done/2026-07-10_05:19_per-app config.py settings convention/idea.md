@@ -15,15 +15,15 @@ this file deliberately does not duplicate them.
 
 ## References (source of truth — relative to `spec_dd/`)
 
-- `2. in progress/fls-test-portability-part-2/idea.md` — the umbrella Part-2 idea.
-- `2. in progress/fls-test-portability-part-2/2. plan.md` — **§ "Layer 0"** is the
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/idea.md` — the umbrella Part-2 idea.
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/2. plan.md` — **§ "Layer 0"** is the
   detailed design for this slice (L0.1–L0.4), plus the "Ground truth established"
   settings/resolution notes.
 - Research:
-  - `2. in progress/fls-test-portability-part-2/research_existing_fls_conventions.md`
+  - `3. done/2026-08-24_06:31_fls-test-portability-part-2/research_existing_fls_conventions.md`
     — existing check/settings house style this refactor generalises.
-  - `2. in progress/fls-test-portability-part-2/research_django_system_checks.md`
-  - `2. in progress/fls-test-portability-part-2/research_conformance_tooling.md`
+  - `3. done/2026-08-24_06:31_fls-test-portability-part-2/research_django_system_checks.md`
+  - `3. done/2026-08-24_06:31_fls-test-portability-part-2/research_conformance_tooling.md`
 
 ## Scope of this slice (Layer 0)
 

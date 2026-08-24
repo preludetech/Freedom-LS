@@ -43,25 +43,25 @@ duplicated here.
 >    pytest lines alone" instruction below is **withdrawn**: this slice fixes the
 >    selection string in all four files.
 > 2. **This slice owns the track's close-out.**
->    `2. in progress/fls-test-portability-part-2/SUPERSEDED.md` says the umbrella
+>    `3. done/2026-08-24_06:31_fls-test-portability-part-2/SUPERSEDED.md` says the umbrella
 >    may be archived only once this slice lands, with its cross-references
 >    rewritten in the same commit. Its own layer→slice table was stale on two
 >    rows and has been corrected.
 
 ## References (source of truth — relative to `spec_dd/`)
 
-- `2. in progress/fls-test-portability-part-2/SUPERSEDED.md` — the authoritative
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/SUPERSEDED.md` — the authoritative
   layer→slice map, and the instruction that this slice closes the track out.
-- `2. in progress/fls-test-portability-part-2/idea.md` — the umbrella Part-2 idea
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/idea.md` — the umbrella Part-2 idea
   (§ "Layer 5", § "Layer 6 (Part-2 portion)").
-- `2. in progress/fls-test-portability-part-2/1. spec.md` — **§ "Layer 5"**,
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/1. spec.md` — **§ "Layer 5"**,
   **§ "Layer 6"**, and decision **D6**.
-- `2. in progress/fls-test-portability-part-2/2. plan.md` — **§ "Layer 5"** and
+- `3. done/2026-08-24_06:31_fls-test-portability-part-2/2. plan.md` — **§ "Layer 5"** and
   **§ "Layer 6"** for the exact command/doc edits.
 - Research (parent effort):
-  - `2. in progress/fls-test-portability-part-2/research_conformance_tooling.md`
-  - `2. in progress/fls-test-portability-part-2/research_existing_fls_conventions.md`
-  - `2. in progress/fls-test-portability-part-2/research_django_system_checks.md`
+  - `3. done/2026-08-24_06:31_fls-test-portability-part-2/research_conformance_tooling.md`
+  - `3. done/2026-08-24_06:31_fls-test-portability-part-2/research_existing_fls_conventions.md`
+  - `3. done/2026-08-24_06:31_fls-test-portability-part-2/research_django_system_checks.md`
 - Research (this slice — supersedes the above where they conflict):
   - `research_upgrade_notes_command.md`
   - `research_update_fls_verification.md`
