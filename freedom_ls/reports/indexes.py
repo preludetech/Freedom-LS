@@ -16,11 +16,15 @@ would be visible to the other.
 
 from __future__ import annotations
 
+import base64
 import dataclasses
+import io
 from collections import defaultdict
 from datetime import datetime
 from typing import TypedDict, cast
 from uuid import UUID
+
+from PIL import Image
 
 from django.contrib.sites.models import Site
 from django.db.models import Count, F, Window
@@ -45,6 +49,8 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
 )
 from freedom_ls.learner_progress.models import TopicProgress
+from freedom_ls.organisations.models import Organisation
+from freedom_ls.organisations.validators import LOGO_MIME_TYPES, MAX_BYTES
 from freedom_ls.reports.config import config
 from freedom_ls.reports.report_data import ReportTooLargeError
 from freedom_ls.site_aware_models.config import config as site_config
@@ -570,6 +576,68 @@ def index_distractors(
             (row["text"], row["times_selected"])
         )
     return distractors_by_question
+
+
+def load_organisation_logo_data_uri(organisation: Organisation) -> str | None:
+    """The organisation's logo as a base64 `data:` URI, or None to fall back to the wordmark.
+
+    Read through the storage API rather than `FieldFile.path`: `Storage.path()`
+    raises `NotImplementedError` by default and `S3Storage` does not override
+    it, so a path-based read works on local disk and breaks in production.
+    Reading the bytes here also means the render layer's URL fetcher never has
+    to reach a network to embed the logo.
+
+    Every failure lands on None rather than raising. An uploaded media object
+    can drift at runtime independently of any deploy -- unlike a deploy-time
+    misconfiguration, which should be loud, a vanished, corrupt, oversized or
+    bomb-shaped logo degrades to the wordmark and the report still generates.
+    Field validators only run under `full_clean()`, so an unvalidated file can
+    reach storage regardless of what the upload form would have rejected; the
+    checks below are the read path re-applying those same checks itself.
+    """
+    logo_name = organisation.logo.name
+    if not logo_name:
+        return None
+
+    try:
+        # storage.open(), not organisation.logo.open(): FieldFile.open() caches
+        # the handle on the live model instance, and this pipeline holds a
+        # shared cohort.organisation that nothing else should observe mutating
+        # mid-render.
+        with organisation.logo.storage.open(logo_name, "rb") as handle:
+            raw = handle.read()
+    except OSError:
+        # Covers both backends: S3Storage normalises a missing object to a
+        # plain FileNotFoundError and re-raises any other ClientError
+        # unchanged, so an outage or a credentials failure still propagates
+        # instead of being mistaken for "no logo".
+        return None
+
+    if len(raw) > MAX_BYTES:
+        return None
+
+    try:
+        # verify() decodes the whole stream rather than only the header, and
+        # it destroys the object it is called on -- hence reopening for the
+        # format below. A header can parse cleanly over a truncated or
+        # otherwise corrupt body, and that file would then be embedded as an
+        # image WeasyPrint silently fails to draw, leaving an empty brand slot
+        # rather than the wordmark that is supposed to stand in for it.
+        Image.open(io.BytesIO(raw)).verify()
+        image_format = Image.open(io.BytesIO(raw)).format
+    except (OSError, Image.UnidentifiedImageError, Image.DecompressionBombError):
+        # DecompressionBombError subclasses Exception, not OSError, so it has
+        # to be named here explicitly or a bomb-shaped upload that slipped
+        # past upload-time validation would crash the whole render instead of
+        # falling back.
+        return None
+
+    mime_type = LOGO_MIME_TYPES.get(image_format or "")
+    if mime_type is None:
+        return None
+
+    encoded = base64.b64encode(raw).decode("ascii")
+    return f"data:{mime_type};base64,{encoded}"
 
 
 def resolve_site_name(site_id: int) -> str:

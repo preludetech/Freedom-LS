@@ -24,6 +24,16 @@ MAX_BYTES = 2 * 1024 * 1024  # 2 MiB
 MAX_DIMENSION = 4000  # px, each axis
 MIN_WIDTH, MIN_HEIGHT = 64, 32
 
+# Pillow's format name -> the mediatype to label those decoded bytes with.
+# Keyed by the same names ALLOWED_FORMATS holds, so a format added or removed
+# there cannot silently disagree with what a consumer of an already-uploaded
+# logo will accept.
+LOGO_MIME_TYPES: dict[str, str] = {
+    "PNG": "image/png",
+    "JPEG": "image/jpeg",
+    "WEBP": "image/webp",
+}
+
 validate_organisation_logo_extension = FileExtensionValidator(ALLOWED_EXTENSIONS)
 
 

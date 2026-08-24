@@ -9,9 +9,14 @@ did.
 
 from __future__ import annotations
 
+import io
+
 import pytest
 import time_machine
+from PIL import Image
 
+from django.core.files.base import ContentFile
+from django.core.files.storage import storages
 from django.test import override_settings
 from django.utils import timezone
 
@@ -37,6 +42,8 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
 )
 from freedom_ls.learner_progress.factories import TopicProgressFactory
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.validators import MAX_BYTES
 from freedom_ls.reports.gather import (
     _build_course_section,
     _build_learner_detail,
@@ -53,6 +60,7 @@ from freedom_ls.reports.indexes import (
     load_distractor_rows,
     load_first_attempt_ids,
     load_form_progress_rows,
+    load_organisation_logo_data_uri,
     load_progress_index,
     load_quiz_questions,
     load_registrations,
@@ -69,6 +77,19 @@ def _attach(collection: object, child: object, order: int = 0) -> None:
     ContentCollectionItemFactory(
         collection_object=collection, child_object=child, order=order
     )
+
+
+def _png_bytes(width: int = 20, height: int = 20) -> bytes:
+    """A genuine, uncompressed-content PNG, so truncating it corrupts real data."""
+    buf = io.BytesIO()
+    Image.new("RGB", (width, height), color=(200, 30, 90)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _jpeg_bytes(width: int = 20, height: int = 20) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", (width, height), color=(30, 90, 200)).save(buf, format="JPEG")
+    return buf.getvalue()
 
 
 class TestLoadRegistrations:
@@ -674,3 +695,84 @@ class TestTheAssemblyStageIssuesNoQueriesOnRealRows:
             ]
 
         assert [detail.quiz_results[0].attempt_count for detail in details] == [1, 1]
+
+
+def test_pathless_storage_raises_on_path_access(pathless_default_storage):
+    """The storage double itself raises, proven independently of the loader.
+
+    Without this, a later change that quietly stops PathlessFileSystemStorage
+    raising on `.path()` would go unnoticed until it stopped catching a real
+    S3 break -- the double is only as good as this test says it still is.
+    """
+    with pytest.raises(NotImplementedError):
+        storages["default"].path("whatever.png")
+
+
+class TestLoadOrganisationLogoDataUri:
+    def test_reads_a_logo_without_calling_storage_path(
+        self, mock_site_context, pathless_default_storage
+    ):
+        organisation = OrganisationFactory()
+        organisation.logo.save("logo.png", ContentFile(_png_bytes()))
+
+        data_uri = load_organisation_logo_data_uri(organisation)
+
+        assert data_uri is not None
+        assert data_uri.startswith("data:image/png;base64,")
+
+    def test_an_organisation_with_no_logo_returns_none(
+        self, mock_site_context, pathless_default_storage
+    ):
+        organisation = OrganisationFactory()
+
+        assert load_organisation_logo_data_uri(organisation) is None
+
+    def test_a_missing_file_falls_back_to_none(self, mock_site_context):
+        organisation = OrganisationFactory()
+        organisation.logo.save("logo.png", ContentFile(_png_bytes()))
+        organisation.logo.storage.delete(organisation.logo.name)
+
+        assert load_organisation_logo_data_uri(organisation) is None
+
+    def test_a_file_that_is_not_an_image_returns_none(self, mock_site_context):
+        organisation = OrganisationFactory()
+        organisation.logo.save("logo.png", ContentFile(b"not an image"))
+
+        assert load_organisation_logo_data_uri(organisation) is None
+
+    def test_a_file_over_the_size_cap_returns_none(self, mock_site_context):
+        organisation = OrganisationFactory()
+        organisation.logo.save("logo.png", ContentFile(b"x" * (MAX_BYTES + 1)))
+
+        assert load_organisation_logo_data_uri(organisation) is None
+
+    def test_a_decompression_bomb_returns_none(self, mock_site_context, monkeypatch):
+        # Image.open() runs its bomb check against header dimensions, so a
+        # small image plus a small limit reproduces the bomb case without
+        # storing an actual enormous file, mirroring
+        # test_decompression_bomb_in_the_error_band_is_rejected in
+        # organisations/tests/test_validators.py.
+        monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)
+        organisation = OrganisationFactory()
+        organisation.logo.save("logo.png", ContentFile(_png_bytes(20, 20)))
+
+        assert load_organisation_logo_data_uri(organisation) is None
+
+    def test_a_jpeg_gets_the_jpeg_mediatype(self, mock_site_context):
+        organisation = OrganisationFactory()
+        # Named .png despite genuine JPEG bytes: the mediatype must come from
+        # decoding the bytes, not from the stored filename's extension.
+        organisation.logo.save("logo.png", ContentFile(_jpeg_bytes()))
+
+        data_uri = load_organisation_logo_data_uri(organisation)
+
+        assert data_uri is not None
+        assert data_uri.startswith("data:image/jpeg;base64,")
+
+    def test_a_truncated_image_body_returns_none(self, mock_site_context):
+        organisation = OrganisationFactory()
+        truncated = _png_bytes(64, 64)
+        truncated = truncated[: len(truncated) * 2 // 3]
+        organisation.logo.save("logo.png", ContentFile(truncated))
+
+        assert load_organisation_logo_data_uri(organisation) is None

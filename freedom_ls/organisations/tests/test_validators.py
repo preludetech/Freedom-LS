@@ -12,6 +12,8 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from freedom_ls.organisations.validators import (
+    ALLOWED_FORMATS,
+    LOGO_MIME_TYPES,
     validate_organisation_logo,
     validate_organisation_logo_extension,
 )
@@ -111,3 +113,14 @@ def test_rejected_file_leaves_handle_rewound():
     with pytest.raises(ValidationError):
         validate_organisation_logo(upload)
     assert upload.tell() == 0
+
+
+def test_logo_mime_types_cover_exactly_the_allowed_formats():
+    """LOGO_MIME_TYPES and ALLOWED_FORMATS must name the same formats.
+
+    A reader of the report pipeline emits LOGO_MIME_TYPES; the upload path
+    here enforces ALLOWED_FORMATS. They cannot import from each other, so
+    nothing but this assertion stops the two lists drifting apart the first
+    time a format is added or dropped.
+    """
+    assert set(LOGO_MIME_TYPES) == ALLOWED_FORMATS
