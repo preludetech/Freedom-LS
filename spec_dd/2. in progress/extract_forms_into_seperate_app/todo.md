@@ -32,8 +32,10 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 6. Plan structure review
 
-- [ ] (cmd) Run `/fls-dev:plan_structure_review` to check for new cross-app dependencies
-- [ ] (user) Address any structure concerns raised in the plan
+- [x] (cmd) Run `/fls-dev:plan_structure_review` to check for new cross-app dependencies
+- [x] (user) Address any structure concerns raised in the plan
+- [x] (user) Resolve structure concern: form_engine --> markdown_rendering is a new undeclared runtime edge (plan Task 3.2)
+- [x] (user) Resolve structure concern: form_engine --> accounts will generate as runtime, not the test-only edge spec criterion 4 declares (plan Task 4.6)
 
 ## 7. Implementation
 
