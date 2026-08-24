@@ -31,6 +31,9 @@
 - [reference_learner_deadline_admin_fixtures.md](reference_learner_deadline_admin_fixtures.md) — qa_create_learner_deadlines; the three deadline models are not interchangeable; LearnerDeadlineAdmin.search_fields has no email
 - [reference_column_pagination_scenario.md](reference_column_pagination_scenario.md) — qa_create_column_pagination_scenario; both course-progress paginators live at once WITHOUT padding functionality-demo-course-parts
 - [reference_second_site_form_engine_fixture.md](reference_second_site_form_engine_fixture.md) — qa_create_site_scoping_form: tiny form_engine tree on a 2nd Site for admin site-scoping QA; explicit site= on every factory call, _base_manager lookups, FORCE_SITE_NAME=DemoDev pins every request
+- [reference_form_engine_branch_qa_baseline.md](reference_form_engine_branch_qa_baseline.md) — The whole-DB "documented starting state" recipe for the form_engine-extraction QA pass; reset-then-recalculate ordering; CourseProgress.course (not .collection)
+- [reference_proving_allauth_login_works.md](reference_proving_allauth_login_works.md) — Proving a QA user can log in: force_login/check_password are false positives; rolled-back real login POST + verified=False negative control (locmem email backend)
+- [reference_qa_complete_form_now_recalculates.md](reference_qa_complete_form_now_recalculates.md) — qa_complete_form DOES fire a recalculation now (complete() sends form_attempt_completed); a 0-score failed quiz still moves no percentage, so use CourseProgress.last_accessed_time to detect the write
 
 ## Recurring requests
 
@@ -74,3 +77,21 @@ always pass an explicit `--course-slug`, or use `qa_create_column_pagination_sce
 DemoDev, so "prove the admin filters per site" always means seeding a small tree on Bloom (id 4).
 See [[reference_second_site_form_engine_fixture]] for the pattern; it generalises to any app whose
 models subclass SiteAwareModel.
+
+The **"put the dev DB into the documented QA starting state" whole-run request** (as opposed to
+"seed me one fixture") has now been made for the form_engine-extraction branch. It is a fixed
+list of ~11 commands plus a cleanup pass; see
+[[reference_form_engine_branch_qa_baseline]]. Two things bite every time:
+`qa_reset_learner_progress` zeroes `progress_percentage`, so `recalculate_progress_percentages`
+must run LAST; and QA plans list every command bare, but `qa_create_cohort_progress` REQUIRES a
+positional `DemoDev` ([[reference_qa_command_site_arg_styles]]). If this is asked a third time,
+wrap the list in a single `qa_setup_qa_baseline` command.
+
+The **"prove a command fires no recalculation" assertion** was asked once (B4, form_engine
+branch). Percentage-diffing is a FALSE NEGATIVE test on this branch: `qa_complete_form`
+now calls `complete()` and does fire `form_attempt_completed`, but its 0-score attempts
+fail the quiz pass mark and so never change a percentage. Detect the write via the
+`auto_now` `CourseProgress.last_accessed_time` instead, and always check `git log -p` on
+the command before trusting a QA plan's description of what it does — the plan described
+the pre-`7a78c4f6` factory-based version. See
+[[reference_qa_complete_form_now_recalculates]].

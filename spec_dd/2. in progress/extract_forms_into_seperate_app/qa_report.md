@@ -1,373 +1,560 @@
-# Frontend QA report: extract form functionality into its own app
+# Frontend QA Report — `extract_forms_into_seperate_app`
 
-Branch: `extract_forms_into_seperate_app`. Date: 2026-08-24. Base URL: `http://127.0.0.1:8830/`.
+**Branch:** `extract_forms_into_seperate_app`
+**Date:** 2026-08-24
+**Base URL:** `http://127.0.0.1:8916/`
+**Site:** DemoDev
+**Accounts used:** `demodev@email.com` (admin/educator), `demodev_quizqa@email.com` (quiz/progression-block/free-text learner), `qa-carol.starter@example.com` (cohort learner, deadline verification)
 
-Accounts used: `demodev@email.com` (admin/educator — Django admin, educator interface, the
-all-question-types quiz, the course sweep); `demodev_quizqa@email.com` (the progression-block course,
-the free-text survey, and the exit/resume adversarial paths); `demodev_s1@email.com` (a cohort learner,
-used ad hoc for the learner-side deadline display check).
+**Headline result: 35 tests executed across desktop, mobile and tablet. All 35 passed. Zero bugs found.**
 
-## Verdict
-
-**Pass.** All four of the refactor's own risk areas — the signal substitution, `ContentType` resolution
-for `Form`, the template-render-time `get_content_by_path` import, and the Django admin move — hold up
-under direct testing, including the adversarial branches. Two bugs were found and are documented below
-in full, but **both are pre-existing on `main`**: each bug record carries `pre_existing: true`, and in
-both cases the code paths responsible are byte-identical to `main` (confirmed by `git diff main...HEAD`
-against the specific files involved). Neither is a regression introduced by moving form functionality
-into `form_engine`.
+---
 
 ## Methodology
 
-Testing was done by browsing the running application with the Playwright MCP tools, acting as a human
-tester rather than scripting assertions. Screenshots were collected into
-`spec_dd/2. in progress/extract_forms_into_seperate_app/screenshots/` and every image referenced in this
-report sits beside it in that folder. Transient `.yml`/`.log` tooling artifacts produced by the capture
-process were removed afterwards, leaving the 25 real screenshots that this report references.
+This run was driven manually through the Playwright MCP tools as a human tester would — clicking,
+reading, and reacting to what rendered — not scripted end-to-end. Screenshots were collected into
+`screenshots/` beside this report; every image referenced below exists in that folder. Playwright's
+own accessibility-snapshot `.yml` files and console `.log` side-files, produced incidentally during
+capture, were discarded during collection, leaving only the 44 report images (some tests share a
+screenshot, others reference more than one).
+
+All test data — course content, forms, cohorts, learner accounts and progress state — was created
+and reset by the `fls-dev:qa-data-helper` agent running the seeding commands in the test plan, not
+assembled by hand. Where those commands' actual argument signatures diverged from what the plan
+describes, that is called out under General notes below rather than treated as a product defect.
+
+---
 
 ## Diff scoping
 
-Scoping class: **FULL**. The changed-file set includes non-`.py` paths (migrations, `CLAUDE.md`,
-`docs/app_structure.md`, `.secrets.baseline`, a plugin resource manifest, and the `spec_dd/` planning
-documents themselves alongside the eleven Python app/module trees), so the safe-default rule fired and
-the run was scoped to the full plan. **Nothing was skipped** — the desktop, mobile and tablet matrices
-all ran in full.
+**Class: FULL.** Nothing was skipped — the desktop, mobile and tablet passes all ran in full.
+
+Changed files that drove this classification:
+
+- `learner_interface/templates/learner_interface/course_form_page.html`
+- `learner_interface/static/learner_interface/js/alpine-components.js`
+- `form_engine/*` — new app: models, admin, queries, scoring, signals, submissions, schema, migrations
+- `content_engine/*` — admin, models, schema, `templatetags/content_tags.py`, migrations 0015/0016
+- `learner_progress/*` — models, admin, queries, signals, migrations 0002/0003
+- `learner_interface/views.py`, `learner_interface/utils.py`
+- `educator_interface/views.py`
+- `learner_management/deadline_utils.py`
+- `reports/gather.py`, `reports/indexes.py`
+- `role_based_permissions/registry.py`
+- `qa_helpers/management/commands/*` — 18 commands repointed
+- `config/settings_base.py`, `docs/app_structure.md`
+- ~50 test files
+
+Because this is a full extract-and-repoint refactor touching every form-rendering surface, the
+diff-scoping gate required the complete plan to run at every viewport rather than a reduced subset.
+
+---
 
 ## Smoke gate
 
-**Passed.** The dashboard (`http://127.0.0.1:8830/`, logged in as `demodev@email.com`) and the form
-start page for `qa-question-types-course` item 1 — the primary changed surface — both loaded cleanly,
-so the run proceeded to the full test matrix.
+**Status: PASS.** Pages loaded before the full run began:
 
-## The four silent-failure candidates
+- `http://127.0.0.1:8916/` (dashboard, logged in as `demodev@email.com`)
+- `http://127.0.0.1:8916/courses/qa-question-types-course/1/` (form start page — the primary changed surface)
 
-This is the section that matters most: it is what tells the reader the refactor itself is sound,
-independent of the two pre-existing bugs found along the way.
+---
 
-### 1. The signal substitution
-
-**Pass.** This was the one genuine behaviour change under test — course progress recalculation moved
-from a `post_save` hook to an explicit `form_attempt_completed` send inside `FormProgress.complete()`
-— and it holds in every direction tested:
-
-- **B1**: the dashboard and course-home percentage for `qa-progression-block-course` moved from a
-  33% baseline to 67% immediately on passing the quiz. The receiver is connected and firing.
-- **B2**: repeated re-reads of the dashboard and course home held steady at exactly 67% with no
-  drift or overshoot, and re-entering the completed item offered no retake — `complete()`'s
-  early-return-once-`completed_time`-is-set guard is intact, so a second call is a no-op.
-- **B3**: failing the quiz (75%, below the 80% pass mark) correctly left the percentage at 33% and
-  locked item 3, including against a direct-URL adversarial check (the view itself redirects, not
-  just the table of contents); re-sitting and passing then unlocked item 3 and raised the percentage
-  to 67%.
-- **B4.1**: pre-completing six `FormProgress` rows out-of-band via `qa_complete_form` (which uses
-  `get_or_create`, not `save()`) triggered no recalculation for any of the nine affected learners —
-  the change gained no new recalculation path and lost no live one.
-- **A3**: the signal also fires correctly for a non-quiz (`CATEGORY_VALUE_SUM`, no-verdict) form —
-  course progress reached 100% even though there is no pass/fail banner to render.
-- **F5.1 / F5.2**: both exit-affordance branches correctly trigger or withhold the signal as
-  appropriate — `submit_on_exit=True` finalises and scores the attempt (signal fires), while the
-  save-on-exit form leaves the percentage untouched. (F5.1 does have a separate, pre-existing bug in
-  answer capture — see Bugs found — but the signal-firing behaviour itself is correct in both cases.)
-
-### 2. `ContentType.get_for_model(Form)`
-
-**Pass.** `ContentType.objects.get_for_model(Form)` resolves to exactly one row
-(`freedom_ls_form_engine | form`), with the old `freedom_ls_content_engine | form` row gone via the
-delete migration, so there is no stale content type to silently resolve against.
-
-- **C1**: all 7 seeded `LearnerDeadline` rows render with their content item resolved in the admin,
-  including the form item alongside topic items; setting a new deadline on a form item persisted and
-  reappeared on that same item.
-- **C-cohort-grid**: the educator cohort reporting grid renders both form columns with populated
-  per-learner cells, not blank ones.
-- **C2**: the learner-side course-outline correctly displays the form-item deadline set in C1,
-  distinct from the whole-course and topic-level deadlines.
-- **C3**: cohort report generation (nine moved symbols across `reports/gather.py` and
-  `reports/indexes.py`) completed successfully once unrelated malformed seed data was removed, and the
-  resulting PDF contains correct quiz names, per-learner scores and a question-by-question breakdown.
-
-### 3. `content_tags.get_content_by_path` at render time
-
-**Pass.** This import runs on every request that renders a `<c-content-link>`, not just at
-process-start import time.
-
-- **E1**: opening the topic containing a `<c-content-link>` to a non-existent path produced no 500,
-  no `TemplateSyntaxError` and no `ImportError`. Reaching the tag's "Content not found" fallback
-  proves `get_content_by_path` ran its full body — Topic lookup miss, then
-  `Form.objects.get(...)` against the new `freedom_ls.form_engine.models.Form`, then
-  `DoesNotExist` — so the moved render-time import is exercised and healthy on every request.
-- **E3**: the widest markdown/cotton pipeline exercise, all 5 items of the content-widgets course,
-  returned 200 with zero tracebacks, `ImportError`s or stray "Content not found" markers.
-
-### 4. The Django admin
-
-**Pass.** Twelve admin classes moved app.
-
-- **D2-D4**: the new "Freedom_Ls_Form_Engine" section lists exactly the 7 expected models; the
-  "Freedom_Ls_Content_Engine" and "Freedom_Ls_Learner_Progress" sections no longer list the moved
-  models but retain their others.
-- **D5**: cross-app inlines all render — `FormPageInline`, `FormContentInline`, `FormQuestionInline`,
-  `QuestionOptionInline` — and parent FK dropdowns populate correctly across the app boundary.
-- **D6**: `QuestionAnswerInline` renders a learner's answers on a Form progress record with no error.
-- **D7**: site scoping survives the move — DemoDev admin changelists show only DemoDev's rows, and a
-  Bloom-site form seeded specifically to test this never appears in them.
-
-## Results by section
+## Results by plan section
 
 ### Setup
 
-| Test | Viewport | Status | Notes |
-|---|---|---|---|
-| Setup.2 | n/a | PASS | All 5 QA seeding commands ran with no ImportError/ModuleNotFoundError. Two needed a `SITE_NAME` argument and one needed `qa_create_cohort_progress` run first — documented command signatures, not defects. |
-| capture-check | desktop | PASS | Per-run screenshot capture check confirmed screenshots land correctly with no missing image bytes. |
+**Setup — desktop — PASS**
+All seeding commands ran without `ImportError`, `ModuleNotFoundError`, an `app_label` `RuntimeError`
+or a `ContentType` error: `create_demo_data`, four `content_save` invocations, `qa_create_form_question_types`,
+`qa_create_quiz_progression_block`, `qa_create_free_text_survey`, `qa_create_learner_deadlines`,
+`qa_create_cohort_progress`, `qa_reset_learner_progress`, `recalculate_progress_percentages`. Every one
+of these imports symbols the refactor repointed. `git status --short demo_content/` printed nothing, so
+`content_save` carried every form/page/question/option UUID through the rebuild. One non-defect noted
+here: `qa_create_cohort_progress` requires its `SITE_NAME` positional argument, which the plan's command
+list omits — a CLI-signature detail, not a regression (see General notes).
+
+---
 
 ### Section A — the form player golden path
 
-| Test | Viewport | Status | Notes |
-|---|---|---|---|
-| A1 | desktop | PASS | Scored quiz golden path: question count correct (4), all four question types rendered, completion page showed 50% / 2 of 4 correct / "Quiz passed!", course progress moved 0% → 100%. |
-| A1-start-page | desktop | PASS | Form start page showed the title, "4 Questions", "1 Page" and a Start Form button. |
-| A1-multipage | desktop | PASS | Two-page scored quiz: all 6 answered correctly across both pages, scored 100% (6/6), course progress moved 25% → 50% and item 3 unlocked. |
-| A2 | desktop | PASS | Resuming an incomplete attempt: the start page correctly switched to "Continue Form", resumed at page 2, and page 1's saved answers were still selected. |
-| A2-partial | desktop | PASS | Multi-page resume mechanics were also exercised via the survey — page-1 answers and the answered-counter survived a Previous navigation. |
-| A3 | desktop | PASS | Free-text survey (no verdict): completion page showed no score ring, banner or review; Previous re-rendered the saved free-text answers; course progress still reached 100%. |
+**A1 — desktop — PASS**
+The start page for `qa-question-types-course` item 1 showed the form title, a question count of 4
+(`count_form_questions`, a moved symbol) and 1 page. **Start** landed on
+`/courses/qa-question-types-course/1/fill_form/1` showing all four question types: radio group,
+checkbox group, single-line input, textarea. All four were answered — correct radio option, both
+correct checkboxes — and the submit-confirm dialog reported **4 Answered / 4 Total**. The completion
+page at `/courses/qa-question-types-course/1/complete` shows a green **"Quiz passed!"** banner with a
+score ring reading **50%** and **"2 / 4 correct"** — correct, since the two free-text answers never
+score and the form's pass mark is 50%. No 500 in the browser, no traceback in the runserver terminal.
+Bonus evidence for the signal substitution: the course outline on the same page jumped to **100%**
+complete immediately.
 
-![](screenshots/page-2026-08-24T15-27-20-092Z.png)
-*A1-start-page / capture-check — form start page.*
+![](screenshots/page-2026-08-24T17-25-40-271Z.png)
+![](screenshots/page-2026-08-24T17-25-57-204Z.png)
+![](screenshots/page-2026-08-24T17-28-33-543Z.png)
+![](screenshots/page-2026-08-24T17-28-48-598Z.png)
 
-![](screenshots/page-2026-08-24T15-30-25-106Z.png)
-*A1 — completion page after the scored quiz.*
+**A2 — desktop — PASS**
+Used the End course Quiz — item **4** of `functionality-demo-show-end-with-quiz`
+(`submit_on_exit=False`). Note: the plan's item numbering is slightly off; the actual layout is
+1 = topic, 2 = Mid course Quiz, 3 = topic, 4 = End course Quiz (the plan's "items 2 and 4" for the
+two quizzes is right, but its earlier reference to "item 1" is not). Answered all three page-1
+questions correctly, advanced to page 2, then navigated away to the course detail page without
+finishing. Returning to the item now renders **"Continue Form"** in place of "Start Form"
+(`form_start_page_buttons` reading `quiz_verdict` across the app boundary), and re-entering the runner
+at `fill_form/1` shows all three page-1 radios still selected with the counter reading **"3 of 6
+answered"** (`existing_answers_dict`).
 
-![](screenshots/page-2026-08-24T15-44-58-747Z.png)
-*A2 — resumed attempt with page 1's answers preserved.*
+![](screenshots/page-2026-08-24T17-30-13-784Z.png)
+![](screenshots/page-2026-08-24T17-30-31-574Z.png)
 
-![](screenshots/page-2026-08-24T15-37-45-416Z.png)
-*A3 — free-text survey completion page (no verdict).*
+**A3 — desktop — PASS**
+Logged in as `demodev_quizqa@email.com`, opened the `qa-free-text-survey-course` item, filled page 1's
+required short-text and long-text questions, continued to page 2, left both optional questions blank,
+and completed. The completion page reads **"Form complete! Thank you for completing QA Free Text
+Survey. Your answers have been recorded."** — no score ring, no pass/fail banner, no incorrect-answer
+review anywhere: the `quiz_verdict(...) is None` branch behaving correctly for a `CATEGORY_VALUE_SUM`
+form; `FormProgress.passed()`, which raises on a null pass mark, is never reached. Using **Previous**
+from page 2 back to page 1 re-rendered both saved free-text answers verbatim into the input and the
+textarea. The course moved to **100%** complete, confirming the completion signal fires for unscored
+forms too.
 
-### Section B — the signal substitution
+![](screenshots/page-2026-08-24T17-36-18-670Z.png)
+![](screenshots/page-2026-08-24T17-36-40-442Z.png)
 
-| Test | Viewport | Status | Notes |
-|---|---|---|---|
-| B1 | desktop | PASS | Baseline dashboard read 33%; after passing the quiz, the course outline and dashboard both recalculated to 67% — the `form_attempt_completed` receiver is connected and firing. |
-| B2 | desktop | PASS | Percentage held at exactly 67% across repeated reads; re-entering the completed quiz offered no retake — `complete()`'s early-return is holding. |
-| B3 | desktop | PASS | Failing the quiz (75%) blocked item 3, including against a direct-URL adversarial check; the percentage held at 33%; re-sitting and passing unlocked item 3 and raised the percentage to 67%. |
-| B4.1 | desktop | PASS | Pre-completing 6 `FormProgress` rows via `qa_complete_form` left all 9 learners' percentages unchanged before and after — no stray recalculation path gained or lost. |
-| B4.2 | desktop | FAIL | `recalculate_progress_percentages` crashed with `KeyError: 'score'` on a QUIZ-strategy form holding a wrong-shape scores dict. The moved import itself resolved fine. **Pre-existing — see Bugs found (B1).** |
+---
 
-![](screenshots/page-2026-08-24T15-31-08-190Z.png)
-*B1 — dashboard baseline (33%) before completing the quiz.*
+### Section B — the signal substitution (the one real behaviour change)
 
-![](screenshots/page-2026-08-24T15-32-04-548Z.png)
-*B1 — dashboard/course home after completion (67%).*
+**B1 — desktop — PASS**
+Baseline read first: the dashboard card for `qa-progression-block-course` showed **33%** (non-zero,
+under 100), item 1 Completed, item 2 the quiz, item 3 Locked and unlinked. Sat the quiz answering all
+three multiple-choice questions and both correct checkboxes; the completion page reported
+**"Quiz passed!"** at **100%**, **4/4 correct**. The course percentage moved **33% → 67%** on both the
+course outline and the dashboard card in the same request, and item 3 flipped from "Locked" to
+"Not started". The `form_attempt_completed` receiver is connected and the send inside
+`FormProgress.complete()` is firing.
 
-![](screenshots/page-2026-08-24T15-32-28-818Z.png)
-*B2 — stable percentage on repeated re-reads, no retake offered.*
+![](screenshots/page-2026-08-24T17-33-58-744Z.png)
+![](screenshots/page-2026-08-24T17-34-45-738Z.png)
 
-![](screenshots/page-2026-08-24T15-33-37-220Z.png)
-*B3 — failed-quiz completion page with incorrect-answer review.*
+**B2 — desktop — PASS**
+Reloaded the course home four times with cache bypassed, and the dashboard once more: **67% every
+time**, never above 100. Returning to the completed quiz item shows it as done — a "Previous
+attempts" panel reading **"24 Aug 2026 100% (4 / 4)"** and the only forward action being "Next". No
+start, retry or resume affordance is offered, so there is no route to a second `complete()` call from
+the UI, and the percentage does not move again. The database holds exactly one `FormProgress` row for
+this learner and form.
+
+![](screenshots/page-2026-08-24T17-35-16-346Z.png)
+
+**B3 — desktop — PASS**
+Progress was reset first (`qa_reset_learner_progress`, see General notes on its arguments). Re-sat the
+quiz answering the three multiple-choice questions correctly and ticking only "Wrong box - leave me
+alone" on the multi-select. The completion page shows a red **"Quiz not passed"** banner, **"You need
+80% to pass"**, a score ring of **75%** with **"3 / 4 correct"**, and the incorrect-answer review
+naming question 4, the learner's answer and both correct options — `quiz_show_incorrect=True` working.
+The course percentage **stayed at 33%** and did not rise, confirming `attempt_completes_form` treats a
+failed scored quiz as an attempt rather than a finished item. The TOC reads "1. Completed / 2. Needs
+retry / 3. Locked" with no `href` on item 3. Adversarial check: a direct GET of
+`/courses/qa-progression-block-course/3/` while the quiz is failed redirects to the course detail page
+and never serves the topic body, and no `TopicProgress` row is created by the attempt — the gate is
+enforced in the view, not only hidden in the TOC. Re-sitting and passing then took the score to
+**100% (4/4)**, the course percentage back to **67%**, and item 3 to "Not started" with a working link.
+
+![](screenshots/page-2026-08-24T17-47-09-371Z.png)
+![](screenshots/page-2026-08-24T17-47-24-867Z.png)
+![](screenshots/page-2026-08-24T17-48-18-364Z.png)
+
+**B4 — desktop — PASS**
+Both commands succeeded and the percentages settled correctly, but the test's premise has changed —
+see General notes for the full account. `qa_complete_form DemoDev --cohort-name "QA Progress Demo
+Cohort" --form-slug end-course-quiz` exited 0, "Created 6 completions," 6 new `FormProgress` rows all
+with non-null `completed_time` (3 of 9 cohort members were skipped because the guard is `.exists()`,
+not is-completed). No learner's percentage moved: `0/0/0/25/75/50/75/75/100` before and after.
+`recalculate_progress_percentages` then ran clean — importing `completed_form_ids_by_user` from
+`freedom_ls.form_engine.queries`, a moved symbol — and reported **"Recalculated 24 records, updated
+0."** The equal before/after percentages are explained by the failed-quiz rule (the command submits no
+answers, so `complete()` scores 0/6 against a 50% pass mark), not by an absent recalculation — verified
+independently via `CourseProgress.last_accessed_time` (auto_now), which shows the six touched learners
+carrying timestamps inside the command's own run window (17:44:14.47–17:44:15.75) while the three
+skipped learners still carry 15:26:23.
+
+---
 
 ### Section C — content types: deadlines and reporting
 
-| Test | Viewport | Status | Notes |
-|---|---|---|---|
-| C1 | desktop | PASS | `ContentType.get_for_model(Form)` resolves to a single row; all 7 seeded deadlines render including the form item; a new deadline persisted correctly. Tested in the Django admin rather than the educator interface — see General notes. |
-| C-cohort-grid | desktop | PASS | Educator cohort reporting grid renders both form columns with populated per-learner cells alongside the topic columns. |
-| C2 | desktop | PASS | Learner-side course outline correctly displays the form-item deadline set in C1, distinct from the whole-course and topic deadlines. |
-| C3 | desktop | PASS | Cohort report generation: first run failed from the pre-existing B4.2 bug; after removing the malformed seeded rows, the same report regenerated to Ready with correct quiz scores and answers in the PDF. |
+*Covers silent-failure candidate 2: `ContentType.get_for_model(Form)`.*
 
-![](screenshots/page-2026-08-24T15-48-37-622Z.png)
-*C1 — deadlines admin changelist, form item resolved correctly.*
+**C1 — desktop — PASS**
+`django_content_type` holds exactly one row for the form model — id 16,
+`freedom_ls_form_engine.form` — with no stale `content_engine.form` duplicate, and the admin's
+content-type dropdown offers it as **"Freedom_Ls_Form_Engine | form."** In the educator cohort
+progress grid (QA Progress Demo Cohort), form items get their own columns exactly like topic items:
+"Knowledge Check" and "Course Feedback" on Functionality Demo – Course Parts, "Mid course Quiz" and
+"End course Quiz" on Functionality Demo – show end with Quiz, all populated rather than blank. A
+pre-seeded `LearnerDeadline` already points at `content_type freedom_ls_form_engine.form` →
+"Knowledge Check." For the write path: created a `CohortDeadline` in the admin against content type 16
+with the Mid course Quiz UUID and a 1 Dec 2026 deadline; it saved, the admin changelist resolved its
+Content Item column to "Mid course Quiz," and reloading the educator grid shows **"Due: Dec 01"**
+under the Mid course Quiz column and under no other column.
 
-![](screenshots/page-2026-08-24T15-46-37-153Z.png)
-*C-cohort-grid — cohort progress grid with both form columns populated.*
+![](screenshots/page-2026-08-24T17-42-11-030Z.png)
+![](screenshots/page-2026-08-24T17-42-29-742Z.png)
 
-![](screenshots/page-2026-08-24T15-50-10-290Z.png)
-*C2 — learner course outline showing the form-item deadline.*
+**C2 — desktop — PASS**
+Logged in as `qa-carol.starter@example.com`, a member of QA Progress Demo Cohort and registered for
+`functionality-demo-show-end-with-quiz`, and opened that course's TOC. The deadline set in C1 shows as
+**"01 Dec"** against item 2 (Mid course Quiz) and against no other item — the learner-side render of a
+cohort deadline whose content type is `freedom_ls_form_engine.form` resolves to exactly the right
+form. Her TOC otherwise reads "1. In progress / 2. Locked / 3. In progress / 4. Needs retry,"
+consistent with sequential-unlock rules and with the End course Quiz row the B4 command created for
+her. Setup note: this account needed both a known password and a verified, primary allauth
+`EmailAddress` row before it could log in (see General notes).
 
-![](screenshots/page-2026-08-24T15-55-06-125Z.png)
-*C3 — cohort report reached "Ready" after removing malformed data.*
+![](screenshots/page-2026-08-24T17-55-19-873Z.png)
+
+**C3 — desktop — PASS**
+Ran the admin's "Generate cohort report" action against QA Progress Demo Cohort, whose courses contain
+three scored quizzes. The row reached status **Ready** about a minute later and downloads over the
+admin download URL as a **606 KB `application/pdf`** (magic bytes `%PDF`), 16 pages. Extracted text
+confirms every moved symbol resolved: the report names all three quizzes (Knowledge Check, Mid course
+Quiz, End course Quiz), carries per-learner completion and quiz scores (e.g. "71% 5 of 7," "100% 7 of
+7," "75% 3 of 4"), a per-question breakdown quoting question text with per-option correctness glyphs,
+and a cohort-wide "Quiz confusions" section. This exercises `reports/gather.py` and `reports/indexes.py`
+together, which between them import nine symbols this refactor moved. No `error_message` on the row,
+no traceback in the runserver log.
+
+![](screenshots/page-2026-08-24T17-44-20-502Z.png)
+
+---
 
 ### Section D — the Django admin
 
-| Test | Viewport | Status | Notes |
-|---|---|---|---|
-| D2-D4 | desktop | PASS | The new "Freedom_Ls_Form_Engine" section lists exactly the 7 moved models; the Content engine and Learner progress sections no longer list them but retain their others. |
-| D5 | desktop | PASS | Cross-app inlines all render — FormPageInline, FormContentInline, FormQuestionInline, QuestionOptionInline — with parent FK dropdowns populating correctly. |
-| D6 | desktop | PASS | QuestionAnswerInline renders a learner's answers on a Form progress record with no error. |
-| D7 | desktop | PASS | Site scoping still holds: DemoDev admin changelists show only DemoDev's rows; a Bloom-site form seeded for this check never appears. |
+*Covers silent-failure candidate 4: twelve admin classes moved app.*
 
-![](screenshots/page-2026-08-24T15-50-57-991Z.png)
-*D2-D4 — new Form engine admin section.*
+**D2 — desktop — PASS**
+New admin section present with all 7 expected models: Forms, Form pages, Form contents, Form
+questions, Question options, Form progress records, Question answers. Heading renders as
+**"Freedom_Ls_Form_Engine"** rather than "Form engine," matching the existing convention for every
+other FLS section (`Freedom_Ls_Content_Engine`, `Freedom_Ls_Learner_Progress`) — consistent, not a
+defect.
 
-![](screenshots/page-2026-08-24T15-51-45-748Z.png)
-*D5 — cross-app inlines rendering on a Form question.*
+**D3 — desktop — PASS**
+`Freedom_Ls_Content_Engine` now lists only Activities, Content collection items, Course parts,
+Courses, Files, Topics. Forms, Form contents and Question options are gone from it, as intended.
 
-![](screenshots/page-2026-08-24T15-52-19-788Z.png)
-*D6 — QuestionAnswerInline on a Form progress record.*
+**D4 — desktop — PASS**
+`Freedom_Ls_Learner_Progress` now lists only Course progress records and Topic progress records. Form
+progress and Question answers no longer appear there.
+
+![](screenshots/page-2026-08-24T17-21-22-472Z.png)
+
+**D5 — desktop — PASS**
+Form change page (Knowledge Check) renders `FormPageInline` with the existing page and an "Add another
+Form page" control. Drilling into a Form page (QA Progression Block Quiz Page) renders both
+`FormContentInline` ("Form contents") and `FormQuestionInline` ("Form questions," 4 questions).
+Opening a Form question renders `QuestionOptionInline` ("Question options"). No cross-app inline
+errors.
+
+![](screenshots/page-2026-08-24T17-21-42-153Z.png)
+![](screenshots/page-2026-08-24T17-22-00-901Z.png)
+![](screenshots/page-2026-08-24T17-22-40-023Z.png)
+
+**D6 — desktop — PASS**
+Form progress record change page (`qa-ivy.done@example.com` – Course Feedback) renders the Progress
+fieldset and the `QuestionAnswerInline` ("Question answers").
+
+![](screenshots/page-2026-08-24T17-22-57-147Z.png)
+
+**D7 — desktop — PASS**
+Site scoping holds. `Form._base_manager` shows 9 forms (8 DemoDev + 1 Bloom, "QA Bloom Site Scoping
+Form"), but the admin Forms changelist under the DemoDev-resolved request lists exactly the 8 DemoDev
+forms, not the Bloom one. Proven in the **negative direction only**: `FORCE_SITE_NAME=DemoDev` is set
+in this dev environment, so every browser request resolves to DemoDev regardless of port; seeing the
+Bloom changelist would require the server restarted with `FORCE_SITE_NAME=Bloom`, which was
+deliberately not done (see General notes — "not tested").
+
+---
 
 ### Section E — the template-render-time edge
 
-| Test | Viewport | Status | Notes |
-|---|---|---|---|
-| E1 | desktop | PASS | `get_content_by_path`'s render-time `Form` import runs to completion on every request; a dangling demo-content link correctly falls back to "Content not found" rather than erroring. |
-| E3 | desktop | PASS | All 5 content-widgets items rendered 200 with no traceback, `ImportError` or stray "Content not found" markers. |
+*Covers silent-failure candidate 3: `content_tags.get_content_by_path`.*
 
-![](screenshots/page-2026-08-24T15-40-40-376Z.png)
-*E3 — content-widgets course rendering intact after the split.*
+**E1-E2 — desktop — PASS**
+The topic carrying `<c-content-link>` renders with no 500 and no `ImportError` in the runserver log,
+confirming `content_tags`' render-time `Form` import is correctly repointed to
+`freedom_ls.form_engine.models`. Item numbering note: the topic holding the link is item **1** of
+`functionality-demo-show-end-with-quiz` (items are 1 = topic, 2 = Mid course Quiz, 3 = topic, 4 = End
+course Quiz). The "last chapter" link renders as the component's not-found `<span class=text-error>`
+fallback rather than an `<a>`, because no Topic anywhere in the database has `file_path`
+`01-what-is-git-for.md` — a **pre-existing demo-content authoring gap, not a regression**:
+`cotton/content-link.html` is byte-identical to `main`, and the only change to `content_tags.py` is the
+one import line. No demo content links to a Form, so `get_content_by_path`'s Form branch has no
+content fixture exercising it directly; the Form import itself is module-level and demonstrably loads
+(see "Not tested" in General notes).
+
+![](screenshots/page-2026-08-24T17-24-53-239Z.png)
+
+**E3 — desktop — PASS**
+All 5 items of `content-widgets-demo-reference` (Annotation and Emphasis, Media, Structured Content,
+Interactive Widgets, Cards) plus the course detail page render 200 with every widget intact. Console
+shows only pre-existing report-only CSP INFO lines for CDN scripts and a "web-share" feature warning.
+
+![](screenshots/page-2026-08-24T17-25-18-798Z.png)
+
+---
 
 ### Section F — failure and adversarial branches
 
-| Test | Viewport | Status | Notes |
-|---|---|---|---|
-| F1 | desktop | PASS | Required-question validation: client-side checks block the submit dialog, and a direct empty POST returns HTTP 422 with a required-answers-error alert — no 500 at either layer. |
-| F2 | desktop | PASS | Resubmitting the same page via Back updates the existing `QuestionAnswer` row in place rather than duplicating it — no `IntegrityError`. |
-| F3 | desktop | PASS | Six hostile item-index URLs (out-of-range, zero, negative, non-numeric, wrong item type) all returned 404, never a 500. |
-| F4 | desktop | PASS | Logged-out access redirects to login; access as a learner not registered for the course redirects to the enrolment page with no question text leaked. |
-| F5.1 | desktop | FAIL | The exit affordance correctly finalises and scores a `submit_on_exit` attempt (signal fires), but the current page's answers are silently discarded, scoring 0/6 despite 3 correct answers entered. **Pre-existing — see Bugs found (B2).** |
-| F5.2 | desktop | PASS | The save-on-exit form correctly took the other branch: "Leave and save", attempt not scored, percentage unchanged — the intended contrast with F5.1. |
+**F1 — desktop — PASS**
+Submitting the page with nothing answered is refused: the radio, short-text and long-text inputs carry
+the HTML5 `required` attribute, so the browser blocks the submit and no request leaves the page.
+Answering only the radio (plus the two text questions) and submitting again is still refused — the
+Alpine runner's checkbox-group gate renders the inline message **"Select at least one option"**
+against the unanswered checkbox question, the answered counter stays at 3 of 4, and again no POST is
+issued. The page is never accepted and there is no 500. Notable finding: the plan's expected HTTP 422
+is real (`learner_interface/views.py:1132` returns `status=422` when `required_answers_error` is set)
+but **unreachable through the UI**, because the client-side gate fires first — a 422 would only appear
+for a crafted POST. Individual checkboxes deliberately carry `data-required` rather than `required`,
+since HTML `required` on a checkbox would demand every box be ticked.
 
-![](screenshots/page-2026-08-24T15-42-56-101Z.png)
-*F5.1 — scored 0/6 after the current page's answers were discarded on exit.*
+![](screenshots/page-2026-08-24T17-28-06-267Z.png)
+
+**F2 — desktop — PASS**
+Re-entered page 1 of an attempt that already had answers saved, changed question `1274eec8` from its
+correct option to "option 2 text," and submitted the same page again. The answer was updated in place:
+the attempt still holds exactly 3 `QuestionAnswer` rows with no duplicate `question_id`, the changed
+row now points at the new option, and the runserver log records zero `IntegrityError` and zero
+tracebacks. The `unique_together` on `(form_progress, question)` is being honoured through an update
+path, not a second insert.
+
+**F3 — desktop — PASS**
+All five hostile URLs answered 404 as the logged-in registered learner, with no 500 and no question
+text anywhere in the responses:
+
+| URL | Result |
+|---|---|
+| `/courses/qa-question-types-course/99/` | 404 |
+| `/courses/qa-question-types-course/0/` | 404 |
+| `/courses/qa-question-types-course/1/fill_form/99` | 404 |
+| `start_form` on Topic item 1 of `functionality-demo-show-end-with-quiz` | 404 |
+| `start_form` on Topic item 3 of `functionality-demo-show-end-with-quiz` | 404 |
+
+`get_form_for_index` correctly refuses a non-Form item; the runserver log records no traceback for any
+of them.
+
+**F4 — desktop — PASS**
+Logged out entirely and requested `/courses/qa-progression-block-course/2/start_form`: redirected to
+`/accounts/login/?next=...` — no form, no 500. Then logged in as `demodev_quizqa@email.com`, who is
+registered for `qa-free-text-survey-course` and `qa-progression-block-course` only, and requested
+`/courses/qa-question-types-course/1/start_form`: redirected to that course's detail/enrolment page
+with the item shown as **"Locked."** None of the form's question text ("MC question," "Checkbox
+question," "Short text question") appears anywhere in the response. Course authorisation is still the
+gate, as intended.
+
+![](screenshots/page-2026-08-24T17-33-40-624Z.png)
+
+**F5 — desktop — PASS**
+Both halves behave as specified. `submit_on_exit=True` (Mid course Quiz, item 2): answered all three
+page-1 questions correctly and hit Exit **without** pressing Next; the dialog reads "Leaving now will
+submit your answers and score your attempt," and its "Leave and submit" control is a submit button
+bound to `runner-page-form`, so the current page's answers travel with it. Landed on `/2/complete`
+scored **3/6 = 50%** with the three unanswered page-2 questions marked wrong — proof the page-1
+answers were carried, not dropped. Re-entering the item offers "Try Again" (a fresh attempt), never a
+resume, and the TOC reads "Needs retry." The course stayed at 50%, which is correct rather than a
+missed recalculation: `attempt_completes_form` treats a failed scored quiz as an attempt, not a
+finished item, so `complete()` ran but the item did not become complete. `submit_on_exit=False` (End
+course Quiz, item 4): the same exit affordance instead offers "Leave and save," a plain link with no
+submit; afterwards the item offers "Continue Form" and the course percentage is unchanged at 50%. The
+incorrect-answer review rendered on the completion page (`quiz_show_incorrect=True`).
+
+![](screenshots/page-2026-08-24T17-31-24-181Z.png)
+![](screenshots/page-2026-08-24T17-32-08-073Z.png)
+![](screenshots/page-2026-08-24T17-32-20-608Z.png)
+
+---
 
 ### Section G — sweep
 
-| Test | Viewport | Status | Notes |
-|---|---|---|---|
-| G1 | desktop | PASS | All 8 courses swept, 24 URLs checked; only one legitimate 404; no traceback, 500, `ImportError` or `ContentType` error anywhere. |
-| G2 | desktop | PASS | Full server-log scan (1629 lines) found zero forbidden error classes and zero HTTP 500s; the only exceptions logged were the documented pre-existing `KeyError` and expected `get_or_create` internal lookup misses. |
-| G3 | desktop | PASS | Browser console on the form runner and a completion page showed 0 errors and 0 warnings. |
+**G — desktop — PASS**
+`/courses/` lists all 8 DemoDev courses with no empty list. Walked every course: the 3 courses
+`demodev` is registered for serve their items directly (content-widgets-demo-reference items 1–5,
+functionality-demo-show-end-with-quiz items 1–4, qa-question-types-course item 1) with a 404
+immediately past the last item; the 5 unregistered courses redirect their item URLs to the enrolment
+detail page — the course-access gate behaving correctly, not a missing page. Course-outline progress
+bars render with live values throughout (33%, 50%, 67%, 100% all observed). A log scan over the whole
+session — **1631 requests** — finds zero occurrences of `ImportError`, `ModuleNotFoundError`,
+`RuntimeError`, "doesn't declare an explicit app_label," "ContentType matching query does not exist,"
+`RelatedObjectDoesNotExist`, `IntegrityError`, `Traceback` or `Internal Server Error`. Every non-2xx/3xx
+response is one of the tester's own deliberate out-of-range probes plus a favicon 404. Browser console
+on the form runner and completion page reports **0 errors, 0 warnings**; the only console output
+anywhere is pre-existing report-only CSP INFO lines for CDN-loaded htmx/Alpine/chart.js, a "web-share"
+unrecognized-feature warning, and a YouTube embed adapter warning — none of them new.
 
-### Responsive — mobile and tablet
+![](screenshots/page-2026-08-24T17-51-02-260Z.png)
 
-| Test | Viewport | Status | Notes |
-|---|---|---|---|
-| M1-runner | mobile | PASS | Form runner at 375x812: zero horizontal overflow, touch targets ≥44px, all inputs stack in a single readable column. |
-| M2-completion-and-nav | mobile | PASS | Completion page renders legibly at 375px; the course-outline sidebar correctly collapses to a working drawer. |
-| M3-admin-table | mobile | PASS | The moved form_engine admin changelist wraps its table in its own scroll container rather than overflowing the page. |
-| T1-runner | tablet | PASS | Form runner at 768x1024: zero overflow, comfortably margined question column, 48px touch targets. |
-| T2-nav-mode | tablet | PASS | At 768px the layout correctly uses the mobile drawer (the sidebar breakpoint is lg/1024px+), not the desktop sidebar — a deliberate and sensible breakpoint choice. |
-| T3-grids-and-forms | tablet | PASS | The widest table (the 5-column cohort progress grid) and the admin Form-page change form with its inlines both stay within their own scroll containers with zero page overflow. |
+---
 
-![](screenshots/page-2026-08-24T15-58-16-566Z.png)
-*M1-runner — form runner at 375x812.*
+### Responsive passes (mobile and tablet)
 
-![](screenshots/page-2026-08-24T15-58-41-822Z.png)
-*M2-completion-and-nav — completion page and outline drawer at 375x812.*
+**A1-mobile — mobile (375×812) — PASS**
+Form start page: zero horizontal overflow on the document, nothing extends past the right edge, the
+breadcrumb truncates with an ellipsis instead of pushing the layout, and the Questions/Page stat cards
+sit side by side. The "Previous attempts" panel and the Finish Course button both render at a sensible
+width.
 
-![](screenshots/page-2026-08-24T15-59-06-395Z.png)
-*M3-admin-table — form_engine admin changelist at 375x812.*
+![](screenshots/page-2026-08-24T17-52-09-547Z.png)
 
-![](screenshots/page-2026-08-24T15-59-36-851Z.png)
-*T1-runner — form runner at 768x1024.*
+**A1-runner-mobile — mobile (375×812) — PASS**
+The form runner is the key mobile surface and it holds up. Sticky header carries the exit control, the
+form title and the "3 of 6 answered" counter; below it the page indicator, progress bar and page dots.
+Answer options are full-width **343×48 px** touch targets — comfortably above the 44 px guidance — and
+the sticky Next button is 343 px wide. Document horizontal overflow is **0 px** and no element in
+`main` or the form crosses the right edge, including the embedded SVG diagram in the question body.
 
-![](screenshots/page-2026-08-24T16-00-18-920Z.png)
-*T3-grids-and-forms — admin Form-page change form at 768x1024.*
+![](screenshots/page-2026-08-24T17-52-22-785Z.png)
 
-![](screenshots/page-2026-08-24T16-00-03-513Z.png)
-*T3-grids-and-forms — educator cohort progress grid at 768x1024.*
+**A1-complete-mobile — mobile (375×812) — PASS**
+Completion page stacks cleanly: failed banner, score ring at 50% with "3 / 6 correct" beneath it, then
+one review card per incorrect question each showing the question, the learner's answer and the correct
+answer, and a full-width "Retry quiz" button. Nothing overlaps except the fixed dev branch badge, which
+is dev-only chrome and not product UI.
 
-## Bugs found
+![](screenshots/page-2026-08-24T17-53-00-742Z.png)
 
-### Bug B1: `quiz_percentage()` KeyErrors on a completed QUIZ attempt whose scores dict has no `'score'` key
+**C1-mobile — mobile (375×812) — PASS**
+The educator cohort progress grid is the widest layout in scope. At 375 px the 928 px table is
+contained by a wrapper with `overflow-x: auto` (`clientWidth` 299, `scrollWidth` 928), so it scrolls
+inside its own container and the document itself has 0 px of horizontal overflow. The learner name
+column stays pinned. Form columns behave the same as topic columns at this width.
 
-**Manifestations:** B4.2 (desktop), C3 (desktop)
+![](screenshots/page-2026-08-24T17-53-29-612Z.png)
 
-**Expected:** A completed `FormProgress` on a QUIZ-strategy form whose scores dict is not in quiz shape
-should be treated as an unscored attempt and skipped, exactly as `attempt_completes_form` already does
-for a falsy scores dict via its `except ValueError` guard. `recalculate_progress_percentages` should
-complete, and the cohort report should reach "Ready".
+**Nav-mobile — mobile (375×812) — PASS**
+The desktop course-outline sidebar collapses behind an "Open course outline" button that is hidden at
+`lg` and up. Tapping it opens a bottom-sheet drawer over a dimmed backdrop showing the site badge,
+course title, a 50%-complete progress bar and the numbered item list, with distinct icons separating
+topic items from form items. The header user menu toggles independently.
 
-**Actual:** `FormProgress.quiz_percentage()` (`freedom_ls/form_engine/models.py:229`) guards only with
-`if not self.scores`, so a populated-but-wrong-shape dict such as
-`{'Satisfaction': 5, 'Recommendation': 3}` passes the guard and then raises `KeyError: 'score'` on
-`self.scores['score']`. `attempt_completes_form` (`freedom_ls/form_engine/queries.py:20`) catches only
-`ValueError`, so the `KeyError` escapes. This crashed `manage.py recalculate_progress_percentages`
-outright, and made the admin's "Generate cohort report" action fail with status "failed" (traceback via
-`reports/indexes.py:329` in `fold_form_progress_rows`). It is triggered by `qa_complete_form`, which
-writes a `CATEGORY_VALUE_SUM`-shaped scores dict onto the QUIZ-strategy `end-course-quiz`.
+![](screenshots/page-2026-08-24T17-53-54-495Z.png)
 
-**Pre-existing — not a regression:** `git diff main...HEAD` shows `recalculate_progress_percentages.py`
-and `qa_complete_form.py` changed by import lines only, and `quiz_percentage` / `passed` /
-`attempt_completes_form` / `completed_form_ids_by_user` are byte-identical to `main` (the diff shows only
-trailing blank lines). After deleting the malformed rows, the report regenerated to "Ready", confirming
-the refactored reporting path itself is sound.
+**Nav-tablet — tablet (768×1024) — PASS**
+The course player takes the mobile navigation rather than the desktop one, which is the right call: the
+persistent outline sidebar is `display:none` and the "Open course outline" drawer button is visible,
+because the sidebar's breakpoint is `lg` (1024px) and a 768px tablet sits below it. `main` fills the
+768px width, document horizontal overflow is 0 px, and no element in `main` crosses the right edge
+including the embedded SVG diagrams.
 
-*No screenshot recorded for this bug.*
+![](screenshots/page-2026-08-24T17-55-59-485Z.png)
 
-### Bug B2: "Leave and submit" on a `submit_on_exit` form discards the current page's answers, locking in a 0% failed attempt
+**A1-runner-tablet — tablet (768×1024) — PASS**
+The form runner adapts sensibly rather than just stretching. The question column is held to a readable
+measure instead of spanning the full width, answer options stay full-width tap targets within that
+column, the diagram widget sits inside a bordered figure with its caption and "Open image" control on
+one line, and the footer Next button switches from mobile's full-width to an auto-width right-aligned
+button. Header still carries exit, title and the answered counter.
 
-**Manifestations:** F5.1 (desktop)
+![](screenshots/page-2026-08-24T17-56-33-957Z.png)
 
-**Expected:** The exit dialog states "Leaving now will submit your answers and score your attempt."
-The answers the learner has entered on the current page should therefore be saved and included in the
-score. Answering all 3 questions on page 1 correctly and leaving should score 3/6, not 0/6.
+**C2-tablet — tablet (768×1024) — PASS**
+Learner course detail: single-column layout, no horizontal overflow, and the form deadline renders as
+a clock-icon "01 Dec" chip aligned right on the Mid course Quiz row and on no other row. Per-item
+status labels (In progress / Locked) are present in the markup at this width too.
 
-**Actual:** The attempt is finalised and scored, but the current page's answers are never persisted, so
-it scores 0% / "0 / 6 correct" with every question reading "You did not answer this question." Root
-cause: `freedom_ls/learner_interface/templates/learner_interface/course_form_page.html` renders the
-"Leave and submit" control inside its own `<form method=post action={{ submit_and_exit_url }}>`
-containing only `{% csrf_token %}`, so `#runner-page-form`'s fields are never posted;
-`form_submit_and_exit` then calls `complete()` on whatever was already saved. Because the form is
-`submit_on_exit`, the attempt cannot be resumed, so the learner's work is lost and a failing grade is
-locked in.
+![](screenshots/page-2026-08-24T17-56-52-766Z.png)
 
-**Pre-existing — not a regression:** this branch changed no `.html`/`.css`/`.js`/templates/static files
-at all, and `form_submit_and_exit` in `learner_interface/views.py` is byte-identical to `main`.
-Reproduced twice, the second time with real browser clicks to rule out a scripted-click artifact.
+**C1-tablet — tablet (768×1024) — PASS**
+Educator cohort progress grid: the 928px table is still contained by its `overflow-x: auto` wrapper
+(`clientWidth` 628, `scrollWidth` 928), so it scrolls inside the panel and the document has 0 px of
+horizontal overflow. All 7 item columns including both form columns keep their headers; the tablet gets
+more of the table visible than mobile without the panel crowding the page.
 
-![](screenshots/page-2026-08-24T15-42-56-101Z.png)
-*B2 — 0% / "0 / 6 correct" after leaving a submit_on_exit form with 3 correct page-1 answers.*
+![](screenshots/page-2026-08-24T17-58-18-617Z.png)
+
+**D5-tablet — tablet (768×1024) — PASS**
+The moved admin at 768px: the Form page change view renders its Metadata fieldset plus both the Form
+contents and Form questions inlines with 0 px of document overflow and nothing past the right edge.
+The unfold admin collapses its sidebar into a toggle at this width and the inline stacks read fine.
+
+![](screenshots/page-2026-08-24T17-58-45-239Z.png)
+
+---
 
 ## Bug status
 
-Neither bug entered the auto-fix (green) lane during the QA run itself: both are pre-existing
-defects on `main` rather than regressions in the feature under test, so no fixer was spawned
-and no commit was made or reverted during that run. Both were fixed afterwards, TDD, in
-commits `7a78c4f6` and `b53e06f4`.
+No bugs were found. There are no `bug` records for this run and no `test` record has status `fail`.
 
-- **RESOLVED** — `quiz_percentage()` KeyErrors on a completed QUIZ attempt whose scores dict
-  has no `'score'` key. `quiz_percentage()` now raises `ValueError` for a dict it cannot read
-  a quiz score out of, so every caller's existing guard catches it —
-  `recalculate_progress_percentages` and cohort report generation both survive a malformed
-  row. `quiz_verdict()` gained the same guard, closing the second path (the course outline and
-  sequential unlock), and `qa_complete_form` — the command that produced the bad rows — now
-  scores through `complete()` instead of hand-writing a scores dict. Regression tests:
-  `form_engine/tests/test_queries.py`,
-  `form_engine/tests/test_form_progress_score_quiz.py`,
-  `learner_progress/tests/test_recalculate_progress_percentages.py`.
-- **RESOLVED** — "Leave and submit" on a `submit_on_exit` form discards the current page's
-  answers. "Leave and submit" is now a submit button associated to `#runner-page-form` and
-  retargeted at the exit endpoint via `formaction`, with `formnovalidate` so a blank required
-  question cannot trap the learner in the dialog. The runner page form names its page in a
-  hidden field so the exit endpoint saves that page's answers — and only that page's — before
-  scoring. Regression tests: six view tests in
-  `learner_interface/tests/test_form_runner_views.py` plus the browser-level
-  `learner_interface/tests/playwright/test_form_exit_submits_page_answers.py`, which
-  reproduces the reported 0-of-2 score without the fix.
+---
 
 ## General notes
 
-- **Plan drift on C1:** the plan directs C1 at a per-item deadline column in the educator interface,
-  but that interface has no deadline UI at all — checked the cohort detail page, its Details tab, and
-  the course-registration page. Deadlines are administered in the Django admin, which is also where
-  `qa_create_learner_deadlines` itself points, so the content-type check for C1 was carried out there
-  instead.
-- **Seeding command signatures:** two seeding commands (`qa_create_learner_deadlines`,
-  `qa_create_cohort_progress`) needed a `SITE_NAME` argument, and `qa_create_learner_deadlines` also
-  needed `qa_create_cohort_progress` run first to seed the learner `qa-eve.middle`. These are
-  documented command signatures, not defects.
-- **Cross-site proof for D7:** the `fls-dev:qa-data-helper` agent was used to seed a Form, FormPage,
-  FormQuestion and two QuestionOptions on the Bloom site so that admin site-scoping could actually be
-  observed — without a second site's rows there is nothing to filter out. This environment sets
-  `FORCE_SITE_NAME=DemoDev`, so every request in this run resolves to DemoDev regardless; the proof
-  is therefore the negative direction — the Bloom rows exist in the database but never surface in any
-  DemoDev admin changelist.
-- **B4.1 cleanup:** the 6 malformed `FormProgress` rows seeded during B4.1 (whose own assertion had
-  already passed) were deleted afterwards so that C3 could be tested against clean data, rather than
-  immediately re-triggering the B1 bug on the first report run.
-- **Demo-content gap, not a code bug:** the `<c-content-link>` exercised in E1 points at
-  `01-what-is-git-for.md`, which does not exist anywhere under `demo_content/` (verified by `find`).
-  Its "Content not found" fallback rendering is therefore correct behaviour — a data gap in the demo
-  content, not a defect in `get_content_by_path`.
+**Pre-existing `None%` rendering in the educator progress grid, out of scope for this branch.** In the
+educator cohort progress grid, a completed quiz cell whose `FormProgress` has `scores=None` renders
+the literal text **"None%."** Seen against Knowledge Check, Mid course Quiz and End course Quiz for the
+`qa_create_cohort_progress` personas. Cause: `_build_cell` seeds a `'quiz_percentage': None` default,
+the `fp.scores` guard skips the block that would replace it, and the template prints
+`{{ cell.quiz_percentage }}%`. Checked against `main` with `git show`: the `None` default, the guard
+and the template line are byte-identical there, so `main` renders "None%" for the same data. This
+branch's only change in that method is `except (KeyError, ValueError)` narrowing to
+`except ValueError`, which is safe because `quiz_percentage()` now converts the missing-key case into
+`ValueError` itself. Worth a separate cosmetic ticket against `main`, not against this refactor.
 
-status: ok · reason: 2 bugs — both pre-existing on main and both red-lane during the run (no auto-fix attempted), both fixed afterwards under TDD in commits 7a78c4f6 and b53e06f4; report rendered, 23 screenshots verified, 38 test records across desktop/mobile/tablet
+**B4's premise has changed.** The plan's B4 step expects `qa_complete_form` to create a pre-completed
+`FormProgress` "which fired no recalculation before this change and must fire none after it." That is
+no longer what the command does. On `main` it called `FormProgressFactory(..., completed_time=...)`, a
+plain create that sent no signal. On this branch (as of commit `7a78c4f6`, the previous QA run's bug 1
+fix) it calls `FormProgress.objects.create(...)` then `progress.complete()`, and `complete()` ends in
+`form_attempt_completed.send(...)`. This is a **deliberate QA-helper rewrite, not a product
+regression**: `qa_complete_form` lives in the QA-only `qa_helpers` app, the rewrite was intentional and
+commented, and a grep confirms no production code anywhere hand-sets `completed_time` — the unscored
+pre-completed row shape exists only in `qa_helpers`, tests and factories. Recommendation: rewrite the
+B4 step to assert on `CourseProgress.last_accessed_time` rather than on a percentage, since a
+percentage comparison cannot distinguish "no recalculation happened" from "a recalculation happened but
+produced the same number" (which is what actually occurred here — see the B4 result above).
+
+**Three plan/command argument mismatches, none of them defects:**
+
+| Command | Plan says | Actual signature |
+|---|---|---|
+| `qa_reset_learner_progress` | run bare | requires `--learner` (exits 2, "Missing option '--learner'" otherwise) |
+| `qa_create_cohort_progress` | run bare | requires a `SITE_NAME` positional argument |
+| `qa_complete_form` | "against a form the learner has not sat" | is cohort-scoped (`SITE_NAME` + `--cohort-name` + `--form-slug`), with no `--learner` flag — the plan's step has to be read as targeting a cohort, not an individual learner |
+
+**Plan item-numbering slip (sections A2 and E).** The plan refers to items of
+`functionality-demo-show-end-with-quiz` inconsistently. The actual layout is: **1** = topic, **2** =
+Mid course Quiz, **3** = topic, **4** = End course Quiz.
+
+**`FORCE_SITE_NAME=DemoDev` and its consequence for D7.** Site resolution in this dev environment is
+forced to DemoDev via `FORCE_SITE_NAME`, so the random QA port (8916) still serves DemoDev content
+regardless of what the URL's host/port would otherwise imply. This means D7 (admin site scoping) could
+only be proven in the **negative direction** — the DemoDev-scoped changelist correctly excludes the one
+Bloom-site form. Proving the positive direction (that a Bloom-scoped request sees only Bloom's form)
+would require restarting the server with `FORCE_SITE_NAME=Bloom`, which was not done this run.
+
+**`qa_create_cohort_progress`'s misleading password line, and the login precondition it omits.** The
+command prints "All learner passwords: testpass123," but it does not reset the password of a persona
+that survived an earlier run. Separately, a cohort learner also needs a verified, primary allauth
+`EmailAddress` row before they can log in, because `ACCOUNT_EMAIL_VERIFICATION` is mandatory — this had
+to be set up by hand for `qa-carol.starter@example.com` before C2 could run.
+
+**F1's HTTP 422 is real but unreachable through the UI.** `learner_interface/views.py:1132` genuinely
+returns `status=422` when `required_answers_error` is set, but the client-side required/data-required
+gates fire first, so a browser network-tab check will never show a 422 in normal use — only a crafted
+POST bypassing the client-side validation would reach that branch.
+
+**What was not tested, and why:**
+
+- No test could exercise `get_content_by_path`'s **Form** branch, because no demo content links to a
+  Form via `<c-content-link>`. The Form import in `content_tags.py` is confirmed to load correctly at
+  module level (E1-E2), but the branch that resolves a path to a Form object specifically has no
+  content fixture that reaches it.
+- D7's positive direction (proving a `FORCE_SITE_NAME=Bloom` request sees only Bloom's form in the
+  admin) would require restarting the server with that environment variable set, which was
+  deliberately not done this run.
+
+---
+
+status: ok
+reason: report rendered, 35 tests, 0 bugs documented

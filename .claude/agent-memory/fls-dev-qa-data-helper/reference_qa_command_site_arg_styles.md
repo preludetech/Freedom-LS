@@ -33,6 +33,17 @@ Required-option surprises:
   `Error: Learner '<email>' is not a member of cohort '<name>'.`
   Add the membership first with `CohortMembershipFactory(cohort=..., user=...,
   site=...)`.
+- `qa_reset_learner_progress` REQUIRES `--learner EMAIL`. Bare it exits 2 with
+  `Error: Missing option '--learner'.` (QA plans list it bare.) Site is
+  `--site-name` (default DemoDev); scope with repeatable `--course-slug`.
+- `qa_complete_form` takes POSITIONAL `SITE_NAME` **and** required `--cohort-name`
+  and `--form-slug`. It is **cohort-scoped, not learner-scoped**: there is no
+  `--learner` flag, so it completes the form for EVERY member of the cohort
+  (skipping anyone who already has a `FormProgress` for that form). To use it on
+  one learner you must first put that learner in a cohort of their own.
+  `demodev_quizqa@email.com` has ZERO cohort memberships, so the command cannot
+  reach them at all as written; a nonexistent/empty cohort exits with
+  `No learners found in cohort '<name>'.`
 - `qa_create_large_cohort` takes `--course-slug` (repeatable, OPTIONAL); without
   it the cohort has 25 learners but zero course registrations, so the educator
   course-progress matrix has nothing to show.
