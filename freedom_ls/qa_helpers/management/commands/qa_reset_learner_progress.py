@@ -31,12 +31,8 @@ from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, Topic
-from freedom_ls.form_engine.models import Form
-from freedom_ls.learner_progress.models import (
-    CourseProgress,
-    FormProgress,
-    TopicProgress,
-)
+from freedom_ls.form_engine.models import Form, FormProgress
+from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 
 
 def _get_site(site_name: str) -> Site:

@@ -9,14 +9,12 @@ from django.urls import reverse
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import Form, FormStrategy
-from freedom_ls.learner_progress.factories import (
-    FormProgressFactory,
-    QuestionAnswerFactory,
-)
 
 from .conftest import course_with_form, register_user_for_course
 

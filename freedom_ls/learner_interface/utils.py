@@ -12,7 +12,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.content_engine.models import Course, CoursePart, Topic
-from freedom_ls.form_engine.models import Form, FormQuestion, FormStrategy
+from freedom_ls.form_engine.models import Form, FormProgress
+from freedom_ls.form_engine.queries import completed_form_ids_by_user, quiz_verdict
 from freedom_ls.learner_management.config import config
 from freedom_ls.learner_management.deadline_utils import (
     EffectiveDeadline,
@@ -20,12 +21,7 @@ from freedom_ls.learner_management.deadline_utils import (
 )
 from freedom_ls.learner_management.models import RecommendedCourse
 from freedom_ls.learner_management.queries import is_registered_for_course_expression
-from freedom_ls.learner_progress.models import (
-    CourseProgress,
-    FormProgress,
-    TopicProgress,
-)
-from freedom_ls.learner_progress.queries import completed_form_ids_by_user
+from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
@@ -136,24 +132,6 @@ def unpassed_forms(user: User, course: Course) -> list[UnpassedForm]:
         for entry in forms
         if entry.form.id in sat_form_ids and entry.form.id not in passed_form_ids
     ]
-
-
-def quiz_verdict(form: Form, form_progress: FormProgress) -> bool | None:
-    """Whether a completed attempt passed, or None when there is no verdict to give.
-
-    None covers a form that is not a scored quiz at all, and a quiz whose author
-    left ``quiz_pass_percentage`` unset: the score is real, but nothing in the
-    course says what counts as passing it. Guarding here also keeps
-    ``FormProgress.passed()``, which raises on a null pass mark, from being
-    reached with one.
-
-    Every caller that decides whether a learner may move on reads the verdict
-    from here, so the course index and the form's own start page cannot drift
-    apart on what "passed" means.
-    """
-    if form.strategy != FormStrategy.QUIZ or form.quiz_pass_percentage is None:
-        return None
-    return form_progress.passed()
 
 
 def get_content_status(
@@ -728,15 +706,6 @@ def get_recommended_courses(user: RequestUser) -> QuerySet[RecommendedCourse]:
     if not user.is_authenticated:
         return RecommendedCourse.objects.none()
     return RecommendedCourse.objects.filter(user=user).select_related("collection")
-
-
-def count_form_questions(form: Form) -> int:
-    """Return the total number of questions across all pages of a form.
-
-    Uses a single COUNT query traversing the FK chain FormQuestion.form_page → FormPage.form.
-    Avoids loading all child objects into memory.
-    """
-    return FormQuestion.objects.filter(form_page__form=form).count()
 
 
 def get_form_for_index(

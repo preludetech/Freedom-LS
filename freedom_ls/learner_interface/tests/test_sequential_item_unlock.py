@@ -21,22 +21,15 @@ from freedom_ls.content_engine.models import CourseVisibility, Topic
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.form_engine.models import FormProgress, FormStrategy, QuestionAnswer
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-from freedom_ls.learner_progress.factories import (
-    FormProgressFactory,
-    QuestionAnswerFactory,
-    TopicProgressFactory,
-)
-from freedom_ls.learner_progress.models import (
-    CourseProgress,
-    FormProgress,
-    QuestionAnswer,
-    TopicProgress,
-)
+from freedom_ls.learner_progress.factories import TopicProgressFactory
+from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 
 COURSE_SLUG = "gated-course"
 

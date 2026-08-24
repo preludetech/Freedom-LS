@@ -32,7 +32,7 @@ from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, CoursePart, Topic
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.forms import CohortForm
-from freedom_ls.form_engine.models import Form
+from freedom_ls.form_engine.models import Form, FormProgress
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -47,11 +47,7 @@ from freedom_ls.learner_management.queries import (
     learners_visible_to,
     organisations_accessible_to,
 )
-from freedom_ls.learner_progress.models import (
-    CourseProgress,
-    FormProgress,
-    TopicProgress,
-)
+from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,

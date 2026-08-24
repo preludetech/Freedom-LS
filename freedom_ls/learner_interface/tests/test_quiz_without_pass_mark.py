@@ -13,11 +13,10 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_interface.utils import get_course_index
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-from freedom_ls.learner_progress.factories import FormProgressFactory
 
 from .conftest import course_with_form
 

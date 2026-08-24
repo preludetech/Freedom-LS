@@ -14,10 +14,10 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.learner_progress.factories import FormProgressFactory
 
 
 def _post_data(pairs):

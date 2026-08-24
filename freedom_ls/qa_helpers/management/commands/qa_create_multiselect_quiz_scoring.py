@@ -47,14 +47,18 @@ from freedom_ls.content_engine.models import Course
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import (
     Form,
     FormPage,
+    FormProgress,
     FormQuestion,
     FormStrategy,
+    QuestionAnswer,
     QuestionType,
 )
 from freedom_ls.learner_management.factories import (
@@ -69,16 +73,8 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     LearnerCourseRegistration,
 )
-from freedom_ls.learner_progress.factories import (
-    CourseProgressFactory,
-    FormProgressFactory,
-    QuestionAnswerFactory,
-)
-from freedom_ls.learner_progress.models import (
-    CourseProgress,
-    FormProgress,
-    QuestionAnswer,
-)
+from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_form_question_types import (
     _attach_form_to_course,

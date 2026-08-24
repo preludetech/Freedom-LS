@@ -4,12 +4,15 @@ import factory
 
 from django.utils.text import slugify
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.models import (
     Form,
     FormContent,
     FormPage,
+    FormProgress,
     FormQuestion,
     FormStrategy,
+    QuestionAnswer,
     QuestionOption,
 )
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
@@ -76,3 +79,23 @@ class QuestionOptionFactory(SiteAwareFactory):
     value = "1"
     order = factory.Sequence(lambda n: n)
     correct = False
+
+
+class FormProgressFactory(SiteAwareFactory):
+    """Factory for creating FormProgress instances."""
+
+    class Meta:
+        model = FormProgress
+
+    user = factory.SubFactory(UserFactory)
+    form = factory.SubFactory(FormFactory)
+
+
+class QuestionAnswerFactory(SiteAwareFactory):
+    """Factory for creating QuestionAnswer instances."""
+
+    class Meta:
+        model = QuestionAnswer
+
+    form_progress = factory.SubFactory(FormProgressFactory)
+    question = factory.SubFactory(FormQuestionFactory)

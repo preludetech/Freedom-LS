@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from uuid import UUID
 
-from freedom_ls.form_engine.models import QuestionOption
+from .models import QuestionOption
 
 
 def is_quiz_answer_correct(

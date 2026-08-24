@@ -4,13 +4,7 @@ import factory
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.form_engine.factories import FormFactory, FormQuestionFactory
-from freedom_ls.learner_progress.models import (
-    CourseProgress,
-    FormProgress,
-    QuestionAnswer,
-    TopicProgress,
-)
+from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
 
 
@@ -32,23 +26,3 @@ class TopicProgressFactory(SiteAwareFactory):
 
     user = factory.SubFactory(UserFactory)
     topic = factory.SubFactory(TopicFactory)
-
-
-class FormProgressFactory(SiteAwareFactory):
-    """Factory for creating FormProgress instances."""
-
-    class Meta:
-        model = FormProgress
-
-    user = factory.SubFactory(UserFactory)
-    form = factory.SubFactory(FormFactory)
-
-
-class QuestionAnswerFactory(SiteAwareFactory):
-    """Factory for creating QuestionAnswer instances."""
-
-    class Meta:
-        model = QuestionAnswer
-
-    form_progress = factory.SubFactory(FormProgressFactory)
-    question = factory.SubFactory(FormQuestionFactory)

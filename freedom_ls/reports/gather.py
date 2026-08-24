@@ -24,11 +24,11 @@ from freedom_ls.content_engine.models import Topic
 from freedom_ls.form_engine.models import (
     FREE_TEXT_QUESTION_TYPES,
     Form,
+    FormProgress,
     FormQuestion,
     FormStrategy,
 )
 from freedom_ls.learner_management.models import CohortCourseRegistration
-from freedom_ls.learner_progress.models import FormProgress
 from freedom_ls.reports.at_risk import AT_RISK_RULES, LearnerDetailLike
 from freedom_ls.reports.config import config
 from freedom_ls.reports.indexes import (

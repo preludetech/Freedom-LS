@@ -14,14 +14,12 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormStrategy
-from freedom_ls.learner_progress.factories import (
-    FormProgressFactory,
-    QuestionAnswerFactory,
-)
 
 
 def _quiz_with_free_text(question_type):

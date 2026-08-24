@@ -239,11 +239,11 @@ def course_with_scored_quiz(mock_site_context):
 @pytest.fixture
 def sit_quiz():
     """Factory: complete one attempt at `form`, answering `question` with `option`."""
-    from freedom_ls.learner_progress.factories import (
+    from freedom_ls.form_engine.factories import (
         FormProgressFactory,
         QuestionAnswerFactory,
     )
-    from freedom_ls.learner_progress.models import FormProgress, QuestionAnswer
+    from freedom_ls.form_engine.models import FormProgress, QuestionAnswer
 
     def _sit(user, form, question, option) -> None:
         attempt: FormProgress = FormProgressFactory(user=user, form=form)

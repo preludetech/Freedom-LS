@@ -11,15 +11,13 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-from freedom_ls.learner_progress.factories import (
-    FormProgressFactory,
-    QuestionAnswerFactory,
-)
 
 from .conftest import course_with_form
 

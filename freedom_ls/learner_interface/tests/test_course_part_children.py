@@ -12,7 +12,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, CoursePart
-from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_interface.utils import (
     BLOCKED,
@@ -24,10 +24,7 @@ from freedom_ls.learner_interface.utils import (
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
 )
-from freedom_ls.learner_progress.factories import (
-    FormProgressFactory,
-    TopicProgressFactory,
-)
+from freedom_ls.learner_progress.factories import TopicProgressFactory
 
 
 @pytest.mark.django_db

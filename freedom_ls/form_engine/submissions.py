@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from freedom_ls.form_engine.models import FREE_TEXT_QUESTION_TYPES
+from .models import FREE_TEXT_QUESTION_TYPES
 
 if TYPE_CHECKING:
     from django.http import QueryDict
 
-    from freedom_ls.form_engine.models import FormQuestion
+    from .models import FormQuestion
 
 
 def submitted_option_ids(question: FormQuestion, post_data: QueryDict) -> list[str]:

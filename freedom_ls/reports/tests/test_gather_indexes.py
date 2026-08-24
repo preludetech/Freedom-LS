@@ -25,7 +25,9 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormStrategy, QuestionType
@@ -34,11 +36,7 @@ from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
 )
-from freedom_ls.learner_progress.factories import (
-    FormProgressFactory,
-    QuestionAnswerFactory,
-    TopicProgressFactory,
-)
+from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.reports.gather import (
     _build_course_section,
     _build_learner_detail,

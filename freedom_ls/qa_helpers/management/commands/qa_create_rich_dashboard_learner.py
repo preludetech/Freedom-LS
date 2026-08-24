@@ -27,7 +27,7 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, Topic
-from freedom_ls.form_engine.models import Form
+from freedom_ls.form_engine.models import Form, FormProgress, QuestionAnswer
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     RecommendedCourseFactory,
@@ -37,12 +37,7 @@ from freedom_ls.learner_management.models import (
     RecommendedCourse,
 )
 from freedom_ls.learner_management.utils import calculate_course_progress_percentage
-from freedom_ls.learner_progress.models import (
-    CourseProgress,
-    FormProgress,
-    QuestionAnswer,
-    TopicProgress,
-)
+from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.organisations.utils import get_default_organisation
 
 LEARNER_EMAIL = "demodev_s1@email.com"

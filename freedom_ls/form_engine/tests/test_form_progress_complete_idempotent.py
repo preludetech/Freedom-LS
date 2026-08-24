@@ -3,9 +3,8 @@
 import pytest
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.form_engine.factories import FormFactory
-from freedom_ls.learner_progress.factories import FormProgressFactory
-from freedom_ls.learner_progress.models import FormProgress
+from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
+from freedom_ls.form_engine.models import FormProgress
 
 
 @pytest.mark.django_db

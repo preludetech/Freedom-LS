@@ -3,12 +3,12 @@ from uuid import UUID
 
 import djclick as click
 
+from freedom_ls.form_engine.queries import completed_form_ids_by_user
 from freedom_ls.learner_management.utils import calculate_course_progress_percentage
 from freedom_ls.learner_progress.models import (
     CourseProgress,
     TopicProgress,
 )
-from freedom_ls.learner_progress.queries import completed_form_ids_by_user
 
 # Learners per batch. The command walks every CourseProgress row in the
 # installation, and the completed-item lookups it needs are model instances, not

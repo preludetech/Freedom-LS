@@ -11,13 +11,11 @@ from freedom_ls.form_engine.factories import (
     FormContentFactory,
     FormFactory,
     FormPageFactory,
-    FormQuestionFactory,
-)
-from freedom_ls.learner_progress.factories import (
     FormProgressFactory,
+    FormQuestionFactory,
     QuestionAnswerFactory,
 )
-from freedom_ls.learner_progress.models import FormProgress
+from freedom_ls.form_engine.models import FormProgress
 
 
 @pytest.mark.django_db

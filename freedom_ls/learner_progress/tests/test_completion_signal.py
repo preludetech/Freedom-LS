@@ -16,17 +16,13 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
+from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
-    FormProgressFactory,
     TopicProgressFactory,
 )
-from freedom_ls.learner_progress.models import (
-    CourseProgress,
-    FormProgress,
-    TopicProgress,
-)
+from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 
 
 @pytest.mark.django_db

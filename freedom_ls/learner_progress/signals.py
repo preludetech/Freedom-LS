@@ -3,9 +3,11 @@
 Connected by `LearnerProgressConfig.ready()`. A receiver in a module nothing imports
 is never connected, and fails silently rather than loudly.
 
-The receiver below names its senders, so a new concrete `CourseItemProgress`
-subclass does not inherit the behaviour the way it would from a `save()` override —
-it needs its own `@receiver` line here.
+`TopicProgress` completion is recalculated off `post_save`, naming its sender
+explicitly — a new concrete `CourseItemProgress` subclass does not inherit the
+behaviour the way it would from a `save()` override, it needs its own `@receiver`
+line here. Form completions are recalculated separately, off the
+`form_attempt_completed` signal that `FormProgress.complete()` sends.
 """
 
 from __future__ import annotations
@@ -22,14 +24,14 @@ from freedom_ls.content_engine.models import (
     Topic,
 )
 from freedom_ls.form_engine.models import Form
+from freedom_ls.form_engine.queries import completed_form_ids_by_user
+from freedom_ls.form_engine.signals import form_attempt_completed
 from freedom_ls.learner_management.utils import calculate_course_progress_percentage
 from freedom_ls.learner_progress.models import (
     CourseItemProgress,
     CourseProgress,
-    FormProgress,
     TopicProgress,
 )
-from freedom_ls.learner_progress.queries import completed_form_ids_by_user
 
 
 def update_course_progress_on_completion(
@@ -96,7 +98,6 @@ def update_course_progress_on_completion(
         )
 
 
-@receiver(post_save, sender=FormProgress)
 @receiver(post_save, sender=TopicProgress)
 def recalculate_course_progress_on_save(
     sender: type[CourseItemProgress],
@@ -123,3 +124,13 @@ def recalculate_course_progress_on_save(
 
     update_course_progress_on_completion(instance.user, content_item)
     instance.mark_completion_recorded()
+
+
+@receiver(
+    form_attempt_completed, dispatch_uid="learner_progress.form_attempt_completed"
+)
+def recalculate_course_progress_on_form_attempt(
+    sender: type[models.Model], user: models.Model, form: Form, **kwargs: object
+) -> None:
+    """Recalculate course percentages when a form attempt completes."""
+    update_course_progress_on_completion(user, form)

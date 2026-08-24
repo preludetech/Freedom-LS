@@ -19,7 +19,9 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormStrategy, QuestionType
@@ -30,8 +32,6 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
-    FormProgressFactory,
-    QuestionAnswerFactory,
     TopicProgressFactory,
 )
 from freedom_ls.organisations.factories import OrganisationFactory

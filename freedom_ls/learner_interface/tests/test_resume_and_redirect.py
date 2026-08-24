@@ -17,10 +17,12 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.form_engine.models import FormProgress, FormStrategy
 from freedom_ls.learner_interface.utils import (
     current_entry_status,
     get_course_index,
@@ -28,15 +30,7 @@ from freedom_ls.learner_interface.utils import (
     get_resume_index,
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-from freedom_ls.learner_progress.factories import (
-    FormProgressFactory,
-    QuestionAnswerFactory,
-)
-from freedom_ls.learner_progress.models import (
-    CourseProgress,
-    FormProgress,
-    TopicProgress,
-)
+from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.role_based_permissions.loader import clear_caches
 
 
@@ -632,4 +626,4 @@ def test_get_course_index_unregistered_user_skips_progress_queries(mock_site_con
     assert [c["status"] for c in children] == ["BLOCKED", "BLOCKED"]
     sql = " ".join(q["sql"].lower() for q in ctx.captured_queries)
     assert "learner_progress_topicprogress" not in sql
-    assert "learner_progress_formprogress" not in sql
+    assert "form_engine_formprogress" not in sql

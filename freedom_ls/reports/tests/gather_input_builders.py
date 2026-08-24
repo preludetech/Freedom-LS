@@ -30,12 +30,12 @@ from freedom_ls.content_engine.models import Topic
 from freedom_ls.form_engine.models import (
     Form,
     FormPage,
+    FormProgress,
     FormQuestion,
     FormStrategy,
     QuestionOption,
     QuestionType,
 )
-from freedom_ls.learner_progress.models import FormProgress
 from freedom_ls.reports.indexes import (
     CohortRoster,
     CourseCatalogue,

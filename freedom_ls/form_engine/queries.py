@@ -3,8 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from uuid import UUID
 
-from freedom_ls.form_engine.models import FormStrategy
-from freedom_ls.learner_progress.models import FormProgress
+from .models import Form, FormProgress, FormQuestion, FormStrategy
 
 
 def attempt_completes_form(attempt: FormProgress) -> bool:
@@ -49,3 +48,30 @@ def completed_form_ids_by_user(
         if attempt_completes_form(attempt):
             completed.setdefault(user_id, set()).add(form_id)
     return completed
+
+
+def quiz_verdict(form: Form, form_progress: FormProgress) -> bool | None:
+    """Whether a completed attempt passed, or None when there is no verdict to give.
+
+    None covers a form that is not a scored quiz at all, and a quiz whose author
+    left ``quiz_pass_percentage`` unset: the score is real, but nothing in the
+    course says what counts as passing it. Guarding here also keeps
+    ``FormProgress.passed()``, which raises on a null pass mark, from being
+    reached with one.
+
+    Every caller that decides whether a learner may move on reads the verdict
+    from here, so the course index and the form's own start page cannot drift
+    apart on what "passed" means.
+    """
+    if form.strategy != FormStrategy.QUIZ or form.quiz_pass_percentage is None:
+        return None
+    return form_progress.passed()
+
+
+def count_form_questions(form: Form) -> int:
+    """Return the total number of questions across all pages of a form.
+
+    Uses a single COUNT query traversing the FK chain FormQuestion.form_page → FormPage.form.
+    Avoids loading all child objects into memory.
+    """
+    return FormQuestion.objects.filter(form_page__form=form).count()

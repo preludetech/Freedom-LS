@@ -4,14 +4,12 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.learner_progress.factories import (
-    FormProgressFactory,
-    QuestionAnswerFactory,
-)
-from freedom_ls.learner_progress.models import FormProgress, QuestionAnswer
+from freedom_ls.form_engine.models import FormProgress, QuestionAnswer
 
 
 @pytest.mark.django_db

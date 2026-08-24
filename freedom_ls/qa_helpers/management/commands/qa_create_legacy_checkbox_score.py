@@ -51,17 +51,22 @@ from freedom_ls.content_engine.models import Course, Topic
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import (
     Form,
     FormPage,
+    FormProgress,
     FormQuestion,
     FormStrategy,
+    QuestionAnswer,
     QuestionOption,
     QuestionType,
 )
+from freedom_ls.form_engine.scoring import is_quiz_answer_correct
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -76,17 +81,9 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
-    FormProgressFactory,
-    QuestionAnswerFactory,
     TopicProgressFactory,
 )
-from freedom_ls.learner_progress.models import (
-    CourseProgress,
-    FormProgress,
-    QuestionAnswer,
-    TopicProgress,
-)
-from freedom_ls.learner_progress.scoring import is_quiz_answer_correct
+from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.organisations.utils import get_default_organisation
 
 COURSE_TITLE = "QA Legacy Checkbox Score Course"

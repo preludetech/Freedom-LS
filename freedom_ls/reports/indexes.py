@@ -31,22 +31,20 @@ from freedom_ls.content_engine.models import Topic
 from freedom_ls.form_engine.models import (
     FREE_TEXT_QUESTION_TYPES,
     Form,
+    FormProgress,
     FormQuestion,
     FormStrategy,
+    QuestionAnswer,
     QuestionOption,
 )
+from freedom_ls.form_engine.queries import attempt_completes_form
+from freedom_ls.form_engine.scoring import evaluate_quiz_answers
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
 )
-from freedom_ls.learner_progress.models import (
-    FormProgress,
-    QuestionAnswer,
-    TopicProgress,
-)
-from freedom_ls.learner_progress.queries import attempt_completes_form
-from freedom_ls.learner_progress.scoring import evaluate_quiz_answers
+from freedom_ls.learner_progress.models import TopicProgress
 from freedom_ls.reports.config import config
 from freedom_ls.reports.report_data import ReportTooLargeError
 from freedom_ls.site_aware_models.config import config as site_config

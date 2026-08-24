@@ -16,8 +16,7 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormStrategy
-from freedom_ls.learner_progress.models import FormProgress
+from freedom_ls.form_engine.models import FormProgress, FormStrategy
 
 from .conftest import course_with_form, register_user_for_course
 
