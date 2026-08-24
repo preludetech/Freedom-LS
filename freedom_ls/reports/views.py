@@ -109,13 +109,20 @@ def generate_report_view(
 def download_report_view(request: HttpRequest, object_id: str) -> FileResponse:
     """Stream a ready report's PDF as a private, never-cached attachment."""
     report = get_object_or_404(
-        GeneratedReport.objects.select_related("cohort"), pk=object_id
+        GeneratedReport.objects.select_related("cohort__organisation"), pk=object_id
     )
     if not can_view_cohort(request.user, report.cohort):
         raise PermissionDenied
     if report.status != GeneratedReport.STATUS_READY or not report.file:
         raise Http404
-    filename = f"{slugify(report.cohort.name)}-progress-report.pdf"
+    # allow_unicode=True: the default ASCII-only slugify drops a wholly
+    # non-Latin organisation name entirely, which would silently omit the
+    # organisation from the filename for exactly the tenants whose name
+    # matters most.
+    filename = (
+        f"{slugify(report.cohort.organisation.name, allow_unicode=True)}-"
+        f"{slugify(report.cohort.name, allow_unicode=True)}-progress-report.pdf"
+    )
     try:
         file_handle = report.file.open("rb")
     except FileNotFoundError as exc:

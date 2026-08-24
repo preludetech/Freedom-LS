@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import urllib.parse
+from collections.abc import Callable
+from contextlib import AbstractContextManager
+
 import pytest
 from guardian.shortcuts import assign_perm
 
@@ -16,6 +20,8 @@ from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 pytestmark = pytest.mark.django_db
+
+type AssertNumQueries = Callable[[int], AbstractContextManager[None]]
 
 
 def _generate_url() -> str:
@@ -204,6 +210,83 @@ class TestDownloadReportView:
 
         assert response.status_code == 200
         assert response["Content-Disposition"].startswith("attachment;")
+
+    def test_filename_names_the_organisation_and_the_cohort(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        organisation = OrganisationFactory(name="Northside College")
+        cohort = CohortFactory(name="Cohort A", organisation=organisation)
+        report = GeneratedReportFactory(
+            cohort=cohort, status=GeneratedReport.STATUS_READY
+        )
+        _save_ready_file(report)
+        user = _staff_user_with_cohort_view_permission(cohort)
+        client.force_login(user)
+
+        response = client.get(_download_url(report.pk))
+
+        assert (
+            'filename="northside-college-cohort-a-progress-report.pdf"'
+            in response["Content-Disposition"]
+        )
+
+    def test_non_latin_organisation_name_survives_in_the_filename(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        organisation = OrganisationFactory(name="Опора")
+        cohort = CohortFactory(organisation=organisation)
+        report = GeneratedReportFactory(
+            cohort=cohort, status=GeneratedReport.STATUS_READY
+        )
+        _save_ready_file(report)
+        user = _staff_user_with_cohort_view_permission(cohort)
+        client.force_login(user)
+
+        response = client.get(_download_url(report.pk))
+
+        content_disposition = response["Content-Disposition"]
+        assert "filename*=utf-8''" in content_disposition
+        encoded_filename = content_disposition.split("filename*=utf-8''", 1)[1]
+        assert "опора" in urllib.parse.unquote(encoded_filename)
+
+    def test_slash_in_organisation_name_never_reaches_the_header(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        organisation = OrganisationFactory(name="Path/Slash Org")
+        cohort = CohortFactory(organisation=organisation)
+        report = GeneratedReportFactory(
+            cohort=cohort, status=GeneratedReport.STATUS_READY
+        )
+        _save_ready_file(report)
+        user = _staff_user_with_cohort_view_permission(cohort)
+        client.force_login(user)
+
+        response = client.get(_download_url(report.pk))
+
+        assert "/" not in response["Content-Disposition"]
+
+    def test_download_issues_no_extra_query_for_the_organisation(
+        self,
+        mock_site_context: object,
+        client: object,
+        django_assert_num_queries: AssertNumQueries,
+    ) -> None:
+        organisation = OrganisationFactory(name="Northside College")
+        cohort = CohortFactory(organisation=organisation)
+        report = GeneratedReportFactory(
+            cohort=cohort, status=GeneratedReport.STATUS_READY
+        )
+        _save_ready_file(report)
+        user = _staff_user_with_cohort_view_permission(cohort)
+        client.force_login(user)
+        # can_view_cohort's guardian permission check warms process-level
+        # ContentType/permission caches the first time it runs, independent of
+        # this change -- one throwaway request settles those caches so the
+        # counted request's total reflects only this view's own queries.
+        client.get(_download_url(report.pk))
+
+        with django_assert_num_queries(7):
+            client.get(_download_url(report.pk))
 
     def test_ready_report_response_carries_no_store_cache_header(
         self, mock_site_context: object, client: object
