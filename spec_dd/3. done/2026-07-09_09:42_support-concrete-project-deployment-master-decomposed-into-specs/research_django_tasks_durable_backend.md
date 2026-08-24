@@ -228,6 +228,6 @@ proposes in P0(3)/P1(6) — no change of recommendation needed there.
 - [DEP 0014: Background Workers — Django weblog](https://www.djangoproject.com/weblog/2024/may/29/django-enhancement-proposal-14-background-workers/)
 - Repo files read for grounding: `config/settings_prod.py`, `config/settings_base.py`,
   `freedom_ls/webhooks/events.py`,
-  `spec_dd/2. in progress/support-concrete-project-deployment/idea.md`
+  `spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/idea.md`
 
 status: ok

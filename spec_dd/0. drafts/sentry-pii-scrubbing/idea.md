@@ -14,7 +14,7 @@ Sentry on without shipping raw learner data to a third party.
 
 - The Sentry integration and the `SENTRY_SEND_DEFAULT_PII` env var are introduced by the parent
   external-requirements-config spec — see
-  `spec_dd/2. in progress/support-concrete-project-deployment-external-requirements-config/idea.md`
+  `spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs-external-requirements-config/idea.md`
   and its `research_sentry_django_integration.md`.
 - Related, broader compliance work lives in `spec_dd/0. drafts/01. privacy-compliance/` — this
   spec is narrower: only the Sentry egress path.

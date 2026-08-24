@@ -374,7 +374,7 @@ currently written assuming **exactly one plugin**:
   split lands:
   - `spec_dd/2. in progress/split-claude-plugin/` (this spec itself — its own `todo.md`/`idea.md`
     already reference `fls-claude-plugin` and `/update_claude_plugin_fls_content`)
-  - `spec_dd/2. in progress/support-concrete-project-deployment/idea.md`,
+  - `spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/idea.md`,
     `spec-order.md`, `research_importable_base_settings.md`,
     `research_deployment_scaffolding_references.md` — active spec referencing `/fls:sdd:update_fls`,
     `/fls:sdd:update_template_repo` (note: uses the `/fls:sdd:...` **three-level** form, in contrast to

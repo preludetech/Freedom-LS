@@ -353,7 +353,7 @@ image or env) but **network placement**:
 - [NetFoundry — Security and best practices for health checks](https://netfoundry.io/docs/frontdoor/learn/health-checks/health-checks-best-practices/)
 - [Microsoft Learn — Health Endpoint Monitoring pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/health-endpoint-monitoring)
 - FLS source consulted (this worktree): `config/urls.py` (current non-checking health view,
-  `health_check` at lines 35-37, 52); `spec_dd/2. in progress/support-concrete-project-deployment/idea.md`
+  `health_check` at lines 35-37, 52); `spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/idea.md`
   (P1(5) framing, SSL-redirect gotcha description, P0(1) `SECURE_PROXY_SSL_HEADER` fix)
 
 status: ok

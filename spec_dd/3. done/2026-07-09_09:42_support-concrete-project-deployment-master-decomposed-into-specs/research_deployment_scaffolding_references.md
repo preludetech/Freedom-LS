@@ -481,7 +481,7 @@ container-deploy practice support:
 - GitHub Docs, "Publishing Docker images" (GHCR login-action/metadata-action/build-push-action
   shape) — https://docs.github.com/en/actions/use-cases-and-examples/publishing-packages/publishing-docker-images
 - Idea context (this worktree):
-  `spec_dd/2. in progress/support-concrete-project-deployment/idea.md` (P3 section, "Reusable-template
+  `spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/idea.md` (P3 section, "Reusable-template
   requirement", P0(1)/(2)/(3) settings context, P1(5) health endpoint gotcha, P2(7) broken
   standalone Dockerfile description).
 

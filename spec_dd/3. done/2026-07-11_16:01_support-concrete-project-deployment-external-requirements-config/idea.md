@@ -7,7 +7,7 @@ settings.
 
 ## Context
 
-Supports the parent effort in `spec_dd/2. in progress/support-concrete-project-deployment/`
+Supports the parent effort in `spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/`
 (decomposed into 5 numbered specs — see its `spec-order.md`). That effort establishes an
 importable `freedom_ls/deployment/` home for deployment primitives (Spec 1's
 `settings_defaults.py`) and catalogues every external account a deployment needs in

@@ -12,7 +12,7 @@ than it sounds: FLS itself is never deployed standalone
 is a **concrete project**"), so the shutting point is not FLS's own deploy, it is **the first
 `migrate` any downstream project runs against a database it intends to keep**. Concretely, that
 downstream project already exists in spec form — `ConcreteFlsImplementation`, described in
-`spec_dd/2. in progress/support-concrete-project-deployment/concrete_project_idea.md` — and as of
+`spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/concrete_project_idea.md` — and as of
 that document it has **no deployment artifacts at all**: "no Dockerfile, no production compose file,
 no Caddyfile, no Ansible, no CI/CD workflows" (`concrete_project_idea.md:25-27`). No downstream
 project has run `migrate` against a persisted production database yet, so option (c) is still on the
@@ -97,9 +97,9 @@ supplies its own settings, content, and deployment scaffolding."* There is no "F
 database" to protect independently of a downstream project's database.
 
 **Does a downstream project already exist?** Yes, in spec form: `ConcreteFlsImplementation` (a
-placeholder name — see `spec_dd/2. in progress/support-concrete-project-deployment/idea.md:8-14`
+placeholder name — see `spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/idea.md:8-14`
 for why it's not named after a theme). Its own deployment idea,
-`spec_dd/2. in progress/support-concrete-project-deployment/concrete_project_idea.md`, states
+`spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/concrete_project_idea.md`, states
 plainly: *"this repo has no deployment artifacts at all — no Dockerfile, no production compose file,
 no Caddyfile, no Ansible, no CI/CD workflows (only `.github/dependabot.yml`)"*
 (`concrete_project_idea.md:25-27`), and the whole idea is about **authoring** those artifacts for the
@@ -251,7 +251,7 @@ becomes a live production concern, and only ordinary forward migrations (option 
 Ranked by how likely each is to actually bite:
 
 1. **The window closes on someone else's timeline, not this idea's.** `ConcreteFlsImplementation`'s
-   own deployment work (`spec_dd/2. in progress/support-concrete-project-deployment/`) is
+   own deployment work (`spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/`) is
    in-progress, in parallel with this idea. If it ships a real `migrate` before this idea executes its
    reset step, option (c) silently becomes wrong. Re-check §2 immediately before running the reset,
    not at spec-write time — this is the single highest-risk item.

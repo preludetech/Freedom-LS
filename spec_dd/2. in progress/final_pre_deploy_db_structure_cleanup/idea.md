@@ -12,7 +12,7 @@ make while no rows exist.
 deployment is a *concrete project* (`docs/product/deployment.md:110-116`). So the point of no return
 is **the first `migrate` any downstream project runs against a database it intends to keep**. The one
 downstream project that exists, `ConcreteFlsImplementation`, currently has no deployment artifacts at
-all — no Dockerfile, no compose file, no CI (`spec_dd/2. in progress/support-concrete-project-deployment/concrete_project_idea.md:25-27`).
+all — no Dockerfile, no compose file, no CI (`spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/concrete_project_idea.md:25-27`).
 The window is open. It will not announce when it shuts.
 
 ---

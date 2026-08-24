@@ -110,7 +110,7 @@ running the processes is a template-repo/infra deployment-scaffolding concern, n
 - Mirror the same `.env.example` additions from (a) into the template repo's copy once they
   land here, via the existing `/fls:sdd:update_template_repo` propagation path — not new
   mechanism, just the standard sync this project already uses for settings drift
-  (see `spec_dd/2. in progress/support-concrete-project-deployment/idea.md:34-53`).
+  (see `spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/idea.md:34-53`).
 
 **(c) Infra-repo/inventory actions (not this repo, FYI only):**
 - Record the agreed `pg_container_name` per stack in `group_vars/{staging,prod}/vars.yml`

@@ -86,7 +86,7 @@ semantics): https://docs.djangoproject.com/en/6.0/topics/checks/ ·
 · in-repo precedent: `freedom_ls/course_access/checks.py`, `freedom_ls/base/app_settings.py`,
 `spec_dd/3. done/2026-08-24_06:31_fls-test-portability-part-2/research_django_system_checks.md` · CI
 precedent: `.github/workflows/security.yml:61-86` · deploy-pipeline precedent (one-off `migrate`,
-not in entrypoint): `spec_dd/2. in progress/support-concrete-project-deployment/research_deployment_scaffolding_references.md`
+not in entrypoint): `spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/research_deployment_scaffolding_references.md`
 ("One-off migrations vs migrate-on-entrypoint" section).
 
 ---
@@ -171,7 +171,7 @@ Sources: Sentry — Naming Releases: https://docs.sentry.io/product/releases/nam
 Sentry Python SDK — Releases config: https://docs.sentry.io/platforms/python/configuration/releases/
 · `docker/metadata-action` (`type=sha` default `prefix=sha-`, `format=short`):
 https://github.com/docker/metadata-action · existing in-repo GHCR CI research:
-`spec_dd/2. in progress/support-concrete-project-deployment/research_deployment_scaffolding_references.md`
+`spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/research_deployment_scaffolding_references.md`
 ("GHCR SHA-tagged build-and-push CI" section).
 
 Note: baking `SENTRY_RELEASE` as an `ENV` means it's visible in `docker inspect`/`docker history`
@@ -209,7 +209,7 @@ solves the stated problem — "regressions can't be tied to a deploy" — becaus
 image carries the same release tag, letting Sentry's UI group/filter/regress by release without any
 `sentry-cli` step. `sentry-cli`/`action-release` (commit association specifically) should be
 **documented as a future step**, not implemented now — a one- or two-line note in
-`spec_dd/2. in progress/support-concrete-project-deployment/third-party-services.md`'s §3 Sentry
+`spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/third-party-services.md`'s §3 Sentry
 section (or wherever the eventual spec lands) is enough; do not add a `SENTRY_AUTH_TOKEN` var,
 CI step, or Sentry-GitHub-integration setup instructions in this V1.
 
