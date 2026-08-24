@@ -34,8 +34,9 @@ Where the generic resource uses `myapp` / `articles` / `subscriptions`, FLS's co
 - **`playwright`** — browser-dependent; the browser set a downstream excludes. Lives under per-app `tests/playwright/` dirs. See `Skill(fls-dev:playwright-tests)`.
 - **`fls_internal`** — only valid under FLS's own settings, theme, branding, or demo content. Reach for it when a test's assertion is inherently tied to FLS's own repo state (e.g. a shipped `demo_content/` file excluded from the packaged distribution) — not merely because the test asserts an FLS-default value it could instead assert as a contract.
 - **`ci_only`** — existing slow / real-time tests, excluded from FLS's own default run too.
+- **`weasyprint`** — tests that invoke WeasyPrint and need Pango/cairo/gdk-pixbuf/HarfBuzz present. Excluded from FLS's own default run too, since those system libraries are not assumed locally.
 
-FLS's own `uv run pytest` runs everything except `ci_only` — it must exercise `fls_internal` and `playwright` tests against FLS's own settings, since that *is* FLS regression testing. A concrete downstream project instead runs:
+FLS's own `uv run pytest` runs everything except `ci_only` and `weasyprint` — the two the `addopts` `-m` in `pyproject.toml` deselects. It must exercise `fls_internal` and `playwright` tests against FLS's own settings, since that *is* FLS regression testing. To exercise the WeasyPrint tests, opt back in explicitly with `-m weasyprint` on a machine that has the system libraries. A concrete downstream project instead runs:
 
 ```bash
 uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint"

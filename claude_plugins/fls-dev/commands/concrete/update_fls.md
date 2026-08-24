@@ -72,10 +72,10 @@ uv sync
 
 ## 3e. Apply the flagged integration steps
 
-Run only the steps the notes call for (or that prose inference indicated, for specs without notes):
+Run only the steps the notes call for (or that prose inference indicated, for specs without notes). **Apply settings before migrations** — `migrate` and `makemigrations` run Django's full system-check set, so a spec that adds both a boot-enforced setting and a migration aborts on that setting's check if the migration runs first:
 
-- **`requires_migrations`** → `uv run python manage.py makemigrations && uv run python manage.py migrate`
 - **`requires_settings_change`** → review and apply the listed `changed_settings` to the concrete project's `config/`.
+- **`requires_migrations`** → `uv run python manage.py makemigrations && uv run python manage.py migrate`
 - **`requires_package_upgrade`** → apply the listed `changed_packages` (already partly covered by `uv sync`; reconcile versions if the notes pin specific ones).
 - **`requires_npm_install`** → add the listed `changed_npm_packages` to the concrete project's own `package.json`, then run `npm install`. Unlike `uv sync`, this is **not** auto-resolved from the submodule — the concrete project keeps a standalone `package.json`, so the new deps must be mirrored in by hand. Commit the updated `package-lock.json` alongside the integration. Run this **before** any Tailwind rebuild so new icon sets/packages are present when the bundle is built.
 - **`requires_tailwind_rebuild`** → `npm run tailwind_build`.
@@ -109,17 +109,31 @@ A non-zero result here means the integration left the migration state inconsiste
 
 ## 3i. Verify
 
-Before running the test suite, confirm the concrete project has a `tests/` file that imports `freedom_ls.contrib.conformance` — without one, the pytest run below collects zero conformance probes and proves nothing about the project's wiring, silently rather than as a collection error. If no such file exists, add one from the opt-in snippet below, note that it was added, and continue:
+Before running the test suite, confirm the concrete project has a `tests/` file that imports `freedom_ls.contrib.conformance`. If no such file exists, write one with **exactly** the contents below, note that it was added, and continue:
 
+```python
+# tests/test_fls_conformance.py
+from freedom_ls.contrib.conformance import *  # noqa: F401,F403
 ```
-from freedom_ls.contrib.conformance import *          # simple
-# or, collision-safe (recommended):
+
+Write it verbatim — customise nothing. In particular, **never** add a `conformance.drop(...)` call: dropping a probe is a downstream decision about a route that project has actually customised, and it belongs in the project's own `conftest.py`, not in a file this command generates.
+
+If the project already has a conformance file but wants to avoid shadowing same-named tests of its own, the collision-safe form binds all six probes explicitly:
+
+```python
 from freedom_ls.contrib import conformance
-test_fls_namespace_reverses = conformance.test_fls_namespace_reverses
 
-# Prune an internal-tier route you have customised while keeping its app:
-conformance.drop("learner_interface:courses")
+test_fls_namespace_reverses = conformance.test_fls_namespace_reverses
+test_reference_url_reverses = conformance.test_reference_url_reverses
+test_configured_backend_instantiates = conformance.test_configured_backend_instantiates
+test_active_theme_resolves = conformance.test_active_theme_resolves
+test_active_icon_set_resolves = conformance.test_active_icon_set_resolves
+test_migration_state_consistent = conformance.test_migration_state_consistent
 ```
+
+Binding a subset is a silent false green — the probes you leave out simply never run.
+
+**Why add the file even though the probes may already be running.** A concrete project that falls back to recursive collection over the vendored `submodules/Freedom-LS` tree already collects `freedom_ls/contrib/conformance/test_*.py` directly, so the suite runs whether or not this file exists. That is incidental, not a contract: it depends on collection scope the project can change at any time, and if it later points `testpaths` at its own `tests/` dir the conformance signal disappears with no error. An explicit opt-in file makes the conformance contract intentional, keeps it stable under either collection scope, and gives the probes node IDs under the project's own `tests/` that the operator can point at.
 
 Stop and report only if the file cannot be written.
 
@@ -182,8 +196,8 @@ for spec in pending_completed_specs (chronological):
     migrate --check                      # fail early on dirty migration state
     move submodule pointer to the commit that completed <spec>
     uv sync                              # pick up new deps
+    if notes.requires_settings_change:   apply notes.changed_settings   # before migrate: it runs system checks
     if notes.requires_migrations:        makemigrations && migrate
-    if notes.requires_settings_change:   apply notes.changed_settings
     if notes.requires_package_upgrade:   reconcile notes.changed_packages
     if notes.requires_npm_install:       mirror notes.changed_npm_packages into package.json && npm install
     if notes.requires_tailwind_rebuild:  npm run tailwind_build
