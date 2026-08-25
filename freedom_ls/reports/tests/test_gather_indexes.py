@@ -43,7 +43,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.organisations.validators import MAX_BYTES
+from freedom_ls.organisations.validators import MAX_BYTES, MAX_DIMENSION
 from freedom_ls.reports.gather import (
     _build_course_section,
     _build_learner_detail,
@@ -89,6 +89,13 @@ def _png_bytes(width: int = 20, height: int = 20) -> bytes:
 def _jpeg_bytes(width: int = 20, height: int = 20) -> bytes:
     buf = io.BytesIO()
     Image.new("RGB", (width, height), color=(30, 90, 200)).save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+def _gif_bytes(width: int = 20, height: int = 20) -> bytes:
+    """A decodable image in a format the logo allowlist does not carry."""
+    buf = io.BytesIO()
+    Image.new("P", (width, height), color=3).save(buf, format="GIF")
     return buf.getvalue()
 
 
@@ -746,7 +753,9 @@ class TestLoadOrganisationLogoDataUri:
 
         assert load_organisation_logo_data_uri(organisation) is None
 
-    def test_a_decompression_bomb_returns_none(self, mock_site_context, monkeypatch):
+    def test_a_bomb_in_the_error_band_returns_none(
+        self, mock_site_context, monkeypatch
+    ):
         # Image.open() runs its bomb check against header dimensions, so a
         # small image plus a small limit reproduces the bomb case without
         # storing an actual enormous file, mirroring
@@ -755,6 +764,39 @@ class TestLoadOrganisationLogoDataUri:
         monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)
         organisation = OrganisationFactory()
         organisation.logo.save("logo.png", ContentFile(_png_bytes(20, 20)))
+
+        assert load_organisation_logo_data_uri(organisation) is None
+
+    def test_a_bomb_in_the_warning_band_returns_none(
+        self, mock_site_context, monkeypatch
+    ):
+        """Between MAX_IMAGE_PIXELS and twice it, Pillow only warns.
+
+        A warning does nothing in production unless it is escalated, so this
+        band is the one an unvalidated upload actually reaches: the file
+        decodes, gets embedded, and WeasyPrint allocates the full bitmap in
+        the report worker.
+        """
+        monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)
+        organisation = OrganisationFactory()
+        # 144px: over the ceiling, under twice it.
+        organisation.logo.save("logo.png", ContentFile(_png_bytes(12, 12)))
+
+        assert load_organisation_logo_data_uri(organisation) is None
+
+    def test_dimensions_over_the_cap_return_none(self, mock_site_context):
+        organisation = OrganisationFactory()
+        organisation.logo.save(
+            "logo.png", ContentFile(_png_bytes(MAX_DIMENSION + 1, 10))
+        )
+
+        assert load_organisation_logo_data_uri(organisation) is None
+
+    def test_a_decodable_but_disallowed_format_returns_none(self, mock_site_context):
+        organisation = OrganisationFactory()
+        # A real GIF: Pillow decodes it happily, but it is not one of the
+        # formats the upload path allows, so it must not be embedded either.
+        organisation.logo.save("logo.gif", ContentFile(_gif_bytes()))
 
         assert load_organisation_logo_data_uri(organisation) is None
 

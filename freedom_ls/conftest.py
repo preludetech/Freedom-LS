@@ -41,6 +41,24 @@ def _isolate_media_root(settings, tmp_path):
     settings.MEDIA_ROOT = tmp_path
 
 
+@pytest.fixture
+def pathless_default_storage(tmp_path, settings) -> None:
+    """Point STORAGES["default"] at a storage double whose `.path()` raises.
+
+    Not autouse: most tests need the ordinary default storage. This one
+    exists to prove that a specific code path never calls `.path()`, whatever
+    backend is configured -- so it is opted into only by the tests that make
+    that claim.
+    """
+    settings.STORAGES = {
+        **settings.STORAGES,
+        "default": {
+            "BACKEND": "freedom_ls.tests.storages.PathlessFileSystemStorage",
+            "OPTIONS": {"location": str(tmp_path)},
+        },
+    }
+
+
 @pytest.fixture(autouse=True)
 def _disable_preview_overrides(settings):
     """Force both course-access preview overrides off by default.

@@ -18,15 +18,13 @@ from __future__ import annotations
 
 import base64
 import dataclasses
-import io
 from collections import defaultdict
 from datetime import datetime
 from typing import TypedDict, cast
 from uuid import UUID
 
-from PIL import Image
-
 from django.contrib.sites.models import Site
+from django.core.exceptions import ValidationError
 from django.db.models import Count, F, Window
 from django.db.models.functions import RowNumber
 
@@ -50,7 +48,7 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_progress.models import TopicProgress
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.organisations.validators import LOGO_MIME_TYPES, MAX_BYTES
+from freedom_ls.organisations.validators import check_logo_safety
 from freedom_ls.reports.config import config
 from freedom_ls.reports.report_data import ReportTooLargeError
 from freedom_ls.site_aware_models.config import config as site_config
@@ -592,8 +590,11 @@ def load_organisation_logo_data_uri(organisation: Organisation) -> str | None:
     misconfiguration, which should be loud, a vanished, corrupt, oversized or
     bomb-shaped logo degrades to the wordmark and the report still generates.
     Field validators only run under `full_clean()`, so an unvalidated file can
-    reach storage regardless of what the upload form would have rejected; the
-    checks below are the read path re-applying those same checks itself.
+    reach storage regardless of what the upload form would have rejected;
+    `check_logo_safety` is the upload path's own safety checks, re-run here on
+    the stored bytes. Its minimum-dimension rule is deliberately not part of
+    that shared set -- an undersized logo renders, so refusing one on read
+    would swap a working image for the wordmark over a quality rule.
     """
     logo_name = organisation.logo.name
     if not logo_name:
@@ -613,31 +614,13 @@ def load_organisation_logo_data_uri(organisation: Organisation) -> str | None:
         # instead of being mistaken for "no logo".
         return None
 
-    if len(raw) > MAX_BYTES:
-        return None
-
     try:
-        # verify() decodes the whole stream rather than only the header, and
-        # it destroys the object it is called on -- hence reopening for the
-        # format below. A header can parse cleanly over a truncated or
-        # otherwise corrupt body, and that file would then be embedded as an
-        # image WeasyPrint silently fails to draw, leaving an empty brand slot
-        # rather than the wordmark that is supposed to stand in for it.
-        Image.open(io.BytesIO(raw)).verify()
-        image_format = Image.open(io.BytesIO(raw)).format
-    except (OSError, Image.UnidentifiedImageError, Image.DecompressionBombError):
-        # DecompressionBombError subclasses Exception, not OSError, so it has
-        # to be named here explicitly or a bomb-shaped upload that slipped
-        # past upload-time validation would crash the whole render instead of
-        # falling back.
-        return None
-
-    mime_type = LOGO_MIME_TYPES.get(image_format or "")
-    if mime_type is None:
+        logo = check_logo_safety(raw)
+    except ValidationError:
         return None
 
     encoded = base64.b64encode(raw).decode("ascii")
-    return f"data:{mime_type};base64,{encoded}"
+    return f"data:{logo.mime_type};base64,{encoded}"
 
 
 def resolve_site_name(site_id: int) -> str:

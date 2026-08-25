@@ -118,9 +118,9 @@ def test_rejected_file_leaves_handle_rewound():
 def test_logo_mime_types_cover_exactly_the_allowed_formats():
     """LOGO_MIME_TYPES and ALLOWED_FORMATS must name the same formats.
 
-    A reader of the report pipeline emits LOGO_MIME_TYPES; the upload path
-    here enforces ALLOWED_FORMATS. They cannot import from each other, so
-    nothing but this assertion stops the two lists drifting apart the first
-    time a format is added or dropped.
+    check_logo_safety gates on both: the allowlist decides whether a format is
+    permitted, the map decides what to label the bytes. A format added to one
+    and not the other is silently unusable rather than an error, so nothing but
+    this assertion catches the drift.
     """
     assert set(LOGO_MIME_TYPES) == ALLOWED_FORMATS

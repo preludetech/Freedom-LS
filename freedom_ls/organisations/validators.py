@@ -10,6 +10,8 @@ asserts the real format, which is what catches that case.
 
 from __future__ import annotations
 
+import dataclasses
+import io
 import warnings
 
 from PIL import Image
@@ -37,22 +39,34 @@ LOGO_MIME_TYPES: dict[str, str] = {
 validate_organisation_logo_extension = FileExtensionValidator(ALLOWED_EXTENSIONS)
 
 
-def validate_organisation_logo(file: UploadedFile) -> None:
-    """Reject anything that is not a genuine, safely-sized PNG/JPEG/WebP.
+@dataclasses.dataclass(frozen=True)
+class SafeLogo:
+    """A logo that cleared every safety check, and what decoding it found."""
 
-    EXIF is deliberately not stripped. Stripping means re-encoding, and
-    re-encoding a transparent WebP risks a visible regression in exactly the
-    asset class this validator targets. The usual motivation for stripping —
-    location metadata in personal photos — does not apply to an
-    admin-uploaded corporate logo.
+    mime_type: str
+    width: int
+    height: int
+
+
+def check_logo_safety(raw: bytes) -> SafeLogo:
+    """Decode ``raw`` and return what it is, or raise ValidationError saying why not.
+
+    The safety half of logo validation, kept in one place because it has two
+    callers that must not drift: the upload validator here, and the report
+    pipeline reading an already-stored logo back out. Field validators only run
+    under ``full_clean()``, so an unvalidated file can reach storage regardless
+    of what the upload form would have rejected — which makes the read side a
+    second enforcement point rather than a formality.
+
+    Size, decodability, both decompression-bomb bands and the format allowlist
+    are all safety: getting them wrong means an unrenderable or memory-hostile
+    file reaching the renderer. The minimum-dimension rule is not — a small
+    logo renders fine, it is merely poor — so it stays with the upload path,
+    which is the only place worth refusing it.
     """
-    # size is None only for a File that was never actually uploaded (not a
-    # real case for an ImageField's UploadedFile); 0 makes that fall through
-    # to the byte-level check below, which rejects it as unreadable.
-    size = file.size or 0
-    if size > MAX_BYTES:
+    if len(raw) > MAX_BYTES:
         raise ValidationError(
-            f"Image file is too large ({size / 1024 / 1024:.1f}MB; maximum is 2MB)."
+            f"Image file is too large ({len(raw) / 1024 / 1024:.1f}MB; maximum is 2MB)."
         )
 
     with warnings.catch_warnings():
@@ -65,20 +79,22 @@ def validate_organisation_logo(file: UploadedFile) -> None:
         # MAX_IMAGE_PIXELS stays at Pillow's default — never None.
         warnings.simplefilter("error", Image.DecompressionBombWarning)
         try:
-            file.seek(0)
-            Image.open(file).verify()  # destroys the object it is called on
-            file.seek(0)
-            img = Image.open(file)  # re-open on a rewound handle
+            # verify() decodes the whole stream rather than only the header,
+            # and it destroys the object it is called on — hence the second
+            # open below. A header can parse cleanly over a truncated body,
+            # and that file would then be embedded as an image the renderer
+            # silently fails to draw.
+            Image.open(io.BytesIO(raw)).verify()
+            img = Image.open(io.BytesIO(raw))
             width, height = img.size
             image_format = img.format
         except (Image.DecompressionBombWarning, Image.DecompressionBombError) as err:
             raise ValidationError("Image is too large to process safely.") from err
         except (OSError, Image.UnidentifiedImageError) as err:
             raise ValidationError("File is not a readable image.") from err
-        finally:
-            file.seek(0)
 
-    if image_format not in ALLOWED_FORMATS:
+    mime_type = LOGO_MIME_TYPES.get(image_format or "")
+    if image_format not in ALLOWED_FORMATS or mime_type is None:
         raise ValidationError(
             f"Image format {image_format} is not supported. Use PNG, JPEG or WebP."
         )
@@ -86,7 +102,38 @@ def validate_organisation_logo(file: UploadedFile) -> None:
         raise ValidationError(
             f"Image is too large ({width}x{height}px; maximum is 4000x4000px)."
         )
-    if width < MIN_WIDTH or height < MIN_HEIGHT:
+    return SafeLogo(mime_type=mime_type, width=width, height=height)
+
+
+def validate_organisation_logo(file: UploadedFile) -> None:
+    """Reject anything that is not a genuine, safely-sized PNG/JPEG/WebP.
+
+    EXIF is deliberately not stripped. Stripping means re-encoding, and
+    re-encoding a transparent WebP risks a visible regression in exactly the
+    asset class this validator targets. The usual motivation for stripping —
+    location metadata in personal photos — does not apply to an
+    admin-uploaded corporate logo.
+    """
+    # size is None only for a File that was never actually uploaded (not a
+    # real case for an ImageField's UploadedFile); 0 makes that fall through
+    # to the byte-level check below, which rejects it as unreadable. Checked
+    # before reading so an enormous upload is never pulled into memory.
+    size = file.size or 0
+    if size > MAX_BYTES:
         raise ValidationError(
-            f"Image is too small ({width}x{height}px; minimum is 64x32px)."
+            f"Image file is too large ({size / 1024 / 1024:.1f}MB; maximum is 2MB)."
+        )
+
+    try:
+        file.seek(0)
+        # Bounded by the cap plus one, so an unknown-size handle still cannot
+        # read unboundedly: one byte over is all check_logo_safety needs to
+        # reject it.
+        logo = check_logo_safety(file.read(MAX_BYTES + 1))
+    finally:
+        file.seek(0)
+
+    if logo.width < MIN_WIDTH or logo.height < MIN_HEIGHT:
+        raise ValidationError(
+            f"Image is too small ({logo.width}x{logo.height}px; minimum is 64x32px)."
         )
