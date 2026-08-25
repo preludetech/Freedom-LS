@@ -64,6 +64,7 @@ class TopicProgressFactory(SiteAwareFactory):
         ContentCollectionItemFactory,
         collection_object=factory.SelfAttribute("..course_progress.course"),
         child_object=factory.SelfAttribute("..topic"),
+        site=factory.SelfAttribute("..site"),
     )
 
 
@@ -93,9 +94,11 @@ class CourseFormAttemptFactory(SiteAwareFactory):
         FormProgressFactory,
         form=factory.SelfAttribute("..form"),
         user=factory.SelfAttribute("..course_progress.learner.user"),
+        site=factory.SelfAttribute("..site"),
     )
     collection_item = factory.SubFactory(
         ContentCollectionItemFactory,
         collection_object=factory.SelfAttribute("..course_progress.course"),
         child_object=factory.SelfAttribute("..form"),
+        site=factory.SelfAttribute("..site"),
     )
