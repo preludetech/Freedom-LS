@@ -45,18 +45,24 @@ LONG_NAME = (
 NON_LATIN_NAME = "Восточно-Европейская Академия Непрерывного Образования"
 
 
-def _ensure_organisation(site: Site, name: str) -> tuple[Organisation, bool]:
+def _ensure_organisation(
+    site: Site, name: str, slug_base: str | None = None
+) -> tuple[Organisation, bool]:
+    """Get-or-create an Organisation on ``site``, slugged from its name.
+
+    ``slug_base`` overrides the derived base slug. It exists for names that
+    slugify to the empty string -- a punctuation-only name such as "---" --
+    because an empty slug is not addressable by the ``--organisation-slug``
+    options the other QA commands take.
+    """
+    # allow_unicode=True: the default slugify() strips non-Latin
+    # characters entirely, which would leave NON_LATIN_NAME with an
+    # empty base slug. Harmless for the existing ASCII names above.
+    base = slug_base if slug_base is not None else slugify(name, allow_unicode=True)
     organisation, created = Organisation.objects.get_or_create(
         site=site,
         name=name,
-        # allow_unicode=True: the default slugify() strips non-Latin
-        # characters entirely, which would leave NON_LATIN_NAME with an
-        # empty base slug. Harmless for the existing ASCII names above.
-        defaults={
-            "slug": get_unique_slug(
-                Organisation, site, slugify(name, allow_unicode=True)
-            )
-        },
+        defaults={"slug": get_unique_slug(Organisation, site, base)},
     )
     return organisation, created
 
