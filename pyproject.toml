@@ -94,8 +94,11 @@ omit = [
     "manage.py",
     # qa_helpers is developer tooling: management commands that build fixtures
     # in a dev database for manual QA, plus the toast preview views. None of it
-    # runs in production and none of it has tests, so counting it measures how
-    # much QA scaffolding exists rather than how well the product is covered.
+    # runs in production, so counting it measures how much QA scaffolding
+    # exists rather than how well the product is covered. A few of the
+    # commands do carry tests -- the destructive ones, where a mis-scoped
+    # delete silently empties somebody's dataset -- but those are written where
+    # the risk is, not to move this number.
     "*/qa_helpers/*",
 ]
 

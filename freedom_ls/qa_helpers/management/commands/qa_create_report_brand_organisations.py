@@ -31,11 +31,8 @@ Idempotent. Usage:
     uv run python manage.py qa_create_report_brand_organisations DemoDev
 """
 
-from pathlib import Path
-
 import djclick as click
 
-from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.files import File
 from django.core.files.base import ContentFile
@@ -74,11 +71,26 @@ def _describe(organisation: Organisation, created: bool, note: str) -> None:
     )
 
 
-def _logo_absolute_path(organisation: Organisation) -> Path:
-    """Where the logo actually sits on disk, for QA to delete or inspect."""
+def describe_logo_location(organisation: Organisation) -> tuple[str, bool]:
+    """Where the logo sits and whether it is still there, for QA to delete or inspect.
+
+    Existence comes from the storage API, never from MEDIA_ROOT: Storage.path()
+    raises NotImplementedError by default and S3Storage does not override it,
+    so a MEDIA_ROOT-relative path names a file that is not there on any backend
+    but local disk -- and would report a logo that IS present as missing,
+    sending QA to delete something that was never on their machine.
+    """
     # .name is typed str | None, but is only None on an empty FieldFile, and
     # every caller here has just checked the field is set.
-    return Path(settings.MEDIA_ROOT) / (organisation.logo.name or "")
+    name = organisation.logo.name or ""
+    storage = organisation.logo.storage
+    try:
+        location = storage.path(name)
+    except NotImplementedError:
+        # No local file to hand QA, so name the stored object instead of
+        # inventing a path nothing will find.
+        location = name
+    return location, storage.exists(name)
 
 
 @click.command()
@@ -115,11 +127,11 @@ def command(site_name: str) -> None:
     if not vanish.logo:
         with LOGO_PATH.open("rb") as fh:
             vanish.logo.save(LOGO_PATH.name, File(fh), save=True)
-    path = _logo_absolute_path(vanish)
+    location, exists = describe_logo_location(vanish)
     _describe(
         vanish,
         created,
-        f"logo at {path} (exists={path.exists()}) -- QA deletes this file by hand",
+        f"logo at {location} (exists={exists}) -- QA deletes this file by hand",
     )
 
     bad, created = _ensure_organisation(site, BAD_LOGO_NAME)
@@ -127,9 +139,9 @@ def command(site_name: str) -> None:
         # FieldFile.save() -> Model.save(), which never calls full_clean(), so
         # validate_organisation_logo does not run. Bypassing it is the point.
         bad.logo.save(BAD_LOGO_FILENAME, ContentFile(BAD_LOGO_BYTES), save=True)
-    path = _logo_absolute_path(bad)
+    location, exists = describe_logo_location(bad)
     _describe(
         bad,
         created,
-        f"NOT-an-image logo at {path} (exists={path.exists()}) -- validators bypassed",
+        f"NOT-an-image logo at {location} (exists={exists}) -- validators bypassed",
     )
