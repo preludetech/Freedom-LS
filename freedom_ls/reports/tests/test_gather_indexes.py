@@ -26,10 +26,10 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
+from freedom_ls.content_engine.models import Course
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
-    FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
@@ -39,15 +39,17 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
 )
-from freedom_ls.learner_progress.factories import TopicProgressFactory
+from freedom_ls.learner_management.models import CohortCourseRegistration
+from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.validators import MAX_BYTES, MAX_DIMENSION
 from freedom_ls.reports.gather import (
     _build_course_section,
     _build_learner_detail,
     build_confusions_by_quiz,
-    build_wrong_answers_by_user_quiz,
+    build_wrong_answers_by_learner_quiz,
     tally_quiz_answers,
 )
 from freedom_ls.reports.indexes import (
@@ -67,6 +69,12 @@ from freedom_ls.reports.indexes import (
     load_selected_options_by_pair,
     load_topic_progress_rows,
     resolve_site_name,
+)
+from freedom_ls.reports.tests.conftest import (
+    cohort_progress_record,
+    form_progress,
+    individual_progress_record,
+    topic_progress,
 )
 from freedom_ls.tests.images import break_png_chunk_crc
 
@@ -97,6 +105,35 @@ def _gif_bytes(width: int = 20, height: int = 20) -> bytes:
     buf = io.BytesIO()
     Image.new("P", (width, height), color=3).save(buf, format="GIF")
     return buf.getvalue()
+
+
+def _cohort_registered_for(
+    course: Course, *, learner_count: int = 1
+) -> tuple[CohortCourseRegistration, list[CourseProgress]]:
+    """A cohort registered for `course`, and one record per member.
+
+    Every loader below reads through the record, so a member with no record
+    has nothing for them to find.
+    """
+    cohort = CohortFactory()
+    registration: CohortCourseRegistration = CohortCourseRegistrationFactory(
+        cohort=cohort, collection=course
+    )
+    records = []
+    for _ in range(learner_count):
+        user = UserFactory()
+        CohortMembershipFactory(cohort=cohort, learner__user=user)
+        records.append(cohort_progress_record(registration, user))
+    return registration, records
+
+
+def _second_record_for(record: CourseProgress) -> CourseProgress:
+    """The same learner's own registration for the same course, and its record."""
+    return individual_progress_record(
+        LearnerCourseRegistrationFactory(
+            learner=record.learner, collection=record.course
+        )
+    )
 
 
 class TestLoadRegistrations:
@@ -154,23 +191,41 @@ class TestLoadRegistrations:
 class TestLoadRoster:
     def test_learners_are_ordered_by_surname(self, mock_site_context):
         cohort = CohortFactory()
-        zeta = UserFactory(first_name="Ada", last_name="Zeta")
-        alpha = UserFactory(first_name="Bo", last_name="Alpha")
-        CohortMembershipFactory(cohort=cohort, learner__user=zeta)
-        CohortMembershipFactory(cohort=cohort, learner__user=alpha)
+        zeta = CohortMembershipFactory(
+            cohort=cohort, learner__user=UserFactory(first_name="Ada", last_name="Zeta")
+        )
+        alpha = CohortMembershipFactory(
+            cohort=cohort, learner__user=UserFactory(first_name="Bo", last_name="Alpha")
+        )
 
         roster = load_roster(cohort, mock_site_context.pk)
 
-        assert roster.learner_ids == [alpha.id, zeta.id]
+        assert roster.learner_ids == [alpha.learner_id, zeta.learner_id]
+
+    def test_the_roster_is_keyed_on_the_learner_and_carries_the_user(
+        self, mock_site_context
+    ):
+        """The key moved to the Learner; the value is still what the report prints."""
+        cohort = CohortFactory()
+        user = UserFactory(first_name="Ada", last_name="Lovelace")
+        membership = CohortMembershipFactory(cohort=cohort, learner__user=user)
+
+        roster = load_roster(cohort, mock_site_context.pk)
+
+        assert roster.learners_by_id == {membership.learner_id: user}
 
     def test_a_learner_with_no_surname_is_keyed_by_their_email(self, mock_site_context):
         cohort = CohortFactory()
-        unnamed = UserFactory(first_name="", last_name="", email="aaa@example.test")
-        CohortMembershipFactory(cohort=cohort, learner__user=unnamed)
+        membership = CohortMembershipFactory(
+            cohort=cohort,
+            learner__user=UserFactory(
+                first_name="", last_name="", email="aaa@example.test"
+            ),
+        )
 
         roster = load_roster(cohort, mock_site_context.pk)
 
-        assert roster.sort_key_by_id[unnamed.id] == ("aaa@example.test", "")
+        assert roster.sort_key_by_id[membership.learner_id] == ("aaa@example.test", "")
 
     @override_settings(REPORTS_MAX_LEARNERS=1)
     def test_a_cohort_over_the_limit_is_refused(self, mock_site_context):
@@ -250,135 +305,252 @@ class TestBuildCourseCatalogue:
 
 class TestLoadTopicProgressRows:
     def test_only_the_named_learners_rows_are_read(self, mock_site_context):
-        learner, other = UserFactory(), UserFactory()
+        course = CourseFactory()
         topic = TopicFactory()
-        TopicProgressFactory(user=learner, topic=topic, complete_time=timezone.now())
-        TopicProgressFactory(user=other, topic=topic, complete_time=timezone.now())
+        _attach(course, topic)
+        registration, (record, other_record) = _cohort_registered_for(
+            course, learner_count=2
+        )
+        topic_progress(record, topic, complete_time=timezone.now())
+        topic_progress(other_record, topic, complete_time=timezone.now())
 
-        rows = load_topic_progress_rows(mock_site_context.pk, [learner.id], {topic.id})
+        rows = load_topic_progress_rows(
+            mock_site_context.pk, [registration], [record.learner_id], {topic.id}
+        )
 
-        assert [row[0] for row in rows] == [learner.id]
+        assert [row[0] for row in rows] == [record.learner_id]
+
+    def test_a_row_under_another_registration_is_not_read(self, mock_site_context):
+        """The same person, the same topic, their own separate enrolment."""
+        course = CourseFactory()
+        topic = TopicFactory()
+        _attach(course, topic)
+        registration, (record,) = _cohort_registered_for(course)
+        topic_progress(_second_record_for(record), topic, complete_time=timezone.now())
+
+        rows = load_topic_progress_rows(
+            mock_site_context.pk, [registration], [record.learner_id], {topic.id}
+        )
+
+        assert rows == []
 
     def test_rows_are_read_in_one_query(
         self, mock_site_context, django_assert_num_queries
     ):
-        learner = UserFactory()
+        course = CourseFactory()
         topic = TopicFactory()
-        TopicProgressFactory(user=learner, topic=topic, complete_time=timezone.now())
+        _attach(course, topic)
+        registration, (record,) = _cohort_registered_for(course)
+        topic_progress(record, topic, complete_time=timezone.now())
 
         with django_assert_num_queries(1):
-            load_topic_progress_rows(mock_site_context.pk, [learner.id], {topic.id})
+            load_topic_progress_rows(
+                mock_site_context.pk, [registration], [record.learner_id], {topic.id}
+            )
 
 
 class TestLoadFormProgressRows:
     def test_completed_sittings_arrive_newest_first(self, mock_site_context):
-        learner = UserFactory()
+        course = CourseFactory()
         quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        _attach(course, quiz)
+        registration, (record,) = _cohort_registered_for(course)
         with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
-            older = FormProgressFactory(
-                user=learner, form=quiz, completed_time=timezone.now(), scores={}
+            older = form_progress(
+                record, quiz, completed_time=timezone.now(), scores={}
             )
         with time_machine.travel("2026-01-02T00:00:00Z", tick=False):
-            newer = FormProgressFactory(
-                user=learner, form=quiz, completed_time=timezone.now(), scores={}
+            newer = form_progress(
+                record, quiz, completed_time=timezone.now(), scores={}
             )
 
-        rows = load_form_progress_rows(mock_site_context.pk, [learner.id], {quiz.id})
+        rows = load_form_progress_rows(
+            mock_site_context.pk, [registration], [record.learner_id], {quiz.id}
+        )
 
         assert [row.id for row in rows] == [newer.id, older.id]
 
     def test_an_incomplete_sitting_sorts_after_every_completed_one(
         self, mock_site_context
     ):
-        learner = UserFactory()
+        course = CourseFactory()
         quiz = FormFactory(strategy=FormStrategy.QUIZ)
-        started = FormProgressFactory(user=learner, form=quiz, completed_time=None)
-        done = FormProgressFactory(
-            user=learner, form=quiz, completed_time=timezone.now(), scores={}
-        )
+        _attach(course, quiz)
+        registration, (record,) = _cohort_registered_for(course)
+        started = form_progress(record, quiz, completed_time=None)
+        done = form_progress(record, quiz, completed_time=timezone.now(), scores={})
 
-        rows = load_form_progress_rows(mock_site_context.pk, [learner.id], {quiz.id})
+        rows = load_form_progress_rows(
+            mock_site_context.pk, [registration], [record.learner_id], {quiz.id}
+        )
 
         assert [row.id for row in rows] == [done.id, started.id]
 
-    def test_reading_each_rows_form_issues_no_further_query(
+    def test_a_sitting_under_another_registration_is_not_read(self, mock_site_context):
+        course = CourseFactory()
+        quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        _attach(course, quiz)
+        registration, (record,) = _cohort_registered_for(course)
+        form_progress(
+            _second_record_for(record),
+            quiz,
+            completed_time=timezone.now(),
+            scores={},
+        )
+
+        rows = load_form_progress_rows(
+            mock_site_context.pk, [registration], [record.learner_id], {quiz.id}
+        )
+
+        assert rows == []
+
+    def test_reading_each_rows_form_and_record_issues_no_further_query(
         self, mock_site_context, django_assert_num_queries
     ):
-        """select_related("form") is what keeps the pure stage query-free."""
-        learner = UserFactory()
+        """select_related down the course_attempt chain keeps the fold query-free."""
+        course = CourseFactory()
         quiz = FormFactory(strategy=FormStrategy.QUIZ)
-        FormProgressFactory(
-            user=learner, form=quiz, completed_time=timezone.now(), scores={}
-        )
-        FormProgressFactory(
-            user=learner, form=quiz, completed_time=timezone.now(), scores={}
-        )
+        _attach(course, quiz)
+        registration, (record,) = _cohort_registered_for(course)
+        form_progress(record, quiz, completed_time=timezone.now(), scores={})
+        form_progress(record, quiz, completed_time=timezone.now(), scores={})
 
         with django_assert_num_queries(1):
             rows = load_form_progress_rows(
-                mock_site_context.pk, [learner.id], {quiz.id}
+                mock_site_context.pk, [registration], [record.learner_id], {quiz.id}
             )
-            [row.form.quiz_pass_percentage for row in rows]
+            [
+                (
+                    row.form.quiz_pass_percentage,
+                    row.course_attempt.course_progress.learner_id,
+                )
+                for row in rows
+            ]
 
 
 class TestLoadFirstAttemptIds:
     def test_only_the_earliest_completed_sitting_per_learner_and_quiz_is_returned(
         self, mock_site_context
     ):
-        learner = UserFactory()
+        course = CourseFactory()
         quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        _attach(course, quiz)
+        registration, (record,) = _cohort_registered_for(course)
         with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
-            first = FormProgressFactory(
-                user=learner, form=quiz, completed_time=timezone.now(), scores={}
+            first = form_progress(
+                record, quiz, completed_time=timezone.now(), scores={}
             )
         with time_machine.travel("2026-01-02T00:00:00Z", tick=False):
-            FormProgressFactory(
-                user=learner, form=quiz, completed_time=timezone.now(), scores={}
-            )
+            form_progress(record, quiz, completed_time=timezone.now(), scores={})
 
         assert load_first_attempt_ids(
-            mock_site_context.pk, [learner.id], {quiz.id}
+            mock_site_context.pk, [registration], [record.learner_id], {quiz.id}
         ) == {first.id}
 
-    def test_an_incomplete_sitting_is_never_a_first_attempt(self, mock_site_context):
-        learner = UserFactory()
+    def test_an_earlier_sitting_under_another_registration_is_not_the_first(
+        self, mock_site_context
+    ):
+        """A sitting outside the report's registrations is not in scope at all,
+        so it cannot be the first -- the registration filter excludes it before
+        the ranking ever sees it."""
+        course = CourseFactory()
         quiz = FormFactory(strategy=FormStrategy.QUIZ)
-        FormProgressFactory(user=learner, form=quiz, completed_time=None)
+        _attach(course, quiz)
+        registration, (record,) = _cohort_registered_for(course)
+        other_record = _second_record_for(record)
+        with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
+            form_progress(other_record, quiz, completed_time=timezone.now(), scores={})
+        with time_machine.travel("2026-01-02T00:00:00Z", tick=False):
+            here = form_progress(record, quiz, completed_time=timezone.now(), scores={})
+
+        assert load_first_attempt_ids(
+            mock_site_context.pk, [registration], [record.learner_id], {quiz.id}
+        ) == {here.id}
+
+    def test_an_incomplete_sitting_is_never_a_first_attempt(self, mock_site_context):
+        course = CourseFactory()
+        quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        _attach(course, quiz)
+        registration, (record,) = _cohort_registered_for(course)
+        form_progress(record, quiz, completed_time=None)
 
         assert (
-            load_first_attempt_ids(mock_site_context.pk, [learner.id], {quiz.id})
+            load_first_attempt_ids(
+                mock_site_context.pk, [registration], [record.learner_id], {quiz.id}
+            )
             == set()
         )
 
     def test_two_learners_each_contribute_their_own_first_attempt(
         self, mock_site_context
     ):
-        first_learner, second_learner = UserFactory(), UserFactory()
+        course = CourseFactory()
         quiz = FormFactory(strategy=FormStrategy.QUIZ)
-        one = FormProgressFactory(
-            user=first_learner, form=quiz, completed_time=timezone.now(), scores={}
+        _attach(course, quiz)
+        registration, (first_record, second_record) = _cohort_registered_for(
+            course, learner_count=2
         )
-        two = FormProgressFactory(
-            user=second_learner, form=quiz, completed_time=timezone.now(), scores={}
+        one = form_progress(
+            first_record, quiz, completed_time=timezone.now(), scores={}
+        )
+        two = form_progress(
+            second_record, quiz, completed_time=timezone.now(), scores={}
         )
 
         attempt_ids = load_first_attempt_ids(
-            mock_site_context.pk, [first_learner.id, second_learner.id], {quiz.id}
+            mock_site_context.pk,
+            [registration],
+            [first_record.learner_id, second_record.learner_id],
+            {quiz.id},
         )
 
         assert attempt_ids == {one.id, two.id}
 
+    def test_one_quiz_placed_in_two_of_the_cohorts_courses_yields_one_first_attempt(
+        self, mock_site_context
+    ):
+        """The tally keys its cohort-wide counts on (learner, form), so a second
+        first attempt for the same pair would count that learner twice in the
+        confusion percentages."""
+        quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        first_course = CourseFactory(title="First", slug="first")
+        second_course = CourseFactory(title="Second", slug="second")
+        _attach(first_course, quiz)
+        _attach(second_course, quiz)
+
+        registration, (record,) = _cohort_registered_for(first_course)
+        second_registration: CohortCourseRegistration = CohortCourseRegistrationFactory(
+            cohort=registration.cohort, collection=second_course
+        )
+        second_record = cohort_progress_record(second_registration, record.learner.user)
+
+        with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
+            earliest = form_progress(
+                record, quiz, completed_time=timezone.now(), scores={}
+            )
+        with time_machine.travel("2026-01-02T00:00:00Z", tick=False):
+            form_progress(second_record, quiz, completed_time=timezone.now(), scores={})
+
+        assert load_first_attempt_ids(
+            mock_site_context.pk,
+            [registration, second_registration],
+            [record.learner_id],
+            {quiz.id},
+        ) == {earliest.id}
+
     def test_first_attempts_are_read_in_one_query(
         self, mock_site_context, django_assert_num_queries
     ):
-        learner = UserFactory()
+        course = CourseFactory()
         quiz = FormFactory(strategy=FormStrategy.QUIZ)
-        FormProgressFactory(
-            user=learner, form=quiz, completed_time=timezone.now(), scores={}
-        )
+        _attach(course, quiz)
+        registration, (record,) = _cohort_registered_for(course)
+        form_progress(record, quiz, completed_time=timezone.now(), scores={})
 
         with django_assert_num_queries(1):
-            load_first_attempt_ids(mock_site_context.pk, [learner.id], {quiz.id})
+            load_first_attempt_ids(
+                mock_site_context.pk, [registration], [record.learner_id], {quiz.id}
+            )
 
 
 class TestLoadQuizQuestions:
@@ -428,15 +600,17 @@ class TestLoadQuizQuestions:
 
 class TestLoadSelectedOptionsByPair:
     def test_a_survey_answer_is_excluded(self, mock_site_context):
-        learner = UserFactory()
+        course = CourseFactory()
         survey = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
+        _attach(course, survey)
         survey_page = FormPageFactory(form=survey, order=0)
         survey_question = FormQuestionFactory(form_page=survey_page, order=0)
         survey_option = QuestionOptionFactory(
             question=survey_question, text="Confident", correct=None, order=0
         )
-        sitting = FormProgressFactory(
-            user=learner, form=survey, completed_time=timezone.now(), scores={}
+        _registration, (record,) = _cohort_registered_for(course)
+        sitting = form_progress(
+            record, survey, completed_time=timezone.now(), scores={}
         )
         QuestionAnswerFactory(
             form_progress=sitting, question=survey_question
@@ -449,16 +623,16 @@ class TestLoadSelectedOptionsByPair:
         assert selected == {}
 
     def test_a_quiz_answer_carries_its_selected_options(self, mock_site_context):
-        learner = UserFactory()
+        course = CourseFactory()
         quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        _attach(course, quiz)
         page = FormPageFactory(form=quiz, order=0)
         question = FormQuestionFactory(form_page=page, order=0)
         chosen = QuestionOptionFactory(
             question=question, text="Mars", correct=True, order=0
         )
-        sitting = FormProgressFactory(
-            user=learner, form=quiz, completed_time=timezone.now(), scores={}
-        )
+        _registration, (record,) = _cohort_registered_for(course)
+        sitting = form_progress(record, quiz, completed_time=timezone.now(), scores={})
         QuestionAnswerFactory(
             form_progress=sitting, question=question
         ).selected_options.add(chosen)
@@ -474,8 +648,9 @@ class TestLoadSelectedOptionsByPair:
 
 class TestLoadDistractorRows:
     def _quiz_with_a_wrong_selection(self, *, correct: bool | None):
-        learner = UserFactory()
+        course = CourseFactory()
         quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        _attach(course, quiz)
         page = FormPageFactory(form=quiz, order=0)
         question = FormQuestionFactory(
             form_page=page, type=QuestionType.MULTIPLE_CHOICE, order=0
@@ -483,9 +658,8 @@ class TestLoadDistractorRows:
         option = QuestionOptionFactory(
             question=question, text="Chosen", correct=correct, order=0
         )
-        sitting = FormProgressFactory(
-            user=learner, form=quiz, completed_time=timezone.now(), scores={}
-        )
+        _registration, (record,) = _cohort_registered_for(course)
+        sitting = form_progress(record, quiz, completed_time=timezone.now(), scores={})
         QuestionAnswerFactory(
             form_progress=sitting, question=question
         ).selected_options.add(option)
@@ -516,7 +690,9 @@ class TestLoadDistractorRows:
         assert rows == []
 
     def test_distractors_are_ordered_most_selected_first(self, mock_site_context):
+        course = CourseFactory()
         quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        _attach(course, quiz)
         page = FormPageFactory(form=quiz, order=0)
         question = FormQuestionFactory(
             form_page=page, type=QuestionType.MULTIPLE_CHOICE, order=0
@@ -527,13 +703,11 @@ class TestLoadDistractorRows:
         rare = QuestionOptionFactory(
             question=question, text="Rare", correct=False, order=1
         )
+        _registration, records = _cohort_registered_for(course, learner_count=3)
         sittings = []
-        for chosen in (popular, popular, rare):
-            sitting = FormProgressFactory(
-                user=UserFactory(),
-                form=quiz,
-                completed_time=timezone.now(),
-                scores={},
+        for record, chosen in zip(records, (popular, popular, rare), strict=True):
+            sitting = form_progress(
+                record, quiz, completed_time=timezone.now(), scores={}
             )
             QuestionAnswerFactory(
                 form_progress=sitting, question=question
@@ -569,9 +743,7 @@ class TestResolveSiteName:
 
 def _cohort_with_one_completed_quiz(*, learner_count: int):
     """One course, one topic and one two-question quiz every learner has sat."""
-    cohort = CohortFactory()
     course = CourseFactory()
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
     topic = TopicFactory()
     _attach(course, topic, order=0)
     quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
@@ -587,13 +759,12 @@ def _cohort_with_one_completed_quiz(*, learner_count: int):
         QuestionOptionFactory(question=question, text="Right", correct=True, order=0)
         for question in questions
     ]
-    for _ in range(learner_count):
-        learner = UserFactory()
-        CohortMembershipFactory(cohort=cohort, learner__user=learner)
-        TopicProgressFactory(user=learner, topic=topic, complete_time=timezone.now())
-        sitting = FormProgressFactory(
-            user=learner,
-            form=quiz,
+    registration, records = _cohort_registered_for(course, learner_count=learner_count)
+    for record in records:
+        topic_progress(record, topic, complete_time=timezone.now())
+        sitting = form_progress(
+            record,
+            quiz,
             completed_time=timezone.now(),
             scores={"score": 2, "max_score": 2},
         )
@@ -601,7 +772,7 @@ def _cohort_with_one_completed_quiz(*, learner_count: int):
             QuestionAnswerFactory(
                 form_progress=sitting, question=question
             ).selected_options.add(option)
-    return cohort
+    return registration.cohort
 
 
 def _load_everything(cohort, site_id):
@@ -609,9 +780,11 @@ def _load_everything(cohort, site_id):
     registrations = load_registrations(cohort, site_id)
     roster = load_roster(cohort, site_id)
     catalogue = build_course_catalogue(registrations)
-    progress = load_progress_index(site_id, roster.learner_ids, catalogue)
+    progress = load_progress_index(
+        site_id, registrations, roster.learner_ids, catalogue
+    )
     first_attempt_ids = load_first_attempt_ids(
-        site_id, roster.learner_ids, catalogue.quiz_form_ids
+        site_id, registrations, roster.learner_ids, catalogue.quiz_form_ids
     )
     questions = build_question_index(
         *load_quiz_questions(site_id, catalogue.quiz_form_ids)
@@ -683,7 +856,7 @@ class TestTheAssemblyStageIssuesNoQueriesOnRealRows:
     ):
         cohort = _cohort_with_one_completed_quiz(learner_count=2)
         loaded = _load_everything(cohort, mock_site_context.pk)
-        wrong_answers = build_wrong_answers_by_user_quiz(
+        wrong_answers = build_wrong_answers_by_learner_quiz(
             loaded["tallies"], loaded["questions"]
         )
         now = timezone.now()
@@ -691,14 +864,14 @@ class TestTheAssemblyStageIssuesNoQueriesOnRealRows:
         with django_assert_num_queries(0):
             details = [
                 _build_learner_detail(
-                    user_id,
+                    learner_id,
                     loaded["roster"],
                     loaded["catalogue"],
                     loaded["progress"],
                     wrong_answers,
                     now,
                 )
-                for user_id in loaded["roster"].learner_ids
+                for learner_id in loaded["roster"].learner_ids
             ]
 
         assert [detail.quiz_results[0].attempt_count for detail in details] == [1, 1]

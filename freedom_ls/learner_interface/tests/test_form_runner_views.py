@@ -14,15 +14,25 @@ from freedom_ls.content_engine.models import Course
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
-    FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormProgress, FormStrategy
 from freedom_ls.form_engine.queries import count_form_questions
+from freedom_ls.learner_progress.attempts import (
+    get_latest_incomplete,
+    get_or_create_incomplete,
+)
+from freedom_ls.learner_progress.models import CourseFormAttempt
 
-from .conftest import course_with_form, register_user_for_course
+from .conftest import (
+    collection_item_for,
+    course_progress_record,
+    course_with_form,
+    form_attempt,
+    register_user_for_course,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -82,7 +92,7 @@ def test_form_submit_and_exit_post_completes_attempt_and_redirects(
     form = FormFactory(submit_on_exit=True)
     course = course_with_form(form)
     register_user_for_course(course, user)
-    incomplete = FormProgressFactory(user=user, form=form)
+    incomplete = form_attempt(course, user, form)
     assert incomplete.completed_time is None
 
     client.force_login(user)
@@ -161,7 +171,7 @@ def test_form_submit_and_exit_does_not_finalise_save_on_exit_form(
     form = FormFactory(submit_on_exit=False)
     course = course_with_form(form)
     register_user_for_course(course, user)
-    incomplete = FormProgressFactory(user=user, form=form)
+    incomplete = form_attempt(course, user, form)
     assert incomplete.completed_time is None
 
     client.force_login(user)
@@ -227,7 +237,9 @@ def test_answered_count_reflects_only_persisted_answers_after_page_advance(
     )
 
     # Get the form_progress that was created
-    form_progress = FormProgress.get_latest_incomplete(user=user, form=form)
+    form_progress = get_latest_incomplete(
+        course_progress_record(course, user), collection_item_for(course, form)
+    )
     assert form_progress is not None
 
     # POST page 1 to save the answer (this persists q1's answer)
@@ -347,7 +359,7 @@ def test_view_form_finalises_stale_incomplete_for_submit_on_exit(
     register_user_for_course(course, user)
 
     # Create a stale incomplete attempt
-    incomplete = FormProgressFactory(user=user, form=form)
+    incomplete = form_attempt(course, user, form)
     assert incomplete.completed_time is None
 
     client.force_login(user)
@@ -385,7 +397,7 @@ def test_form_start_finalises_stale_incomplete_for_submit_on_exit(
     register_user_for_course(course, user)
 
     # Create a stale incomplete attempt
-    stale = FormProgressFactory(user=user, form=form)
+    stale = form_attempt(course, user, form)
     assert stale.completed_time is None
 
     client.force_login(user)
@@ -400,8 +412,10 @@ def test_form_start_finalises_stale_incomplete_for_submit_on_exit(
     assert stale.completed_time is not None
 
     # A fresh attempt was created
-    all_incomplete = FormProgress.objects.filter(
-        user=user, form=form, completed_time__isnull=True
+    all_incomplete = CourseFormAttempt.objects.filter(
+        course_progress=course_progress_record(course, user),
+        collection_item=collection_item_for(course, form),
+        form_progress__completed_time__isnull=True,
     )
     assert all_incomplete.count() == 1
     assert all_incomplete.first().pk != stale.pk
@@ -418,7 +432,7 @@ def test_view_form_save_on_exit_does_not_finalise_incomplete(mock_site_context, 
     course = course_with_form(form)
     register_user_for_course(course, user)
 
-    incomplete = FormProgressFactory(user=user, form=form)
+    incomplete = form_attempt(course, user, form)
 
     client.force_login(user)
     url = reverse(
@@ -678,9 +692,10 @@ def test_course_form_complete_includes_percentage_for_quiz(mock_site_context, cl
     register_user_for_course(course, user)
 
     # Create a completed form progress with a known score
-    FormProgressFactory(
-        user=user,
-        form=form,
+    form_attempt(
+        course,
+        user,
+        form,
         completed_time=timezone.now(),
         scores={"score": 2, "max_score": 2},
     )
@@ -706,9 +721,10 @@ def test_course_form_complete_percentage_reflects_partial_score(
     course = course_with_form(form)
     register_user_for_course(course, user)
 
-    FormProgressFactory(
-        user=user,
-        form=form,
+    form_attempt(
+        course,
+        user,
+        form,
         completed_time=timezone.now(),
         scores={"score": 1, "max_score": 2},
     )
@@ -732,9 +748,10 @@ def test_course_form_complete_no_percentage_for_non_quiz(mock_site_context, clie
     course = course_with_form(form)
     register_user_for_course(course, user)
 
-    FormProgressFactory(
-        user=user,
-        form=form,
+    form_attempt(
+        course,
+        user,
+        form,
         completed_time=timezone.now(),
         scores={"Uncategorized": {"score": 1, "max_score": 1, "sub_categories": {}}},
     )
@@ -783,7 +800,7 @@ def test_course_form_complete_renders_incorrect_checkbox_answer_with_every_selec
     )
     wrong_1 = QuestionOptionFactory(question=question, text="4", correct=False, order=2)
 
-    form_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    form_progress: FormProgress = form_attempt(course, user, form)
     answer = QuestionAnswerFactory(form_progress=form_progress, question=question)
     answer.selected_options.add(correct_1, correct_2, wrong_1)
     form_progress.complete()
@@ -813,9 +830,10 @@ def _completed_quiz_results_page(client, *, score, max_score):
     form = _make_quiz_form()
     course = course_with_form(form)
     register_user_for_course(course, user)
-    FormProgressFactory(
-        user=user,
-        form=form,
+    form_attempt(
+        course,
+        user,
+        form,
         completed_time=timezone.now(),
         scores={"score": score, "max_score": max_score},
     )
@@ -1007,9 +1025,10 @@ def test_form_fill_page_get_with_no_incomplete_attempt_redirects(
     client.force_login(user)
 
     # A completed attempt exists, so there is no incomplete attempt to resume.
-    FormProgressFactory(
-        user=user,
-        form=form,
+    form_attempt(
+        course,
+        user,
+        form,
         completed_time=timezone.now(),
         scores={"score": 2, "max_score": 2},
     )
@@ -1046,21 +1065,24 @@ def test_view_form_previous_attempts_shows_multiple_newest_first(
     client.force_login(user)
 
     now = timezone.now()
-    older = FormProgressFactory(
-        user=user,
-        form=form,
+    older = form_attempt(
+        course,
+        user,
+        form,
         completed_time=now - timezone.timedelta(hours=2),
         scores={"score": 0, "max_score": 2},
     )
-    middle = FormProgressFactory(
-        user=user,
-        form=form,
+    middle = form_attempt(
+        course,
+        user,
+        form,
         completed_time=now - timezone.timedelta(hours=1),
         scores={"score": 1, "max_score": 2},
     )
-    most_recent = FormProgressFactory(
-        user=user,
-        form=form,
+    most_recent = form_attempt(
+        course,
+        user,
+        form,
         completed_time=now,
         scores={"score": 2, "max_score": 2},
     )
@@ -1087,9 +1109,10 @@ def test_view_form_previous_attempts_capped_at_five(mock_site_context, client):
 
     now = timezone.now()
     attempts = [
-        FormProgressFactory(
-            user=user,
-            form=form,
+        form_attempt(
+            course,
+            user,
+            form,
             completed_time=now - timezone.timedelta(hours=offset),
             scores={"score": 1, "max_score": 2},
         )
@@ -1227,7 +1250,9 @@ def test_submit_and_exit_without_a_page_number_still_completes(
     form = _make_quiz_form(submit_on_exit=True)
     course = course_with_form(form)
     register_user_for_course(course, user)
-    incomplete = FormProgressFactory(user=user, form=form)
+    incomplete = get_or_create_incomplete(
+        course_progress_record(course, user), collection_item_for(course, form)
+    )
 
     client.force_login(user)
     response = client.post(_exit_url(course), {"page_number": "not a page"})

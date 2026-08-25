@@ -16,9 +16,16 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormProgress, FormStrategy
+from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.learner_progress.attempts import get_latest_incomplete
+from freedom_ls.learner_progress.models import CourseFormAttempt
 
-from .conftest import course_with_form, register_user_for_course
+from .conftest import (
+    collection_item_for,
+    course_progress_record,
+    course_with_form,
+    register_user_for_course,
+)
 
 
 def _question_with_options(page, *, question_type, order, required=True):
@@ -86,8 +93,10 @@ def test_final_page_with_blank_required_question_does_not_complete_the_attempt(
     )
 
     assert (
-        FormProgress.objects.filter(
-            user=user, form=form, completed_time__isnull=False
+        CourseFormAttempt.objects.filter(
+            course_progress=course_progress_record(course, user),
+            collection_item=collection_item_for(course, form),
+            form_progress__completed_time__isnull=False,
         ).count()
         == 0
     )
@@ -116,7 +125,10 @@ def test_blank_required_question_leaves_no_answer_row_behind(mock_site_context, 
         {f"question_{answered.id}": str(answered.options.first().id)},
     )
 
-    form_progress = FormProgress.get_latest_incomplete(user=user, form=form)
+    form_progress = get_latest_incomplete(
+        course_progress_record(course, user), collection_item_for(course, form)
+    )
+    assert form_progress is not None
     assert list(form_progress.answers.values_list("question_id", flat=True)) == [
         answered.id
     ]
@@ -138,8 +150,10 @@ def test_answering_every_required_question_completes_the_attempt(
     )
 
     assert response.status_code == 302
-    assert FormProgress.objects.filter(
-        user=user, form=form, completed_time__isnull=False
+    assert CourseFormAttempt.objects.filter(
+        course_progress=course_progress_record(course, user),
+        collection_item=collection_item_for(course, form),
+        form_progress__completed_time__isnull=False,
     ).exists()
 
 

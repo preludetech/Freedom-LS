@@ -21,8 +21,9 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
     RecommendedCourseFactory,
 )
-from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
+
+from .conftest import course_progress_record
 
 # --- dashboard view ---
 
@@ -101,7 +102,7 @@ def test_dashboard_completed_courses(mock_site_context, courses, logged_in_clien
     """Completed courses surface in completed_courses, not registered_courses."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    CourseProgressFactory(user=user, course=courses[0], completed_time=timezone.now())
+    course_progress_record(courses[0], user, completed_time=timezone.now())
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -151,7 +152,7 @@ def test_dashboard_annotates_accent_on_every_course(
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[1])
-    CourseProgressFactory(user=user, course=courses[1], completed_time=timezone.now())
+    course_progress_record(courses[1], user, completed_time=timezone.now())
     RecommendedCourseFactory(user=user, collection=courses[2])
     client = logged_in_client(user)
 
@@ -177,7 +178,7 @@ def test_dashboard_available_excludes_registered_and_completed(
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[1])
-    CourseProgressFactory(user=user, course=courses[1], completed_time=timezone.now())
+    course_progress_record(courses[1], user, completed_time=timezone.now())
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -330,7 +331,7 @@ def test_dashboard_completed_course_in_history_not_available(
     """A completed course shows under Learning History, never under Available."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    CourseProgressFactory(user=user, course=courses[0], completed_time=timezone.now())
+    course_progress_record(courses[0], user, completed_time=timezone.now())
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -339,3 +340,25 @@ def test_dashboard_completed_course_in_history_not_available(
     assert courses[0] not in response.context["available_courses"]
     body = response.content.decode()
     assert "Learning History" in body
+
+
+@pytest.mark.django_db
+def test_dashboard_empty_in_progress_reads_differently_once_there_is_history(
+    mock_site_context, courses, logged_in_client
+):
+    """A learner who has finished everything has signed up for something.
+
+    Completed courses move out to Learning History, so In Progress empties for
+    a learner who is still registered — the never-signed-up copy would be
+    plainly untrue for them.
+    """
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    course_progress_record(courses[0], user, completed_time=timezone.now())
+    client = logged_in_client(user)
+
+    body = client.get(reverse("learner_interface:dashboard")).content.decode()
+
+    assert "You haven't signed up for any courses yet." not in body
+    assert "Learning History" in body
+    assert "No courses in progress" in body

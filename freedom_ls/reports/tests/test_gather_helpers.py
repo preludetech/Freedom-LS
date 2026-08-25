@@ -11,6 +11,8 @@ model instances. See its docstring for why unsaved is enough.
 
 from __future__ import annotations
 
+from uuid import UUID
+
 import pytest
 
 from freedom_ls.form_engine.models import QuestionType
@@ -40,7 +42,7 @@ from freedom_ls.reports.gather import (
     _unique_abbreviations,
     _wordmark_size_class,
     build_confusion_block,
-    build_wrong_answers_by_user_quiz,
+    build_wrong_answers_by_learner_quiz,
     tally_quiz_answers,
 )
 from freedom_ls.reports.indexes import (
@@ -63,8 +65,8 @@ from freedom_ls.reports.tests.gather_input_builders import (
     JAN_1,
     JAN_2,
     JAN_3,
-    OTHER_USER_ID,
-    USER_ID,
+    LEARNER_ID,
+    OTHER_LEARNER_ID,
     a_catalogue,
     a_learner,
     a_page,
@@ -88,13 +90,13 @@ def _a_column(title: str = "A Quiz") -> QuizColumn:
 
 def _a_learner_row(
     *,
-    user_id: int = USER_ID,
+    learner_id: UUID = LEARNER_ID,
     completion: int = 0,
     columns: list[QuizColumn] | None = None,
 ) -> LearnerRow:
     """A row carrying an (empty) cell for each of `columns`, as gather builds it."""
     return LearnerRow(
-        user_id=user_id,
+        learner_id=learner_id,
         full_name="A Learner",
         completion_percentage=completion,
         completed_item_count=0,
@@ -109,7 +111,7 @@ def _a_detail(
     *, completion: int = 0, flags: list[AtRiskFlag] | None = None
 ) -> LearnerDetail:
     return LearnerDetail(
-        user_id=USER_ID,
+        learner_id=LEARNER_ID,
         full_name="A Learner",
         sort_key=("Learner", "A"),
         completion_percentage=completion,
@@ -313,62 +315,77 @@ class TestCompletionCounts:
     def test_the_total_counts_every_item_whether_completed_or_not(self) -> None:
         items = [a_topic(), a_quiz()]
 
-        assert _completion_counts(items, USER_ID, a_progress_index()) == (0, 2)
+        assert _completion_counts(items, LEARNER_ID, a_progress_index()) == (0, 2)
 
     def test_a_completed_topic_counts_toward_the_completed_total(self) -> None:
         topic = a_topic()
-        progress = a_progress_index(completed_topic_ids_by_user={USER_ID: {topic.id}})
+        progress = a_progress_index(
+            completed_topic_ids_by_learner={LEARNER_ID: {topic.id}}
+        )
 
-        assert _completion_counts([topic], USER_ID, progress) == (1, 1)
+        assert _completion_counts([topic], LEARNER_ID, progress) == (1, 1)
 
     def test_a_completed_form_counts_toward_the_completed_total(self) -> None:
         quiz = a_quiz()
-        progress = a_progress_index(completed_form_ids_by_user={USER_ID: {quiz.id}})
+        progress = a_progress_index(
+            completed_form_ids_by_learner={LEARNER_ID: {quiz.id}}
+        )
 
-        assert _completion_counts([quiz], USER_ID, progress) == (1, 1)
+        assert _completion_counts([quiz], LEARNER_ID, progress) == (1, 1)
 
     def test_another_learners_completions_are_not_counted(self) -> None:
         topic = a_topic()
         progress = a_progress_index(
-            completed_topic_ids_by_user={OTHER_USER_ID: {topic.id}}
+            completed_topic_ids_by_learner={OTHER_LEARNER_ID: {topic.id}}
         )
 
-        assert _completion_counts([topic], USER_ID, progress) == (0, 1)
+        assert _completion_counts([topic], LEARNER_ID, progress) == (0, 1)
 
     def test_an_empty_item_list_is_zero_of_zero(self) -> None:
-        assert _completion_counts([], USER_ID, a_progress_index()) == (0, 0)
+        assert _completion_counts([], LEARNER_ID, a_progress_index()) == (0, 0)
 
 
 class TestLatestCompletion:
     def test_the_most_recent_completion_wins(self) -> None:
         early, late = a_topic("Early"), a_topic("Late")
         progress = a_progress_index(
-            topic_complete_time={(USER_ID, early.id): JAN_1, (USER_ID, late.id): JAN_2}
+            topic_complete_time={
+                (LEARNER_ID, early.id): JAN_1,
+                (LEARNER_ID, late.id): JAN_2,
+            }
         )
 
-        assert _latest_completion([early, late], USER_ID, progress) == ("Late", JAN_2)
+        assert _latest_completion([early, late], LEARNER_ID, progress) == (
+            "Late",
+            JAN_2,
+        )
 
     def test_a_topic_and_a_form_compete_on_timestamp_alone(self) -> None:
         topic = a_topic("Stars")
         quiz = a_quiz("Astronomy Quiz")
         attempt = an_attempt(quiz, completed_time=JAN_1)
         progress = a_progress_index(
-            topic_complete_time={(USER_ID, topic.id): JAN_2},
-            latest_by_user_form={(USER_ID, quiz.id): attempt},
-            completed_attempts_by_user_form={(USER_ID, quiz.id): [attempt]},
+            topic_complete_time={(LEARNER_ID, topic.id): JAN_2},
+            latest_by_learner_form={(LEARNER_ID, quiz.id): attempt},
+            completed_attempts_by_learner_form={(LEARNER_ID, quiz.id): [attempt]},
         )
 
-        assert _latest_completion([topic, quiz], USER_ID, progress) == ("Stars", JAN_2)
+        assert _latest_completion([topic, quiz], LEARNER_ID, progress) == (
+            "Stars",
+            JAN_2,
+        )
 
     def test_a_form_with_no_completed_attempt_is_ignored(self) -> None:
         quiz = a_quiz("Astronomy Quiz")
         started = an_attempt(quiz, completed_time=None)
-        progress = a_progress_index(latest_by_user_form={(USER_ID, quiz.id): started})
+        progress = a_progress_index(
+            latest_by_learner_form={(LEARNER_ID, quiz.id): started}
+        )
 
-        assert _latest_completion([quiz], USER_ID, progress) == (None, None)
+        assert _latest_completion([quiz], LEARNER_ID, progress) == (None, None)
 
     def test_a_learner_with_no_completions_has_no_title_and_no_time(self) -> None:
-        assert _latest_completion([a_topic()], USER_ID, a_progress_index()) == (
+        assert _latest_completion([a_topic()], LEARNER_ID, a_progress_index()) == (
             None,
             None,
         )
@@ -376,13 +393,13 @@ class TestLatestCompletion:
 
 class TestCompletedItems:
     def test_an_uncompleted_topic_is_absent(self) -> None:
-        assert _completed_items([a_topic()], USER_ID, a_progress_index()) == []
+        assert _completed_items([a_topic()], LEARNER_ID, a_progress_index()) == []
 
     def test_a_completed_topic_is_not_marked_as_a_quiz(self) -> None:
         topic = a_topic("Stars")
-        progress = a_progress_index(topic_complete_time={(USER_ID, topic.id): JAN_1})
+        progress = a_progress_index(topic_complete_time={(LEARNER_ID, topic.id): JAN_1})
 
-        completed = _completed_items([topic], USER_ID, progress)
+        completed = _completed_items([topic], LEARNER_ID, progress)
 
         assert [(item.title, item.is_quiz) for item in completed] == [("Stars", False)]
 
@@ -390,7 +407,7 @@ class TestCompletedItems:
         quiz = a_quiz("Astronomy Quiz")
         progress = attempted(quiz, [an_attempt(quiz, completed_time=JAN_1)])
 
-        completed = _completed_items([quiz], USER_ID, progress)
+        completed = _completed_items([quiz], LEARNER_ID, progress)
 
         assert [(item.title, item.is_quiz) for item in completed] == [
             ("Astronomy Quiz", True)
@@ -400,7 +417,7 @@ class TestCompletedItems:
         survey = a_survey("Confidence Survey")
         progress = attempted(survey, [an_attempt(survey, completed_time=JAN_1)])
 
-        completed = _completed_items([survey], USER_ID, progress)
+        completed = _completed_items([survey], LEARNER_ID, progress)
 
         assert [(item.title, item.is_quiz) for item in completed] == [
             ("Confidence Survey", False)
@@ -410,12 +427,12 @@ class TestCompletedItems:
         first, second = a_topic("First"), a_topic("Second")
         progress = a_progress_index(
             topic_complete_time={
-                (USER_ID, first.id): JAN_2,
-                (USER_ID, second.id): JAN_1,
+                (LEARNER_ID, first.id): JAN_2,
+                (LEARNER_ID, second.id): JAN_1,
             }
         )
 
-        completed = _completed_items([first, second], USER_ID, progress)
+        completed = _completed_items([first, second], LEARNER_ID, progress)
 
         assert [item.title for item in completed] == ["First", "Second"]
 
@@ -468,7 +485,7 @@ class TestQuizResultFor:
     def test_a_quiz_never_attempted_returns_none(self) -> None:
         quiz = a_quiz()
 
-        assert _quiz_result_for(USER_ID, quiz, a_progress_index().forms) is None
+        assert _quiz_result_for(LEARNER_ID, quiz, a_progress_index().forms) is None
 
     def test_attempts_are_numbered_from_one_in_list_order(self) -> None:
         quiz = a_quiz(pass_percentage=50)
@@ -479,7 +496,7 @@ class TestQuizResultFor:
         ]
         progress = attempted(quiz, attempts)
 
-        result = _quiz_result_for(USER_ID, quiz, progress.forms)
+        result = _quiz_result_for(LEARNER_ID, quiz, progress.forms)
 
         assert result is not None
         assert [attempt.attempt_number for attempt in result.attempts] == [1, 2, 3]
@@ -493,7 +510,7 @@ class TestQuizResultFor:
         ]
         progress = attempted(quiz, attempts)
 
-        result = _quiz_result_for(USER_ID, quiz, progress.forms)
+        result = _quiz_result_for(LEARNER_ID, quiz, progress.forms)
 
         assert result is not None
         assert result.latest_percentage == result.attempts[-1].percentage
@@ -507,7 +524,7 @@ class TestQuizResultFor:
             an_attempt(quiz, completed_time=JAN_2, scores={"score": 1, "max_score": 1}),
         ]
 
-        result = _quiz_result_for(USER_ID, quiz, attempted(quiz, attempts).forms)
+        result = _quiz_result_for(LEARNER_ID, quiz, attempted(quiz, attempts).forms)
 
         assert result is not None
         assert result.attempt_count == len(result.attempts) == 2
@@ -517,18 +534,18 @@ class TestFoldTopicProgressRows:
     def test_a_row_with_no_complete_time_still_marks_the_learner_active(self) -> None:
         topic = a_topic()
 
-        index = fold_topic_progress_rows([(USER_ID, topic.id, None)])
+        index = fold_topic_progress_rows([(LEARNER_ID, topic.id, None)])
 
-        assert index.user_ids_seen == {USER_ID}
-        assert index.completed_topic_ids_by_user.get(USER_ID, set()) == set()
+        assert index.learner_ids_seen == {LEARNER_ID}
+        assert index.completed_topic_ids_by_learner.get(LEARNER_ID, set()) == set()
 
     def test_a_completed_topic_is_indexed_against_its_learner(self) -> None:
         topic = a_topic()
 
-        index = fold_topic_progress_rows([(USER_ID, topic.id, JAN_1)])
+        index = fold_topic_progress_rows([(LEARNER_ID, topic.id, JAN_1)])
 
-        assert index.completed_topic_ids_by_user[USER_ID] == {topic.id}
-        assert index.complete_time[(USER_ID, topic.id)] == JAN_1
+        assert index.completed_topic_ids_by_learner[LEARNER_ID] == {topic.id}
+        assert index.complete_time[(LEARNER_ID, topic.id)] == JAN_1
 
 
 class TestFoldFormProgressRows:
@@ -549,7 +566,7 @@ class TestFoldFormProgressRows:
 
         index = fold_form_progress_rows([newest, oldest])
 
-        assert index.latest_by_user_form[(USER_ID, quiz.id)] is newest
+        assert index.latest_by_learner_form[(LEARNER_ID, quiz.id)] is newest
 
     def test_attempts_are_returned_oldest_first(self) -> None:
         quiz = a_quiz()
@@ -562,7 +579,7 @@ class TestFoldFormProgressRows:
 
         index = fold_form_progress_rows([newest, oldest])
 
-        assert index.completed_attempts_by_user_form[(USER_ID, quiz.id)] == [
+        assert index.completed_attempts_by_learner_form[(LEARNER_ID, quiz.id)] == [
             oldest,
             newest,
         ]
@@ -590,7 +607,7 @@ class TestFoldFormProgressRows:
 
         index = fold_form_progress_rows([done, started])
 
-        assert index.completed_attempts_by_user_form[(USER_ID, quiz.id)] == [done]
+        assert index.completed_attempts_by_learner_form[(LEARNER_ID, quiz.id)] == [done]
 
     def test_a_failed_latest_attempt_does_not_complete_the_form(self) -> None:
         quiz = a_quiz(pass_percentage=80)
@@ -603,7 +620,7 @@ class TestFoldFormProgressRows:
 
         index = fold_form_progress_rows([failed_retry, passed_first])
 
-        assert index.completed_form_ids_by_user.get(USER_ID, set()) == set()
+        assert index.completed_form_ids_by_learner.get(LEARNER_ID, set()) == set()
 
     def test_a_passed_latest_attempt_completes_the_form(self) -> None:
         quiz = a_quiz(pass_percentage=80)
@@ -616,7 +633,7 @@ class TestFoldFormProgressRows:
 
         index = fold_form_progress_rows([passed_retry, failed_first])
 
-        assert index.completed_form_ids_by_user[USER_ID] == {quiz.id}
+        assert index.completed_form_ids_by_learner[LEARNER_ID] == {quiz.id}
 
     def test_a_survey_is_completed_by_any_sitting(self) -> None:
         survey = a_survey()
@@ -624,7 +641,7 @@ class TestFoldFormProgressRows:
 
         index = fold_form_progress_rows([sitting])
 
-        assert index.completed_form_ids_by_user[USER_ID] == {survey.id}
+        assert index.completed_form_ids_by_learner[LEARNER_ID] == {survey.id}
 
     def test_every_sitting_resolves_to_its_learner_and_form(self) -> None:
         survey = a_survey()
@@ -632,7 +649,7 @@ class TestFoldFormProgressRows:
 
         index = fold_form_progress_rows([sitting])
 
-        assert index.user_form_by_attempt_id[sitting.id] == (USER_ID, survey.id)
+        assert index.learner_form_by_attempt_id[sitting.id] == (LEARNER_ID, survey.id)
 
 
 class TestMergeProgressIndexes:
@@ -642,14 +659,14 @@ class TestMergeProgressIndexes:
 
         merged = merge_progress_indexes(fold_topic_progress_rows([]), forms)
 
-        assert merged.user_ids_with_any_progress == {USER_ID}
+        assert merged.learner_ids_with_any_progress == {LEARNER_ID}
 
     def test_a_learner_seen_only_in_topic_progress_still_counts_as_active(self) -> None:
-        topics = fold_topic_progress_rows([(OTHER_USER_ID, a_topic().id, None)])
+        topics = fold_topic_progress_rows([(OTHER_LEARNER_ID, a_topic().id, None)])
 
         merged = merge_progress_indexes(topics, fold_form_progress_rows([]))
 
-        assert merged.user_ids_with_any_progress == {OTHER_USER_ID}
+        assert merged.learner_ids_with_any_progress == {OTHER_LEARNER_ID}
 
 
 class TestBuildQuestionIndex:
@@ -779,15 +796,15 @@ class TestTallyQuizAnswers:
             },
         )
         forms = a_progress_index(
-            user_form_by_attempt_id={
-                newer.id: (USER_ID, quiz.id),
-                older.id: (USER_ID, quiz.id),
+            learner_form_by_attempt_id={
+                newer.id: (LEARNER_ID, quiz.id),
+                older.id: (LEARNER_ID, quiz.id),
             }
         ).forms
 
         tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
 
-        counts = tallies.wrong_selected_counts[(USER_ID, quiz.id, question.id)]
+        counts = tallies.wrong_selected_counts[(LEARNER_ID, quiz.id, question.id)]
         assert list(counts.items()) == [(("Venus", False), 2), (("Mercury", False), 1)]
 
     def test_a_correct_sittings_selections_are_not_counted(self) -> None:
@@ -801,12 +818,12 @@ class TestTallyQuizAnswers:
             correctness={(attempt.id, question.id): True},
         )
         forms = a_progress_index(
-            user_form_by_attempt_id={attempt.id: (USER_ID, quiz.id)}
+            learner_form_by_attempt_id={attempt.id: (LEARNER_ID, quiz.id)}
         ).forms
 
         tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
 
-        assert (USER_ID, quiz.id, question.id) not in tallies.wrong_selected_counts
+        assert (LEARNER_ID, quiz.id, question.id) not in tallies.wrong_selected_counts
 
     def test_a_correct_option_ticked_on_a_wrong_sitting_keeps_its_correctness(
         self,
@@ -828,12 +845,12 @@ class TestTallyQuizAnswers:
             correctness={(attempt.id, question.id): False},
         )
         forms = a_progress_index(
-            user_form_by_attempt_id={attempt.id: (USER_ID, quiz.id)}
+            learner_form_by_attempt_id={attempt.id: (LEARNER_ID, quiz.id)}
         ).forms
 
         tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
 
-        counts = tallies.wrong_selected_counts[(USER_ID, quiz.id, question.id)]
+        counts = tallies.wrong_selected_counts[(LEARNER_ID, quiz.id, question.id)]
         assert list(counts.items()) == [(("Mars", True), 1), (("Sun", False), 1)]
 
     def test_an_option_with_no_verdict_is_tallied_as_neither(self) -> None:
@@ -853,12 +870,12 @@ class TestTallyQuizAnswers:
             correctness={(attempt.id, question.id): False},
         )
         forms = a_progress_index(
-            user_form_by_attempt_id={attempt.id: (USER_ID, quiz.id)}
+            learner_form_by_attempt_id={attempt.id: (LEARNER_ID, quiz.id)}
         ).forms
 
         tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
 
-        counts = tallies.wrong_selected_counts[(USER_ID, quiz.id, question.id)]
+        counts = tallies.wrong_selected_counts[(LEARNER_ID, quiz.id, question.id)]
         assert list(counts.items()) == [(("Pluto", None), 1)]
 
 
@@ -871,20 +888,23 @@ class TestBuildWrongAnswersByUserQuiz:
         index = _a_question_index((first, []), (second, []))
         tallies = QuizTallies(
             wrong_counts={
-                (USER_ID, quiz.id, second.id): 1,
-                (USER_ID, quiz.id, first.id): 1,
+                (LEARNER_ID, quiz.id, second.id): 1,
+                (LEARNER_ID, quiz.id, first.id): 1,
             },
             wrong_selected_counts={
-                (USER_ID, quiz.id, second.id): {},
-                (USER_ID, quiz.id, first.id): {},
+                (LEARNER_ID, quiz.id, second.id): {},
+                (LEARNER_ID, quiz.id, first.id): {},
             },
             respondent_counts={},
             wrong_counts_first={},
         )
 
-        built = build_wrong_answers_by_user_quiz(tallies, index)
+        built = build_wrong_answers_by_learner_quiz(tallies, index)
 
-        assert [answer.question_number for answer in built[USER_ID][quiz.id]] == [1, 2]
+        assert [answer.question_number for answer in built[LEARNER_ID][quiz.id]] == [
+            1,
+            2,
+        ]
 
     def test_each_answer_carries_its_questions_correct_option_texts(self) -> None:
         quiz = a_quiz()
@@ -892,15 +912,17 @@ class TestBuildWrongAnswersByUserQuiz:
         options = [an_option(question, "Mars", correct=True)]
         index = _a_question_index((question, options))
         tallies = QuizTallies(
-            wrong_counts={(USER_ID, quiz.id, question.id): 2},
+            wrong_counts={(LEARNER_ID, quiz.id, question.id): 2},
             wrong_selected_counts={
-                (USER_ID, quiz.id, question.id): {("Sun", False): 2}
+                (LEARNER_ID, quiz.id, question.id): {("Sun", False): 2}
             },
             respondent_counts={},
             wrong_counts_first={},
         )
 
-        answer = build_wrong_answers_by_user_quiz(tallies, index)[USER_ID][quiz.id][0]
+        answer = build_wrong_answers_by_learner_quiz(tallies, index)[LEARNER_ID][
+            quiz.id
+        ][0]
 
         assert answer.times_wrong == 2
         assert answer.selected_options == [SelectedOption("Sun", False, 2)]
@@ -912,9 +934,9 @@ class TestBuildWrongAnswersByUserQuiz:
         options = [an_option(question, "Mars", correct=True)]
         index = _a_question_index((question, options))
         tallies = QuizTallies(
-            wrong_counts={(USER_ID, quiz.id, question.id): 1},
+            wrong_counts={(LEARNER_ID, quiz.id, question.id): 1},
             wrong_selected_counts={
-                (USER_ID, quiz.id, question.id): {
+                (LEARNER_ID, quiz.id, question.id): {
                     ("Mars", True): 1,
                     ("Sun", False): 1,
                     ("Pluto", None): 1,
@@ -924,7 +946,9 @@ class TestBuildWrongAnswersByUserQuiz:
             wrong_counts_first={},
         )
 
-        answer = build_wrong_answers_by_user_quiz(tallies, index)[USER_ID][quiz.id][0]
+        answer = build_wrong_answers_by_learner_quiz(tallies, index)[LEARNER_ID][
+            quiz.id
+        ][0]
 
         assert answer.selected_options == [
             SelectedOption("Mars", True, 1),
@@ -937,15 +961,15 @@ class TestBuildWrongAnswersByUserQuiz:
         question = a_question(quiz)
         index = _a_question_index((question, []))
         tallies = QuizTallies(
-            wrong_counts={(USER_ID, quiz.id, question.id): 1},
-            wrong_selected_counts={(USER_ID, quiz.id, question.id): {}},
+            wrong_counts={(LEARNER_ID, quiz.id, question.id): 1},
+            wrong_selected_counts={(LEARNER_ID, quiz.id, question.id): {}},
             respondent_counts={},
             wrong_counts_first={},
         )
 
-        built = build_wrong_answers_by_user_quiz(tallies, index)
+        built = build_wrong_answers_by_learner_quiz(tallies, index)
 
-        assert OTHER_USER_ID not in built
+        assert OTHER_LEARNER_ID not in built
 
 
 class TestBuildConfusionBlock:
@@ -1079,15 +1103,15 @@ class TestBuildLearnerRow:
         learner = a_learner(first_name="Ada", last_name="Lovelace")
         topic, quiz = a_topic("Stars"), a_quiz("Orbit Quiz")
         progress = a_progress_index(
-            completed_topic_ids_by_user={USER_ID: {topic.id}},
-            topic_complete_time={(USER_ID, topic.id): JAN_1},
+            completed_topic_ids_by_learner={LEARNER_ID: {topic.id}},
+            topic_complete_time={(LEARNER_ID, topic.id): JAN_1},
         )
 
         row = _build_learner_row(
-            USER_ID,
+            LEARNER_ID,
             [topic, quiz],
             [],
-            a_roster(learner),
+            a_roster((LEARNER_ID, learner)),
             a_catalogue(course_items={a_quiz().id: [topic, quiz]}),
             progress,
         )
@@ -1105,10 +1129,10 @@ class TestBuildLearnerRow:
         )
 
         row = _build_learner_row(
-            USER_ID,
+            LEARNER_ID,
             [quiz],
             [column],
-            a_roster(learner),
+            a_roster((LEARNER_ID, learner)),
             a_catalogue(course_items={a_quiz().id: [quiz]}),
             a_progress_index(),
         )

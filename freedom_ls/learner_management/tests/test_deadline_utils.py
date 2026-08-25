@@ -89,16 +89,66 @@ def test_override_beats_cohort_deadline(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_two_cohort_registrations_show_both_deadlines(mock_site_context):
-    """User in two cohorts both registered for the same course sees both deadlines."""
+def test_override_source_string_renders_the_person_not_learner_str(mock_site_context):
+    """The source string must keep rendering the person -- str(learner.user)
+    -- not str(learner), which is "user - organisation" and would silently
+    change user-visible copy."""
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    cohort = CohortFactory()
+    membership: CohortMembership = CohortMembershipFactory(
+        learner__user=user, cohort=cohort
+    )
+    cohort_course_reg = CohortCourseRegistrationFactory(
+        cohort=cohort, collection=course
+    )
+    UserCohortDeadlineOverrideFactory(
+        cohort_course_registration=cohort_course_reg,
+        learner=membership.learner,
+        content_item=topic,
+        deadline=timezone.now() + timedelta(days=14),
+    )
+
+    result = get_effective_deadlines(user, course, content_item=topic)
+
+    assert len(result) == 1
+    assert str(user) in result[0].source
+    assert str(membership.learner) not in result[0].source
+
+
+@pytest.mark.django_db
+def test_get_effective_deadlines_returns_empty_when_learner_not_resolved(
+    mock_site_context,
+):
+    """A user with no registration for the course at all -- learner_for_course
+    resolves to None -- must yield an empty list rather than raising."""
     user = UserFactory()
     course = CourseFactory()
     topic = TopicFactory()
 
-    cohort_a = CohortFactory(name="Cohort A2")
-    cohort_b = CohortFactory(name="Cohort B")
-    CohortMembershipFactory(learner__user=user, cohort=cohort_a)
-    CohortMembershipFactory(learner__user=user, cohort=cohort_b)
+    assert get_effective_deadlines(user, course, content_item=topic) == []
+    assert get_effective_deadlines(user, course, content_item=None) == []
+
+
+@pytest.mark.django_db
+def test_two_cohorts_in_the_same_organisation_show_both_deadlines(mock_site_context):
+    """One Learner belonging to two cohorts in its own organisation, both
+    registered for the same course, sees both deadlines -- deadlines are
+    scoped to the resolved Learner, not to a single registration."""
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    organisation = OrganisationFactory()
+
+    cohort_a = CohortFactory(organisation=organisation, name="Cohort A2")
+    cohort_b = CohortFactory(organisation=organisation, name="Cohort B")
+    CohortMembershipFactory(
+        learner__user=user, learner__organisation=organisation, cohort=cohort_a
+    )
+    CohortMembershipFactory(
+        learner__user=user, learner__organisation=organisation, cohort=cohort_b
+    )
 
     reg_a = CohortCourseRegistrationFactory(cohort=cohort_a, collection=course)
     reg_b = CohortCourseRegistrationFactory(cohort=cohort_b, collection=course)
@@ -125,18 +175,70 @@ def test_two_cohort_registrations_show_both_deadlines(mock_site_context):
 
 
 @pytest.mark.django_db
+def test_two_organisations_see_deadlines_separately_not_a_union(mock_site_context):
+    """A person holding an individual registration for the same course in two
+    different organisations sees only the deadline for whichever Learner
+    learner_for_course resolves to -- not a union of both -- and sees the
+    other organisation's deadline once that is the one being studied
+    through instead."""
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+
+    reg_a = LearnerCourseRegistrationFactory(
+        learner__user=user,
+        learner__organisation=OrganisationFactory(),
+        collection=course,
+        is_active=True,
+    )
+    reg_b = LearnerCourseRegistrationFactory(
+        learner__user=user,
+        learner__organisation=OrganisationFactory(),
+        collection=course,
+        is_active=False,
+    )
+
+    dt_a = timezone.now() + timedelta(days=5)
+    dt_b = timezone.now() + timedelta(days=10)
+    LearnerDeadlineFactory(
+        learner_course_registration=reg_a, content_item=topic, deadline=dt_a
+    )
+    LearnerDeadlineFactory(
+        learner_course_registration=reg_b, content_item=topic, deadline=dt_b
+    )
+
+    result = get_effective_deadlines(user, course, content_item=topic)
+    assert len(result) == 1
+    assert result[0].deadline == dt_a
+
+    # Switch which organisation is being studied through: the other
+    # organisation's deadline is what should now come back, not a merge
+    # of the two.
+    reg_a.is_active = False
+    reg_a.save(update_fields=["is_active"])
+    reg_b.is_active = True
+    reg_b.save(update_fields=["is_active"])
+
+    result = get_effective_deadlines(user, course, content_item=topic)
+    assert len(result) == 1
+    assert result[0].deadline == dt_b
+
+
+@pytest.mark.django_db
 def test_cohort_plus_individual_registration_shows_both(mock_site_context):
-    """User with cohort registration + individual registration sees both deadlines."""
+    """One Learner holding both a cohort registration and an individual
+    registration for the same course sees both deadlines -- both loops in
+    get_effective_deadlines run against the one resolved Learner."""
     user = UserFactory()
     course = CourseFactory()
     topic = TopicFactory()
     cohort = CohortFactory()
-    CohortMembershipFactory(learner__user=user, cohort=cohort)
+    membership = CohortMembershipFactory(learner__user=user, cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(
         cohort=cohort, collection=course
     )
     learner_course_reg = LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course
+        learner=membership.learner, collection=course
     )
 
     cohort_dt = timezone.now() + timedelta(days=5)
@@ -161,12 +263,14 @@ def test_cohort_plus_individual_registration_shows_both(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_two_individual_registrations_through_different_organisations_show_both(
+def test_two_individual_registrations_through_different_organisations_show_only_the_resolved_one(
     mock_site_context,
 ):
     """Two individual registrations for one course became possible when the
-    unique constraint widened to include organisation. The resolver reports
-    the deadlines from both, rather than picking one registration's."""
+    unique constraint widened to include organisation. With both active, the
+    resolver reports only the deadline for whichever Learner
+    learner_for_course resolves to (the more recently registered one),
+    rather than merging both."""
     user = UserFactory()
     course = CourseFactory()
     topic = TopicFactory()
@@ -193,9 +297,10 @@ def test_two_individual_registrations_through_different_organisations_show_both(
 
     result = get_effective_deadlines(user, course, content_item=topic)
 
-    assert len(result) == 2
-    deadlines = {r.deadline for r in result}
-    assert deadlines == {dt_a, dt_b}
+    # Both registrations are active, so the tiebreak in learner_for_course
+    # (via latest_registration) falls to recency: reg_b was registered later.
+    assert len(result) == 1
+    assert result[0].deadline == dt_b
 
 
 @pytest.mark.django_db
@@ -371,15 +476,22 @@ def test_soft_deadline_never_locks(mock_site_context):
 
 @pytest.mark.django_db
 def test_most_permissive_deadline_governs_access(mock_site_context):
-    """When multiple hard deadlines exist, the latest (most permissive) governs access."""
+    """When one resolved Learner holds multiple hard deadlines -- here, from
+    membership of two cohorts in its own organisation, both registered for
+    the course -- the latest (most permissive) governs access."""
     user = UserFactory()
     course = CourseFactory()
     topic = TopicFactory()
+    organisation = OrganisationFactory()
 
-    cohort_a = CohortFactory(name="Cohort Lock A")
-    cohort_b = CohortFactory(name="Cohort Lock B")
-    CohortMembershipFactory(learner__user=user, cohort=cohort_a)
-    CohortMembershipFactory(learner__user=user, cohort=cohort_b)
+    cohort_a = CohortFactory(organisation=organisation, name="Cohort Lock A")
+    cohort_b = CohortFactory(organisation=organisation, name="Cohort Lock B")
+    CohortMembershipFactory(
+        learner__user=user, learner__organisation=organisation, cohort=cohort_a
+    )
+    CohortMembershipFactory(
+        learner__user=user, learner__organisation=organisation, cohort=cohort_b
+    )
 
     reg_a = CohortCourseRegistrationFactory(cohort=cohort_a, collection=course)
     reg_b = CohortCourseRegistrationFactory(cohort=cohort_b, collection=course)
@@ -414,9 +526,10 @@ def test_no_deadlines_not_locked(mock_site_context):
 
 @pytest.mark.django_db
 def test_removed_learners_cohort_deadline_does_not_unlock_the_item(mock_site_context):
-    """The most permissive hard deadline governs, so a generous deadline held
-    through an organisation the user was removed from would otherwise keep the
-    item open past the expired deadline of the one they are still active in."""
+    """learner_for_course's cohort branch only matches an active membership,
+    so a generous deadline held through an organisation the user was removed
+    from is never resolved at all -- only the current organisation's expired
+    deadline is, which is what locks the item."""
     user = UserFactory()
     course = CourseFactory()
     topic = TopicFactory()
@@ -476,22 +589,68 @@ def test_a_removed_learners_cohort_contributes_no_deadline(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_a_removed_learners_own_registration_contributes_no_deadline(
+def test_a_removed_learners_own_registration_still_reaches_their_own_deadlines(
     mock_site_context,
 ):
+    """The individual branch deliberately tolerates an inactive Learner --
+    unlike the cohort branch, learner_for_course's fallback to
+    latest_registration does not filter on learner.is_active, so a removed
+    learner still resolves to their own registration and its deadline."""
     user = UserFactory()
     course = CourseFactory()
     topic = TopicFactory()
     removed = LearnerFactory(
         user=user, organisation=OrganisationFactory(), is_active=False
     )
+    deadline_dt = timezone.now() + timedelta(days=7)
     LearnerDeadlineFactory(
         learner_course_registration=LearnerCourseRegistrationFactory(
             learner=removed, collection=course
         ),
         content_item=topic,
-        deadline=timezone.now() + timedelta(days=7),
+        deadline=deadline_dt,
         is_hard_deadline=True,
     )
 
-    assert get_effective_deadlines(user, course, content_item=topic) == []
+    result = get_effective_deadlines(user, course, content_item=topic)
+
+    assert len(result) == 1
+    assert result[0].deadline == deadline_dt
+
+
+@pytest.mark.django_db
+def test_a_removed_learners_own_cohort_deadline_cannot_unlock_the_item(
+    mock_site_context,
+):
+    """A Learner resolved through the individual fallback may be inactive, and
+    they keep their membership rows. is_item_locked_by_deadline takes the most
+    permissive hard deadline of everything resolved, so the stale cohort one
+    would otherwise unlock content the live expired one locks."""
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    organisation = OrganisationFactory()
+    removed = LearnerFactory(user=user, organisation=organisation, is_active=False)
+    cohort = CohortFactory(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=removed)
+    CohortDeadlineFactory(
+        cohort_course_registration=CohortCourseRegistrationFactory(
+            cohort=cohort, collection=course
+        ),
+        content_item=topic,
+        deadline=timezone.now() + timedelta(days=7),
+        is_hard_deadline=True,
+    )
+    LearnerDeadlineFactory(
+        learner_course_registration=LearnerCourseRegistrationFactory(
+            learner=removed, collection=course
+        ),
+        content_item=topic,
+        deadline=timezone.now() - timedelta(days=1),
+        is_hard_deadline=True,
+    )
+
+    result = get_effective_deadlines(user, course, content_item=topic)
+
+    assert [entry.source for entry in result] == ["Individual registration"]
+    assert is_item_locked_by_deadline(user, course, topic, is_completed=False) is True

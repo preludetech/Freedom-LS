@@ -1,6 +1,6 @@
 ---
 description: Figure out the next SDD step and either tick a completed user task or run the next slash command on the main thread.
-allowed-tools: Read, Glob, Bash, Write, Edit, Skill, Agent
+allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Skill, Agent
 ---
 
 This command inspects the `todo.md` checklist for the current spec and works out what should happen next. When the next item is a slash command, it runs that command **inline on the main thread (depth 0)** — it reads the command file and follows its steps here, rather than wrapping it in a fresh subagent. Running inline at depth 0 keeps the single fan-out level free, so commands that fan out (research/review) can legally spawn their own workers via this command's `Agent` tool. Manual (`(user)`) items are still the user's responsibility.
@@ -83,4 +83,4 @@ Keep the summary short. One of:
 
 Do not print the whole checklist.
 
-> **Inline-execution note (load-bearing).** When you run a `(cmd)` file by reading-and-following it, that file is **not** invoked as a slash command, so its own frontmatter (`model:`, `allowed-tools:`) is **inert** — this command's model and tool grants govern. That is why this command holds the broad toolset (`Read, Glob, Bash, Write, Edit, Skill, Agent`): it must author/edit and perform the inlined command's worker/mechanic spawns itself. The `Agent` and other tool grants on the downstream command files take effect only when a user invokes those commands **directly**; reached via `/sdd:next` they run under this command's grants. Worker/mechanic **agent** files are unaffected — they are *spawned*, not inlined, so their `model:`/`tools:` frontmatter is always live (which is why model tiering lives there). See the `claude-code-authoring` skill.
+> **Inline-execution note (load-bearing).** When you run a `(cmd)` file by reading-and-following it, that file is **not** invoked as a slash command, so its own frontmatter (`model:`, `allowed-tools:`) is **inert** — this command's model and tool grants govern. That is why this command holds the broad toolset (`Read, Glob, Grep, Bash, Write, Edit, Skill, Agent`): it must author/edit and perform the inlined command's worker/mechanic spawns itself. The `Agent` and other tool grants on the downstream command files take effect only when a user invokes those commands **directly**; reached via `/sdd:next` they run under this command's grants. Worker/mechanic **agent** files are unaffected — they are *spawned*, not inlined, so their `model:`/`tools:` frontmatter is always live (which is why model tiering lives there). See the `claude-code-authoring` skill.

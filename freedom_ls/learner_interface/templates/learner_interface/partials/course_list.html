@@ -32,7 +32,12 @@ course.listing_status. No per-status dispatch or leaf templates here.
         {% else %}
             <div class="space-y-3 text-center">
                 <p class="text-muted">
-                    You haven't signed up for any courses yet.
+                    {% if completed_courses %}
+                        No courses in progress — everything you're signed up for is finished
+                        and waiting in your Learning History below.
+                    {% else %}
+                        You haven't signed up for any courses yet.
+                    {% endif %}
                 </p>
                 <!-- <c-button href="{% url 'learner_interface:courses' %}">
                     Browse courses

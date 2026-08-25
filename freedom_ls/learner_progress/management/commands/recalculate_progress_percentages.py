@@ -3,18 +3,20 @@ from uuid import UUID
 
 import djclick as click
 
-from freedom_ls.form_engine.queries import completed_form_ids_by_user
 from freedom_ls.learner_management.utils import calculate_course_progress_percentage
 from freedom_ls.learner_progress.models import (
     CourseProgress,
     TopicProgress,
 )
+from freedom_ls.learner_progress.queries import (
+    completed_form_item_ids_by_course_progress,
+)
 
-# Learners per batch. The command walks every CourseProgress row in the
+# Course progress records per batch. The command walks every record in the
 # installation, and the completed-item lookups it needs are model instances, not
-# id tuples — fetching them for all learners at once is what makes this a
+# id tuples — fetching them for every record at once is what makes this a
 # memory-bound command instead of a scan.
-USER_BATCH_SIZE = 500
+RECORD_BATCH_SIZE = 500
 
 
 @click.command()
@@ -31,27 +33,30 @@ def command() -> None:
         click.echo("No CourseProgress records found.")
         return
 
-    user_ids = list(
-        CourseProgress.objects.values_list("user_id", flat=True).distinct().iterator()
-    )
+    record_ids = list(CourseProgress.objects.values_list("pk", flat=True).iterator())
 
     updated = 0
-    for batch in batched(user_ids, USER_BATCH_SIZE, strict=False):
-        # Batch-fetch this batch's completed items, grouped by user_id
-        completed_topics_by_user: dict[int, set[UUID]] = {}
-        for user_id, topic_id in TopicProgress.objects.filter(
-            user_id__in=batch, complete_time__isnull=False
-        ).values_list("user_id", "topic_id"):
-            completed_topics_by_user.setdefault(user_id, set()).add(topic_id)
+    for batch in batched(record_ids, RECORD_BATCH_SIZE, strict=False):
+        # Collection item ids from both sources, unioned per record: the
+        # percentage counts placements, not the content behind them.
+        completed_items: dict[UUID, set[UUID]] = {}
+        for course_progress_id, collection_item_id in TopicProgress.objects.filter(
+            course_progress_id__in=batch,
+            complete_time__isnull=False,
+            collection_item__isnull=False,
+        ).values_list("course_progress_id", "collection_item_id"):
+            completed_items.setdefault(course_progress_id, set()).add(
+                collection_item_id
+            )
 
-        completed_forms_by_user = completed_form_ids_by_user(batch)
+        for record_id, form_item_ids in completed_form_item_ids_by_course_progress(
+            batch
+        ).items():
+            completed_items.setdefault(record_id, set()).update(form_item_ids)
 
-        for cp in all_course_progress.filter(user_id__in=batch).iterator():
-            completed_topic_ids = completed_topics_by_user.get(cp.user_id, set())
-            completed_form_ids = completed_forms_by_user.get(cp.user_id, set())
-
+        for cp in all_course_progress.filter(pk__in=batch).iterator():
             new_percentage = calculate_course_progress_percentage(
-                cp.course, completed_topic_ids, completed_form_ids
+                cp.course, completed_items.get(cp.pk, set())
             )
 
             if cp.progress_percentage != new_percentage:

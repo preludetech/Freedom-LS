@@ -13,10 +13,9 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, CoursePart
-from freedom_ls.learner_management.factories import (
-    LearnerCourseRegistrationFactory,
-)
 from freedom_ls.learner_progress.models import TopicProgress
+
+from .conftest import course_progress_record
 
 
 @pytest.fixture
@@ -93,10 +92,14 @@ def authenticated_client_for(mock_site_context):
 
     def _make(course: Course) -> Client:
         user = UserFactory()
-        LearnerCourseRegistrationFactory(learner__user=user, collection=course)
-        for item in course.viewable_items():
+        record = course_progress_record(course, user)
+        for collection_item in course.viewable_collection_items():
             TopicProgress.objects.create(
-                user=user, topic=item, complete_time=timezone.now()
+                site_id=record.site_id,
+                course_progress=record,
+                collection_item=collection_item,
+                topic=collection_item.child,
+                complete_time=timezone.now(),
             )
         client = Client()
         client.force_login(user)

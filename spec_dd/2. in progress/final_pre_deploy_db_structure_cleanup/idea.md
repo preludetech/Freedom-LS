@@ -24,8 +24,8 @@ seem complicated enough that they should be.*
 
 **No.** The intuition is real but mis-locates the complexity. The hard parts of forms — scoring,
 attempts, resumability, quiz percentages, per-question answer state — already live in
-`student_progress` (`FormProgress` is 407 of 571 model lines), and the player UI already lives in
-`student_interface` (`views.py:828-1337`). Both already have their own apps. What is left in
+`learner_progress` (`FormProgress` is 405 of 571 model lines), and the player UI already lives in
+`learner_interface` (`views.py:832-1338`). Both already have their own apps. What is left in
 `content_engine` is structural definition: five models of title, order and FK fields, no more
 intrinsically complex than `Course`/`CoursePart`'s own GFK-based `children()` tree, which nobody is
 proposing to extract.
@@ -57,8 +57,8 @@ Ranked by cost-if-deferred, which is the only ranking that matters here.
 | 2 | **Timestamps are absent, not merely inconsistent.** No `created_at`/`updated_at` on `accounts.User` (no timestamp of any kind — not even a signup date), `Cohort`, `CohortMembership`, all 11 `content_engine` models, `Organisation`, or the three deadline models. | The one genuinely unbackfillable item. A `created_at` added after rows exist is not a recovered fact, it is a fabricated one, and nothing in the data distinguishes the two afterwards. |
 | 3 | **Authored content cascades into learner records.** Three separate CASCADE chains — `FormProgress.form`, `TopicProgress.topic`, `CourseProgress.course` — mean hard-deleting a `Form`/`Topic`/`Course` silently destroys every learner's progress for it. Plus `QuestionAnswer.question` and the two registration `.collection` FKs. Nine FKs should become `PROTECT`. | Silent, unrecoverable learner-data loss. Cheap to fix now; after deploy it needs a migration plus an admin-workflow change. Moodle enforces exactly this rule at the product level. |
 | 4 | **Migration history should be reset once, project-wide** — delete each app's migrations, regenerate a fresh `0001_initial`. 57 files today, including four that only service a `Student` model deleted long ago and a merge migration caused by a duplicate `0010_`. | The option expires at the tripwire above and never returns. See Decision 4 — this runs **last**, behind a re-check gate. |
-| 5 | **`UserCourseRegistration.collection`, `CohortCourseRegistration.collection`, `RecommendedCourse.collection`** are all hard FKs to `content_engine.Course`. `course_applications` and `course_interest` already call the identical field `course`. | At the database level a rename is metadata-only and costs the same forever. But FLS is a *library*: once downstream projects write `.collection` in their own code, the rename becomes a breaking API change needing upgrade notes and downstream edits. That is the cliff, and it is a real one. |
-| 6 | **`calculate_course_progress_percentage` lives in `student_management/utils.py`** but its only real caller is `student_progress`. It is the sole cause of the `student_progress → student_management` runtime edge. | Nearly free to fix, and it deletes a dependency-graph edge outright. Deferring costs nothing but nothing is gained by waiting either. |
+| 5 | **`LearnerCourseRegistration.collection`, `CohortCourseRegistration.collection`, `RecommendedCourse.collection`** are all hard FKs to `content_engine.Course`. `course_applications` and `course_interest` already call the identical field `course`. | At the database level a rename is metadata-only and costs the same forever. But FLS is a *library*: once downstream projects write `.collection` in their own code, the rename becomes a breaking API change needing upgrade notes and downstream edits. That is the cliff, and it is a real one. |
+| 6 | **`calculate_course_progress_percentage` lives in `learner_management/utils.py:17`** but its only real caller is `learner_progress` (`signals.py:25`). It is the sole cause of the `learner_progress → learner_management` runtime edge (`docs/app_structure.md:88`). | Nearly free to fix, and it deletes a dependency-graph edge outright. Deferring costs nothing but nothing is gained by waiting either. |
 | 7 | **Two constraint defects.** `Cohort`'s constraint is named `unique_cohort_name_per_site` but is on `(site_id, organisation, name)`. `CourseInterest`'s unique constraint omits `site` where its near-twin `CourseApplication` includes it. | Individually cheap at any time. Included as do-now because the pass is already open in these files, not because deferring is dangerous. Constraint names do persist in the database. |
 | 8 | **Deadline GFK `content_type` FKs are CASCADE** on three models, against the codebase's own precedent (`CourseProgress.last_accessed_content_type` is deliberately `SET_NULL` "so deleting a content model type cannot cascade-delete progress"). | Consistency fix; each model's `clean()` already treats a null pair as a whole-course deadline, so `SET_NULL` degrades into an already-tested state. |
 | 9 | **`WebhookDelivery.endpoint` is CASCADE**, so deleting an endpoint config erases its entire delivery audit history. | Same audit-survives-its-subject principle. A new finding, not in the original brief. |
@@ -159,13 +159,15 @@ Stated so they read as deliberate, not as gaps.
 This idea is a **sibling** of the three in-flight specs, not an umbrella over them. It assumes they
 land and only adds what they miss. But the order matters:
 
-1. [DONE] `learner-terminology-rename` first. It renames three app labels and therefore every table those
-   apps own. Anything here that touches `student_management`/`student_progress` models should land
-   after it, under the new names.
-2. `learners-associated-with-organisations` (already depends on the rename landing first) and
-   `better_course_progress_tracking`. The latter restructures `CourseProgress` → `CourseRun` and
-   re-keys `TopicProgress`/`FormProgress` to placements — do not index or add timestamps to models
-   it is mid-redesign on.
+1. [DONE] `learner-terminology-rename` first. It renamed three app labels and therefore every table
+   those apps own. Anything here touching those models lands under the new names:
+   `learner_management`, `learner_progress`, `learner_interface`.
+2. [DONE] `learners-associated-with-organisations`, which introduced `Learner` and re-keyed every
+   enrolment model onto it. Still pending: `better_course_progress_tracking`, which re-keys
+   `CourseProgress` from `user` onto `Learner`, adds an `is_active` flag so a learner can hold more
+   than one pass at a course, and re-scopes `TopicProgress`/`FormProgress` from the bare
+   `Topic`/`Form` to the `ContentCollectionItem` that places them — do not index or add timestamps
+   to models it is mid-redesign on.
 3. Everything in this idea's do-now list except the migration reset.
 4. **The migration reset, last**, behind the Decision 4 gate.
 
@@ -191,10 +193,10 @@ Two ordering hazards worth naming:
    lock the admin down, or just document the surface honestly? Locking it down is arguably the
    cheaper fix for the M2M gap in Decision 3 than any schema change.
 
-2. **Is `student_management` still the right name once it becomes `learner_management`?** It holds
-   cohorts, registrations, deadlines and recommendations. "Management" is a vague noun but an
-   accurate one, and no better name suggests itself. Flagged rather than decided — the terminology
-   rename is a word swap and deliberately does not re-think app boundaries.
+2. **Is `learner_management` the right name?** It holds cohorts, `Learner`, registrations,
+   deadlines and recommendations. "Management" is a vague noun but an accurate one, and no better
+   name suggests itself. Flagged rather than decided — `learner-terminology-rename` was a word swap
+   and deliberately did not re-think app boundaries, so the question it left open is still open.
 
 ---
 

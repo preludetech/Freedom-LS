@@ -158,6 +158,37 @@ class Course(MarkdownContent, TitledContent):
 
         validate_course_icon_fields(self.icon, self.icon_fallback)
 
+    def collection_items(self) -> list["ContentCollectionItem"]:
+        """The ordered rows placing this course's children.
+
+        Memoized per instance for the same reason children() is -- see its
+        docstring for the request-scoped staleness contract. children() derives
+        from this, so the two can never disagree about order.
+        """
+        if not hasattr(self, "_collection_items_cache"):
+            self._collection_items_cache = list(self.items.prefetch_related("child"))
+        return self._collection_items_cache
+
+    def collection_items_flat(self) -> list["ContentCollectionItem"]:
+        """Get a flattened list of all collection items in the course.
+
+        Includes CourseParts' own rows and their nested rows in order.
+        """
+        flattened = []
+        for item in self.collection_items():
+            flattened.append(item)
+            if isinstance(item.child, CoursePart):
+                flattened.extend(item.child.collection_items())
+        return flattened
+
+    def viewable_collection_items(self) -> list["ContentCollectionItem"]:
+        """Return ordered list of all viewable collection items (no CoursePart sentinels)."""
+        return [
+            item
+            for item in self.collection_items_flat()
+            if not isinstance(item.child, CoursePart)
+        ]
+
     def children(self):
         """Return ordered list of child content items.
 
@@ -175,9 +206,7 @@ class Course(MarkdownContent, TitledContent):
         current path does this.
         """
         if not hasattr(self, "_children_cache"):
-            self._children_cache = [
-                item.child for item in self.items.prefetch_related("child")
-            ]
+            self._children_cache = [item.child for item in self.collection_items()]
         return self._children_cache
 
     def children_flat(self) -> list:
@@ -185,19 +214,11 @@ class Course(MarkdownContent, TitledContent):
 
         Includes CourseParts and their nested children in order.
         """
-        flattened = []
-        for child in self.children():
-            flattened.append(child)
-            if isinstance(child, CoursePart):
-                for part_child in child.children():
-                    flattened.append(part_child)
-        return flattened
+        return [item.child for item in self.collection_items_flat()]
 
     def viewable_items(self) -> list:
         """Return ordered list of all viewable child content items (no CoursePart sentinels)."""
-        return [
-            item for item in self.children_flat() if not isinstance(item, CoursePart)
-        ]
+        return [item.child for item in self.viewable_collection_items()]
 
     def __str__(self):
         return self.title
@@ -219,6 +240,17 @@ class CoursePart(TitledContent):
     class Meta:
         unique_together = ["site", "slug"]
 
+    def collection_items(self) -> list["ContentCollectionItem"]:
+        """The ordered rows placing this part's children.
+
+        Memoized per instance for the same reason children() is -- see its
+        docstring for the request-scoped staleness contract. children() derives
+        from this, so the two can never disagree about order.
+        """
+        if not hasattr(self, "_collection_items_cache"):
+            self._collection_items_cache = list(self.items.prefetch_related("child"))
+        return self._collection_items_cache
+
     def children(self):
         """Return ordered list of child content items.
 
@@ -228,9 +260,7 @@ class CoursePart(TitledContent):
         type. See Course.children for the request-scoped staleness contract.
         """
         if not hasattr(self, "_children_cache"):
-            self._children_cache = [
-                item.child for item in self.items.prefetch_related("child")
-            ]
+            self._children_cache = [item.child for item in self.collection_items()]
         return self._children_cache
 
     def __str__(self):

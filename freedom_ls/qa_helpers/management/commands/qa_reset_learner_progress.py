@@ -9,8 +9,11 @@ them, so this command does it.
 By default only form attempts are deleted, which keeps topic completions - and
 therefore the sequential unlocking that makes a mid-course quiz reachable -
 intact. ``--include-topics`` additionally clears topic progress, and
-``CourseProgress`` rows are reset (not deleted: they are the learner's
-registration-side record) to a freshly-registered state.
+``CourseProgress`` rows are reset (not deleted: they are the record a
+registration grants, and ``created_at`` plus the grant itself are left alone)
+to a freshly-registered state -- ``started_at``, ``last_accessed_item``,
+``last_accessed_time``, ``progress_percentage`` and ``completed_time`` all
+cleared.
 
 Scope it with ``--course-slug`` (repeatable). With no ``--course-slug`` the
 learner's progress is cleared everywhere, so pass one when other fixtures rely
@@ -106,9 +109,11 @@ def command(
 
     courses = _get_courses(site, course_slugs)
 
-    form_progress = FormProgress.objects.filter(user=user)
-    topic_progress = TopicProgress.objects.filter(user=user)
-    course_progress = CourseProgress.objects.filter(user=user)
+    form_progress = FormProgress.objects.filter(
+        course_attempt__course_progress__learner__user=user
+    )
+    topic_progress = TopicProgress.objects.filter(course_progress__learner__user=user)
+    course_progress = CourseProgress.objects.filter(learner__user=user)
 
     if courses is not None:
         forms, topics = _course_items(courses)
@@ -129,10 +134,11 @@ def command(
 
     course_rows = course_progress.count()
     course_progress.update(
-        completed_time=None,
+        started_at=None,
+        last_accessed_item=None,
+        last_accessed_time=None,
         progress_percentage=0,
-        last_accessed_content_type=None,
-        last_accessed_object_id=None,
+        completed_time=None,
     )
 
     click.secho("\n--- Progress reset ---", fg="cyan", bold=True)

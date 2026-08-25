@@ -1,5 +1,5 @@
 {% comment %}Required context: learner (LearnerDetail). One flagged learner's row in the at-a-glance attention list.{% endcomment %}
 <div class="attention-entry">
-  <a class="attention-link" href="#learner-{{ learner.user_id }}">{{ learner.full_name }}</a>
+  <a class="attention-link" href="#learner-{{ learner.learner_id }}">{{ learner.full_name }}</a>
   {% include "reports/partials/flag_list.html" with flags=learner.flags only %}
 </div>

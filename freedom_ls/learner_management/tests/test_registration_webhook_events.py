@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
+from freedom_ls.learner_progress.models import CourseProgress
 
 
 # transaction=True so that on_commit hooks for webhook event delivery fire under test
@@ -17,6 +18,7 @@ class TestCourseRegisteredWebhookEvent:
         with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
             registration = LearnerCourseRegistrationFactory()
 
+        record = CourseProgress.objects.get(learner_registration=registration)
         mock_fire.assert_called_once_with(
             "course.registered",
             {
@@ -25,6 +27,8 @@ class TestCourseRegisteredWebhookEvent:
                 "course_id": str(registration.collection_id),
                 "course_title": registration.collection.title,
                 "registered_at": registration.registered_at.isoformat(),
+                "organisation_id": str(registration.learner.organisation_id),
+                "course_progress_id": str(record.id),
             },
         )
 

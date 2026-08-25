@@ -19,7 +19,12 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from freedom_ls.content_engine.models import Course, CourseVisibility, Topic
+from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    CourseVisibility,
+    Topic,
+)
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_access.overrides import (
     is_coming_soon_for_display,
@@ -36,9 +41,19 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
     RecommendedCourse,
 )
-from freedom_ls.learner_management.queries import organisation_for_learner_course
+from freedom_ls.learner_management.queries import (
+    learner_for_course,
+)
 from freedom_ls.learner_management.utils import ensure_learner
+from freedom_ls.learner_progress.attempts import (
+    completed_attempts,
+    finalise_stale_incomplete,
+    get_latest_incomplete,
+    get_or_create_incomplete,
+)
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_progress.queries import course_progress_for
+from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.site_aware_models.models import get_cached_site
 
@@ -46,6 +61,8 @@ from .utils import (
     BLOCKED,
     IN_PROGRESS,
     READY,
+    UNRESOLVED,
+    Unresolved,
     current_entry_status,
     derive_listing_status,
     form_start_page_buttons,
@@ -55,7 +72,7 @@ from .utils import (
     get_course_listing,
     get_course_registrations,
     get_current_courses,
-    get_form_for_index,
+    get_form_collection_item_for_index,
     get_is_registered,
     get_item_part,
     get_recommended_courses,
@@ -126,10 +143,14 @@ def _detail_start_url(course: Course, *, is_registered: bool, has_items: bool) -
 def _detail_cta_label(course: Course, user: User) -> str:
     """Progress-aware CTA label for a registered learner on the course detail page.
 
-    Uses a single CourseProgress lookup — does not scan TopicProgress/FormProgress.
-    Only call this for registered learners; unregistered paths use decision.cta_label.
+    Reads the resolved record — does not scan TopicProgress/FormProgress. Only
+    call this for registered learners; unregistered paths use decision.cta_label.
+
+    "Start course" is keyed on the percentage, never on the row existing: a
+    record is minted by the registration, so a learner who has never opened the
+    course still has one.
     """
-    progress = CourseProgress.objects.filter(user=user, course=course).first()
+    progress = course_progress_for(user, course)
     if progress is None or progress.completed_time is None:
         if progress is not None and progress.progress_percentage > 0:
             return "Continue"
@@ -592,6 +613,7 @@ def _blocked_item_redirect(
     index: int,
     *,
     course_index: list[dict] | None = None,
+    course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
 ) -> HttpResponseRedirect | None:
     """Turn away an item the course index shows as BLOCKED, or None if it is open.
 
@@ -600,11 +622,16 @@ def _blocked_item_redirect(
     the same index the template renders is what keeps the two in step.
 
     Callers that have already built the index pass it in; it is not cached, and
-    the view builds it for the player chrome anyway.
+    the view builds it for the player chrome anyway. Callers that have already
+    resolved the record pass that too, so it is not resolved twice.
     """
     if course_index is None:
         course_index = get_course_index(
-            user=user, course=course, current_index=index, can_access_content=True
+            user=user,
+            course=course,
+            current_index=index,
+            can_access_content=True,
+            course_progress=course_progress,
         )
     if current_entry_status(course_index) == BLOCKED:
         # course_detail, never course_home: course_home resumes to the last item
@@ -623,14 +650,24 @@ def view_course_item(request, course_slug, index):
     if no_access is not None:
         return no_access
 
-    viewable_items = course.viewable_items()
-    if index < 1 or index > len(viewable_items):
+    viewable_collection_items = course.viewable_collection_items()
+    if index < 1 or index > len(viewable_collection_items):
         raise Http404("No course item at this index.")
-    current_item = viewable_items[index - 1]
+    current_collection_item = viewable_collection_items[index - 1]
+    current_item = current_collection_item.child
+    viewable_items = [item.child for item in viewable_collection_items]
+
+    # The record every write below lands in, minted from the registration if it
+    # is missing. This is the self-healing path: a registration made before
+    # course progress records existed gets one the first time the learner opens
+    # the course, which is why no backfill is needed.
+    course_progress = _ensure_player_course_progress(request.user, course)
 
     # Check if item is locked by a hard deadline
     if config.DEADLINES_ACTIVE and request.user.is_authenticated:
-        is_completed = _is_content_item_completed(current_item, request.user)
+        is_completed = _is_content_item_completed(
+            current_collection_item, course_progress
+        )
         if is_item_locked_by_deadline(
             request.user, course, current_item, is_completed=is_completed
         ):
@@ -643,7 +680,11 @@ def view_course_item(request, course_slug, index):
     # so the decision is made before anything is written, then handed on to the
     # chrome so the index is built once.
     course_index = get_course_index(
-        user=request.user, course=course, current_index=index, can_access_content=True
+        user=request.user,
+        course=course,
+        current_index=index,
+        can_access_content=True,
+        course_progress=course_progress,
     )
     blocked = _blocked_item_redirect(
         request.user, course, index, course_index=course_index
@@ -653,17 +694,23 @@ def view_course_item(request, course_slug, index):
 
     total = len(viewable_items)
 
-    # Update or create course progress, recording this item as the resume
-    # target. This is the single write point for both topics and forms, so
-    # resume no longer depends on per-item progress timestamps. The
-    # deadline-locked and sequential-unlock branches return above, so a locked
-    # item is never recorded.
-    if request.user.is_authenticated:
-        course_progress, _ = CourseProgress.objects.get_or_create(
-            user=request.user, course=course
+    # Record this collection item as the resume target. This is the single
+    # write point for both topics and forms, so resume no longer depends on
+    # per-item progress timestamps. The deadline-locked and sequential-unlock
+    # branches return above, so a locked item is never recorded.
+    #
+    # last_accessed_time is written here rather than by auto_now, so a
+    # background percentage recalculation never looks like a visit. started_at
+    # is stamped once, on first content access, and never re-stamped.
+    if course_progress is not None:
+        now = timezone.now()
+        course_progress.last_accessed_item = current_collection_item
+        course_progress.last_accessed_time = now
+        if course_progress.started_at is None:
+            course_progress.started_at = now
+        course_progress.save(
+            update_fields=["last_accessed_item", "last_accessed_time", "started_at"]
         )
-        course_progress.last_accessed_item = current_item
-        course_progress.save()  # auto_now also bumps last_accessed_time
 
     # Calculate navigation URLs
     is_last_item = index >= total
@@ -696,6 +743,7 @@ def view_course_item(request, course_slug, index):
         index,
         viewable_items=viewable_items,
         course_index=course_index,
+        course_progress=course_progress,
     )
 
     if isinstance(current_item, Topic):
@@ -707,6 +755,8 @@ def view_course_item(request, course_slug, index):
             previous_url=previous_url,
             is_last_item=is_last_item,
             player_context=player_context,
+            collection_item=current_collection_item,
+            course_progress=course_progress,
         )
 
     if isinstance(current_item, Form):
@@ -718,9 +768,32 @@ def view_course_item(request, course_slug, index):
             is_last_item=is_last_item,
             next_url=next_url,
             player_context=player_context,
+            collection_item=current_collection_item,
+            course_progress=course_progress,
         )
 
     raise Http404("Unsupported course item type.")
+
+
+def _ensure_player_course_progress(
+    user: RequestUser, course: Course
+) -> CourseProgress | None:
+    """The record the player's writes land in, minted from the registration.
+
+    None when nothing grants this learner the course. Core FLS cannot reach
+    that state -- every ``can_access_content`` branch in the access backends is
+    gated on a registration -- but a downstream COURSE_ACCESS_BACKEND can, and
+    the player must then degrade to read-only rather than mint a record with no
+    registration behind it.
+    """
+    if not user.is_authenticated:
+        return None
+    resolved = learner_for_course(user, course)
+    if resolved is None:
+        return None
+    return ensure_course_progress_record(
+        resolved.learner, course, resolved.registration
+    )
 
 
 def _player_chrome_context(
@@ -730,23 +803,27 @@ def _player_chrome_context(
     index: int,
     viewable_items: list | None = None,
     course_index: list[dict] | None = None,
+    course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
 ) -> dict:
     """Build the shared player-chrome context (TOC, breadcrumb, header, title).
 
-    ``viewable_items`` and ``course_index`` may be passed in by a caller that has
-    already resolved them (``view_course_item`` builds both to run its gates) to
-    avoid re-traversing the course; callers that have not (the form fill /
-    complete pages) let them default.
+    ``viewable_items``, ``course_index`` and ``course_progress`` may be passed
+    in by a caller that has already resolved them (``view_course_item`` builds
+    all three to run its gates and its write) to avoid doing the work twice;
+    callers that have not let them default. Passing ``course_progress=None``
+    means "there is no record", and is not the same as leaving it out.
     """
     if viewable_items is None:
         viewable_items = course.viewable_items()
-    course_progress = (
-        CourseProgress.objects.filter(user=user, course=course).first()
-        if user.is_authenticated
-        else None
-    )
+    if isinstance(course_progress, Unresolved):
+        course_progress = (
+            course_progress_for(user, course) if user.is_authenticated else None
+        )
+    # Read off the record rather than resolving the registration a second time:
+    # the record's learner already names the organisation this pass is being
+    # studied through, which is what the chrome is reporting.
     course_organisation = (
-        organisation_for_learner_course(user, course) if user.is_authenticated else None
+        course_progress.learner.organisation if course_progress is not None else None
     )
     current_part = get_item_part(course, current_item)
 
@@ -775,6 +852,9 @@ def _player_chrome_context(
         "current_part": current_part,
         "current_part_index": current_part_index,
         "course_progress": course_progress,
+        # Without a record there is nowhere to write a completion, so the
+        # templates hide the controls that would offer one.
+        "can_record_progress": course_progress is not None,
         "course_organisation": course_organisation,
         "item_title": current_item.title,
         "index": index,
@@ -789,14 +869,23 @@ def view_topic(
     previous_url,
     is_last_item=False,
     player_context: dict | None = None,
+    *,
+    collection_item: ContentCollectionItem,
+    course_progress: CourseProgress | None,
 ):
-    topic_progress, created = TopicProgress.objects.get_or_create(
-        user=request.user, topic=topic
-    )
-    if not created:
-        topic_progress.save()
+    topic_progress = None
+    if course_progress is not None:
+        topic_progress, created = TopicProgress.objects.get_or_create(
+            course_progress=course_progress,
+            collection_item=collection_item,
+            defaults={"site_id": course_progress.site_id, "topic": topic},
+        )
+        if not created:
+            topic_progress.save()
 
     if request.method == "POST" and "mark_complete" in request.POST:
+        if topic_progress is None:
+            raise Http404("No course progress record to record this completion in.")
         topic_progress.complete_time = timezone.now()
         topic_progress.save()
 
@@ -806,16 +895,14 @@ def view_topic(
             # If no next_url (last item), redirect to course finish page
             return redirect("learner_interface:course_finish", course_slug=course.slug)
 
-    # Check if the course is already complete. Reuse the CourseProgress already
-    # fetched into player_context rather than querying it a second time.
     player_context = player_context or {}
-    course_progress = player_context.get("course_progress")
     is_course_complete = bool(course_progress and course_progress.completed_time)
 
     context = {
         "course": course,
         "topic": topic,
-        "is_complete": topic_progress.complete_time is not None,
+        "is_complete": topic_progress is not None
+        and topic_progress.complete_time is not None,
         "next_url": next_url,
         "previous_url": previous_url,
         "is_last_item": is_last_item,
@@ -833,34 +920,37 @@ def view_form(
     is_last_item=False,
     next_url=None,
     player_context: dict | None = None,
+    *,
+    collection_item: ContentCollectionItem,
+    course_progress: CourseProgress | None,
 ):
     """Show the front page of the form"""
 
-    # Finalise any stale incomplete attempt for submit-on-exit forms before reading
-    # progress state. No-op for save-on-exit forms.
-    FormProgress.finalise_stale_incomplete(request.user, form)
+    incomplete_form_progress = None
+    completed_form_progress = FormProgress.objects.none()
+    if course_progress is not None:
+        # Finalise any stale incomplete attempt for submit-on-exit forms before
+        # reading progress state. No-op for save-on-exit forms.
+        finalise_stale_incomplete(course_progress, collection_item)
 
-    # Try to get existing incomplete form progress (don't create if it doesn't exist)
-    incomplete_form_progress = FormProgress.get_latest_incomplete(
-        user=request.user, form=form
-    )
+        # The learner's open attempt at this placement, if they have one. Not
+        # created here -- the start screen reads, form_start writes.
+        incomplete_form_progress = get_latest_incomplete(
+            course_progress, collection_item
+        )
+
+        # The most-recent completed attempts at this placement. The start screen
+        # shows a compact summary of the 5 latest; the button logic only needs
+        # the latest via .first() (the queryset is ordered newest-first).
+        # select_related("form") so the button logic's pass/fail verdict reads
+        # form.quiz_pass_percentage without a second query.
+        completed_form_progress = completed_attempts(course_progress, collection_item)[
+            :5
+        ]
 
     page_number = None
     if incomplete_form_progress:
         page_number = incomplete_form_progress.get_current_page_number()
-
-    # Get the most-recent completed submissions for this user and form. The start
-    # screen shows a compact summary of the 5 latest attempts; the button logic
-    # only needs the latest via .first() (the queryset is ordered newest-first).
-    # select_related("form") so the button logic's pass/fail verdict reads
-    # form.quiz_pass_percentage without a second query.
-    completed_form_progress = (
-        FormProgress.objects.filter(
-            user=request.user, form=form, completed_time__isnull=False
-        )
-        .select_related("form")
-        .order_by("-completed_time")[:5]
-    )
 
     # Determine which buttons to show
     buttons = form_start_page_buttons(
@@ -895,21 +985,34 @@ def form_start(request, course_slug, index):
     no_access = _course_access_redirect(request.user, course)
     if no_access is not None:
         return no_access
-    form = get_form_for_index(course, index)
+    collection_item = get_form_collection_item_for_index(course, index)
+    course_progress = _ensure_player_course_progress(request.user, course)
 
     # Minting the attempt is what would flip a locked quiz to IN_PROGRESS, so the
     # gate has to come before it — and before finalise_stale_incomplete, which
-    # writes too.
-    blocked = _blocked_item_redirect(request.user, course, index)
+    # writes too. Minting the course progress record above changes no status.
+    blocked = _blocked_item_redirect(
+        request.user, course, index, course_progress=course_progress
+    )
     if blocked is not None:
         return blocked
 
+    if course_progress is None:
+        # Nothing grants this learner the course, so there is no record to
+        # attempt the form in. Send them back to the read-only start screen
+        # rather than mint an attempt with no record behind it.
+        return redirect(
+            "learner_interface:view_course_item",
+            course_slug=course_slug,
+            index=index,
+        )
+
     # Finalise any stale incomplete attempt for submit-on-exit forms before
     # get_or_create_incomplete runs. No-op for save-on-exit forms.
-    FormProgress.finalise_stale_incomplete(request.user, form)
+    finalise_stale_incomplete(course_progress, collection_item)
 
     # Create a FormProgress instance if it doesn't yet exist
-    form_progress = FormProgress.get_or_create_incomplete(request.user, form)
+    form_progress = get_or_create_incomplete(course_progress, collection_item)
 
     # Figure out what page of the form the user is on
     page_number = form_progress.get_current_page_number()
@@ -938,11 +1041,15 @@ def form_fill_page(request, course_slug, index, page_number):
     no_access = _course_access_redirect(request.user, course)
     if no_access is not None:
         return no_access
-    form = get_form_for_index(course, index)
+    collection_item = get_form_collection_item_for_index(course, index)
+    form = cast("Form", collection_item.child)
+    course_progress = _ensure_player_course_progress(request.user, course)
 
     # Gated ahead of the POST branch below, which saves answers and can complete
     # the attempt: a refused page must write nothing at all.
-    blocked = _blocked_item_redirect(request.user, course, index)
+    blocked = _blocked_item_redirect(
+        request.user, course, index, course_progress=course_progress
+    )
     if blocked is not None:
         return blocked
 
@@ -953,7 +1060,11 @@ def form_fill_page(request, course_slug, index, page_number):
     form_page = all_pages[page_number - 1]
 
     # Get the latest incomplete form progress instance
-    form_progress = FormProgress.get_latest_incomplete(user=request.user, form=form)
+    form_progress = (
+        get_latest_incomplete(course_progress, collection_item)
+        if course_progress is not None
+        else None
+    )
 
     # Get existing answers for questions on this page
     questions = page_questions(form_page)
@@ -1115,7 +1226,9 @@ def form_fill_page(request, course_slug, index, page_number):
         "page_links": page_links,
         # Player chrome (outline panel + breadcrumb) so the fill page keeps the
         # same orientation as the rest of the player.
-        **_player_chrome_context(request.user, course, form, index),
+        **_player_chrome_context(
+            request.user, course, form, index, course_progress=course_progress
+        ),
         "answered_count": answered_count,
         "answered_other_pages": answered_other_pages,
         "total_question_count": total_question_count,
@@ -1145,18 +1258,21 @@ def course_form_complete(request, course_slug, index):
     # No sequential-unlock gate here, deliberately: this page only reads back a
     # sitting the learner already made, and a learner is always entitled to the
     # score they earned — including after a deadline has closed the quiz itself.
-    # Fetch viewable_items once and reuse it (it is not cached); the view also
-    # needs the list length below for is_last_item.
-    viewable_items = course.viewable_items()
-    form = get_form_for_index(course, index, viewable_items=viewable_items)
+    # Fetch the collection items once and reuse them (they are not cached); the
+    # view also needs the list length below for is_last_item.
+    viewable_collection_items = course.viewable_collection_items()
+    collection_item = get_form_collection_item_for_index(
+        course, index, viewable_collection_items=viewable_collection_items
+    )
+    form = cast("Form", collection_item.child)
 
-    # Get the most recent completed form progress
+    course_progress = course_progress_for(request.user, course)
+
+    # Get the most recent completed attempt at this placement
     form_progress = (
-        FormProgress.objects.filter(
-            user=request.user, form=form, completed_time__isnull=False
-        )
-        .order_by("-completed_time")
-        .first()
+        completed_attempts(course_progress, collection_item).first()
+        if course_progress is not None
+        else None
     )
 
     # Get incorrect answers if this is a quiz with show_incorrect enabled
@@ -1195,7 +1311,7 @@ def course_form_complete(request, course_slug, index):
         quiz_verdict = "passed" if form_progress.passed() else "failed"
 
     # Calculate next URL for continue button
-    total_viewable_items = len(viewable_items)
+    total_viewable_items = len(viewable_collection_items)
     is_last_item = index >= total_viewable_items
     if is_last_item:
         # Last item - go to course finish page
@@ -1227,7 +1343,9 @@ def course_form_complete(request, course_slug, index):
         "next_url": next_url,
         "retry_url": retry_url,
         # Player chrome (outline panel + breadcrumb).
-        **_player_chrome_context(request.user, course, form, index),
+        **_player_chrome_context(
+            request.user, course, form, index, course_progress=course_progress
+        ),
     }
 
     # Only include percentage in context for QUIZ forms (avoids None littering the context
@@ -1244,19 +1362,21 @@ def course_finish(request, course_slug):
 
     course = get_object_or_404(Course, slug=course_slug)
 
-    # Get existing course progress (should already exist)
-    course_progress = get_object_or_404(
-        CourseProgress, user=request.user, course=course
-    )
+    # The record the learner's registration granted. Missing means nothing
+    # grants them this course, so there is no pass to finish -- 404 rather than
+    # dereferencing None.
+    course_progress = course_progress_for(request.user, course)
+    if course_progress is None:
+        raise Http404("No course progress record for this learner and course.")
 
     # Mark as complete if not already. A learner has to pass to complete, so a
     # quiz they sat and failed withholds the completion — the page still renders,
     # naming what is left and linking to the retry.
-    still_to_pass = unpassed_forms(request.user, course)
+    still_to_pass = unpassed_forms(course_progress, course)
 
     if not course_progress.completed_time and not still_to_pass:
         course_progress.completed_time = timezone.now()
-        course_progress.save()
+        course_progress.save(update_fields=["completed_time"])
 
         from freedom_ls.webhooks.events import fire_webhook_event
 
@@ -1268,6 +1388,8 @@ def course_finish(request, course_slug):
                 "course_id": str(course.id),
                 "course_title": course.title,
                 "completed_time": course_progress.completed_time.isoformat(),
+                "organisation_id": str(course_progress.learner.organisation_id),
+                "course_progress_id": str(course_progress.id),
             },
         )
 
@@ -1279,7 +1401,10 @@ def course_finish(request, course_slug):
         # can_access_content=True: course_finish is only reachable after completing
         # a course — the learner has had content access throughout.
         "course_index": get_course_index(
-            user=request.user, course=course, can_access_content=True
+            user=request.user,
+            course=course,
+            can_access_content=True,
+            course_progress=course_progress,
         ),
     }
 
@@ -1322,7 +1447,8 @@ def form_submit_and_exit(request, course_slug: str, index: int):
     no_access = _course_access_redirect(request.user, course)
     if no_access is not None:
         return no_access
-    form = get_form_for_index(course, index)
+    collection_item = get_form_collection_item_for_index(course, index)
+    form = cast("Form", collection_item.child)
 
     # No sequential-unlock gate here, deliberately: this finalises an attempt the
     # learner already started, and refusing it would strand that attempt
@@ -1339,7 +1465,12 @@ def form_submit_and_exit(request, course_slug: str, index: int):
             index=index,
         )
 
-    form_progress = FormProgress.get_latest_incomplete(user=request.user, form=form)
+    course_progress = _ensure_player_course_progress(request.user, course)
+    form_progress = (
+        get_latest_incomplete(course_progress, collection_item)
+        if course_progress is not None
+        else None
+    )
     if form_progress is not None:
         # Save before completing, so score() sees the page the learner was on.
         _save_posted_page_answers(form, form_progress, request.POST)
@@ -1357,13 +1488,21 @@ if TYPE_CHECKING:
     from freedom_ls.course_access.backends import CourseAccessBackend, RequestUser
 
 
-def _is_content_item_completed(content_item: Topic | Form, user: User) -> bool:
-    """Check if a content item has been completed by the user."""
-    if isinstance(content_item, Topic):
+def _is_content_item_completed(
+    collection_item: ContentCollectionItem, course_progress: CourseProgress | None
+) -> bool:
+    """Whether this placement is complete within this course progress record.
+
+    Scoped to the record as well as the placement because it decides whether a
+    hard deadline locks the item: the same topic completed in another course,
+    or under another registration, must not unlock this one.
+    """
+    if course_progress is None:
+        return False
+    if isinstance(collection_item.child, Topic):
         return TopicProgress.objects.filter(
-            user=user, topic=content_item, complete_time__isnull=False
+            course_progress=course_progress,
+            collection_item=collection_item,
+            complete_time__isnull=False,
         ).exists()
-    else:
-        return FormProgress.objects.filter(
-            user=user, form=content_item, completed_time__isnull=False
-        ).exists()
+    return completed_attempts(course_progress, collection_item).exists()

@@ -28,8 +28,12 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone as tz
 
-from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.models import Course, CoursePart, Topic
+from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    CoursePart,
+    Topic,
+)
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.form_engine.models import Form, FormProgress
@@ -47,7 +51,11 @@ from freedom_ls.learner_management.queries import (
     learners_visible_to,
     organisations_accessible_to,
 )
-from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_progress.models import (
+    CourseFormAttempt,
+    CourseProgress,
+    TopicProgress,
+)
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
@@ -316,48 +324,70 @@ class CohortCourseProgressPanel(Panel):
         self,
         course: Course,
         col_page_num: int | str,
-    ) -> tuple[list[Topic | Form], list[dict[str, object]], bool, Page]:
-        """Paginate course items and build visible part headers.
+    ) -> tuple[list[ContentCollectionItem], list[dict[str, object]], bool, Page]:
+        """Paginate the course's collection items and build visible part headers.
 
-        Returns (visible_items, visible_parts, has_parts, col_page).
+        Columns are placements, not content: one topic placed twice in a course
+        is two columns, and each carries its own progress.
+
+        Returns (visible_collection_items, visible_parts, has_parts, col_page).
         """
-        all_flat = course.children_flat()
-        items: list[Topic | Form] = []
-        part_children_map: dict[CoursePart, list[Topic | Form]] = {}
+        all_flat = course.collection_items_flat()
+        collection_items: list[ContentCollectionItem] = []
+        part_children_map: dict[CoursePart, list[ContentCollectionItem]] = {}
         current_part = None
-        for child in all_flat:
+        for collection_item in all_flat:
+            child = collection_item.child
             if isinstance(child, CoursePart):
                 current_part = child
                 part_children_map[child] = []
             else:
-                items.append(child)
+                collection_items.append(collection_item)
                 if current_part is not None:
-                    part_children_map[current_part].append(child)
+                    part_children_map[current_part].append(collection_item)
 
-        col_paginator = Paginator(items, self.COLUMN_PAGE_SIZE)
+        col_paginator = Paginator(collection_items, self.COLUMN_PAGE_SIZE)
         col_page = col_paginator.get_page(col_page_num)
-        visible_items = list(col_page.object_list)
+        visible_collection_items = list(col_page.object_list)
 
-        visible_item_pks = {item.pk for item in visible_items}
+        visible_collection_item_pks = {item.pk for item in visible_collection_items}
         visible_parts = []
         for part, children in part_children_map.items():
-            visible_children = [c for c in children if c.pk in visible_item_pks]
+            visible_children = [
+                c for c in children if c.pk in visible_collection_item_pks
+            ]
             if visible_children:
                 visible_parts.append({"part": part, "span": len(visible_children)})
 
-        return visible_items, visible_parts, bool(part_children_map), col_page
+        return (
+            visible_collection_items,
+            visible_parts,
+            bool(part_children_map),
+            col_page,
+        )
 
     def _paginate_learners(
         self,
         cohort: Cohort,
-        course: Course,
+        selected_reg: CohortCourseRegistration,
         page_num: int | str,
     ) -> Page:
-        """Return a paginated page of cohort memberships annotated with progress."""
+        """Return a paginated page of cohort memberships annotated with progress.
+
+        The percentage is the one this registration granted, so a member who
+        also studies the course through another organisation or an individual
+        registration is read here at their progress in *this* cohort.
+
+        No tiebreak is needed: one_course_progress_per_cohort_registration
+        makes at most one row possible. The [:1] is the belt to that
+        constraint's braces -- an unbounded scalar subquery turns a second row
+        into a Postgres "more than one row returned" error for the whole
+        panel, and the slice costs nothing.
+        """
         progress_subquery = Subquery(
             CourseProgress.objects.filter(
-                user=OuterRef("learner__user"),
-                course=course,
+                learner=OuterRef("learner"),
+                cohort_registration=selected_reg,
             ).values("progress_percentage")[:1],
             output_field=IntegerField(),
         )
@@ -374,38 +404,59 @@ class CohortCourseProgressPanel(Panel):
 
     def _fetch_progress_maps(
         self,
-        visible_user_ids: list[int],
-        visible_items: list[Topic | Form],
+        visible_learner_ids: list[UUID],
+        visible_collection_items: list[ContentCollectionItem],
+        selected_reg: CohortCourseRegistration,
     ) -> tuple[
-        dict[tuple[int, UUID], TopicProgress],
-        dict[tuple[int, UUID], FormProgressData],
+        dict[tuple[UUID, UUID], TopicProgress],
+        dict[tuple[UUID, UUID], FormProgressData],
     ]:
-        """Fetch topic and form progress keyed by (user_id, item_id).
+        """Fetch topic and form progress keyed by (learner_id, collection_item_id).
+
+        Only rows hanging off this registration's records are read, so the
+        cells describe the same enrolment the percentage column does.
 
         Returns (topic_progress_map, form_progress_map).
         """
-        visible_topic_ids = [
-            item.id for item in visible_items if isinstance(item, Topic)
+        visible_topic_item_ids = [
+            item.id
+            for item in visible_collection_items
+            if isinstance(item.child, Topic)
         ]
-        visible_form_ids = [item.id for item in visible_items if isinstance(item, Form)]
+        visible_form_item_ids = [
+            item.id for item in visible_collection_items if isinstance(item.child, Form)
+        ]
 
-        topic_progress_map: dict[tuple[int, UUID], TopicProgress] = {}
-        if visible_topic_ids:
+        topic_progress_map: dict[tuple[UUID, UUID], TopicProgress] = {}
+        if visible_topic_item_ids:
             for tp in TopicProgress.objects.filter(
-                user_id__in=visible_user_ids, topic_id__in=visible_topic_ids
-            ).select_related("topic"):
-                topic_progress_map[(tp.user_id, tp.topic_id)] = tp
+                course_progress__cohort_registration=selected_reg,
+                course_progress__learner_id__in=visible_learner_ids,
+                collection_item_id__in=visible_topic_item_ids,
+            ).select_related("course_progress", "topic"):
+                topic_progress_map[
+                    (tp.course_progress.learner_id, tp.collection_item_id)
+                ] = tp
 
-        form_progress_map: dict[tuple[int, UUID], FormProgressData] = {}
-        if visible_form_ids:
-            for fp in (
-                FormProgress.objects.filter(
-                    user_id__in=visible_user_ids, form_id__in=visible_form_ids
+        form_progress_map: dict[tuple[UUID, UUID], FormProgressData] = {}
+        if visible_form_item_ids:
+            for course_attempt in (
+                CourseFormAttempt.objects.filter(
+                    course_progress__cohort_registration=selected_reg,
+                    course_progress__learner_id__in=visible_learner_ids,
+                    collection_item_id__in=visible_form_item_ids,
                 )
-                .select_related("form")
-                .order_by(F("completed_time").desc(nulls_last=True), "-start_time")
+                .select_related("course_progress", "form_progress__form")
+                .order_by(
+                    F("form_progress__completed_time").desc(nulls_last=True),
+                    "-form_progress__start_time",
+                )
             ):
-                key = (fp.user_id, fp.form_id)
+                fp = course_attempt.form_progress
+                key = (
+                    course_attempt.course_progress.learner_id,
+                    course_attempt.collection_item_id,
+                )
                 if key not in form_progress_map:
                     form_progress_map[key] = FormProgressData(
                         latest=fp, completed_count=0
@@ -423,7 +474,7 @@ class CohortCourseProgressPanel(Panel):
     ) -> tuple[
         CohortDeadline | None,
         dict[tuple[int, UUID | None], CohortDeadline],
-        dict[tuple[int, int | None, UUID | None], UserCohortDeadlineOverride],
+        dict[tuple[UUID, int | None, UUID | None], UserCohortDeadlineOverride],
         DjangoContentType,
         DjangoContentType,
     ]:
@@ -457,33 +508,29 @@ class CohortCourseProgressPanel(Panel):
                 deadline_map[(dl.content_type_id, dl.object_id)] = dl
 
         learner_override_map: dict[
-            tuple[int, int | None, UUID | None], UserCohortDeadlineOverride
+            tuple[UUID, int | None, UUID | None], UserCohortDeadlineOverride
         ] = {}
-        user_ids = [m.learner.user_id for m in learner_page.object_list]
-        if user_ids:
-            overrides = (
-                UserCohortDeadlineOverride.objects.filter(
-                    cohort_course_registration=selected_reg,
-                    learner__user_id__in=user_ids,
-                )
-                .filter(deadline_q)
-                .select_related("learner")
-            )
+        learner_ids = [m.learner_id for m in learner_page.object_list]
+        if learner_ids:
+            overrides = UserCohortDeadlineOverride.objects.filter(
+                cohort_course_registration=selected_reg,
+                learner_id__in=learner_ids,
+            ).filter(deadline_q)
             for ovr in overrides:
                 learner_override_map[
-                    (ovr.learner.user_id, ovr.content_type_id, ovr.object_id)
+                    (ovr.learner_id, ovr.content_type_id, ovr.object_id)
                 ] = ovr
 
         return course_deadline, deadline_map, learner_override_map, topic_ct, form_ct
 
     def _build_topic_cell(
         self,
-        item: Topic,
-        user: User,
-        topic_progress_map: dict[tuple[int, UUID], TopicProgress],
+        collection_item: ContentCollectionItem,
+        learner_id: UUID,
+        topic_progress_map: dict[tuple[UUID, UUID], TopicProgress],
     ) -> dict[str, object]:
         """Build progress fields for a Topic cell."""
-        tp = topic_progress_map.get((user.id, item.id))
+        tp = topic_progress_map.get((learner_id, collection_item.id))
         return {
             "progress": tp,
             "is_completed": tp is not None and tp.complete_time is not None,
@@ -494,12 +541,13 @@ class CohortCourseProgressPanel(Panel):
 
     def _build_form_cell(
         self,
-        item: Form,
-        user: User,
-        form_progress_map: dict[tuple[int, UUID], FormProgressData],
+        collection_item: ContentCollectionItem,
+        form: Form,
+        learner_id: UUID,
+        form_progress_map: dict[tuple[UUID, UUID], FormProgressData],
     ) -> dict[str, object]:
         """Build progress fields for a Form cell."""
-        fp_data = form_progress_map.get((user.id, item.id))
+        fp_data = form_progress_map.get((learner_id, collection_item.id))
         if not fp_data:
             return {
                 "progress": None,
@@ -517,13 +565,13 @@ class CohortCourseProgressPanel(Panel):
             "completed_time": fp.completed_time,
             "start_time": fp.start_time,
             "completed_count": fp_data["completed_count"],
-            "is_quiz": item.strategy == "QUIZ",
+            "is_quiz": form.strategy == "QUIZ",
         }
         if cell["is_completed"] and cell["is_quiz"] and fp.scores:
             try:
                 cell["quiz_percentage"] = fp.quiz_percentage()
                 cell["passed"] = (
-                    fp.passed() if item.quiz_pass_percentage is not None else None
+                    fp.passed() if form.quiz_pass_percentage is not None else None
                 )
             except ValueError:
                 cell["quiz_percentage"] = None
@@ -532,39 +580,48 @@ class CohortCourseProgressPanel(Panel):
 
     def _build_cell(
         self,
-        item: Topic | Form,
-        user: User,
+        collection_item: ContentCollectionItem,
+        learner_id: UUID,
         topic_ct: DjangoContentType,
         form_ct: DjangoContentType,
-        topic_progress_map: dict[tuple[int, UUID], TopicProgress],
-        form_progress_map: dict[tuple[int, UUID], FormProgressData],
+        topic_progress_map: dict[tuple[UUID, UUID], TopicProgress],
+        form_progress_map: dict[tuple[UUID, UUID], FormProgressData],
         deadline_map: dict[tuple[int, UUID | None], CohortDeadline],
         learner_override_map: dict[
-            tuple[int, int | None, UUID | None], UserCohortDeadlineOverride
+            tuple[UUID, int | None, UUID | None], UserCohortDeadlineOverride
         ],
         now: datetime,
     ) -> dict[str, object]:
-        """Build the cell data dict for one user/item intersection."""
+        """Build the cell data dict for one learner/placement intersection."""
+        child = collection_item.child
         cell: dict[str, object] = {
-            "item": item,
+            "item": child,
             "is_quiz": False,
             "completed_count": 0,
             "quiz_percentage": None,
             "passed": None,
         }
 
-        if isinstance(item, Topic):
-            cell.update(self._build_topic_cell(item, user, topic_progress_map))
-        elif isinstance(item, Form):
-            cell.update(self._build_form_cell(item, user, form_progress_map))
+        if isinstance(child, Topic):
+            cell.update(
+                self._build_topic_cell(collection_item, learner_id, topic_progress_map)
+            )
+        elif isinstance(child, Form):
+            cell.update(
+                self._build_form_cell(
+                    collection_item, child, learner_id, form_progress_map
+                )
+            )
         else:
             raise NotImplementedError(
-                f"Cell building not implemented for {type(item).__name__}"
+                f"Cell building not implemented for {type(child).__name__}"
             )
 
-        item_ct = topic_ct if isinstance(item, Topic) else form_ct
-        item_deadline = deadline_map.get((item_ct.id, item.id))
-        override = learner_override_map.get((user.id, item_ct.id, item.id))
+        # Deadlines point at the Topic or Form, never at the placement, so the
+        # lookup stays keyed on the content id.
+        item_ct = topic_ct if isinstance(child, Topic) else form_ct
+        item_deadline = deadline_map.get((item_ct.id, child.id))
+        override = learner_override_map.get((learner_id, item_ct.id, child.id))
         effective_deadline = override or item_deadline
         cell["deadline"] = item_deadline
         cell["override"] = override
@@ -585,14 +642,14 @@ class CohortCourseProgressPanel(Panel):
     def _build_rows(
         self,
         learner_page: Page,
-        visible_items: list[Topic | Form],
+        visible_collection_items: list[ContentCollectionItem],
         topic_ct: DjangoContentType,
         form_ct: DjangoContentType,
-        topic_progress_map: dict[tuple[int, UUID], TopicProgress],
-        form_progress_map: dict[tuple[int, UUID], FormProgressData],
+        topic_progress_map: dict[tuple[UUID, UUID], TopicProgress],
+        form_progress_map: dict[tuple[UUID, UUID], FormProgressData],
         deadline_map: dict[tuple[int, UUID | None], CohortDeadline],
         learner_override_map: dict[
-            tuple[int, int | None, UUID | None], UserCohortDeadlineOverride
+            tuple[UUID, int | None, UUID | None], UserCohortDeadlineOverride
         ],
         organisation_slug: str,
     ) -> list[dict[str, object]]:
@@ -603,8 +660,8 @@ class CohortCourseProgressPanel(Panel):
             user = membership.learner.user
             cells = [
                 self._build_cell(
-                    item,
-                    user,
+                    collection_item,
+                    membership.learner_id,
                     topic_ct,
                     form_ct,
                     topic_progress_map,
@@ -613,7 +670,7 @@ class CohortCourseProgressPanel(Panel):
                     learner_override_map,
                     now,
                 )
-                for item in visible_items
+                for collection_item in visible_collection_items
             ]
 
             name_parts = [p for p in (user.first_name, user.last_name) if p]
@@ -638,7 +695,7 @@ class CohortCourseProgressPanel(Panel):
 
     def _build_header_items(
         self,
-        visible_items: list[Topic | Form],
+        visible_collection_items: list[ContentCollectionItem],
         deadline_map: dict[tuple[int, UUID | None], CohortDeadline],
         topic_ct: DjangoContentType,
         form_ct: DjangoContentType,
@@ -650,10 +707,11 @@ class CohortCourseProgressPanel(Panel):
         - "deadline": the CohortDeadline for this item, or None if no deadline is set
         """
         header_items: list[dict[str, object]] = []
-        for item in visible_items:
-            item_ct = topic_ct if isinstance(item, Topic) else form_ct
-            item_deadline = deadline_map.get((item_ct.id, item.id))
-            header_items.append({"item": item, "deadline": item_deadline})
+        for collection_item in visible_collection_items:
+            child = cast("Topic | Form", collection_item.child)
+            item_ct = topic_ct if isinstance(child, Topic) else form_ct
+            item_deadline = deadline_map.get((item_ct.id, child.id))
+            header_items.append({"item": child, "deadline": item_deadline})
         return header_items
 
     def get_content(self, request, base_url: str = "", panel_name: str = "") -> str:
@@ -680,22 +738,30 @@ class CohortCourseProgressPanel(Panel):
         )
         course: Course = selected_reg.collection
 
-        visible_items, visible_parts, has_parts, col_page = self._paginate_course_items(
-            course,
-            request.GET.get("col_page", 1),
+        visible_collection_items, visible_parts, has_parts, col_page = (
+            self._paginate_course_items(
+                course,
+                request.GET.get("col_page", 1),
+            )
         )
+        # Deadlines are set against the Topic or Form, so the deadline fetch
+        # takes the resolved children while everything else takes placements.
+        visible_items = [
+            cast("Topic | Form", ci.child) for ci in visible_collection_items
+        ]
 
         learner_page = self._paginate_learners(
             cohort,
-            course,
+            selected_reg,
             request.GET.get("page", 1),
         )
 
-        visible_user_ids = [m.learner.user_id for m in learner_page.object_list]
+        visible_learner_ids = [m.learner_id for m in learner_page.object_list]
 
         topic_progress_map, form_progress_map = self._fetch_progress_maps(
-            visible_user_ids,
-            visible_items,
+            visible_learner_ids,
+            visible_collection_items,
+            selected_reg,
         )
 
         course_deadline, deadline_map, learner_override_map, topic_ct, form_ct = (
@@ -704,7 +770,7 @@ class CohortCourseProgressPanel(Panel):
 
         rows = self._build_rows(
             learner_page,
-            visible_items,
+            visible_collection_items,
             topic_ct,
             form_ct,
             topic_progress_map,
@@ -715,7 +781,7 @@ class CohortCourseProgressPanel(Panel):
         )
 
         header_items = self._build_header_items(
-            visible_items,
+            visible_collection_items,
             deadline_map,
             topic_ct,
             form_ct,
@@ -726,7 +792,6 @@ class CohortCourseProgressPanel(Panel):
             "selected_reg": selected_reg,
             "course": course,
             "course_deadline": course_deadline,
-            "visible_items": visible_items,
             "header_items": header_items,
             "visible_parts": visible_parts,
             "has_parts": has_parts,

@@ -1,6 +1,7 @@
 import pytest
 
 from freedom_ls.content_engine.factories import (
+    ActivityFactory,
     CourseFactory,
     CoursePartFactory,
     TopicFactory,
@@ -15,7 +16,7 @@ from freedom_ls.learner_management.utils import calculate_course_progress_percen
 def test_course_with_no_children_returns_zero_percent(mock_site_context):
     """Course with no children should return 0% progress."""
     course: Course = CourseFactory()
-    percentage = calculate_course_progress_percentage(course, set(), set())
+    percentage = calculate_course_progress_percentage(course, set())
     assert percentage == 0
 
 
@@ -44,14 +45,13 @@ def test_course_with_no_children_returns_zero_percent(mock_site_context):
 def test_progress_percentage_for_n_of_m(mock_site_context, completed, total, expected):
     """Hard-coded oracles for completed/total → percentage. Oracles written down, not derived."""
     course: Course = CourseFactory()
-    topics = [TopicFactory(title=f"Topic {i}") for i in range(total)]
-    for i, topic in enumerate(topics):
-        course.items.create(child=topic, order=i)
-    completed_topic_ids = {t.id for t in topics[:completed]}
+    placements = [
+        course.items.create(child=TopicFactory(title=f"Topic {i}"), order=i)
+        for i in range(total)
+    ]
+    completed_item_ids = {item.id for item in placements[:completed]}
 
-    percentage = calculate_course_progress_percentage(
-        course, completed_topic_ids, set()
-    )
+    percentage = calculate_course_progress_percentage(course, completed_item_ids)
 
     assert percentage == expected
 
@@ -62,12 +62,11 @@ def test_course_with_mixed_content(mock_site_context):
     course: Course = CourseFactory()
     topic: Topic = TopicFactory()
     test_form: Form = FormFactory()
-    course.items.create(child=topic, order=0)
+    topic_item = course.items.create(child=topic, order=0)
     course.items.create(child=test_form, order=1)
 
     # Only topic completed
-    completed_topics = {topic.id}
-    percentage = calculate_course_progress_percentage(course, completed_topics, set())
+    percentage = calculate_course_progress_percentage(course, {topic_item.id})
     assert percentage == 50
 
 
@@ -79,23 +78,21 @@ def test_course_with_course_part_children(mock_site_context):
 
     topic1: Topic = TopicFactory(title="Topic 1")
     topic2: Topic = TopicFactory(title="Topic 2")
-    part.items.create(child=topic1, order=0)
-    part.items.create(child=topic2, order=1)
+    item1 = part.items.create(child=topic1, order=0)
+    item2 = part.items.create(child=topic2, order=1)
 
     course.items.create(child=part, order=0)
 
     # No items completed
-    percentage = calculate_course_progress_percentage(course, set(), set())
+    percentage = calculate_course_progress_percentage(course, set())
     assert percentage == 0
 
     # One item completed
-    completed_topics = {topic1.id}
-    percentage = calculate_course_progress_percentage(course, completed_topics, set())
+    percentage = calculate_course_progress_percentage(course, {item1.id})
     assert percentage == 50
 
     # Both items completed
-    completed_topics = {topic1.id, topic2.id}
-    percentage = calculate_course_progress_percentage(course, completed_topics, set())
+    percentage = calculate_course_progress_percentage(course, {item1.id, item2.id})
     assert percentage == 100
 
 
@@ -104,19 +101,20 @@ def test_course_with_mixed_direct_and_part_children(mock_site_context):
     """Course with both direct items and items inside CourseParts."""
     course: Course = CourseFactory()
     direct_topic: Topic = TopicFactory(title="Direct Topic")
-    course.items.create(child=direct_topic, order=0)
+    direct_item = course.items.create(child=direct_topic, order=0)
 
     part: CoursePart = CoursePartFactory(title="Part 1")
     part_topic1: Topic = TopicFactory(title="Part Topic 1")
     part_topic2: Topic = TopicFactory(title="Part Topic 2")
-    part.items.create(child=part_topic1, order=0)
+    part_item1 = part.items.create(child=part_topic1, order=0)
     part.items.create(child=part_topic2, order=1)
     course.items.create(child=part, order=1)
 
     # Total: 3 items (1 direct + 2 in part)
     # Complete 2 out of 3
-    completed_topics = {direct_topic.id, part_topic1.id}
-    percentage = calculate_course_progress_percentage(course, completed_topics, set())
+    percentage = calculate_course_progress_percentage(
+        course, {direct_item.id, part_item1.id}
+    )
     assert percentage == 67  # (2 of 3) → 67
 
 
@@ -128,12 +126,43 @@ def test_course_with_forms_in_course_part(mock_site_context):
 
     form1: Form = FormFactory(title="Form 1")
     form2: Form = FormFactory(title="Form 2")
-    part.items.create(child=form1, order=0)
+    form_item1 = part.items.create(child=form1, order=0)
     part.items.create(child=form2, order=1)
 
     course.items.create(child=part, order=0)
 
     # One form completed
-    completed_forms = {form1.id}
-    percentage = calculate_course_progress_percentage(course, set(), completed_forms)
+    percentage = calculate_course_progress_percentage(course, {form_item1.id})
     assert percentage == 50
+
+
+@pytest.mark.django_db
+def test_one_topic_placed_twice_counts_as_two_items(mock_site_context):
+    """Each placement of a twice-placed topic is completed on its own.
+
+    The course outline reads the placement, so a content-keyed percentage would
+    credit both positions for one completion and disagree with what the learner
+    can see.
+    """
+    course: Course = CourseFactory()
+    topic: Topic = TopicFactory(title="Placed twice")
+    other: Topic = TopicFactory(title="Placed once")
+    first_placement = course.items.create(child=topic, order=0)
+    course.items.create(child=other, order=1)
+    course.items.create(child=topic, order=2)
+
+    percentage = calculate_course_progress_percentage(course, {first_placement.id})
+
+    assert percentage == 33
+
+
+@pytest.mark.django_db
+def test_a_placed_activity_counts_towards_neither_half(mock_site_context):
+    """Activities are placeable but have no completion, so they are not counted."""
+    course: Course = CourseFactory()
+    topic_item = course.items.create(child=TopicFactory(title="Topic"), order=0)
+    course.items.create(child=ActivityFactory(title="Activity"), order=1)
+
+    percentage = calculate_course_progress_percentage(course, {topic_item.id})
+
+    assert percentage == 100

@@ -36,9 +36,8 @@ def test_not_started_form_shows_start_button(mock_site_context):
 @pytest.mark.django_db
 def test_started_form_shows_continue_button(mock_site_context):
     """When user has started but not completed the form, show Continue button."""
-    user = UserFactory()
     form = FormFactory()
-    incomplete_progress: FormProgress = FormProgressFactory(user=user, form=form)
+    incomplete_progress: FormProgress = FormProgressFactory(form=form)
 
     buttons = form_start_page_buttons(
         form=form,
@@ -55,10 +54,9 @@ def test_started_form_shows_continue_button(mock_site_context):
 @pytest.mark.django_db
 def test_completed_non_quiz_not_last_shows_next_button(mock_site_context):
     """When user completed a non-quiz form (not last item), show Next button."""
-    user = UserFactory()
     form = FormFactory()
     completed_progress: FormProgress = FormProgressFactory(
-        user=user, form=form, completed_time=timezone.now()
+        form=form, completed_time=timezone.now()
     )
 
     buttons = form_start_page_buttons(
@@ -78,10 +76,9 @@ def test_completed_non_quiz_last_shows_finish_course_button(
     mock_site_context,
 ):
     """When user completed a non-quiz form (last item), show Finish Course button."""
-    user = UserFactory()
     form = FormFactory()
     completed_progress: FormProgress = FormProgressFactory(
-        user=user, form=form, completed_time=timezone.now()
+        form=form, completed_time=timezone.now()
     )
 
     buttons = form_start_page_buttons(
@@ -99,7 +96,6 @@ def test_completed_non_quiz_last_shows_finish_course_button(
 @pytest.mark.django_db
 def test_passed_quiz_not_last_shows_next_button(mock_site_context):
     """When user passed a quiz (not last item), show Next button."""
-    user = UserFactory()
     # Create a quiz form
     quiz = FormFactory(
         title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=80
@@ -112,7 +108,6 @@ def test_passed_quiz_not_last_shows_next_button(mock_site_context):
 
     # Create completed progress with passing score
     completed_progress: FormProgress = FormProgressFactory(
-        user=user,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 1, "max_score": 1},  # 100% pass
@@ -133,7 +128,6 @@ def test_passed_quiz_not_last_shows_next_button(mock_site_context):
 @pytest.mark.django_db
 def test_passed_quiz_last_shows_finish_course_button(mock_site_context):
     """When user passed a quiz (last item), show Finish Course button."""
-    user = UserFactory()
     # Create a quiz form
     quiz = FormFactory(
         title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=80
@@ -145,7 +139,6 @@ def test_passed_quiz_last_shows_finish_course_button(mock_site_context):
 
     # Create completed progress with passing score
     completed_progress: FormProgress = FormProgressFactory(
-        user=user,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 1, "max_score": 1},  # 100% pass
@@ -166,7 +159,6 @@ def test_passed_quiz_last_shows_finish_course_button(mock_site_context):
 @pytest.mark.django_db
 def test_failed_quiz_shows_try_again_button(mock_site_context):
     """When user failed a quiz, show Try Again button (no Next button)."""
-    user = UserFactory()
     # Create a quiz form
     quiz = FormFactory(
         title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=80
@@ -178,7 +170,6 @@ def test_failed_quiz_shows_try_again_button(mock_site_context):
 
     # Create completed progress with failing score
     completed_progress: FormProgress = FormProgressFactory(
-        user=user,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 0, "max_score": 1},  # 0% fail
@@ -199,7 +190,6 @@ def test_failed_quiz_shows_try_again_button(mock_site_context):
 @pytest.mark.django_db
 def test_failed_quiz_last_item_shows_only_try_again(mock_site_context):
     """When user failed a quiz (even if last item), show only Try Again button."""
-    user = UserFactory()
     # Create a quiz form
     quiz = FormFactory(
         title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=80
@@ -211,7 +201,6 @@ def test_failed_quiz_last_item_shows_only_try_again(mock_site_context):
 
     # Create completed progress with failing score
     completed_progress: FormProgress = FormProgressFactory(
-        user=user,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 0, "max_score": 1},  # 0% fail
@@ -232,7 +221,6 @@ def test_failed_quiz_last_item_shows_only_try_again(mock_site_context):
 @pytest.mark.django_db
 def test_quiz_passed_against_its_own_pass_mark_shows_next(mock_site_context):
     """A quiz is judged against its own pass mark, not a fixed threshold."""
-    user = UserFactory()
     quiz = FormFactory(
         title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=50
     )
@@ -242,7 +230,6 @@ def test_quiz_passed_against_its_own_pass_mark_shows_next(mock_site_context):
     )
 
     completed_progress: FormProgress = FormProgressFactory(
-        user=user,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 3, "max_score": 5},  # 60%, over the 50% pass mark
@@ -267,7 +254,6 @@ def test_quiz_failed_against_a_high_pass_mark_shows_try_again(mock_site_context)
     The start page and ``get_content_status`` have to agree: an item the course
     index locks must not be reachable from a button on the page before it.
     """
-    user = UserFactory()
     quiz = FormFactory(
         title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=90
     )
@@ -277,7 +263,6 @@ def test_quiz_failed_against_a_high_pass_mark_shows_try_again(mock_site_context)
     )
 
     completed_progress: FormProgress = FormProgressFactory(
-        user=user,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 17, "max_score": 20},  # 85%, under the 90% pass mark
@@ -298,7 +283,6 @@ def test_quiz_failed_against_a_high_pass_mark_shows_try_again(mock_site_context)
 @pytest.mark.django_db
 def test_quiz_with_no_pass_mark_shows_next(mock_site_context):
     """A quiz with no pass mark has nothing to fail, so the learner moves on."""
-    user = UserFactory()
     quiz = FormFactory(
         title="Test Quiz", strategy=FormStrategy.QUIZ, quiz_pass_percentage=None
     )
@@ -308,7 +292,6 @@ def test_quiz_with_no_pass_mark_shows_next(mock_site_context):
     )
 
     completed_progress: FormProgress = FormProgressFactory(
-        user=user,
         form=quiz,
         completed_time=timezone.now(),
         scores={"score": 1, "max_score": 2},

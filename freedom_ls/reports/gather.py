@@ -118,7 +118,7 @@ class QuizTallies:
     """Both views of the same answers, counted in one pass over the sat pairs."""
 
     # Per-learner wrong-answer detail, counted across every completed attempt.
-    wrong_counts: dict[tuple[int, UUID, UUID], int]
+    wrong_counts: dict[tuple[UUID, UUID, UUID], int]
     # (option text, its `correct` verdict) to the number of wrong attempts it was
     # selected in. A single attempt cannot select the same option twice, so a
     # count never exceeds the matching wrong_counts entry. The verdict rides in
@@ -126,7 +126,7 @@ class QuizTallies:
     # the tick that cost the mark. Key order is first-seen order -- see the
     # ordering note on FormProgressIndex.completed_attempt_ids.
     wrong_selected_counts: dict[
-        tuple[int, UUID, UUID], dict[tuple[str, bool | None], int]
+        tuple[UUID, UUID, UUID], dict[tuple[str, bool | None], int]
     ]
     # Cohort-wide confusion tally, first attempts only.
     respondent_counts: dict[UUID, int]
@@ -248,13 +248,15 @@ def _completion_percentage(completed_count: int, total_count: int) -> int:
 
 
 def _completion_counts(
-    items: list[Topic | Form], user_id: int, progress: ProgressIndex
+    items: list[Topic | Form], learner_id: UUID, progress: ProgressIndex
 ) -> tuple[int, int]:
     """(completed_count, total_count) for one learner over the given items."""
-    completed_topic_ids = progress.topics.completed_topic_ids_by_user.get(
-        user_id, set()
+    completed_topic_ids = progress.topics.completed_topic_ids_by_learner.get(
+        learner_id, set()
     )
-    completed_form_ids = progress.forms.completed_form_ids_by_user.get(user_id, set())
+    completed_form_ids = progress.forms.completed_form_ids_by_learner.get(
+        learner_id, set()
+    )
     completed = 0
     for item in items:
         ids = completed_topic_ids if isinstance(item, Topic) else completed_form_ids
@@ -264,7 +266,7 @@ def _completion_counts(
 
 
 def _latest_completion(
-    items: list[Topic | Form], user_id: int, progress: ProgressIndex
+    items: list[Topic | Form], learner_id: UUID, progress: ProgressIndex
 ) -> tuple[str | None, datetime | None]:
     """Most recent completion timestamp and title among the given items for one learner.
 
@@ -275,12 +277,12 @@ def _latest_completion(
     best_at: datetime | None = None
     for item in items:
         if isinstance(item, Topic):
-            at = progress.topics.complete_time.get((user_id, item.id))
+            at = progress.topics.complete_time.get((learner_id, item.id))
         else:
-            key = (user_id, item.id)
+            key = (learner_id, item.id)
             at = (
-                progress.forms.latest_by_user_form[key].completed_time
-                if progress.forms.completed_attempts_by_user_form.get(key)
+                progress.forms.latest_by_learner_form[key].completed_time
+                if progress.forms.completed_attempts_by_learner_form.get(key)
                 else None
             )
         if at is not None and (best_at is None or at > best_at):
@@ -289,21 +291,21 @@ def _latest_completion(
 
 
 def _completed_items(
-    items: list[Topic | Form], user_id: int, progress: ProgressIndex
+    items: list[Topic | Form], learner_id: UUID, progress: ProgressIndex
 ) -> list[CompletedItem]:
     completed: list[CompletedItem] = []
     for item in items:
         if isinstance(item, Topic):
-            at = progress.topics.complete_time.get((user_id, item.id))
+            at = progress.topics.complete_time.get((learner_id, item.id))
             if at is not None:
                 completed.append(
                     CompletedItem(title=item.title, completed_at=at, is_quiz=False)
                 )
         else:
-            key = (user_id, item.id)
-            if progress.forms.completed_attempts_by_user_form.get(key):
-                fp = progress.forms.latest_by_user_form[key]
-                # completed_attempts_by_user_form only collects rows with
+            key = (learner_id, item.id)
+            if progress.forms.completed_attempts_by_learner_form.get(key):
+                fp = progress.forms.latest_by_learner_form[key]
+                # completed_attempts_by_learner_form only collects rows with
                 # completed_time set, and the ordering that produced "latest"
                 # guarantees a completed row sorts first whenever one exists —
                 # so completed_time is never None here.
@@ -345,11 +347,11 @@ def _score_attempt(
 
 
 def _quiz_result_for(
-    user_id: int, form: Form, forms: FormProgressIndex
+    learner_id: UUID, form: Form, forms: FormProgressIndex
 ) -> QuizResult | None:
     """The learner's completed attempts at this quiz, or None if never attempted."""
-    key = (user_id, form.id)
-    attempt_rows = forms.completed_attempts_by_user_form.get(key, [])
+    key = (learner_id, form.id)
+    attempt_rows = forms.completed_attempts_by_learner_form.get(key, [])
     if not attempt_rows:
         return None
 
@@ -374,7 +376,7 @@ def _quiz_result_for(
 
     # Safe to index rather than .get(): the attempt list above was non-empty,
     # and every completed sitting also set a latest row for the same key.
-    fp = forms.latest_by_user_form[key]
+    fp = forms.latest_by_learner_form[key]
     latest_score, latest_max_score, percentage, passed = _score_attempt(fp, form)
     return QuizResult(
         form_id=form.id,
@@ -397,17 +399,17 @@ def tally_quiz_answers(
     The two views are counted together because they share this single walk;
     counting them apart would traverse every (sitting, question) pair twice.
     """
-    wrong_counts: dict[tuple[int, UUID, UUID], int] = defaultdict(int)
+    wrong_counts: dict[tuple[UUID, UUID, UUID], int] = defaultdict(int)
     wrong_selected_counts: dict[
-        tuple[int, UUID, UUID], dict[tuple[str, bool | None], int]
+        tuple[UUID, UUID, UUID], dict[tuple[str, bool | None], int]
     ] = defaultdict(lambda: defaultdict(int))
     respondent_counts: dict[UUID, int] = defaultdict(int)
     wrong_counts_first: dict[UUID, int] = defaultdict(int)
     for attempt_id, question in sat.pairs:
         is_correct = sat.correctness[(attempt_id, question.id)]
-        user_id, form_id = forms.user_form_by_attempt_id[attempt_id]
+        learner_id, form_id = forms.learner_form_by_attempt_id[attempt_id]
         if not is_correct:
-            wrong_key = (user_id, form_id, question.id)
+            wrong_key = (learner_id, form_id, question.id)
             wrong_counts[wrong_key] += 1
             for option in sat.selected_options_by_pair.get(
                 (attempt_id, question.id), []
@@ -426,15 +428,15 @@ def tally_quiz_answers(
     )
 
 
-def build_wrong_answers_by_user_quiz(
+def build_wrong_answers_by_learner_quiz(
     tallies: QuizTallies, questions: QuestionIndex
-) -> dict[int, dict[UUID, list[WrongAnswer]]]:
+) -> dict[UUID, dict[UUID, list[WrongAnswer]]]:
     """Each learner's missed questions, grouped by quiz and ordered by question number."""
-    wrong_answers_by_user_quiz: dict[int, dict[UUID, list[WrongAnswer]]] = defaultdict(
-        lambda: defaultdict(list)
+    wrong_answers_by_learner_quiz: dict[UUID, dict[UUID, list[WrongAnswer]]] = (
+        defaultdict(lambda: defaultdict(list))
     )
-    for (user_id, form_id, question_id), times_wrong in tallies.wrong_counts.items():
-        wrong_answers_by_user_quiz[user_id][form_id].append(
+    for (learner_id, form_id, question_id), times_wrong in tallies.wrong_counts.items():
+        wrong_answers_by_learner_quiz[learner_id][form_id].append(
             WrongAnswer(
                 question_number=questions.number_by_id[question_id],
                 question_text=questions.by_id[question_id].question,
@@ -442,16 +444,16 @@ def build_wrong_answers_by_user_quiz(
                 selected_options=[
                     SelectedOption(text=text, correct=correct, count=count)
                     for (text, correct), count in tallies.wrong_selected_counts[
-                        (user_id, form_id, question_id)
+                        (learner_id, form_id, question_id)
                     ].items()
                 ],
                 correct_option_texts=questions.correct_option_texts[question_id],
             )
         )
-    for per_quiz in wrong_answers_by_user_quiz.values():
+    for per_quiz in wrong_answers_by_learner_quiz.values():
         for wrong_answer_list in per_quiz.values():
             wrong_answer_list.sort(key=lambda wa: wa.question_number)
-    return wrong_answers_by_user_quiz
+    return wrong_answers_by_learner_quiz
 
 
 def build_confusion_block(
@@ -538,24 +540,24 @@ def _build_quiz_columns(items: list[Topic | Form]) -> list[QuizColumn]:
 
 
 def _build_learner_row(
-    user_id: int,
+    learner_id: UUID,
     items: list[Topic | Form],
     quiz_columns: list[QuizColumn],
     roster: CohortRoster,
     catalogue: CourseCatalogue,
     progress: ProgressIndex,
 ) -> LearnerRow:
-    completed_count, total_count = _completion_counts(items, user_id, progress)
-    last_title, last_at = _latest_completion(items, user_id, progress)
+    completed_count, total_count = _completion_counts(items, learner_id, progress)
+    last_title, last_at = _latest_completion(items, learner_id, progress)
     quiz_cells: dict[UUID, QuizResult | None] = {
         column.form_id: _quiz_result_for(
-            user_id, catalogue.forms_by_id[column.form_id], progress.forms
+            learner_id, catalogue.forms_by_id[column.form_id], progress.forms
         )
         for column in quiz_columns
     }
     return LearnerRow(
-        user_id=user_id,
-        full_name=roster.learners_by_id[user_id].display_name,
+        learner_id=learner_id,
+        full_name=roster.learners_by_id[learner_id].display_name,
         completion_percentage=_completion_percentage(completed_count, total_count),
         completed_item_count=completed_count,
         total_item_count=total_count,
@@ -574,7 +576,7 @@ def _build_summary_tables(
             quizzes=chunk,
             rows=[
                 SummaryRow(
-                    user_id=row.user_id,
+                    learner_id=row.learner_id,
                     full_name=row.full_name,
                     completion_percentage=row.completion_percentage,
                     completed_item_count=row.completed_item_count,
@@ -603,8 +605,8 @@ def _build_course_section(
     items = catalogue.course_items[reg.collection_id]
     quiz_columns = _build_quiz_columns(items)
     learner_rows = [
-        _build_learner_row(user_id, items, quiz_columns, roster, catalogue, progress)
-        for user_id in roster.learner_ids
+        _build_learner_row(learner_id, items, quiz_columns, roster, catalogue, progress)
+        for learner_id in roster.learner_ids
     ]
     return CourseSection(
         course_id=course.id,
@@ -651,49 +653,49 @@ def _evaluate_at_risk_flags(detail: LearnerDetail) -> list[AtRiskFlag]:
 
 
 def _build_learner_detail(
-    user_id: int,
+    learner_id: UUID,
     roster: CohortRoster,
     catalogue: CourseCatalogue,
     progress: ProgressIndex,
-    wrong_answers_by_user_quiz: dict[int, dict[UUID, list[WrongAnswer]]],
+    wrong_answers_by_learner_quiz: dict[UUID, dict[UUID, list[WrongAnswer]]],
     now: datetime,
 ) -> LearnerDetail:
-    user = roster.learners_by_id[user_id]
+    user = roster.learners_by_id[learner_id]
     all_items = catalogue.all_items
-    completed_count, total_count = _completion_counts(all_items, user_id, progress)
-    last_title, last_at = _latest_completion(all_items, user_id, progress)
-    completed_items = _completed_items(all_items, user_id, progress)
+    completed_count, total_count = _completion_counts(all_items, learner_id, progress)
+    last_title, last_at = _latest_completion(all_items, learner_id, progress)
+    completed_items = _completed_items(all_items, learner_id, progress)
     quiz_results = [
         result
         for result in (
-            _quiz_result_for(user_id, form, progress.forms)
+            _quiz_result_for(learner_id, form, progress.forms)
             for form_id, form in catalogue.forms_by_id.items()
             if form_id in catalogue.quiz_form_ids
         )
         if result is not None
     ]
 
-    wrong_answers_for_user = wrong_answers_by_user_quiz.get(user_id, {})
+    wrong_answers_for_learner = wrong_answers_by_learner_quiz.get(learner_id, {})
     wrong_answers = [
         QuizWrongAnswers(
             form_id=form_id,
             title=catalogue.forms_by_id[form_id].title,
-            answers=wrong_answers_for_user[form_id],
+            answers=wrong_answers_for_learner[form_id],
         )
         for form_id in catalogue.ordered_quiz_form_ids
-        if form_id in wrong_answers_for_user
+        if form_id in wrong_answers_for_learner
     ]
 
     detail = LearnerDetail(
-        user_id=user_id,
+        learner_id=learner_id,
         full_name=user.display_name,
-        sort_key=roster.sort_key_by_id[user_id],
+        sort_key=roster.sort_key_by_id[learner_id],
         completion_percentage=_completion_percentage(completed_count, total_count),
         completed_item_count=completed_count,
         total_item_count=total_count,
         last_completed_title=last_title,
         last_completed_at=last_at,
-        has_any_progress=user_id in progress.user_ids_with_any_progress,
+        has_any_progress=learner_id in progress.learner_ids_with_any_progress,
         completed_items=completed_items,
         quiz_results=quiz_results,
         wrong_answers=wrong_answers,
@@ -746,9 +748,11 @@ def gather_cohort_report_data(
     roster = load_roster(cohort, site_id)
     catalogue = build_course_catalogue(registrations)
 
-    progress = load_progress_index(site_id, roster.learner_ids, catalogue)
+    progress = load_progress_index(
+        site_id, registrations, roster.learner_ids, catalogue
+    )
     first_attempt_ids = load_first_attempt_ids(
-        site_id, roster.learner_ids, catalogue.quiz_form_ids
+        site_id, registrations, roster.learner_ids, catalogue.quiz_form_ids
     )
     questions = build_question_index(
         *load_quiz_questions(site_id, catalogue.quiz_form_ids)
@@ -766,7 +770,9 @@ def gather_cohort_report_data(
     )
 
     tallies = tally_quiz_answers(sat, progress.forms, first_attempt_ids)
-    wrong_answers_by_user_quiz = build_wrong_answers_by_user_quiz(tallies, questions)
+    wrong_answers_by_learner_quiz = build_wrong_answers_by_learner_quiz(
+        tallies, questions
+    )
     confusions_by_quiz = build_confusions_by_quiz(
         catalogue.quiz_form_ids, questions, tallies, distractors_by_question
     )
@@ -784,9 +790,9 @@ def gather_cohort_report_data(
     ]
     learner_details = [
         _build_learner_detail(
-            user_id, roster, catalogue, progress, wrong_answers_by_user_quiz, now
+            learner_id, roster, catalogue, progress, wrong_answers_by_learner_quiz, now
         )
-        for user_id in roster.learner_ids
+        for learner_id in roster.learner_ids
     ]
     stats = _completion_statistics(learner_details)
 

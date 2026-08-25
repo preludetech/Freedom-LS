@@ -36,7 +36,8 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import LearnerCourseRegistration
-from freedom_ls.learner_progress.factories import CourseProgressFactory
+
+from .conftest import course_progress_record
 
 # ---------------------------------------------------------------------------
 # 1. Chokepoint gate — initiate_course_access
@@ -256,8 +257,9 @@ def test_course_detail_registered_in_progress_shows_continue_label(
     """course_detail for a registered learner with progress shows 'Continue'."""
     course = course_with_topic(access_type="free")
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
-    CourseProgressFactory(user=user, course=course, progress_percentage=50)
+    record = course_progress_record(course, user)
+    record.progress_percentage = 50
+    record.save(update_fields=["progress_percentage"])
     client = logged_in_client(user)
 
     url = reverse(
@@ -276,13 +278,10 @@ def test_course_detail_registered_completed_shows_review_label(
     """course_detail for a registered and completed learner shows 'Review course'."""
     course = course_with_topic(access_type="free")
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
-    CourseProgressFactory(
-        user=user,
-        course=course,
-        progress_percentage=100,
-        completed_time=timezone.now(),
-    )
+    record = course_progress_record(course, user)
+    record.progress_percentage = 100
+    record.completed_time = timezone.now()
+    record.save(update_fields=["progress_percentage", "completed_time"])
     client = logged_in_client(user)
 
     url = reverse(

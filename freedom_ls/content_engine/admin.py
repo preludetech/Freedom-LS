@@ -113,10 +113,14 @@ class CoursePartAdmin(SiteAwareModelAdmin):
 
 @admin.register(ContentCollectionItem)
 class ContentCollectionItemAdmin(SiteAwareModelAdmin):
+    # collection and child are generic FKs, so only the concrete columns behind
+    # them can be ordered, filtered or searched. Ordering matters beyond this
+    # changelist: it is also the queryset the admins that point a ForeignKey at
+    # this model build their fields from.
     list_display = ["collection", "child", "order"]
-    list_filter = ("collection",)
-    search_fields = ("collection__title",)
-    ordering = ("collection", "order")
+    list_filter = ("collection_type", "child_type")
+    search_fields = ("collection_type__model", "child_type__model")
+    ordering = ("collection_type", "collection_id", "order")
 
 
 @admin.register(File)

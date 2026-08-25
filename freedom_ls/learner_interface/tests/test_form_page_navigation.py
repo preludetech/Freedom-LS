@@ -9,14 +9,13 @@ from django.urls import reverse
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
-    FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import Form, FormStrategy
 
-from .conftest import course_with_form, register_user_for_course
+from .conftest import course_with_form, form_attempt, register_user_for_course
 
 
 def _survey_with_an_optional_first_question(*, page_count: int) -> Form:
@@ -58,7 +57,7 @@ def test_skipping_an_optional_question_keeps_the_reached_pages_clickable(
     form = _survey_with_an_optional_first_question(page_count=3)
     course = course_with_form(form)
     user = register_user_for_course(course)
-    FormProgressFactory(user=user, form=form)
+    form_attempt(course, user, form)
     client.force_login(user)
 
     accessibility = _accessibility_of_each_page(client, course, page_number=3)
@@ -71,7 +70,7 @@ def test_pages_beyond_the_one_being_viewed_stay_locked(mock_site_context, client
     form = _survey_with_an_optional_first_question(page_count=4)
     course = course_with_form(form)
     user = register_user_for_course(course)
-    FormProgressFactory(user=user, form=form)
+    form_attempt(course, user, form)
     client.force_login(user)
 
     accessibility = _accessibility_of_each_page(client, course, page_number=2)
@@ -87,7 +86,7 @@ def test_an_answered_later_page_stays_clickable_from_the_first_page(
     form = _survey_with_an_optional_first_question(page_count=3)
     course = course_with_form(form)
     user = register_user_for_course(course)
-    progress = FormProgressFactory(user=user, form=form)
+    progress = form_attempt(course, user, form)
     third_page_question = form.pages.get(order=2).questions.get(order=0)
     QuestionAnswerFactory(
         form_progress=progress, question=third_page_question

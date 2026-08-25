@@ -10,9 +10,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 2. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to generate the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to generate the spec
 - [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/sdd:spec_review` to sanity-check the spec
+- [x] (cmd) Run `/sdd:spec_review` to sanity-check the spec
 - [ ] (user) Address any issues raised by the review
 
 ## 3. Threat model
@@ -22,7 +22,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
@@ -37,7 +37,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 7. Implementation
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 
 ## 8. Code security review
@@ -47,10 +47,19 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [x] (user + cmd) Fix QA bug B2: educator cohort panel 500s with ProtectedError when the cohort has granted course progress records. Decided: no cascade summary, no 500 — catch the ProtectedError and show a plain message such as "This cohort can't be deleted because it has course progress", in the delete dialog or wherever the delete is attempted. Fix it on `DeleteAction` itself, not just for Cohort, and cover both the render path (`get_cascade_summary`, which is what 500s on GET) and the submit path (`handle_submit`, which would 500 on click) (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug B1: qa_create_report_cohort leaves stale progress_percentage, so the educator matrix shows 0% beside completed cells (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug B3: reconcile `3. frontend_qa.md` section 0.2/0.3/13.1 with the actual qa_helpers command signatures — two seed commands reject the documented invocation, and the stated persona passwords and the --email option name are both wrong
+- [x] (user) Run `uv run python manage.py danger_content_delete` manually and confirm it completes without a ProtectedError — this session's command-permission classifier refused it, and it is an explicit pass criterion
+- [ ] (user + cmd) Execute test plan section 3 (shared content across two courses, success criterion 6) — never exercised in this QA run
+- [ ] (user + cmd) Execute test plan section 8 (per-organisation deadlines, success criterion 9) — never exercised in this QA run
+- [ ] (user) Verify the report body checks in test plan section 12 (Contents and at-risk anchors, the 'No recorded activity' flag, per-cohort quiz attempt numbering) in a PDF viewer — reports render to PDF only, so these could not be clicked in-browser
+- [ ] (user + cmd) Execute the remaining unrun steps: 5.1–5.4 and section 6 (deactivated learners keep their records), 7.1 (cohort membership fan-out), 9.7 (submit-on-exit quiz double-submit), 11.5 (qa_create_course_access_types access-type walk)
+- [ ] (user) Triage the QA report's remaining General note: a course part whose children are partly complete but with none currently in progress renders "Not started" rather than "In progress". Deliberately left out of the QA bugfix pass — the report records low confidence that it relates to this branch, so it needs its own look
 
 ## 10. Product documentation
 

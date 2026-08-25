@@ -43,11 +43,10 @@ from django.contrib.sites.models import Site
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
-    FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
@@ -73,8 +72,9 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     LearnerCourseRegistration,
 )
-from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.attempts import ensure_attempt, latest_attempt
 from freedom_ls.learner_progress.models import CourseProgress
+from freedom_ls.learner_progress.queries import course_progress_for
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_form_question_types import (
     _attach_form_to_course,
@@ -266,19 +266,31 @@ def _register(learner: User, course: Course, site: Site) -> None:
         )
 
 
-def _ensure_course_progress_row(user: User, course: Course, site: Site) -> None:
-    """Pre-create CourseProgress WITH a site.
+def _collection_item_for(course: Course, child: Form | Topic) -> ContentCollectionItem:
+    """The collection item placing `child` in `course`."""
+    for collection_item in course.viewable_collection_items():
+        if collection_item.child == child:
+            return collection_item
+    raise click.ClickException(
+        f"'{child.slug}' is not a viewable item of '{course.slug}'."
+    )
 
-    ``FormProgress.complete()`` triggers ``update_course_progress_on_completion``
-    which creates a ``CourseProgress`` without a ``site``, violating the NOT NULL
-    constraint. Creating the row up front avoids that.
+
+def _record_for(user: User, course: Course) -> CourseProgress:
+    """The learner's live record for `course` -- cohort-granted wins here,
+    since these learners hold both a cohort and an individual registration.
     """
-    if not CourseProgress.objects.filter(user=user, course=course, site=site).exists():
-        CourseProgressFactory(user=user, course=course, site=site)
+    record = course_progress_for(user, course)
+    if record is None:
+        raise click.ClickException(
+            f"No CourseProgress record for {user.email} on {course.slug}; "
+            "register the learner before completing progress."
+        )
+    return record
 
 
 def _complete_quiz_attempt(
-    user: User, form: Form, site: Site, *, answer_correctly: bool
+    user: User, course: Course, form: Form, site: Site, *, answer_correctly: bool
 ) -> FormProgress:
     """Create a genuinely scored, completed quiz attempt. Idempotent.
 
@@ -287,15 +299,13 @@ def _complete_quiz_attempt(
     ``correct=False`` (an incorrect answer). Free-text questions are left
     unanswered - they have no correct option so they always score zero.
     """
-    existing: FormProgress | None = FormProgress.objects.filter(
-        user=user, form=form, site=site
-    ).first()
+    record = _record_for(user, course)
+    collection_item = _collection_item_for(course, form)
+    existing = latest_attempt(record, collection_item)
     if existing is not None and existing.completed_time is not None:
         return existing
 
-    attempt = existing or cast(
-        FormProgress, FormProgressFactory(user=user, form=form, site=site)
-    )
+    attempt = existing or ensure_attempt(record, collection_item)
 
     for question in FormQuestion.objects.filter(form_page__form=form).order_by("order"):
         options = list(question.options.order_by("order"))
@@ -407,9 +417,8 @@ def command(site_name: str) -> None:
         _add_member(learner, cohort, site)
         for course, form in ((types_course, types_form), (no_pct_course, no_pct_form)):
             _register(learner, course, site)
-            _ensure_course_progress_row(learner, course, site)
             attempt = _complete_quiz_attempt(
-                learner, form, site, answer_correctly=answer_correctly
+                learner, course, form, site, answer_correctly=answer_correctly
             )
             attempts.append((learner, form, attempt))
 

@@ -32,7 +32,7 @@ GENERATED_AT = datetime(2026, 3, 15, 10, 30, tzinfo=UTC)
 
 def learner_detail(**overrides: object) -> LearnerDetail:
     defaults: dict[str, object] = {
-        "user_id": 1,
+        "learner_id": uuid4(),
         "full_name": "Jamie Smith",
         "sort_key": ("Smith", "Jamie"),
         "completion_percentage": 0,
@@ -79,7 +79,7 @@ def course_section(**overrides: object) -> CourseSection:
 def summary_row(row: LearnerRow, quizzes: list[QuizColumn]) -> SummaryRow:
     """The SummaryRow gather.py would derive from this LearnerRow for `quizzes`."""
     return SummaryRow(
-        user_id=row.user_id,
+        learner_id=row.learner_id,
         full_name=row.full_name,
         completion_percentage=row.completion_percentage,
         completed_item_count=row.completed_item_count,
@@ -153,8 +153,12 @@ def full_report_data() -> CohortReportData:
         correct_option_texts=["A closed path around a body"],
     )
     block = ConfusionBlock(questions=[confusion], shown=1, total=1)
+    flagged_learner = learner_detail(
+        full_name="Ada Lovelace", sort_key=("Lovelace", "Ada"), flags=[flag]
+    )
+    other_learner = learner_detail(full_name="Bo Kim", sort_key=("Kim", "Bo"), flags=[])
     row = LearnerRow(
-        user_id=1,
+        learner_id=flagged_learner.learner_id,
         full_name="Ada Lovelace",
         completion_percentage=40,
         completed_item_count=2,
@@ -182,12 +186,6 @@ def full_report_data() -> CohortReportData:
         summary_tables=[SummaryTable(quizzes=[], rows=[], continued=False)],
     )
 
-    flagged_learner = learner_detail(
-        user_id=1, full_name="Ada Lovelace", sort_key=("Lovelace", "Ada"), flags=[flag]
-    )
-    other_learner = learner_detail(
-        user_id=2, full_name="Bo Kim", sort_key=("Kim", "Bo"), flags=[]
-    )
     attention = AttentionList(learners=[flagged_learner], shown=1, total=1)
 
     return cohort_report_data(

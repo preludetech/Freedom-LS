@@ -12,22 +12,27 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
+from freedom_ls.content_engine.models import Course, Topic
 from freedom_ls.educator_interface.views import CohortCourseProgressPanel
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortDeadlineFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
+    UserCohortDeadlineOverrideFactory,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
 )
-from freedom_ls.learner_progress.factories import (
-    CourseProgressFactory,
-    TopicProgressFactory,
+from freedom_ls.learner_progress.utils import ensure_course_progress_record
+from freedom_ls.organisations.factories import OrganisationFactory
+
+from .conftest import (
+    cohort_progress_record,
+    complete_topic_in_record,
 )
-from freedom_ls.learner_progress.models import TopicProgress
 
 
 def _make_user(email: str, cohort: Cohort) -> User:
@@ -121,7 +126,7 @@ def test_learners_sorted_by_progress_ascending(mock_site_context, site_aware_req
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
     topic = TopicFactory(title="Topic 1")
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
@@ -130,7 +135,7 @@ def test_learners_sorted_by_progress_ascending(mock_site_context, site_aware_req
     user_b = _make_user("learner_b@example.com", cohort)
 
     # user_b has progress, user_a does not
-    CourseProgressFactory(user=user_b, course=course, progress_percentage=100)
+    cohort_progress_record(registration, user_b, progress_percentage=100)
 
     panel = CohortCourseProgressPanel(cohort)
     request = site_aware_request.get("/")
@@ -151,7 +156,7 @@ def test_learners_without_course_progress_appear_first(
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
     topic = TopicFactory(title="Topic 1")
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
@@ -159,9 +164,7 @@ def test_learners_without_course_progress_appear_first(
     _make_user("no_progress@example.com", cohort)
     user_with_progress = _make_user("has_progress@example.com", cohort)
 
-    CourseProgressFactory(
-        user=user_with_progress, course=course, progress_percentage=50
-    )
+    cohort_progress_record(registration, user_with_progress, progress_percentage=50)
 
     panel = CohortCourseProgressPanel(cohort)
     request = site_aware_request.get("/")
@@ -215,7 +218,7 @@ def test_cell_data_fetched_only_for_visible_window(
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
     topics = []
     for i in range(20):
@@ -228,9 +231,7 @@ def test_cell_data_fetched_only_for_visible_window(
     user = _make_user("learner@example.com", cohort)
 
     # Complete topic 16 (on page 2 of columns)
-    tp: TopicProgress = TopicProgressFactory(user=user, topic=topics[16])
-    tp.complete_time = timezone.now()
-    tp.save()
+    complete_topic_in_record(cohort_progress_record(registration, user), topics[16])
 
     panel = CohortCourseProgressPanel(cohort)
 
@@ -256,7 +257,7 @@ def test_displayed_percentage_matches_actual_completion(
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
 
     topic1 = TopicFactory(title="Topic 1")
     topic2 = TopicFactory(title="Topic 2")
@@ -265,10 +266,8 @@ def test_displayed_percentage_matches_actual_completion(
 
     user = _make_user("learner@example.com", cohort)
 
-    # Complete 1 of 2 topics -> 50% (save trigger auto-creates CourseProgress)
-    tp: TopicProgress = TopicProgressFactory(user=user, topic=topic1)
-    tp.complete_time = timezone.now()
-    tp.save()
+    # Complete 1 of 2 topics -> 50%
+    complete_topic_in_record(cohort_progress_record(registration, user), topic1)
 
     panel = CohortCourseProgressPanel(cohort)
     request = site_aware_request.get("/")
@@ -463,3 +462,204 @@ def test_item_deadlines_shown_in_column_headers(mock_site_context, site_aware_re
     # Hard deadline should have error styling, soft should have warning styling
     assert "text-error" in content
     assert "text-warning" in content
+
+
+def _course_with_topics(count: int) -> tuple[Course, list[Topic]]:
+    """A course holding `count` topics, titled ``Topic 1``..``Topic N``."""
+    course: Course = CourseFactory()
+    topics: list[Topic] = []
+    for index in range(count):
+        topic = TopicFactory(title=f"Topic {index + 1}")
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=index
+        )
+        topics.append(topic)
+    return course, topics
+
+
+@pytest.mark.django_db
+def test_percentage_is_the_selected_cohorts_figure_for_a_learner_in_two_organisations(
+    mock_site_context, site_aware_request
+):
+    """One person studying the same course through two organisations holds two
+    records. The matrix must show the figure belonging to the cohort being
+    looked at, not whichever record the database happened to return first."""
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+
+    cohort_here = CohortFactory(organisation=OrganisationFactory())
+    cohort_elsewhere = CohortFactory(organisation=OrganisationFactory())
+    registration_here = CohortCourseRegistrationFactory(
+        cohort=cohort_here, collection=course
+    )
+    registration_elsewhere = CohortCourseRegistrationFactory(
+        cohort=cohort_elsewhere, collection=course
+    )
+
+    user: User = UserFactory(email="two_organisations@example.com")
+    CohortMembershipFactory(learner__user=user, cohort=cohort_here)
+    CohortMembershipFactory(learner__user=user, cohort=cohort_elsewhere)
+    cohort_progress_record(registration_here, user, progress_percentage=25)
+    cohort_progress_record(registration_elsewhere, user, progress_percentage=75)
+
+    panel = CohortCourseProgressPanel(cohort_here)
+    request = site_aware_request.get("/")
+    request.user = educator_user
+    content = panel.get_content(request)
+
+    assert "(25%)" in content
+    assert "(75%)" not in content
+
+
+@pytest.mark.django_db
+def test_the_other_organisations_panel_shows_its_own_figure(
+    mock_site_context, site_aware_request
+):
+    """The mirror of the test above: neither cohort's panel is the privileged
+    one, so the same learner reads differently from each side."""
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+
+    cohort_here = CohortFactory(organisation=OrganisationFactory())
+    cohort_elsewhere = CohortFactory(organisation=OrganisationFactory())
+    registration_here = CohortCourseRegistrationFactory(
+        cohort=cohort_here, collection=course
+    )
+    registration_elsewhere = CohortCourseRegistrationFactory(
+        cohort=cohort_elsewhere, collection=course
+    )
+
+    user: User = UserFactory(email="two_organisations@example.com")
+    CohortMembershipFactory(learner__user=user, cohort=cohort_here)
+    CohortMembershipFactory(learner__user=user, cohort=cohort_elsewhere)
+    cohort_progress_record(registration_here, user, progress_percentage=25)
+    cohort_progress_record(registration_elsewhere, user, progress_percentage=75)
+
+    panel = CohortCourseProgressPanel(cohort_elsewhere)
+    request = site_aware_request.get("/")
+    request.user = educator_user
+    content = panel.get_content(request)
+
+    assert "(75%)" in content
+    assert "(25%)" not in content
+
+
+@pytest.mark.django_db
+def test_work_done_under_an_individual_registration_is_not_shown_in_the_cohort_matrix(
+    mock_site_context, site_aware_request
+):
+    """A cohort member who also registered individually has two records. The
+    cohort panel reports the cohort one, so their individual work reads as
+    nothing done here."""
+    course, topics = _course_with_topics(4)
+    educator_user = UserFactory(staff=True)
+    cohort = CohortFactory()
+    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    user = _make_user("also_registered_alone@example.com", cohort)
+    learner = cohort_progress_record(registration, user).learner
+    individual_record = ensure_course_progress_record(
+        learner,
+        course,
+        LearnerCourseRegistrationFactory(learner=learner, collection=course),
+    )
+    complete_topic_in_record(individual_record, topics[0])
+    complete_topic_in_record(individual_record, topics[1])
+
+    panel = CohortCourseProgressPanel(cohort)
+    request = site_aware_request.get("/")
+    request.user = educator_user
+    content = panel.get_content(request)
+
+    assert "(0%)" in content
+    assert 'aria-label="Completed"' not in content
+
+
+@pytest.mark.django_db
+def test_the_percentage_column_and_the_cells_come_from_the_same_record(
+    mock_site_context, site_aware_request
+):
+    """One completed topic out of four is 25% and exactly one ticked cell. A
+    matrix reading its column from one record and its cells from another would
+    show a figure its own cells contradict."""
+    course, topics = _course_with_topics(4)
+    educator_user = UserFactory(staff=True)
+    cohort = CohortFactory()
+    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    user = _make_user("both_registrations@example.com", cohort)
+    cohort_record = cohort_progress_record(registration, user)
+    individual_record = ensure_course_progress_record(
+        cohort_record.learner,
+        course,
+        LearnerCourseRegistrationFactory(
+            learner=cohort_record.learner, collection=course
+        ),
+    )
+    complete_topic_in_record(cohort_record, topics[0])
+    complete_topic_in_record(individual_record, topics[1])
+    complete_topic_in_record(individual_record, topics[2])
+    complete_topic_in_record(individual_record, topics[3])
+
+    panel = CohortCourseProgressPanel(cohort)
+    request = site_aware_request.get("/")
+    request.user = educator_user
+    content = panel.get_content(request)
+
+    assert "(25%)" in content
+    assert content.count('aria-label="Completed"') == 1
+
+
+@pytest.mark.django_db
+def test_a_learner_deadline_override_reaches_only_that_learners_cell(
+    mock_site_context, site_aware_request
+):
+    """Overrides are keyed on the learner and on the content item. Keying
+    either half against the wrong table would silently stop every deadline in
+    the panel matching."""
+    course, topics = _course_with_topics(2)
+    educator_user = UserFactory(staff=True)
+    cohort = CohortFactory()
+    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    user = _make_user("extended@example.com", cohort)
+    _make_user("on_time@example.com", cohort)
+    learner = cohort_progress_record(registration, user).learner
+
+    override_deadline = timezone.now() + timedelta(days=97)
+    UserCohortDeadlineOverrideFactory(
+        cohort_course_registration=registration,
+        learner=learner,
+        content_item=topics[0],
+        deadline=override_deadline,
+    )
+
+    panel = CohortCourseProgressPanel(cohort)
+    request = site_aware_request.get("/")
+    request.user = educator_user
+    content = panel.get_content(request)
+
+    rendered_override = django_date(override_deadline, "M d, Y H:i")
+    assert content.count(f"Override: {rendered_override}") == 1
+
+
+@pytest.mark.django_db
+def test_panel_says_a_separate_registration_tracks_its_own_progress(
+    mock_site_context, site_aware_request
+):
+    """A learner registered twice can read as 0% here while having done the
+    work elsewhere. The panel says so rather than leaving a bare zero to be
+    misread."""
+    cohort = CohortFactory()
+    course = CourseFactory()
+    educator_user = UserFactory(staff=True)
+    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+
+    _make_user("learner@example.com", cohort)
+
+    panel = CohortCourseProgressPanel(cohort)
+    request = site_aware_request.get("/")
+    request.user = educator_user
+    content = panel.get_content(request)
+
+    assert "Showing progress for this course registration only." in content

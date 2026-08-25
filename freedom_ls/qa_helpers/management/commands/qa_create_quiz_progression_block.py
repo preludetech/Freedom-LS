@@ -43,7 +43,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.content_engine.models import Course, Topic
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -58,9 +58,9 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import TopicProgress
+from freedom_ls.learner_progress.queries import course_progress_for
 from freedom_ls.qa_helpers.management.commands.qa_create_multiselect_quiz_scoring import (
     _add_options,
-    _ensure_course_progress_row,
     _get_or_create_user,
     _register,
 )
@@ -218,18 +218,41 @@ def _build_quiz(site: Site) -> Form:
     return form
 
 
-def _complete_topic(user: User, topic: Topic, site: Site) -> None:
+def _collection_item_for(course: Course, child: Form | Topic) -> ContentCollectionItem:
+    """The collection item placing `child` in `course`."""
+    for collection_item in course.viewable_collection_items():
+        if collection_item.child == child:
+            return collection_item
+    raise click.ClickException(
+        f"'{child.slug}' is not a viewable item of '{course.slug}'."
+    )
+
+
+def _complete_topic(user: User, course: Course, topic: Topic, site: Site) -> None:
     """Mark a topic complete for the learner.
 
     The ``CourseItemProgress`` save hook only fires on a None -> set transition,
     so the row is created first and ``complete_time`` assigned afterwards.
     """
+    record = course_progress_for(user, course)
+    if record is None:
+        raise click.ClickException(
+            f"No CourseProgress record for {user.email} on {course.slug}; "
+            "register the learner before completing progress."
+        )
+    collection_item = _collection_item_for(course, topic)
     progress: TopicProgress | None = TopicProgress.objects.filter(
-        user=user, topic=topic, site=site
+        course_progress=record, topic=topic
     ).first()
     if progress is None:
         progress = cast(
-            TopicProgress, TopicProgressFactory(user=user, topic=topic, site=site)
+            TopicProgress,
+            TopicProgressFactory(
+                course_progress=record,
+                topic=topic,
+                collection_item=collection_item,
+                site=site,
+            ),
         )
     if progress.complete_time is None:
         progress.complete_time = timezone.now()
@@ -270,10 +293,9 @@ def command(site_name: str) -> None:
     course = cast(Course, Course.objects.get(pk=course.pk))
 
     _register(learner, course, site)
-    _ensure_course_progress_row(learner, course, site)
     # Item 1 complete => item 2 (the quiz) is READY; the quiz itself is left
     # untouched so the start screen shows "Start Form".
-    _complete_topic(learner, first_topic, site)
+    _complete_topic(learner, course, first_topic, site)
 
     indexes = {
         "first_topic": _item_index(course, first_topic),

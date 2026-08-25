@@ -26,7 +26,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.models import Course, Topic
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
 from freedom_ls.form_engine.models import Form, FormProgress, QuestionAnswer
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
@@ -37,7 +37,12 @@ from freedom_ls.learner_management.models import (
     RecommendedCourse,
 )
 from freedom_ls.learner_management.utils import calculate_course_progress_percentage
+from freedom_ls.learner_progress.attempts import ensure_attempt
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_progress.queries import (
+    completed_form_item_ids_by_course_progress,
+    course_progress_for,
+)
 from freedom_ls.organisations.utils import get_default_organisation
 
 LEARNER_EMAIL = "demodev_s1@email.com"
@@ -103,27 +108,44 @@ def _register(user: User, course: Course, site: Site) -> None:
         )
 
 
-def _ensure_course_progress_row(user: User, course: Course, site: Site) -> None:
-    """Pre-create the CourseProgress row with a site set.
+def _collection_item_for(course: Course, child: Form | Topic) -> ContentCollectionItem:
+    """The collection item placing `child` in `course`."""
+    for collection_item in course.viewable_collection_items():
+        if collection_item.child == child:
+            return collection_item
+    raise click.ClickException(
+        f"'{child.slug}' is not a viewable item of '{course.slug}'."
+    )
 
-    FormProgress.complete() fires update_course_progress_on_completion, which
-    creates CourseProgress WITHOUT a site (NotNullViolation). Owning the row
-    first with site=site avoids that.
-    """
-    CourseProgress.objects.get_or_create(user=user, course=course, site=site)
+
+def _record_for(user: User, course: Course) -> CourseProgress:
+    record = course_progress_for(user, course)
+    if record is None:
+        raise click.ClickException(
+            f"No CourseProgress record for {user.email} on {course.slug}; "
+            "register the learner before completing progress."
+        )
+    return record
 
 
-def _complete_topic(user: User, topic: Topic, site: Site) -> None:
+def _complete_topic(user: User, course: Course, topic: Topic, site: Site) -> None:
+    record = _record_for(user, course)
+    collection_item = _collection_item_for(course, topic)
     TopicProgress.objects.get_or_create(
-        user=user,
-        topic=topic,
-        site=site,
-        defaults={"complete_time": timezone.now()},
+        course_progress=record,
+        collection_item=collection_item,
+        defaults={"topic": topic, "site": site, "complete_time": timezone.now()},
     )
 
 
 def _attempt_form(
-    user: User, form: Form, site: Site, *, all_correct: bool, leave_one_wrong: bool
+    user: User,
+    course: Course,
+    form: Form,
+    site: Site,
+    *,
+    all_correct: bool,
+    leave_one_wrong: bool,
 ) -> FormProgress:
     """Create real answers for a form and complete it so it gets a scored attempt.
 
@@ -132,8 +154,9 @@ def _attempt_form(
     option (and the rest correct) to demonstrate a passing-but-imperfect score.
     For non-quiz (survey) forms the first option of each question is selected.
     """
-    fp: FormProgress
-    fp, _ = FormProgress.objects.get_or_create(user=user, form=form, site=site)
+    record = _record_for(user, course)
+    collection_item = _collection_item_for(course, form)
+    fp: FormProgress = ensure_attempt(record, collection_item)
     if fp.completed_time:
         return fp
 
@@ -168,48 +191,38 @@ def _attempt_form(
     return fp
 
 
-def _canonical_course_percentage(user: User, course: Course, site: Site) -> int:
+def _canonical_course_percentage(user: User, course: Course) -> int:
     """Compute the course percentage the same way the running app does.
 
-    Mirrors update_course_progress_on_completion: count the user's completed
-    topics and forms among the course's viewable items and feed them to the
-    canonical calculator, so seeded percentages match runtime behaviour rather
-    than a naive completed/total ratio.
+    Mirrors update_course_progress_on_completion: collect the placements the
+    record has finished -- topics from their own rows, forms through the shared
+    pass-aware helper -- and feed them to the canonical calculator, so seeded
+    percentages match runtime behaviour rather than a naive completed/total
+    ratio.
     """
-    viewable = course.viewable_items()
-    completed_topic_ids = set(
+    record = _record_for(user, course)
+    viewable_item_ids = [item.id for item in course.viewable_collection_items()]
+    completed_item_ids = set(
         TopicProgress.objects.filter(
-            user=user,
-            topic__in=[i for i in viewable if isinstance(i, Topic)],
-            site=site,
+            course_progress=record,
+            collection_item_id__in=viewable_item_ids,
             complete_time__isnull=False,
-        ).values_list("topic_id", flat=True)
+        ).values_list("collection_item_id", flat=True)
     )
-    completed_form_ids = set(
-        FormProgress.objects.filter(
-            user=user,
-            form__in=[i for i in viewable if isinstance(i, Form)],
-            site=site,
-            completed_time__isnull=False,
-        ).values_list("form_id", flat=True)
+    completed_item_ids |= completed_form_item_ids_by_course_progress([record.pk]).get(
+        record.pk, set()
     )
-    return calculate_course_progress_percentage(
-        course, completed_topic_ids, completed_form_ids
-    )
+    return calculate_course_progress_percentage(course, completed_item_ids)
 
 
 def _set_course_progress(
     user: User,
     course: Course,
-    site: Site,
     *,
     percentage: int,
     completed: bool,
 ) -> CourseProgress:
-    progress: CourseProgress
-    progress, _ = CourseProgress.objects.get_or_create(
-        user=user, course=course, site=site
-    )
+    progress = _record_for(user, course)
     progress.progress_percentage = percentage
     if completed and progress.completed_time is None:
         progress.completed_time = timezone.now()
@@ -245,20 +258,24 @@ def command(site_name: str) -> None:
 
     # --- In-progress course: partial progress, no completion ---
     _register(learner, in_progress_course, site)
-    _ensure_course_progress_row(learner, in_progress_course, site)
     items = in_progress_course.viewable_items()
     completed_count = 0
     for item in items[:IN_PROGRESS_ITEMS_TO_COMPLETE]:
         if isinstance(item, Topic):
-            _complete_topic(learner, item, site)
+            _complete_topic(learner, in_progress_course, item, site)
             completed_count += 1
         elif isinstance(item, Form):
-            _attempt_form(learner, item, site, all_correct=True, leave_one_wrong=False)
+            _attempt_form(
+                learner,
+                in_progress_course,
+                item,
+                site,
+                all_correct=True,
+                leave_one_wrong=False,
+            )
             completed_count += 1
-    pct = _canonical_course_percentage(learner, in_progress_course, site)
-    _set_course_progress(
-        learner, in_progress_course, site, percentage=pct, completed=False
-    )
+    pct = _canonical_course_percentage(learner, in_progress_course)
+    _set_course_progress(learner, in_progress_course, percentage=pct, completed=False)
     click.secho(
         f"In progress: {in_progress_course.slug} "
         f"({completed_count}/{len(items)} items = {pct}%)",
@@ -267,16 +284,16 @@ def command(site_name: str) -> None:
 
     # --- Completed course: fully complete, both quizzes passed ---
     _register(learner, completed_course, site)
-    _ensure_course_progress_row(learner, completed_course, site)
     quiz_form: Form | None = None
     quiz_progress: FormProgress | None = None
     for item in completed_course.viewable_items():
         if isinstance(item, Topic):
-            _complete_topic(learner, item, site)
+            _complete_topic(learner, completed_course, item, site)
         elif isinstance(item, Form):
             # 5/6 correct on the 80%-threshold mid-course quiz => PASS, imperfect.
             fp = _attempt_form(
                 learner,
+                completed_course,
                 item,
                 site,
                 all_correct=False,
@@ -286,9 +303,9 @@ def command(site_name: str) -> None:
                 quiz_form = item
                 quiz_progress = fp
 
-    final_pct = _canonical_course_percentage(learner, completed_course, site)
+    final_pct = _canonical_course_percentage(learner, completed_course)
     _set_course_progress(
-        learner, completed_course, site, percentage=final_pct, completed=True
+        learner, completed_course, percentage=final_pct, completed=True
     )
     if quiz_form is not None and quiz_progress is not None:
         scores = quiz_progress.scores or {}

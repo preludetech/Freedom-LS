@@ -247,7 +247,6 @@ class TestCompletionBar:
 class TestAttentionEntry:
     def test_links_to_learner_anchor_and_shows_flags(self) -> None:
         learner = learner_detail(
-            user_id=42,
             full_name="Alex Doe",
             flags=[
                 AtRiskFlag(
@@ -263,7 +262,7 @@ class TestAttentionEntry:
             "reports/partials/attention_entry.html", {"learner": learner}
         )
 
-        assert 'href="#learner-42"' in html
+        assert f'href="#learner-{learner.learner_id}"' in html
         assert "Alex Doe" in html
         assert "No activity recently" in html
 
@@ -293,7 +292,6 @@ class TestTitlePage:
 class TestAtAGlance:
     def test_shows_stats_and_attention_list(self) -> None:
         learner = learner_detail(
-            user_id=7,
             full_name="Sam Lee",
             flags=[
                 AtRiskFlag(
@@ -346,13 +344,13 @@ class TestAtAGlance:
 class TestContents:
     def test_links_to_course_and_learner_anchors(self) -> None:
         course = course_section_with_one_summary_table(title="Course X")
-        learner = learner_detail(user_id=3, full_name="Robin Fox")
+        learner = learner_detail(full_name="Robin Fox")
         data = cohort_report_data(courses=[course], learners=[learner])
 
         html = render_to_string("reports/partials/contents.html", {"data": data})
 
         assert f'href="#course-{course.course_id}"' in html
-        assert 'href="#learner-3"' in html
+        assert f'href="#learner-{learner.learner_id}"' in html
 
     def test_links_to_confusion_block_when_present(self) -> None:
         quiz = QuizColumn(
@@ -434,7 +432,7 @@ class TestCourseSummaryTable:
             attempts=[],
         )
         row = LearnerRow(
-            user_id=5,
+            learner_id=uuid4(),
             full_name="Jesse Park",
             completion_percentage=80,
             completed_item_count=4,
@@ -472,7 +470,7 @@ class TestCourseSummaryTable:
             form_id=uuid4(), title="Quiz Z", abbreviation="QZ", pass_percentage=50
         )
         row = LearnerRow(
-            user_id=5,
+            learner_id=uuid4(),
             full_name="Jesse Park",
             completion_percentage=0,
             completed_item_count=0,
@@ -820,13 +818,13 @@ class TestLearnerDetail:
         assert "Has not started any course item." in html
 
     def test_emits_learner_anchor_id(self) -> None:
-        learner = learner_detail(user_id=99)
+        learner = learner_detail()
 
         html = render_to_string(
             "reports/partials/learner_detail.html", {"learner": learner}
         )
 
-        assert 'id="learner-99"' in html
+        assert f'id="learner-{learner.learner_id}"' in html
 
     def test_running_header_name_is_a_separate_element_from_the_heading(self) -> None:
         # The heading is the section's PDF bookmark and the span is the running
@@ -910,16 +908,16 @@ class TestLearnerDetails:
 
     def test_renders_one_block_per_learner(self) -> None:
         learners = [
-            learner_detail(user_id=1, full_name="Ann Lee", sort_key=("Lee", "Ann")),
-            learner_detail(user_id=2, full_name="Bo Kim", sort_key=("Kim", "Bo")),
+            learner_detail(full_name="Ann Lee", sort_key=("Lee", "Ann")),
+            learner_detail(full_name="Bo Kim", sort_key=("Kim", "Bo")),
         ]
 
         html = render_to_string(
             "reports/partials/learner_details.html", {"learners": learners}
         )
 
-        assert 'id="learner-1"' in html
-        assert 'id="learner-2"' in html
+        assert f'id="learner-{learners[0].learner_id}"' in html
+        assert f'id="learner-{learners[1].learner_id}"' in html
         assert "Ann Lee" in html
         assert "Bo Kim" in html
 

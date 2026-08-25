@@ -1,6 +1,6 @@
 ---
 description: Improve the idea by doing research and making suggestions
-allowed-tools: Read, Glob, WebFetch, WebSearch, Write, Agent, Skill
+allowed-tools: Read, Glob, Grep, WebFetch, WebSearch, Write, Agent, Skill
 ---
 
 Read the given idea file carefully. Your job is to help refine the idea by doing research and making suggestions.
@@ -34,6 +34,8 @@ Apply the Fan-out recipe: one `sdd:sdd-worker` **per topic**, each writing its o
 Read the `research_*.md` **files** and rewrite the idea.
 
 Ask questions if you need to. Don't make big decisions on your own.
+
+Name things the way the project already names them. Before the idea uses a noun for a domain concept, check the sources under `## Vocabulary Sources` in `.claude/sdd/config.md` and `Grep` for it — see `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`. Research into other products keeps *their* words, attributed to them; what must not happen is a borrowed or invented word becoming the name of one of ours. A synonym coined here propagates into the spec, then the plan, then the code.
 
 Follow `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`. It carries the rules every SDD
 artifact obeys: rewriting means replacing, coverage rather than length, the shared cut-list, where

@@ -20,7 +20,8 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-from freedom_ls.learner_progress.factories import CourseProgressFactory
+
+from .conftest import course_progress_record
 
 
 def _coming_soon_course(*, slug: str, title: str) -> Course:
@@ -46,19 +47,16 @@ def test_all_courses_renders_four_distinct_status_labels(
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[1])
     # courses[2] -> In progress (enrolled, >0% progress)
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[2])
-    CourseProgressFactory(
-        user=user, course=courses[2], progress_percentage=40, completed_time=None
+    course_progress_record(
+        courses[2], user, progress_percentage=40, completed_time=None
     )
     # A fourth course -> Completed.
     completed = CourseFactory(title="Course D", slug="course-d")
     completed_topic = TopicFactory(title="Topic D", slug="topic-d", content="content")
     completed.items.create(child=completed_topic, order=0)
     LearnerCourseRegistrationFactory(learner__user=user, collection=completed)
-    CourseProgressFactory(
-        user=user,
-        course=completed,
-        progress_percentage=100,
-        completed_time=timezone.now(),
+    course_progress_record(
+        completed, user, progress_percentage=100, completed_time=timezone.now()
     )
 
     client = logged_in_client(user)
@@ -161,8 +159,8 @@ def test_all_courses_in_progress_row_links_to_first_item(
     """An in-progress row links to view_course_item at index=1."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    CourseProgressFactory(
-        user=user, course=courses[0], progress_percentage=55, completed_time=None
+    course_progress_record(
+        courses[0], user, progress_percentage=55, completed_time=None
     )
     client = logged_in_client(user)
 
@@ -188,8 +186,8 @@ def test_all_courses_in_progress_row_has_progress_value_above_zero(
     """
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    CourseProgressFactory(
-        user=user, course=courses[0], progress_percentage=55, completed_time=None
+    course_progress_record(
+        courses[0], user, progress_percentage=55, completed_time=None
     )
     client = logged_in_client(user)
 
@@ -208,11 +206,8 @@ def test_all_courses_complete_row_links_to_course_finish(
     """A completed-course row links to the course_finish URL."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    CourseProgressFactory(
-        user=user,
-        course=courses[0],
-        progress_percentage=100,
-        completed_time=timezone.now(),
+    course_progress_record(
+        courses[0], user, progress_percentage=100, completed_time=timezone.now()
     )
     client = logged_in_client(user)
 
@@ -234,11 +229,8 @@ def test_all_courses_complete_row_has_no_progress_bar(
     """A completed-course row does not render a progress bar."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    CourseProgressFactory(
-        user=user,
-        course=courses[0],
-        progress_percentage=100,
-        completed_time=timezone.now(),
+    course_progress_record(
+        courses[0], user, progress_percentage=100, completed_time=timezone.now()
     )
     # Register and complete only courses[0]; courses[1] and [2] remain unregistered.
     # No registered-but-incomplete courses means no progress bars in the whole page.
@@ -263,15 +255,12 @@ def test_all_courses_status_icons_are_decorative(
     user = UserFactory()
     # In-progress and complete rows exercise the in_progress/complete icons.
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    CourseProgressFactory(
-        user=user, course=courses[0], progress_percentage=40, completed_time=None
+    course_progress_record(
+        courses[0], user, progress_percentage=40, completed_time=None
     )
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[1])
-    CourseProgressFactory(
-        user=user,
-        course=courses[1],
-        progress_percentage=100,
-        completed_time=timezone.now(),
+    course_progress_record(
+        courses[1], user, progress_percentage=100, completed_time=timezone.now()
     )
     # courses[2] stays unregistered -> exercises the not_started icon.
     client = logged_in_client(user)
@@ -319,11 +308,8 @@ def test_all_courses_complete_row_has_details_link(
     in addition to the finish-page title link."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    CourseProgressFactory(
-        user=user,
-        course=courses[0],
-        progress_percentage=100,
-        completed_time=timezone.now(),
+    course_progress_record(
+        courses[0], user, progress_percentage=100, completed_time=timezone.now()
     )
     client = logged_in_client(user)
 

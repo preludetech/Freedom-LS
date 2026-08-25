@@ -11,9 +11,14 @@ from django.http import Http404
 from django.urls import reverse
 from django.utils import timezone
 
-from freedom_ls.content_engine.models import Course, CoursePart, Topic
+from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    CoursePart,
+    Topic,
+)
 from freedom_ls.form_engine.models import Form, FormProgress
-from freedom_ls.form_engine.queries import completed_form_ids_by_user, quiz_verdict
+from freedom_ls.form_engine.queries import quiz_verdict
 from freedom_ls.learner_management.config import config
 from freedom_ls.learner_management.deadline_utils import (
     EffectiveDeadline,
@@ -21,7 +26,16 @@ from freedom_ls.learner_management.deadline_utils import (
 )
 from freedom_ls.learner_management.models import RecommendedCourse
 from freedom_ls.learner_management.queries import is_registered_for_course_expression
-from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_progress.models import (
+    CourseFormAttempt,
+    CourseProgress,
+    TopicProgress,
+)
+from freedom_ls.learner_progress.queries import (
+    completed_form_item_ids_by_course_progress,
+    course_progress_by_course_for,
+    course_progress_for,
+)
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
@@ -30,6 +44,17 @@ if TYPE_CHECKING:
     from freedom_ls.course_access.backends import AccessBadge
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
+
+
+class Unresolved:
+    """Marker for "the caller has not resolved this", not "there is none".
+
+    Lets an optional course-progress argument tell a caller that already holds
+    the record apart from one that has established there is no record at all.
+    """
+
+
+UNRESOLVED = Unresolved()
 
 # Status constants
 BLOCKED = "BLOCKED"
@@ -104,54 +129,63 @@ class UnpassedForm:
     form: Form
 
 
-def unpassed_forms(user: User, course: Course) -> list[UnpassedForm]:
+def unpassed_forms(
+    course_progress: CourseProgress, course: Course
+) -> list[UnpassedForm]:
     """The forms in `course` the learner has finished without them counting as done.
 
     In practice that means a scored quiz they sat and failed. Used to withhold a
     course completion rather than to gate the page: a learner who has simply not
     reached an item yet is not listed here.
+
+    Scoped to one record and to this course's own placements, so a quiz failed
+    in another course -- or under another registration -- cannot withhold this
+    completion. Both halves are keyed on the placement, so passing one of two
+    placements of the same quiz leaves the other listed.
     """
-    forms = [
-        UnpassedForm(index=index, form=item)
-        for index, item in enumerate(course.viewable_items(), start=1)
-        if isinstance(item, Form)
+    form_placements = [
+        (item.id, UnpassedForm(index=index, form=cast("Form", item.child)))
+        for index, item in enumerate(course.viewable_collection_items(), start=1)
+        if isinstance(item.child, Form)
     ]
-    if not forms:
+    if not form_placements:
         return []
 
-    sat_form_ids = set(
-        FormProgress.objects.filter(
-            user=user,
-            form_id__in=[entry.form.id for entry in forms],
-            completed_time__isnull=False,
-        ).values_list("form_id", flat=True)
+    sat_item_ids = set(
+        CourseFormAttempt.objects.filter(
+            course_progress=course_progress,
+            collection_item_id__in=[item_id for item_id, _ in form_placements],
+            form_progress__completed_time__isnull=False,
+        ).values_list("collection_item_id", flat=True)
     )
-    passed_form_ids = completed_form_ids_by_user([user.pk]).get(user.pk, set())
+    passed_item_ids = completed_form_item_ids_by_course_progress(
+        [course_progress.pk]
+    ).get(course_progress.pk, set())
     return [
         entry
-        for entry in forms
-        if entry.form.id in sat_form_ids and entry.form.id not in passed_form_ids
+        for item_id, entry in form_placements
+        if item_id in sat_item_ids and item_id not in passed_item_ids
     ]
 
 
 def get_content_status(
-    content_item: Topic | Form | CoursePart | Course,
-    user: RequestUser,
+    collection_item: ContentCollectionItem,
     next_status: str,
     topic_progress_map: dict[uuid.UUID, TopicProgress],
     form_progress_map: dict[uuid.UUID, FormProgress],
 ) -> tuple[str, str]:
     """
-    Get the status for a content item based on user progress.
+    Get the status for one placement based on the learner's progress.
 
     Progress is read from ``topic_progress_map`` / ``form_progress_map`` (keyed
-    by item id), which the caller bulk-fetches once via
+    by collection item id), which the caller bulk-fetches once via
     ``_fetch_player_progress_maps`` so this runs without per-item queries.
 
     Returns tuple of (status, updated_next_status)
     """
+    content_item = collection_item.child
     if isinstance(content_item, Topic):
-        topic_progress = topic_progress_map.get(content_item.id)
+        topic_progress = topic_progress_map.get(collection_item.id)
 
         if topic_progress and topic_progress.complete_time:
             return COMPLETE, READY
@@ -163,7 +197,7 @@ def get_content_status(
             return BLOCKED, BLOCKED
 
     elif isinstance(content_item, Form):
-        form_progress = form_progress_map.get(content_item.id)
+        form_progress = form_progress_map.get(collection_item.id)
 
         if form_progress and form_progress.completed_time:
             # No verdict — a non-quiz form, or a quiz with no pass mark
@@ -179,9 +213,12 @@ def get_content_status(
             return BLOCKED, BLOCKED
 
     elif isinstance(content_item, CoursePart):
-        # For course parts, recursively check children's completion status
-        children = content_item.children()
-        if not children:
+        # For course parts, recursively check children's completion status.
+        # collection_items(), not children(): the recursion reads the same
+        # placement-keyed maps, so discarding the rows one level down would
+        # silently read every nested item as "not started".
+        part_items = content_item.collection_items()
+        if not part_items:
             # Empty course part - treat as complete
             return COMPLETE, READY
 
@@ -189,9 +226,9 @@ def get_content_status(
         child_statuses = []
         temp_next_status = next_status
 
-        for child in children:
+        for part_item in part_items:
             child_status, temp_next_status = get_content_status(
-                child, user, temp_next_status, topic_progress_map, form_progress_map
+                part_item, temp_next_status, topic_progress_map, form_progress_map
             )
             child_statuses.append(child_status)
 
@@ -240,25 +277,23 @@ def get_course_registrations(user: RequestUser) -> list[Course]:
 def get_resume_index(user: RequestUser, course: Course) -> int:
     """Return the 1-based index in ``course.viewable_items()`` to resume at.
 
-    Reads ``CourseProgress.last_accessed_item`` for ``(user, course)``. If there
-    is no progress row, no recorded item, or the recorded item is no longer
-    viewable (deleted / unpublished / removed from the course), falls back to the
-    first item. One row fetch + one FK resolve — no per-item query loop.
+    Reads the resume pointer off the record the learner's resolved registration
+    names, so someone holding two records for one course comes back to where
+    they left off under the registration they are studying through.
+
+    Falls back to the first item when there is no record, nothing recorded, or
+    the recorded placement is no longer viewable (deleted, unpublished, or
+    removed from the course). Comparing placement ids means no FK resolve.
     """
     if not user.is_authenticated:
         return 1
-    progress = (
-        CourseProgress.objects.filter(user=user, course=course)
-        .select_related("last_accessed_content_type")
-        .first()
-    )
-    if progress is None or progress.last_accessed_item is None:
+    progress = course_progress_for(cast("User", user), course)
+    if progress is None or progress.last_accessed_item_id is None:
         return 1
-    item = progress.last_accessed_item
-    index_by_key = {
-        (type(i), i.pk): n for n, i in enumerate(course.viewable_items(), start=1)
+    index_by_collection_item_id = {
+        item.id: n for n, item in enumerate(course.viewable_collection_items(), start=1)
     }
-    return index_by_key.get((type(item), item.pk), 1)
+    return index_by_collection_item_id.get(progress.last_accessed_item_id, 1)
 
 
 def get_item_part(course: Course, current_item: Topic | Form) -> CoursePart | None:
@@ -280,40 +315,48 @@ def get_item_part(course: Course, current_item: Topic | Form) -> CoursePart | No
 
 
 def _fetch_player_progress_maps(
-    user: User,
-    viewable_items: list[Topic | Form],
+    course_progress: CourseProgress | None,
+    viewable_collection_items: list[ContentCollectionItem],
 ) -> tuple[dict[uuid.UUID, TopicProgress], dict[uuid.UUID, FormProgress]]:
-    """Bulk-fetch this user's progress for all viewable items in two queries.
+    """Bulk-fetch one record's progress for all viewable placements, in two queries.
 
-    Returns (topic_progress_by_id, latest_form_progress_by_id):
-    - topic map keyed by topic_id -> TopicProgress (unique per user+topic)
-    - form map keyed by form_id -> the user's LATEST FormProgress, first-seen
-      under ``-start_time`` so it matches the old per-item
-      ``.order_by("-start_time").first()`` semantics exactly. (The educator
-      interface picks the latest *completed* attempt instead via
-      ``F("completed_time").desc(nulls_last=True)``; that is a deliberately
-      different behaviour, not adopted here.)
+    Returns (topic_progress_by_collection_item_id,
+    latest_form_progress_by_collection_item_id). Both key on the **collection
+    item**, not on the topic or form: one topic can be placed twice in a course
+    and each placement is answered separately, so a content-keyed map would
+    show both positions the same status.
 
-    ``select_related("form")`` so ``FormProgress.passed()`` reads
+    The form map holds the LATEST attempt, first-seen under ``-start_time`` so
+    it matches the old per-item ``.order_by("-start_time").first()`` semantics
+    exactly. (The educator interface picks the latest *completed* attempt
+    instead via ``F("completed_time").desc(nulls_last=True)``; that is a
+    deliberately different behaviour, not adopted here.)
+
+    ``select_related("form_progress__form")`` so ``FormProgress.passed()`` reads
     ``form.quiz_pass_percentage`` / ``form.strategy`` without a per-quiz query.
     """
-    topic_ids = [i.id for i in viewable_items if isinstance(i, Topic)]
-    form_ids = [i.id for i in viewable_items if isinstance(i, Form)]
-
     topic_map: dict[uuid.UUID, TopicProgress] = {}
-    if topic_ids:
-        for tp in TopicProgress.objects.filter(user=user, topic_id__in=topic_ids):
-            topic_map[tp.topic_id] = tp
-
     form_map: dict[uuid.UUID, FormProgress] = {}
-    if form_ids:
-        for fp in (
-            FormProgress.objects.filter(user=user, form_id__in=form_ids)
-            .select_related("form")
-            .order_by("-start_time")
-        ):
-            if fp.form_id not in form_map:
-                form_map[fp.form_id] = fp
+    if course_progress is None or not viewable_collection_items:
+        return topic_map, form_map
+
+    collection_item_ids = [item.id for item in viewable_collection_items]
+
+    for tp in TopicProgress.objects.filter(
+        course_progress=course_progress, collection_item_id__in=collection_item_ids
+    ):
+        topic_map[tp.collection_item_id] = tp
+
+    for attempt in (
+        CourseFormAttempt.objects.filter(
+            course_progress=course_progress,
+            collection_item_id__in=collection_item_ids,
+        )
+        .select_related("form_progress__form")
+        .order_by("-form_progress__start_time")
+    ):
+        if attempt.collection_item_id not in form_map:
+            form_map[attempt.collection_item_id] = attempt.form_progress
 
     return topic_map, form_map
 
@@ -324,6 +367,7 @@ def get_course_index(
     current_index: int | None = None,
     *,
     can_access_content: bool,
+    course_progress: CourseProgress | None | Unresolved = UNRESOLVED,
 ) -> list[dict]:
     """
     Generate an index of course children with their status and metadata.
@@ -332,6 +376,11 @@ def get_course_index(
     ``get_course_access_backend().get_access(...).can_access_content`` — the
     backend is never called here so that it runs once per request in the view
     layer. When False, all items are rendered as BLOCKED (no progress fetched).
+
+    ``course_progress`` is the record the statuses are read from. A caller that
+    has already resolved one passes it so the request does not resolve it
+    twice; passing ``None`` means "there is no record", which is not the same
+    as leaving it out.
 
     Returns a list of dictionaries with title, status, url, type, deadlines, and optionally children.
     """
@@ -350,11 +399,13 @@ def get_course_index(
     # the default backend.
     topic_progress_map: dict[uuid.UUID, TopicProgress] = {}
     form_progress_map: dict[uuid.UUID, FormProgress] = {}
-    if can_access_content:
-        # can_access_content implies an authenticated, registered user (it comes
-        # from the backend decision), so the cast to User is safe here.
+    if can_access_content and user.is_authenticated:
+        if isinstance(course_progress, Unresolved):
+            # can_access_content implies an authenticated, registered user (it
+            # comes from the backend decision), so the cast to User is safe here.
+            course_progress = course_progress_for(cast("User", user), course)
         topic_progress_map, form_progress_map = _fetch_player_progress_maps(
-            cast("User", user), course.viewable_items()
+            course_progress, course.viewable_collection_items()
         )
 
     children = []
@@ -363,10 +414,9 @@ def get_course_index(
         0  # Running count of viewable items consumed (CourseParts are skipped)
     )
 
-    for child in course.children():
+    for collection_item in course.collection_items():
         child_dict, next_status, items_added = create_child_dict_with_flattened_index(
-            child,
-            user,
+            collection_item,
             course,
             global_index,
             next_status,
@@ -451,8 +501,7 @@ def _apply_deadline_locking(
 
 
 def create_child_dict_with_flattened_index(
-    content_item: Topic | Form | CoursePart,
-    user: RequestUser,
+    collection_item: ContentCollectionItem,
     course: Course,
     start_index: int,
     next_status: str,
@@ -478,25 +527,26 @@ def create_child_dict_with_flattened_index(
     """
     if deadlines_map is None:
         deadlines_map = {}
+    content_item = cast("Topic | Form | CoursePart", collection_item.child)
 
     # Handle CoursePart specially - don't calculate its status yet, process children first
     if isinstance(content_item, CoursePart):
         # CourseParts do not consume a URL slot in the viewable-only index space.
         items_added = 0
-        part_children = content_item.children()
+        part_items = content_item.collection_items()
         part_children_dicts = []
         part_next_status = next_status  # Use the incoming next_status for children
 
         # Calculate status and URL for each child of the CoursePart
-        for part_child in part_children:
+        for part_item in part_items:
+            part_child = cast("Topic | Form | CoursePart", part_item.child)
             if isinstance(part_child, CoursePart):
                 # Defensive: today's data model does not nest parts; skip URL allocation
                 # for any unexpected nested CoursePart and let status logic ignore it.
                 continue
             if can_access_content:
                 child_status, part_next_status = get_content_status(
-                    part_child,
-                    user,
+                    part_item,
                     part_next_status,
                     topic_progress_map,
                     form_progress_map,
@@ -584,7 +634,7 @@ def create_child_dict_with_flattened_index(
         items_added = 1
         if can_access_content:
             status, next_status = get_content_status(
-                content_item, user, next_status, topic_progress_map, form_progress_map
+                collection_item, next_status, topic_progress_map, form_progress_map
             )
             url = reverse(
                 "learner_interface:view_course_item",
@@ -653,41 +703,44 @@ def get_all_courses() -> QuerySet[Course]:
 
 
 def get_completed_courses(user: RequestUser) -> list[Course]:
-    """Get completed courses for a user. Returns empty list for anonymous users."""
+    """Get completed courses for a user. Returns empty list for anonymous users.
+
+    Completion is read from the record the learner's resolved registration
+    names. A learner holding two records for one course has finished it only if
+    the one they are studying through says so, and the course is listed once
+    either way.
+    """
     if not user.is_authenticated:
         return []
     all_registered = get_course_registrations(user)
     if not all_registered:
         return []
-    completed_course_ids = set(
-        CourseProgress.objects.filter(
-            user=user,
-            course__in=all_registered,
-            completed_time__isnull=False,
-        ).values_list("course_id", flat=True)
-    )
-    return [c for c in all_registered if c.id in completed_course_ids]
+    records = course_progress_by_course_for(cast("User", user), all_registered)
+    return [
+        course
+        for course in all_registered
+        if course.id in records and records[course.id].completed_time is not None
+    ]
 
 
 def get_current_courses(user: RequestUser) -> list[Course]:
-    """Get current (in-progress) courses for a user. Returns empty list for anonymous users."""
+    """Get current (in-progress) courses for a user. Returns empty list for anonymous users.
+
+    The percentage stamped on each course comes from the resolved record, so a
+    learner holding two records for one course sees the one they are studying
+    through -- and sees the course once, not once per record.
+    """
     if not user.is_authenticated:
         return []
     all_registered = get_course_registrations(user)
     if not all_registered:
         return []
 
-    # Fetch all course progress for this user in one query
-    course_progress_dict = {
-        cp.course_id: cp
-        for cp in CourseProgress.objects.filter(
-            user=user, course__in=all_registered
-        ).select_related("course")
-    }
+    records = course_progress_by_course_for(cast("User", user), all_registered)
 
     current = []
     for course in all_registered:
-        course_progress = course_progress_dict.get(course.id)
+        course_progress = records.get(course.id)
 
         # Only include non-completed courses
         if course_progress and course_progress.completed_time:
@@ -727,6 +780,31 @@ def get_form_for_index(
     if not isinstance(item, Form):
         raise Http404("Course item at this index is not a form.")
     return item
+
+
+def get_form_collection_item_for_index(
+    course: Course,
+    index: int,
+    viewable_collection_items: list[ContentCollectionItem] | None = None,
+) -> ContentCollectionItem:
+    """Return the collection item placing a Form at the given 1-based index.
+
+    The form is ``.child``. Attempts key on the placement rather than on the
+    form, because one form can be placed twice in a course and each placement
+    is answered separately -- so the views that read or write attempts need
+    the row, not just the form.
+
+    Positionally identical to ``get_form_for_index``: both index into the same
+    ordered sequence, and both raise the same Http404s.
+    """
+    if viewable_collection_items is None:
+        viewable_collection_items = course.viewable_collection_items()
+    if index < 1 or index > len(viewable_collection_items):
+        raise Http404("No course item at this index.")
+    collection_item = viewable_collection_items[index - 1]
+    if not isinstance(collection_item.child, Form):
+        raise Http404("Course item at this index is not a form.")
+    return collection_item
 
 
 def get_course_listing(
@@ -793,28 +871,27 @@ def get_course_listing(
             )
             for course in anon_courses
         ]
-    registered_ids = {c.id for c in get_course_registrations(user)}
-    progress_rows = {
-        row["course_id"]: row
-        for row in CourseProgress.objects.filter(
-            user=user, course__in=registered_ids
-        ).values("course_id", "progress_percentage", "completed_time")
-    }
+    registered_courses = get_course_registrations(user)
+    registered_ids = {c.id for c in registered_courses}
+    # Resolved per course, not merged across every record the account holds: a
+    # learner studying one course through two organisations must see the
+    # percentage of the registration they are actually studying through.
+    records = course_progress_by_course_for(cast("User", user), registered_courses)
 
     entries: list[CourseListingEntry] = []
     for course in courses:
         access_badge = backend.get_access_badge(course=course)
-        # progress_rows only holds registered courses, so unregistered / coming-soon
-        # courses have no row and fall through to 0%. derive_listing_status owns the
-        # precedence: coming-soon (for the unregistered) exempts already-registered
+        # records only holds registered courses, so unregistered / coming-soon
+        # courses have no record and fall through to 0%. derive_listing_status owns
+        # the precedence: coming-soon (for the unregistered) exempts already-registered
         # learners, mirroring hidden. (Hidden courses never reach here — filter_visible
         # drops them.)
-        row = progress_rows.get(course.id)  # may be missing -> treat as 0%
-        pct = row["progress_percentage"] if row else 0
+        record = records.get(course.id)  # may be missing -> treat as 0%
+        pct = record.progress_percentage if record else 0
         status = derive_listing_status(
             is_registered=course.id in registered_ids,
             is_coming_soon=is_coming_soon_for_display(course),
-            is_complete=bool(row and row["completed_time"] is not None),
+            is_complete=bool(record and record.completed_time is not None),
             progress_percentage=pct,
         )
         entries.append(CourseListingEntry(course, status, pct, access_badge))

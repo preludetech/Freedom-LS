@@ -147,11 +147,16 @@ def command(site_name: str) -> None:
     )
 
     # Guarantee the "enrolled in NOTHING" and "no application yet" preconditions.
-    LearnerCourseRegistration.objects.filter(learner__user=learner, site=site).delete()
+    # Deactivation, not deletion: a registration that granted a course progress
+    # record is PROTECTed, and deactivating is the house removal for both
+    # registration models anyway.
+    LearnerCourseRegistration.objects.filter(learner__user=learner, site=site).update(
+        is_active=False
+    )
     CourseApplication.objects.filter(user=learner, site=site).delete()
 
     reg_count = LearnerCourseRegistration.objects.filter(
-        learner__user=learner, site=site
+        learner__user=learner, site=site, is_active=True
     ).count()
     app_count = CourseApplication.objects.filter(user=learner, site=site).count()
 

@@ -19,9 +19,11 @@ from freedom_ls.learner_management.models import (
     LearnerDeadline,
     UserCohortDeadlineOverride,
 )
+from freedom_ls.learner_management.queries import learner_for_course
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
+    from freedom_ls.learner_management.models import Learner
 
 type _DeadlineType = CohortDeadline | LearnerDeadline | UserCohortDeadlineOverride
 type _IndexKey = tuple[uuid.UUID, int | None, uuid.UUID | None]
@@ -41,13 +43,22 @@ def get_effective_deadlines(
 ) -> list[EffectiveDeadline]:
     """Resolve all effective deadlines for a user on a content item (or the course).
 
-    Returns a list of EffectiveDeadline, one per registration that produces a deadline.
+    Deadlines are scoped to the single Learner learner_for_course resolves
+    for this (user, course) -- not to every Learner row this user happens to
+    hold, which would merge deadlines across organisations that have nothing
+    to do with each other. Returns a list of EffectiveDeadline, one per
+    registration under that Learner that produces a deadline.
 
     Resolution per registration:
     1. Cohort registrations: override > cohort deadline > course-level fallback
     2. Individual registrations: item-level > course-level fallback
     3. Only active registrations are considered
     """
+    resolved = learner_for_course(user, course)
+    if resolved is None:
+        return []
+    learner = resolved.learner
+
     content_type_id = None
     object_id = None
     if content_item is not None:
@@ -58,12 +69,13 @@ def get_effective_deadlines(
     results: list[EffectiveDeadline] = []
 
     # --- Cohort-based registrations ---
-    # learner__is_active: a Learner removed from an organisation keeps its
-    # membership and registration rows, and is_item_locked_by_deadline takes
-    # the most permissive hard deadline across all of them -- so a stale
-    # deadline would otherwise unlock content past a live one.
+    # learner__is_active: learner_for_course falls back to the individual
+    # branch for a Learner removed from an organisation, and that Learner
+    # keeps its membership rows. is_item_locked_by_deadline takes the most
+    # permissive hard deadline across everything resolved here, so a stale
+    # cohort deadline would otherwise unlock content past a live one.
     cohort_ids = CohortMembership.objects.filter(
-        learner__user=user, learner__is_active=True
+        learner=learner, learner__is_active=True
     ).values_list("cohort_id", flat=True)
 
     cohort_regs = CohortCourseRegistration.objects.filter(
@@ -73,14 +85,16 @@ def get_effective_deadlines(
     ).select_related("cohort")
 
     for reg in cohort_regs:
-        effective = _resolve_cohort_deadline(reg, user, content_type_id, object_id)
+        effective = _resolve_cohort_deadline(reg, learner, content_type_id, object_id)
         if effective is not None:
             results.append(effective)
 
     # --- Individual learner registrations ---
+    # No is_active filter here: the fallback to the individual branch
+    # deliberately tolerates a removed Learner, so their own deadlines must
+    # keep resolving.
     learner_regs = LearnerCourseRegistration.objects.filter(
-        learner__user=user,
-        learner__is_active=True,
+        learner=learner,
         collection=course,
         is_active=True,
     )
@@ -95,7 +109,7 @@ def get_effective_deadlines(
 
 def _resolve_cohort_deadline(
     reg: CohortCourseRegistration,
-    user: User,
+    learner: Learner,
     content_type_id: int | None,
     object_id: uuid.UUID | None,
 ) -> EffectiveDeadline | None:
@@ -103,11 +117,11 @@ def _resolve_cohort_deadline(
 
     Priority: UserCohortDeadlineOverride > CohortDeadline > course-level fallback.
     """
-    # 1. Check for user-specific override for this item
+    # 1. Check for learner-specific override for this item
     if content_type_id is not None:
         override = UserCohortDeadlineOverride.objects.filter(
             cohort_course_registration=reg,
-            learner__user=user,
+            learner=learner,
             content_type_id=content_type_id,
             object_id=object_id,
         ).first()
@@ -115,7 +129,7 @@ def _resolve_cohort_deadline(
             return EffectiveDeadline(
                 deadline=override.deadline,
                 is_hard_deadline=override.is_hard_deadline,
-                source=f"Override for {user} in {reg.cohort}",
+                source=f"Override for {learner.user} in {reg.cohort}",
             )
 
         # 2. Check for cohort-level deadline for this item
@@ -134,7 +148,7 @@ def _resolve_cohort_deadline(
     # 3. Fall back to course-level override
     course_override = UserCohortDeadlineOverride.objects.filter(
         cohort_course_registration=reg,
-        learner__user=user,
+        learner=learner,
         content_type__isnull=True,
         object_id__isnull=True,
     ).first()
@@ -142,7 +156,7 @@ def _resolve_cohort_deadline(
         return EffectiveDeadline(
             deadline=course_override.deadline,
             is_hard_deadline=course_override.is_hard_deadline,
-            source=f"Override for {user} in {reg.cohort} (course-level)",
+            source=f"Override for {learner.user} in {reg.cohort} (course-level)",
         )
 
     # 4. Fall back to course-level cohort deadline
@@ -205,16 +219,28 @@ def get_course_deadlines(
 ) -> dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]]:
     """Get all deadlines for all items in a course, optimised for the TOC view.
 
+    Deadlines are scoped to the single Learner learner_for_course resolves
+    for this (user, course), the same as get_effective_deadlines -- so this
+    bulk resolution keeps agreeing with the per-item one.
+
     Returns a dict keyed by (content_type_id, object_id) tuples, where each
     value is a list of EffectiveDeadline objects. A key of (None, None)
     represents the course-level deadline.
 
     Uses prefetch to minimise queries.
     """
-    # Gather all registrations
+    resolved = learner_for_course(user, course)
+    if resolved is None:
+        return {}
+    learner = resolved.learner
+
+    # Gather all registrations. learner__is_active for the same reason
+    # get_effective_deadlines carries it: a Learner resolved through the
+    # individual fallback may be removed, and their stale cohort deadlines
+    # must not resolve.
     cohort_ids = list(
         CohortMembership.objects.filter(
-            learner__user=user, learner__is_active=True
+            learner=learner, learner__is_active=True
         ).values_list("cohort_id", flat=True)
     )
 
@@ -226,8 +252,7 @@ def get_course_deadlines(
 
     learner_regs = list(
         LearnerCourseRegistration.objects.filter(
-            learner__user=user,
-            learner__is_active=True,
+            learner=learner,
             collection=course,
             is_active=True,
         )
@@ -245,7 +270,7 @@ def get_course_deadlines(
     )
     all_overrides = list(
         UserCohortDeadlineOverride.objects.filter(
-            cohort_course_registration_id__in=cohort_reg_ids, learner__user=user
+            cohort_course_registration_id__in=cohort_reg_ids, learner=learner
         )
     )
     all_learner_deadlines = list(

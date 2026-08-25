@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 from guardian.shortcuts import get_objects_for_user
 
@@ -14,12 +14,24 @@ if TYPE_CHECKING:
     from freedom_ls.content_engine.models import Course
     from freedom_ls.learner_management.models import (
         Cohort,
+        CohortCourseRegistration,
         Learner,
         LearnerCourseRegistration,
     )
     from freedom_ls.organisations.models import Organisation
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
+
+
+class ResolvedRegistration(NamedTuple):
+    """Which Learner the work lands under, and the registration that decided it.
+
+    The two travel together so no caller can resolve one and re-derive the
+    other with a subtly different order.
+    """
+
+    learner: Learner
+    registration: LearnerCourseRegistration | CohortCourseRegistration
 
 
 def is_registered_for_course_expression(user: RequestUser) -> Q:
@@ -86,19 +98,19 @@ def latest_registration(user: User, course: Course) -> LearnerCourseRegistration
     )
 
 
-def organisation_for_learner_course(user: User, course: Course) -> Organisation | None:
-    """The organisation a learner is studying this course through.
+def learner_for_course(user: User, course: Course) -> ResolvedRegistration | None:
+    """Which Learner a piece of work for this (user, course) lands under, and
+    the registration that decided it.
 
-    Cohort registration wins over an individual one. CohortCourseRegistration
-    has no organisation FK of its own, so it is reached through the cohort.
-    Where a learner holds two individual registrations for one course through
-    two organisations, latest_registration's tiebreak picks one.
-
-    One query per path, with select_related — never one per render.
+    Cohort registration wins over an individual one. Where a learner holds
+    two cohort registrations for one course, the tiebreak below picks one
+    deterministically -- without it a learner in two cohorts that both hold
+    an active registration for this course would land on whichever record
+    the query planner happened to return.
     """
-    from freedom_ls.learner_management.models import CohortCourseRegistration
+    from freedom_ls.learner_management.models import CohortCourseRegistration, Learner
 
-    cohort_registration: CohortCourseRegistration | None = (
+    cohort_registration = (
         CohortCourseRegistration.objects.filter(
             collection=course,
             cohort__cohortmembership__learner__user=user,
@@ -106,13 +118,43 @@ def organisation_for_learner_course(user: User, course: Course) -> Organisation 
             is_active=True,
         )
         .select_related("cohort__organisation")
+        .order_by("-is_active", "-registered_at")
         .first()
     )
     if cohort_registration is not None:
-        return cohort_registration.cohort.organisation
+        # .first(), not .get(): CohortMembership.clean() forbids a
+        # cross-organisation membership, but factories never call
+        # full_clean(), so a test-built row can link a Learner the
+        # site-aware manager below cannot see. Falling through to the
+        # individual branch is the safe answer there.
+        learner = (
+            Learner.objects.filter(
+                user=user,
+                is_active=True,
+                cohortmembership__cohort_id=cohort_registration.cohort_id,
+            )
+            .select_related("organisation")
+            .first()
+        )
+        if learner is not None:
+            return ResolvedRegistration(learner, cohort_registration)
 
     registration = latest_registration(user, course)
-    return registration.learner.organisation if registration is not None else None
+    if registration is None:
+        return None
+    return ResolvedRegistration(registration.learner, registration)
+
+
+def organisation_for_learner_course(user: User, course: Course) -> Organisation | None:
+    """The organisation a learner is studying this course through.
+
+    Re-expressed on top of learner_for_course so the two can never disagree
+    on the tiebreak. This returns learner.organisation where the old cohort
+    branch returned cohort.organisation -- the same organisation, since
+    CohortMembership.clean() forbids a cross-organisation membership.
+    """
+    resolved = learner_for_course(user, course)
+    return resolved.learner.organisation if resolved is not None else None
 
 
 def organisations_accessible_to(user: RequestUser) -> QuerySet[Organisation]:

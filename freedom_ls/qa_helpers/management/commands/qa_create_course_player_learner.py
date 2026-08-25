@@ -19,22 +19,18 @@ from typing import cast
 import djclick as click
 from allauth.account.models import EmailAddress
 
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, Topic
-from freedom_ls.form_engine.factories import FormProgressFactory
-from freedom_ls.form_engine.models import Form, FormProgress
+from freedom_ls.form_engine.models import Form
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_management.models import LearnerCourseRegistration
-from freedom_ls.learner_progress.factories import (
-    CourseProgressFactory,
-    TopicProgressFactory,
-)
+from freedom_ls.learner_progress.attempts import ensure_attempt
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_progress.queries import course_progress_for
 from freedom_ls.organisations.utils import get_default_organisation
 
 LEARNER_EMAIL = "demodev_s1@email.com"
@@ -106,6 +102,16 @@ def _register(user: User, course: Course, site: Site) -> None:
         )
 
 
+def _record_for(user: User, course: Course) -> CourseProgress:
+    record = course_progress_for(user, course)
+    if record is None:
+        raise click.ClickException(
+            f"No CourseProgress record for {user.email} on {course.slug}; "
+            "register the learner before completing progress."
+        )
+    return record
+
+
 def _set_resume_progress(
     user: User, course: Course, site: Site, resume_index: int
 ) -> None:
@@ -115,72 +121,66 @@ def _set_resume_progress(
     resume_index as started, so the course has >0% progress and the resume
     redirect lands on resume_index rather than item 1.
     """
-    items = course.viewable_items()
-    if not items:
+    collection_items = course.viewable_collection_items()
+    if not collection_items:
         raise click.ClickException(f"Course '{course.slug}' has no viewable items.")
-    if resume_index > len(items):
+    if resume_index > len(collection_items):
         raise click.ClickException(
             f"resume_index {resume_index} exceeds viewable item count "
-            f"({len(items)}) for '{course.slug}'."
+            f"({len(collection_items)}) for '{course.slug}'."
         )
 
-    resume_item = items[resume_index - 1]
+    record = _record_for(user, course)
+    resume_collection_item = collection_items[resume_index - 1]
+    resume_item = resume_collection_item.child
 
     # Complete every item before the resume point.
-    for item in items[: resume_index - 1]:
+    for collection_item in collection_items[: resume_index - 1]:
+        item = collection_item.child
         if isinstance(item, Topic):
             TopicProgress.objects.get_or_create(
-                user=user,
-                topic=item,
-                site=site,
-                defaults={"complete_time": timezone.now()},
+                course_progress=record,
+                collection_item=collection_item,
+                defaults={
+                    "topic": item,
+                    "site": site,
+                    "complete_time": timezone.now(),
+                },
             )
         elif isinstance(item, Form):
-            FormProgress.objects.get_or_create(
-                user=user,
-                form=item,
-                site=site,
-                defaults={"completed_time": timezone.now()},
-            )
+            attempt = ensure_attempt(record, collection_item)
+            if attempt.completed_time is None:
+                attempt.completed_time = timezone.now()
+                attempt.save(update_fields=["completed_time"])
 
     # Start (but do not complete) the resume item so it is genuinely "in progress".
-    if (
-        isinstance(resume_item, Topic)
-        and not TopicProgress.objects.filter(
-            user=user, topic=resume_item, site=site
-        ).exists()
-    ):
-        TopicProgressFactory(user=user, topic=resume_item, site=site)
-    elif (
-        isinstance(resume_item, Form)
-        and not FormProgress.objects.filter(
-            user=user, form=resume_item, site=site
-        ).exists()
-    ):
-        FormProgressFactory(user=user, form=resume_item, site=site)
+    if isinstance(resume_item, Topic):
+        TopicProgress.objects.get_or_create(
+            course_progress=record,
+            collection_item=resume_collection_item,
+            defaults={"topic": resume_item, "site": site},
+        )
+    elif isinstance(resume_item, Form):
+        ensure_attempt(record, resume_collection_item)
 
     completed = resume_index - 1
-    percentage = round((completed / len(items)) * 100)
+    percentage = round((completed / len(collection_items)) * 100)
 
-    # update_course_progress_on_completion does not set site, so create/own the
-    # CourseProgress row directly with site and the resume pointer.
-    ct = ContentType.objects.get_for_model(type(resume_item))
-    progress: CourseProgress | None = CourseProgress.objects.filter(
-        user=user, course=course, site=site
-    ).first()
-    if progress is None:
-        progress = cast(
-            CourseProgress,
-            CourseProgressFactory(user=user, course=course, site=site),
-        )
-    progress.progress_percentage = percentage
-    progress.last_accessed_content_type = ct
-    progress.last_accessed_object_id = resume_item.pk
-    progress.save(
+    # Mirrors view_course_item's resume-pointer write: last_accessed_time is
+    # written explicitly rather than by auto_now, and started_at is stamped
+    # once, on first content access.
+    now = timezone.now()
+    record.progress_percentage = percentage
+    record.last_accessed_item = resume_collection_item
+    record.last_accessed_time = now
+    if record.started_at is None:
+        record.started_at = now
+    record.save(
         update_fields=[
             "progress_percentage",
-            "last_accessed_content_type",
-            "last_accessed_object_id",
+            "last_accessed_item",
+            "last_accessed_time",
+            "started_at",
         ]
     )
 
@@ -214,9 +214,11 @@ def command(site_name: str) -> None:
 
     # Case 1: enrolled, no progress, course with parts.
     _register(learner, no_progress_course, site)
-    # Defensively clear any stale progress so the bare URL really resolves to item 1.
+    # Defensively clear any stale progress so the bare URL really resolves to
+    # item 1. Deleting the record is safe: the player self-heals it (with a
+    # fresh created_at) via ensure_course_progress_record on the next visit.
     CourseProgress.objects.filter(
-        user=learner, course=no_progress_course, site=site
+        learner__user=learner, course=no_progress_course, site=site
     ).delete()
     click.secho(
         f"Enrolled (NO progress): {no_progress_course.slug} "
@@ -237,6 +239,11 @@ def command(site_name: str) -> None:
     )
 
     # Case 3: NOT enrolled (report only; ensure no registration exists).
+    # CourseProgress.learner_registration is PROTECT, so any record the
+    # registration minted has to go first.
+    CourseProgress.objects.filter(
+        learner__user=learner, course=not_enrolled_course, site=site
+    ).delete()
     LearnerCourseRegistration.objects.filter(
         learner__user=learner, collection=not_enrolled_course, site=site
     ).delete()

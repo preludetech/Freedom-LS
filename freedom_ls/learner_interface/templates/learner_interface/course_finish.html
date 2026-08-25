@@ -72,10 +72,15 @@
                 </h2>
 
                 <div class="space-y-3 text-muted">
-                    <div class="flex justify-between">
-                        <span class="font-medium">Started:</span>
-                        <span>{{ course_progress.start_time|date:"F j, Y" }}</span>
-                    </div>
+                    {% comment %}started_at, never created_at: the record is minted by the
+                    registration, so created_at would label the registration date as the
+                    start date. Nullable, so the row is wrapped like Completed below.{% endcomment %}
+                    {% if course_progress.started_at %}
+                        <div class="flex justify-between">
+                            <span class="font-medium">Started:</span>
+                            <span>{{ course_progress.started_at|date:"F j, Y" }}</span>
+                        </div>
+                    {% endif %}
                     {% comment %}No Completed row while the completion is withheld — it would render blank.{% endcomment %}
                     {% if course_progress.completed_time %}
                         <div class="flex justify-between">

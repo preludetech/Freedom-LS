@@ -15,55 +15,31 @@ if TYPE_CHECKING:
 
 
 def calculate_course_progress_percentage(
-    course,
-    completed_topic_ids: set[UUID],
-    completed_form_ids: set[UUID],
+    course: Course, completed_collection_item_ids: set[UUID]
 ) -> int:
+    """The share of a course's completable placements one record has finished.
+
+    Counts placements, not content: a topic placed twice in one course is two
+    items to complete, and finishing one of them is worth one. Reads the same
+    accessor the course outline reads, so the percentage and the outline can
+    never disagree about what is done.
+
+    viewable_collection_items() already flattens CourseParts in order and drops
+    the part sentinels; the TOPIC/FORM filter drops Activities, which are
+    placeable but have no completion to record.
     """
-    Calculate the percentage of completion for a course.
-
-    This function counts all completable items in a course, including:
-    - Direct child items (Topics and Forms)
-    - Items nested inside CourseParts
-
-    Args:
-        course: The Course object
-        completed_topic_ids: Set of UUIDs for completed topics
-        completed_form_ids: Set of UUIDs for completed forms
-
-    Returns:
-        Integer percentage (0-100) of course completion, rounded
-    """
-    # Get all completable items (recursively for CourseParts)
-    total_items = 0
-    completed_items = 0
-
-    def count_items(children):
-        """Recursively count items, expanding CourseParts."""
-        nonlocal total_items, completed_items
-
-        for child in children:
-            if child.content_type == "COURSE_PART":
-                # Recurse into CoursePart children
-                count_items(child.children())
-            elif child.content_type == "TOPIC":
-                total_items += 1
-                if child.id in completed_topic_ids:
-                    completed_items += 1
-            elif child.content_type == "FORM":
-                total_items += 1
-                if child.id in completed_form_ids:
-                    completed_items += 1
-
-    # Start counting from course children
-    children = course.children()
-    count_items(children)
-
-    # Calculate percentage
-    if total_items > 0:
-        return round((completed_items / total_items) * 100)
-    else:
+    completable = [
+        item
+        for item in course.viewable_collection_items()
+        if item.child is not None and item.child.content_type in ("TOPIC", "FORM")
+    ]
+    if not completable:
         return 0
+
+    completed = sum(
+        1 for item in completable if item.id in completed_collection_item_ids
+    )
+    return round((completed / len(completable)) * 100)
 
 
 def is_registered_for_course(user: RequestUser, course: Course) -> bool:

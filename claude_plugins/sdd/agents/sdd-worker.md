@@ -30,6 +30,11 @@ When your findings are web-sourced, **cite the reference URLs** in the output fi
   you can to the output file, set `status: blocked`, list what you `needs:`, and return. (See the
   `claude-code-authoring` skill for why subagents are non-interactive and fail-fast.)
 - **One unit only.** You cannot spawn further subagents and must not try to.
+- **Use the project's words.** Where your findings describe *this* project, name concepts with the
+  vocabulary that already exists — see `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md` and the
+  `## Vocabulary Sources` section of `.claude/sdd/config.md`. Research into *other* systems keeps
+  their terms (Open edX's `StudentModule`, SCORM's `cmi.core.lesson_status`); attribute them to the
+  system they came from, and never let one become the name of one of ours.
 - Follow the project's `CLAUDE.md` rules; never delete TODO or `@claude` comments.
 
 ## Return contract

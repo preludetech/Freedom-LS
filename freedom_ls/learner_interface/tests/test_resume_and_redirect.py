@@ -17,12 +17,11 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
-    FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormProgress, FormStrategy
+from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_interface.utils import (
     current_entry_status,
     get_course_index,
@@ -30,8 +29,15 @@ from freedom_ls.learner_interface.utils import (
     get_resume_index,
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_progress.models import CourseFormAttempt
 from freedom_ls.role_based_permissions.loader import clear_caches
+
+from .conftest import (
+    collection_item_for,
+    course_progress_record,
+    form_attempt,
+    topic_completion,
+)
 
 
 @pytest.fixture
@@ -64,7 +70,7 @@ def enrolled_user(mock_site_context, course_structure):
     return user
 
 
-def complete_topics(user, *topics):
+def complete_topics(course, user, *topics):
     """Clear the sequential-unlock gate ahead of the item a test wants to open.
 
     These tests are about breadcrumbs, titles and resume bookkeeping, not about
@@ -72,9 +78,7 @@ def complete_topics(user, *topics):
     reach on their own.
     """
     for topic in topics:
-        TopicProgress.objects.create(
-            user=user, topic=topic, complete_time=timezone.now()
-        )
+        topic_completion(course, user, topic, complete_time=timezone.now())
 
 
 # --- get_resume_index ---------------------------------------------------------
@@ -87,16 +91,16 @@ def test_resume_index_no_progress_returns_one(course_structure, enrolled_user):
 
 @pytest.mark.django_db
 def test_resume_index_null_item_returns_one(course_structure, enrolled_user):
-    CourseProgress.objects.create(user=enrolled_user, course=course_structure["course"])
+    course_progress_record(course_structure["course"], enrolled_user)
     assert get_resume_index(enrolled_user, course_structure["course"]) == 1
 
 
 @pytest.mark.django_db
 def test_resume_index_maps_stored_item_to_its_index(course_structure, enrolled_user):
-    cp = CourseProgress.objects.create(
-        user=enrolled_user, course=course_structure["course"]
+    cp = course_progress_record(course_structure["course"], enrolled_user)
+    cp.last_accessed_item = collection_item_for(
+        course_structure["course"], course_structure["topic_b"]
     )
-    cp.last_accessed_item = course_structure["topic_b"]
     cp.save()
     # Topic B is the second viewable item.
     assert get_resume_index(enrolled_user, course_structure["course"]) == 2
@@ -106,10 +110,10 @@ def test_resume_index_maps_stored_item_to_its_index(course_structure, enrolled_u
 def test_resume_index_stored_item_no_longer_viewable_falls_back(
     course_structure, enrolled_user
 ):
-    cp = CourseProgress.objects.create(
-        user=enrolled_user, course=course_structure["course"]
+    cp = course_progress_record(course_structure["course"], enrolled_user)
+    cp.last_accessed_item = collection_item_for(
+        course_structure["course"], course_structure["topic_b"]
     )
-    cp.last_accessed_item = course_structure["topic_b"]
     cp.save()
     # Remove topic B from the course; it is no longer viewable.
     course_structure["part"].items.filter(
@@ -191,17 +195,19 @@ def test_current_entry_status_is_none_when_no_row_is_current(
 def test_viewing_topic_records_last_accessed_item(course_structure, enrolled_user):
     client = Client()
     client.force_login(enrolled_user)
-    complete_topics(enrolled_user, course_structure["topic_a"])
+    complete_topics(
+        course_structure["course"], enrolled_user, course_structure["topic_a"]
+    )
     url = reverse(
         "learner_interface:view_course_item",
         kwargs={"course_slug": "resume-course", "index": 2},
     )
     response = client.get(url)
     assert response.status_code == 200
-    cp = CourseProgress.objects.get(
-        user=enrolled_user, course=course_structure["course"]
+    cp = course_progress_record(course_structure["course"], enrolled_user)
+    assert cp.last_accessed_item == collection_item_for(
+        course_structure["course"], course_structure["topic_b"]
     )
-    assert cp.last_accessed_item == course_structure["topic_b"]
 
 
 # --- course_home redirector ---------------------------------------------------
@@ -228,10 +234,10 @@ def test_course_home_enrolled_no_progress_redirects_to_item_one(
 def test_course_home_enrolled_with_progress_redirects_to_last_item(
     course_structure, enrolled_user
 ):
-    cp = CourseProgress.objects.create(
-        user=enrolled_user, course=course_structure["course"]
+    cp = course_progress_record(course_structure["course"], enrolled_user)
+    cp.last_accessed_item = collection_item_for(
+        course_structure["course"], course_structure["topic_c"]
     )
-    cp.last_accessed_item = course_structure["topic_c"]
     cp.save()
     client = Client()
     client.force_login(enrolled_user)
@@ -311,10 +317,13 @@ def test_viewing_form_does_not_create_form_progress(mock_site_context):
     )
     response = client.get(url)
     assert response.status_code == 200
-    assert not FormProgress.objects.filter(user=user, form=form).exists()
+    assert not CourseFormAttempt.objects.filter(
+        course_progress__learner__user=user,
+        form_progress__form=form,
+    ).exists()
     # But the form IS recorded as the resume target.
-    cp = CourseProgress.objects.get(user=user, course=course)
-    assert cp.last_accessed_item == form
+    cp = course_progress_record(course, user)
+    assert cp.last_accessed_item == collection_item_for(course, form)
 
 
 # --- breadcrumb + page title -------------------------------------------------
@@ -343,7 +352,10 @@ def test_breadcrumb_drops_part_when_item_top_level(course_structure, enrolled_us
     client = Client()
     client.force_login(enrolled_user)
     complete_topics(
-        enrolled_user, course_structure["topic_a"], course_structure["topic_b"]
+        course_structure["course"],
+        enrolled_user,
+        course_structure["topic_a"],
+        course_structure["topic_b"],
     )
     # Item index 3 is Topic C, a top-level item with no part.
     url = reverse(
@@ -359,7 +371,10 @@ def test_page_title_is_item_course_site(course_structure, enrolled_user):
     client = Client()
     client.force_login(enrolled_user)
     complete_topics(
-        enrolled_user, course_structure["topic_a"], course_structure["topic_b"]
+        course_structure["course"],
+        enrolled_user,
+        course_structure["topic_a"],
+        course_structure["topic_b"],
     )
     # Item index 3 (top-level, no part): "{item} — {course} — {site}".
     url = reverse(
@@ -416,8 +431,10 @@ def test_player_page_query_count_is_bounded(
     ``CoursePart.children`` memoize per instance, so the repeated chrome
     traversals share one resolution -- and (b) bulk-fetches all topic/form
     progress into maps via ``_fetch_player_progress_maps`` instead of one query
-    per item. The ceiling sits just above the current count (41 for this
-    4-item fixture) but well below what a reintroduced full traversal or a
+    per item. The ceiling sits just above the current count (42 for this
+    4-item fixture -- one more than before deadlines were scoped to the
+    Learner learner_for_course resolves, rather than to every registration
+    matching the user) but well below what a reintroduced full traversal or a
     per-item progress N+1 would cost. See
     ``test_player_page_query_count_does_not_grow_with_items``.
 
@@ -434,7 +451,7 @@ def test_player_page_query_count_is_bounded(
         kwargs={"course_slug": "resume-course", "index": 1},
     )
     clear_caches()
-    with django_assert_max_num_queries(41):
+    with django_assert_max_num_queries(42):
         response = client.get(url)
     assert response.status_code == 200
 
@@ -463,12 +480,13 @@ def big_course(mock_site_context):
 def test_player_page_query_count_does_not_grow_with_items(
     big_course, django_assert_max_num_queries
 ):
-    """Nine extra items cost one extra query, not nine.
+    """Nine extra items cost no extra queries, not nine.
 
-    The 4-item fixture above sits at 41 cold; this 13-item one sits at 42. A
-    per-item progress N+1 (or a per-caller re-traversal) would put it near 50.
-    The ceiling is one above the small-course count deliberately -- leaving
-    more slack than that would let a real N+1 hide inside it.
+    Both the 4-item fixture above and this 13-item one sit at 42: the bulk
+    per-item fetches (topic/form progress, deadlines) already scale with the
+    course's structure, not with item count read at request time. A per-item
+    progress N+1 (or a per-caller re-traversal) would put it well above this
+    ceiling instead.
     """
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=big_course)
@@ -529,21 +547,23 @@ def test_get_course_index_status_semantics_preserved(mock_site_context):
     for order, item in enumerate(ordered):
         course.items.create(child=item, order=order)
 
-    TopicProgress.objects.create(user=user, topic=topic_complete, complete_time=now)
-    TopicProgress.objects.create(user=user, topic=topic_in_progress)
-    FormProgress.objects.create(
-        user=user,
-        form=quiz_passed,
+    topic_completion(course, user, topic_complete, complete_time=now)
+    topic_completion(course, user, topic_in_progress)
+    form_attempt(
+        course,
+        user,
+        quiz_passed,
         completed_time=now,
         scores={"score": 8, "max_score": 10},
     )
-    FormProgress.objects.create(
-        user=user,
-        form=quiz_failed,
+    form_attempt(
+        course,
+        user,
+        quiz_failed,
         completed_time=now,
         scores={"score": 5, "max_score": 10},
     )
-    FormProgress.objects.create(user=user, form=form_done, completed_time=now)
+    form_attempt(course, user, form_done, completed_time=now)
 
     children = get_course_index(user=user, course=course, can_access_content=True)
     statuses = [c["status"] for c in children]
@@ -589,7 +609,7 @@ def test_checkbox_quiz_ticking_every_option_blocks_navigation_as_failed(
     wrong_1 = QuestionOptionFactory(question=question, correct=False, order=2)
     wrong_2 = QuestionOptionFactory(question=question, correct=False, order=3)
 
-    form_progress = FormProgressFactory(user=user, form=quiz)
+    form_progress = form_attempt(course, user, quiz)
     answer = QuestionAnswerFactory(form_progress=form_progress, question=question)
     answer.selected_options.add(correct_1, correct_2, wrong_1, wrong_2)
     form_progress.complete()

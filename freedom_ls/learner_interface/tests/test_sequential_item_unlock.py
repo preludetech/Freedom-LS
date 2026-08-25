@@ -21,15 +21,20 @@ from freedom_ls.content_engine.models import CourseVisibility, Topic
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
-    FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormProgress, FormStrategy, QuestionAnswer
+from freedom_ls.form_engine.models import FormStrategy, QuestionAnswer
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-from freedom_ls.learner_progress.factories import TopicProgressFactory
-from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_progress.models import CourseFormAttempt, TopicProgress
+
+from .conftest import (
+    collection_item_for,
+    course_progress_record,
+    form_attempt,
+    topic_completion,
+)
 
 COURSE_SLUG = "gated-course"
 
@@ -91,14 +96,14 @@ def learner(mock_site_context, gated_course, client):
     return user
 
 
-def _complete_topic(user, topic: Topic) -> None:
-    TopicProgressFactory(user=user, topic=topic, complete_time=timezone.now())
+def _complete_topic(course, user, topic: Topic) -> None:
+    topic_completion(course, user, topic, complete_time=timezone.now())
 
 
 def _sit_quiz(user, gated_course: dict, *, correct: bool) -> None:
     """One completed sitting of the gating quiz, scored by the real marker."""
     option = gated_course["quiz_right_option" if correct else "quiz_wrong_option"]
-    form_progress = FormProgressFactory(user=user, form=gated_course["quiz"])
+    form_progress = form_attempt(gated_course["course"], user, gated_course["quiz"])
     answer = QuestionAnswerFactory(
         form_progress=form_progress, question=option.question
     )
@@ -121,7 +126,7 @@ def test_failed_gating_quiz_leaves_the_next_item_unreachable_by_url(
     gated_course, learner, client
 ):
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
     _sit_quiz(learner, gated_course, correct=False)
 
     # Act
@@ -137,7 +142,7 @@ def test_failed_gating_quiz_leaves_the_next_item_unreachable_by_url(
 def test_a_refused_item_records_no_topic_progress(gated_course, learner, client):
     """The visit used to create the row that flipped the TOC entry to In progress."""
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
     _sit_quiz(learner, gated_course, correct=False)
 
     # Act
@@ -145,7 +150,10 @@ def test_a_refused_item_records_no_topic_progress(gated_course, learner, client)
 
     # Assert
     assert not TopicProgress.objects.filter(
-        user=learner, topic=gated_course["topic_after"]
+        course_progress=course_progress_record(gated_course["course"], learner),
+        collection_item=collection_item_for(
+            gated_course["course"], gated_course["topic_after"]
+        ),
     ).exists()
 
 
@@ -154,7 +162,7 @@ def test_a_refused_item_does_not_become_the_resume_target(
     gated_course, learner, client
 ):
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
     _sit_quiz(learner, gated_course, correct=False)
     client.get(_item_url(2))
 
@@ -162,8 +170,10 @@ def test_a_refused_item_does_not_become_the_resume_target(
     client.get(_item_url(3))
 
     # Assert
-    progress = CourseProgress.objects.get(user=learner, course=gated_course["course"])
-    assert progress.last_accessed_item == gated_course["quiz"]
+    progress = course_progress_record(gated_course["course"], learner)
+    assert progress.last_accessed_item == collection_item_for(
+        gated_course["course"], gated_course["quiz"]
+    )
 
 
 @pytest.mark.django_db
@@ -171,7 +181,7 @@ def test_passing_the_gating_quiz_makes_the_next_item_reachable(
     gated_course, learner, client
 ):
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
     _sit_quiz(learner, gated_course, correct=True)
 
     # Act
@@ -199,7 +209,7 @@ def test_a_failed_quiz_item_stays_reachable_so_it_can_be_retried(
     gated_course, learner, client
 ):
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
     _sit_quiz(learner, gated_course, correct=False)
 
     # Act
@@ -215,9 +225,9 @@ def test_work_already_completed_survives_a_later_failed_re_sit(
 ):
     """Failing a re-sit withholds what comes next; it does not revoke what is done."""
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
     _sit_quiz(learner, gated_course, correct=True)
-    _complete_topic(learner, gated_course["topic_after"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_after"])
     _sit_quiz(learner, gated_course, correct=False)
 
     # Act
@@ -250,7 +260,7 @@ def test_url_reachability_matches_the_locked_state_in_the_index(
 ):
     """The bug was a disagreement between the two, so the agreement is the fix."""
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
     _sit_quiz(learner, gated_course, correct=False)
 
     # Act
@@ -267,13 +277,13 @@ def test_resuming_to_a_now_locked_item_lands_on_the_course_detail_page(
     """A learner who roamed freely before the guard existed has a stale resume
     pointer, and must not be bounced between the redirector and the guard."""
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
     _sit_quiz(learner, gated_course, correct=False)
-    CourseProgress.objects.update_or_create(
-        user=learner,
-        course=gated_course["course"],
-        defaults={"last_accessed_item": gated_course["topic_after"]},
+    stale_pointer = course_progress_record(gated_course["course"], learner)
+    stale_pointer.last_accessed_item = collection_item_for(
+        gated_course["course"], gated_course["topic_after"]
     )
+    stale_pointer.save(update_fields=["last_accessed_item"])
 
     # Act
     response = client.get(
@@ -295,7 +305,7 @@ def test_a_locked_form_cannot_be_started(gated_course, learner, client):
     """form_start mints the attempt, so it is the door that flips a locked quiz
     to In progress."""
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
     _sit_quiz(learner, gated_course, correct=False)
 
     # Act
@@ -307,15 +317,18 @@ def test_a_locked_form_cannot_be_started(gated_course, learner, client):
     )
 
     # Assert
-    assert not FormProgress.objects.filter(
-        user=learner, form=gated_course["form_four"]
+    assert not CourseFormAttempt.objects.filter(
+        course_progress=course_progress_record(gated_course["course"], learner),
+        collection_item=collection_item_for(
+            gated_course["course"], gated_course["form_four"]
+        ),
     ).exists()
 
 
 @pytest.mark.django_db
 def test_a_locked_form_page_saves_no_answers(gated_course, learner, client):
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
     _sit_quiz(learner, gated_course, correct=False)
 
     # Act
@@ -337,7 +350,7 @@ def test_a_locked_form_page_saves_no_answers(gated_course, learner, client):
 def test_the_results_of_a_failed_attempt_stay_readable(gated_course, learner, client):
     """A learner may always read the score of a sitting they actually made."""
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
     _sit_quiz(learner, gated_course, correct=False)
 
     # Act
@@ -417,8 +430,9 @@ def test_an_unregistered_learner_starting_a_form_creates_no_attempt(
     )
 
     # Assert
-    assert not FormProgress.objects.filter(
-        user=outsider, form=gated_course["quiz"]
+    assert not CourseFormAttempt.objects.filter(
+        form_progress__form=gated_course["quiz"],
+        course_progress__learner__user=outsider,
     ).exists()
 
 
@@ -450,7 +464,7 @@ def test_a_registered_learner_still_reaches_the_form_runner(
 ):
     """The access gate must not turn away the learners it is there to admit."""
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
 
     # Act
     response = client.get(
@@ -526,7 +540,9 @@ def test_an_item_inside_a_locked_part_is_unreachable_by_url(
     parted_course, parted_learner, client
 ):
     # Arrange
-    _complete_topic(parted_learner, parted_course["topic_intro"])
+    _complete_topic(
+        parted_course["course"], parted_learner, parted_course["topic_intro"]
+    )
     _sit_quiz(parted_learner, parted_course, correct=False)
 
     # Act
@@ -544,7 +560,10 @@ def test_an_item_inside_a_locked_part_is_unreachable_by_url(
         kwargs={"course_slug": PARTED_COURSE_SLUG},
     )
     assert not TopicProgress.objects.filter(
-        user=parted_learner, topic=parted_course["inside_first"]
+        course_progress=course_progress_record(parted_course["course"], parted_learner),
+        collection_item=collection_item_for(
+            parted_course["course"], parted_course["inside_first"]
+        ),
     ).exists()
 
 
@@ -575,10 +594,11 @@ def near_miss_course(mock_site_context, client) -> dict:
     LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     client.force_login(user)
 
-    _complete_topic(user, topic_intro)
-    FormProgressFactory(
-        user=user,
-        form=quiz,
+    _complete_topic(course, user, topic_intro)
+    form_attempt(
+        course,
+        user,
+        quiz,
         completed_time=timezone.now(),
         scores={"score": 17, "max_score": 20},
     )
@@ -632,7 +652,7 @@ def test_a_passed_quiz_start_page_leads_on_to_the_next_item(
 ):
     """The other half of the same verdict: an 80% pass mark met at 100% moves on."""
     # Arrange
-    _complete_topic(learner, gated_course["topic_intro"])
+    _complete_topic(gated_course["course"], learner, gated_course["topic_intro"])
     _sit_quiz(learner, gated_course, correct=True)
 
     # Act

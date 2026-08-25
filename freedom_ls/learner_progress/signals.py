@@ -6,96 +6,74 @@ is never connected, and fails silently rather than loudly.
 `TopicProgress` completion is recalculated off `post_save`, naming its sender
 explicitly — a new concrete `CourseItemProgress` subclass does not inherit the
 behaviour the way it would from a `save()` override, it needs its own `@receiver`
-line here. Form completions are recalculated separately, off the
-`form_attempt_completed` signal that `FormProgress.complete()` sends.
+line here. Form completions arrive instead on `form_attempt_completed`, which
+`form_engine` sends for every attempt, course-bound or not.
 """
 
 from __future__ import annotations
 
-from django.contrib.contenttypes.models import ContentType as DjangoContentType
-from django.db import models
+from typing import cast
+
+from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from freedom_ls.content_engine.models import (
-    ContentCollectionItem,
-    Course,
-    CoursePart,
-    Topic,
-)
-from freedom_ls.form_engine.models import Form
-from freedom_ls.form_engine.queries import completed_form_ids_by_user
+from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.form_engine.signals import form_attempt_completed
+from freedom_ls.learner_management.models import (
+    CohortCourseRegistration,
+    CohortMembership,
+    Learner,
+    LearnerCourseRegistration,
+)
 from freedom_ls.learner_management.utils import calculate_course_progress_percentage
 from freedom_ls.learner_progress.models import (
+    CourseFormAttempt,
     CourseItemProgress,
     CourseProgress,
     TopicProgress,
 )
+from freedom_ls.learner_progress.queries import (
+    completed_form_item_ids_by_course_progress,
+)
+from freedom_ls.learner_progress.utils import (
+    ensure_course_progress_record,
+    ensure_course_progress_records_for_cohort_registration,
+)
 
 
-def update_course_progress_on_completion(
-    user: models.Model, content_item: Topic | Form
-) -> None:
-    """Update progress_percentage on all CourseProgress records affected by completing a content item.
+def recalculate_progress_percentage(record: CourseProgress) -> None:
+    """Rewrite one record's stored percentage from its own completion rows.
 
-    Traces through ContentCollectionItem to find parent courses (including
-    items nested inside CourseParts) and recalculates progress for each.
+    The escape hatch for code that writes completions without a transition to
+    fire — see `recalculate_course_progress_on_save`.
+
+    `update_fields`, because `last_accessed_time` is written by the player: a
+    background recalculation must not look like a visit.
     """
-    # @claude this function is very long. It needs to be refactored
-    #
-    # topic.courses() should return the courses that a topic is included in
-    # form.courses() should return the courses that the form is in
-    #
-    item_ct = DjangoContentType.objects.get_for_model(content_item)
-    course_ct = DjangoContentType.objects.get_for_model(Course)
-    course_part_ct = DjangoContentType.objects.get_for_model(CoursePart)
-
-    # Find all ContentCollectionItems where this item is a child
-    parent_links = ContentCollectionItem.objects.filter(
-        child_type=item_ct, child_id=content_item.id
-    )
-
-    direct_course_ids: set = set()
-    course_part_ids: set = set()
-    for link in parent_links:
-        if link.collection_type_id == course_ct.id:
-            direct_course_ids.add(link.collection_id)
-        elif link.collection_type_id == course_part_ct.id:
-            course_part_ids.add(link.collection_id)
-
-    # Batch lookup: find parent Courses for all CourseParts in one query
-    course_ids = set(direct_course_ids)
-    if course_part_ids:
-        course_ids.update(
-            ContentCollectionItem.objects.filter(
-                child_type=course_part_ct,
-                child_id__in=course_part_ids,
-                collection_type=course_ct,
-            ).values_list("collection_id", flat=True)
-        )
-
-    if not course_ids:
-        return
-
-    # Get user's completed topic and form IDs
-    completed_topic_ids = set(
+    # Collection item ids, not topic/form ids: the percentage counts placements,
+    # so a topic placed twice in one course is credited one position at a time.
+    completed_item_ids = set(
         TopicProgress.objects.filter(
-            user=user, complete_time__isnull=False
-        ).values_list("topic_id", flat=True)
+            course_progress=record,
+            complete_time__isnull=False,
+            collection_item__isnull=False,
+        ).values_list("collection_item_id", flat=True)
     )
-    completed_form_ids = completed_form_ids_by_user([user.pk]).get(user.pk, set())
+    completed_item_ids |= completed_form_item_ids_by_course_progress([record.pk]).get(
+        record.pk, set()
+    )
+    record.progress_percentage = calculate_course_progress_percentage(
+        record.course, completed_item_ids
+    )
+    record.save(update_fields=["progress_percentage"])
 
-    # Update each affected course's progress (find/create CourseProgress if needed)
-    for course in Course.objects.filter(id__in=course_ids):
-        percentage = calculate_course_progress_percentage(
-            course, completed_topic_ids, completed_form_ids
-        )
-        CourseProgress.objects.update_or_create(
-            user=user,
-            course=course,
-            defaults={"progress_percentage": percentage},
-        )
+
+def update_course_progress_on_completion(item_progress: CourseItemProgress) -> None:
+    """Recalculate the record's percentage after one of its items completes."""
+    recalculate_progress_percentage(
+        cast("CourseProgress", item_progress.course_progress)
+    )
 
 
 @receiver(post_save, sender=TopicProgress)
@@ -105,15 +83,16 @@ def recalculate_course_progress_on_save(
     raw: bool = False,
     **kwargs: object,
 ) -> None:
-    """Recalculate course percentages when a save completes a topic or form.
+    """Recalculate the record's percentage when a save completes a topic or form.
 
     Only a save fires this — `queryset.update()`, `bulk_create()` and
-    `bulk_update()` write rows without it. Code that completes items in bulk has
-    to call `update_course_progress_on_completion()` for the affected rows itself.
+    `bulk_update()` write rows without it, and neither does a row created with
+    its completion time already set. Code that completes items in bulk has to
+    call `recalculate_progress_percentage()` for the affected records itself.
 
     `raw` saves come from `loaddata`, which writes exactly the rows in the fixture:
-    deriving extra `CourseProgress` rows from a fixture load would invent data the
-    fixture author did not ask for.
+    recomputing a percentage from a fixture load would overwrite the one the
+    fixture author asked for.
     """
     if raw:
         return
@@ -122,7 +101,7 @@ def recalculate_course_progress_on_save(
     if content_item is None:
         return
 
-    update_course_progress_on_completion(instance.user, content_item)
+    update_course_progress_on_completion(instance)
     instance.mark_completion_recorded()
 
 
@@ -130,7 +109,131 @@ def recalculate_course_progress_on_save(
     form_attempt_completed, dispatch_uid="learner_progress.form_attempt_completed"
 )
 def recalculate_course_progress_on_form_attempt(
-    sender: type[models.Model], user: models.Model, form: Form, **kwargs: object
+    sender: type[FormProgress],
+    attempt: FormProgress,
+    **kwargs: object,
 ) -> None:
-    """Recalculate course percentages when a form attempt completes."""
-    update_course_progress_on_completion(user, form)
+    """Recalculate the record's percentage when an attempt inside it completes.
+
+    An attempt sat outside a course -- a standalone survey, an application form
+    -- has no `CourseFormAttempt`, and there is no percentage anywhere for it to
+    move. That is the whole reason the attempt layer lives in `form_engine`:
+    completing one costs a single indexed lookup here and touches nothing else.
+    """
+    course_attempt = (
+        CourseFormAttempt.objects.filter(form_progress=attempt)
+        .select_related("course_progress__course")
+        .first()
+    )
+    if course_attempt is None:
+        return
+
+    recalculate_progress_percentage(course_attempt.course_progress)
+
+
+def _ensure_and_announce(
+    registration: LearnerCourseRegistration, *, announce: bool
+) -> None:
+    """Mint this registration's record, then announce it to integrators.
+
+    `announce` is decided when the signal is received, not here: by the time
+    the transaction commits, `created` is long gone.
+
+    _base_manager on the Learner lookup, because this runs from anywhere a
+    registration is written -- a management command with no ambient request,
+    or a request whose ambient site is not the learner's own.
+    """
+    from freedom_ls.webhooks.events import fire_webhook_event
+
+    learner = Learner._base_manager.select_related("user").get(
+        pk=registration.learner_id
+    )
+    record = ensure_course_progress_record(
+        learner, registration.collection, registration
+    )
+    if not announce:
+        return
+
+    fire_webhook_event(
+        "course.registered",
+        {
+            "user_id": learner.user_id,
+            "user_email": learner.user.email,
+            "course_id": str(registration.collection_id),
+            "course_title": registration.collection.title,
+            "registered_at": registration.registered_at.isoformat(),
+            "organisation_id": str(learner.organisation_id),
+            "course_progress_id": str(record.id),
+        },
+    )
+
+
+def _ensure_for_membership(membership: CohortMembership) -> None:
+    """One record per course the new member's cohort is currently registered for."""
+    learner = membership.learner
+    if not learner.is_active:
+        return
+    registrations = CohortCourseRegistration._base_manager.filter(
+        cohort_id=membership.cohort_id, is_active=True
+    ).select_related("collection")
+    for registration in registrations:
+        ensure_course_progress_record(learner, registration.collection, registration)
+
+
+# Registration is what grants a record, so these three receivers are the only
+# place records are minted. There is deliberately no post_delete counterpart:
+# removing a membership, withdrawing a registration and deactivating a learner
+# are access decisions, and none of them retires work already recorded.
+#
+# on_commit throughout, for two reasons. A cohort fan-out half-visible to a
+# concurrent reader before the registration itself commits would be worse than
+# no fan-out at all; and deferring is what lets course.registered be announced
+# only once the record it names exists.
+
+
+@receiver(post_save, sender=LearnerCourseRegistration)
+def ensure_course_progress_on_learner_registration(
+    sender: type[LearnerCourseRegistration],
+    instance: LearnerCourseRegistration,
+    created: bool,
+    raw: bool = False,
+    **kwargs: object,
+) -> None:
+    """Mint the record an individual registration grants, and announce it."""
+    if raw:
+        # loaddata: deriving records from a fixture would invent data the
+        # fixture author did not ask for.
+        return
+    if not (created or instance.is_active):
+        # A deactivating save must not create anything.
+        return
+    transaction.on_commit(lambda: _ensure_and_announce(instance, announce=created))
+
+
+@receiver(post_save, sender=CohortCourseRegistration)
+def ensure_course_progress_on_cohort_registration(
+    sender: type[CohortCourseRegistration],
+    instance: CohortCourseRegistration,
+    created: bool,
+    raw: bool = False,
+    **kwargs: object,
+) -> None:
+    """Fan a cohort registration out to a record per active member."""
+    if raw or not (created or instance.is_active):
+        return
+    transaction.on_commit(
+        lambda: ensure_course_progress_records_for_cohort_registration(instance)
+    )
+
+
+@receiver(post_save, sender=CohortMembership)
+def ensure_course_progress_on_cohort_membership(
+    sender: type[CohortMembership],
+    instance: CohortMembership,
+    raw: bool = False,
+    **kwargs: object,
+) -> None:
+    """Catch a learner up on whatever their new cohort is already registered for."""
+    if raw:
+        return
+    transaction.on_commit(lambda: _ensure_for_membership(instance))

@@ -29,9 +29,9 @@ def test_finish_page_does_not_complete_a_course_with_a_failed_quiz(
         slug="finish-failed"
     )
     progress: CourseProgress = CourseProgressFactory(
-        user=user, course=course, completed_time=None
+        learner__user=user, course=course, completed_time=None
     )
-    sit_quiz(user, form, question, wrong)
+    sit_quiz(progress, form, question, wrong)
 
     _finish(client, user, course)
 
@@ -47,10 +47,10 @@ def test_finish_page_completes_a_course_once_the_quiz_is_passed(
     user = UserFactory()
     course, form, question, right, wrong = course_with_scored_quiz(slug="finish-passed")
     progress: CourseProgress = CourseProgressFactory(
-        user=user, course=course, completed_time=None
+        learner__user=user, course=course, completed_time=None
     )
-    sit_quiz(user, form, question, wrong)
-    sit_quiz(user, form, question, right)
+    sit_quiz(progress, form, question, wrong)
+    sit_quiz(progress, form, question, right)
 
     _finish(client, user, course)
 
@@ -67,8 +67,10 @@ def test_finish_page_still_renders_for_a_course_with_a_failed_quiz(
     course, form, question, _right, wrong = course_with_scored_quiz(
         slug="finish-renders"
     )
-    CourseProgressFactory(user=user, course=course, completed_time=None)
-    sit_quiz(user, form, question, wrong)
+    progress: CourseProgress = CourseProgressFactory(
+        learner__user=user, course=course, completed_time=None
+    )
+    sit_quiz(progress, form, question, wrong)
 
     response = _finish(client, user, course)
 
@@ -82,8 +84,10 @@ def test_finish_page_names_the_unpassed_quiz_and_links_to_its_retry(
     """A withheld completion has to say what is left, not congratulate the learner."""
     user = UserFactory()
     course, form, question, _right, wrong = course_with_scored_quiz(slug="finish-names")
-    CourseProgressFactory(user=user, course=course, completed_time=None)
-    sit_quiz(user, form, question, wrong)
+    progress: CourseProgress = CourseProgressFactory(
+        learner__user=user, course=course, completed_time=None
+    )
+    sit_quiz(progress, form, question, wrong)
 
     content = _finish(client, user, course).content.decode()
 
@@ -108,9 +112,11 @@ def test_finish_page_congratulates_once_the_quiz_is_passed(
     course, form, question, right, wrong = course_with_scored_quiz(
         slug="finish-congratulates"
     )
-    CourseProgressFactory(user=user, course=course, completed_time=None)
-    sit_quiz(user, form, question, wrong)
-    sit_quiz(user, form, question, right)
+    progress: CourseProgress = CourseProgressFactory(
+        learner__user=user, course=course, completed_time=None
+    )
+    sit_quiz(progress, form, question, wrong)
+    sit_quiz(progress, form, question, right)
 
     content = _finish(client, user, course).content.decode()
 

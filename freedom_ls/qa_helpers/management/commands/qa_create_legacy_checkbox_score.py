@@ -47,11 +47,10 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course, Topic
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
-    FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
@@ -79,11 +78,12 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     LearnerCourseRegistration,
 )
+from freedom_ls.learner_progress.attempts import ensure_attempt
 from freedom_ls.learner_progress.factories import (
-    CourseProgressFactory,
     TopicProgressFactory,
 )
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_progress.queries import course_progress_for
 from freedom_ls.organisations.utils import get_default_organisation
 
 COURSE_TITLE = "QA Legacy Checkbox Score Course"
@@ -288,15 +288,27 @@ def _register(user: User, course: Course, site: Site) -> None:
         )
 
 
-def _ensure_course_progress_row(user: User, course: Course, site: Site) -> None:
-    """Pre-create CourseProgress WITH a site.
+def _collection_item_for(course: Course, child: Form | Topic) -> ContentCollectionItem:
+    """The collection item placing `child` in `course`."""
+    for collection_item in course.viewable_collection_items():
+        if collection_item.child == child:
+            return collection_item
+    raise click.ClickException(
+        f"'{child.slug}' is not a viewable item of '{course.slug}'."
+    )
 
-    Completing a Topic or Form fires ``update_course_progress_on_completion``,
-    which calls ``CourseProgress.objects.update_or_create()`` without a site and
-    violates the NOT NULL constraint unless the row already exists.
+
+def _record_for(user: User, course: Course) -> CourseProgress:
+    """The learner's live record for `course` -- cohort-granted wins here,
+    since these learners hold both a cohort and an individual registration.
     """
-    if not CourseProgress.objects.filter(user=user, course=course, site=site).exists():
-        CourseProgressFactory(user=user, course=course, site=site)
+    record = course_progress_for(user, course)
+    if record is None:
+        raise click.ClickException(
+            f"No CourseProgress record for {user.email} on {course.slug}; "
+            "register the learner before completing progress."
+        )
+    return record
 
 
 def _answer(
@@ -317,7 +329,12 @@ def _answer(
 
 
 def _complete_attempt(
-    user: User, form: Form, site: Site, *, select_every_checkbox_option: bool
+    user: User,
+    course: Course,
+    form: Form,
+    site: Site,
+    *,
+    select_every_checkbox_option: bool,
 ) -> FormProgress:
     """Create one completed attempt, scored with today's exact-match rule.
 
@@ -325,13 +342,9 @@ def _complete_attempt(
     question is answered either with every option (the legacy shape: both
     correct options plus the incorrect one) or with the correct options only.
     """
-    attempt: FormProgress | None = FormProgress.objects.filter(
-        user=user, form=form, site=site
-    ).first()
-    if attempt is None:
-        attempt = cast(
-            FormProgress, FormProgressFactory(user=user, form=form, site=site)
-        )
+    record = _record_for(user, course)
+    collection_item = _collection_item_for(course, form)
+    attempt: FormProgress = ensure_attempt(record, collection_item)
 
     for question in FormQuestion.objects.filter(form_page__form=form).order_by("order"):
         options = list(question.options.order_by("order"))
@@ -407,13 +420,21 @@ def _stamp_legacy_score(attempt: FormProgress) -> tuple[dict[str, int], dict[str
     return stored, {"score": recomputed_score, "max_score": recomputed_max}
 
 
-def _complete_topic(user: User, topic: Topic, site: Site) -> None:
+def _complete_topic(user: User, course: Course, topic: Topic, site: Site) -> None:
+    record = _record_for(user, course)
+    collection_item = _collection_item_for(course, topic)
     progress: TopicProgress | None = TopicProgress.objects.filter(
-        user=user, topic=topic
+        course_progress=record, topic=topic
     ).first()
     if progress is None:
         progress = cast(
-            TopicProgress, TopicProgressFactory(user=user, topic=topic, site=site)
+            TopicProgress,
+            TopicProgressFactory(
+                course_progress=record,
+                topic=topic,
+                collection_item=collection_item,
+                site=site,
+            ),
         )
     if progress.complete_time is None:
         progress.complete_time = timezone.now()
@@ -496,21 +517,19 @@ def command(site_name: str) -> None:
     for user in (legacy_user, current_user, idle_user):
         _register(user, course, site)
         _add_member(user, cohort, site)
-    for user in (legacy_user, current_user):
-        _ensure_course_progress_row(user, course, site)
 
     # The legacy attempt: every checkbox option selected, stored score re-stamped
     # to what the pre-fix rule would have produced.
     legacy_attempt = _complete_attempt(
-        legacy_user, quiz, site, select_every_checkbox_option=True
+        legacy_user, course, quiz, site, select_every_checkbox_option=True
     )
     stored, recomputed = _stamp_legacy_score(legacy_attempt)
 
     # A present-day attempt where stored and recomputed agree, for contrast.
     current_attempt = _complete_attempt(
-        current_user, quiz, site, select_every_checkbox_option=False
+        current_user, course, quiz, site, select_every_checkbox_option=False
     )
-    _complete_topic(current_user, topic, site)
+    _complete_topic(current_user, course, topic, site)
 
     educator = User.objects.filter(email=OPTIONAL_EDUCATOR_EMAIL, site=site).first()
     if educator is not None:

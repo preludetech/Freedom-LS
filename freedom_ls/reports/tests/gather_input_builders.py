@@ -23,7 +23,7 @@ one test mutating a map it was handed cannot reach another under pytest-randomly
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Topic
@@ -36,6 +36,7 @@ from freedom_ls.form_engine.models import (
     QuestionOption,
     QuestionType,
 )
+from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
 from freedom_ls.reports.indexes import (
     CohortRoster,
     CourseCatalogue,
@@ -44,10 +45,11 @@ from freedom_ls.reports.indexes import (
     TopicProgressIndex,
 )
 
-# FormProgress.user is a plain integer FK column, so a user id is all the
-# progress helpers need -- no User row, saved or otherwise.
-USER_ID = 1
-OTHER_USER_ID = 2
+# The gather layer keys everything on Learner ids, and every lookup in it is
+# a plain dict read -- so two distinct ids are all the progress helpers need,
+# with no Learner row, saved or otherwise.
+LEARNER_ID = uuid4()
+OTHER_LEARNER_ID = uuid4()
 
 JAN_1 = datetime(2026, 1, 1, tzinfo=UTC)
 JAN_2 = datetime(2026, 1, 2, tzinfo=UTC)
@@ -71,14 +73,24 @@ def a_survey(title: str = "A Survey") -> Form:
 def an_attempt(
     form: Form,
     *,
-    user_id: int = USER_ID,
+    learner_id: UUID = LEARNER_ID,
     completed_time: datetime | None = None,
     scores: dict[str, int] | None = None,
 ) -> FormProgress:
-    """One sitting of `form`, with the form cached so scoring issues no query."""
-    return FormProgress(
-        user_id=user_id, form=form, completed_time=completed_time, scores=scores
+    """One sitting of `form`, with the form cached so scoring issues no query.
+
+    The sitting is paired with an unsaved `CourseFormAttempt`, because that is
+    where the fold reads the learner from now that the attempt itself is
+    course-blind. Assigning the reverse side primes both caches, so
+    `fp.course_attempt.course_progress` resolves without a query. Two sittings
+    built for the same learner get a record each; the fold keys on the learner
+    id inside them, so that is indistinguishable from one record holding both.
+    """
+    attempt = FormProgress(form=form, completed_time=completed_time, scores=scores)
+    attempt.course_attempt = CourseFormAttempt(
+        course_progress=CourseProgress(learner_id=learner_id), form_progress=attempt
     )
+    return attempt
 
 
 def a_page(form: Form, *, order: int = 0) -> FormPage:
@@ -110,23 +122,24 @@ def an_option(
 
 def a_learner(
     *,
-    user_id: int = USER_ID,
     first_name: str = "",
     last_name: str = "",
     email: str = "learner@example.test",
 ) -> User:
-    return User(id=user_id, first_name=first_name, last_name=last_name, email=email)
+    """The User a roster entry displays. The roster keys it by Learner id."""
+    return User(first_name=first_name, last_name=last_name, email=email)
 
 
-def a_roster(*users: User) -> CohortRoster:
-    """A roster over the given users, ordered exactly as passed."""
-    learners_by_id = {user.id: user for user in users}
+def a_roster(*entries: tuple[UUID, User]) -> CohortRoster:
+    """A roster over the given (learner id, user) pairs, ordered exactly as passed."""
+    learners_by_id = dict(entries)
     return CohortRoster(
         learners_by_id=learners_by_id,
         sort_key_by_id={
-            user.id: (user.last_name or user.email, user.first_name) for user in users
+            learner_id: (user.last_name or user.email, user.first_name)
+            for learner_id, user in entries
         },
-        learner_ids=[user.id for user in users],
+        learner_ids=[learner_id for learner_id, _ in entries],
     )
 
 
@@ -166,39 +179,39 @@ def a_catalogue(
 
 def a_progress_index(
     *,
-    completed_topic_ids_by_user: dict[int, set[UUID]] | None = None,
-    topic_complete_time: dict[tuple[int, UUID], datetime] | None = None,
-    latest_by_user_form: dict[tuple[int, UUID], FormProgress] | None = None,
-    completed_attempts_by_user_form: dict[tuple[int, UUID], list[FormProgress]]
+    completed_topic_ids_by_learner: dict[UUID, set[UUID]] | None = None,
+    topic_complete_time: dict[tuple[UUID, UUID], datetime] | None = None,
+    latest_by_learner_form: dict[tuple[UUID, UUID], FormProgress] | None = None,
+    completed_attempts_by_learner_form: dict[tuple[UUID, UUID], list[FormProgress]]
     | None = None,
-    completed_form_ids_by_user: dict[int, set[UUID]] | None = None,
+    completed_form_ids_by_learner: dict[UUID, set[UUID]] | None = None,
     completed_attempt_ids: list[UUID] | None = None,
-    user_form_by_attempt_id: dict[UUID, tuple[int, UUID]] | None = None,
-    user_ids_with_any_progress: set[int] | None = None,
+    learner_form_by_attempt_id: dict[UUID, tuple[UUID, UUID]] | None = None,
+    learner_ids_with_any_progress: set[UUID] | None = None,
 ) -> ProgressIndex:
     """A ProgressIndex assembled field by field, for helpers that only read a few."""
     topics = TopicProgressIndex(
-        user_ids_seen=set(),
-        completed_topic_ids_by_user=completed_topic_ids_by_user or {},
+        learner_ids_seen=set(),
+        completed_topic_ids_by_learner=completed_topic_ids_by_learner or {},
         complete_time=topic_complete_time or {},
     )
     forms = FormProgressIndex(
-        user_ids_seen=set(),
-        latest_by_user_form=latest_by_user_form or {},
-        completed_attempts_by_user_form=completed_attempts_by_user_form or {},
-        completed_form_ids_by_user=completed_form_ids_by_user or {},
+        learner_ids_seen=set(),
+        latest_by_learner_form=latest_by_learner_form or {},
+        completed_attempts_by_learner_form=completed_attempts_by_learner_form or {},
+        completed_form_ids_by_learner=completed_form_ids_by_learner or {},
         completed_attempt_ids=completed_attempt_ids or [],
-        user_form_by_attempt_id=user_form_by_attempt_id or {},
+        learner_form_by_attempt_id=learner_form_by_attempt_id or {},
     )
     return ProgressIndex(
         topics=topics,
         forms=forms,
-        user_ids_with_any_progress=user_ids_with_any_progress or set(),
+        learner_ids_with_any_progress=learner_ids_with_any_progress or set(),
     )
 
 
 def attempted(
-    form: Form, attempts: list[FormProgress], *, user_id: int = USER_ID
+    form: Form, attempts: list[FormProgress], *, learner_id: UUID = LEARNER_ID
 ) -> ProgressIndex:
     """A ProgressIndex holding one learner's chronological sittings of one form.
 
@@ -208,6 +221,6 @@ def attempted(
     completed = [attempt for attempt in attempts if attempt.completed_time is not None]
     latest = completed[-1] if completed else attempts[-1]
     return a_progress_index(
-        latest_by_user_form={(user_id, form.id): latest},
-        completed_attempts_by_user_form={(user_id, form.id): completed},
+        latest_by_learner_form={(learner_id, form.id): latest},
+        completed_attempts_by_learner_form={(learner_id, form.id): completed},
     )

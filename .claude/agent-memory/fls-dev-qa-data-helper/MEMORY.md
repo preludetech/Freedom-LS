@@ -41,6 +41,7 @@
 - [reference_background_tasks_dev.md](reference_background_tasks_dev.md) — Dev needs NO db_worker: TASKS is pinned to ImmediateBackend, so report PDFs render inline
 - [reference_legacy_report_prefix_staging.md](reference_legacy_report_prefix_staging.md) — Staging a pre-rename `reports/`-prefix GeneratedReport row; in dev ALL storage aliases share MEDIA_ROOT, so only the key prefix separates them
 - [reference_storage_qa_dataset.md](reference_storage_qa_dataset.md) — The whole prod_bucket_setup storage-QA dataset in one recipe; --num-flagged undercounts on a quiz-less course; generate_cohort_report() repairs a row in place
+- [reference_paginated_progress_matrix_command.md](reference_paginated_progress_matrix_command.md) — qa_create_paginated_progress_matrix; org-owned "QA Pagination Cohort" (32 learners / 26 items) WITH a progress spread; already-complete TopicProgress rows never recalculate progress_percentage; educator URLs are organisation-scoped
 
 ## Recurring requests
 
@@ -82,6 +83,12 @@ verification — the fixtures survive between runs — so ALWAYS inspect first a
 repair the deltas: a report row left staged on the legacy `reports/` prefix, and a
 flag count short because `--num-flagged`'s `failing` flavour needs a pass-marked quiz.
 If it is asked for a third time, wrap the recipe in one command.
+
+**Course-progress pagination fixtures have now been asked for three times** (large
+cohort, then `qa_create_column_pagination_scenario`, then the org-scoped
+`qa_create_paginated_progress_matrix`). Check which shape is wanted before seeding:
+default-org + 0% (column scenario) vs named organisation + real percentage spread
+(progress matrix). See [[reference_paginated_progress_matrix_command]].
 
 **Never pad `functionality-demo-course-parts` for pagination QA.** It is the shared
 course-player / resume / TOC fixture. `qa_add_course_items_for_pagination` DEFAULTS to it;

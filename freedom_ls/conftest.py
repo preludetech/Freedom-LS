@@ -253,20 +253,32 @@ def course_with_scored_quiz(mock_site_context):
 
 @pytest.fixture
 def sit_quiz():
-    """Factory: complete one attempt at `form`, answering `question` with `option`."""
-    from freedom_ls.form_engine.factories import (
-        FormProgressFactory,
-        QuestionAnswerFactory,
-    )
-    from freedom_ls.form_engine.models import FormProgress, QuestionAnswer
+    """Factory: complete one attempt at `form` within `course_progress`.
 
-    def _sit(user, form, question, option) -> None:
-        attempt: FormProgress = FormProgressFactory(user=user, form=form)
+    The attempt is scoped to the collection item placing `form` in that
+    record's course, so repeated sittings accumulate against one placement.
+    """
+    from freedom_ls.content_engine.models import ContentCollectionItem
+    from freedom_ls.form_engine.factories import QuestionAnswerFactory
+    from freedom_ls.form_engine.models import FormProgress, QuestionAnswer
+    from freedom_ls.learner_progress.factories import CourseFormAttemptFactory
+
+    def _sit(course_progress, form, question, option) -> FormProgress:
+        collection_item = ContentCollectionItem.objects.get(
+            collection_id=course_progress.course_id, child_id=form.id
+        )
+        course_attempt = CourseFormAttemptFactory(
+            course_progress=course_progress,
+            collection_item=collection_item,
+            form=form,
+        )
+        attempt: FormProgress = course_attempt.form_progress
         answer: QuestionAnswer = QuestionAnswerFactory(
             form_progress=attempt, question=question
         )
         answer.selected_options.add(option)
         attempt.complete()
+        return attempt
 
     return _sit
 

@@ -19,10 +19,8 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     RecommendedCourseFactory,
 )
-from freedom_ls.learner_progress.factories import (
-    CourseProgressFactory,
-    TopicProgressFactory,
-)
+
+from .conftest import course_progress_record, topic_completion
 
 
 @pytest.fixture
@@ -93,9 +91,11 @@ def test_in_progress_card_when_progress_above_zero(
     LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     # Mark first topic complete to push progress >0%.
     first_topic = course_with_topics.children()[0]
-    TopicProgressFactory(user=user, topic=first_topic, complete_time=timezone.now())
+    topic_completion(
+        course_with_topics, user, first_topic, complete_time=timezone.now()
+    )
     # Recompute progress on CourseProgress (the helper expects this row).
-    CourseProgressFactory(user=user, course=course_with_topics, progress_percentage=33)
+    course_progress_record(course_with_topics, user, progress_percentage=33)
 
     client = logged_in_client(user)
     response = client.get(reverse("learner_interface:dashboard"))
@@ -110,11 +110,7 @@ def test_complete_card_for_completed_course(
     """A completed course renders the Completed eyebrow."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
-    CourseProgressFactory(
-        user=user,
-        course=course_with_topics,
-        completed_time=timezone.now(),
-    )
+    course_progress_record(course_with_topics, user, completed_time=timezone.now())
     client = logged_in_client(user)
     response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
@@ -247,11 +243,8 @@ def test_course_detail_shows_continue_when_registered_with_progress(
     sees a 'Continue' CTA."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
-    CourseProgressFactory(
-        user=user,
-        course=course_with_topics,
-        progress_percentage=50,
-        completed_time=None,
+    course_progress_record(
+        course_with_topics, user, progress_percentage=50, completed_time=None
     )
 
     client = logged_in_client(user)
@@ -273,11 +266,7 @@ def test_course_detail_shows_review_course_when_completed(
     'Review course' CTA."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
-    CourseProgressFactory(
-        user=user,
-        course=course_with_topics,
-        completed_time=timezone.now(),
-    )
+    course_progress_record(course_with_topics, user, completed_time=timezone.now())
 
     client = logged_in_client(user)
     response = client.get(
@@ -480,8 +469,10 @@ def test_in_progress_card_shows_details_link(
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
     first_topic = course_with_topics.children()[0]
-    TopicProgressFactory(user=user, topic=first_topic, complete_time=timezone.now())
-    CourseProgressFactory(user=user, course=course_with_topics, progress_percentage=33)
+    topic_completion(
+        course_with_topics, user, first_topic, complete_time=timezone.now()
+    )
+    course_progress_record(course_with_topics, user, progress_percentage=33)
 
     client = logged_in_client(user)
     response = client.get(reverse("learner_interface:dashboard"))
@@ -503,11 +494,8 @@ def test_complete_card_shows_details_link(
     course_detail."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
-    CourseProgressFactory(
-        user=user,
-        course=course_with_topics,
-        progress_percentage=100,
-        completed_time=timezone.now(),
+    course_progress_record(
+        course_with_topics, user, progress_percentage=100, completed_time=timezone.now()
     )
 
     client = logged_in_client(user)

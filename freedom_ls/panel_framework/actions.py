@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from collections.abc import Callable
 
 from django import forms
 from django.db.models import Model
+from django.db.models.deletion import ProtectedError
 from django.http import HttpRequest, HttpResponse
 from django.template.loader import render_to_string
 
@@ -223,7 +225,12 @@ class DeleteAction(PanelAction):
         self.success_url = success_url
 
     def get_cascade_summary(self, instance: Model) -> list[str]:
-        """Use Django's Collector to show what will be cascade-deleted."""
+        """Use Django's Collector to show what will be cascade-deleted.
+
+        Raises ProtectedError when a protected relation blocks the delete, the
+        same way the delete itself would. Callers rendering a preview catch it
+        and show get_blocked_reason() in place of the summary.
+        """
         from django.db.models.deletion import Collector
 
         db = instance._state.db or "default"
@@ -237,21 +244,76 @@ class DeleteAction(PanelAction):
                     summary.append(f"{count} {model._meta.verbose_name_plural}")
         return summary
 
+    def get_blocked_reason(self, instance: Model, error: ProtectedError) -> str:
+        """One plain sentence naming what still depends on this instance."""
+        counts: Counter[type[Model]] = Counter(
+            type(obj) for obj in error.protected_objects
+        )
+        dependents: list[str] = []
+        for model in sorted(counts, key=lambda m: str(m._meta.verbose_name)):
+            count = counts[model]
+            noun = (
+                model._meta.verbose_name
+                if count == 1
+                else model._meta.verbose_name_plural
+            )
+            dependents.append(f"{count} {noun}")
+        return (
+            f"This {instance._meta.verbose_name} cannot be deleted because it "
+            f"still has {self._join(dependents)}."
+        )
+
+    @staticmethod
+    def _join(parts: list[str]) -> str:
+        """Run a list into readable prose: a, then a and b, then a, b and c."""
+        if len(parts) < 2:
+            return "".join(parts)
+        return f"{', '.join(parts[:-1])} and {parts[-1]}"
+
+    def _render_confirmation(
+        self,
+        request: HttpRequest,
+        instance: Model,
+        base_url: str,
+        *,
+        cascade_summary: list[str],
+        blocked_reason: str,
+        modal_open: bool = False,
+    ) -> str:
+        return render_to_string(
+            "panel_framework/partials/delete_confirmation.html",
+            {
+                "instance": instance,
+                "cascade_summary": cascade_summary,
+                "blocked_reason": blocked_reason,
+                "delete_url": f"{base_url}/__actions/delete",
+                "variant": self.variant,
+                "modal_open": "true" if modal_open else "false",
+            },
+            request=request,
+        )
+
     def render(self, request: HttpRequest, context: object, base_url: str) -> str:
         """Render error-variant button + confirmation modal."""
         if not isinstance(context, Model):
             raise TypeError("DeleteAction.render requires a Model instance")
         instance = context
-        cascade = self.get_cascade_summary(instance)
-        return render_to_string(
-            "panel_framework/partials/delete_confirmation.html",
-            {
-                "instance": instance,
-                "cascade_summary": cascade,
-                "delete_url": f"{base_url}/__actions/delete",
-                "variant": self.variant,
-            },
-            request=request,
+        try:
+            cascade = self.get_cascade_summary(instance)
+        except ProtectedError as error:
+            return self._render_confirmation(
+                request,
+                instance,
+                base_url,
+                cascade_summary=[],
+                blocked_reason=self.get_blocked_reason(instance, error),
+            )
+        return self._render_confirmation(
+            request,
+            instance,
+            base_url,
+            cascade_summary=cascade,
+            blocked_reason="",
         )
 
     def handle_submit(
@@ -259,7 +321,20 @@ class DeleteAction(PanelAction):
     ) -> HttpResponse:
         if instance is None:
             return HttpResponse(status=400)
-        instance.delete()
+        try:
+            instance.delete()
+        except ProtectedError as error:
+            # The render path hides the button, so reaching here means a stale
+            # page or a hand-made request. Answer it the way a form does.
+            html = self._render_confirmation(
+                request,
+                instance,
+                base_url,
+                cascade_summary=[],
+                blocked_reason=self.get_blocked_reason(instance, error),
+                modal_open=True,
+            )
+            return HttpResponse(html, status=422)
         response = HttpResponse(status=204)
         response["HX-Redirect"] = self.success_url
         return response

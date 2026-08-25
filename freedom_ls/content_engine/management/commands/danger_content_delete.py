@@ -1,5 +1,6 @@
 import djclick as click
 
+from django.apps import apps
 from django.db import transaction
 
 from freedom_ls.content_engine.models import (
@@ -74,8 +75,22 @@ def command(yes: bool) -> None:
     with transaction.atomic():
         deleted_counts = {}
 
+        # Progress is PROTECTed against content deletion, so it is cleared
+        # first and deliberately: deleting all content while keeping progress
+        # pointing at it is not a state anyone wants. Same order as
+        # danger_clear_all_course_progress. Fetched through the app registry
+        # rather than imported, so content_engine gains no dependency on either
+        # app -- both already depend on it.
+        for app_label, label in (
+            ("freedom_ls_form_engine", "QuestionAnswer"),
+            ("freedom_ls_learner_progress", "CourseFormAttempt"),
+            ("freedom_ls_form_engine", "FormProgress"),
+            ("freedom_ls_learner_progress", "TopicProgress"),
+            ("freedom_ls_learner_progress", "CourseProgress"),
+        ):
+            apps.get_model(app_label, label).objects.all().delete()
+
         # Delete in reverse dependency order to avoid FK issues
-        # (though CASCADE should handle it)
         for name, model in models_to_delete:
             count, _ = model.objects.all().delete()
             if count > 0:

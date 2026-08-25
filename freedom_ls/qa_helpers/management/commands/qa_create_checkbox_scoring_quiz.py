@@ -27,7 +27,7 @@ The pass mark of 80 also sits above the hardcoded 0.8 threshold used by
 agrees with the results page verdict.
 
 Retakes: a completed attempt does not block a new one -
-``FormProgress.get_or_create_incomplete`` makes a fresh attempt every time the
+``learner_progress.attempts.get_or_create_incomplete`` makes a fresh attempt every time the
 form is started, so the quiz can be taken repeatedly by visiting
 ``/courses/<slug>/<index>/start_form`` (the "Retry quiz" button on the results
 page points there, and is only rendered after a FAIL).
@@ -66,7 +66,6 @@ from freedom_ls.form_engine.models import (
 from freedom_ls.qa_helpers.management.commands.qa_create_multiselect_quiz_scoring import (
     _add_member,
     _add_options,
-    _ensure_course_progress_row,
     _get_or_create_cohort,
     _get_or_create_user,
     _register,
@@ -217,7 +216,6 @@ def command(site_name: str) -> None:
     course = cast(Course, Course.objects.get(pk=course.pk))
 
     _register(learner, course, site)
-    _ensure_course_progress_row(learner, course, site)
 
     cohort = _get_or_create_cohort(site)
     _register_cohort(cohort, course, site)

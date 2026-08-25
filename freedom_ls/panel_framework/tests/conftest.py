@@ -53,6 +53,20 @@ class StubGrandchild(models.Model):
         return f"StubGrandchild({self.pk})"
 
 
+class StubProtectedChild(models.Model):
+    """A child that refuses to let its parent go, so PROTECT can be exercised."""
+
+    parent = models.ForeignKey(StubModel, on_delete=models.PROTECT)
+
+    class Meta:
+        app_label = "freedom_ls_panel_framework"
+        verbose_name = "stub protected child"
+        verbose_name_plural = "stub protected children"
+
+    def __str__(self) -> str:
+        return f"StubProtectedChild({self.pk})"
+
+
 # ---------------------------------------------------------------------------
 # Session-scoped table creation + permission setup
 # ---------------------------------------------------------------------------
@@ -69,18 +83,22 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
         app_models["stubmodel"] = StubModel
         app_models["stubchild"] = StubChild
         app_models["stubgrandchild"] = StubGrandchild
+        app_models["stubprotectedchild"] = StubProtectedChild
 
         with connection.schema_editor() as editor:
             editor.create_model(StubModel)
             editor.create_model(StubChild)
             editor.create_model(StubGrandchild)
+            editor.create_model(StubProtectedChild)
 
         yield
 
         with connection.schema_editor() as editor:
+            editor.delete_model(StubProtectedChild)
             editor.delete_model(StubGrandchild)
             editor.delete_model(StubChild)
             editor.delete_model(StubModel)
+        app_models.pop("stubprotectedchild", None)
         app_models.pop("stubgrandchild", None)
         app_models.pop("stubmodel", None)
         app_models.pop("stubchild", None)
@@ -189,3 +207,12 @@ def _make_stub(name: str | None = None, **kwargs: object) -> StubModel:
 def _make_stub_child(parent: StubModel, **kwargs: object) -> StubChild:
     """Create a StubChild parented to ``parent``."""
     return cast(StubChild, StubChild.objects.create(parent=parent, **kwargs))
+
+
+def _make_stub_protected_child(
+    parent: StubModel, **kwargs: object
+) -> StubProtectedChild:
+    """Create a StubProtectedChild, which blocks deletion of ``parent``."""
+    return cast(
+        StubProtectedChild, StubProtectedChild.objects.create(parent=parent, **kwargs)
+    )

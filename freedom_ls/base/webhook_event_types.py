@@ -17,6 +17,8 @@ WEBHOOK_EVENT_TYPE_SAMPLES: dict[str, dict[str, str]] = {
         "course_id": "sample-course-uuid",
         "course_title": "Sample Course",
         "completed_time": "2026-01-01T12:00:00Z",
+        "organisation_id": "sample-organisation-uuid",
+        "course_progress_id": "sample-course-progress-uuid",
     },
     "course.registered": {
         "user_id": "sample-uuid-1234",
@@ -24,5 +26,7 @@ WEBHOOK_EVENT_TYPE_SAMPLES: dict[str, dict[str, str]] = {
         "course_id": "sample-course-uuid",
         "course_title": "Sample Course",
         "registered_at": "2026-01-01T12:00:00Z",
+        "organisation_id": "sample-organisation-uuid",
+        "course_progress_id": "sample-course-progress-uuid",
     },
 }

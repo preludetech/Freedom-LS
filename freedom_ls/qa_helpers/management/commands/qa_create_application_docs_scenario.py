@@ -37,16 +37,19 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course, DifficultyLevel, Topic
+from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    DifficultyLevel,
+    Topic,
+)
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_management.utils import ensure_learner
-from freedom_ls.learner_progress.factories import (
-    CourseProgressFactory,
-    TopicProgressFactory,
-)
+from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.utils import get_default_organisation
 
 LEARNER_EMAIL = "demodev_applicant@email.com"
@@ -237,26 +240,40 @@ def _get_or_create_free_course(site: Site) -> tuple[Course, list[Topic]]:
     return cast(Course, Course.objects.get(pk=course.pk)), topics
 
 
+def _collection_item_for(course: Course, child: Topic) -> ContentCollectionItem:
+    """The collection item placing `child` in `course`."""
+    for collection_item in course.viewable_collection_items():
+        if collection_item.child == child:
+            return collection_item
+    raise click.ClickException(
+        f"'{child.slug}' is not a viewable item of '{course.slug}'."
+    )
+
+
 def _enroll_in_progress(
     site: Site, *, user: User, course: Course, completed_topic: Topic
 ) -> None:
     """Register the learner on a free course and mark it partially complete."""
     learner = ensure_learner(user, get_default_organisation(site))
-    LearnerCourseRegistration.objects.get_or_create(
+    registration, _ = LearnerCourseRegistration.objects.get_or_create(
         learner=learner,
         collection=course,
         site=site,
         defaults={"is_active": True},
     )
+    record = ensure_course_progress_record(learner, course, registration)
+    collection_item = _collection_item_for(course, completed_topic)
+
     # Mark one topic complete so the course shows as "in progress".
     # NOTE: TopicProgress uses `complete_time` (FormProgress uses `completed_time`).
     tp: TopicProgress | None = TopicProgress.objects.filter(
-        user=user, topic=completed_topic, site=site
+        course_progress=record, topic=completed_topic
     ).first()
     if tp is None:
         TopicProgressFactory(
-            user=user,
+            course_progress=record,
             topic=completed_topic,
+            collection_item=collection_item,
             complete_time=timezone.now(),
             site=site,
         )
@@ -264,17 +281,9 @@ def _enroll_in_progress(
         tp.complete_time = timezone.now()
         tp.save(update_fields=["complete_time"])
 
-    cp: CourseProgress | None = CourseProgress.objects.filter(
-        user=user, course=course, site=site
-    ).first()
-    if cp is None:
-        CourseProgressFactory(
-            user=user, course=course, progress_percentage=50, site=site
-        )
-    else:
-        cp.progress_percentage = 50
-        cp.completed_time = None
-        cp.save(update_fields=["progress_percentage", "completed_time"])
+    record.progress_percentage = 50
+    record.completed_time = None
+    record.save(update_fields=["progress_percentage", "completed_time"])
 
 
 @click.command()
@@ -300,6 +309,11 @@ def command(site_name: str) -> None:
 
     # Preconditions for the gated course: NO registration (so "Apply now"
     # shows), but a single in-flight application exists.
+    # CourseProgress.learner_registration is PROTECT, so any record a stray
+    # registration minted has to go first.
+    CourseProgress.objects.filter(
+        learner__user=learner, course=gated_course, site=site
+    ).delete()
     LearnerCourseRegistration.objects.filter(
         learner__user=learner, collection=gated_course, site=site
     ).delete()

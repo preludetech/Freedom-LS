@@ -13,12 +13,12 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
+from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_interface.utils import get_course_index
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
-from .conftest import course_with_form
+from .conftest import course_with_form, form_attempt
 
 
 @pytest.fixture
@@ -36,9 +36,10 @@ def completed_quiz_no_pass_mark(mock_site_context):
     LearnerCourseRegistrationFactory(
         learner__user=user, collection=course, is_active=True
     )
-    FormProgressFactory(
-        user=user,
-        form=form,
+    form_attempt(
+        course,
+        user,
+        form,
         completed_time=timezone.now(),
         scores={"score": 3, "max_score": 5},
     )

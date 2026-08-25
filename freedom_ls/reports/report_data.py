@@ -95,7 +95,7 @@ class QuizColumn:
 
 @dataclasses.dataclass(frozen=True)
 class LearnerRow:
-    user_id: int
+    learner_id: UUID
     full_name: str
     completion_percentage: int
     completed_item_count: int
@@ -107,7 +107,7 @@ class LearnerRow:
 
 @dataclasses.dataclass(frozen=True)
 class SummaryRow:
-    user_id: int
+    learner_id: UUID
     full_name: str
     completion_percentage: int
     completed_item_count: int
@@ -145,7 +145,7 @@ class AtRiskFlag:
 
 @dataclasses.dataclass(frozen=True)
 class LearnerDetail:
-    user_id: int
+    learner_id: UUID
     full_name: str
     sort_key: tuple[str, str]
     completion_percentage: int

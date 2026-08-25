@@ -58,8 +58,8 @@ from django.utils.text import slugify
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.models import Course, Topic
-from freedom_ls.form_engine.factories import FormProgressFactory, QuestionAnswerFactory
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
+from freedom_ls.form_engine.factories import QuestionAnswerFactory
 from freedom_ls.form_engine.models import (
     Form,
     FormProgress,
@@ -78,9 +78,17 @@ from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     CohortMembership,
+    Learner,
 )
-from freedom_ls.learner_progress.factories import CourseProgressFactory
-from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_management.utils import ensure_learner
+from freedom_ls.learner_progress.factories import CourseFormAttemptFactory
+from freedom_ls.learner_progress.models import (
+    CourseFormAttempt,
+    CourseProgress,
+    TopicProgress,
+)
+from freedom_ls.learner_progress.signals import recalculate_progress_percentage
+from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
 
@@ -304,17 +312,6 @@ def _ladder_value(index: int, states: list[str]) -> str | float:
     return LADDER[rung]
 
 
-def _ensure_course_progress_row(user: User, course: Course, site: Site) -> None:
-    """Pre-create CourseProgress WITH a site.
-
-    Completing a Topic or Form triggers ``update_course_progress_on_completion``,
-    which calls ``CourseProgress.objects.update_or_create()`` without a site and
-    so violates the NOT NULL constraint unless the row already exists.
-    """
-    if not CourseProgress.objects.filter(user=user, course=course, site=site).exists():
-        CourseProgressFactory(user=user, course=course, site=site)
-
-
 def _max_wrong_for_pass(question_count: int, pass_percentage: int | None) -> int:
     """Most questions a learner can get wrong and still pass this quiz."""
     if pass_percentage is None:
@@ -370,8 +367,9 @@ def _choose_options(
 
 
 def _complete_attempt(
-    user: User,
+    record: CourseProgress,
     form: Form,
+    collection_item: ContentCollectionItem,
     site: Site,
     questions: list[FormQuestion],
     options_by_question: dict[str, list[QuestionOption]],
@@ -381,7 +379,15 @@ def _complete_attempt(
     completed_at: datetime,
 ) -> FormProgress:
     """Create one genuinely scored, completed attempt at ``form``."""
-    attempt = cast(FormProgress, FormProgressFactory(user=user, form=form, site=site))
+    attempt = cast(
+        FormProgress,
+        CourseFormAttemptFactory(
+            course_progress=record,
+            form=form,
+            collection_item=collection_item,
+            site=site,
+        ).form_progress,
+    )
     for question in questions:
         options = options_by_question[str(question.id)]
         if not options:
@@ -451,21 +457,38 @@ def _first_pass_marked_quiz_slot(items: list[Topic | Form]) -> int | None:
     return None
 
 
-def _has_existing_progress(user: User, items: list[Topic | Form], site: Site) -> bool:
-    topic_ids = [item.id for item in items if isinstance(item, Topic)]
-    form_ids = [item.id for item in items if isinstance(item, Form)]
+def _has_existing_progress(
+    record: CourseProgress, collection_items: list[ContentCollectionItem]
+) -> bool:
+    topic_ids = [ci.child_id for ci in collection_items if isinstance(ci.child, Topic)]
+    form_ids = [ci.child_id for ci in collection_items if isinstance(ci.child, Form)]
     return (
         TopicProgress.objects.filter(
-            user=user, topic_id__in=topic_ids, site=site
+            course_progress=record, topic_id__in=topic_ids
         ).exists()
-        or FormProgress.objects.filter(
-            user=user, form_id__in=form_ids, site=site
+        or CourseFormAttempt.objects.filter(
+            course_progress=record, form_progress__form_id__in=form_ids
         ).exists()
     )
 
 
+def _settle_record(record: CourseProgress) -> None:
+    """Bring the record's own figures in line with the rows just written.
+
+    Topic rows are written already complete, so they never make the transition
+    the completion receiver watches for -- without this the seeded percentage
+    stays at the registration's initial 0 and the educator matrix shows 0%
+    beside completed cells.
+    """
+    recalculate_progress_percentage(record)
+    if record.progress_percentage == 100 and record.completed_time is None:
+        record.completed_time = timezone.now()
+        record.save(update_fields=["completed_time"])
+
+
 def _generate_course_progress(
-    user: User,
+    learner: Learner,
+    registration: CohortCourseRegistration,
     learner_index: int,
     state: str,
     ladder_value: str | float,
@@ -477,32 +500,44 @@ def _generate_course_progress(
     now: datetime,
 ) -> None:
     """Create this learner's progress rows for one course."""
-    items = cast(
-        "list[Topic | Form]",
-        [item for item in course.viewable_items() if isinstance(item, Topic | Form)],
-    )
-    if not items or state == STATE_NO_ACTIVITY:
-        return
-    if _has_existing_progress(user, items, site):
+    collection_items = [
+        ci
+        for ci in course.viewable_collection_items()
+        if isinstance(ci.child, Topic | Form)
+    ]
+    if not collection_items or state == STATE_NO_ACTIVITY:
         return
 
-    _ensure_course_progress_row(user, course, site)
+    record = ensure_course_progress_record(learner, course, registration)
+    if _has_existing_progress(record, collection_items):
+        return
 
     days_ago = STALE_DAYS_AGO if state == STATE_STALE else RECENT_DAYS_AGO
     base = now - timedelta(days=days_ago) + course_index * COURSE_SPACING
 
     if ladder_value == "started":
         # One item opened, nothing completed: has_any_progress True, 0% complete.
-        first = items[0]
-        if isinstance(first, Topic):
-            TopicProgress.objects.get_or_create(user=user, topic=first, site=site)
+        first = collection_items[0]
+        if isinstance(first.child, Topic):
+            TopicProgress.objects.get_or_create(
+                course_progress=record,
+                collection_item=first,
+                defaults={"topic": first.child, "site": site},
+            )
         else:
-            FormProgressFactory(user=user, form=first, site=site)
+            CourseFormAttemptFactory(
+                course_progress=record,
+                form=first.child,
+                collection_item=first,
+                site=site,
+            )
+        _settle_record(record)
         return
 
     fraction = cast(float, ladder_value)
-    completed_slots = max(1, round(fraction * len(items)))
+    completed_slots = max(1, round(fraction * len(collection_items)))
 
+    items = cast("list[Topic | Form]", [ci.child for ci in collection_items])
     failing_slot: int | None = None
     if state == STATE_FAILING and is_last_course:
         # The failed_latest_quiz rule reads the most recently completed quiz, so
@@ -515,21 +550,27 @@ def _generate_course_progress(
             completed_slots = failing_slot + 1
 
     quiz_index = 0
-    for slot in range(min(completed_slots, len(items))):
+    for slot in range(min(completed_slots, len(collection_items))):
+        collection_item = collection_items[slot]
         item = items[slot]
         completed_at = base + slot * ITEM_SPACING
         if isinstance(item, Topic):
             TopicProgress.objects.update_or_create(
-                user=user,
-                topic=item,
-                site=site,
-                defaults={"complete_time": completed_at},
+                course_progress=record,
+                collection_item=collection_item,
+                defaults={"topic": item, "complete_time": completed_at, "site": site},
             )
             continue
 
         if item.strategy != FormStrategy.QUIZ:
             progress = cast(
-                FormProgress, FormProgressFactory(user=user, form=item, site=site)
+                FormProgress,
+                CourseFormAttemptFactory(
+                    course_progress=record,
+                    form=item,
+                    collection_item=collection_item,
+                    site=site,
+                ).form_progress,
             )
             progress.complete()
             FormProgress.objects.filter(pk=progress.pk).update(
@@ -555,8 +596,9 @@ def _generate_course_progress(
             # window function has a deterministic winner.
             offset = (attempts - 1 - attempt_number) * timedelta(hours=1)
             _complete_attempt(
-                user=user,
+                record=record,
                 form=item,
+                collection_item=collection_item,
                 site=site,
                 questions=questions,
                 options_by_question=options_by_question,
@@ -566,6 +608,8 @@ def _generate_course_progress(
                 completed_at=completed_at - offset,
             )
         quiz_index += 1
+
+    _settle_record(record)
 
 
 def organisation_email_prefix(email_prefix: str, organisation: Organisation) -> str:
@@ -621,6 +665,7 @@ def build_report_cohort(
         or CohortFactory(name=cohort_name, site=site, organisation=organisation),
     )
 
+    registrations: dict[str, CohortCourseRegistration] = {}
     for slug in (*course_slugs, *inactive_course_slugs):
         course = _get_course(site, slug)
         is_active = slug in course_slugs
@@ -628,18 +673,23 @@ def build_report_cohort(
             cohort=cohort, collection=course, site=site
         ).first()
         if registration is None:
-            CohortCourseRegistrationFactory(
-                cohort=cohort, collection=course, site=site, is_active=is_active
+            registration = cast(
+                CohortCourseRegistration,
+                CohortCourseRegistrationFactory(
+                    cohort=cohort, collection=course, site=site, is_active=is_active
+                ),
             )
         elif registration.is_active != is_active:
             registration.is_active = is_active
             registration.save(update_fields=["is_active"])
+        registrations[slug] = registration
 
     # Progress is generated for active and inactive registrations alike: the
     # report sections an inactive course too, and it must not be empty.
     courses = [
         _get_course(site, slug) for slug in (*course_slugs, *inactive_course_slugs)
     ]
+    course_slugs_ordered = [*course_slugs, *inactive_course_slugs]
     states = _learner_states(num_learners, num_flagged)
 
     # The multi-attempt learner must be someone who completes the whole course,
@@ -659,26 +709,30 @@ def build_report_cohort(
     for index in range(num_learners):
         first_name, last_name = _name_for(index)
         email = f"{namespaced_prefix}-{index + 1:02d}@email.com"
-        learner = _get_or_create_user(site, email, first_name, last_name)
+        user = _get_or_create_user(site, email, first_name, last_name)
         if not CohortMembership.objects.filter(
-            learner__user=learner, cohort=cohort, site=site
+            learner__user=user, cohort=cohort, site=site
         ).exists():
             CohortMembershipFactory(
-                learner__user=learner,
+                learner__user=user,
                 learner__organisation=cohort.organisation,
                 cohort=cohort,
                 site=site,
             )
-        learners.append((learner, states[index]))
+        learners.append((user, states[index]))
 
         if no_progress:
             continue
 
+        learner = ensure_learner(user, cohort.organisation)
         state = states[index]
         ladder_value = _ladder_value(index, states)
-        for course_index, course in enumerate(courses):
+        for course_index, (course, slug) in enumerate(
+            zip(courses, course_slugs_ordered, strict=True)
+        ):
             _generate_course_progress(
-                user=learner,
+                learner=learner,
+                registration=registrations[slug],
                 learner_index=index,
                 state=state,
                 ladder_value=ladder_value,

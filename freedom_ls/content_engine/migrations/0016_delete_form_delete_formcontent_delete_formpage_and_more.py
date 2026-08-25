@@ -7,7 +7,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('freedom_ls_content_engine', '0015_alter_form_unique_together_remove_form_site_and_more'),
-        ('freedom_ls_learner_progress', '0002_alter_formprogress_form_and_more'),
     ]
 
     operations = [

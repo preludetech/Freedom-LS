@@ -37,6 +37,7 @@ from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.models import User
 from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
@@ -304,18 +305,31 @@ def _reset_fixtures(
     nothing a human created by hand -- and no same-named fixture cohort in
     another organisation -- is touched. The QA report courses are left in place
     -- they are rebuilt idempotently and hold no per-learner state.
+
+    CourseProgress.learner and .cohort_registration are both PROTECT, and a
+    registration mints a record for every member, so the records have to go
+    before either delete: a User delete cascades to its Learner rows, and a
+    Cohort delete cascades to its registrations. TopicProgress, FormProgress
+    and QuestionAnswer all cascade from the record, so nothing else needs
+    clearing.
     """
     deleted_learners = 0
     for fixture in fixtures:
         prefix = organisation_email_prefix(fixture.email_prefix, organisation)
         learners = User.objects.filter(email__startswith=f"{prefix}-", site=site)
         deleted_learners += learners.count()
+        CourseProgress.objects.filter(learner__user__in=learners, site=site).delete()
         learners.delete()
-    deleted_cohorts, _ = Cohort.objects.filter(
+
+    cohorts = Cohort.objects.filter(
         name__in=[fixture.cohort_name for fixture in fixtures],
         site=site,
         organisation=organisation,
+    )
+    CourseProgress.objects.filter(
+        cohort_registration__cohort__in=cohorts, site=site
     ).delete()
+    deleted_cohorts, _ = cohorts.delete()
     return deleted_cohorts, deleted_learners
 
 

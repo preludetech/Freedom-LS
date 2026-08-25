@@ -9,7 +9,8 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.learner_progress.factories import CourseProgressFactory
+
+from .conftest import course_progress_record
 
 
 # transaction=True so that on_commit hooks for webhook event delivery fire under test
@@ -21,7 +22,7 @@ class TestCourseCompletedWebhookEvent:
         """Finishing a course for the first time fires course.completed event."""
         user = UserFactory(password="testpass")
         course = CourseFactory(slug="test-course")
-        CourseProgressFactory(user=user, course=course, completed_time=None)
+        course_progress_record(course, user)
 
         client = Client()
         client.force_login(user)
@@ -43,6 +44,29 @@ class TestCourseCompletedWebhookEvent:
         assert payload["course_title"] == course.title
         assert "completed_time" in payload
 
+    def test_completed_payload_names_the_organisation_and_the_record(
+        self, mock_site_context: object
+    ) -> None:
+        """A consumer has to know which of a learner's records completed."""
+        user = UserFactory(password="testpass")
+        course = CourseFactory(slug="payload-course")
+        record = course_progress_record(course, user)
+
+        client = Client()
+        client.force_login(user)
+
+        with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
+            client.get(
+                reverse(
+                    "learner_interface:course_finish",
+                    kwargs={"course_slug": "payload-course"},
+                )
+            )
+
+        payload = mock_fire.call_args[0][1]
+        assert payload["organisation_id"] == str(record.learner.organisation_id)
+        assert payload["course_progress_id"] == str(record.id)
+
     def test_revisiting_finish_page_does_not_fire_webhook_again(
         self, mock_site_context: object
     ) -> None:
@@ -51,7 +75,9 @@ class TestCourseCompletedWebhookEvent:
 
         user = UserFactory(password="testpass")
         course = CourseFactory(slug="test-course-2")
-        CourseProgressFactory(user=user, course=course, completed_time=timezone.now())
+        record = course_progress_record(course, user)
+        record.completed_time = timezone.now()
+        record.save(update_fields=["completed_time"])
 
         client = Client()
         client.force_login(user)

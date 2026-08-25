@@ -16,7 +16,8 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_interface.utils import CourseListingStatus
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-from freedom_ls.learner_progress.factories import CourseProgressFactory
+
+from .conftest import course_progress_record
 
 # --- access + base annotations ---
 
@@ -109,8 +110,8 @@ def test_all_courses_in_progress_has_in_progress_status(
     """A started course has listing_status=IN_PROGRESS and progress_percentage > 0."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    CourseProgressFactory(
-        user=user, course=courses[0], progress_percentage=40, completed_time=None
+    course_progress_record(
+        courses[0], user, progress_percentage=40, completed_time=None
     )
     client = logged_in_client(user)
 
@@ -130,11 +131,8 @@ def test_all_courses_complete_has_complete_status(
     """A completed course has listing_status=COMPLETE."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    CourseProgressFactory(
-        user=user,
-        course=courses[0],
-        progress_percentage=100,
-        completed_time=timezone.now(),
+    course_progress_record(
+        courses[0], user, progress_percentage=100, completed_time=timezone.now()
     )
     client = logged_in_client(user)
 

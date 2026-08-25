@@ -21,7 +21,9 @@
                     {% endif %}
                 </div>
 
-                {% if not is_complete %}
+                {% comment %}Nothing grants this learner the course, so there is no record to
+                mark against — the plain Next below carries them on instead.{% endcomment %}
+                {% if can_record_progress and not is_complete %}
                     <form method="post">
                         {% csrf_token %}
                         {% if is_last_item %}

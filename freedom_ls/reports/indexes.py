@@ -58,9 +58,11 @@ from freedom_ls.site_aware_models.config import config as site_config
 class CohortRoster:
     """The cohort's members, in the one order the whole report uses."""
 
-    learners_by_id: dict[int, User]
-    sort_key_by_id: dict[int, tuple[str, str]]
-    learner_ids: list[int]
+    # Keyed on Learner id throughout; the values stay User rows because the
+    # report displays a person's name, not their membership of an organisation.
+    learners_by_id: dict[UUID, User]
+    sort_key_by_id: dict[UUID, tuple[str, str]]
+    learner_ids: list[UUID]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -84,9 +86,9 @@ class CourseCatalogue:
 
 @dataclasses.dataclass(frozen=True)
 class TopicProgressIndex:
-    user_ids_seen: set[int]
-    completed_topic_ids_by_user: dict[int, set[UUID]]
-    complete_time: dict[tuple[int, UUID], datetime]
+    learner_ids_seen: set[UUID]
+    completed_topic_ids_by_learner: dict[UUID, set[UUID]]
+    complete_time: dict[tuple[UUID, UUID], datetime]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -94,29 +96,29 @@ class FormProgressIndex:
     """Every form sitting the cohort has, keyed for the per-learner lookups.
 
     Built from one queryset ordered completed-time-descending, nulls last. That
-    ordering is load-bearing twice: it decides which row is `latest_by_user_form`
-    for a pair, and it is the order `completed_attempts_by_user_form` is reversed
+    ordering is load-bearing twice: it decides which row is `latest_by_learner_form`
+    for a pair, and it is the order `completed_attempts_by_learner_form` is reversed
     out of. Neither can be re-derived from this bundle, so both are settled at
     construction and nothing here may be re-sorted afterwards.
     """
 
-    user_ids_seen: set[int]
+    learner_ids_seen: set[UUID]
     # First row seen per pair, which the ordering above makes the latest
     # completed sitting where one exists and the latest started sitting
     # otherwise. `_completed_items` relies on this to know completed_time is set.
-    latest_by_user_form: dict[tuple[int, UUID], FormProgress]
+    latest_by_learner_form: dict[tuple[UUID, UUID], FormProgress]
     # Every completed sitting, not merely how many there were: the per-learner
     # attempts table reads from this, and a count would only have to be
     # reconciled against it later. Chronological, oldest first.
-    completed_attempts_by_user_form: dict[tuple[int, UUID], list[FormProgress]]
-    completed_form_ids_by_user: dict[int, set[UUID]]
+    completed_attempts_by_learner_form: dict[tuple[UUID, UUID], list[FormProgress]]
+    completed_form_ids_by_learner: dict[UUID, set[UUID]]
     # Newest-completed first, NOT the chronological order of the lists above.
     # It is the outer loop of the sat pairs, and so the order each WrongAnswer's
     # selected options are first seen in -- reordering it reorders those.
     completed_attempt_ids: list[UUID]
     # Every form progress row, quiz or not: a completed survey sitting is in
     # completed_attempt_ids and must resolve here without a KeyError.
-    user_form_by_attempt_id: dict[UUID, tuple[int, UUID]]
+    learner_form_by_attempt_id: dict[UUID, tuple[UUID, UUID]]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -127,7 +129,7 @@ class ProgressIndex:
     # TopicProgress or a FormProgress row exists for them, complete or not.
     # A field rather than a property, so the per-learner membership test stays
     # O(1) instead of rebuilding the union once per learner.
-    user_ids_with_any_progress: set[int]
+    learner_ids_with_any_progress: set[UUID]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -184,17 +186,20 @@ def load_roster(cohort: Cohort, site_id: int) -> CohortRoster:
             "learner__user"
         )
     )
-    learners_by_id: dict[int, User] = {
-        m.learner.user_id: m.learner.user for m in memberships
+    learners_by_id: dict[UUID, User] = {
+        m.learner_id: m.learner.user for m in memberships
     }
     # One ordering, computed once, used for the summary tables and the
     # per-learner sections alike -- cohort membership query order would put the
     # summary table out of step with the Contents page and the learner
     # sections, which are both alphabetical by surname.
-    sort_key_by_id: dict[int, tuple[str, str]] = {
-        user_id: _learner_sort_key(user) for user_id, user in learners_by_id.items()
+    sort_key_by_id: dict[UUID, tuple[str, str]] = {
+        learner_id: _learner_sort_key(user)
+        for learner_id, user in learners_by_id.items()
     }
-    learner_ids = sorted(learners_by_id, key=lambda user_id: sort_key_by_id[user_id])
+    learner_ids = sorted(
+        learners_by_id, key=lambda learner_id: sort_key_by_id[learner_id]
+    )
 
     if len(learner_ids) > config.REPORTS_MAX_LEARNERS:
         raise ReportTooLargeError(
@@ -255,51 +260,78 @@ def build_course_catalogue(
     )
 
 
+def _registration_ids(registrations: list[CohortCourseRegistration]) -> list[UUID]:
+    """The cohort's own course registrations, which are the grants the report answers for.
+
+    `__in` rather than a single registration: a cohort can be registered for
+    more than one course, and a learner holding a second record for the same
+    course under their own registration is doing that course separately.
+    """
+    return [registration.pk for registration in registrations]
+
+
 def load_topic_progress_rows(
-    site_id: int, learner_ids: list[int], topic_ids: set[UUID]
-) -> list[tuple[int, UUID, datetime | None]]:
-    """(user_id, topic_id, complete_time) for the cohort's topics, in one query."""
+    site_id: int,
+    registrations: list[CohortCourseRegistration],
+    learner_ids: list[UUID],
+    topic_ids: set[UUID],
+) -> list[tuple[UUID, UUID, datetime | None]]:
+    """(learner_id, topic_id, complete_time) for the cohort's topics, in one query."""
     return list(
         TopicProgress.objects.filter(
-            site_id=site_id, user_id__in=learner_ids, topic_id__in=topic_ids
-        ).values_list("user_id", "topic_id", "complete_time")
+            site_id=site_id,
+            course_progress__cohort_registration__in=_registration_ids(registrations),
+            course_progress__learner_id__in=learner_ids,
+            topic_id__in=topic_ids,
+        ).values_list("course_progress__learner_id", "topic_id", "complete_time")
     )
 
 
 def fold_topic_progress_rows(
-    rows: list[tuple[int, UUID, datetime | None]],
+    rows: list[tuple[UUID, UUID, datetime | None]],
 ) -> TopicProgressIndex:
     """Index the loaded topic rows. A row with no complete_time still counts as activity."""
-    user_ids_seen: set[int] = set()
-    completed_topic_ids_by_user: dict[int, set[UUID]] = defaultdict(set)
-    complete_time: dict[tuple[int, UUID], datetime] = {}
-    for user_id, topic_id, topic_complete_time in rows:
-        user_ids_seen.add(user_id)
+    learner_ids_seen: set[UUID] = set()
+    completed_topic_ids_by_learner: dict[UUID, set[UUID]] = defaultdict(set)
+    complete_time: dict[tuple[UUID, UUID], datetime] = {}
+    for learner_id, topic_id, topic_complete_time in rows:
+        learner_ids_seen.add(learner_id)
         if topic_complete_time is not None:
-            completed_topic_ids_by_user[user_id].add(topic_id)
-            complete_time[(user_id, topic_id)] = topic_complete_time
+            completed_topic_ids_by_learner[learner_id].add(topic_id)
+            complete_time[(learner_id, topic_id)] = topic_complete_time
 
     return TopicProgressIndex(
-        user_ids_seen=user_ids_seen,
-        completed_topic_ids_by_user=completed_topic_ids_by_user,
+        learner_ids_seen=learner_ids_seen,
+        completed_topic_ids_by_learner=completed_topic_ids_by_learner,
         complete_time=complete_time,
     )
 
 
 def load_form_progress_rows(
-    site_id: int, learner_ids: list[int], form_ids: set[UUID]
+    site_id: int,
+    registrations: list[CohortCourseRegistration],
+    learner_ids: list[UUID],
+    form_ids: set[UUID],
 ) -> list[FormProgress]:
     """Every sitting of the cohort's forms, newest-completed first, in one query.
 
     The ordering is the contract `fold_form_progress_rows` is written against.
-    select_related("form") feeds attempt_completes_form(), which reads
-    attempt.form; without it that is one extra query per completed attempt.
+    Reached through `course_attempt`, the row binding a sitting to the record it
+    counts toward: the attempt itself is course-blind. select_related("form")
+    feeds attempt_completes_form(), which reads attempt.form; the course_attempt
+    chain feeds the fold, which keys every row on its record's learner. Without
+    either, that is one extra query per row.
     """
     return list(
         FormProgress.objects.filter(
-            site_id=site_id, user_id__in=learner_ids, form_id__in=form_ids
+            site_id=site_id,
+            course_attempt__course_progress__cohort_registration__in=_registration_ids(
+                registrations
+            ),
+            course_attempt__course_progress__learner_id__in=learner_ids,
+            form_id__in=form_ids,
         )
-        .select_related("form")
+        .select_related("form", "course_attempt__course_progress")
         .order_by(F("completed_time").desc(nulls_last=True), "-start_time")
     )
 
@@ -308,45 +340,46 @@ def fold_form_progress_rows(
     form_progress_rows: list[FormProgress],
 ) -> FormProgressIndex:
     """Index the loaded sittings, which must arrive newest-completed first."""
-    user_ids_seen: set[int] = set()
-    latest_by_user_form: dict[tuple[int, UUID], FormProgress] = {}
-    completed_attempts_by_user_form: dict[tuple[int, UUID], list[FormProgress]] = (
+    learner_ids_seen: set[UUID] = set()
+    latest_by_learner_form: dict[tuple[UUID, UUID], FormProgress] = {}
+    completed_attempts_by_learner_form: dict[tuple[UUID, UUID], list[FormProgress]] = (
         defaultdict(list)
     )
-    completed_form_ids_by_user: dict[int, set[UUID]] = defaultdict(set)
+    completed_form_ids_by_learner: dict[UUID, set[UUID]] = defaultdict(set)
     completed_attempt_ids: list[UUID] = []
-    user_form_by_attempt_id: dict[UUID, tuple[int, UUID]] = {}
+    learner_form_by_attempt_id: dict[UUID, tuple[UUID, UUID]] = {}
     for fp in form_progress_rows:
-        user_ids_seen.add(fp.user_id)
-        key = (fp.user_id, fp.form_id)
-        user_form_by_attempt_id[fp.id] = key
-        if key not in latest_by_user_form:
-            latest_by_user_form[key] = fp
+        learner_id = fp.course_attempt.course_progress.learner_id
+        learner_ids_seen.add(learner_id)
+        key = (learner_id, fp.form_id)
+        learner_form_by_attempt_id[fp.id] = key
+        if key not in latest_by_learner_form:
+            latest_by_learner_form[key] = fp
         if fp.completed_time is not None:
             # Rows arrive newest-completed first, so the first completed sitting
             # seen for a key is the learner's latest — the one whose verdict
             # decides whether they are done with the form. Read before the
             # append: the list is a defaultdict, so appending first would make
             # every sitting look like the latest.
-            is_latest_completed = key not in completed_attempts_by_user_form
-            completed_attempts_by_user_form[key].append(fp)
+            is_latest_completed = key not in completed_attempts_by_learner_form
+            completed_attempts_by_learner_form[key].append(fp)
             if is_latest_completed and attempt_completes_form(fp):
-                completed_form_ids_by_user[fp.user_id].add(fp.form_id)
+                completed_form_ids_by_learner[learner_id].add(fp.form_id)
             completed_attempt_ids.append(fp.id)
 
     # The rows arrive newest-completed first; a reader of a learner's section
     # wants their sittings in the order they sat them. completed_attempt_ids is
     # deliberately left newest-first -- see its field comment.
-    for attempt_rows in completed_attempts_by_user_form.values():
+    for attempt_rows in completed_attempts_by_learner_form.values():
         attempt_rows.reverse()
 
     return FormProgressIndex(
-        user_ids_seen=user_ids_seen,
-        latest_by_user_form=latest_by_user_form,
-        completed_attempts_by_user_form=completed_attempts_by_user_form,
-        completed_form_ids_by_user=completed_form_ids_by_user,
+        learner_ids_seen=learner_ids_seen,
+        latest_by_learner_form=latest_by_learner_form,
+        completed_attempts_by_learner_form=completed_attempts_by_learner_form,
+        completed_form_ids_by_learner=completed_form_ids_by_learner,
         completed_attempt_ids=completed_attempt_ids,
-        user_form_by_attempt_id=user_form_by_attempt_id,
+        learner_form_by_attempt_id=learner_form_by_attempt_id,
     )
 
 
@@ -356,12 +389,15 @@ def merge_progress_indexes(
     return ProgressIndex(
         topics=topics,
         forms=forms,
-        user_ids_with_any_progress=topics.user_ids_seen | forms.user_ids_seen,
+        learner_ids_with_any_progress=topics.learner_ids_seen | forms.learner_ids_seen,
     )
 
 
 def load_progress_index(
-    site_id: int, learner_ids: list[int], catalogue: CourseCatalogue
+    site_id: int,
+    registrations: list[CohortCourseRegistration],
+    learner_ids: list[UUID],
+    catalogue: CourseCatalogue,
 ) -> ProgressIndex:
     """Both progress sources, loaded and merged.
 
@@ -370,30 +406,50 @@ def load_progress_index(
     """
     return merge_progress_indexes(
         fold_topic_progress_rows(
-            load_topic_progress_rows(site_id, learner_ids, catalogue.topic_ids)
+            load_topic_progress_rows(
+                site_id, registrations, learner_ids, catalogue.topic_ids
+            )
         ),
         fold_form_progress_rows(
-            load_form_progress_rows(site_id, learner_ids, catalogue.form_ids)
+            load_form_progress_rows(
+                site_id, registrations, learner_ids, catalogue.form_ids
+            )
         ),
     )
 
 
 def load_first_attempt_ids(
-    site_id: int, learner_ids: list[int], quiz_form_ids: set[UUID]
+    site_id: int,
+    registrations: list[CohortCourseRegistration],
+    learner_ids: list[UUID],
+    quiz_form_ids: set[UUID],
 ) -> set[UUID]:
-    """The id of each learner's earliest completed sitting of each quiz."""
+    """The id of each learner's earliest completed sitting of each quiz in the report.
+
+    Partitioned by the person, matching tally_quiz_answers, which keys its
+    cohort-wide respondent and wrong counts on (learner, form). A cohort's
+    registrations span several courses, so a quiz placed in two of them would
+    otherwise contribute two first attempts for one learner and count them
+    twice in the confusion percentages.
+    """
     # Filtering directly on a window annotation works from Django 4.2 onward.
     return set(
         FormProgress.objects.filter(
             site_id=site_id,
-            user_id__in=learner_ids,
+            course_attempt__course_progress__cohort_registration__in=_registration_ids(
+                registrations
+            ),
+            course_attempt__course_progress__learner_id__in=learner_ids,
             form_id__in=quiz_form_ids,
             completed_time__isnull=False,
         )
         .annotate(
             rank=Window(
                 RowNumber(),
-                partition_by=[F("user_id"), F("form_id")],
+                partition_by=[
+                    F("course_attempt__course_progress__learner_id"),
+                    F("form_id"),
+                ],
                 order_by=F("start_time").asc(),
             )
         )
@@ -502,7 +558,7 @@ def build_sat_questions(
         (attempt_id, question)
         for attempt_id in forms.completed_attempt_ids
         for question in questions.by_form.get(
-            forms.user_form_by_attempt_id[attempt_id][1], []
+            forms.learner_form_by_attempt_id[attempt_id][1], []
         )
         if question.type not in FREE_TEXT_QUESTION_TYPES
     ]

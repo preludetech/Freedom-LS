@@ -18,7 +18,8 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     RecommendedCourseFactory,
 )
-from freedom_ls.learner_progress.factories import CourseProgressFactory
+
+from .conftest import course_progress_record
 
 # --- get_all_courses ---
 
@@ -80,7 +81,7 @@ def test_get_completed_courses_returns_completed(mock_site_context):
     LearnerCourseRegistrationFactory(learner__user=user, collection=course_b)
 
     # Complete course_a only
-    CourseProgressFactory(user=user, course=course_a, completed_time=timezone.now())
+    course_progress_record(course_a, user, completed_time=timezone.now())
 
     result = get_completed_courses(user)
     assert result == [course_a]
@@ -128,7 +129,7 @@ def test_get_current_courses_excludes_completed(mock_site_context):
     topic = TopicFactory(content="content")
     course.items.create(child=topic, order=0)
     LearnerCourseRegistrationFactory(learner__user=user, collection=course)
-    CourseProgressFactory(user=user, course=course, completed_time=timezone.now())
+    course_progress_record(course, user, completed_time=timezone.now())
 
     result = get_current_courses(user)
     assert result == []

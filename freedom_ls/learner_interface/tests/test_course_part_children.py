@@ -12,7 +12,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, CoursePart
-from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
+from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_interface.utils import (
     BLOCKED,
@@ -24,7 +24,8 @@ from freedom_ls.learner_interface.utils import (
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
 )
-from freedom_ls.learner_progress.factories import TopicProgressFactory
+
+from .conftest import form_attempt, topic_completion
 
 
 @pytest.mark.django_db
@@ -121,7 +122,7 @@ def test_course_part_row_url_resolves_to_first_viewable_child_index(mock_site_co
     # Complete all viewable items so every item has a non-BLOCKED status (and thus a URL).
     now = timezone.now()
     for topic in (p1a, p1b, p2a):
-        TopicProgressFactory(user=user, topic=topic, complete_time=now)
+        topic_completion(course, user, topic, complete_time=now)
 
     children = get_course_index(user=user, course=course, can_access_content=True)
 
@@ -169,7 +170,7 @@ def test_consecutive_viewable_items_have_dense_indices(mock_site_context):
     # Complete all viewable items so every viewable row has a URL we can compare.
     now = timezone.now()
     for topic in (p1a, p1b, p2a, direct):
-        TopicProgressFactory(user=user, topic=topic, complete_time=now)
+        topic_completion(course, user, topic, complete_time=now)
 
     children = get_course_index(user=user, course=course, can_access_content=True)
 
@@ -205,8 +206,8 @@ def test_course_part_url_resumes_at_in_progress_child(mock_site_context):
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     # First item completed; second item started but not complete.
-    TopicProgressFactory(user=user, topic=first, complete_time=timezone.now())
-    TopicProgressFactory(user=user, topic=second, complete_time=None)
+    topic_completion(course, user, first, complete_time=timezone.now())
+    topic_completion(course, user, second, complete_time=None)
 
     children = get_course_index(user=user, course=course, can_access_content=True)
     part_dict = children[0]
@@ -235,7 +236,7 @@ def test_course_part_url_skips_completed_first_child_to_first_ready(mock_site_co
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=course)
     # Complete first item; second item has no progress (becomes READY).
-    TopicProgressFactory(user=user, topic=first, complete_time=timezone.now())
+    topic_completion(course, user, first, complete_time=timezone.now())
 
     children = get_course_index(user=user, course=course, can_access_content=True)
     part_dict = children[0]
@@ -289,10 +290,11 @@ def test_course_part_holding_a_failed_quiz_reads_as_needing_a_retry(mock_site_co
 
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=course)
-    TopicProgressFactory(user=user, topic=first, complete_time=timezone.now())
-    FormProgressFactory(
-        user=user,
-        form=quiz,
+    topic_completion(course, user, first, complete_time=timezone.now())
+    form_attempt(
+        course,
+        user,
+        quiz,
         completed_time=timezone.now(),
         scores={"score": 1, "max_score": 2},
     )

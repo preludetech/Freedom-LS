@@ -2,7 +2,7 @@
 
 is_registered_for_course_expression is covered in test_utils.py alongside its
 non-queryset sibling, is_registered_for_course. This module holds
-latest_registration and the organisation-scoping helpers.
+latest_registration, learner_for_course and the organisation-scoping helpers.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
@@ -29,13 +29,16 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import (
     Cohort,
+    CohortCourseRegistration,
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.queries import (
+    ResolvedRegistration,
     all_cohorts_visible_to,
     can_view_cohort,
     cohorts_visible_to,
     latest_registration,
+    learner_for_course,
     learners_visible_to,
     organisation_for_learner_course,
     organisations_accessible_to,
@@ -78,6 +81,17 @@ def _backdate(
 ) -> LearnerCourseRegistration:
     """Set registered_at directly, bypassing auto_now_add's save-time override."""
     LearnerCourseRegistration.objects.filter(pk=registration.pk).update(
+        registered_at=when
+    )
+    registration.refresh_from_db()
+    return registration
+
+
+def _backdate_cohort_registration(
+    registration: CohortCourseRegistration, when: datetime
+) -> CohortCourseRegistration:
+    """Set registered_at directly, bypassing auto_now_add's save-time override."""
+    CohortCourseRegistration.objects.filter(pk=registration.pk).update(
         registered_at=when
     )
     registration.refresh_from_db()
@@ -481,6 +495,101 @@ class TestLearnersVisibleTo:
 
 
 @pytest.mark.django_db
+class TestLearnerForCourse:
+    """learner_for_course decides which Learner and registration a piece of
+    work lands under. organisation_for_learner_course is a thin read of
+    .learner.organisation off the same resolution, so most of its own cases
+    are exercised there instead of being duplicated here."""
+
+    def test_no_registration_returns_none(self, mock_site_context):
+        course = CourseFactory()
+        user = UserFactory()
+
+        assert learner_for_course(user, course) is None
+
+    def test_falls_back_to_individual_registration_when_no_cohort_registration(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        user = UserFactory()
+        registration = _make_registration(user, course)
+
+        resolved = learner_for_course(user, course)
+
+        assert resolved == ResolvedRegistration(registration.learner, registration)
+
+    def test_cohort_registration_wins_over_an_individual_one(self, mock_site_context):
+        course = CourseFactory()
+        user = UserFactory()
+        cohort_organisation = OrganisationFactory()
+        cohort = _make_cohort(organisation=cohort_organisation)
+        cohort_learner = LearnerFactory(user=user, organisation=cohort_organisation)
+        CohortMembershipFactory(learner=cohort_learner, cohort=cohort)
+        cohort_registration = CohortCourseRegistrationFactory(
+            cohort=cohort, collection=course
+        )
+        _make_registration(user, course, organisation=OrganisationFactory())
+
+        resolved = learner_for_course(user, course)
+
+        assert resolved == ResolvedRegistration(cohort_learner, cohort_registration)
+
+    def test_cohort_branch_deterministically_picks_the_more_recent_cohort(
+        self, mock_site_context
+    ):
+        """A learner in two cohorts that both hold an active registration for
+        this course must land on the same record every time, not on whichever
+        one the query planner happens to return first."""
+        course = CourseFactory()
+        user = UserFactory()
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(user=user, organisation=organisation)
+        older_cohort = _make_cohort(organisation=organisation)
+        newer_cohort = _make_cohort(organisation=organisation)
+        CohortMembershipFactory(learner=learner, cohort=older_cohort)
+        CohortMembershipFactory(learner=learner, cohort=newer_cohort)
+        older_registration = CohortCourseRegistrationFactory(
+            cohort=older_cohort, collection=course
+        )
+        _backdate_cohort_registration(
+            older_registration, timezone.now() - timedelta(days=7)
+        )
+        newer_registration = CohortCourseRegistrationFactory(
+            cohort=newer_cohort, collection=course
+        )
+
+        first_call = learner_for_course(user, course)
+        second_call = learner_for_course(user, course)
+
+        assert first_call == ResolvedRegistration(learner, newer_registration)
+        assert second_call == ResolvedRegistration(learner, newer_registration)
+
+    def test_cross_organisation_cohort_membership_falls_through_to_individual(
+        self, mock_site_context
+    ):
+        """CohortMembership.clean() forbids a cross-organisation membership,
+        but factories never call full_clean(), so a test-built row can link a
+        Learner from a foreign site into a cohort whose registration query
+        still finds it. The direct Learner lookup is site-aware and excludes
+        that row, so this must fall through to the individual registration
+        rather than raising."""
+        course = CourseFactory()
+        user = UserFactory()
+        outsider_organisation = OrganisationFactory(site=SiteFactory())
+        outsider_learner = LearnerFactory(user=user, organisation=outsider_organisation)
+        cohort = _make_cohort(organisation=OrganisationFactory())
+        CohortMembershipFactory(learner=outsider_learner, cohort=cohort)
+        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        individual_registration = _make_registration(user, course)
+
+        resolved = learner_for_course(user, course)
+
+        assert resolved == ResolvedRegistration(
+            individual_registration.learner, individual_registration
+        )
+
+
+@pytest.mark.django_db
 class TestOrganisationForLearnerCourse:
     """Cohort registration wins over an individual one; with neither, there is
     no organisation to report. The duplicate-registration tiebreak is
@@ -558,7 +667,12 @@ class TestOrganisationForLearnerCourseQueryCount:
         for _ in range(duplicates):
             _make_registration(user, course)
 
-        with django_assert_max_num_queries(1):
+        # 2, not 1: learner_for_course needs a Learner instance as well as
+        # the registration, and the join from the registration back to this
+        # member's Learner is a reverse relation select_related cannot
+        # follow. The ceiling that matters -- that cost does not grow with
+        # how many registrations the learner holds -- still holds at 2.
+        with django_assert_max_num_queries(2):
             organisation_for_learner_course(user, course)
 
     @pytest.mark.parametrize("duplicates", [1, 5])

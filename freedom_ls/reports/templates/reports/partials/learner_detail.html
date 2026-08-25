@@ -1,4 +1,4 @@
-{% comment %}Required context: learner (LearnerDetail). Emits learner-{{ learner.user_id }} — the only place that id is emitted — and carries the running header name.
+{% comment %}Required context: learner (LearnerDetail). Emits learner-{{ learner.learner_id }} — the only place that id is emitted — and carries the running header name.
 
 The name appears twice on purpose: print.css takes the span out of normal flow
 into the running header slot, so it is never drawn here, while the h3 stays in
@@ -8,7 +8,7 @@ The severity class on the flags panel is taken from the first flag. The flags
 arrive in registry order and the base registry runs its two error rules ahead
 of its warning rule, so the first flag is the most serious one a learner has.
 {% endcomment %}
-<div class="learner-section" id="learner-{{ learner.user_id }}">
+<div class="learner-section" id="learner-{{ learner.learner_id }}">
   <span class="learner-running-name">{{ learner.full_name }}</span>
   {% comment %}The floated last-activity note precedes the heading for the same
   reason the at-a-glance count does: a float needs an open line box.{% endcomment %}

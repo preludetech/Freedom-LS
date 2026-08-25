@@ -26,6 +26,8 @@ None of this is scoped by organisation. A learner can hold a separate registrati
 
 The percentage is completed items divided by total items in the course, rounded to a whole number. It recalculates automatically the first time an item is marked complete.
 
+Items are counted by where they sit in the course, not by the content behind them. A course that places the same topic or quiz at two positions has two items to complete, and finishing one of them counts once — which is also what the course outline shows.
+
 A topic or a non-quiz form counts as complete as soon as the learner completes it. A quiz counts as complete only if the learner's latest attempt passed it: a failed attempt leaves the quiz — and so the course — short of complete, however many times it has been attempted. A quiz with no pass mark configured has no bar to clear and counts as complete on completion, the same as a survey.
 
 Bulk database updates that bypass the normal save path do not trigger recalculation. The `recalculate_progress_percentages` management command recomputes every course's percentage from scratch and exists for exactly this case. The pass-to-complete rule above is new, so an existing deployment must run this command once after upgrading or percentages calculated under the old rule stay stale; the upgrade notes carry the full procedure.

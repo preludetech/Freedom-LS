@@ -193,8 +193,10 @@ User = get_user_model()
 class FormProgress(SiteAwareModel):
     """Tracks a learner's progress through a form."""
 
+    # PROTECT: an attempt is the audit record of a sitting, so deleting the form
+    # out from under it would erase what was answered.
     form = models.ForeignKey(
-        Form, on_delete=models.CASCADE, related_name="progress_records"
+        Form, on_delete=models.PROTECT, related_name="progress_records"
     )
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="form_progress"
@@ -351,7 +353,9 @@ class FormProgress(SiteAwareModel):
         self.completed_time = timezone.now()
         self.score()
         self.save()
-        form_attempt_completed.send(sender=type(self), user=self.user, form=self.form)
+        form_attempt_completed.send(
+            sender=type(self), user=self.user, form=self.form, attempt=self
+        )
 
     def score_category_value_sum(self):
         """

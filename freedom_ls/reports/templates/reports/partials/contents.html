@@ -18,7 +18,7 @@ to know what the numbers in it mean, and the two together are one spread.
     {% endfor %}
     <li class="toc-section"><a href="#details">2 · Details per learner</a></li>
     {% for learner in data.learners %}
-    <li class="toc-entry"><a href="#learner-{{ learner.user_id }}">{{ learner.full_name }}</a></li>
+    <li class="toc-entry"><a href="#learner-{{ learner.learner_id }}">{{ learner.full_name }}</a></li>
     {% endfor %}
     <li class="toc-section"><a href="#confusions">3 · Quiz confusions across the cohort</a></li>
     {% for section in data.courses %}

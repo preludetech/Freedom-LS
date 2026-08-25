@@ -43,7 +43,10 @@ bare-repo/worktree mechanics (the FLS per-branch-database delta lives in an `fls
 `update-claude-project-settings` — audits `.claude/settings.json` and promotes useful permissions from
 `.claude/settings.local.json`.
 
-### Resources (1)
+### Resources (3)
 `agent_memory_guidelines` — the canonical home for this generic guideline (it is also duplicated into
 `ds` and `fls-dev` because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and the agents that read it live in
-different plugins).
+different plugins); `launcher_editing` — how to edit `claude.sh` (with `<MAY_CREATE>` false, since
+`/ds:init` owns the launcher skeleton); `domain_vocabulary` — use the project's existing words rather
+than coining new ones, and declare any word that really is new. The project points at its own
+vocabulary via `## Vocabulary Sources` in `.claude/sdd/config.md`.

@@ -11,7 +11,6 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
-    FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionOptionFactory,
@@ -19,7 +18,7 @@ from freedom_ls.form_engine.factories import (
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
-from .conftest import course_with_form
+from .conftest import course_with_form, form_attempt
 
 
 def _checkbox_quiz(**form_kwargs):
@@ -76,9 +75,10 @@ def test_a_question_left_blank_is_named_in_the_review_section(
     form, _question, _dolphin, _bat, _crocodile = _checkbox_quiz()
     course = course_with_form(form, title="Blank Course", slug="blank-course")
     user = _registered_learner(course)
-    FormProgressFactory(
-        user=user,
-        form=form,
+    form_attempt(
+        course,
+        user,
+        form,
         completed_time=timezone.now(),
         scores={"score": 0, "max_score": 1},
     )
@@ -98,9 +98,10 @@ def test_a_correctly_ticked_option_is_not_marked_as_an_error(
     form, question, dolphin, bat, crocodile = _checkbox_quiz()
     course = course_with_form(form, title="Glyph Course", slug="glyph-course")
     user = _registered_learner(course)
-    attempt = FormProgressFactory(
-        user=user,
-        form=form,
+    attempt = form_attempt(
+        course,
+        user,
+        form,
         completed_time=timezone.now(),
         scores={"score": 0, "max_score": 1},
     )
@@ -125,9 +126,10 @@ def test_a_stale_stored_score_is_explained(mock_site_context, logged_in_client):
     form, question, dolphin, bat, crocodile = _checkbox_quiz()
     course = course_with_form(form, title="Legacy Course", slug="legacy-course")
     user = _registered_learner(course)
-    attempt = FormProgressFactory(
-        user=user,
-        form=form,
+    attempt = form_attempt(
+        course,
+        user,
+        form,
         completed_time=timezone.now(),
         # What ticking every option scored before checkbox marking became exact.
         scores={"score": 1, "max_score": 1},
@@ -149,9 +151,10 @@ def test_a_current_score_carries_no_stale_score_note(
     form, question, dolphin, bat, _crocodile = _checkbox_quiz()
     course = course_with_form(form, title="Current Course", slug="current-course")
     user = _registered_learner(course)
-    attempt = FormProgressFactory(
-        user=user,
-        form=form,
+    attempt = form_attempt(
+        course,
+        user,
+        form,
         completed_time=timezone.now(),
         scores={"score": 1, "max_score": 1},
     )
@@ -170,9 +173,10 @@ def test_a_changed_question_count_is_explained(mock_site_context, logged_in_clie
     form, question, dolphin, bat, _crocodile = _checkbox_quiz()
     course = course_with_form(form, title="Shrunk Course", slug="shrunk-course")
     user = _registered_learner(course)
-    attempt = FormProgressFactory(
-        user=user,
-        form=form,
+    attempt = form_attempt(
+        course,
+        user,
+        form,
         completed_time=timezone.now(),
         # 1 of 2 when it was sat; the second question has since been removed, so
         # the same answers score 1 of 1 today — right score, wrong total.
@@ -197,7 +201,7 @@ def test_a_completed_survey_does_not_promise_marking(
     )
     course = course_with_form(form, title="Survey Course", slug="survey-course")
     user = _registered_learner(course)
-    FormProgressFactory(user=user, form=form, completed_time=timezone.now(), scores={})
+    form_attempt(course, user, form, completed_time=timezone.now(), scores={})
 
     content = _results(logged_in_client, user, course).content.decode()
 

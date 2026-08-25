@@ -18,7 +18,13 @@ from freedom_ls.panel_framework.actions import (
 from freedom_ls.panel_framework.panels import Panel
 from freedom_ls.panel_framework.views import _handle_action, _ResolvedAction
 
-from .conftest import StubModel, _make_stub, _make_stub_child, make_staff_user
+from .conftest import (
+    StubModel,
+    _make_stub,
+    _make_stub_child,
+    _make_stub_protected_child,
+    make_staff_user,
+)
 
 # -- Shared test form ---------------------------------------------------
 
@@ -354,4 +360,37 @@ def test_delete_action_permission_denied_returns_403(mock_site_context):
     resolved = _ResolvedAction(action, instance=item)
     response = _handle_action(request, resolved, base_url="/test")
     assert response.status_code == 403
+    assert StubModel.objects.filter(pk=item.pk).exists()
+
+
+@pytest.mark.django_db
+def test_delete_action_render_explains_a_protected_instance(mock_site_context):
+    """A protected instance renders an explanation, not a ProtectedError."""
+    item = _make_stub(name="protected-render")
+    _make_stub_protected_child(parent=item)
+    action = DeleteAction(success_url="/items")
+
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+
+    html = action.render(request, item, "/test")
+    assert "cannot be deleted" in html
+    assert "stub protected child" in html.lower()
+    # No live delete affordance: the submit would only fail the same way.
+    assert "hx-delete" not in html
+
+
+@pytest.mark.django_db
+def test_delete_action_handle_submit_refuses_a_protected_instance(mock_site_context):
+    """Submitting a blocked delete returns the explanation, not a 500."""
+    item = _make_stub(name="protected-submit")
+    _make_stub_protected_child(parent=item)
+    action = DeleteAction(success_url="/items")
+
+    request = RequestFactory().delete("/")
+    request.user = make_staff_user()
+
+    response = action.handle_submit(request, instance=item, base_url="/test")
+    assert response.status_code == 422
+    assert "cannot be deleted" in response.content.decode()
     assert StubModel.objects.filter(pk=item.pk).exists()

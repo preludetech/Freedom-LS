@@ -237,7 +237,7 @@ def _banded_zero_completion_report_data() -> CohortReportData:
     )
     banded = dataclasses.replace(
         template,
-        user_id=2,
+        learner_id=uuid4(),
         full_name="Bo Kim",
         completion_percentage=0,
         completed_item_count=0,

@@ -1,6 +1,6 @@
 ---
 description: Create a specification based on an idea
-allowed-tools: Read, Write, Glob, Bash, Agent, Skill
+allowed-tools: Read, Write, Glob, Grep, Bash, Agent, Skill
 # based on https://github.com/iamshaunjp/Claude-Code-Masterclass/blob/claude/snippets/commands/spec-v1.md
 ---
 
@@ -47,6 +47,13 @@ Follow `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`. It carries the rul
 artifact obeys: rewriting means replacing, coverage rather than length, the shared cut-list, where
 overflow goes, and the two finishing passes. What follows is what is specific to a spec.
 
+Before writing any of it, read the sources listed under `## Vocabulary Sources` in
+`.claude/sdd/config.md` and `Grep` the codebase for every noun you intend to use. Use the word the
+project already has; make the model class and field names the spec's nouns, in the proposed
+identifiers as much as in the prose; never reuse an existing word with a different meaning. If a
+concept genuinely has no existing name, coin one — and list it in the Terminology section as
+`coined`, with its justification, rather than slipping it into the prose.
+
 ## Read the whole directory first
 
 The idea file, every sibling `*.md` beside it (notes files, `research_*.md`), and the research from
@@ -66,15 +73,17 @@ step does that, and it re-reads the codebase when it does.
 Use these sections. Omit one when it would be empty; do not invent others.
 
 1. **Purpose.** The problem, in a few sentences.
-2. **Scope.** In and out.
-3. **Decisions.** Only the ones an implementer could otherwise relitigate, one line of reasoning
+2. **Terminology.** The domain nouns this spec uses, per
+   `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`.
+3. **Scope.** In and out.
+4. **Decisions.** Only the ones an implementer could otherwise relitigate, one line of reasoning
    each.
-4. **Requirements.** Grouped by the part of the system they change, each naming the files and
+5. **Requirements.** Grouped by the part of the system they change, each naming the files and
    symbols to touch.
-5. **Testing.** What has to be proved, not the test code.
-6. **Documentation and downstream.** What has to change outside the code.
-7. **Open questions.** What the user or an operator still has to settle.
-8. **Success criteria.** Checkable, one line each.
+6. **Testing.** What has to be proved, not the test code.
+7. **Documentation and downstream.** What has to change outside the code.
+8. **Open questions.** What the user or an operator still has to settle.
+9. **Success criteria.** Checkable, one line each.
 
 ## What a spec keeps that an idea doesn't
 

@@ -6,6 +6,8 @@ of completion. Useful for demonstrating the Course Progress panel in the
 educator interface.
 """
 
+from typing import cast
+
 import djclick as click
 from guardian.shortcuts import assign_perm
 
@@ -13,82 +15,101 @@ from django.contrib.sites.models import Site
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.models import Course, Topic
-from freedom_ls.form_engine.models import Form, FormProgress
+from freedom_ls.accounts.models import User
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
+from freedom_ls.form_engine.models import Form
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
 )
 from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
+from freedom_ls.learner_progress.attempts import ensure_attempt
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_progress.queries import course_progress_for
 from freedom_ls.organisations.utils import get_default_organisation
 
 
-def _complete_topic(user: object, topic: Topic, site: Site) -> None:
+def _collection_item_for(course: Course, child: Form | Topic) -> ContentCollectionItem:
+    """The collection item placing `child` in `course`."""
+    for collection_item in course.viewable_collection_items():
+        if collection_item.child == child:
+            return collection_item
+    raise click.ClickException(
+        f"'{child.slug}' is not a viewable item of '{course.slug}'."
+    )
+
+
+def _record_for(user: User, course: Course) -> CourseProgress:
+    record = course_progress_for(user, course)
+    if record is None:
+        raise click.ClickException(
+            f"No CourseProgress record for {user.email} on {course.slug}; "
+            "register the learner before completing progress."
+        )
+    return record
+
+
+def _complete_topic(user: User, course: Course, topic: Topic, site: Site) -> None:
     """Mark a topic as completed for a user."""
+    record = _record_for(user, course)
+    collection_item = _collection_item_for(course, topic)
     TopicProgress.objects.get_or_create(
-        user=user,
-        topic=topic,
-        site=site,
-        defaults={"complete_time": timezone.now()},
+        course_progress=record,
+        collection_item=collection_item,
+        defaults={"topic": topic, "site": site, "complete_time": timezone.now()},
     )
 
 
-def _start_topic(user: object, topic: Topic, site: Site) -> None:
+def _start_topic(user: User, course: Course, topic: Topic, site: Site) -> None:
     """Mark a topic as started (but not completed) for a user."""
+    record = _record_for(user, course)
+    collection_item = _collection_item_for(course, topic)
     TopicProgress.objects.get_or_create(
-        user=user,
-        topic=topic,
-        site=site,
+        course_progress=record,
+        collection_item=collection_item,
+        defaults={"topic": topic, "site": site},
     )
 
 
-def _complete_form(user: object, form: Form, site: Site) -> None:
+def _complete_form(user: User, course: Course, form: Form, site: Site) -> None:
     """Mark a form as completed for a user."""
-    FormProgress.objects.get_or_create(
-        user=user,
-        form=form,
-        site=site,
-        defaults={"completed_time": timezone.now()},
-    )
+    record = _record_for(user, course)
+    collection_item = _collection_item_for(course, form)
+    attempt = ensure_attempt(record, collection_item)
+    if attempt.completed_time is None:
+        attempt.completed_time = timezone.now()
+        attempt.save(update_fields=["completed_time"])
 
 
-def _start_form(user: object, form: Form, site: Site) -> None:
+def _start_form(user: User, course: Course, form: Form, site: Site) -> None:
     """Mark a form as started (but not completed) for a user."""
-    FormProgress.objects.get_or_create(
-        user=user,
-        form=form,
-        site=site,
-    )
+    record = _record_for(user, course)
+    collection_item = _collection_item_for(course, form)
+    ensure_attempt(record, collection_item)
 
 
-def _set_course_progress(
-    user: object, course: Course, site: Site, percentage: int
-) -> None:
+def _set_course_progress(user: User, course: Course, percentage: int) -> None:
     """Set the course progress percentage for a user."""
-    # Use the base manager to bypass SiteAwareManager (no request context)
-    CourseProgress.objects.update_or_create(
-        user=user,
-        course=course,
-        site=site,
-        defaults={"progress_percentage": percentage},
-    )
+    record = _record_for(user, course)
+    record.progress_percentage = percentage
+    record.save(update_fields=["progress_percentage"])
 
 
-def _create_learner(site: Site, first_name: str, last_name: str, email: str) -> object:
+def _create_learner(site: Site, first_name: str, last_name: str, email: str) -> User:
     """Create a learner user, or return existing one."""
-    from freedom_ls.accounts.models import User
-
     try:
-        return User.objects.get(email=email)
+        return cast(User, User.objects.get(email=email))
     except User.DoesNotExist:
-        return UserFactory(
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            password="testpass123",  # noqa: S106  # pragma: allowlist secret
-            site=site,
+        return cast(
+            User,
+            UserFactory(
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                password="testpass123",  # noqa: S106  # pragma: allowlist secret
+                site=site,
+            ),
         )
 
 
@@ -227,25 +248,25 @@ def command(
         completed_count = 0
         for i, topic in enumerate(topics):
             if i < n_topics_complete:
-                _complete_topic(learner, topic, site)
+                _complete_topic(learner, course, topic, site)
                 completed_count += 1
             elif i < n_topics_complete + n_topics_start:
-                _start_topic(learner, topic, site)
+                _start_topic(learner, course, topic, site)
 
         # Create form progress
         for i, form in enumerate(forms):
             if i < n_forms_complete:
-                _complete_form(learner, form, site)
+                _complete_form(learner, course, form, site)
                 completed_count += 1
             elif i < n_forms_complete + n_forms_start:
-                _start_form(learner, form, site)
+                _start_form(learner, course, form, site)
 
         # Set course progress percentage
         if total_items > 0:
             percentage = round((completed_count / total_items) * 100)
         else:
             percentage = 0
-        _set_course_progress(learner, course, site, percentage)
+        _set_course_progress(learner, course, percentage)
 
         click.secho(
             f"  {first} {last} <{email}> - {desc} "

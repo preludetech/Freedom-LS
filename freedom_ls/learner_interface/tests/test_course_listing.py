@@ -27,7 +27,8 @@ from freedom_ls.learner_interface.utils import (
     get_course_listing,
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-from freedom_ls.learner_progress.factories import CourseProgressFactory
+
+from .conftest import course_progress_record
 
 
 @pytest.mark.django_db
@@ -51,7 +52,7 @@ def test_registered_zero_percent_course_has_registered_status(mock_site_context)
     user = UserFactory()
     course = CourseFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=course)
-    CourseProgressFactory(user=user, course=course, progress_percentage=0)
+    course_progress_record(course, user, progress_percentage=0)
 
     entries = get_course_listing(user)
 
@@ -85,9 +86,7 @@ def test_in_progress_course_has_in_progress_status(mock_site_context):
     user = UserFactory()
     course = CourseFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=course)
-    CourseProgressFactory(
-        user=user, course=course, progress_percentage=50, completed_time=None
-    )
+    course_progress_record(course, user, progress_percentage=50, completed_time=None)
 
     entries = get_course_listing(user)
 
@@ -104,11 +103,8 @@ def test_completed_course_has_complete_status(mock_site_context):
     user = UserFactory()
     course = CourseFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=course)
-    CourseProgressFactory(
-        user=user,
-        course=course,
-        progress_percentage=100,
-        completed_time=timezone.now(),
+    course_progress_record(
+        course, user, progress_percentage=100, completed_time=timezone.now()
     )
 
     entries = get_course_listing(user)
@@ -179,11 +175,8 @@ def test_multiple_courses_all_classified_independently(mock_site_context):
 
     complete_course = CourseFactory()
     LearnerCourseRegistrationFactory(learner__user=user, collection=complete_course)
-    CourseProgressFactory(
-        user=user,
-        course=complete_course,
-        progress_percentage=100,
-        completed_time=timezone.now(),
+    course_progress_record(
+        complete_course, user, progress_percentage=100, completed_time=timezone.now()
     )
 
     entries = get_course_listing(user)

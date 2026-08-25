@@ -125,39 +125,6 @@ class LearnerCourseRegistration(SiteAwareModel):
             )
         ]
 
-    def save(self, *args: object, **kwargs: object) -> None:
-        is_new = self._state.adding
-        super().save(*args, **kwargs)
-        if is_new:
-            from freedom_ls.content_engine.models import Course
-            from freedom_ls.webhooks.events import fire_webhook_event
-
-            # _base_manager: save() can run from a management command with
-            # no ambient request, or with a different site ambient than the
-            # learner's own, so the site-aware manager cannot be trusted to
-            # find this row.
-            user_id, user_email = (
-                Learner._base_manager.filter(pk=self.learner_id)
-                .values_list("user_id", "user__email")
-                .get()
-            )
-            course_title = (
-                Course.objects.filter(pk=self.collection_id)
-                .values_list("title", flat=True)
-                .get()
-            )
-
-            fire_webhook_event(
-                "course.registered",
-                {
-                    "user_id": user_id,
-                    "user_email": user_email,
-                    "course_id": str(self.collection_id),
-                    "course_title": course_title,
-                    "registered_at": self.registered_at.isoformat(),
-                },
-            )
-
     def __str__(self):
         return f"{self.learner} - {self.collection}"
 

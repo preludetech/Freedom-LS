@@ -1,6 +1,6 @@
 ---
 description: Check that the spec makes sense
-allowed-tools: Read, Glob, Edit, Skill
+allowed-tools: Read, Glob, Grep, Edit, Skill
 ---
 
 You are helping to refine a feature spec. The spec might have problems. You are doing a final check to make sure it can be implemented.
@@ -25,6 +25,10 @@ Keep repeating this process until there are no more contradictions.
 Read over any implementation details mentioned in the spec and make sure that they adhere to project norms, and that they are technically feasible.
 
 Read through all the documentation in ${CLAUDE_PLUGIN_ROOT}/resources/ and make sure the spec does not go against any project norms defined there.
+
+Check the spec's **Terminology** section against `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md` — add one if it is missing. `Grep` each term: one marked `existing` with no hits in the codebase is wrong, and one marked `coined` that *does* have hits is a collision, which is worse. Then search the other direction — for each concept the spec names, look for the concept itself, because a spec can coin a synonym without ever using a word that collides. If the project already has a word, the spec uses that word, in its proposed identifiers as much as in its prose. The sources to search are listed under `## Vocabulary Sources` in `.claude/sdd/config.md`.
+
+Field names, `related_name`s and constraint names deserve a pass of their own: they become database identifiers, so a word the spec gets wrong here costs a migration to fix later rather than an edit.
 
 Read any mentioned source code files and any related code and look for inconsistencies and problems.
 
