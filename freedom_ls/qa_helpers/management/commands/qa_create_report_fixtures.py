@@ -49,6 +49,7 @@ from freedom_ls.qa_helpers.management.commands.qa_create_report_cohort import (
     _get_organisation,
     _get_site,
     build_report_cohort,
+    organisation_email_prefix,
 )
 from freedom_ls.qa_helpers.management.commands.qa_create_report_course import (
     build_report_course,
@@ -298,16 +299,16 @@ def _reset_fixtures(
     """Delete the given fixture cohorts and their learners, cascading progress.
 
     Scoped to QA-owned rows only: cohorts are matched by their fixture name
-    within the target organisation, and learners by their fixture email prefix,
-    so nothing a human created by hand -- and no same-named fixture cohort in
+    within the target organisation, and learners by the same organisation-
+    namespaced email prefix ``build_report_cohort`` minted them under, so
+    nothing a human created by hand -- and no same-named fixture cohort in
     another organisation -- is touched. The QA report courses are left in place
     -- they are rebuilt idempotently and hold no per-learner state.
     """
     deleted_learners = 0
     for fixture in fixtures:
-        learners = User.objects.filter(
-            email__startswith=f"{fixture.email_prefix}-", site=site
-        )
+        prefix = organisation_email_prefix(fixture.email_prefix, organisation)
+        learners = User.objects.filter(email__startswith=f"{prefix}-", site=site)
         deleted_learners += learners.count()
         learners.delete()
     deleted_cohorts, _ = Cohort.objects.filter(
@@ -496,6 +497,13 @@ def command(
             f"  {fixture.key:<30} {fixture.num_learners:>3} learners  pk={cohort.pk}",
             fg="green",
         )
+        if fixture.num_learners:
+            # The learner logins, which are no longer guessable from the
+            # fixture key alone now that they carry the organisation.
+            prefix = organisation_email_prefix(fixture.email_prefix, organisation)
+            click.echo(
+                f"  {'':<30} logins {prefix}-01@email.com ... (password == email)"
+            )
 
     click.secho("\n=== Permission users ===", fg="cyan", bold=True)
     educator = _get_or_create_user(site, EDUCATOR_EMAIL, "Quinn", "Reporter")

@@ -54,6 +54,7 @@ from guardian.shortcuts import assign_perm
 
 from django.contrib.sites.models import Site
 from django.utils import timezone
+from django.utils.text import slugify
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -183,6 +184,9 @@ STATE_STALE = "stale"
 
 RECENT_DAYS_AGO = 2
 STALE_DAYS_AGO = 30
+# Leaves room for the fixture prefix, the -NN index and the id suffix inside
+# the 64-character cap on an email local part.
+ORGANISATION_TOKEN_MAX_CHARS = 20
 ITEM_SPACING = timedelta(minutes=2)
 COURSE_SPACING = timedelta(hours=6)
 
@@ -564,6 +568,28 @@ def _generate_course_progress(
         quiz_index += 1
 
 
+def organisation_email_prefix(email_prefix: str, organisation: Organisation) -> str:
+    """The fixture email prefix, namespaced to one organisation.
+
+    User.email is globally unique and _get_or_create_user matches on it alone,
+    so without a per-organisation namespace every organisation's fixture matrix
+    is backed by one shared set of User rows. That makes the two matrices
+    inseparable: neither can be reset without deleting the other's learners.
+
+    ASCII, because an email local part is: a non-Latin slug transliterates to
+    nothing, so those organisations are keyed by their id instead. Truncated,
+    because the local part is capped at 64 characters and an organisation slug
+    can run to 150 -- and since truncating can make two distinct slugs equal,
+    anything that lost information carries the id too.
+    """
+    base = slugify(organisation.slug or organisation.name)
+    token = base[:ORGANISATION_TOKEN_MAX_CHARS]
+    if token != base or not token:
+        suffix = organisation.id.hex[:6]
+        token = f"{token}-{suffix}" if token else suffix
+    return f"{email_prefix}-{token}"
+
+
 def build_report_cohort(
     site: Site,
     cohort_name: str,
@@ -629,9 +655,10 @@ def build_report_cohort(
     )
 
     learners: list[tuple[User, str]] = []
+    namespaced_prefix = organisation_email_prefix(email_prefix, organisation)
     for index in range(num_learners):
         first_name, last_name = _name_for(index)
-        email = f"{email_prefix}-{index + 1:02d}@email.com"
+        email = f"{namespaced_prefix}-{index + 1:02d}@email.com"
         learner = _get_or_create_user(site, email, first_name, last_name)
         if not CohortMembership.objects.filter(
             learner__user=learner, cohort=cohort, site=site
