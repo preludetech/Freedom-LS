@@ -11,7 +11,8 @@ key**, resolving each from per-alias env vars, falling back to the shared
 is configured. `build_s3_media_storage()` is already alias-agnostic and becomes its single-alias
 building block, unchanged.
 
-One environment variable per bucket, and no bucket name written down in code, defaults included.
+One environment variable per alias, and no bucket name written down in code, defaults included.
+Aliases outnumber buckets, so more than one variable carries the same value.
 The per-alias env-var naming scheme needs to keep the shared-credentials shortcut and not break
 downstream deployments already setting the current names. Environment belongs in the value, never
 in the variable name. Staging and production run the same settings module and differ only in the
@@ -52,8 +53,10 @@ the `storage.exists("reports")` assertion in `reports/tests/test_deletion_hygien
   browser upload will not work.
 - Bucket Locks block emptying or deleting a locked bucket. Staging has its own buckets and must not
   copy production's lock rules, or it can never be torn down and rebuilt.
-- Lifecycle expiry is a per-prefix rule, which is why report objects keep a prefix inside a bucket
-  dedicated to them.
+- Lifecycle expiry is a per-prefix rule. So are Bucket Locks and event notifications. None of them
+  is a reason for a second bucket, and expiry is why report objects keep a prefix.
+- Anonymous public read, jurisdiction and CORS are the per-bucket properties. Only they decide how
+  many buckets exist.
 
 ## Bucket creation decisions
 
@@ -62,8 +65,9 @@ bucket names, jurisdiction (immutable at creation), the custom domain for `fls-p
 how many API tokens exist and which buckets each is scoped to. Staging needs the same set under its
 own names and its own tokens, scoped so that nothing in staging can reach a production bucket.
 
-`fls-prod-certificates` is reserved, not created now. It arrives with the certificates feature,
-which is the only thing that will write to it.
+Certificates share the public bucket, so no bucket is reserved for them. That makes the public
+bucket's jurisdiction a certificate-terms decision rather than a branding-terms one, and
+jurisdiction cannot be changed later.
 
 ## Documentation and downstream
 
@@ -83,9 +87,10 @@ which is the only thing that will write to it.
 The buckets are only worth having if new file fields land in the right one, and that decision gets
 made the moment someone adds a `FileField` or `ImageField`, which is exactly when nobody re-reads a
 spec. Add a skill to `claude_plugins/fls-dev/skills/`, following the shape of `multi-tenant` and
-`app-settings`. It should describe all five buckets and what belongs in each, give the decision
-rule (who supplies the bytes, how do they reach the browser, can they be regenerated), and carry
-the mechanical rules above. Its `description` must trigger on creating or modifying a model file or
+`app-settings`. It should describe the aliases and what belongs in each, which bucket each resolves
+to, give the decision rule (readable without logging in, who supplies the bytes, does it name a
+person, can it be regenerated), and carry the mechanical rules above, including that an alias
+sharing a bucket needs a namespaced `upload_to`. Its `description` must trigger on creating or modifying a model file or
 image field, so it fires without being asked for.
 
 ## Admin as a read path

@@ -39,70 +39,82 @@ There are exactly three file-storing fields in the repo. Two pass no `storage=` 
 Only one of FLS's two logo concepts needs a bucket. `HEADER_LOGO_STATIC_PATH` is a static path
 served by WhiteNoise. `Organisation.logo` is the per-tenant uploaded one.
 
-## Why buckets, not prefixes
+## Which splits R2 can actually enforce
 
 The target is Cloudflare R2 only. That is settled, and it changes the answer, because on S3 a
-bucket policy could grant anonymous `s3:GetObject` on `bucket/public/*` alone and most of this would
+bucket policy could grant anonymous `s3:GetObject` on `bucket/public/*` alone and all of this would
 be prefix work.
 
 R2 enforces per bucket: anonymous public read, API token scoping, CORS, jurisdiction. It enforces
-per prefix: lifecycle expiry, Bucket Locks, event notifications. Token scoping is what drives the
-layout, because a token scopes to a set of named buckets and nothing finer, making a bucket the only
-unit of least-privilege credentials R2 offers. Buckets are free and effectively uncapped.
+per prefix: lifecycle expiry, Bucket Locks, event notifications, and by extension backup fan-out and
+per-user erasure. So a difference in expiry, immutability, backup or erasure policy is not a reason
+for a second bucket. A difference in who can read without logging in, or in where the bytes are
+allowed to sit, is.
 
-Aliases and buckets are still not the same thing. Alias count follows access policy; bucket count
-follows what R2 can enforce.
+Token scoping looks like a third reason and mostly isn't. A token does scope to a set of named
+buckets and nothing finer, so a bucket is the only unit of least-privilege credentials R2 offers.
+That buys separation where two principals hold different tokens. FLS has one. The web process, the
+`django-tasks` worker and `content_save` all run the same settings module from one environment file,
+so splitting five ways splits variables inside a single `.env` rather than splitting trust.
+
+A bucket boundary still limits reach. A credential that escapes through a log line or a traceback
+gets one bucket instead of all of them. That is worth exactly one split, around the files that name
+a person.
+
+Aliases and buckets are still not the same thing. Bucket count follows what R2 can enforce; alias
+count follows what the settings layer needs to say differently, which is more.
 
 ## The layout
 
-Two questions decide where a file goes: what credentials should write it, and how it reaches the
-browser. Files answering both the same way share a bucket.
+One question picks a bucket: can this file be read without logging in. A second question picks an
+alias inside it: what does the settings layer have to say about this file that it doesn't say about
+its neighbours.
 
-| Bucket | Contents | Written by | Read policy |
+| Bucket | Contents | Read policy | Names a person |
 |---|---|---|---|
-| `fls-prod-public` | Organisation logos, future public branding | Admin, through the browser | Public read, custom domain, long CDN cache |
-| `fls-prod-course-media` | `content_engine.File`: images, PDFs, video | Operator, from the content repository | Private, signed URLs |
-| `fls-prod-learner-uploads` | Future: application attachments, learner documents, profile pictures | Learners, through the browser | Private, signed URLs |
-| `fls-prod-generated` | Cohort reports | The task worker | Private, no public read, streamed by Django |
-| `fls-prod-certificates` | Future: learner certificates | The task worker | Public read, custom domain, uuid keys |
+| `fls-prod-public` | Organisation logos, future public branding, future learner certificates | Anonymous read, custom domain, CDN cached | Once certificates ship |
+| `fls-prod-course-media` | `content_engine.File`: images, PDFs, video | Private, signed URLs | No |
+| `fls-prod-user-data` | Cohort reports, future user uploads and profile pictures | Private, signed URLs or streamed by Django | Yes |
 
 Those names are values, not constants. Each bucket's name reaches the settings module through
-its own environment variable, so the table records the names production will be handed rather than
+environment variables, so the table records the names production will be handed rather than
 anything the code contains. The `prod` in each name is the environment, and staging runs the same
 split under `fls-staging-`.
 
-**`fls-prod-public`** is brand rather than content: identical bytes for every viewer, no personal
-data, often rendered before the viewer has authenticated. It is the only bucket wanting anonymous
-public read, which on R2 is a per-bucket property. Merging it into course media is the tempting cut
-and the wrong one: Cloudflare's cache key includes the query string and a fresh signature is minted
-per render, so browser and CDN both miss on every request, on an asset that appears on every course
-card. Going public costs little, since `Organisation.id` is a UUIDv4, public R2 buckets don't expose
-listing, and R2 charges no egress.
+**`fls-prod-public`** is everything served without a login. Branding is identical bytes for every
+viewer, often rendered before the viewer has authenticated. Merging it into course media is the
+tempting cut and the wrong one: Cloudflare's cache key includes the query string and a fresh
+signature is minted per render, so browser and CDN both miss on every request, on an asset that
+appears on every course card. Going public costs little, since `Organisation.id` is a UUIDv4, public
+R2 buckets don't expose listing, and R2 charges no egress.
 
-**`fls-prod-course-media`** is rebuildable. An operator loads it from the content repository rather
-than uploading through a browser, so it needs no backup policy and no erasure workflow. It also
-carries the highest read volume and the most widely distributed token in the deployment, so it
-shouldn't share credentials with anything holding personal data.
+Certificates belong here rather than in a bucket of their own. Verification hands over the PDF
+itself, so a certificate needs anonymous read, a custom domain and a CDN cache. Those are per-bucket
+properties, this bucket already has all three, and they are the whole set a separate certificates
+bucket would be created to reproduce. A certificate does name a learner, unlike branding, but the
+protection that answers for is an unguessable object key, and a key is a prefix concern. The merge
+does force one thing: this bucket's jurisdiction gets decided on the certificate's terms rather than
+the logo's, and jurisdiction is fixed at creation.
 
-**`fls-prod-learner-uploads`** holds irreplaceable originals supplied by untrusted uploaders, a
-combination nothing else in the system shares. The token that can write here should reach nothing
-else. Prefixing per learner turns a right-to-erasure request into a scoped delete. R2 has no object
-versioning at all, so version history would have to be built rather than switched on. Profile
+**`fls-prod-course-media`** is rebuildable, holds no personal data, and is the one bucket whose read
+policy might still change. The signed-URL caching argument that sends logos to a public bucket
+applies to course images too, which appear on every course card. Whether to act on it is a separate
+decision on a separate spec; keeping course media out of `fls-prod-user-data` is what keeps the
+decision available, because anonymous read cannot be granted to part of a bucket.
+
+**`fls-prod-user-data`** holds every file that is about or from an identified person: cohort reports
+today, user uploads and profile pictures later. It is the one bucket the two immutable per-bucket
+properties argue for. It is the only candidate for EU jurisdiction, which R2 fixes at creation and
+cannot scope to a prefix, and it is the one bucket worth a token that reaches nothing else.
+
+Reports and uploads share it because everything separating them is prefix-scopable. Reports want
+lifecycle expiry under `cohort_reports/` and uploads must never be auto-deleted; R2 filters expiry
+rules by prefix. Uploads are irreplaceable originals from untrusted uploaders and want immutability;
+Bucket Locks take prefixes too, and take precedence over expiry. R2 has no object versioning at all,
+so version history has to be built either way, and the event-notification fan-out that builds it is
+also prefix-filtered. Per-learner prefixes under `user_uploads/` turn a right-to-erasure request
+into a scoped delete, which works the same in a shared bucket as in a dedicated one. Profile
 pictures need `.url` to render, so private here means no anonymous read, not stream-only.
-
-**`fls-prod-generated`** is written by the `django-tasks` worker and read by nothing but the
-application. `download_report_view` streams the file behind a per-cohort permission check and never
-hands out a storage URL, so this bucket needs no public read, no custom domain and no signed-URL
-path. The narrowest credentials in the deployment. Reports also want expiry while learner uploads
-must never be auto-deleted, and separate buckets keep that lifecycle rule away from irreplaceable
-data.
-
-**`fls-prod-certificates`** answers the two layout questions in a combination nothing else does.
-The worker writes it, like a report. Anyone holding the link reads it without logging in, like a
-logo. Anonymous read is a per-bucket property on R2, so it cannot sit with the
-reports, and a certificate names a learner, which is the one thing the branding bucket is defined
-not to hold. Object keys have to be uuid-derived, because in a public bucket the key is the whole
-access control. Nothing here ever expires.
 
 ## Decisions taken
 
@@ -117,26 +129,28 @@ access control. Nothing here ever expires.
 - **No per-site or per-organisation buckets.** Tenancy is a prefix concern and a bucket per tenant
   means credential sprawl. `organisation_logo_upload_to` and `report_upload_path` already prefix by
   pk.
-- **Certificate PDFs are served publicly, from their own bucket.** Verification hands over the PDF
-  itself rather than a rendered attestation page, so the object needs anonymous read and cannot live
-  in `generated`. It names a learner, so it does not belong in `public` either. Two constraints go
-  back to `spec_dd/1. next/certificates/idea.md`: uuid-derived object keys, and whatever consent a
-  site needs before a learner's name sits at a URL anyone can open.
-- **Every bucket name is read from the environment, one variable per bucket.** This layout fixes
+- **Certificate PDFs are served publicly, from the branding bucket.** Verification hands over the
+  PDF itself rather than a rendered attestation page, so the object needs anonymous read and cannot
+  live with the reports. Three constraints go back to
+  `spec_dd/1. next/certificates/idea.md`: uuid-derived object keys, a `certificates/` prefix keeping
+  them clear of branding, and whatever consent a site needs before a learner's name sits at a URL
+  anyone can open.
+- **Every bucket name is read from the environment, one variable per alias.** This layout fixes
   what each bucket is for. It does not fix what any of them is called. No bucket name appears in
   the settings module, so the same code runs against production, staging and a downstream project's
-  own buckets, and renaming a bucket becomes a deploy-config change instead of a release. An unset
-  variable falls back to the shared bucket, which is the collision the system check exists to
-  catch.
+  own buckets, and renaming a bucket becomes a deploy-config change instead of a release. There is
+  a variable per alias rather than per bucket, so two of them carry the same value and a project
+  that wants a bucket per alias changes values rather than code. An unset variable falls back to the
+  shared bucket, which is the collision the system check exists to catch.
 - **Staging gets its own buckets, not a prefix inside production's.** A token scopes to named
   buckets, so shared buckets would hand staging credentials that reach production objects. Buckets
   are named `fls-<env>-<purpose>`, and the variables naming them carry no environment of their own,
   so the environment appears in the value and nowhere else. Staging must not copy production's
   Bucket Locks, or it can never be torn down and rebuilt.
-- **Reports upload to `cohort_reports/`, not `reports/`.** A dedicated bucket removes the need for
-  the prefix, but R2 applies lifecycle expiry per prefix, and reports are the artifact that wants
-  expiry. Naming the artifact rather than the app keeps that rule attached to the right objects when
-  the bucket gains a second kind of file. Nothing is deployed, so there is nothing to move.
+- **Reports upload to `cohort_reports/`, not `reports/`.** The prefix does two jobs: it keeps report
+  keys clear of `user_uploads/` in the shared bucket, and it is what R2 attaches a lifecycle expiry
+  rule to. Naming the artifact rather than the app keeps both true when the bucket gains a third
+  kind of file. Nothing is deployed, so there is nothing to move.
 
 ## Out of scope
 
@@ -144,10 +158,11 @@ access control. Nothing here ever expires.
   spec shouldn't have to rediscover.
 - Per-request access-controlled media downloads, tracked in `docs/product/roadmap.md`. It would
   reduce the reliance on signed-URL privacy but doesn't change how many buckets are needed.
-- Certificates and learner document uploads as features. This idea only reserves their place.
+- Certificates and user document uploads as features. This idea only reserves their place.
 - Data residency and file erasure mechanics, handed to `spec_dd/1. next/user-data-retention-idea.md`,
   which today covers DB-row retention and never mentions buckets. It should know that R2 jurisdiction
-  is fixed at creation, so the only free moment to act on it is before these buckets exist.
+  is fixed at creation and cannot be scoped to a prefix, so the only free moment to act on it is
+  before these buckets exist.
 
 ## Research
 
