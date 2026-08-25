@@ -17,7 +17,7 @@ class OrganisationAdmin(GuardedSiteAwareModelAdmin):
     list_display = ["name", "slug"]
     search_fields = ["name"]
     readonly_fields = ["slug"]
-    fields = ["name", "slug", "logo"]
+    fields = ["name", "slug", "logo", "logo_on_dark"]
 
     def has_delete_permission(
         self, request: HttpRequest, obj: Organisation | None = None

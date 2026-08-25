@@ -23,13 +23,14 @@ class OrganisationAdminForm(ConstraintValidationFormMixin):
 
     class Meta:
         model = Organisation
-        fields = ["name", "logo"]
+        fields = ["name", "logo", "logo_on_dark"]
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        logo = self.fields.get("logo")
-        if logo is not None:
-            # ImageField.to_python rejects a non-image before the model's own
-            # validators run, so this is the only place the allowed formats can
-            # be named for that case.
-            logo.error_messages["invalid_image"] = INVALID_IMAGE_MESSAGE
+        for field_name in ("logo", "logo_on_dark"):
+            field = self.fields.get(field_name)
+            if field is not None:
+                # ImageField.to_python rejects a non-image before the model's
+                # own validators run, so this is the only place the allowed
+                # formats can be named for that case.
+                field.error_messages["invalid_image"] = INVALID_IMAGE_MESSAGE

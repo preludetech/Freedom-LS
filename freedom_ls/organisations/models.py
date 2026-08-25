@@ -17,15 +17,29 @@ from .config import config
 from .validators import validate_organisation_logo, validate_organisation_logo_extension
 
 
-def organisation_logo_upload_to(instance: Organisation, filename: str) -> str:
-    """Storage path from the pk and the extension only.
+def _logo_upload_path(instance: Organisation, filename: str, variant: str) -> str:
+    """Storage path from the pk, a variant suffix and the extension only.
 
     The uploaded filename is never interpolated — that is what prevents path
     traversal, overwrite collisions and leaking the uploader's local paths.
     SiteAwareModel.id defaults at instantiation, so the pk always exists here.
+
+    The variant suffix is what keeps the two logo fields off each other's
+    paths: without it both would resolve to `organisations/<pk>.png` and the
+    second upload would overwrite the first.
     """
     ext = Path(filename).suffix.lower()
-    return f"organisations/{instance.pk}{ext}"
+    return f"organisations/{instance.pk}{variant}{ext}"
+
+
+def organisation_logo_upload_to(instance: Organisation, filename: str) -> str:
+    """Storage path for the light-background logo."""
+    return _logo_upload_path(instance, filename, "")
+
+
+def organisation_logo_on_dark_upload_to(instance: Organisation, filename: str) -> str:
+    """Storage path for the dark-background logo."""
+    return _logo_upload_path(instance, filename, "-on-dark")
 
 
 def get_organisation_logo_storage() -> Storage:
@@ -38,11 +52,31 @@ def get_organisation_logo_storage() -> Storage:
 class Organisation(SiteAwareModel):
     name = models.CharField(_("name"), max_length=150)
     slug = models.SlugField(max_length=150)
+    # Two variants rather than one file scaled to fit every surface: a mark
+    # drawn for paper disappears against a panel painted in the deployment's
+    # primary colour, and the reverse. Which one a surface reaches for is the
+    # surface's decision, made from the background it paints itself.
     logo = models.ImageField(
+        _("logo (for light backgrounds)"),
         upload_to=organisation_logo_upload_to,
         storage=get_organisation_logo_storage,
         blank=True,
         validators=[validate_organisation_logo_extension, validate_organisation_logo],
+        help_text=_(
+            "The full-colour mark, for white and near-white surfaces. Used on "
+            "the report cover and anywhere the organisation appears on screen."
+        ),
+    )
+    logo_on_dark = models.ImageField(
+        _("logo (for dark backgrounds)"),
+        upload_to=organisation_logo_on_dark_upload_to,
+        blank=True,
+        validators=[validate_organisation_logo_extension, validate_organisation_logo],
+        help_text=_(
+            "The reversed mark, for surfaces painted in a strong colour. "
+            "Optional — a surface with no dark variant to reach for falls back "
+            "to the organisation's name."
+        ),
     )
     #: Marks the one Organisation a Site falls back to when nothing narrower is
     #: in scope. Set only by the post_save receiver on Site — never exposed in

@@ -34,7 +34,14 @@ from django.utils.text import slugify
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.site_aware_models.slugs import get_unique_slug
 
-LOGO_PATH = Path(__file__).resolve().parent.parent.parent / "fixtures" / "RT-logo.webp"
+_FIXTURES = Path(__file__).resolve().parent.parent.parent / "fixtures"
+
+LOGO_PATH = _FIXTURES / "RT-logo.webp"
+# A real light/dark pair, so an organisation carrying both can be checked
+# against a mark that genuinely changes with the background rather than the
+# same file twice.
+LOGO_LIGHT_PATH = _FIXTURES / "fc-light-bg.png"
+LOGO_DARK_PATH = _FIXTURES / "fc-dark-bg.png"
 
 WITH_LOGO_NAME = "RPAS Training"
 WITHOUT_LOGO_NAME = "Northside"

@@ -17,7 +17,11 @@ wrong at render time:
 5. ``QA Logo Vanish`` -- carries a real logo, so QA can delete the file from
    disk afterwards and check the report still renders (the record still points
    at a path; the bytes are gone).
-6. ``QA Bad Logo`` -- carries a file named ``logo.png`` whose bytes are plain
+6. ``QA Dual Logo`` -- carries both logo variants, so the light one can be
+   checked against the cover and the dark one against any surface painted in
+   the deployment's primary colour. Paired with ``RPAS Training``, which
+   carries only the light variant, this brackets the fallback.
+7. ``QA Bad Logo`` -- carries a file named ``logo.png`` whose bytes are plain
    ASCII text. Attached with ``FieldFile.save()``, which does not run the
    model validators, so the row exists in exactly the state a pre-validator
    upload would have left it in. This is deliberate: it exercises the report's
@@ -39,6 +43,8 @@ from django.core.files.base import ContentFile
 
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.qa_helpers.management.commands.qa_create_organisations import (
+    LOGO_DARK_PATH,
+    LOGO_LIGHT_PATH,
     LOGO_PATH,
     _ensure_organisation,
 )
@@ -54,6 +60,7 @@ PUNCTUATION_NAME = "---"
 # back to the site's default organisation).
 PUNCTUATION_SLUG_BASE = "qa-punctuation-only"
 LOGO_VANISH_NAME = "QA Logo Vanish"
+DUAL_LOGO_NAME = "QA Dual Logo"
 BAD_LOGO_NAME = "QA Bad Logo"
 
 # Plain ASCII, and not a valid image in any format. Kept small on purpose:
@@ -132,6 +139,21 @@ def command(site_name: str) -> None:
         vanish,
         created,
         f"logo at {location} (exists={exists}) -- QA deletes this file by hand",
+    )
+
+    dual, created = _ensure_organisation(site, DUAL_LOGO_NAME)
+    for field_name, fixture in (
+        ("logo", LOGO_LIGHT_PATH),
+        ("logo_on_dark", LOGO_DARK_PATH),
+    ):
+        field = getattr(dual, field_name)
+        if not field:
+            with fixture.open("rb") as fh:
+                field.save(fixture.name, File(fh), save=True)
+    _describe(
+        dual,
+        created,
+        f"light logo at {dual.logo.name!r}, dark at {dual.logo_on_dark.name!r}",
     )
 
     bad, created = _ensure_organisation(site, BAD_LOGO_NAME)

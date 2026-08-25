@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import io
+
 import pytest
+from PIL import Image
 
 from django.contrib import admin
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -19,6 +22,14 @@ ADD_URL_NAME = "admin:freedom_ls_organisations_organisation_add"
 @pytest.fixture
 def admin_instance() -> OrganisationAdmin:
     return OrganisationAdmin(Organisation, admin.site)
+
+
+@pytest.fixture
+def png_bytes() -> bytes:
+    """The smallest PNG the logo validator accepts (its floor is 64x32)."""
+    buf = io.BytesIO()
+    Image.new("RGB", (64, 32)).save(buf, format="PNG")
+    return buf.getvalue()
 
 
 @pytest.fixture
@@ -119,3 +130,39 @@ class TestOrganisationAdminLogoUpload:
         assert "PNG" in message
         assert "JPEG" in message
         assert "WebP" in message
+
+    def test_the_dark_variant_is_validated_like_the_light_one(self, staff_client):
+        """Both fields reach storage, so both need the same gate in front of them."""
+        url = reverse(ADD_URL_NAME)
+        upload = SimpleUploadedFile(
+            "notes.txt", b"definitely not an image", content_type="text/plain"
+        )
+
+        response = staff_client.post(url, {"name": "Westbrook", "logo_on_dark": upload})
+
+        message = " ".join(response.context["adminform"].form.errors["logo_on_dark"])
+        assert "PNG" in message
+        assert "JPEG" in message
+        assert "WebP" in message
+
+    def test_both_variants_upload_together(self, staff_client, png_bytes):
+        """Uploaded in one submission, they must not land on each other's path."""
+        url = reverse(ADD_URL_NAME)
+
+        response = staff_client.post(
+            url,
+            {
+                "name": "Westbrook",
+                "logo": SimpleUploadedFile(
+                    "light.png", png_bytes, content_type="image/png"
+                ),
+                "logo_on_dark": SimpleUploadedFile(
+                    "dark.png", png_bytes, content_type="image/png"
+                ),
+            },
+        )
+
+        assert response.status_code == 302
+        organisation = Organisation.objects.get(name="Westbrook")
+        assert organisation.logo.name != organisation.logo_on_dark.name
+        assert organisation.logo_on_dark.name.endswith("-on-dark.png")

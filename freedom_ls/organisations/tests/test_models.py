@@ -17,6 +17,7 @@ from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import (
     Organisation,
+    organisation_logo_on_dark_upload_to,
     organisation_logo_upload_to,
 )
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -64,6 +65,30 @@ class TestLogoUploadPath:
         path = organisation_logo_upload_to(organisation, "../../../etc/passwd.png")
 
         assert path == f"organisations/{organisation.pk}.png"
+
+    def test_the_dark_variant_takes_a_suffix_of_its_own(self) -> None:
+        organisation = Organisation(name="Acme")
+
+        path = organisation_logo_on_dark_upload_to(organisation, "whatever.PNG")
+
+        assert path == f"organisations/{organisation.pk}-on-dark.png"
+
+    def test_traversal_in_the_dark_variants_filename_is_discarded(self) -> None:
+        organisation = Organisation(name="Acme")
+
+        path = organisation_logo_on_dark_upload_to(
+            organisation, "../../../etc/passwd.png"
+        )
+
+        assert path == f"organisations/{organisation.pk}-on-dark.png"
+
+    def test_the_two_variants_never_share_a_path(self) -> None:
+        """Without the suffix the second upload would overwrite the first."""
+        organisation = Organisation(name="Acme")
+
+        assert organisation_logo_upload_to(
+            organisation, "logo.png"
+        ) != organisation_logo_on_dark_upload_to(organisation, "logo.png")
 
 
 @pytest.mark.django_db
