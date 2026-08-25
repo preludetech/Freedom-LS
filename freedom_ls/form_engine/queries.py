@@ -6,22 +6,45 @@ from uuid import UUID
 from .models import Form, FormPage, FormProgress, FormQuestion, FormStrategy
 
 
+def quiz_verdict(form: Form, form_progress: FormProgress) -> bool | None:
+    """Whether a completed attempt passed, or None when there is no verdict to give.
+
+    None covers a form that is not a scored quiz at all, a quiz whose author
+    left ``quiz_pass_percentage`` unset (the score is real, but nothing in the
+    course says what counts as passing it), and an attempt with no percentage to
+    read at all. Guarding here also keeps ``FormProgress.passed()``, which raises
+    on a null pass mark, from being reached with one.
+
+    Every caller that decides whether a learner may move on reads the verdict
+    from here, so the course index and the form's own start page cannot drift
+    apart on what "passed" means.
+    """
+    if form.strategy != FormStrategy.QUIZ or form.quiz_pass_percentage is None:
+        return None
+    try:
+        return form_progress.passed()
+    except ValueError:
+        # An unscored attempt, a quiz whose questions were added after it was
+        # sat, or one whose scores were written under another strategy, has no
+        # percentage to measure against the pass mark. Matches how
+        # attempt_completes_form declines to hold such an attempt against the
+        # learner.
+        return None
+
+
 def attempt_completes_form(attempt: FormProgress) -> bool:
     """Whether a completed attempt leaves its form finished for progress purposes.
 
     A learner has to pass to complete: sitting a scored quiz and failing it is an
-    attempt, not an item they are done with. A quiz with no pass mark has no bar
-    to clear, and neither does a survey, so completing either is enough.
+    attempt, not an item they are done with. Anything ``quiz_verdict`` declines
+    to judge -- a survey, a quiz with no pass mark, an attempt with no readable
+    percentage -- has no bar to clear, so completing it is enough.
+
+    The positive spelling of ``quiz_verdict``, not a second rule beside it: every
+    caller that asks whether a placement is finished has to reach the same answer
+    as the caller that asks whether the learner may move on.
     """
-    form = attempt.form
-    if form.strategy != FormStrategy.QUIZ or form.quiz_pass_percentage is None:
-        return True
-    try:
-        return attempt.passed()
-    except ValueError:
-        # An unscored attempt, or a quiz whose questions were added after it was
-        # sat, has no percentage to measure against the pass mark.
-        return True
+    return quiz_verdict(attempt.form, attempt) is not False
 
 
 def completed_form_ids_by_user(
@@ -48,32 +71,6 @@ def completed_form_ids_by_user(
         if attempt_completes_form(attempt):
             completed.setdefault(user_id, set()).add(form_id)
     return completed
-
-
-def quiz_verdict(form: Form, form_progress: FormProgress) -> bool | None:
-    """Whether a completed attempt passed, or None when there is no verdict to give.
-
-    None covers a form that is not a scored quiz at all, a quiz whose author
-    left ``quiz_pass_percentage`` unset (the score is real, but nothing in the
-    course says what counts as passing it), and an attempt with no percentage to
-    read at all. Guarding here also keeps ``FormProgress.passed()``, which raises
-    on a null pass mark, from being reached with one.
-
-    Every caller that decides whether a learner may move on reads the verdict
-    from here, so the course index and the form's own start page cannot drift
-    apart on what "passed" means.
-    """
-    if form.strategy != FormStrategy.QUIZ or form.quiz_pass_percentage is None:
-        return None
-    try:
-        return form_progress.passed()
-    except ValueError:
-        # An unscored attempt, a quiz whose questions were added after it was
-        # sat, or one whose scores were written under another strategy, has no
-        # percentage to measure against the pass mark. Matches how
-        # attempt_completes_form declines to hold such an attempt against the
-        # learner.
-        return None
 
 
 def count_form_questions(form: Form) -> int:

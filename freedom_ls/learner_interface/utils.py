@@ -33,6 +33,7 @@ from freedom_ls.learner_progress.models import (
 )
 from freedom_ls.learner_progress.queries import (
     completed_collection_item_ids,
+    completed_form_item_ids,
     course_progress_by_course_for,
     course_progress_for,
 )
@@ -119,6 +120,21 @@ def stamp_course_access_badge(course: Course, *, badge: AccessBadge | None) -> N
     never mints access-type copy.
     """
     setattr(course, "access_badge", badge)  # noqa: B010
+
+
+@dataclass(frozen=True)
+class FormPlacementProgress:
+    """What the outline needs to know about one form placement in one record.
+
+    ``is_complete`` is the shared rule -- the same sitting the stored percentage
+    and the finish page count -- rather than a reading of whichever attempt was
+    started last. The two flags beside it describe the sittings themselves, so
+    the outline can still tell a re-sit in flight from one sat and failed.
+    """
+
+    is_complete: bool
+    has_open_attempt: bool
+    has_completed_attempt: bool
 
 
 @dataclass(frozen=True)
@@ -210,12 +226,12 @@ def get_content_status(
     collection_item: ContentCollectionItem,
     next_status: str,
     topic_progress_map: dict[uuid.UUID, TopicProgress],
-    form_progress_map: dict[uuid.UUID, FormProgress],
+    form_placement_map: dict[uuid.UUID, FormPlacementProgress],
 ) -> tuple[str, str]:
     """
     Get the status for one placement based on the learner's progress.
 
-    Progress is read from ``topic_progress_map`` / ``form_progress_map`` (keyed
+    Progress is read from ``topic_progress_map`` / ``form_placement_map`` (keyed
     by collection item id), which the caller bulk-fetches once via
     ``_fetch_player_progress_maps`` so this runs without per-item queries.
 
@@ -235,16 +251,18 @@ def get_content_status(
             return BLOCKED, BLOCKED
 
     elif isinstance(content_item, Form):
-        form_progress = form_progress_map.get(collection_item.id)
+        placement = form_placement_map.get(collection_item.id)
 
-        if form_progress and form_progress.completed_time:
-            # No verdict — a non-quiz form, or a quiz with no pass mark
-            # configured — counts as done; only an actual fail blocks what follows.
-            if quiz_verdict(form_progress.form, form_progress) is False:
-                return FAILED, BLOCKED
+        if placement and placement.is_complete:
+            # Finished wins over a re-sit in flight: beginning another attempt at
+            # a quiz already passed must not un-complete the placement, and must
+            # not relock what the pass unlocked.
             return COMPLETE, READY
-        elif form_progress:
+        elif placement and placement.has_open_attempt:
             return IN_PROGRESS, BLOCKED
+        elif placement and placement.has_completed_attempt:
+            # Sat, finished, and not complete: the deciding sitting failed.
+            return FAILED, BLOCKED
         elif next_status == READY:
             return READY, BLOCKED
         else:
@@ -266,7 +284,7 @@ def get_content_status(
 
         for part_item in part_items:
             child_status, temp_next_status = get_content_status(
-                part_item, temp_next_status, topic_progress_map, form_progress_map
+                part_item, temp_next_status, topic_progress_map, form_placement_map
             )
             child_statuses.append(child_status)
 
@@ -355,26 +373,27 @@ def get_item_part(course: Course, current_item: Topic | Form) -> CoursePart | No
 def _fetch_player_progress_maps(
     course_progress: CourseProgress | None,
     viewable_collection_items: list[ContentCollectionItem],
-) -> tuple[dict[uuid.UUID, TopicProgress], dict[uuid.UUID, FormProgress]]:
+) -> tuple[dict[uuid.UUID, TopicProgress], dict[uuid.UUID, FormPlacementProgress]]:
     """Bulk-fetch one record's progress for all viewable placements, in two queries.
 
     Returns (topic_progress_by_collection_item_id,
-    latest_form_progress_by_collection_item_id). Both key on the **collection
+    form_placement_progress_by_collection_item_id). Both key on the **collection
     item**, not on the topic or form: one topic can be placed twice in a course
     and each placement is answered separately, so a content-keyed map would
     show both positions the same status.
 
-    The form map holds the LATEST attempt, first-seen under ``-start_time`` so
-    it matches the old per-item ``.order_by("-start_time").first()`` semantics
-    exactly. (The educator interface picks the latest *completed* attempt
-    instead via ``F("completed_time").desc(nulls_last=True)``; that is a
-    deliberately different behaviour, not adopted here.)
+    Which sitting decides a form placement is not settled here. The attempts are
+    fetched once and handed to ``completed_form_item_ids``, the same rule the
+    stored percentage and the finish page read, so the outline cannot come to a
+    different view of what the learner has finished. What is settled here is only
+    what that rule does not describe: whether there is a sitting in flight, and
+    whether there has ever been a finished one.
 
     ``select_related("form_progress__form")`` so ``FormProgress.passed()`` reads
     ``form.quiz_pass_percentage`` / ``form.strategy`` without a per-quiz query.
     """
     topic_map: dict[uuid.UUID, TopicProgress] = {}
-    form_map: dict[uuid.UUID, FormProgress] = {}
+    form_map: dict[uuid.UUID, FormPlacementProgress] = {}
     if course_progress is None or not viewable_collection_items:
         return topic_map, form_map
 
@@ -385,16 +404,27 @@ def _fetch_player_progress_maps(
     ):
         topic_map[tp.collection_item_id] = tp
 
-    for attempt in (
+    attempts = list(
         CourseFormAttempt.objects.filter(
             course_progress=course_progress,
             collection_item_id__in=collection_item_ids,
+        ).select_related("form_progress__form")
+    )
+    complete_item_ids = completed_form_item_ids(attempts)
+    open_item_ids: set[uuid.UUID] = set()
+    sat_item_ids: set[uuid.UUID] = set()
+    for attempt in attempts:
+        if attempt.form_progress.completed_time is None:
+            open_item_ids.add(attempt.collection_item_id)
+        else:
+            sat_item_ids.add(attempt.collection_item_id)
+
+    for collection_item_id in open_item_ids | sat_item_ids:
+        form_map[collection_item_id] = FormPlacementProgress(
+            is_complete=collection_item_id in complete_item_ids,
+            has_open_attempt=collection_item_id in open_item_ids,
+            has_completed_attempt=collection_item_id in sat_item_ids,
         )
-        .select_related("form_progress__form")
-        .order_by("-form_progress__start_time")
-    ):
-        if attempt.collection_item_id not in form_map:
-            form_map[attempt.collection_item_id] = attempt.form_progress
 
     return topic_map, form_map
 
@@ -436,13 +466,13 @@ def get_course_index(
     # can_access_content already implies an authenticated, registered user for
     # the default backend.
     topic_progress_map: dict[uuid.UUID, TopicProgress] = {}
-    form_progress_map: dict[uuid.UUID, FormProgress] = {}
+    form_placement_map: dict[uuid.UUID, FormPlacementProgress] = {}
     if can_access_content and user.is_authenticated:
         if isinstance(course_progress, Unresolved):
             # can_access_content implies an authenticated, registered user (it
             # comes from the backend decision), so the cast to User is safe here.
             course_progress = course_progress_for(cast("User", user), course)
-        topic_progress_map, form_progress_map = _fetch_player_progress_maps(
+        topic_progress_map, form_placement_map = _fetch_player_progress_maps(
             course_progress, course.viewable_collection_items()
         )
 
@@ -460,7 +490,7 @@ def get_course_index(
             next_status,
             can_access_content,
             topic_progress_map,
-            form_progress_map,
+            form_placement_map,
             deadlines_map=deadlines_map,
             current_index=current_index,
         )
@@ -545,7 +575,7 @@ def create_child_dict_with_flattened_index(
     next_status: str,
     can_access_content: bool,
     topic_progress_map: dict[uuid.UUID, TopicProgress],
-    form_progress_map: dict[uuid.UUID, FormProgress],
+    form_placement_map: dict[uuid.UUID, FormPlacementProgress],
     deadlines_map: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]]
     | None = None,
     current_index: int | None = None,
@@ -587,7 +617,7 @@ def create_child_dict_with_flattened_index(
                     part_item,
                     part_next_status,
                     topic_progress_map,
-                    form_progress_map,
+                    form_placement_map,
                 )
                 child_url = reverse(
                     "learner_interface:view_course_item",
@@ -672,7 +702,7 @@ def create_child_dict_with_flattened_index(
         items_added = 1
         if can_access_content:
             status, next_status = get_content_status(
-                collection_item, next_status, topic_progress_map, form_progress_map
+                collection_item, next_status, topic_progress_map, form_placement_map
             )
             url = reverse(
                 "learner_interface:view_course_item",

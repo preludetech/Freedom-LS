@@ -6,7 +6,8 @@ from uuid import UUID
 
 from django.db.models import F, Q
 
-from freedom_ls.form_engine.models import FormProgress, FormStrategy
+from freedom_ls.form_engine.models import FormProgress
+from freedom_ls.form_engine.queries import attempt_completes_form
 from freedom_ls.learner_management.queries import learner_for_course
 from freedom_ls.learner_progress.models import (
     CourseFormAttempt,
@@ -16,26 +17,55 @@ from freedom_ls.learner_progress.models import (
 from freedom_ls.learner_progress.utils import _registration_kwargs
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
 
 
-def attempt_completes_form(attempt: FormProgress) -> bool:
-    """Whether a completed attempt leaves its form finished for progress purposes.
+def completed_form_item_ids(attempts: Iterable[CourseFormAttempt]) -> set[UUID]:
+    """The placements these attempts leave finished.
 
-    A learner has to pass to complete: sitting a scored quiz and failing it is an
-    attempt, not an item they are done with. A quiz with no pass mark has no bar
-    to clear, and neither does a survey, so completing either is enough.
+    The single definition of which sitting decides a placement: the latest
+    completed one, ties broken by start. Takes rows rather than running its own
+    query, so a caller that has already fetched a record's attempts applies the
+    identical rule to them -- reading the same sitting the stored percentage
+    reads is the whole point, and a second ordering written out somewhere else
+    is how the course outline and the percentage came to disagree before.
+
+    Keyed on the placement rather than the form: the same form may be placed
+    twice in one course and each placement is sat separately, so a form-keyed
+    answer would credit both positions for one sitting.
+
+    Attempts still open decide nothing -- beginning a retry cannot un-finish
+    what an earlier sitting already finished. Neither do attempts whose
+    placement has since been removed: they name no live position in the course.
     """
-    form = attempt.form
-    if form.strategy != FormStrategy.QUIZ or form.quiz_pass_percentage is None:
-        return True
-    try:
-        return attempt.passed()
-    except ValueError:
-        # An unscored attempt, or a quiz whose questions were added after it was
-        # sat, has no percentage to measure against the pass mark.
-        return True
+    ranked: list[tuple[tuple[datetime, datetime], UUID, FormProgress]] = []
+    for attempt in attempts:
+        collection_item_id = attempt.collection_item_id
+        form_progress = attempt.form_progress
+        completed_time = form_progress.completed_time
+        if collection_item_id is None or completed_time is None:
+            continue
+        ranked.append(
+            (
+                (completed_time, form_progress.start_time),
+                collection_item_id,
+                form_progress,
+            )
+        )
+
+    deciding: dict[UUID, FormProgress] = {}
+    for _order, collection_item_id, form_progress in sorted(
+        ranked, key=lambda entry: entry[0]
+    ):
+        deciding[collection_item_id] = form_progress
+    return {
+        collection_item_id
+        for collection_item_id, form_progress in deciding.items()
+        if attempt_completes_form(form_progress)
+    }
 
 
 def completed_form_item_ids_by_course_progress(
@@ -43,15 +73,10 @@ def completed_form_item_ids_by_course_progress(
 ) -> dict[UUID, set[UUID]]:
     """Collection item ids each course progress record counts as having finished.
 
-    Keyed on the placement rather than the form: the same form may be placed
-    twice in one course and each placement is sat separately, so a form-keyed
-    answer would credit both positions for one sitting. Their latest completed
-    attempt decides, matching how the course outline reads a quiz's status and
-    how the reports read a learner's score. Pass `course_progress_ids` to
-    narrow the scan to the records you care about.
-
-    Attempts whose placement has since been removed are skipped: they name no
-    live position in the course, so they can credit none.
+    The bulk sibling of `completed_form_item_ids`, which owns the rule; this
+    only fetches the rows and groups them by record. Pass `course_progress_ids`
+    to narrow the scan to the records you care about. Records that have finished
+    nothing are absent from the result rather than mapped to an empty set.
     """
     attempts = CourseFormAttempt.objects.filter(
         form_progress__completed_time__isnull=False, collection_item__isnull=False
@@ -59,19 +84,19 @@ def completed_form_item_ids_by_course_progress(
     if course_progress_ids is not None:
         attempts = attempts.filter(course_progress_id__in=course_progress_ids)
 
-    latest_attempts: dict[tuple[UUID, UUID], FormProgress] = {}
-    for attempt in attempts.order_by(
-        "form_progress__completed_time", "form_progress__start_time"
-    ):
-        latest_attempts[(attempt.course_progress_id, attempt.collection_item_id)] = (
-            attempt.form_progress
-        )
+    by_record: dict[UUID, list[CourseFormAttempt]] = {}
+    for attempt in attempts:
+        by_record.setdefault(attempt.course_progress_id, []).append(attempt)
 
-    completed: dict[UUID, set[UUID]] = {}
-    for (course_progress_id, collection_item_id), attempt in latest_attempts.items():
-        if attempt_completes_form(attempt):
-            completed.setdefault(course_progress_id, set()).add(collection_item_id)
-    return completed
+    completed = {
+        course_progress_id: completed_form_item_ids(rows)
+        for course_progress_id, rows in by_record.items()
+    }
+    return {
+        course_progress_id: item_ids
+        for course_progress_id, item_ids in completed.items()
+        if item_ids
+    }
 
 
 def completed_collection_item_ids(record: CourseProgress) -> set[UUID]:

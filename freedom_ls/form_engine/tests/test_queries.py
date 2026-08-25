@@ -73,3 +73,30 @@ def test_quiz_verdict_returns_none_for_non_quiz_shaped_scores(mock_site_context)
     attempt = _quiz_attempt_with_non_quiz_scores()
 
     assert quiz_verdict(attempt.form, attempt) is None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("strategy", "pass_percentage", "scores"),
+    [
+        (FormStrategy.QUIZ, 80, {"score": 5, "max_score": 5}),  # a pass
+        (FormStrategy.QUIZ, 80, {"score": 1, "max_score": 5}),  # a fail
+        (FormStrategy.QUIZ, None, {"score": 1, "max_score": 5}),  # no bar to clear
+        (FormStrategy.CATEGORY_VALUE_SUM, None, NON_QUIZ_SCORES),  # a survey
+        (FormStrategy.QUIZ, 80, NON_QUIZ_SCORES),  # no percentage to read
+        (FormStrategy.QUIZ, 80, None),  # never scored
+    ],
+)
+def test_attempt_completes_form_is_the_positive_spelling_of_quiz_verdict(
+    mock_site_context, strategy, pass_percentage, scores
+):
+    """One rule, two spellings: the finished question and the may-move-on question
+    must never reach different answers about the same sitting."""
+    form = FormFactory(strategy=strategy, quiz_pass_percentage=pass_percentage)
+    attempt: FormProgress = FormProgressFactory(
+        user=UserFactory(), form=form, completed_time=timezone.now(), scores=scores
+    )
+
+    assert attempt_completes_form(attempt) is (
+        quiz_verdict(attempt.form, attempt) is not False
+    )
