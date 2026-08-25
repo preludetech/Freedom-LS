@@ -1,6 +1,6 @@
 ---
 description: Improve the idea by doing research and making suggestions
-allowed-tools: Read, Glob, WebFetch, WebSearch, Write, Agent
+allowed-tools: Read, Glob, WebFetch, WebSearch, Write, Agent, Skill
 ---
 
 Read the given idea file carefully. Your job is to help refine the idea by doing research and making suggestions.
@@ -31,16 +31,55 @@ Apply the Fan-out recipe: one `sdd:sdd-worker` **per topic**, each writing its o
 
 ## Step 3: Refine the idea (synthesis at depth 0)
 
-Read the `research_*.md` **files** and start refining the idea.
+Read the `research_*.md` **files** and rewrite the idea.
 
-- Ask questions if needed. Don't make big decisions on your own.
-- Improve the idea file.
+Ask questions if you need to. Don't make big decisions on your own.
 
-No scratch cleanup here — the `research_*.md` files are durable artifacts, not `.sdd-work/` scratch.
+### Refining means replacing
 
-## Note
+Rewrite the idea whole. It is not the original with findings bolted on top. Research that changed a
+decision changes the text. Research that confirmed a decision leaves no trace at all.
 
-The idea file should remain fairly high level. It should not be a full specification.
+The result is still an idea: what we are doing, why, and what has been settled. It is not a
+specification, and it is not a record of how you arrived at it.
+
+### Never write these
+
+This list exists because each item has actually shown up in a refined idea and made it worse.
+
+- **Research narration.** No "research status" preamble, no "what the research changed", no
+  claim/verdict tables, no "the audit corrected this", no strikethrough over superseded text. State
+  the conclusion as a fact. The `research_*.md` files are durable and sit next to the idea; if one
+  is worth pointing at, cite it by filename with a one-line gloss.
+- **Implementation checklists.** No "likely scope of the spec", no helper-function names, env-var
+  schemes, migration steps, or file-by-file work lists. `/sdd:spec_from_idea` does that, and it
+  re-reads the codebase when it does.
+- **A decision stated more than once.** Pick where it belongs and delete the echoes.
+- **`path/file.py:123` on claims nobody would dispute.** Backtick the symbol or path instead. Cite a
+  line number only where the reader has to go and look in order to act.
+- **Throat-clearing about what the idea is not**, unless it is a real scope boundary.
+- **Sections that exist to hold leftovers.** If something doesn't fit the idea, it goes in a sibling
+  file or it goes away.
+
+### Where the overflow goes
+
+Detail worth keeping that doesn't belong in the idea goes into a **sibling file in the same
+directory**, never into an extra section. `research_*.md` is the home for findings. Anything else
+gets its own clearly named file. `/sdd:spec_from_idea` reads the directory, so nothing is stranded.
+
+### Test-fit every paragraph
+
+If cutting it wouldn't change a decision the spec has to make, cut it.
+
+### Finish with two passes
+
+1. Invoke the `unslop` skill over the idea file.
+2. Re-read it top to bottom as if someone else wrote it, and delete whatever now reads as padding.
+
+Report the before and after line and word counts in your summary, so the direction of travel is
+visible.
+
+No scratch cleanup here. The `research_*.md` files are durable artifacts, not `.sdd-work/` scratch.
 
 ## Step 4: Update the todo list
 
