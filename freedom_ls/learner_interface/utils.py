@@ -17,7 +17,7 @@ from freedom_ls.content_engine.models import (
     CoursePart,
     Topic,
 )
-from freedom_ls.form_engine.models import Form, FormProgress
+from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.queries import quiz_verdict
 from freedom_ls.learner_management.config import config
 from freedom_ls.learner_management.deadline_utils import (
@@ -32,7 +32,7 @@ from freedom_ls.learner_progress.models import (
     TopicProgress,
 )
 from freedom_ls.learner_progress.queries import (
-    completed_form_item_ids_by_course_progress,
+    completed_collection_item_ids,
     course_progress_by_course_for,
     course_progress_for,
 )
@@ -122,49 +122,87 @@ def stamp_course_access_badge(course: Course, *, badge: AccessBadge | None) -> N
 
 
 @dataclass(frozen=True)
-class UnpassedForm:
-    """A form the learner still has to clear, and where it sits in the course."""
+class OutstandingItem:
+    """A placement the learner still has to finish, and where it sits in the course."""
 
-    index: int  # 1-based position in viewable_items(), which is what form_start takes
-    form: Form
+    index: int  # 1-based position in viewable_items(), which is what the player takes
+    content: Topic | Form
+    url: str
+    is_retry: bool  # a quiz sat and failed, as against one not finished at all
+
+    @property
+    def is_form(self) -> bool:
+        return isinstance(self.content, Form)
+
+    @property
+    def is_quiz(self) -> bool:
+        return (
+            isinstance(self.content, Form)
+            and self.content.strategy == FormStrategy.QUIZ
+        )
 
 
-def unpassed_forms(
+def outstanding_items(
     course_progress: CourseProgress, course: Course
-) -> list[UnpassedForm]:
-    """The forms in `course` the learner has finished without them counting as done.
+) -> list[OutstandingItem]:
+    """The placements in `course` this record has still to finish.
 
-    In practice that means a scored quiz they sat and failed. Used to withhold a
-    course completion rather than to gate the page: a learner who has simply not
-    reached an item yet is not listed here.
+    A course is complete when every item in it is, so this lists the topics not
+    yet completed alongside the quizzes not yet passed -- one never sat counts
+    as much as one sat and failed. Used to withhold a course completion and to
+    name what is left on the finish page.
 
     Scoped to one record and to this course's own placements, so a quiz failed
     in another course -- or under another registration -- cannot withhold this
-    completion. Both halves are keyed on the placement, so passing one of two
-    placements of the same quiz leaves the other listed.
+    completion. Keyed on the placement, so passing one of two placements of the
+    same quiz leaves the other listed.
+
+    Counts the same placements the stored percentage counts and reads the same
+    completion rows, so the finish page and the percentage beside it can never
+    disagree about what is done.
     """
-    form_placements = [
-        (item.id, UnpassedForm(index=index, form=cast("Form", item.child)))
+    completable = [
+        (index, item)
         for index, item in enumerate(course.viewable_collection_items(), start=1)
-        if isinstance(item.child, Form)
+        if item.child is not None and item.child.content_type in ("TOPIC", "FORM")
     ]
-    if not form_placements:
+    if not completable:
         return []
 
+    completed_item_ids = completed_collection_item_ids(course_progress)
+    outstanding = [
+        (index, item)
+        for index, item in completable
+        if item.id not in completed_item_ids
+    ]
+    if not outstanding:
+        return []
+
+    # A sitting that finished but did not pass is the one case the page can offer
+    # as a retry; everything else is still to be started.
     sat_item_ids = set(
         CourseFormAttempt.objects.filter(
             course_progress=course_progress,
-            collection_item_id__in=[item_id for item_id, _ in form_placements],
+            collection_item_id__in=[item.id for _index, item in outstanding],
             form_progress__completed_time__isnull=False,
         ).values_list("collection_item_id", flat=True)
     )
-    passed_item_ids = completed_form_item_ids_by_course_progress(
-        [course_progress.pk]
-    ).get(course_progress.pk, set())
+
     return [
-        entry
-        for item_id, entry in form_placements
-        if item_id in sat_item_ids and item_id not in passed_item_ids
+        OutstandingItem(
+            index=index,
+            content=cast("Topic | Form", item.child),
+            # form_start rather than the player URL for a form: it is the page
+            # that sits or re-sits the quiz, and the player only redirects there.
+            url=reverse(
+                "learner_interface:form_start"
+                if isinstance(item.child, Form)
+                else "learner_interface:view_course_item",
+                kwargs={"course_slug": course.slug, "index": index},
+            ),
+            is_retry=item.id in sat_item_ids,
+        )
+        for index, item in outstanding
     ]
 
 

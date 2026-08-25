@@ -77,8 +77,8 @@ from .utils import (
     get_item_part,
     get_recommended_courses,
     get_resume_index,
+    outstanding_items,
     stamp_course_access_badge,
-    unpassed_forms,
 )
 
 
@@ -1369,12 +1369,15 @@ def course_finish(request, course_slug):
     if course_progress is None:
         raise Http404("No course progress record for this learner and course.")
 
-    # Mark as complete if not already. A learner has to pass to complete, so a
-    # quiz they sat and failed withholds the completion — the page still renders,
-    # naming what is left and linking to the retry.
-    still_to_pass = unpassed_forms(course_progress, course)
+    # Mark as complete if not already. A course is complete when every item in
+    # it is, so an unread topic or an unpassed quiz withholds the completion —
+    # the page still renders, naming what is left and linking to each item.
+    #
+    # The stamp and the webhook share this branch deliberately: an announced
+    # completion cannot be taken back, so neither may happen without the other.
+    still_to_do = outstanding_items(course_progress, course)
 
-    if not course_progress.completed_time and not still_to_pass:
+    if not course_progress.completed_time and not still_to_do:
         course_progress.completed_time = timezone.now()
         course_progress.save(update_fields=["completed_time"])
 
@@ -1396,10 +1399,11 @@ def course_finish(request, course_slug):
     context = {
         "course": course,
         "course_progress": course_progress,
-        "unpassed_forms": still_to_pass,
+        "outstanding_items": still_to_do,
         # Outline panel for the completion page (no single current item).
-        # can_access_content=True: course_finish is only reachable after completing
-        # a course — the learner has had content access throughout.
+        # can_access_content=True: the learner reached the end of the course, so
+        # they have had content access throughout, whether or not the completion
+        # was withheld.
         "course_index": get_course_index(
             user=request.user,
             course=course,

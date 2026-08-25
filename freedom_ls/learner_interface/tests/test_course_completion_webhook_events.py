@@ -8,7 +8,7 @@ from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 
 from .conftest import course_progress_record
 
@@ -88,5 +88,28 @@ class TestCourseCompletedWebhookEvent:
                 kwargs={"course_slug": "test-course-2"},
             )
             client.get(url)
+
+        mock_fire.assert_not_called()
+
+    def test_no_webhook_while_an_item_is_outstanding(
+        self, mock_site_context: object
+    ) -> None:
+        """A false completion cannot be taken back once integrators have heard it."""
+        user = UserFactory(password="testpass")
+        course = CourseFactory(slug="outstanding-course")
+        topic = TopicFactory(title="Unread", slug="outstanding-topic", content="x")
+        course.items.create(child=topic, order=0)
+        course_progress_record(course, user)
+
+        client = Client()
+        client.force_login(user)
+
+        with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
+            client.get(
+                reverse(
+                    "learner_interface:course_finish",
+                    kwargs={"course_slug": "outstanding-course"},
+                )
+            )
 
         mock_fire.assert_not_called()

@@ -6,9 +6,9 @@
     <c-page width="narrow" flush="true" class="pt-2 lg:pt-4">
 
         {% comment %}
-        A learner has to pass to complete, so reaching the end of the course is
-        not the same as finishing it. completed_time is the authority: the view
-        withholds it while a quiz the learner sat is still unpassed.
+        A course is complete when every item in it is, so reaching the end of
+        the course is not the same as finishing it. completed_time is the
+        authority: the view withholds it while any item is still outstanding.
         {% endcomment %}
         {% if course_progress.completed_time %}
 
@@ -39,24 +39,31 @@
 
                 <p class="text-lg text-muted mb-8">
                     You have reached the end of <strong>{{ course.title }}</strong>, but it does
-                    not count as complete until you pass the quiz{{ unpassed_forms|pluralize:"zes" }} below.
+                    not count as complete until you finish the item{{ outstanding_items|pluralize }} below.
                 </p>
             </div>
 
             <div class="mb-8 p-6 bg-surface border border-border rounded-lg shadow-sm"
-                 data-testid="unpassed-forms">
+                 data-testid="outstanding-items">
                 <h2 class="mb-4">
-                    Still to pass
+                    Still to do
                 </h2>
 
                 <ul class="space-y-4">
-                    {% for item in unpassed_forms %}
+                    {% for item in outstanding_items %}
                         <li class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <span class="text-on-surface">{{ item.form.title }}</span>
-                            <c-button href="{% url 'learner_interface:form_start' course_slug=course.slug index=item.index %}"
-                                      icon_left="retry">
-                                Retry quiz
-                            </c-button>
+                            <span class="text-on-surface">{{ item.content.title }}</span>
+                            {% comment %}Only a sitting that finished without passing has
+                            anything to retry; everything else is still to be started.{% endcomment %}
+                            {% if item.is_retry %}
+                                <c-button href="{{ item.url }}" icon_left="retry">
+                                    Retry quiz
+                                </c-button>
+                            {% else %}
+                                <c-button href="{{ item.url }}" icon_left="next">
+                                    {% if item.is_quiz %}Start quiz{% elif item.is_form %}Start form{% else %}Go to item{% endif %}
+                                </c-button>
+                            {% endif %}
                         </li>
                     {% endfor %}
                 </ul>

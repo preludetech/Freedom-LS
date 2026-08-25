@@ -37,7 +37,7 @@ from freedom_ls.learner_interface.utils import (
     get_course_listing,
     get_current_courses,
     get_resume_index,
-    unpassed_forms,
+    outstanding_items,
 )
 from freedom_ls.learner_interface.views import _detail_cta_label
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
@@ -178,7 +178,7 @@ def test_the_outline_reads_the_resolved_records_completions(mock_site_context):
     assert [child["status"] for child in children] == ["READY", "BLOCKED"]
 
 
-# --- unpassed_forms -----------------------------------------------------------
+# --- outstanding_items --------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -212,7 +212,7 @@ def test_a_quiz_failed_in_another_course_does_not_withhold_this_completion(
 
     record = course_progress_for(user, this_course)
     assert record is not None
-    assert unpassed_forms(record, this_course) == []
+    assert outstanding_items(record, this_course) == []
 
 
 @pytest.mark.django_db
@@ -240,7 +240,7 @@ def test_a_fail_under_the_other_record_does_not_withhold_this_completion(
         form_progress__scores={"score": 1, "max_score": 1},
     )
 
-    assert unpassed_forms(cohort_record, course) == []
+    assert outstanding_items(cohort_record, course) == []
 
 
 @pytest.mark.django_db
@@ -272,7 +272,86 @@ def test_passing_one_placement_of_a_twice_placed_quiz_leaves_the_other_unpassed(
         form_progress__scores={"score": 1, "max_score": 1},
     )
 
-    assert [entry.index for entry in unpassed_forms(record, course)] == [2]
+    assert [entry.index for entry in outstanding_items(record, course)] == [2]
+
+
+@pytest.mark.django_db
+def test_a_never_sat_placement_of_a_twice_placed_quiz_is_outstanding(mock_site_context):
+    """Passing one placement leaves the other to sit, not to skip.
+
+    The completion this withholds is the one QA caught being stamped at 88%
+    with the second placement still reading "Not started".
+    """
+    course: Course = CourseFactory(title="Twice unsat", slug="twice-placed-unsat")
+    quiz = _quiz("Repeated unsat", "repeated-unsat-quiz")
+    first_placement = course.items.create(child=quiz, order=0)
+    course.items.create(child=quiz, order=1)
+    user: User = UserFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    record = course_progress_record(course, user)
+
+    CourseFormAttemptFactory(
+        course_progress=record,
+        collection_item=first_placement,
+        form=quiz,
+        form_progress__completed_time=timezone.now(),
+        form_progress__scores={"score": 1, "max_score": 1},
+    )
+
+    assert [entry.index for entry in outstanding_items(record, course)] == [2]
+
+
+@pytest.mark.django_db
+def test_a_retry_is_only_offered_where_there_is_a_sitting_to_retry(mock_site_context):
+    """The two kinds of outstanding quiz are told apart, so the page can word each one."""
+    course: Course = CourseFactory(title="Retry flag", slug="retry-flag-course")
+    failed = _quiz("Failed", "retry-flag-failed")
+    untouched = _quiz("Untouched", "retry-flag-untouched")
+    failed_placement = course.items.create(child=failed, order=0)
+    course.items.create(child=untouched, order=1)
+    user: User = UserFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    record = course_progress_record(course, user)
+
+    CourseFormAttemptFactory(
+        course_progress=record,
+        collection_item=failed_placement,
+        form=failed,
+        form_progress__completed_time=timezone.now(),
+        form_progress__scores={"score": 0, "max_score": 1},
+    )
+
+    assert [
+        (entry.index, entry.is_retry) for entry in outstanding_items(record, course)
+    ] == [
+        (1, True),
+        (2, False),
+    ]
+
+
+@pytest.mark.django_db
+def test_an_unread_topic_is_outstanding_alongside_the_quizzes(mock_site_context):
+    """A course is complete when every item is, so a topic withholds it too."""
+    course: Course = CourseFactory(title="Mixed", slug="outstanding-mixed")
+    topic: Topic = TopicFactory(
+        title="Read me", slug="outstanding-read-me", content="x"
+    )
+    quiz = _quiz("Gate", "outstanding-gate")
+    course.items.create(child=topic, order=0)
+    quiz_placement = course.items.create(child=quiz, order=1)
+    user: User = UserFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    record = course_progress_record(course, user)
+
+    CourseFormAttemptFactory(
+        course_progress=record,
+        collection_item=quiz_placement,
+        form=quiz,
+        form_progress__completed_time=timezone.now(),
+        form_progress__scores={"score": 1, "max_score": 1},
+    )
+
+    assert [entry.content for entry in outstanding_items(record, course)] == [topic]
 
 
 # --- the three listings -------------------------------------------------------

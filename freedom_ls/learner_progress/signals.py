@@ -34,7 +34,7 @@ from freedom_ls.learner_progress.models import (
     TopicProgress,
 )
 from freedom_ls.learner_progress.queries import (
-    completed_form_item_ids_by_course_progress,
+    completed_collection_item_ids,
 )
 from freedom_ls.learner_progress.utils import (
     ensure_course_progress_record,
@@ -51,20 +51,8 @@ def recalculate_progress_percentage(record: CourseProgress) -> None:
     `update_fields`, because `last_accessed_time` is written by the player: a
     background recalculation must not look like a visit.
     """
-    # Collection item ids, not topic/form ids: the percentage counts placements,
-    # so a topic placed twice in one course is credited one position at a time.
-    completed_item_ids = set(
-        TopicProgress.objects.filter(
-            course_progress=record,
-            complete_time__isnull=False,
-            collection_item__isnull=False,
-        ).values_list("collection_item_id", flat=True)
-    )
-    completed_item_ids |= completed_form_item_ids_by_course_progress([record.pk]).get(
-        record.pk, set()
-    )
     record.progress_percentage = calculate_course_progress_percentage(
-        record.course, completed_item_ids
+        record.course, completed_collection_item_ids(record)
     )
     record.save(update_fields=["progress_percentage"])
 

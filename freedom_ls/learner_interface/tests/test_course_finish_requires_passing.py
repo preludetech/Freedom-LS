@@ -1,5 +1,6 @@
-"""A learner has to pass to complete a course, so the finish page must not stamp
-a completion over a quiz they sat and failed."""
+"""A course is complete when every item in it is, so the finish page must not stamp
+a completion while any topic is unread or any quiz is unpassed -- one never sat as
+much as one sat and failed."""
 
 from __future__ import annotations
 
@@ -8,6 +9,7 @@ import pytest
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
 
@@ -92,8 +94,9 @@ def test_finish_page_names_the_unpassed_quiz_and_links_to_its_retry(
     content = _finish(client, user, course).content.decode()
 
     assert "Congratulations" not in content
-    assert "pass the quiz below" in content  # one quiz, so no "quizzes"
+    assert "finish the item below" in content  # one item, so no "items"
     assert form.title in content
+    assert "Retry quiz" in content
     assert (
         reverse(
             "learner_interface:form_start",
@@ -121,5 +124,107 @@ def test_finish_page_congratulates_once_the_quiz_is_passed(
     content = _finish(client, user, course).content.decode()
 
     assert "Congratulations" in content
-    assert 'data-testid="unpassed-forms"' not in content
+    assert 'data-testid="outstanding-items"' not in content
     assert "Completed:" in content
+
+
+@pytest.mark.django_db
+def test_finish_page_does_not_complete_a_course_with_a_never_sat_quiz(
+    mock_site_context, client, course_with_scored_quiz
+):
+    """A quiz the learner never opened withholds the completion as firmly as one they failed."""
+    user = UserFactory()
+    course, _form, _question, _right, _wrong = course_with_scored_quiz(
+        slug="finish-never-sat"
+    )
+    progress: CourseProgress = CourseProgressFactory(
+        learner__user=user, course=course, completed_time=None
+    )
+
+    _finish(client, user, course)
+
+    progress.refresh_from_db()
+    assert progress.completed_time is None
+
+
+@pytest.mark.django_db
+def test_finish_page_does_not_complete_a_course_with_an_unread_topic(
+    mock_site_context, client
+):
+    """Completion counts every item, not only the quizzes."""
+    user = UserFactory()
+    course = CourseFactory(title="Unread", slug="finish-unread-topic")
+    topic = TopicFactory(title="Key Ideas", slug="finish-key-ideas", content="x")
+    course.items.create(child=topic, order=0)
+    progress: CourseProgress = CourseProgressFactory(
+        learner__user=user, course=course, completed_time=None
+    )
+
+    _finish(client, user, course)
+
+    progress.refresh_from_db()
+    assert progress.completed_time is None
+
+
+@pytest.mark.django_db
+def test_finish_page_names_a_never_sat_quiz_and_offers_to_start_it(
+    mock_site_context, client, course_with_scored_quiz
+):
+    """A quiz never sat is offered as a start, not as a retry of nothing."""
+    user = UserFactory()
+    course, form, _question, _right, _wrong = course_with_scored_quiz(
+        slug="finish-start-quiz"
+    )
+    CourseProgressFactory(learner__user=user, course=course, completed_time=None)
+
+    content = _finish(client, user, course).content.decode()
+
+    assert "Congratulations" not in content
+    assert form.title in content
+    assert "Start quiz" in content
+    assert "Retry quiz" not in content
+    assert (
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+        in content
+    )
+
+
+@pytest.mark.django_db
+def test_finish_page_names_an_unread_topic_and_links_to_it(mock_site_context, client):
+    """An outstanding topic is named and linked, the same as an outstanding quiz."""
+    user = UserFactory()
+    course = CourseFactory(title="Unread", slug="finish-names-topic")
+    topic = TopicFactory(title="Going Deeper", slug="finish-going-deeper", content="x")
+    course.items.create(child=topic, order=0)
+    CourseProgressFactory(learner__user=user, course=course, completed_time=None)
+
+    content = _finish(client, user, course).content.decode()
+
+    assert "Congratulations" not in content
+    assert topic.title in content
+    assert (
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+        in content
+    )
+
+
+@pytest.mark.django_db
+def test_finish_page_offers_to_start_an_unfinished_survey(mock_site_context, client):
+    """A form with no pass mark is started, not retried and not "passed"."""
+    from .conftest import course_with_single_question_form
+
+    user = UserFactory()
+    course = course_with_single_question_form("Survey", "finish-survey")
+    CourseProgressFactory(learner__user=user, course=course, completed_time=None)
+
+    content = _finish(client, user, course).content.decode()
+
+    assert "Congratulations" not in content
+    assert "Start form" in content
+    assert "Start quiz" not in content

@@ -8,7 +8,11 @@ from django.db.models import F, Q
 
 from freedom_ls.form_engine.models import FormProgress, FormStrategy
 from freedom_ls.learner_management.queries import learner_for_course
-from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
+from freedom_ls.learner_progress.models import (
+    CourseFormAttempt,
+    CourseProgress,
+    TopicProgress,
+)
 from freedom_ls.learner_progress.utils import _registration_kwargs
 
 if TYPE_CHECKING:
@@ -68,6 +72,29 @@ def completed_form_item_ids_by_course_progress(
         if attempt_completes_form(attempt):
             completed.setdefault(course_progress_id, set()).add(collection_item_id)
     return completed
+
+
+def completed_collection_item_ids(record: CourseProgress) -> set[UUID]:
+    """The placements one record has finished, topics and forms together.
+
+    Collection item ids, not topic or form ids: completion is counted by
+    position, so a topic placed twice in one course is two placements to finish
+    and completing one of them credits one.
+
+    The single definition of "done" for a placement. The stored percentage and
+    the finish page's outstanding list both read it, so neither can come to a
+    different view of what the learner has left.
+    """
+    completed = set(
+        TopicProgress.objects.filter(
+            course_progress=record,
+            complete_time__isnull=False,
+            collection_item__isnull=False,
+        ).values_list("collection_item_id", flat=True)
+    )
+    return completed | completed_form_item_ids_by_course_progress([record.pk]).get(
+        record.pk, set()
+    )
 
 
 def course_progress_for(user: User, course: Course) -> CourseProgress | None:
