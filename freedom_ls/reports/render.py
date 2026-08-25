@@ -26,6 +26,7 @@ from django.template.loader import render_to_string
 from freedom_ls.organisations.validators import LOGO_MIME_TYPES, MAX_BYTES
 from freedom_ls.reports.config import config
 from freedom_ls.reports.gather import CohortReportData
+from freedom_ls.site_aware_models.config import config as site_config
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -61,6 +62,26 @@ def _find_static(relative_path: str) -> Path:
             "setting that names it."
         )
     return Path(resolved)
+
+
+def _resolve_logo(static_path: str | None) -> tuple[str | None, Path | None]:
+    """Resolve an optional logo static path to a `file://` URL and its file.
+
+    An unset path is not a problem -- a fresh FLS install configures no logo,
+    and the report is designed to read as complete without one. A path that is
+    set but cannot be resolved is a misconfiguration, and raises rather than
+    rendering a report with a hole where somebody expected their logo.
+
+    A `file://` URL rather than the `data:` URI the organisation's own logo
+    travels as. This is a deployment-controlled static asset at the same trust
+    level as the font faces, which already reach the document this way; and it
+    is drawn in two slots, so inlining it would carry the same base64 payload
+    through the document twice.
+    """
+    if not static_path:
+        return None, None
+    path = _find_static(static_path).resolve()
+    return path.as_uri(), path
 
 
 def _extract_theme_tokens_from_css(css: str) -> str:
@@ -166,6 +187,19 @@ def _build_document(data: CohortReportData) -> tuple[str, set[Path]]:
     print_css = _find_static("reports/print.css").read_text()
     theme_tokens = extract_theme_tokens()
     font_css, allowed_paths = build_font_css()
+    # Two variants of the one mark, because the two slots that draw it sit on
+    # opposite backgrounds: the interior footers on paper, the cover band on a
+    # panel filled with the deployment's primary colour. Resolved from the
+    # same settings the site header and outbound email resolve their branding
+    # from, so a project that renamed or re-marked itself in one place is not
+    # still wearing the old mark on its reports.
+    site_logo_url, site_logo_path = _resolve_logo(site_config.HEADER_LOGO_STATIC_PATH)
+    site_logo_on_dark_url, site_logo_on_dark_path = _resolve_logo(
+        site_config.HEADER_LOGO_ON_DARK_STATIC_PATH
+    )
+    allowed_paths.update(
+        path for path in (site_logo_path, site_logo_on_dark_path) if path is not None
+    )
     html = render_to_string(
         "reports/report.html",
         {
@@ -173,6 +207,8 @@ def _build_document(data: CohortReportData) -> tuple[str, set[Path]]:
             "theme_tokens": theme_tokens,
             "font_css": font_css,
             "print_css": print_css,
+            "site_logo_url": site_logo_url,
+            "site_logo_on_dark_url": site_logo_on_dark_url,
         },
     )
     return html, allowed_paths
@@ -247,10 +283,11 @@ def _restrictive_url_fetcher(
     `render_report_pdf()` re-raises it as `ReportRenderError`.
 
     The document does legitimately reference some local files -- the
-    configured font faces, and nothing else -- so the fetcher cannot refuse
-    every URL unconditionally. It allows exactly those files, named up front
-    by `_build_document()`, and refuses everything else: any other file path,
-    and any `http(s)` URL that author-supplied text might carry.
+    configured font faces and the platform's own logo variants, and nothing
+    else -- so the fetcher cannot refuse every URL unconditionally. It allows
+    exactly those files, named up front by `_build_document()`, and refuses
+    everything else: any other file path, and any `http(s)` URL that
+    author-supplied text might carry.
 
     An exact-file allowlist rather than a trusted directory, because every
     file the document may read is known before rendering starts. Nothing in

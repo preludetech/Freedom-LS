@@ -810,3 +810,52 @@ class TestOrganisationBranding:
         reader = _reader(render_report_pdf(data))
 
         assert "Powered by" not in _joined_text(reader)
+
+
+# The report's own font files, used as stand-in logo assets: these tests care
+# that a configured mark is embedded in the right page's resources, not what
+# the image is of, and the finders resolve these in every environment the suite
+# runs in. WeasyPrint reads them as images regardless of the extension.
+_A_LIGHT_MARK = "reports/fonts/DejaVuSans.ttf"
+
+
+@pytest.mark.django_db
+class TestThePlatformMarkInThePdf:
+    """Where each logo variant lands once WeasyPrint has drawn the document.
+
+    The text-level assertions above cannot see a mark at all -- an image leaves
+    nothing for `extract_text()` to find -- so suppression for the house
+    organisation needs proving against the page's image resources too.
+    """
+
+    def _rendered(self, site, organisation):
+        cohort = CohortFactory(organisation=organisation)
+        data = gather_cohort_report_data(str(cohort.id), site.pk)
+        return _reader(render_report_pdf(data))
+
+    def test_an_interior_page_carries_the_mark(self, mock_site_context) -> None:
+        with override_settings(HEADER_LOGO_STATIC_PATH=_A_LIGHT_MARK):
+            reader = self._rendered(mock_site_context, OrganisationFactory())
+
+        # Page 0 is the cover, whose own margin boxes are cleared.
+        assert _page_has_image_xobject(reader.pages[1])
+
+    def test_the_house_organisation_gets_no_mark_on_any_page(
+        self, mock_site_context
+    ) -> None:
+        house = get_default_organisation(mock_site_context)
+
+        with override_settings(HEADER_LOGO_STATIC_PATH=_A_LIGHT_MARK):
+            reader = self._rendered(mock_site_context, house)
+
+        assert not _any_page_has_image_xobject(reader)
+
+    def test_an_unconfigured_mark_leaves_the_pages_imageless(
+        self, mock_site_context
+    ) -> None:
+        with override_settings(
+            HEADER_LOGO_STATIC_PATH=None, HEADER_LOGO_ON_DARK_STATIC_PATH=None
+        ):
+            reader = self._rendered(mock_site_context, OrganisationFactory())
+
+        assert not _any_page_has_image_xobject(reader)

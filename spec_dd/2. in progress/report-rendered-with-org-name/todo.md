@@ -51,6 +51,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (cmd) Re-run `/fls-dev:do_qa` — the powered-by slots now carry the platform logo, so the QA plan gained Tests 7 and 8 and the earlier screenshots are stale
 
 ## 10. Product documentation
 

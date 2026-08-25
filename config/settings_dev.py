@@ -110,6 +110,7 @@ FORCE_SITE_NAME = "DemoDev"
 REQUIRE_TERMS_ACCEPTANCE = True
 
 HEADER_LOGO_STATIC_PATH = "images/first_class_logo.png"
+HEADER_LOGO_ON_DARK_STATIC_PATH = "images/first_class_logo_on_dark.png"
 FAVICON_STATIC_PATH = "images/first_class_logo.png"
 HEADER_TITLE = "FirstClass"
 HEADER_TITLE_STYLE = "font-style: italic;"

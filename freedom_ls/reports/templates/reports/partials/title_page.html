@@ -1,4 +1,4 @@
-{% comment %}Required context: data (CohortReportData).
+{% comment %}Required context: data (CohortReportData), site_logo_on_dark_url (str|None).
 
 The cover. The organisation's own brand leads, because this is the
 organisation's record of its learners rather than the platform's record about
@@ -62,9 +62,15 @@ name is on the cover regardless in the metadata list below.
 
   {% comment %}The band's solid block is part of the page's composition rather
   than a container for the mark, so it is drawn whether or not anything is
-  written on it.{% endcomment %}
+  written on it.
+
+  The reversed mark, because the band is filled with the deployment's primary
+  colour. A deployment that supplies no reversed variant gets the text alone
+  rather than a full-colour mark half of which would vanish into the fill.
+  {% endcomment %}
   <div class="cover-band">
     {% if data.show_powered_by %}
+    {% if site_logo_on_dark_url %}<img class="band-logo" src="{{ site_logo_on_dark_url }}" alt="">{% endif %}
     <span class="band-powered-by">Powered by</span>
     <span class="band-site">{{ data.site_name }}</span>
     {% endif %}

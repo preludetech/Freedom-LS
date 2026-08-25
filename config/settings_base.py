@@ -409,6 +409,11 @@ ADDITIONAL_REGISTRATION_FORMS: list[str] = []
 
 # Header / favicon branding (static paths resolved via {% static %})
 HEADER_LOGO_STATIC_PATH: str | None = None  # e.g., "images/logo.png"
+# The reversed mark, for surfaces painted in a strong colour -- the report's
+# cover band is the one that reaches for it today. Left unset, such a surface
+# carries the platform's name as text instead of drawing a mark it cannot
+# guarantee the contrast of.
+HEADER_LOGO_ON_DARK_STATIC_PATH: str | None = None  # e.g., "images/logo-white.png"
 FAVICON_STATIC_PATH: str | None = None  # e.g., "images/favicon.ico"
 HEADER_TITLE: str | None = (
     None  # overrides the header-bar title; falls back to site name

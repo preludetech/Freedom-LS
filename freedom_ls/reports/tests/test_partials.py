@@ -41,6 +41,9 @@ from freedom_ls.reports.tests.report_data_builders import (
     summary_row,
 )
 
+# The template only ever interpolates this, so any well-formed URL will do.
+A_LOGO_FILE_URL = "file:///static/images/platform-logo-on-dark.png"
+
 
 def course_section_with_one_summary_table(
     quizzes: list[QuizColumn] | None = None,
@@ -1262,7 +1265,7 @@ class TestCoverBranding:
         html = render_to_string("reports/partials/title_page.html", {"data": data})
 
         assert "cover-wordmark" in html
-        assert "<img" not in html
+        assert '<img class="cover-logo"' not in html
 
     def test_an_organisation_logo_is_rendered_from_its_data_uri(self) -> None:
         data = cohort_report_data(
@@ -1291,6 +1294,39 @@ class TestCoverBranding:
 
         assert "Powered by" not in html
         assert "Bright Academy" not in html
+
+    def test_the_band_carries_the_reversed_mark_beside_the_name(self) -> None:
+        data = cohort_report_data(show_powered_by=True)
+
+        html = render_to_string(
+            "reports/partials/title_page.html",
+            {"data": data, "site_logo_on_dark_url": A_LOGO_FILE_URL},
+        )
+
+        assert f'<img class="band-logo" src="{A_LOGO_FILE_URL}"' in html
+        assert "Powered by" in html
+
+    def test_the_band_carries_no_mark_without_a_reversed_variant(self) -> None:
+        data = cohort_report_data(show_powered_by=True)
+
+        html = render_to_string(
+            "reports/partials/title_page.html",
+            {"data": data, "site_logo_on_dark_url": None},
+        )
+
+        assert "band-logo" not in html
+        assert "Powered by" in html
+
+    def test_the_house_organisation_gets_no_mark_even_with_a_variant(self) -> None:
+        data = cohort_report_data(show_powered_by=False)
+
+        html = render_to_string(
+            "reports/partials/title_page.html",
+            {"data": data, "site_logo_on_dark_url": A_LOGO_FILE_URL},
+        )
+
+        assert "band-logo" not in html
+        assert "Powered by" not in html
 
     def test_course_card_states_each_course_scale(self) -> None:
         data = cohort_report_data(

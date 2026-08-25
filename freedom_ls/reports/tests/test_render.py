@@ -20,6 +20,7 @@ from django.utils import timezone
 from freedom_ls.organisations.validators import MAX_BYTES
 from freedom_ls.reports.render import (
     ReportRenderError,
+    _build_document,
     _extract_theme_tokens_from_css,
     _find_static,
     _restrictive_url_fetcher,
@@ -414,6 +415,85 @@ class TestBrandingOnTheCover:
         html = build_report_html(data)
 
         assert "Powered by" not in _body_of(html)
+
+
+@requires_tailwind_bundle
+class TestThePlatformMarkOnTheReport:
+    """The two logo variants, and which slot reaches for which.
+
+    Overridden onto the report's own font files rather than the branding
+    assets: these tests care that a configured path is resolved, embedded and
+    allowlisted, not what the image is of, and a font file is a static asset
+    the finders resolve in every environment the suite runs in.
+    """
+
+    LIGHT = "reports/fonts/DejaVuSans.ttf"
+    DARK = "reports/fonts/DejaVuSans-Bold.ttf"
+
+    def _url(self, static_path: str) -> str:
+        return _find_static(static_path).resolve().as_uri()
+
+    @override_settings(HEADER_LOGO_STATIC_PATH=LIGHT)
+    def test_the_footer_carries_the_light_variant(self) -> None:
+        html = build_report_html(cohort_report_data(show_powered_by=True))
+
+        footer = html.split('class="footer-powered-by"')[1].split("</div>")[0]
+        assert f'<img class="footer-logo" src="{self._url(self.LIGHT)}"' in footer
+
+    @override_settings(HEADER_LOGO_ON_DARK_STATIC_PATH=DARK)
+    def test_the_band_carries_the_dark_variant(self) -> None:
+        html = build_report_html(cohort_report_data(show_powered_by=True))
+
+        band = html.split('class="cover-band"')[1].split("</div>")[0]
+        assert f'<img class="band-logo" src="{self._url(self.DARK)}"' in band
+
+    @override_settings(
+        HEADER_LOGO_STATIC_PATH=LIGHT, HEADER_LOGO_ON_DARK_STATIC_PATH=DARK
+    )
+    def test_each_slot_reaches_for_its_own_variant(self) -> None:
+        html = build_report_html(cohort_report_data(show_powered_by=True))
+
+        band = html.split('class="cover-band"')[1].split("</div>")[0]
+        footer = html.split('class="footer-powered-by"')[1].split("</div>")[0]
+        assert self._url(self.DARK) in band
+        assert self._url(self.LIGHT) not in band
+        assert self._url(self.LIGHT) in footer
+        assert self._url(self.DARK) not in footer
+
+    @override_settings(
+        HEADER_LOGO_STATIC_PATH=None, HEADER_LOGO_ON_DARK_STATIC_PATH=None
+    )
+    def test_an_unconfigured_mark_leaves_the_text_standing_alone(self) -> None:
+        html = build_report_html(cohort_report_data(show_powered_by=True))
+
+        body = _body_of(html)
+        assert "band-logo" not in body
+        assert "footer-logo" not in body
+        assert body.count("Powered by") == 2
+
+    @override_settings(
+        HEADER_LOGO_STATIC_PATH=LIGHT, HEADER_LOGO_ON_DARK_STATIC_PATH=DARK
+    )
+    def test_the_house_organisation_gets_neither_variant(self) -> None:
+        body = _body_of(build_report_html(cohort_report_data(show_powered_by=False)))
+
+        assert "band-logo" not in body
+        assert "footer-logo" not in body
+
+    @override_settings(HEADER_LOGO_STATIC_PATH="images/no-such-logo.png")
+    def test_a_configured_mark_that_cannot_be_resolved_raises(self) -> None:
+        with pytest.raises(ReportRenderError, match="no-such-logo"):
+            build_report_html(cohort_report_data(show_powered_by=True))
+
+    @override_settings(
+        HEADER_LOGO_STATIC_PATH=LIGHT, HEADER_LOGO_ON_DARK_STATIC_PATH=DARK
+    )
+    def test_both_variants_reach_the_fetcher_allowlist(self) -> None:
+        """Resolving the marks is not enough -- the fetcher refuses what it is not told about."""
+        _, allowed_paths = _build_document(cohort_report_data(show_powered_by=True))
+
+        assert _find_static(self.LIGHT).resolve() in allowed_paths
+        assert _find_static(self.DARK).resolve() in allowed_paths
 
     def test_an_organisation_name_is_escaped_on_the_cover(self) -> None:
         data = cohort_report_data(

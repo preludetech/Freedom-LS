@@ -1,6 +1,6 @@
 {% comment %}
 Required context: data (CohortReportData), theme_tokens (str), font_css (str),
-print_css (str).
+print_css (str), site_logo_url (str|None), site_logo_on_dark_url (str|None).
 
 This is the document shell only — doctype, head, the page furniture every page
 shares, and one {% include %} per section in reading order. No loop, no
@@ -52,11 +52,19 @@ it never competes with the identity line above for one line's width. A running
 element for the same reason that one is: the site's display name is
 administrator-configured, and it must be escaped as markup rather than
 interpolated into the stylesheet. Block-level, and before the cover, for the
-same two reasons again.{% endcomment %}
+same two reasons again.
+
+The full-colour mark, not the reversed one: these pages are paper. The name
+stays as text beside it — the mark is provenance on an extracted page, and a
+page extracted by somebody who does not recognise the mark still has to say
+who generated it.{% endcomment %}
 {% if data.show_powered_by %}
-<div class="footer-powered-by">Powered by {{ data.site_name }}</div>
+<div class="footer-powered-by">{% if site_logo_url %}<img class="footer-logo" src="{{ site_logo_url }}" alt="">{% endif %}Powered by {{ data.site_name }}</div>
 {% endif %}
-{% include "reports/partials/title_page.html" with data=data only %}
+{% comment %}site_logo_on_dark_url is passed through explicitly because the
+include is sealed with `only`: the cover band is the one slot painted in the
+primary colour, and it is the reversed mark's only consumer.{% endcomment %}
+{% include "reports/partials/title_page.html" with data=data site_logo_on_dark_url=site_logo_on_dark_url only %}
 {% include "reports/partials/at_a_glance.html" with data=data attention=data.attention_list only %}
 {% include "reports/partials/contents.html" with data=data only %}
 {% include "reports/partials/summary_tables.html" with courses=data.courses only %}

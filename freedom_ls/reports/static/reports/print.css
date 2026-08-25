@@ -131,8 +131,13 @@ touches. */
   /* Keeps this line clear of the centred "Powered by" box beside it. Only the
      organisation name in this line is held to a character budget -- the cohort
      name is whatever an administrator typed -- so the budget alone cannot
-     promise a gap, and without one the two strings render touching. */
-  padding-right: 10mm;
+     promise a gap, and without one the two strings render touching.
+
+     8mm rather than the 10mm this was before the platform mark joined the box
+     beside it: the mark widens that box, the margin-box algorithm takes the
+     width from this one, and at 10mm a golden-path identity line that used to
+     set on one line wrapped to two. Measured against a real render. */
+  padding-right: 8mm;
 }
 
 /* Block-level and declared before the cover, for the same two reasons as
@@ -145,6 +150,25 @@ touches. */
   font-family: var(--report-font-body);
   font-size: 7pt;
   color: var(--color-muted);
+  /* The mark and the name are one lockup: allowed to wrap, the mark keeps the
+     name company on the first line and strands the site's own name on the
+     second. Holding them on one line also keeps this box at its natural width
+     rather than a tall narrow column, which is what squeezes the identity
+     line beside it into wrapping. */
+  white-space: nowrap;
+}
+
+/* Sized against the 7pt line it sits on rather than against the brand kit's
+   8mm minimum for a standalone mark: page furniture is not standalone usage,
+   and a mark three times the height of the row it belongs to stops reading as
+   provenance and starts reading as a heading. `height` with `width: auto` for
+   the same reason .cover-logo uses max-height with no width attribute --
+   that pairing is what preserves the intrinsic ratio under WeasyPrint. */
+.footer-logo {
+  height: 3.5mm;
+  width: auto;
+  vertical-align: middle;
+  margin-right: 3pt;
 }
 
 /* ===================================================================
@@ -640,7 +664,18 @@ h3.confusion-heading {
   height: 18mm;
   background: var(--color-primary);
   color: var(--color-on-primary);
-  padding: 6mm 20mm 0;
+  /* 5mm rather than 6: the mark beside the text is 8mm tall, and at 6mm of
+     top padding it sets hard against the bottom edge of an 18mm band. */
+  padding: 5mm 20mm 0;
+}
+/* The brand kit's 8mm print minimum for a mark used on its own, which this one
+   is -- the cover is the report's one prominent statement of who generated it,
+   unlike the footer's smaller provenance mark. */
+.title-page .band-logo {
+  height: 8mm;
+  width: auto;
+  vertical-align: middle;
+  margin-right: 6pt;
 }
 /* Two tiers, not one uniform size: set at a single size the mark reads as the
    brand above it under a different label, rather than as subordinate to it. */
