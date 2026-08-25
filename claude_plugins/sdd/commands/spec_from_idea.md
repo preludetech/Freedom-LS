@@ -1,6 +1,6 @@
 ---
 description: Create a specification based on an idea
-allowed-tools: Read, Write, Glob, Bash, Agent
+allowed-tools: Read, Write, Glob, Bash, Agent, Skill
 # based on https://github.com/iamshaunjp/Claude-Code-Masterclass/blob/claude/snippets/commands/spec-v1.md
 ---
 
@@ -39,14 +39,69 @@ If there are edge cases that can be handled in multiple ways, ask what to do. If
 
 Think carefully about what to ask, then ask the user one question at a time.
 
-# Step 3: Create the specification document (synthesis at depth 0)
+# Step 3: Write the specification (synthesis at depth 0)
 
-Read the `.sdd-work/spec_research_*.md` files (paths, not dumped contents) and author `1. spec.md`. Include:
+Read the `.sdd-work/spec_research_*.md` files (paths, not dumped contents) and author `1. spec.md`.
 
-- Why different features/functionality matter
-- If decisions were made, why were they made
-- Success criteria
+Follow `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`. It carries the rules every SDD
+artifact obeys: rewriting means replacing, coverage rather than length, the shared cut-list, where
+overflow goes, and the two finishing passes. What follows is what is specific to a spec.
 
+## Read the whole directory first
+
+The idea file, every sibling `*.md` beside it (notes files, `research_*.md`), and the research from
+step 1. Those are the inputs the spec is written **against**. They are not material to reproduce.
+They sit in the same directory and the next command reads them too.
+
+## What the spec is for
+
+Its readers are `/sdd:plan_from_spec` and the human approving it. It answers one question: what has
+to be true when this work is done.
+
+It is not a record of how the decision was reached. It is not the step-by-step either. The plan
+step does that, and it re-reads the codebase when it does.
+
+## The shape
+
+Use these sections. Omit one when it would be empty; do not invent others.
+
+1. **Purpose.** The problem, in a few sentences.
+2. **Scope.** In and out.
+3. **Decisions.** Only the ones an implementer could otherwise relitigate, one line of reasoning
+   each.
+4. **Requirements.** Grouped by the part of the system they change, each naming the files and
+   symbols to touch.
+5. **Testing.** What has to be proved, not the test code.
+6. **Documentation and downstream.** What has to change outside the code.
+7. **Open questions.** What the user or an operator still has to settle.
+8. **Success criteria.** Checkable, one line each.
+
+## What a spec keeps that an idea doesn't
+
+File paths, symbol names, environment-variable and API contracts, code snippets where prose would
+be ambiguous, and named test cases. Cite a line number only where the implementer has to go and
+edit that exact spot.
+
+## Never write these in a spec
+
+- **The idea's argument, re-run.** The approach was settled upstream. State the outcome and cite the
+  idea by filename. Do not reproduce the reasoning that got there.
+- **A decisions table that repeats the body.** A decision explained where it is implemented does not
+  also get a table row. A decision in the table is not re-explained in the body.
+- **Rejected alternatives at paragraph length.** One sentence naming the alternative and why not, or
+  nothing.
+- **Reasoning about the spec's own drafting.** No "an earlier draft", no "two notes survive from
+  that draft", no "the implementer should not tidy this away".
+- **Success criteria that restate sections.** If you cannot say how someone would check it, it is
+  not a criterion.
+- **Implementation sequencing and work lists.** Ordering constraints belong in the spec only where
+  getting them wrong breaks something; everything else is the plan's job.
+
+## Before you finish
+
+Run the completeness pass from the writing standard against the idea, its sibling files and the
+answers from step 2, then the earning-its-place pass, then `unslop` and a re-read. Report the line
+and word counts.
 # Step 4: Clean up
 
 Delete the `.sdd-work/` scratch directory once `1. spec.md` is written (recipe step 7).

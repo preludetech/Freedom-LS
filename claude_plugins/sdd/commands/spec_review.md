@@ -1,14 +1,14 @@
 ---
 description: Check that the spec makes sense
-allowed-tools: Read, Glob, Edit
+allowed-tools: Read, Glob, Edit, Skill
 ---
 
 You are helping to refine a feature spec. The spec might have problems. You are doing a final check to make sure it can be implemented.
 
 # Output
 
-- Edit the spec document to overcome all the problems
-- Print a short summary of what you did
+- Edit the spec document to overcome all the problems, then tighten it
+- Print a short summary of what you did, including the spec's line and word counts before and after
 
 # Step 1
 
@@ -36,7 +36,36 @@ For each problem you find:
 
 Return to Step 1 and make sure no new problems were introduced. Repeat the whole process until the spec has no unaddressed problems
 
-# Step 4: Update the todo list
+# Step 4: Tighten the spec
+
+Correctness is settled by this point, so no effort goes into tightening text that was about to be
+rewritten. Now make the spec say what it says once.
+
+A spec reaches this command by more than one route. `/spec_from_idea` writes the first draft, but
+it is also hand-edited and amended by `/threat-model`, so this is the last gate before planning
+whichever way it arrived.
+
+Apply `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md` and the spec cut-list in
+`${CLAUDE_PLUGIN_ROOT}/commands/spec_from_idea.md` under "Never write these in a spec".
+
+**Cutting must not lose a requirement.** Run the completeness pass first: read the idea file and
+every sibling `*.md` beside the spec, and confirm each decision and constraint has exactly one home
+in the spec. Only then cut. If you cannot say where something went, you lost it. Put it back.
+
+The usual finds, in rough order of how much they cost the reader:
+
+- The idea's argument reproduced inside the spec. Cite the idea by filename instead, keeping any
+  sentence that states a requirement rather than a justification.
+- A decision stated in a table, in the section that implements it, and again in the success
+  criteria. Keep one.
+- Drafting history: "an earlier draft", "two notes survive", "the implementer should not tidy this
+  away".
+- Rejected alternatives at paragraph length. A sentence each is enough.
+- Paragraphs proving a point nobody would dispute.
+
+Finish with the two passes from the writing standard: `unslop`, then a re-read.
+
+# Step 5: Update the todo list
 
 Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with:
 
@@ -48,3 +77,4 @@ Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with
 
 - Do not add technical implementation details to the spec. Just check the ones already included.
 - If there are any technical concerns then raise them in a high level way, don't write unnecessary code
+- Step 4 removes text. It never adds design, and it never resolves an open question by deleting it.
