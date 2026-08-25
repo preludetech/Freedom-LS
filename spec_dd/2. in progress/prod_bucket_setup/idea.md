@@ -63,7 +63,13 @@ browser. Files answering both the same way share a bucket.
 | `fls-prod-public` | Organisation logos, future public branding | Admin, through the browser | Public read, custom domain, long CDN cache |
 | `fls-prod-course-media` | `content_engine.File`: images, PDFs, video | Operator, from the content repository | Private, signed URLs |
 | `fls-prod-learner-uploads` | Future: application attachments, learner documents, profile pictures | Learners, through the browser | Private, signed URLs |
-| `fls-prod-generated` | Cohort reports, future certificates | The task worker | Private, no public read, streamed by Django |
+| `fls-prod-generated` | Cohort reports | The task worker | Private, no public read, streamed by Django |
+| `fls-prod-certificates` | Future: learner certificates | The task worker | Public read, custom domain, uuid keys |
+
+Those names are values, not constants. Each bucket's name reaches the settings module through
+its own environment variable, so the table records the names production will be handed rather than
+anything the code contains. The `prod` in each name is the environment, and staging runs the same
+split under `fls-staging-`.
 
 **`fls-prod-public`** is brand rather than content: identical bytes for every viewer, no personal
 data, often rendered before the viewer has authenticated. It is the only bucket wanting anonymous
@@ -75,8 +81,8 @@ listing, and R2 charges no egress.
 
 **`fls-prod-course-media`** is rebuildable. An operator loads it from the content repository rather
 than uploading through a browser, so it needs no backup policy and no erasure workflow. It also
-carries the highest read volume and the most widely distributed token of the four, so it shouldn't
-share credentials with anything holding personal data.
+carries the highest read volume and the most widely distributed token in the deployment, so it
+shouldn't share credentials with anything holding personal data.
 
 **`fls-prod-learner-uploads`** holds irreplaceable originals supplied by untrusted uploaders, a
 combination nothing else in the system shares. The token that can write here should reach nothing
@@ -91,6 +97,13 @@ path. The narrowest credentials in the deployment. Reports also want expiry whil
 must never be auto-deleted, and separate buckets keep that lifecycle rule away from irreplaceable
 data.
 
+**`fls-prod-certificates`** answers the two layout questions in a combination nothing else does.
+The worker writes it, like a report. Anyone holding the link reads it without logging in, like a
+logo. Anonymous read is a per-bucket property on R2, so it cannot sit with the
+reports, and a certificate names a learner, which is the one thing the branding bucket is defined
+not to hold. Object keys have to be uuid-derived, because in a public bucket the key is the whole
+access control. Nothing here ever expires.
+
 ## Decisions taken
 
 - **Cloudflare R2 only**, and production is greenfield. No S3 parity requirement, no object
@@ -100,22 +113,30 @@ data.
 - **Aliases are always declared at the settings layer**, never silently fallen back to at the model
   layer. App-level resolvers become one-liners with no exception handling. The silent fallback is
   what turns a missing settings key into learner PII in a public bucket, and `W001` is only a
-  warning, so replicating that shape across four aliases would replicate the failure four times.
+  warning, so replicating that shape across every alias would replicate the failure once per alias.
 - **No per-site or per-organisation buckets.** Tenancy is a prefix concern and a bucket per tenant
   means credential sprawl. `organisation_logo_upload_to` and `report_upload_path` already prefix by
   pk.
-
-## Open questions
-
-- Do certificates need a public verification URL? `spec_dd/1. next/certificates/idea.md` calls for
-  one. If verification serves the PDF itself rather than a rendered attestation page, certificates
-  belong in `public`, not `generated`. Resolve before certificates are built.
-- Separate buckets for staging and production, or separate prefixes? Separate buckets, almost
-  certainly, but the env-var shape should make which is which obvious. Bucket Locks block emptying
-  or deleting a bucket, so a staging environment mirroring production's lock rules can't be torn
-  down and recreated freely.
-- Should `report_upload_path`'s `reports/` prefix change now the bucket is dedicated?
-  `reports/tests/test_deletion_hygiene.py` asserts on that exact string.
+- **Certificate PDFs are served publicly, from their own bucket.** Verification hands over the PDF
+  itself rather than a rendered attestation page, so the object needs anonymous read and cannot live
+  in `generated`. It names a learner, so it does not belong in `public` either. Two constraints go
+  back to `spec_dd/1. next/certificates/idea.md`: uuid-derived object keys, and whatever consent a
+  site needs before a learner's name sits at a URL anyone can open.
+- **Every bucket name is read from the environment, one variable per bucket.** This layout fixes
+  what each bucket is for. It does not fix what any of them is called. No bucket name appears in
+  the settings module, so the same code runs against production, staging and a downstream project's
+  own buckets, and renaming a bucket becomes a deploy-config change instead of a release. An unset
+  variable falls back to the shared bucket, which is the collision the system check exists to
+  catch.
+- **Staging gets its own buckets, not a prefix inside production's.** A token scopes to named
+  buckets, so shared buckets would hand staging credentials that reach production objects. Buckets
+  are named `fls-<env>-<purpose>`, and the variables naming them carry no environment of their own,
+  so the environment appears in the value and nowhere else. Staging must not copy production's
+  Bucket Locks, or it can never be torn down and rebuilt.
+- **Reports upload to `cohort_reports/`, not `reports/`.** A dedicated bucket removes the need for
+  the prefix, but R2 applies lifecycle expiry per prefix, and reports are the artifact that wants
+  expiry. Naming the artifact rather than the app keeps that rule attached to the right objects when
+  the bucket gains a second kind of file. Nothing is deployed, so there is nothing to move.
 
 ## Out of scope
 

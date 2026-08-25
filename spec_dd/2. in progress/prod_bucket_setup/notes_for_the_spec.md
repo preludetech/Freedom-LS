@@ -11,9 +11,11 @@ key**, resolving each from per-alias env vars, falling back to the shared
 is configured. `build_s3_media_storage()` is already alias-agnostic and becomes its single-alias
 building block, unchanged.
 
-The per-alias env-var naming scheme needs to keep the shared-credentials shortcut, make staging
-versus production obvious at a glance, and not break downstream deployments already setting the
-current names.
+One environment variable per bucket, and no bucket name written down in code, defaults included.
+The per-alias env-var naming scheme needs to keep the shared-credentials shortcut and not break
+downstream deployments already setting the current names. Environment belongs in the value, never
+in the variable name. Staging and production run the same settings module and differ only in the
+bucket names they are handed.
 
 Declare the `reports` alias in FLS's own production settings. Add aliases for organisation logos
 and for `content_engine.File`, matching the `REPORTS_STORAGE_ALIAS` pattern. `content_engine`
@@ -36,6 +38,11 @@ credentials would freeze into migration history. Never a lambda, because it can'
 Adding `storage=` to the two fields that lack it generates one `AlterField` migration each. Those
 reference only the callable's dotted path, so later bucket changes need no migration.
 
+Renaming `report_upload_path`'s prefix to `cohort_reports/` also generates an `AlterField`, and two
+tests assert on the old literal: `reports/tests/test_models.py::test_upload_path_is_pk_derived` and
+the `storage.exists("reports")` assertion in `reports/tests/test_deletion_hygiene.py`. Update the
+`report_upload_path` docstring with it; it names the `reports/` prefix too.
+
 ## R2 details that will bite
 
 - `Cache-Control` is per-object metadata set at upload. There is no bucket default, so the public
@@ -43,14 +50,20 @@ reference only the callable's dotted path, so later bucket changes need no migra
 - Presigned URLs max out at 7 days and can't be used with custom domains.
 - POST-based (HTML form) presigned uploads are not supported. An S3 `createPresignedPost`-style
   browser upload will not work.
-- Bucket Locks block emptying or deleting a locked bucket, which matters for any staging
-  environment that mirrors production's rules.
+- Bucket Locks block emptying or deleting a locked bucket. Staging has its own buckets and must not
+  copy production's lock rules, or it can never be torn down and rebuilt.
+- Lifecycle expiry is a per-prefix rule, which is why report objects keep a prefix inside a bucket
+  dedicated to them.
 
 ## Bucket creation decisions
 
 These have to be made before the first production deploy rather than discovered after it: final
 bucket names, jurisdiction (immutable at creation), the custom domain for `fls-prod-public`, and
-how many API tokens exist and which buckets each is scoped to.
+how many API tokens exist and which buckets each is scoped to. Staging needs the same set under its
+own names and its own tokens, scoped so that nothing in staging can reach a production bucket.
+
+`fls-prod-certificates` is reserved, not created now. It arrives with the certificates feature,
+which is the only thing that will write to it.
 
 ## Documentation and downstream
 
@@ -67,12 +80,12 @@ how many API tokens exist and which buckets each is scoped to.
 
 ## A new `file-storage` skill
 
-Four buckets are only worth having if new file fields land in the right one, and that decision gets
+The buckets are only worth having if new file fields land in the right one, and that decision gets
 made the moment someone adds a `FileField` or `ImageField`, which is exactly when nobody re-reads a
 spec. Add a skill to `claude_plugins/fls-dev/skills/`, following the shape of `multi-tenant` and
-`app-settings`. It should describe each bucket and what belongs in it, give the decision rule (who
-supplies the bytes, how do they reach the browser, can they be regenerated), and carry the
-mechanical rules above. Its `description` must trigger on creating or modifying a model file or
+`app-settings`. It should describe all five buckets and what belongs in each, give the decision
+rule (who supplies the bytes, how do they reach the browser, can they be regenerated), and carry
+the mechanical rules above. Its `description` must trigger on creating or modifying a model file or
 image field, so it fires without being asked for.
 
 ## Admin as a read path
