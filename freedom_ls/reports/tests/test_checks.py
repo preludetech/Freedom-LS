@@ -6,7 +6,6 @@ from django.test import override_settings
 
 from freedom_ls.reports.checks import (
     check_report_font_faces_resolvable,
-    check_reports_storage_alias_configured,
     check_required_reports_settings,
     check_tailwind_bundle_resolvable,
 )
@@ -18,37 +17,6 @@ class TestRequiredSettingsCheck:
         errors = check_required_reports_settings()
 
         assert errors == []
-
-
-class TestReportsStorageAliasCheck:
-    def test_fires_when_storage_alias_missing_from_storages(self) -> None:
-        with override_settings(
-            STORAGES={
-                "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-                "staticfiles": {
-                    "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
-                },
-            },
-        ):
-            warnings = check_reports_storage_alias_configured()
-
-        assert len(warnings) == 1
-        assert warnings[0].id == "freedom_ls_reports.W001"
-        assert "REPORTS_STORAGE_ALIAS" in warnings[0].msg
-
-    def test_silent_when_storage_alias_present(self) -> None:
-        with override_settings(
-            STORAGES={
-                "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-                "staticfiles": {
-                    "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
-                },
-                "reports": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-            },
-        ):
-            warnings = check_reports_storage_alias_configured()
-
-        assert warnings == []
 
 
 class TestTailwindBundleCheck:

@@ -4,9 +4,9 @@ E001 — A required reports setting the project must supply is unset. Currently
        none of the settings this app declares are required, so this returns
        nothing today; it costs one line and keeps the app honest if a
        required setting is added later.
-W001 — REPORTS_STORAGE_ALIAS does not name a key in settings.STORAGES, so
-       reports fall back to the default storage, which may be a publicly
-       served MEDIA_ROOT.
+W001 — Retired. Do not reuse the id: a project may still be silencing it.
+       Replaced by freedom_ls_deployment.E001, which compares resolved bucket
+       names rather than alias presence.
 W002 — The compiled Tailwind bundle can't be resolved through the staticfiles
        finders, so a report render will fail. The other half of this "fail
        loudly" pair is the render-time exception raised when the bundle is
@@ -32,27 +32,6 @@ def check_required_reports_settings(**kwargs: object) -> list[CheckMessage]:
     from freedom_ls.reports.config import config
 
     return required_settings_errors(config, "freedom_ls_reports")
-
-
-@register()
-def check_reports_storage_alias_configured(**kwargs: object) -> list[CheckMessage]:
-    """W001: Warn when REPORTS_STORAGE_ALIAS names no key in settings.STORAGES."""
-    from django.conf import settings
-
-    from freedom_ls.reports.config import config
-
-    if config.REPORTS_STORAGE_ALIAS in settings.STORAGES:
-        return []
-
-    return [
-        Warning(
-            f"REPORTS_STORAGE_ALIAS={config.REPORTS_STORAGE_ALIAS!r} is not a key "
-            f"in settings.STORAGES. Reports will fall back to the default "
-            f"storage, which may be a publicly served MEDIA_ROOT.",
-            hint="Declare a private storage alias in settings.STORAGES.",
-            id="freedom_ls_reports.W001",
-        )
-    ]
 
 
 @register()
