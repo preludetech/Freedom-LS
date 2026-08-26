@@ -183,13 +183,29 @@ All required environment variables must be set in production. Never hardcode cre
 
 ### AWS / S3 Storage
 
+FLS resolves storage per bucket purpose, not per project. `PURPOSE` is one of `PUBLIC`,
+`COURSE_MEDIA`, `USER_UPLOADS`, `GENERATED`, `CERTIFICATES`, `DEFAULT`, one per `STORAGES` alias.
+Every variable below is optional. An unset per-bucket variable falls through to the shared column,
+and an unset bucket name falls through to local filesystem storage.
+
+| Property | Shared variable | Per-bucket override |
+|---|---|---|
+| Bucket name | `AWS_STORAGE_BUCKET_NAME` | `AWS_S3_<PURPOSE>_BUCKET_NAME` |
+| Access key | `AWS_S3_ACCESS_KEY_ID` | `AWS_S3_<PURPOSE>_ACCESS_KEY_ID` |
+| Secret key | `AWS_S3_SECRET_ACCESS_KEY` | `AWS_S3_<PURPOSE>_SECRET_ACCESS_KEY` |
+| Endpoint URL | `AWS_S3_ENDPOINT_URL` | `AWS_S3_<PURPOSE>_ENDPOINT_URL` |
+| Region | `AWS_S3_REGION_NAME` (default `auto` for R2) | `AWS_S3_<PURPOSE>_REGION_NAME` |
+| Custom domain | `AWS_S3_CUSTOM_DOMAIN` | `AWS_S3_<PURPOSE>_CUSTOM_DOMAIN` |
+| Querystring auth | `AWS_QUERYSTRING_AUTH` | `AWS_S3_<PURPOSE>_QUERYSTRING_AUTH` |
+| Querystring expire | `AWS_QUERYSTRING_EXPIRE` | `AWS_S3_<PURPOSE>_QUERYSTRING_EXPIRE` |
+
 | Variable | Description |
 |---|---|
-| `AWS_STORAGE_BUCKET_NAME` | S3 bucket name for media storage. |
-| `AWS_S3_ACCESS_KEY_ID` | AWS access key ID. |
-| `AWS_S3_SECRET_ACCESS_KEY` | AWS secret access key. |
-| `AWS_S3_ENDPOINT_URL` | Custom S3 endpoint URL (for S3-compatible services). |
-| `AWS_S3_REGION_NAME` | Region for the S3-compatible bucket (default `auto` for R2). |
+| `REPORTS_STORAGE_ALIAS` | Django setting (not an `AWS_*` environment variable), read through `AppSettings`. Names which `STORAGES` key cohort reports write to. Defaults to `"reports"`. |
+
+`freedom_ls_deployment.E001` checks that no media alias resolves to the same bucket as `default`.
+It only runs under `manage.py check --deploy`, not under plain `check`, `runserver` or `migrate`, so
+a deploy pipeline has to actually run `check --deploy` for it to catch a misconfigured bucket.
 
 ## 11. Legal Documents
 

@@ -131,6 +131,7 @@ The template's `settings_base.py` begins with `from .customisation import *` (se
 - [ ] `AXES_FAILURE_LIMIT`, `AXES_COOLOFF_TIME`, `AXES_LOCKOUT_PARAMETERS`, `AXES_RESET_ON_SUCCESS`
 - [ ] `TRUSTED_PROXY_IP_HEADER: str | None = None`
 - [ ] `LEGAL_DOCS_MANIFEST_PATH: str | None = None`
+- [ ] `STORAGES` declares all seven keys (`default`, `staticfiles`, `public`, `course_media`, `user_uploads`, `reports`, `certificates`) as `FileSystemStorage` (`staticfiles` as `StaticFilesStorage`), none carrying an `OPTIONS` key. A project's dev and test settings must declare every alias, or its models stop importing the moment a field names one.
 - [ ] Branding stubs, admonitions, signup, and the role mapping live in `customisation.py` — see the [`customisation.py`](#configcustomisationpy) subsection below
 
 **Template loader chain (required order):**
@@ -202,8 +203,14 @@ Items a concrete dev config should contain — see the exclusions table below fo
 - [ ] `SECURE_CONTENT_TYPE_NOSNIFF = True`, `SECURE_REFERRER_POLICY`, `SECURE_CROSS_ORIGIN_OPENER_POLICY`
 - [ ] `X_FRAME_OPTIONS = "DENY"` (overrides the `SAMEORIGIN` base)
 - [ ] `STATIC_ROOT` set for whitenoise collection
-- [ ] S3 media storage block (conditional on `AWS_STORAGE_BUCKET_NAME`)
-- [ ] `STORAGES` dict: whitenoise for staticfiles, S3 or filesystem for default
+- [ ] `STORAGES` built by `build_storages()`, which sets `staticfiles` to WhiteNoise and resolves the other six keys from environment variables, falling back to `FileSystemStorage` per key when unset:
+  - [ ] `default`: `STORAGES["default"]`, no purpose prefix, no model field names it
+  - [ ] `public`: `STORAGES["public"]`, purpose prefix `PUBLIC`, points at the anonymously-readable branding bucket
+  - [ ] `certificates`: `STORAGES["certificates"]`, purpose prefix `CERTIFICATES`, points at the same branding bucket as `public`
+  - [ ] `course_media`: `STORAGES["course_media"]`, purpose prefix `COURSE_MEDIA`, points at the course-content bucket
+  - [ ] `user_uploads`: `STORAGES["user_uploads"]`, purpose prefix `USER_UPLOADS`, points at the bucket holding data tied to an identified learner
+  - [ ] `reports` (or whatever `REPORTS_STORAGE_ALIAS` renames it to): `STORAGES[REPORTS_STORAGE_ALIAS]`, purpose prefix `GENERATED`, points at the same learner-data bucket as `user_uploads`
+- [ ] Every `FileField` and `ImageField` the project defines names one of the six media aliases; none is left on `default`
 - [ ] Email settings (`EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, etc.) from env vars
 - [ ] `ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"`
 - [ ] Logging configuration — `LOGGING = fls_defaults.build_logging_config()` (stdout/console handlers only, no rotating files; the container `json-file` log driver caps size/rotation)

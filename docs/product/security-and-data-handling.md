@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-08-23_
+_Last updated: 2026-08-26_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -11,7 +11,7 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 - **Built:** Production trusts a TLS-terminating reverse proxy's forwarded scheme, so the HTTPS redirect and HSTS behave correctly behind it — and refuses to start at all if `SECRET_KEY` or `WEBHOOK_ENCRYPTION_SALT` is missing.
 - **Built:** Media in object storage is private by default, served via time-limited signed links rather than permanently public URLs. Error tracking is wired but inactive until an operator supplies credentials, and omits learner personal data by default.
 - **Built:** Cohort progress reports are downloaded only through a permission-checked view, never a public media URL. Generating and downloading one both require the requesting staff user to be authorised to see that cohort; staff status alone is not enough.
-- **Operational:** Report PDFs are written to a private storage location once an operator configures one. Left unconfigured they fall back to default media storage — which may be publicly served — and a startup check warns about it.
+- **Operational:** Report PDFs are written to a private storage location, separate from the buckets that hold course media and public branding. There is no fallback: an unconfigured location fails at startup, and a deploy pipeline running Django's deployment check catches a location that resolves to the wrong bucket before anything is written to it.
 - **Report-only:** Content Security Policy runs in report-only mode — violations are reported, not blocked. HSTS is configurable but needs a staged rollout at deployment time; it is not meaningfully on by default.
 - **Defect narrowed:** cohort and user detail pages in the educator interface are now permission-checked and deny by default. What remains is the Courses section — any authenticated user on a site can still read the full course list, hidden courses included, and any course detail page. Writes are gated and site isolation is unaffected. See [educator interface authorisation](#educator-interface-authorisation-narrowed-defect).
 - **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, per-request access-controlled media downloads, a retention or expiry policy for generated report files, and an access log for report downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
@@ -137,7 +137,7 @@ Every acceptance of a legal document is recorded as an append-only record tied t
 
 A [cohort progress report](./reports.md) is a generated PDF, one per cohort, holding real learner names, completion status, and the individual answers behind each quiz score. It is not anonymised — the audience is internal educators and staff, and that is a deliberate product decision. Who can reach one is covered under [cohort report access control](#cohort-report-access-control-built).
 
-**Storage (operational).** Report files are written to a storage location configured separately from ordinary media, through the `REPORTS_STORAGE_ALIAS` setting. A deployment that has not configured one falls back to default media storage — which may be publicly served — and the application raises a startup warning naming the gap, so it surfaces at deploy time rather than after a leak. See [deployment](./deployment.md).
+**Storage (operational).** Report files are written to a storage location configured separately from ordinary media, through the `REPORTS_STORAGE_ALIAS` setting. This used to fall back to default media storage when unconfigured, which could mean publicly served, with only a startup warning naming the gap. That fallback is gone. An unconfigured location now fails at startup instead of writing anywhere, and Django's `freedom_ls_deployment.E001` deployment check fails a deploy pipeline that points the reports location at the same bucket as public media. See [deployment](./deployment.md).
 
 **Deletion (built).** Deleting a report removes its stored PDF, not only the database row, and the same holds when a cohort is deleted and takes its reports with it. Neither path leaves an orphaned PII-bearing file behind.
 
