@@ -5,12 +5,14 @@ from __future__ import annotations
 import unicodedata
 from pathlib import Path
 
+from django.core.files.storage import Storage, storages
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.base.initials import two_or_one
 from freedom_ls.site_aware_models.models import SiteAwareModel
 
+from .config import config
 from .validators import validate_organisation_logo, validate_organisation_logo_extension
 
 
@@ -25,11 +27,17 @@ def organisation_logo_upload_to(instance: Organisation, filename: str) -> str:
     return f"organisations/{instance.pk}{ext}"
 
 
+def get_organisation_logo_storage() -> Storage:
+    """The alias named by ORGANISATION_LOGO_STORAGE_ALIAS. The settings layer guarantees it exists."""
+    return storages[config.ORGANISATION_LOGO_STORAGE_ALIAS]
+
+
 class Organisation(SiteAwareModel):
     name = models.CharField(_("name"), max_length=150)
     slug = models.SlugField(max_length=150)
     logo = models.ImageField(
         upload_to=organisation_logo_upload_to,
+        storage=get_organisation_logo_storage,
         blank=True,
         validators=[validate_organisation_logo_extension, validate_organisation_logo],
     )

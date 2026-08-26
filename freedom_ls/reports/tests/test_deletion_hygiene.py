@@ -62,7 +62,7 @@ class TestDeletionHygiene:
 
         deleted.delete()
 
-        assert storage.exists("reports") is True
+        assert storage.exists("cohort_reports") is True
         assert storage.exists(kept.file.name) is True
 
     def test_deleting_a_report_without_a_file_is_a_no_op(

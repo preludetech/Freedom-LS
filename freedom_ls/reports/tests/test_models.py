@@ -64,7 +64,7 @@ class TestReportUploadPath:
 
         path = report_upload_path(report, "cohort-report.pdf")
 
-        assert path == f"reports/{report.pk}-cohort-report.pdf"
+        assert path == f"cohort_reports/{report.pk}-cohort-report.pdf"
 
     def test_upload_path_never_contains_cohort_name(
         self, mock_site_context: object

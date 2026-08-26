@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from django.conf import settings
-from django.core.files.storage import InvalidStorageError, Storage, storages
+from django.core.files.storage import Storage, storages
 from django.db import models
 from django.db.models import Q, UniqueConstraint
 
@@ -25,20 +25,17 @@ def report_upload_path(instance: GeneratedReport, filename: str) -> str:
     """pk-derived, never the cohort name — a cohort name is guessable and enumerable.
 
     The pk is a uuid4, so it alone makes the name unique and every report can
-    sit directly under `reports/`. Nothing user-facing reads this name:
+    sit directly under `cohort_reports/`. Nothing user-facing reads this name:
     `download_report_view` names the download itself via Content-Disposition.
     """
     if not instance.pk:
         raise ValueError("Instance must be saved before uploading files")
-    return f"reports/{instance.pk}-cohort-report.pdf"
+    return f"cohort_reports/{instance.pk}-cohort-report.pdf"
 
 
 def get_reports_storage() -> Storage:
-    """The alias named by REPORTS_STORAGE_ALIAS, falling back to the default storage."""
-    try:
-        return storages[config.REPORTS_STORAGE_ALIAS]
-    except InvalidStorageError:
-        return storages["default"]
+    """The alias named by REPORTS_STORAGE_ALIAS. The settings layer guarantees it exists."""
+    return storages[config.REPORTS_STORAGE_ALIAS]
 
 
 class GeneratedReport(SiteAwareModel):

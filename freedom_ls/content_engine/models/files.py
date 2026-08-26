@@ -1,9 +1,12 @@
 from pathlib import Path
 
+from django.core.files.storage import Storage, storages
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.site_aware_models.models import SiteAwareModel
+
+from ..config import config
 
 
 def file_upload_handler(instance, filepath):
@@ -16,6 +19,11 @@ def file_upload_handler(instance, filepath):
     return f"content_engine/{stem}{pk}{ext}"
 
 
+def get_content_media_storage() -> Storage:
+    """The alias named by CONTENT_MEDIA_STORAGE_ALIAS. The settings layer guarantees it exists."""
+    return storages[config.CONTENT_MEDIA_STORAGE_ALIAS]
+
+
 class File(SiteAwareModel):
     """Stores files (images, documents, etc.) referenced in content."""
 
@@ -26,7 +34,9 @@ class File(SiteAwareModel):
         AUDIO = "AUDIO", _("Audio")
         OTHER = "OTHER", _("Other")
 
-    file = models.FileField(upload_to=file_upload_handler)
+    file = models.FileField(
+        upload_to=file_upload_handler, storage=get_content_media_storage
+    )
     file_type = models.CharField(
         max_length=20, choices=FileType.choices, default=FileType.OTHER
     )
