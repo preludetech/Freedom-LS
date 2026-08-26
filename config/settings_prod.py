@@ -1,7 +1,8 @@
 import os
 
-from freedom_ls.base.env import env_bool, env_int
+from freedom_ls.base.env import env_int
 from freedom_ls.deployment import settings_defaults as fls_defaults
+from freedom_ls.deployment.storage import build_storages
 
 from .settings_base import *  # noqa: F403
 
@@ -110,32 +111,13 @@ ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 
 
 # Media Storage
-
-AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-
-if AWS_STORAGE_BUCKET_NAME:
-    from freedom_ls.deployment.storage import build_s3_media_storage
-
-    default_storage = build_s3_media_storage(
-        bucket_name=AWS_STORAGE_BUCKET_NAME,
-        access_key=os.getenv("AWS_S3_ACCESS_KEY_ID"),
-        secret_key=os.getenv("AWS_S3_SECRET_ACCESS_KEY"),
-        endpoint_url=os.getenv("AWS_S3_ENDPOINT_URL"),
-        region_name=os.getenv("AWS_S3_REGION_NAME"),
-        custom_domain=os.getenv("AWS_S3_CUSTOM_DOMAIN"),  # unset ⇒ private signed URLs
-        # default True (private signed URLs); any falsy value (false/0/no/off) opts into public serving
-        querystring_auth=env_bool("AWS_QUERYSTRING_AUTH", True),
-        querystring_expire=env_int("AWS_QUERYSTRING_EXPIRE", 3600),
-    )
-else:
-    default_storage = {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    }
-
-
-STORAGES = {
-    "default": default_storage,
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+#
+# Every alias is declared, always. A missing alias is what turned a settings gap
+# into learner PII in a shared bucket, so there is no conditional here and no
+# fallback path: build_storages() resolves each alias from its own environment
+# variables and emits a key either way. freedom_ls_deployment.E001, under
+# `manage.py check --deploy`, is what catches a media alias that landed where
+# `default` did.
+STORAGES = build_storages(
+    staticfiles={"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+)

@@ -1,8 +1,41 @@
 from __future__ import annotations
 
+import os
+
+import pytest
 from botocore.config import Config
 
-from freedom_ls.deployment.storage import build_s3_media_storage
+from freedom_ls.deployment.storage import build_s3_media_storage, build_storages
+from freedom_ls.deployment.tests.conftest import PRODUCTION_ENV
+
+EXPECTED_ALIASES = {
+    "default",
+    "staticfiles",
+    "public",
+    "course_media",
+    "user_uploads",
+    "reports",
+    "certificates",
+}
+
+
+@pytest.fixture(autouse=True)
+def _clear_aws_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Clear every AWS_* variable first, so a developer's real credentials
+    exported for an unrelated project never change these results."""
+    _clear_env_prefix(monkeypatch, "AWS_")
+
+
+def _clear_env_prefix(monkeypatch: pytest.MonkeyPatch, prefix: str) -> None:
+    """Delete every currently-set env var whose name starts with prefix."""
+    for name in [name for name in os.environ if name.startswith(prefix)]:
+        monkeypatch.delenv(name, raising=False)
+
+
+def _set_env(monkeypatch: pytest.MonkeyPatch, env: dict[str, str]) -> None:
+    """Apply every name/value pair in env via monkeypatch.setenv."""
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
 
 
 def _build_options(
@@ -98,3 +131,254 @@ def test_given_object_parameters_land_in_options_unchanged() -> None:
     options = result["OPTIONS"]
     assert isinstance(options, dict)
     assert options["object_parameters"] == object_parameters
+
+
+def _options_of(entry: dict[str, object]) -> dict[str, object]:
+    options = entry["OPTIONS"]
+    assert isinstance(options, dict)
+    return options
+
+
+FILESYSTEM_ENTRY = {"BACKEND": "django.core.files.storage.FileSystemStorage"}
+
+
+# Case 1: every alias key is present, in every configuration.
+
+
+@pytest.mark.parametrize(
+    "env",
+    [
+        pytest.param({}, id="nothing_set"),
+        pytest.param(
+            {"AWS_STORAGE_BUCKET_NAME": "fls-shared"}, id="shared_bucket_only"
+        ),
+        pytest.param(PRODUCTION_ENV, id="production_env"),
+    ],
+)
+def test_every_alias_key_is_always_present(
+    env: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_env(monkeypatch, env)
+
+    result = build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    assert set(result.keys()) == EXPECTED_ALIASES
+
+
+# Case 2: a per-bucket variable wins over the shared variable.
+
+
+def test_per_bucket_name_wins_over_shared_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+    monkeypatch.setenv("AWS_S3_PUBLIC_BUCKET_NAME", "fls-public-only")
+
+    result = build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    assert _options_of(result["public"])["bucket_name"] == "fls-public-only"
+
+
+# Case 3: an unset per-bucket name falls back to the shared bucket, landing on
+# the same entry as default. This pins the precondition E001 targets.
+
+
+def test_unset_per_bucket_name_falls_back_to_shared_and_matches_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+
+    result = build_storages(staticfiles={"BACKEND": "some.backend"})
+    public_options = _options_of(result["public"])
+    default_options = _options_of(result["default"])
+
+    assert public_options["bucket_name"] == default_options["bucket_name"]
+    assert public_options["endpoint_url"] == default_options["endpoint_url"]
+    assert public_options["access_key"] == default_options["access_key"]
+
+
+# Case 4: neither the per-bucket nor the shared name is set.
+
+
+def test_no_bucket_name_set_falls_back_to_filesystem_storage() -> None:
+    result = build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    assert result["public"] == FILESYSTEM_ENTRY
+
+
+# Case 5: per-bucket credentials and endpoint override independently of the
+# bucket name.
+
+
+def test_per_bucket_credentials_and_endpoint_override_independently(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+    monkeypatch.setenv("AWS_S3_ACCESS_KEY_ID", "shared-key")
+    monkeypatch.setenv("AWS_S3_ENDPOINT_URL", "https://shared.example.test")
+    monkeypatch.setenv("AWS_S3_PUBLIC_ACCESS_KEY_ID", "public-only-key")
+    monkeypatch.setenv("AWS_S3_PUBLIC_ENDPOINT_URL", "https://public.example.test")
+
+    options = _options_of(
+        build_storages(staticfiles={"BACKEND": "some.backend"})["public"]
+    )
+
+    assert options["bucket_name"] == "fls-shared"
+    assert options["access_key"] == "public-only-key"
+    assert options["endpoint_url"] == "https://public.example.test"
+
+
+# Case 6: CacheControl on the two anonymously readable aliases only.
+
+
+def test_public_cache_control_is_short_lived_and_not_immutable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+
+    options = _options_of(
+        build_storages(staticfiles={"BACKEND": "some.backend"})["public"]
+    )
+
+    assert options["object_parameters"] == {"CacheControl": "public, max-age=86400"}
+
+
+def test_certificates_cache_control_is_immutable_and_year_long(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+
+    options = _options_of(
+        build_storages(staticfiles={"BACKEND": "some.backend"})["certificates"]
+    )
+
+    assert options["object_parameters"] == {
+        "CacheControl": "public, max-age=31536000, immutable"
+    }
+
+
+@pytest.mark.parametrize("alias", ["course_media", "user_uploads", "reports"])
+def test_other_media_aliases_carry_no_object_parameters(
+    alias: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+
+    options = _options_of(
+        build_storages(staticfiles={"BACKEND": "some.backend"})[alias]
+    )
+
+    assert "object_parameters" not in options
+
+
+# Case 8: default resolves from its own purpose variable when set, and from
+# the shared variable otherwise.
+
+
+def test_default_resolves_from_its_own_bucket_name_when_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+    monkeypatch.setenv("AWS_S3_DEFAULT_BUCKET_NAME", "fls-default-only")
+
+    result = build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    assert _options_of(result["default"])["bucket_name"] == "fls-default-only"
+
+
+def test_default_resolves_from_shared_bucket_name_when_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+
+    result = build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    assert _options_of(result["default"])["bucket_name"] == "fls-shared"
+
+
+@pytest.mark.parametrize(
+    "alias", ["public", "course_media", "user_uploads", "reports", "certificates"]
+)
+def test_production_env_no_media_alias_matches_default(
+    alias: str, production_env: None
+) -> None:
+    result = build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    assert result[alias] != result["default"]
+
+
+# Case 9: two purpose variables set to the same bucket name produce two
+# distinct entries agreeing on bucket_name.
+
+
+def test_production_env_public_and_certificates_share_bucket_but_differ_in_cache_control(
+    production_env: None,
+) -> None:
+    result = build_storages(staticfiles={"BACKEND": "some.backend"})
+    public_options = _options_of(result["public"])
+    certificates_options = _options_of(result["certificates"])
+
+    assert public_options["bucket_name"] == certificates_options["bucket_name"]
+    assert (
+        public_options["object_parameters"] != certificates_options["object_parameters"]
+    )
+
+
+def test_production_env_reports_and_user_uploads_share_bucket_and_credentials(
+    production_env: None,
+) -> None:
+    result = build_storages(staticfiles={"BACKEND": "some.backend"})
+    reports_options = _options_of(result["reports"])
+    user_uploads_options = _options_of(result["user_uploads"])
+
+    assert reports_options["bucket_name"] == user_uploads_options["bucket_name"]
+    assert reports_options["access_key"] == user_uploads_options["access_key"]
+    assert reports_options["secret_key"] == user_uploads_options["secret_key"]
+    assert "custom_domain" not in reports_options
+
+
+# Case 10: a per-bucket credential reaches only its own alias.
+
+
+def test_per_bucket_access_key_reaches_only_its_own_alias(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+    monkeypatch.setenv("AWS_S3_ACCESS_KEY_ID", "shared-key")
+    monkeypatch.setenv("AWS_S3_PUBLIC_ACCESS_KEY_ID", "public-only-key")
+
+    options = _options_of(
+        build_storages(staticfiles={"BACKEND": "some.backend"})["public"]
+    )
+
+    assert options["access_key"] == "public-only-key"
+
+
+@pytest.mark.parametrize(
+    "alias", ["course_media", "user_uploads", "certificates", "reports", "default"]
+)
+def test_per_bucket_access_key_does_not_leak_to_other_aliases(
+    alias: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+    monkeypatch.setenv("AWS_S3_ACCESS_KEY_ID", "shared-key")
+    monkeypatch.setenv("AWS_S3_PUBLIC_ACCESS_KEY_ID", "public-only-key")
+
+    options = _options_of(
+        build_storages(staticfiles={"BACKEND": "some.backend"})[alias]
+    )
+
+    assert options["access_key"] == "shared-key"
+
+
+# Case 11: a non-default reports_alias emits that key, and no "reports" key.
+
+
+def test_custom_reports_alias_emits_under_its_own_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+
+    result = build_storages(
+        staticfiles={"BACKEND": "some.backend"}, reports_alias="generated_reports"
+    )
+
+    assert "generated_reports" in result
+    assert "reports" not in result
