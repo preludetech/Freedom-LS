@@ -4,7 +4,7 @@ import pytest
 
 from django.core.exceptions import ImproperlyConfigured
 
-from freedom_ls.base.env import env_bool, env_float, env_int
+from freedom_ls.base.env import env_bool, env_float, env_int, env_str, first_set_name
 
 
 class TestEnvBool:
@@ -81,3 +81,44 @@ class TestEnvFloat:
 
         with pytest.raises(ImproperlyConfigured):
             env_float("FLS_TEST_FLOAT", None)
+
+
+class TestEnvStr:
+    def test_stripped_value_when_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("FLS_TEST_STR", "  hello  ")
+
+        assert env_str("FLS_TEST_STR") == "hello"
+
+    def test_default_when_unset(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("FLS_TEST_STR", raising=False)
+
+        assert env_str("FLS_TEST_STR", "fallback") == "fallback"
+
+    def test_default_when_whitespace_only(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("FLS_TEST_STR", "   ")
+
+        assert env_str("FLS_TEST_STR", "fallback") == "fallback"
+
+
+class TestFirstSetName:
+    def test_returns_first_set_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("FLS_TEST_FIRST", "value")
+        monkeypatch.setenv("FLS_TEST_SECOND", "value")
+
+        assert first_set_name("FLS_TEST_FIRST", "FLS_TEST_SECOND") == "FLS_TEST_FIRST"
+
+    def test_skips_blank_name_and_picks_next(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("FLS_TEST_FIRST", "   ")
+        monkeypatch.setenv("FLS_TEST_SECOND", "value")
+
+        assert first_set_name("FLS_TEST_FIRST", "FLS_TEST_SECOND") == "FLS_TEST_SECOND"
+
+    def test_none_when_no_name_is_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("FLS_TEST_FIRST", raising=False)
+        monkeypatch.delenv("FLS_TEST_SECOND", raising=False)
+
+        assert first_set_name("FLS_TEST_FIRST", "FLS_TEST_SECOND") is None

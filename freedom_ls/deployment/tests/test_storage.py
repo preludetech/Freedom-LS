@@ -61,3 +61,40 @@ def test_client_config_disables_checksum_headers_r2_rejects() -> None:
     assert isinstance(client_config, Config)
     assert client_config.request_checksum_calculation == "when_required"
     assert client_config.response_checksum_validation == "when_required"
+
+
+def test_no_object_parameters_argument_omits_the_key() -> None:
+    result = build_s3_media_storage(
+        bucket_name="fls-media",
+        access_key="AKIA_TEST",
+        secret_key="secret",  # pragma: allowlist secret
+        endpoint_url="https://accountid.r2.cloudflarestorage.com",
+        region_name=None,
+        custom_domain=None,
+        querystring_auth=True,
+        querystring_expire=3600,
+    )
+
+    options = result["OPTIONS"]
+    assert isinstance(options, dict)
+    assert "object_parameters" not in options
+
+
+def test_given_object_parameters_land_in_options_unchanged() -> None:
+    object_parameters = {"CacheControl": "public, max-age=86400"}
+
+    result = build_s3_media_storage(
+        bucket_name="fls-media",
+        access_key="AKIA_TEST",
+        secret_key="secret",  # pragma: allowlist secret
+        endpoint_url="https://accountid.r2.cloudflarestorage.com",
+        region_name=None,
+        custom_domain=None,
+        querystring_auth=True,
+        querystring_expire=3600,
+        object_parameters=object_parameters,
+    )
+
+    options = result["OPTIONS"]
+    assert isinstance(options, dict)
+    assert options["object_parameters"] == object_parameters

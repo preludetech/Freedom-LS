@@ -58,3 +58,14 @@ def env_float(name: str, default: float | None) -> float | None:
         return float(value)
     except ValueError:
         raise ImproperlyConfigured(f"{name}={value!r} is not a valid number.") from None
+
+
+def env_str(name: str, default: str | None = None) -> str | None:
+    """The stripped value of ``name``, or ``default`` when unset or blank."""
+    value = _raw(name)
+    return default if value is None else value
+
+
+def first_set_name(*names: str) -> str | None:
+    """The first of ``names`` set to a non-blank value, or None when none is."""
+    return next((name for name in names if _raw(name) is not None), None)
