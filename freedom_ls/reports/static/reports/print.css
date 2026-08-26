@@ -128,16 +128,22 @@ touches. */
   font-family: var(--report-font-body);
   font-size: 7pt;
   color: var(--color-muted);
-  /* Keeps this line clear of the centred "Powered by" box beside it. Only the
-     organisation name in this line is held to a character budget -- the cohort
-     name is whatever an administrator typed -- so the budget alone cannot
-     promise a gap, and without one the two strings render touching.
+  /* Keeps this block clear of the centred "Powered by" box beside it. Both
+     names are held to a character budget, but a budget counted in characters
+     cannot promise a gap measured in millimetres -- the same count sets to
+     different widths -- so the gap is reserved here rather than inferred.
 
-     8mm rather than the 10mm this was before the platform mark joined the box
-     beside it: the mark widens that box, the margin-box algorithm takes the
-     width from this one, and at 10mm a golden-path identity line that used to
-     set on one line wrapped to two. Measured against a real render. */
+     The mark in the centre box widens it and the margin-box algorithm takes
+     that width from this box, which is what 8mm is measured against. */
   padding-right: 8mm;
+}
+
+/* The two lines of the identity block. Stacked rather than run together so the
+   break between them is chosen here instead of falling wherever the text
+   reaches the edge of the box. */
+.footer-org,
+.footer-doc {
+  display: block;
 }
 
 /* Block-level and declared before the cover, for the same two reasons as

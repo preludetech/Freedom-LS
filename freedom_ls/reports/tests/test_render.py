@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 import re
+from html import unescape
 
 import pytest
 
@@ -18,6 +19,11 @@ from django.test import override_settings
 from django.utils import timezone
 
 from freedom_ls.organisations.validators import MAX_BYTES
+from freedom_ls.reports.gather import (
+    FOOTER_COHORT_MAX_CHARS,
+    FOOTER_LINE_MAX_CHARS,
+    FOOTER_ORGANISATION_MAX_CHARS,
+)
 from freedom_ls.reports.render import (
     ReportRenderError,
     _build_document,
@@ -332,6 +338,16 @@ def _body_of(html: str) -> str:
     return html.split("<body>")[1]
 
 
+def _footer_identity_of(html: str) -> str:
+    """The running element print.css draws in every interior page's footer."""
+    return html.split('class="footer-identity"')[1].split("</div>")[0]
+
+
+def _text_of(markup: str) -> str:
+    """`markup` as a reader sees it: tags dropped, entities and runs of space resolved."""
+    return unescape(re.sub(r"<[^>]+>", "", markup)).strip()
+
+
 A_LOGO_DATA_URI = "data:image/png;base64,aGVsbG8="
 
 # 150 characters, the longest name an Organisation can carry.
@@ -399,8 +415,44 @@ class TestBrandingOnTheCover:
 
     def test_the_footer_identity_line_leads_with_the_organisation(self) -> None:
         html = build_report_html(cohort_report_data())
+        footer = _footer_identity_of(html)
 
-        assert "Northside College · Cohort A · Cohort progress report" in html
+        assert "Northside College" in footer
+        assert "Cohort A · Cohort progress report" in footer
+
+    def test_the_footer_identity_line_stacks_the_cohort_under_the_organisation(
+        self,
+    ) -> None:
+        html = build_report_html(cohort_report_data())
+        footer = _footer_identity_of(html)
+
+        assert footer.index("Northside College") < footer.index("Cohort A")
+        assert '<span class="footer-org">' in footer
+        assert '<span class="footer-doc">' in footer
+
+    def test_neither_footer_line_outgrows_the_margin_box_at_its_longest(self) -> None:
+        """The budgets, checked against what the template actually composes.
+
+        Read off the render rather than added up by hand, so a literal added to
+        either line is counted without anyone remembering to widen the sum. A
+        PDF-text assertion cannot stand in for this: extracting text rejoins
+        wrapped lines, so a line that overflowed would read back as if it fit.
+        """
+        data = cohort_report_data(
+            organisation=organisation_brand(
+                footer_name="W" * FOOTER_ORGANISATION_MAX_CHARS
+            ),
+            footer_cohort_name="W" * FOOTER_COHORT_MAX_CHARS,
+        )
+
+        footer = _footer_identity_of(build_report_html(data))
+        lines = [
+            _text_of(line) for line in re.findall(r"<span[^>]*>(.*?)</span>", footer)
+        ]
+
+        assert len(lines) == 2
+        for line in lines:
+            assert len(line) <= FOOTER_LINE_MAX_CHARS
 
     def test_the_platform_mark_appears_on_the_band_and_in_the_footer(self) -> None:
         data = cohort_report_data(site_name="Bright Academy", show_powered_by=True)

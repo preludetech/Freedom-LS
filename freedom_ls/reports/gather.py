@@ -149,13 +149,22 @@ class CompletionStats:
 # letting a downstream override just the number is not a degree of freedom the
 # layout actually has.
 #
-# All three were set by rendering a ladder of real names -- short, at each
-# threshold, 150 characters, one unbroken 100-character token, and Cyrillic --
-# and reading the output, because a character count predicts neither how wide
-# a name sets nor how many lines it takes.
+# Every number here was set by rendering a ladder of real names -- short, at
+# each threshold, 150 characters, one unbroken 100-character token, and
+# Cyrillic -- and reading the output, because a character count predicts
+# neither how wide a name sets nor how many lines it takes.
+#
+# The identity line sets as two stacked lines, the organisation above the
+# cohort, so each budget is measured against one line of the margin box rather
+# than the two sharing it. FOOTER_LINE_MAX_CHARS is what one such line holds at
+# 7pt on a portrait page; landscape is wider, so portrait is what binds. The
+# cohort shares its line with the document label, and the organisation has its
+# line to itself.
 WORDMARK_FULL_MAX_CHARS = 42
 WORDMARK_CONDENSED_MAX_CHARS = 87
-FOOTER_ORGANISATION_MAX_CHARS = 30
+FOOTER_LINE_MAX_CHARS = 66
+FOOTER_ORGANISATION_MAX_CHARS = 40
+FOOTER_COHORT_MAX_CHARS = 30
 
 
 def _wordmark_size_class(name: str) -> str:
@@ -783,6 +792,7 @@ def gather_cohort_report_data(
 
     return CohortReportData(
         cohort_name=cohort.name,
+        footer_cohort_name=_truncate_to_budget(cohort.name, FOOTER_COHORT_MAX_CHARS),
         organisation=OrganisationBrand(
             name=cohort.organisation.name,
             logo_data_uri=load_organisation_logo_data_uri(cohort.organisation),

@@ -49,9 +49,11 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 - [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
-- [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
+- [x] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (cmd) Re-run `/fls-dev:do_qa` — the powered-by slots now carry the platform logo, so the QA plan gained Tests 7 and 8 and the earlier screenshots are stale
+- [x] (cmd) Re-run `/fls-dev:do_qa` — the powered-by slots now carry the platform logo, so the QA plan gained Tests 7 and 8 and the earlier screenshots are stale
+- [x] (user + cmd) Fix QA bug: footer identity line wraps to two lines for organisation names of 14+ characters (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: organisation chip clips the top of the logo in the mobile course-outline drawer at 375x812 (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

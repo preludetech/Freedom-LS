@@ -43,9 +43,16 @@ escapes them, whereas interpolating them into the stylesheet would let a
 quotation mark in a cohort name break every rule after it.
 
 It must stay a block-level element and it must come before the cover — see the
-note on .footer-identity in print.css.{% endcomment %}
+note on .footer-identity in print.css.
+
+Two stacked lines rather than one running together: the organisation owns the
+first and the document describes itself on the second. Set as one line the two
+names plus the label overrun the box for all but the shortest organisation, and
+the break falls wherever the text happens to reach the edge — stranding a lone
+word from the label under the names.{% endcomment %}
 <div class="footer-identity">
-  <span class="footer-org">{{ data.organisation.footer_name }} · {{ data.cohort_name }} · Cohort progress report</span>
+  <span class="footer-org">{{ data.organisation.footer_name }}</span>
+  <span class="footer-doc">{{ data.footer_cohort_name }} · Cohort progress report</span>
 </div>
 {% comment %}The platform's attribution, drawn in its own footer margin box so
 it never competes with the identity line above for one line's width. A running

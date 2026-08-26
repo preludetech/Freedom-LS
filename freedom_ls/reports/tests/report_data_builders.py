@@ -105,6 +105,7 @@ def organisation_brand(**overrides: object) -> OrganisationBrand:
 def cohort_report_data(**overrides: object) -> CohortReportData:
     defaults: dict[str, object] = {
         "cohort_name": "Cohort A",
+        "footer_cohort_name": "Cohort A",
         "organisation": organisation_brand(),
         "site_name": "Test Academy",
         "show_powered_by": True,

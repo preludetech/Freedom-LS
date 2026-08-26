@@ -796,10 +796,12 @@ class TestOrganisationBranding:
         interior_text = reader.pages[1].extract_text()
 
         assert f"Powered by {mock_site_context.name}" in interior_text
-        assert (
-            f"{data.organisation.footer_name} · {data.cohort_name} · "
-            "Cohort progress report"
-        ) in interior_text
+        # The two lines are asserted separately: the identity block sets the
+        # organisation above the cohort, and extraction reports them in that
+        # order but with the line break between them rendered as whitespace it
+        # is not worth pinning.
+        assert data.organisation.footer_name in interior_text
+        assert f"{data.footer_cohort_name} · Cohort progress report" in interior_text
 
     def test_the_house_organisation_gets_no_powered_by_mark_anywhere(
         self, mock_site_context

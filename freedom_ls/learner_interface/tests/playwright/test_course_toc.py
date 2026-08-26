@@ -1,7 +1,11 @@
+import io
 import re
 
 import pytest
+from PIL import Image
 from playwright.sync_api import Page, expect
+
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
@@ -14,8 +18,15 @@ from freedom_ls.learner_interface.templatetags.course_storage_keys import (
     course_part_storage_key,
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
+from freedom_ls.organisations.factories import OrganisationFactory
 
 from ..conftest import reverse_url
+
+
+def _logo_upload(name: str = "logo.png") -> SimpleUploadedFile:
+    buf = io.BytesIO()
+    Image.new("RGB", (200, 100)).save(buf, format="PNG")
+    return SimpleUploadedFile(name, buf.getvalue(), content_type="image/png")
 
 
 @pytest.mark.playwright
@@ -225,6 +236,75 @@ def test_back_button_closes_mobile_bottom_sheet(
     expect(sheet).to_be_hidden()
     expect(toggle).to_have_attribute("aria-expanded", "false")
     expect(logged_in_page).to_have_url(item_url)
+
+
+@pytest.mark.playwright
+# transaction=True so the Playwright browser (separate connection) sees committed data
+@pytest.mark.django_db(transaction=True)
+def test_mobile_outline_sheet_stays_within_the_viewport(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    settings,
+    tmp_path,
+):
+    """A sheet taller than the screen clamps and scrolls rather than overflowing it.
+
+    The sheet is anchored to the bottom of the viewport, so an unclamped one
+    grows upwards off the top of the screen and takes the first thing in the
+    panel with it -- unreachably, because the height it overflows by is height
+    its own scroll container never gets. Both halves matter: clamping alone
+    moves the same content below the fold instead of above the ceiling.
+    """
+    settings.MEDIA_ROOT = tmp_path
+    organisation = OrganisationFactory(name="Acme Corp", logo=_logo_upload())
+    course = CourseFactory(title="Tall Course", slug="tall-course")
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user,
+        learner__organisation=organisation,
+        collection=course,
+        is_active=True,
+    )
+    # Comfortably past 85vh at this viewport, so the clamp has to engage.
+    for order in range(20):
+        ContentCollectionItemFactory(
+            collection_object=course,
+            child_object=TopicFactory(
+                title=f"Topic {order:02d}", slug=f"topic-{order:02d}"
+            ),
+            order=order,
+        )
+
+    item_url = reverse_url(
+        live_server,
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+    viewport_height = 812
+    logged_in_page.set_viewport_size({"width": 375, "height": viewport_height})
+    logged_in_page.goto(item_url)
+
+    sheet = logged_in_page.get_by_role("dialog", name="Course outline")
+    logged_in_page.get_by_role("button", name="Open course outline").click()
+    expect(sheet).to_be_visible()
+    # The sheet slides up on open; measuring mid-flight reads a transient offset.
+    expect(sheet).to_have_css("transform", "none")
+
+    box = sheet.bounding_box()
+    assert box is not None
+    assert box["y"] >= 0
+    assert box["height"] <= viewport_height * 0.85 + 1
+
+    chip = logged_in_page.locator("#course-organisation-chip")
+    chip_box = chip.bounding_box()
+    assert chip_box is not None
+    assert chip_box["y"] >= 0
+    assert chip_box["y"] + chip_box["height"] <= viewport_height
+
+    # The overflow the clamp creates has somewhere to go.
+    body = logged_in_page.locator(".side-panel-body")
+    assert body.evaluate("el => el.scrollHeight > el.clientHeight")
 
 
 @pytest.mark.playwright

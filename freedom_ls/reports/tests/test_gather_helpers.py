@@ -15,6 +15,8 @@ import pytest
 
 from freedom_ls.form_engine.models import QuestionType
 from freedom_ls.reports.gather import (
+    FOOTER_COHORT_MAX_CHARS,
+    FOOTER_LINE_MAX_CHARS,
     FOOTER_ORGANISATION_MAX_CHARS,
     WORDMARK_CONDENSED_MAX_CHARS,
     WORDMARK_FULL_MAX_CHARS,
@@ -251,6 +253,22 @@ class TestTruncateToBudget:
         assert len(wordmark_result) <= WORDMARK_CONDENSED_MAX_CHARS
         assert len(footer_result) <= FOOTER_ORGANISATION_MAX_CHARS
         assert len(wordmark_result) != len(footer_result)
+
+
+class TestFooterIdentityBudgets:
+    """The two footer lines against the width the margin box actually has.
+
+    Stated symbolically rather than as literals so that retuning a budget
+    against a real render cannot quietly push a line past what it fits in.
+    """
+
+    def test_the_organisation_line_fits_the_margin_box(self) -> None:
+        assert FOOTER_ORGANISATION_MAX_CHARS <= FOOTER_LINE_MAX_CHARS
+
+    def test_the_cohort_line_fits_the_margin_box_alongside_its_label(self) -> None:
+        second_line = FOOTER_COHORT_MAX_CHARS + len(" · Cohort progress report")
+
+        assert second_line <= FOOTER_LINE_MAX_CHARS
 
 
 class TestChunkQuizColumns:

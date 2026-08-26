@@ -20,7 +20,7 @@ the site's own default Organisation:
 
 Usage:
     uv run python manage.py qa_create_organisations
-    uv run python manage.py qa_create_organisations --site-name DemoDev
+    uv run python manage.py qa_create_organisations DemoDev
 """
 
 from pathlib import Path

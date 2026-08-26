@@ -231,14 +231,17 @@ class OrganisationBrand:
     wordmark_size_class: str
     # The name at the length the cover wordmark slot can hold.
     wordmark_name: str
-    # The name at the length the footer identity line can hold, which is
-    # shorter still.
+    # The name at the length the footer identity line's first line can hold,
+    # which is shorter still.
     footer_name: str
 
 
 @dataclasses.dataclass(frozen=True)
 class CohortReportData:
     cohort_name: str
+    # The same name at the length the footer identity line's second line can
+    # hold, where it sets beside the document label.
+    footer_cohort_name: str
     # Which organisation's cohort this is, and the brand the document leads
     # with. Cohort names are unique per organisation rather than per site, so
     # the name alone does not identify a cohort on a site running more than one.

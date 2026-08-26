@@ -37,6 +37,7 @@ from freedom_ls.learner_progress.factories import (
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.reports.gather import (
+    FOOTER_COHORT_MAX_CHARS,
     FOOTER_ORGANISATION_MAX_CHARS,
     WORDMARK_CONDENSED_MAX_CHARS,
     gather_cohort_report_data,
@@ -49,6 +50,9 @@ pytestmark = pytest.mark.django_db
 LONG_ORG_NAME = (
     "Northside College of Advanced Hydrology and Environmental Science " * 3
 )[:150]
+
+# Longer than the footer's second line holds, so the budget has to cut it.
+LONG_COHORT_NAME = "Autumn Intake for Advanced Environmental Fieldwork and Survey"
 
 # Established empirically: the number of queries gather_cohort_report_data
 # issues for one course with one quiz, regardless of how many learners or
@@ -1016,6 +1020,28 @@ class TestOrganisationBrand:
         data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
         assert data.organisation.logo_data_uri is None
+
+
+class TestFooterCohortName:
+    def test_a_short_cohort_name_is_carried_whole_into_the_footer(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory(name="Cohort A")
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.footer_cohort_name == "Cohort A"
+
+    def test_a_long_cohort_name_is_kept_in_full_and_cut_for_the_footer(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory(name=LONG_COHORT_NAME)
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert data.cohort_name == LONG_COHORT_NAME
+        assert len(data.footer_cohort_name) <= FOOTER_COHORT_MAX_CHARS
+        assert data.footer_cohort_name.endswith("…")
 
 
 class TestPoweredByAttribution:
