@@ -259,6 +259,22 @@ RESOLVED_THEME_DIR = configure_theme(
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Every alias a model's `storage=` callable can name, declared here so that dev
+# and the test suite never fail to import a model over a missing key.
+# `settings_prod.py` overrides the whole dict via `build_storages()`. No entry
+# below carries an OPTIONS key: FileSystemStorage falls back to MEDIA_ROOT only
+# when it has no explicit location, which is what lets the test suite's tmp-dir
+# isolation of MEDIA_ROOT cover every alias here for free.
+STORAGES: dict[str, dict[str, object]] = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "public": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "course_media": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "user_uploads": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "reports": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "certificates": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+}
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
 
