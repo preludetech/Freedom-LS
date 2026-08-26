@@ -9,6 +9,8 @@ class OrganisationsConfig(AppConfig):
     def ready(self) -> None:
         from django.db.models.signals import post_migrate
 
+        from freedom_ls.organisations import checks  # noqa: F401
+
         from . import signals
 
         # sender=self so this fires once, for this app, rather than once per
