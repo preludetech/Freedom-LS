@@ -41,24 +41,47 @@ through any other server lands somewhere Step 10 will not find it.
 Your first browser action is Step 4, once a server is running. If Playwright MCP is unavailable
 then: explain why, explain how to fix the error, and **do not continue with the tests**.
 
-## Rule 2 — Test data comes from `fls-dev:qa-data-helper`
+## Rule 2 — The dev database is yours to shape
 
-**Test data is created by the `fls-dev:qa-data-helper` agent — NOT by you.** If a test cannot be
-executed because the dev database lacks the required data (e.g. a paginator can't be exercised
-because there aren't enough rows, a panel can't be tested because no instance of the relevant model
-exists, a flow can't be walked because a user/cohort/course is missing), you MUST delegate to the
-**`fls-dev:qa-data-helper`** agent via the `Agent` tool.
+The database this run drives is disposable development data. Nothing in it is precious and nothing in
+it needs anyone's permission to change. When the data is wrong for the test in front of you — missing,
+stale, or actively blocking — **fix the data and carry on testing**.
 
-Do NOT:
-- Run `manage.py shell` yourself to create data
-- Run ad-hoc ORM scripts yourself to create data
-- Mark a test as `PARTIAL` / `N/A` / `NOT EXECUTED` because of missing data without first invoking `fls-dev:qa-data-helper` to fix the gap
-- Skip a test that `fls-dev:qa-data-helper` could unblock
+### Missing data — delegate to `fls-dev:qa-data-helper`
 
-Do:
-- Spawn the `fls-dev:qa-data-helper` agent and tell it exactly what data shape you need (entity counts, relationships, which Site, which fixtures it should attach to)
-- Wait for it to confirm the data exists, then re-attempt the test
-- Only mark a test PARTIAL / skipped if `fls-dev:qa-data-helper` itself reports the scenario is impossible to set up
+If a test cannot run because the required data does not exist (a paginator with too few rows, a panel
+with no instance of the model, a flow with no user/cohort/course), spawn the
+**`fls-dev:qa-data-helper`** agent via the `Agent` tool and tell it exactly what shape you need: entity
+counts, relationships, which Site, which fixtures to attach to. It owns the factory conventions — do
+not hand-roll ORM scripts to create data. Wait for it to confirm, then re-attempt the test.
+
+### Blocking data — delete it or reset it
+
+Existing rows block tests too: a past hard deadline that locks an item, an orphaned join row, a role
+grant that widens a list, a password an earlier run changed. Clear it. Cheapest option first:
+
+1. Delegate the delete to `fls-dev:qa-data-helper`, naming the records by pk.
+2. Clear all content and re-seed: `uv run python manage.py danger_content_delete --yes`, then the plan's
+   seed list. Lighter than dropping the database, and it keeps users, organisations and role grants
+   intact.
+3. For a full wipe and re-seed, run the test plan's own setup section (`§0`). In FLS that is
+   `.claude/fls-dev/scripts/dev_db_delete.sh`, then `.claude/fls-dev/scripts/dev_db_init.sh`, then
+   `uv run python manage.py migrate`, then the plan's seed list. The two scripts match the allow-listed
+   `Bash(.claude/fls-dev/scripts/*.sh:*)` wildcard, so they run without a prompt.
+
+**Never write a `todo.md` item asking the user to delete, reset, re-seed or tidy development data** —
+including residue this run created. That is your work. Do it before the run ends.
+
+### If a data command is refused
+
+Reach for the allow-listed wrappers in `.claude/fls-dev/scripts/` and `.claude/ds/scripts/` instead of
+giving up. Only when a command is refused **and** has no allow-listed equivalent may you file a `(user)`
+item, and it must name the exact command and say why you could not issue it.
+
+### The one case that is genuinely not yours
+
+Only mark a test PARTIAL / skipped if `fls-dev:qa-data-helper` itself reports the scenario is impossible
+to set up.
 
 ## Rule 3 — Batching safety rules
 
@@ -84,6 +107,13 @@ prose; never write the literal flag string into a file.
 `fls-dev:qa-data-helper`, `fls-dev:qa-bugfixer`, `sdd:sdd-worker`, `sdd:sdd-mechanic`.
 
 **3f. `git revert` (Step 13) is not allow-listed as a solo-safe batch member** — issue it alone.
+
+**3g. Never run a management command that prompts.** Anything using `click.confirm` — `danger_content_delete`
+is the one QA plans reach for — blocks forever waiting on stdin nobody will type into. Pass its
+non-interactive flag (`--yes` / `-y`). A step that wipes and re-seeds the dev database is an ordinary QA
+step you run yourself: the dev database is per-worktree and rebuildable from the plan's §0.1 seed, so
+never hand it back to the user as a human errand, and never mark it `SKIP` for want of a confirmation.
+If a plan you are handed marks such a step human-run, run it anyway and correct the plan.
 
 ## Rule 4 — Pass paths, never payloads
 
@@ -273,7 +303,7 @@ to investigate. That agent has no Bash and no browser — it reads source only �
 to "what in the code could explain this?", and give it an explicit output path
 (`.sdd-work/qa_probe_<slug>.md`), which its contract requires.
 
-If you cannot run a test because data is missing, follow Rule 2.
+If you cannot run a test because data is missing, or because existing data blocks it, follow Rule 2.
 
 **Browser-driving stays at depth 0 on the session model.** The exploratory visual judgement — reading
 snapshots, spotting layout issues, deciding pass/fail — is the core value of this step and MUST NOT
@@ -397,7 +427,8 @@ lists every manifestation (`test_id` + viewport), embeds the relevant screenshot
 `UNRESOLVED`; Step 13 rewrites this section with final verdicts.
 
 **General notes** — anything not tested and why, any difficulties, and anything tangential that
-seemed out of place.
+seemed out of place. This is where an observation with no action attached belongs; it does not go in
+`todo.md`.
 
 The worker writes `qa_report.md` in a single `Write` and ends the file with its `status:` footer. That
 footer's `reason:` describes the *rendering* (e.g. "report rendered, N bugs documented") and must not
@@ -529,22 +560,47 @@ Spawn a **solo `sdd:sdd-mechanic`** (Haiku) to apply the todo ticks and addition
 protected helper at `claude_plugins/sdd/commands/protected/update_todo.md` and follow its steps
 literally.
 
-Build the exact `add:` list from the scratch records, the report, and the Step 13 verdicts *before*
-spawning. Pass:
+Build the exact argument list from the scratch records, the report, and the Step 13 verdicts *before*
+spawning. Pass `<todo-path>`: the `todo.md` in `<spec-dir>`.
 
-- `<todo-path>`: the `todo.md` in `<spec-dir>`.
-- `tick:"Run \`/do_qa\` to execute the QA plan (missing test data will be created automatically via the \`qa-data-helper\` agent)"` — this must match the todo item's text **verbatim**, including the unprefixed agent name.
-- For each **UNRESOLVED** bug (green-lane failures and red-lane alike):
-  `add:"QA|user + cmd|Fix QA bug: <short title> (TDD — failing test first, then fix)"`.
-- For each test skipped because of missing data:
-  `add:"QA|cmd|Use the \`fls-dev:qa-data-helper\` agent to create missing data for <short description>, then re-run \`/do_qa\`"`.
-- If the smoke gate failed:
-  `add:"QA|user|Fix smoke gate failure: <short description> before re-running \`/do_qa\`"`.
-- If no bugs were found, nothing was skipped, and the smoke gate passed, omit `add:` entirely.
+### The `tick:`
 
-**FIXED** bugs are recorded only in `qa_report.md`'s `## Bug status` section, with their commit hash.
-They are resolved within this run, so do **not** add a `todo.md` item for them — an unchecked
-checklist item with no actionable follow-up would jam a later `/sdd:next`.
+Read the todo file and find the `/fls-dev:do_qa` item naming **this run's** test plan. A `todo.md`
+often holds several of them, one per plan, so match on a substring unique to yours (e.g. `3a. seam_qa`)
+and pass the line **verbatim** as it appears in the file. Do not reconstruct the wording from memory —
+it drifts between specs.
+
+### What may be added — this list is closed
+
+These four categories, and nothing else. There is no fifth category and you must not invent one.
+
+1. Each **UNRESOLVED** bug, green-lane failures and red-lane alike:
+   `add:"<section>|user + cmd|Fix QA bug: <short title> (TDD — failing test first, then fix)"`.
+2. A scenario `fls-dev:qa-data-helper` reported **impossible to set up** — not merely absent, which
+   Rule 2 required you to fix during the run:
+   `add:"<section>|cmd|<what could not be set up, and why the agent said it was impossible>"`.
+3. A smoke-gate failure:
+   `add:"<section>|user|Fix smoke gate failure: <short description> before re-running \`/fls-dev:do_qa\`"`.
+4. A product or UX decision a bug turns on, which you cannot make yourself:
+   `add:"<section>|user|Decide <the question>, then <what follows from it>"`.
+
+### What must never be added
+
+- Deleting, resetting, re-seeding or otherwise tidying development data. Rule 2 — you do that yourself,
+  before the run ends. This includes residue this run created.
+- "Verify X yourself" for anything you could have driven in the browser.
+- An observation with no action attached. It goes in `qa_report.md` under General notes.
+- Anything already fixed this run. **FIXED** bugs are recorded only in `qa_report.md`'s `## Bug status`
+  section, with their commit hash. An unchecked checklist item with no actionable follow-up jams a
+  later `/sdd:next`.
+
+### If there is nothing to add, add nothing
+
+An empty `add:` list is the normal outcome of a clean run, not a gap to fill. Omit `add:` entirely and
+pass only the `tick:`. Do not pad the list so the run has something to show for itself — the report is
+where the run's observations go.
+
+### The section argument
 
 The `add:` section argument is the todo's heading text. Check what the file actually uses (todo files
 number their sections, e.g. `## 9. QA`) and pass that — `update_todo.md` matches the heading exactly

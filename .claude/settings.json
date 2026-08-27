@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "_comment_qa_commands": "The `manage.py` entries in the allow list are dev-database-only QA commands. danger_content_delete clears content inside the per-branch dev database and is strictly less destructive than dev_db_delete.sh, which drops that database outright and is already prompt-free via the scripts wildcard. migrate is deliberately excluded: a destructive migration is the one command here that can cost work someone wanted to keep.",
     "_comment_qa_scripts": "Any script placed in .claude/ds/scripts/ or .claude/fls-dev/scripts/ is thereby granted prompt-free QA execution with arbitrary arguments via the Bash(.claude/<plugin>/scripts/*.sh:*) wildcards (in both the direct and `bash <script>` invocation forms), and must be reviewed as security-sensitive — equivalent to adding an allow-list entry.",
     "allow": [
       "Read",
@@ -56,7 +57,13 @@
       "Bash(.claude/fls-dev/scripts/*.sh:*)",
       "Bash(bash .claude/ds/scripts/*.sh:*)",
       "Bash(bash .claude/fls-dev/scripts/*.sh:*)",
-      "Bash(uv run python manage.py runserver:*)"
+      "Bash(uv run python manage.py runserver:*)",
+      "Bash(uv run python manage.py danger_content_delete:*)",
+      "Bash(uv run python manage.py create_demo_data:*)",
+      "Bash(uv run python manage.py content_save:*)",
+      "Bash(uv run python manage.py recalculate_progress_percentages:*)",
+      "Bash(uv run python manage.py showmigrations:*)",
+      "Bash(uv run python manage.py qa_*)"
     ],
     "deny": [
       "Edit(config/settings_prod.py)",
