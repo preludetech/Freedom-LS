@@ -1,4 +1,4 @@
-"""Tests for FormProgress.complete() idempotency and finalise_stale_incomplete."""
+"""Tests for FormProgress.complete() idempotency."""
 
 import pytest
 
@@ -45,47 +45,3 @@ def test_complete_twice_does_not_re_score(mock_site_context):
     progress.complete()
 
     assert progress.scores == {"score": 999, "max_score": 999}
-
-
-@pytest.mark.django_db
-def test_finalise_stale_incomplete_completes_submit_on_exit_attempt(mock_site_context):
-    """An abandoned attempt at a submit-on-exit form is completed as it stands."""
-    user = UserFactory()
-    form = FormFactory(submit_on_exit=True)
-    incomplete = FormProgressFactory(user=user, form=form)
-
-    result = FormProgress.finalise_stale_incomplete(user, form)
-
-    assert result is not None
-    assert result.pk == incomplete.pk
-    incomplete.refresh_from_db()
-    assert incomplete.completed_time is not None
-
-
-@pytest.mark.django_db
-def test_finalise_stale_incomplete_returns_none_for_save_on_exit_form(
-    mock_site_context,
-):
-    """An abandoned attempt at a save-on-exit form stays open, to be resumed later."""
-    user = UserFactory()
-    form = FormFactory(submit_on_exit=False)
-    incomplete = FormProgressFactory(user=user, form=form)
-
-    result = FormProgress.finalise_stale_incomplete(user, form)
-
-    assert result is None
-    incomplete.refresh_from_db()
-    assert incomplete.completed_time is None
-
-
-@pytest.mark.django_db
-def test_finalise_stale_incomplete_returns_none_when_no_incomplete_attempt(
-    mock_site_context,
-):
-    """There is nothing to finalise when the learner has no attempt under way."""
-    user = UserFactory()
-    form = FormFactory(submit_on_exit=True)
-
-    result = FormProgress.finalise_stale_incomplete(user, form)
-
-    assert result is None

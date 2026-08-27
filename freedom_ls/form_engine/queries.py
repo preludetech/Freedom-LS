@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-from uuid import UUID
-
 from .models import Form, FormPage, FormProgress, FormQuestion, FormStrategy
 
 
@@ -45,32 +42,6 @@ def attempt_completes_form(attempt: FormProgress) -> bool:
     as the caller that asks whether the learner may move on.
     """
     return quiz_verdict(attempt.form, attempt) is not False
-
-
-def completed_form_ids_by_user(
-    user_ids: Iterable[int] | None = None,
-) -> dict[int, set[UUID]]:
-    """Form ids each learner counts as having finished, keyed by user id.
-
-    Their latest completed attempt decides, matching how the course outline reads
-    a quiz's status and how the reports read a learner's score. Pass `user_ids`
-    to narrow the scan to the learners you care about.
-    """
-    attempts = FormProgress.objects.filter(completed_time__isnull=False).select_related(
-        "form"
-    )
-    if user_ids is not None:
-        attempts = attempts.filter(user_id__in=user_ids)
-
-    latest_attempts: dict[tuple[int, UUID], FormProgress] = {}
-    for attempt in attempts.order_by("completed_time", "start_time"):
-        latest_attempts[(attempt.user_id, attempt.form_id)] = attempt
-
-    completed: dict[int, set[UUID]] = {}
-    for (user_id, form_id), attempt in latest_attempts.items():
-        if attempt_completes_form(attempt):
-            completed.setdefault(user_id, set()).add(form_id)
-    return completed
 
 
 def count_form_questions(form: Form) -> int:

@@ -1,12 +1,8 @@
-"""Tests for FormProgress page tracking and attempt reuse."""
+"""Tests for which page a FormProgress attempt resumes on."""
 
 from __future__ import annotations
 
-from datetime import timedelta
-
 import pytest
-
-from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import (
@@ -86,69 +82,3 @@ def test_get_current_page_number_page_with_text_only(mock_site_context):
     form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
 
     assert form_progress.get_current_page_number() == 2
-
-
-@pytest.mark.django_db
-def test_get_or_create_incomplete_no_existing(mock_site_context):
-    """A learner with no attempt at the form gets a fresh incomplete one."""
-    user = UserFactory()
-    form = FormFactory()
-
-    progress = FormProgress.get_or_create_incomplete(user, form)
-
-    assert progress.user == user
-    assert progress.form == form
-    assert progress.completed_time is None
-    assert FormProgress.objects.filter(user=user, form=form).count() == 1
-
-
-@pytest.mark.django_db
-def test_get_or_create_incomplete_returns_existing_incomplete(
-    mock_site_context,
-):
-    """An attempt already under way is resumed rather than replaced."""
-    user = UserFactory()
-    form = FormFactory()
-    existing: FormProgress = FormProgressFactory(user=user, form=form)
-
-    progress = FormProgress.get_or_create_incomplete(user, form)
-
-    assert progress.id == existing.id
-    assert FormProgress.objects.filter(user=user, form=form).count() == 1
-
-
-@pytest.mark.django_db
-def test_get_or_create_incomplete_creates_new_when_completed(
-    mock_site_context,
-):
-    """A finished attempt is left alone; re-sitting the form starts a new one."""
-    user = UserFactory()
-    form = FormFactory()
-    completed: FormProgress = FormProgressFactory(
-        user=user, form=form, completed_time=timezone.now()
-    )
-
-    progress = FormProgress.get_or_create_incomplete(user, form)
-
-    assert progress.id != completed.id
-    assert progress.completed_time is None
-    assert FormProgress.objects.filter(user=user, form=form).count() == 2
-
-
-@pytest.mark.django_db
-def test_get_or_create_incomplete_returns_latest_incomplete(
-    mock_site_context,
-):
-    """Where two incomplete attempts exist, the most recently started one wins."""
-    user = UserFactory()
-    form = FormFactory()
-    older: FormProgress = FormProgressFactory(user=user, form=form)
-    FormProgress.objects.filter(pk=older.pk).update(
-        start_time=timezone.now() - timedelta(seconds=10)
-    )
-    newer: FormProgress = FormProgressFactory(user=user, form=form)
-
-    progress = FormProgress.get_or_create_incomplete(user, form)
-
-    assert progress.id == newer.id
-    assert FormProgress.objects.filter(user=user, form=form).count() == 2

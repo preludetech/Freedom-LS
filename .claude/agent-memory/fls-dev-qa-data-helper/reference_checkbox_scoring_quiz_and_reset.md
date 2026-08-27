@@ -46,8 +46,9 @@ restore any pre-completed topic.
 
 ## Quiz retake / attempt mechanics (verified)
 
-- Retaking is always possible: `form_start` calls `FormProgress.get_or_create_incomplete`, which
-  makes a **new** attempt when every existing one is completed. The URL is a plain **GET** of
+- Retaking is always possible: `form_start` calls
+  `learner_progress.attempts.get_or_create_incomplete`, which makes a **new** attempt when every
+  existing one is completed. The URL is a plain **GET** of
   `/courses/<slug>/<index>/start_form`.
 - The results page only renders the "Retry quiz" button when `quiz_verdict == "failed"`; the start
   screen's button logic (`form_start_page_buttons`) uses a **hardcoded 0.8** threshold, not the

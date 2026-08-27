@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from django.contrib.auth import get_user_model
 from django.db import models
@@ -243,46 +243,6 @@ class FormProgress(SiteAwareModel):
                 "Set quiz_pass_percentage on the Form to use this method."
             )
         return self.quiz_percentage() >= self.form.quiz_pass_percentage
-
-    @classmethod
-    def get_latest_incomplete(cls, user, form):
-        return (
-            cls.objects.filter(user=user, form=form, completed_time__isnull=True)
-            .order_by("-start_time")
-            .first()
-        )
-
-    @classmethod
-    def get_or_create_incomplete(cls, user, form):
-        """
-        Get the latest incomplete FormProgress for this user and form,
-        or create a new one if all existing ones are completed.
-        """
-        # Try to get the latest incomplete progress
-        incomplete = cls.get_latest_incomplete(user, form)
-
-        if incomplete:
-            return incomplete
-
-        # No incomplete progress found, create a new one
-        return cls.objects.create(user=user, form=form)
-
-    @classmethod
-    def finalise_stale_incomplete(cls, user, form) -> FormProgress | None:
-        """
-        For submit-on-exit forms: if the user has an incomplete attempt, complete it.
-        Safe for save-on-exit forms (no-op) and idempotent via complete().
-        Returns the finalised FormProgress or None.
-        """
-        if not form.submit_on_exit:
-            return None
-        # cast: get_latest_incomplete is untyped (.first() resolves to Any),
-        # so without this mypy flags a no-any-return on the return below.
-        incomplete = cast("FormProgress | None", cls.get_latest_incomplete(user, form))
-        if incomplete is None:
-            return None
-        incomplete.complete()
-        return incomplete
 
     def get_current_page_number(self):
         """
