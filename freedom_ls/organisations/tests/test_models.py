@@ -75,7 +75,9 @@ class TestLogoReplacement:
     one, so it has to hold in development as well as on S3.
     """
 
-    def test_replacing_a_logo_keeps_the_stable_key(self, mock_site_context) -> None:
+    def test_replacing_a_logo_keeps_the_stable_key(
+        self, mock_site_context: object
+    ) -> None:
         organisation = OrganisationFactory()
         organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
 
@@ -83,7 +85,9 @@ class TestLogoReplacement:
 
         assert organisation.logo.name == f"organisations/{organisation.pk}.png"
 
-    def test_replacing_a_logo_leaves_one_file_on_disk(self, mock_site_context) -> None:
+    def test_replacing_a_logo_leaves_one_file_on_disk(
+        self, mock_site_context: object
+    ) -> None:
         organisation = OrganisationFactory()
         organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
 
@@ -94,7 +98,9 @@ class TestLogoReplacement:
             f"{organisation.pk}.png"
         ]
 
-    def test_replacing_a_logo_serves_the_new_bytes(self, mock_site_context) -> None:
+    def test_replacing_a_logo_serves_the_new_bytes(
+        self, mock_site_context: object
+    ) -> None:
         organisation = OrganisationFactory()
         organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
 
@@ -103,7 +109,7 @@ class TestLogoReplacement:
         assert Path(organisation.logo.path).read_bytes() == b"second-logo"
 
     def test_replacing_a_logo_with_another_extension_moves_the_key(
-        self, mock_site_context
+        self, mock_site_context: object
     ) -> None:
         organisation = OrganisationFactory()
         organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
@@ -113,7 +119,7 @@ class TestLogoReplacement:
         assert organisation.logo.name == f"organisations/{organisation.pk}.jpg"
 
     def test_replacing_a_logo_with_another_extension_leaves_one_file(
-        self, mock_site_context
+        self, mock_site_context: object
     ) -> None:
         """Overwriting only covers a replacement at the same key. Four extensions
         are allowed, so a PNG replaced by a JPEG writes a second object — and this
@@ -129,7 +135,9 @@ class TestLogoReplacement:
             f"{organisation.pk}.jpg"
         ]
 
-    def test_clearing_a_logo_removes_the_object(self, mock_site_context) -> None:
+    def test_clearing_a_logo_removes_the_object(
+        self, mock_site_context: object
+    ) -> None:
         organisation = OrganisationFactory()
         organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
         directory = Path(organisation.logo.path).parent
@@ -139,7 +147,9 @@ class TestLogoReplacement:
 
         assert list(directory.iterdir()) == []
 
-    def test_saving_without_touching_the_logo_keeps_it(self, mock_site_context) -> None:
+    def test_saving_without_touching_the_logo_keeps_it(
+        self, mock_site_context: object
+    ) -> None:
         organisation = OrganisationFactory()
         organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
 
@@ -149,7 +159,7 @@ class TestLogoReplacement:
         assert Path(organisation.logo.path).read_bytes() == b"first-logo"
 
     def test_an_admin_form_upload_replaces_its_logo_cleanly(
-        self, mock_site_context
+        self, mock_site_context: object
     ) -> None:
         """The path an admin actually takes. A form assigns the upload and lets
         FileField.pre_save write it during save(), so the new key only exists
@@ -173,7 +183,7 @@ class TestLogoReplacement:
         ]
 
     def test_a_reloaded_instance_replaces_its_logo_cleanly(
-        self, mock_site_context
+        self, mock_site_context: object
     ) -> None:
         organisation = OrganisationFactory()
         organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
@@ -190,7 +200,7 @@ class TestLogoReplacement:
 @pytest.mark.django_db
 class TestOrganisationConstraints:
     def test_duplicate_slug_on_same_site_raises_integrity_error(
-        self, mock_site_context
+        self, mock_site_context: object
     ):
         """The unique_organisation_slug_per_site constraint rejects a collision."""
         OrganisationFactory(slug="acme")
@@ -199,7 +209,7 @@ class TestOrganisationConstraints:
             OrganisationFactory(slug="acme")
 
     def test_duplicate_name_on_same_site_raises_integrity_error(
-        self, mock_site_context
+        self, mock_site_context: object
     ):
         """The unique_organisation_name_per_site constraint rejects a collision."""
         OrganisationFactory(name="Acme")
@@ -207,7 +217,7 @@ class TestOrganisationConstraints:
         with pytest.raises(IntegrityError):
             OrganisationFactory(name="Acme")
 
-    def test_same_slug_on_different_sites_is_allowed(self, mock_site_context):
+    def test_same_slug_on_different_sites_is_allowed(self, mock_site_context: object):
         """Slug uniqueness is scoped per site, not global."""
         # Setting site by hand is the deliberate exception to the usual rule:
         # a cross-site test needs a second site the ambient context is not on.
@@ -221,7 +231,7 @@ class TestOrganisationConstraints:
 
 @pytest.mark.django_db
 class TestOrganisationStaffRole:
-    def test_role_holder_may_view_the_organisation(self, mock_site_context):
+    def test_role_holder_may_view_the_organisation(self, mock_site_context: object):
         """The organisation_staff role grants view_organisation on the object
         it was assigned against, and not on any other organisation."""
         organisation = OrganisationFactory()

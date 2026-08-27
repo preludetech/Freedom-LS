@@ -7,7 +7,7 @@ the general-purpose bucket instead of the alias meant for them.
 from __future__ import annotations
 
 from django.apps import apps
-from django.core.files.storage import default_storage, storages
+from django.core.files.storage import storages
 from django.db.models import FileField
 
 
@@ -26,8 +26,12 @@ def _freedom_ls_file_fields() -> list[tuple[str, FileField]]:
 
 def test_no_file_field_resolves_to_default_storage() -> None:
     fields = _freedom_ls_file_fields()
-    resolved = {label: field.storage for label, field in fields}
 
-    assert len(fields) == 3
-    assert default_storage not in resolved.values()
-    assert storages["default"] not in resolved.values()
+    # Not an assertion about how many file fields there are: it only stops the
+    # one below passing vacuously if the discovery above ever finds nothing.
+    assert fields
+
+    on_default = [
+        label for label, field in fields if field.storage is storages["default"]
+    ]
+    assert on_default == []

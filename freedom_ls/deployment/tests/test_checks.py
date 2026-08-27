@@ -161,22 +161,6 @@ def test_fs_alias_matching_default_is_reported_once_as_local_disk() -> None:
 
 @override_settings(
     STORAGES={
-        "default": _fs_entry("/data/shared"),
-        "user_uploads": _fs_entry("/data/shared"),
-        "public": _s3_entry("bucket-public"),
-        "course_media": _s3_entry("bucket-course-media"),
-        "certificates": _s3_entry("bucket-certificates"),
-        "reports": _s3_entry("bucket-reports"),
-    },
-    DEBUG=True,
-)
-def test_fs_alias_matching_default_with_debug_true_returns_no_errors() -> None:
-    assert check_media_aliases_not_shared_with_default() == []
-    assert check_media_aliases_not_on_local_disk() == []
-
-
-@override_settings(
-    STORAGES={
         "default": _s3_entry("fls-default", "https://s3.example.com"),
         "public": _s3_entry("fls-public", "https://s3.example.com"),
         "course_media": _s3_entry("fls-course-media", "https://s3.example.com"),

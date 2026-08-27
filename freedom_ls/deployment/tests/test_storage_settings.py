@@ -2,23 +2,15 @@ from __future__ import annotations
 
 from django.conf import settings
 
+from freedom_ls.deployment.tests.conftest import EXPECTED_ALIASES
+
 #: Every alias that writes to disk uses the stock backend; the one that overwrites
 #: differs only in an OPTIONS flag, so the location invariant below covers it too.
 FILESYSTEM_BACKENDS = {"django.core.files.storage.FileSystemStorage"}
 
-EXPECTED_STORAGE_ALIASES = {
-    "default",
-    "staticfiles",
-    "public",
-    "course_media",
-    "user_uploads",
-    "reports",
-    "certificates",
-}
-
 
 def test_storages_declares_all_seven_aliases() -> None:
-    assert set(settings.STORAGES.keys()) == EXPECTED_STORAGE_ALIASES
+    assert set(settings.STORAGES.keys()) == EXPECTED_ALIASES
 
 
 def _filesystem_alias_locations() -> dict[str, object]:

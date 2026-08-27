@@ -4,6 +4,18 @@ import os
 
 import pytest
 
+#: Every key build_storages emits and settings.STORAGES declares.
+EXPECTED_ALIASES = {
+    "default",
+    "staticfiles",
+    "public",
+    "course_media",
+    "user_uploads",
+    "reports",
+    "certificates",
+}
+
+
 #: The intended production environment: three buckets across six purpose
 #: variables, with the shared AWS_STORAGE_BUCKET_NAME left unset so every
 #: alias names its own bucket rather than falling through to one.

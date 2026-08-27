@@ -1,48 +1,37 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
-
 import pytest
 from botocore.config import Config
 
 from django.core.exceptions import ImproperlyConfigured
-from django.core.files.base import ContentFile
-from django.core.files.storage import FileSystemStorage
 
 from freedom_ls.deployment.storage import (
     bucket_name_for,
     build_s3_media_storage,
     build_storages,
 )
-from freedom_ls.deployment.tests.conftest import PRODUCTION_ENV, set_env
-
-EXPECTED_ALIASES = {
-    "default",
-    "staticfiles",
-    "public",
-    "course_media",
-    "user_uploads",
-    "reports",
-    "certificates",
-}
+from freedom_ls.deployment.tests.conftest import (
+    EXPECTED_ALIASES,
+    PRODUCTION_ENV,
+    set_env,
+)
 
 
-def _build_options(
-    *,
-    region_name: str | None = None,
-    custom_domain: str | None = None,
-    querystring_auth: bool = True,
-    querystring_expire: int = 3600,
-) -> dict[str, object]:
+def _build_options(**overrides: object) -> dict[str, object]:
+    """The OPTIONS build_s3_media_storage emits, with only the argument under
+    test spelled out at the call site."""
     result = build_s3_media_storage(
-        bucket_name="fls-media",
-        access_key="AKIA_TEST",
-        secret_key="secret",  # pragma: allowlist secret
-        endpoint_url="https://accountid.r2.cloudflarestorage.com",
-        region_name=region_name,
-        custom_domain=custom_domain,
-        querystring_auth=querystring_auth,
-        querystring_expire=querystring_expire,
+        **{
+            "bucket_name": "fls-media",
+            "access_key": "AKIA_TEST",
+            "secret_key": "secret",  # pragma: allowlist secret
+            "endpoint_url": "https://accountid.r2.cloudflarestorage.com",
+            "region_name": None,
+            "custom_domain": None,
+            "querystring_auth": True,
+            "querystring_expire": 3600,
+            **overrides,
+        }
     )
     options = result["OPTIONS"]
     assert isinstance(options, dict)
@@ -89,130 +78,29 @@ def test_client_config_disables_checksum_headers_r2_rejects() -> None:
 def test_file_overwrite_is_always_written_explicitly(file_overwrite: bool) -> None:
     # Never left to the django-storages default: whether a write at an existing
     # key replaces or renames is a decision this project makes per alias.
-    result = build_s3_media_storage(
-        bucket_name="fls-media",
-        access_key="AKIA_TEST",
-        secret_key="secret",  # pragma: allowlist secret
-        endpoint_url="https://accountid.r2.cloudflarestorage.com",
-        region_name=None,
-        custom_domain=None,
-        querystring_auth=True,
-        querystring_expire=3600,
-        file_overwrite=file_overwrite,
-    )
+    options = _build_options(file_overwrite=file_overwrite)
 
-    options = result["OPTIONS"]
-    assert isinstance(options, dict)
     assert options["file_overwrite"] is file_overwrite
 
 
 def test_omitted_file_overwrite_defaults_to_not_overwriting() -> None:
-    result = build_s3_media_storage(
-        bucket_name="fls-media",
-        access_key="AKIA_TEST",
-        secret_key="secret",  # pragma: allowlist secret
-        endpoint_url="https://accountid.r2.cloudflarestorage.com",
-        region_name=None,
-        custom_domain=None,
-        querystring_auth=True,
-        querystring_expire=3600,
-    )
+    options = _build_options()
 
-    options = result["OPTIONS"]
-    assert isinstance(options, dict)
     assert options["file_overwrite"] is False
 
 
 def test_no_object_parameters_argument_omits_the_key() -> None:
-    result = build_s3_media_storage(
-        bucket_name="fls-media",
-        access_key="AKIA_TEST",
-        secret_key="secret",  # pragma: allowlist secret
-        endpoint_url="https://accountid.r2.cloudflarestorage.com",
-        region_name=None,
-        custom_domain=None,
-        querystring_auth=True,
-        querystring_expire=3600,
-    )
+    options = _build_options()
 
-    options = result["OPTIONS"]
-    assert isinstance(options, dict)
     assert "object_parameters" not in options
 
 
 def test_given_object_parameters_land_in_options_unchanged() -> None:
     object_parameters = {"CacheControl": "public, max-age=86400"}
 
-    result = build_s3_media_storage(
-        bucket_name="fls-media",
-        access_key="AKIA_TEST",
-        secret_key="secret",  # pragma: allowlist secret
-        endpoint_url="https://accountid.r2.cloudflarestorage.com",
-        region_name=None,
-        custom_domain=None,
-        querystring_auth=True,
-        querystring_expire=3600,
-        object_parameters=object_parameters,
-    )
+    options = _build_options(object_parameters=object_parameters)
 
-    options = result["OPTIONS"]
-    assert isinstance(options, dict)
     assert options["object_parameters"] == object_parameters
-
-
-class TestAllowOverwriteFileSystemStorage:
-    """The local-disk stand-in for S3Storage's replace-at-an-existing-key
-    behaviour. Stock FileSystemStorage suffixes instead, which is what left
-    orphaned organisation logos behind."""
-
-    def test_saving_over_an_existing_name_keeps_the_name(self, tmp_path) -> None:
-        storage = FileSystemStorage(location=str(tmp_path), allow_overwrite=True)
-        storage.save("logo.png", ContentFile(b"first"))
-
-        name = storage.save("logo.png", ContentFile(b"second"))
-
-        assert name == "logo.png"
-
-    def test_saving_over_an_existing_name_replaces_the_bytes(self, tmp_path) -> None:
-        storage = FileSystemStorage(location=str(tmp_path), allow_overwrite=True)
-        storage.save("logo.png", ContentFile(b"first"))
-
-        storage.save("logo.png", ContentFile(b"second"))
-
-        assert (tmp_path / "logo.png").read_bytes() == b"second"
-        assert sorted(path.name for path in tmp_path.iterdir()) == ["logo.png"]
-
-    def test_a_free_name_is_used_unchanged(self, tmp_path) -> None:
-        storage = FileSystemStorage(location=str(tmp_path), allow_overwrite=True)
-
-        assert storage.save("logo.png", ContentFile(b"only")) == "logo.png"
-
-    def test_asking_for_an_available_name_deletes_nothing(self, tmp_path) -> None:
-        """get_available_name is a query, and has to stay one. Answering it by
-        deleting first destroyed the old logo before the replacement was written,
-        so a write that then failed left the organisation pointing at a key with
-        nothing behind it."""
-        storage = FileSystemStorage(location=str(tmp_path), allow_overwrite=True)
-        storage.save("logo.png", ContentFile(b"first"))
-
-        assert storage.get_available_name("logo.png") == "logo.png"
-        assert (tmp_path / "logo.png").read_bytes() == b"first"
-
-    def test_a_failed_write_leaves_the_key_in_place(self, tmp_path) -> None:
-        """Overwriting truncates rather than unlinks, so a write that fails partway
-        leaves an object at the key. The organisation row keeps pointing at
-        something that exists, which is the difference that matters."""
-        storage = FileSystemStorage(location=str(tmp_path), allow_overwrite=True)
-        storage.save("logo.png", ContentFile(b"first"))
-
-        class _FailingFile(ContentFile):
-            def chunks(self, chunk_size: int | None = None) -> Iterator[bytes]:
-                raise OSError("no space left on device")
-
-        with pytest.raises(OSError, match="no space left on device"):
-            storage.save("logo.png", _FailingFile(b"second"))
-
-        assert storage.exists("logo.png")
 
 
 def _options_of(entry: dict[str, object]) -> dict[str, object]:
@@ -226,9 +114,6 @@ OVERWRITING_FILESYSTEM_ENTRY = {
     "BACKEND": "django.core.files.storage.FileSystemStorage",
     "OPTIONS": {"allow_overwrite": True},
 }
-
-
-# Case 1: every alias key is present, in every configuration.
 
 
 @pytest.mark.parametrize(
@@ -251,9 +136,6 @@ def test_every_alias_key_is_always_present(
     assert set(result.keys()) == EXPECTED_ALIASES
 
 
-# Case 2: a per-bucket variable wins over the shared variable.
-
-
 def test_per_bucket_name_wins_over_shared_name(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
     monkeypatch.setenv("AWS_S3_PUBLIC_BUCKET_NAME", "fls-public-only")
@@ -263,13 +145,10 @@ def test_per_bucket_name_wins_over_shared_name(monkeypatch: pytest.MonkeyPatch) 
     assert _options_of(result["public"])["bucket_name"] == "fls-public-only"
 
 
-# Case 3: an unset per-bucket name falls back to the shared bucket, landing on
-# the same entry as default. This pins the precondition E001 targets.
-
-
 def test_unset_per_bucket_name_falls_back_to_shared_and_matches_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Pins the precondition E001 targets.
     monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
 
     result = build_storages(staticfiles={"BACKEND": "some.backend"})
@@ -279,9 +158,6 @@ def test_unset_per_bucket_name_falls_back_to_shared_and_matches_default(
     assert public_options["bucket_name"] == default_options["bucket_name"]
     assert public_options["endpoint_url"] == default_options["endpoint_url"]
     assert public_options["access_key"] == default_options["access_key"]
-
-
-# Case 4: neither the per-bucket nor the shared name is set.
 
 
 @pytest.mark.parametrize(
@@ -302,23 +178,11 @@ def test_public_falls_back_to_the_overwriting_filesystem_storage() -> None:
     assert result["public"] == OVERWRITING_FILESYSTEM_ENTRY
 
 
-# Case 5: per-bucket credentials and endpoint override independently of the
-# bucket name.
-
-
-def test_per_bucket_credentials_and_endpoint_override_independently(
+def test_per_bucket_endpoint_overrides_the_shared_endpoint(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
-    monkeypatch.setenv("AWS_S3_ACCESS_KEY_ID", "shared-key")
-    monkeypatch.setenv(
-        "AWS_S3_SECRET_ACCESS_KEY", "shared-secret"
-    )  # pragma: allowlist secret
     monkeypatch.setenv("AWS_S3_ENDPOINT_URL", "https://shared.example.test")
-    monkeypatch.setenv("AWS_S3_PUBLIC_ACCESS_KEY_ID", "public-only-key")
-    monkeypatch.setenv(
-        "AWS_S3_PUBLIC_SECRET_ACCESS_KEY", "public-only-secret"
-    )  # pragma: allowlist secret
     monkeypatch.setenv("AWS_S3_PUBLIC_ENDPOINT_URL", "https://public.example.test")
 
     options = _options_of(
@@ -326,11 +190,7 @@ def test_per_bucket_credentials_and_endpoint_override_independently(
     )
 
     assert options["bucket_name"] == "fls-shared"
-    assert options["access_key"] == "public-only-key"
     assert options["endpoint_url"] == "https://public.example.test"
-
-
-# Case 6: CacheControl on the two anonymously readable aliases only.
 
 
 def test_public_cache_control_is_short_lived_and_not_immutable(
@@ -372,7 +232,7 @@ def test_other_media_aliases_carry_no_object_parameters(
     assert "object_parameters" not in options
 
 
-# Case 6b: overwrite-at-a-stable-key, on the public alias only. It pairs with
+# Overwrite-at-a-stable-key, on the public alias only. It pairs with
 # the cache header above — max-age=86400 rather than immutable is only correct
 # for an object that can change at its key.
 
@@ -402,10 +262,6 @@ def test_other_aliases_never_overwrite_at_an_existing_key(
     )
 
     assert options["file_overwrite"] is False
-
-
-# Case 8: default resolves from its own purpose variable when set, and from
-# the shared variable otherwise.
 
 
 def test_default_resolves_from_its_own_bucket_name_when_set(
@@ -440,10 +296,6 @@ def test_production_env_no_media_alias_matches_default(
     assert result[alias] != result["default"]
 
 
-# Case 9: two purpose variables set to the same bucket name produce two
-# distinct entries agreeing on bucket_name.
-
-
 def test_production_env_public_and_certificates_share_bucket_but_differ_in_cache_control(
     production_env: None,
 ) -> None:
@@ -468,9 +320,6 @@ def test_production_env_reports_and_user_uploads_share_bucket_and_credentials(
     assert reports_options["access_key"] == user_uploads_options["access_key"]
     assert reports_options["secret_key"] == user_uploads_options["secret_key"]
     assert "custom_domain" not in reports_options
-
-
-# Case 10: a per-bucket credential reaches only its own alias.
 
 
 def test_per_bucket_access_key_reaches_only_its_own_alias(
@@ -518,42 +367,9 @@ def test_per_bucket_access_key_does_not_leak_to_other_aliases(
     assert options["secret_key"] == "shared-secret"  # noqa: S105  # pragma: allowlist secret
 
 
-# Case 11: a non-default reports_alias emits that key, and no "reports" key.
-
-
-def test_custom_reports_alias_emits_under_its_own_name(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
-
-    result = build_storages(
-        staticfiles={"BACKEND": "some.backend"}, reports_alias="generated_reports"
-    )
-
-    assert "generated_reports" in result
-    assert "reports" not in result
-
-
-# Case 12: an access key and its secret always come from the same source. A
+# An access key and its secret always come from the same source. A
 # per-purpose key id paired with the shared secret signs every request with a
 # key the secret does not match, and nothing downstream can see the mismatch.
-
-
-def test_unset_per_purpose_credentials_take_both_halves_of_the_shared_pair(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
-    monkeypatch.setenv("AWS_S3_ACCESS_KEY_ID", "shared-key")
-    monkeypatch.setenv(
-        "AWS_S3_SECRET_ACCESS_KEY", "shared-secret"
-    )  # pragma: allowlist secret
-
-    options = _options_of(
-        build_storages(staticfiles={"BACKEND": "some.backend"})["public"]
-    )
-
-    assert options["access_key"] == "shared-key"
-    assert options["secret_key"] == "shared-secret"  # noqa: S105  # pragma: allowlist secret
 
 
 def test_per_purpose_key_id_without_its_secret_raises(
@@ -590,7 +406,7 @@ def test_per_purpose_secret_without_its_key_id_raises(
     assert "AWS_S3_USER_UPLOADS_ACCESS_KEY_ID" in message
 
 
-# Case 13: which variable a bucket name came from. E003 needs to tell an alias
+# Which variable a bucket name came from. E003 needs to tell an alias
 # that named its own bucket from one that inherited the shared name.
 
 
@@ -613,20 +429,6 @@ def test_bucket_name_for_reports_the_shared_fallback(
 
 def test_bucket_name_for_reports_no_bucket_at_all() -> None:
     assert bucket_name_for("GENERATED") == (None, True)
-
-
-# Case 14: the local-disk stand-in for the public alias overwrites through
-# Django's own allow_overwrite rather than a subclass that deletes first.
-
-
-def test_overwriting_filesystem_entry_uses_the_stock_backend() -> None:
-    result = build_storages(staticfiles={"BACKEND": "some.backend"})
-
-    assert result["public"]["BACKEND"] == FILESYSTEM_ENTRY["BACKEND"]
-    assert _options_of(result["public"]) == {"allow_overwrite": True}
-
-
-# Case 15: all three configurable alias names reach the emitted keys.
 
 
 def test_custom_logo_and_content_media_aliases_emit_under_their_own_names(

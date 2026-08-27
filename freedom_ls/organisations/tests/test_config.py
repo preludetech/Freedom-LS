@@ -7,8 +7,9 @@ from django.test import override_settings
 from freedom_ls.organisations.config import config
 
 
-def test_organisation_logo_storage_alias_defaults_to_public() -> None:
-    assert config.ORGANISATION_LOGO_STORAGE_ALIAS == "public"
+def test_organisation_logo_storage_alias_defaults_to_public_when_unset() -> None:
+    with override_settings(ORGANISATION_LOGO_STORAGE_ALIAS=None):
+        assert config.ORGANISATION_LOGO_STORAGE_ALIAS == "public"
 
 
 def test_organisation_logo_storage_alias_reads_project_override() -> None:
