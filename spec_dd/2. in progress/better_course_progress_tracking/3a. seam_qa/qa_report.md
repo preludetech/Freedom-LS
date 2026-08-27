@@ -25,7 +25,7 @@ A FULL class would ordinarily require mobile and tablet passes as well. Those we
 | S1.1–S1.2 | ✅ PASS | Failed sitting (25%, below pass mark) correctly did not complete the item; retry offered. |
 | S1.3 | ✅ PASS | Passing second sitting (50%) moved course percentage 0% → 100% and flipped the outline item to Completed. |
 | S1.4 | ✅ PASS | Exactly one `CourseFormAttempt` row per sitting, naming the right `FormProgress`, `CourseProgress`, and collection-item placement. |
-| S1.5 | ❌ FAIL | `last_accessed_time` not refreshed on completion (137s stale) — see B2. |
+| S1.5 | ✅ PASS | Percentage matched the browser. `last_accessed_time` still named the item view rather than the submission, which is the intended rule — see the note below. |
 | S2.1 | ✅ PASS | Adding an individual registration for a learner who already holds a cohort grant produced two independent, untouched `CourseProgress` records. |
 | S2.2 | ✅ PASS | **Core assertion.** Completing a form credited exactly the cohort-granted record (cohort beats individual); one attempt row, right placement. |
 | S2.2-step5 | ✅ PASS | Cohort record moved to 71%; individual (Northside) record stayed at 0%, completely untouched. |
@@ -74,22 +74,23 @@ Manifestations: S3.1–S3.2 (desktop), S3.3 (desktop).
 
 **Actual:** After a second placement of the Knowledge Check was added to the Core Concepts part, the part header flipped from "Completed" straight to "Not started" while three of its four children were still plainly labelled "Completed" (2.1 Key Ideas Completed, 2.2 Going Deeper Completed, 2.3 Knowledge Check Completed, 2.4 Knowledge Check Not started). The part header appears to take the status of the incomplete child rather than aggregating across children, so it states the opposite of the rows directly beneath it. Reproduced on both the course detail page and the player outline drawer. Display-only: no progress data was miscredited, and the underlying percentage (71%) stayed correct throughout.
 
-### B2 — `last_accessed_time` is not refreshed when a form attempt completes
+### Withdrawn — `last_accessed_time` is not refreshed when a form attempt completes
 
-Manifestations: S1.5 (desktop).
+This run originally recorded a second bug here. The run measured `last_accessed_time` 137s stale
+immediately after a passing sitting: it stayed at the moment the item page was viewed (03:15:40) while the
+sitting completed at 03:17:43. The same gap recurred in S2 (last access 03:21:35, completion 03:21:57).
 
-No screenshots recorded for this bug.
-
-**Expected:** Per the test plan's S1.5, after completing a form the record's `last_accessed_time` is within the last minute.
-
-**Actual:** `last_accessed_time` stayed at the moment the item page was viewed (03:15:40) while the passing sitting completed at 03:17:43 and the finish page was opened at 03:18:09 — measured 137s stale immediately after completion. The same gap recurred in S2 (last access 03:21:35 vs. completion 03:21:57). This looks deliberate rather than broken: `recalculate_progress_percentage` in `learner_progress/signals.py` saves with `update_fields=['progress_percentage']` and carries the comment "last_accessed_time is written by the player: a background recalculation must not look like a visit." So completion is not treated as an access. Flagged as a design question, not a defect: decide whether submitting an attempt should count as accessing the record, and if not, soften the plan's S1.5 wording (a fast human tester would never notice, since viewing and submitting fall inside the same minute).
+That is the intended behaviour, not a defect. `last_accessed_time` is a read timestamp: it records when
+the learner last opened a piece of content, and submitting an attempt is a write. Settled by the user
+against `todo.md` item 72, so the finding is withdrawn and S1.5 now passes. The test plan's S1.5 wording,
+which asked for a timestamp "within the last minute" after completing a form, has been corrected so the
+next run does not raise it again.
 
 ## Bug status
 
-No auto-fix was attempted this run; both bugs were triaged to the human lane.
+No auto-fix was attempted this run; the one bug was triaged to the human lane.
 
 - **UNRESOLVED** — Course part status reads "Not started" while its own children read "Completed" (reason: not a regression from this branch — the status-precedence block is independent of placement keying, so the same part would have read "Not started" before; also touches a product/UX judgement about part labelling and resume routing. Root cause is located, see B1 above.)
-- **UNRESOLVED** — `last_accessed_time` is not refreshed when a form attempt completes (reason: design decision required — the source comment states the current behaviour is deliberate)
 
 ## General notes
 
@@ -120,6 +121,6 @@ There is also an **uncommitted new file**: `freedom_ls/qa_helpers/management/com
 - **Cohort reports generate whether or not every attempt has a cohort route.** Met — S9. S9.3–S9.4 confirmed report generation survives incomplete attempts, null scores, and orphaned (`collection_item=None`) attempt rows without crashing; S9.5 confirmed the educator progress matrix correctly excludes those orphaned rows rather than miscounting them.
 - **No page 500s and no `RelatedObjectDoesNotExist` in the runserver log.** Met — confirmed by the final log scan (zero occurrences across 1700+ lines, zero 500s).
 
-The headline finding is that the core seam assertions — S1, S2, S3, the ones this branch exists to get right — **passed cleanly**: completions land on the correct granting record, one attempt row per sitting names the correct placement, and cohort grants correctly beat individual grants when both exist. The two bugs found (B1 a cosmetic status-rollup display bug, B2 a design question about what counts as "access") sit outside that core and should not be read as undermining it.
+The headline finding is that the core seam assertions — S1, S2, S3, the ones this branch exists to get right — **passed cleanly**: completions land on the correct granting record, one attempt row per sitting names the correct placement, and cohort grants correctly beat individual grants when both exist. The one bug found, B1, is a cosmetic status-rollup display bug that sits outside that core and should not be read as undermining it.
 
-status: ok · reason: 2 bugs — 0 fixed, 2 unresolved (both triaged to the human lane, neither auto-fixable); report rendered, 23 screenshots referenced and verified present
+status: ok · reason: 1 bug — 0 fixed, 1 unresolved (triaged to the human lane, not auto-fixable); a second finding was withdrawn as intended behaviour; report rendered, 23 screenshots referenced and verified present

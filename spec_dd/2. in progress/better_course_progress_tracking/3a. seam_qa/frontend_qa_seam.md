@@ -197,8 +197,11 @@ that points at it, and recalculates that record. No join row means no recalculat
    - the **course progress record** belonging to `demodev@email.com` on `qa-question-types-course`,
    - the **collection item** the form sits at in that course — not the bare form.
 5. Open that course progress record.
-   **Expect:** its `progress_percentage` matches what the browser showed, and `last_accessed_time` is
-   within the last minute.
+   **Expect:** its `progress_percentage` matches what the browser showed, and `last_accessed_time` still
+   reads the moment you opened the item page in step 2, not the moment you submitted.
+   `last_accessed_time` is a read timestamp: only opening a piece of content stamps it, and completing an
+   attempt deliberately does not. However stale it looks after a long sitting, that is correct. Do not log
+   it as a bug.
 
 ---
 

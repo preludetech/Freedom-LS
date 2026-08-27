@@ -18,7 +18,7 @@ _Last updated: 2026-08-21_
 
 **Per question** — the learner's selected options or free-text answer, stored against the attempt it belongs to.
 
-**Per course** — one record per learner per course, created when they register. It holds start time, last-accessed time, completion time, the progress percentage, and a pointer to the item they last viewed, which is what the course player uses to resume them. Browsing a course without registering leaves no tracking record.
+**Per course** — one record per learner per course, created when they register. It holds start time, last-accessed time, completion time, the progress percentage, and a pointer to the item they last viewed, which is what the course player uses to resume them. Last-accessed time is a read timestamp: opening an item stamps it, while submitting a quiz answer does not. Browsing a course without registering leaves no tracking record.
 
 None of this is scoped by organisation. A learner can hold a separate registration for the same course through more than one organisation — see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations) — but progress tracks the learner and the course, not the registration: they still have one record per topic, one course record, and one shared quiz-attempt history, however many organisations they are registered through.
 
