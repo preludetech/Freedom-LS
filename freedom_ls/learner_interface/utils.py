@@ -65,6 +65,36 @@ COMPLETE = "COMPLETE"
 FAILED = "FAILED"
 
 
+def derive_part_status(child_statuses: list[str]) -> str:
+    """Summarise a course part from the statuses of the children it holds.
+
+    Single source of the status-precedence rule for a part row, shared by the
+    table of contents (``create_child_dict_with_flattened_index``) and
+    ``get_content_status``. A part says what its own children say: once any one
+    of them is finished the part is under way, so a part can never read "not
+    started" over rows that read "completed".
+
+    A re-sit outranks that, because "needs retry" names the thing to do next
+    where "in progress" only says work remains.
+
+    This answers what state the part is in, not where its row should link --
+    the caller routes to the first open child whatever the label here.
+    """
+    if not child_statuses:
+        return BLOCKED
+    if all(status == COMPLETE for status in child_statuses):
+        return COMPLETE
+    if IN_PROGRESS in child_statuses:
+        return IN_PROGRESS
+    if FAILED in child_statuses:
+        return FAILED
+    if COMPLETE in child_statuses:
+        return IN_PROGRESS
+    if READY in child_statuses:
+        return READY
+    return BLOCKED
+
+
 class CourseListingStatus(StrEnum):
     NOT_REGISTERED = "not_registered"
     REGISTERED = "registered"  # registered, 0%, not complete
@@ -288,17 +318,8 @@ def get_content_status(
             )
             child_statuses.append(child_status)
 
-        # Determine CoursePart status based on children
-        if IN_PROGRESS in child_statuses:
-            return IN_PROGRESS, BLOCKED
-        elif READY in child_statuses:
-            return READY, BLOCKED
-        elif all(s == COMPLETE for s in child_statuses):
-            return COMPLETE, READY
-        elif FAILED in child_statuses:
-            return FAILED, BLOCKED
-        else:
-            return BLOCKED, BLOCKED
+        part_status = derive_part_status(child_statuses)
+        return part_status, READY if part_status == COMPLETE else BLOCKED
 
     else:
         # For courses, check if all direct children are complete
@@ -644,16 +665,21 @@ def create_child_dict_with_flattened_index(
             part_children_dicts.append(part_child_dict)
             items_added += 1
 
-        # Now calculate CoursePart's own status and URL based on children
-        status = BLOCKED  # Default
+        # Summarise the CoursePart, then pick where its row links to. These are
+        # separate questions -- a part is labelled by everything its children
+        # say, but routed to the one child the learner should open next -- so
+        # taking the label off the routing branch would let a part row
+        # contradict the rows beneath it.
+        status = derive_part_status([c["status"] for c in part_children_dicts])
         url = ""
 
         if part_children_dicts:
-            # Resume-aware: route to the first IN_PROGRESS child (so a returning
+            # Resume-aware routing: the first IN_PROGRESS child (so a returning
             # learner lands where they left off), then the first READY child, then
-            # the first child if everything is complete. Skipping BLOCKED children
-            # also avoids producing a row with status READY but url=None when the
-            # first child is hard-deadline-locked.
+            # the first child still needing a re-sit, then the first child once
+            # everything is complete. BLOCKED children are never routed to, since
+            # they carry no url of their own -- which is what a part whose first
+            # child is hard-deadline-locked would otherwise link to.
             in_progress_child = next(
                 (c for c in part_children_dicts if c["status"] == IN_PROGRESS), None
             )
@@ -664,19 +690,14 @@ def create_child_dict_with_flattened_index(
                 (c for c in part_children_dicts if c["status"] == FAILED), None
             )
             if in_progress_child:
-                status = IN_PROGRESS
                 url = in_progress_child["url"]
             elif ready_child:
-                status = READY
                 url = ready_child["url"]
             elif failed_child:
-                # A part whose only open work is a re-sit reads "Needs retry",
-                # not "Locked" — the quiz itself stays reachable so it can be
-                # retried, and a locked part row would deny what its child allows.
-                status = FAILED
+                # The quiz itself stays reachable so it can be retried, and a part
+                # row with no url would deny what its own child allows.
                 url = failed_child["url"]
-            elif all(c["status"] == COMPLETE for c in part_children_dicts):
-                status = COMPLETE
+            elif status == COMPLETE:
                 url = part_children_dicts[0]["url"]
 
         # CoursePart-level deadlines (from the CoursePart itself)
@@ -685,7 +706,7 @@ def create_child_dict_with_flattened_index(
         child_dict = {
             "title": content_item.title,
             "status": status,
-            "url": url if status != BLOCKED else None,
+            "url": url or None,
             "type": content_item.content_type,
             "children": part_children_dicts,
             "deadlines": part_deadlines,

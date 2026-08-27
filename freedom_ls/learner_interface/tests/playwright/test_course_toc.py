@@ -6,6 +6,7 @@ from PIL import Image
 from playwright.sync_api import Page, expect
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
@@ -20,7 +21,7 @@ from freedom_ls.learner_interface.templatetags.course_storage_keys import (
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 
-from ..conftest import reverse_url
+from ..conftest import reverse_url, topic_completion
 
 
 def _logo_upload(name: str = "logo.png") -> SimpleUploadedFile:
@@ -364,3 +365,72 @@ def test_course_part_toggle_does_not_announce_chevron_state(
     expect(
         outline.get_by_role("button", name=re.compile("expand|collapse", re.IGNORECASE))
     ).to_have_count(0)
+
+
+@pytest.mark.playwright
+# transaction=True so the Playwright browser (separate connection) sees committed data
+@pytest.mark.django_db(transaction=True)
+def test_part_row_announces_in_progress_over_completed_children(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+):
+    """A part with three finished children and one outstanding announces "In progress".
+
+    The status word only ever reaches a screen reader, so a part row
+    contradicting the rows it holds -- announcing "Not started" above three
+    announcing "Completed" -- is invisible to anyone reading the page by eye.
+    """
+    course = CourseFactory(title="Test Course", slug="test-course")
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, collection=course, is_active=True
+    )
+    landing_topic = TopicFactory(
+        title="Landing Topic", slug="landing-topic", content="Welcome"
+    )
+    course_part = CoursePartFactory(title="Core Concepts", slug="core-concepts")
+    done = [
+        TopicFactory(title=f"Done {n}", slug=f"done-{n}", content="x") for n in range(3)
+    ]
+    outstanding = TopicFactory(title="Outstanding", slug="outstanding", content="x")
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=landing_topic, order=0
+    )
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=course_part, order=1
+    )
+    for order, topic in enumerate([*done, outstanding]):
+        ContentCollectionItemFactory(
+            collection_object=course_part, child_object=topic, order=order
+        )
+    for topic in done:
+        topic_completion(course, logged_in_user, topic, complete_time=timezone.now())
+
+    logged_in_page.goto(
+        reverse_url(
+            live_server,
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    outline = logged_in_page.get_by_role("navigation", name="Course outline")
+    toggle = outline.get_by_role("button", name="Core Concepts")
+    expect(toggle).to_be_visible()
+    expect(
+        outline.get_by_role(
+            "button", name=re.compile(r"In progress.*Core Concepts", re.IGNORECASE)
+        )
+    ).to_have_count(1)
+    expect(
+        outline.get_by_role(
+            "button", name=re.compile(r"Not started.*Core Concepts", re.IGNORECASE)
+        )
+    ).to_have_count(0)
+
+    # The rows the part sits above: the three finished ones it must not
+    # contradict. A child row's status word sits beside its link rather than
+    # inside it, so it is read as text, not as part of an accessible name.
+    toggle.click()
+    expect(outline.get_by_text("Outstanding", exact=True)).to_be_visible()
+    expect(outline.get_by_text("Completed", exact=True)).to_have_count(3)

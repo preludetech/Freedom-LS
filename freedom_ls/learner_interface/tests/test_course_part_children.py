@@ -16,9 +16,11 @@ from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_interface.utils import (
     BLOCKED,
+    COMPLETE,
     FAILED,
     IN_PROGRESS,
     READY,
+    derive_part_status,
     get_course_index,
 )
 from freedom_ls.learner_management.factories import (
@@ -223,7 +225,11 @@ def test_course_part_url_resumes_at_in_progress_child(mock_site_context):
 
 @pytest.mark.django_db
 def test_course_part_url_skips_completed_first_child_to_first_ready(mock_site_context):
-    """When the first child is complete and the next is READY, the part row routes to READY."""
+    """The part row routes past a completed child to the first one still open.
+
+    Routing and labelling are separate questions: the row links to the READY
+    child, but a part with work already behind it reads as in progress.
+    """
     course: Course = CourseFactory(title="ReadyAfter", slug="ready-after")
     part: CoursePart = CoursePartFactory(title="Chapter", slug="chapter")
     first = TopicFactory(title="First", slug="first", content="first")
@@ -246,8 +252,91 @@ def test_course_part_url_skips_completed_first_child_to_first_ready(mock_site_co
         "learner_interface:view_course_item",
         kwargs={"course_slug": course.slug, "index": second_index},
     )
-    assert part_dict["status"] == READY
+    assert part_dict["status"] == IN_PROGRESS
     assert part_dict["url"] == expected_url
+
+
+@pytest.mark.parametrize(
+    ("child_statuses", "expected"),
+    [
+        ([], BLOCKED),
+        ([COMPLETE, COMPLETE], COMPLETE),
+        ([COMPLETE, COMPLETE, COMPLETE, READY], IN_PROGRESS),
+        ([READY, COMPLETE], IN_PROGRESS),
+        ([COMPLETE, IN_PROGRESS, BLOCKED], IN_PROGRESS),
+        ([COMPLETE, FAILED, BLOCKED], FAILED),
+        ([COMPLETE, BLOCKED], IN_PROGRESS),
+        ([READY, BLOCKED], READY),
+        ([BLOCKED, BLOCKED], BLOCKED),
+    ],
+)
+def test_derive_part_status_precedence(child_statuses, expected):
+    """The whole precedence table, without the cost of building a course."""
+    assert derive_part_status(child_statuses) == expected
+
+
+@pytest.mark.django_db
+def test_course_part_partly_complete_reads_as_in_progress(mock_site_context):
+    """A part with some children complete and one not started reads "In progress".
+
+    The part row must never be labelled from the one child it links to: with
+    three children complete and a fourth not, that reads "Not started" directly
+    above three rows reading "Completed".
+    """
+    course: Course = CourseFactory(title="Partly", slug="partly")
+    part: CoursePart = CoursePartFactory(title="Core Concepts", slug="core-concepts")
+    done = [
+        TopicFactory(title=f"Done {n}", slug=f"done-{n}", content="x") for n in range(3)
+    ]
+    outstanding = TopicFactory(title="Outstanding", slug="outstanding", content="x")
+
+    course.items.create(child=part, order=0)
+    for order, topic in enumerate([*done, outstanding]):
+        part.items.create(child=topic, order=order)
+
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    for topic in done:
+        topic_completion(course, user, topic, complete_time=timezone.now())
+
+    children = get_course_index(user=user, course=course, can_access_content=True)
+    part_dict = children[0]
+
+    assert [child["status"] for child in part_dict["children"]] == [
+        COMPLETE,
+        COMPLETE,
+        COMPLETE,
+        READY,
+    ]
+    assert part_dict["status"] == IN_PROGRESS
+
+    outstanding_index = course.viewable_items().index(outstanding) + 1
+    assert part_dict["url"] == reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": outstanding_index},
+    )
+
+
+@pytest.mark.django_db
+def test_course_part_with_a_later_completion_reads_as_in_progress(mock_site_context):
+    """The inverse ordering: the open child comes first, the completed one after."""
+    course: Course = CourseFactory(title="LaterDone", slug="later-done")
+    part: CoursePart = CoursePartFactory(title="Chapter", slug="chapter")
+    first = TopicFactory(title="First", slug="first", content="x")
+    second = TopicFactory(title="Second", slug="second", content="x")
+
+    course.items.create(child=part, order=0)
+    part.items.create(child=first, order=0)
+    part.items.create(child=second, order=1)
+
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    topic_completion(course, user, second, complete_time=timezone.now())
+
+    children = get_course_index(user=user, course=course, can_access_content=True)
+    part_dict = children[0]
+
+    assert part_dict["status"] == IN_PROGRESS
 
 
 @pytest.mark.django_db
