@@ -2,12 +2,9 @@ from __future__ import annotations
 
 from django.conf import settings
 
-#: Both the stock backend and the FLS subclass the public alias uses, so the
-#: location invariant below keeps covering every alias that writes to disk.
-FILESYSTEM_BACKENDS = {
-    "django.core.files.storage.FileSystemStorage",
-    "freedom_ls.deployment.storage.OverwritingFileSystemStorage",
-}
+#: Every alias that writes to disk uses the stock backend; the one that overwrites
+#: differs only in an OPTIONS flag, so the location invariant below covers it too.
+FILESYSTEM_BACKENDS = {"django.core.files.storage.FileSystemStorage"}
 
 EXPECTED_STORAGE_ALIASES = {
     "default",

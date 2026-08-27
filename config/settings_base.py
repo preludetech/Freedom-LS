@@ -259,24 +259,37 @@ RESOLVED_THEME_DIR = configure_theme(
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# The three alias names a model's `storage=` callable resolves through its app's
+# config. They are declared here, and the dict below is keyed off them, so the
+# setting and the key it names cannot drift apart — a project that renamed one
+# without the other following crashed while Django imported the model.
+ORGANISATION_LOGO_STORAGE_ALIAS = "public"
+CONTENT_MEDIA_STORAGE_ALIAS = "course_media"
+REPORTS_STORAGE_ALIAS = "reports"
+
 # Every alias a model's `storage=` callable can name, declared here so that dev
 # and the test suite never fail to import a model over a missing key.
 # `settings_prod.py` overrides the whole dict via `build_storages()`. No entry
-# below carries an OPTIONS key: FileSystemStorage falls back to MEDIA_ROOT only
+# below pins an OPTIONS location: FileSystemStorage falls back to MEDIA_ROOT only
 # when it has no explicit location, which is what lets the test suite's tmp-dir
 # isolation of MEDIA_ROOT cover every alias here for free.
 #
-# `public` is the one alias that does not use the stock backend. Its keys are
+# The logo alias is the one entry that carries an OPTIONS key at all. Its keys are
 # stable (organisations/{pk}{ext}), so a replaced logo has to land on the old
 # object rather than beside it — which is what S3Storage does in production and
-# what OverwritingFileSystemStorage makes true here.
+# what allow_overwrite makes true here.
 STORAGES: dict[str, dict[str, object]] = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
-    "public": {"BACKEND": "freedom_ls.deployment.storage.OverwritingFileSystemStorage"},
-    "course_media": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    ORGANISATION_LOGO_STORAGE_ALIAS: {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {"allow_overwrite": True},
+    },
+    CONTENT_MEDIA_STORAGE_ALIAS: {
+        "BACKEND": "django.core.files.storage.FileSystemStorage"
+    },
     "user_uploads": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "reports": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    REPORTS_STORAGE_ALIAS: {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "certificates": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
 }
 

@@ -115,9 +115,13 @@ ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 # Every alias is declared, always. A missing alias is what turned a settings gap
 # into learner PII in a shared bucket, so there is no conditional here and no
 # fallback path: build_storages() resolves each alias from its own environment
-# variables and emits a key either way. freedom_ls_deployment.E001, under
-# `manage.py check --deploy`, is what catches a media alias that landed where
-# `default` did.
+# variables and emits a key either way. Under `manage.py check --deploy`,
+# freedom_ls_deployment.E001 through E004 are what catch an alias that landed
+# somewhere it should not have. The three alias names come from the settings that
+# name them, so renaming one moves the emitted key with it.
 STORAGES = build_storages(
     staticfiles={"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    logo_alias=ORGANISATION_LOGO_STORAGE_ALIAS,  # noqa: F405
+    content_media_alias=CONTENT_MEDIA_STORAGE_ALIAS,  # noqa: F405
+    reports_alias=REPORTS_STORAGE_ALIAS,  # noqa: F405
 )

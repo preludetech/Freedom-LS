@@ -1,18 +1,20 @@
 from __future__ import annotations
 
-import os
+from collections.abc import Iterator
 
 import pytest
 from botocore.config import Config
 
+from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
+from django.core.files.storage import FileSystemStorage
 
 from freedom_ls.deployment.storage import (
-    OverwritingFileSystemStorage,
+    bucket_name_for,
     build_s3_media_storage,
     build_storages,
 )
-from freedom_ls.deployment.tests.conftest import PRODUCTION_ENV
+from freedom_ls.deployment.tests.conftest import PRODUCTION_ENV, set_env
 
 EXPECTED_ALIASES = {
     "default",
@@ -23,25 +25,6 @@ EXPECTED_ALIASES = {
     "reports",
     "certificates",
 }
-
-
-@pytest.fixture(autouse=True)
-def _clear_aws_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Clear every AWS_* variable first, so a developer's real credentials
-    exported for an unrelated project never change these results."""
-    _clear_env_prefix(monkeypatch, "AWS_")
-
-
-def _clear_env_prefix(monkeypatch: pytest.MonkeyPatch, prefix: str) -> None:
-    """Delete every currently-set env var whose name starts with prefix."""
-    for name in [name for name in os.environ if name.startswith(prefix)]:
-        monkeypatch.delenv(name, raising=False)
-
-
-def _set_env(monkeypatch: pytest.MonkeyPatch, env: dict[str, str]) -> None:
-    """Apply every name/value pair in env via monkeypatch.setenv."""
-    for name, value in env.items():
-        monkeypatch.setenv(name, value)
 
 
 def _build_options(
@@ -177,13 +160,13 @@ def test_given_object_parameters_land_in_options_unchanged() -> None:
     assert options["object_parameters"] == object_parameters
 
 
-class TestOverwritingFileSystemStorage:
+class TestAllowOverwriteFileSystemStorage:
     """The local-disk stand-in for S3Storage's replace-at-an-existing-key
     behaviour. Stock FileSystemStorage suffixes instead, which is what left
     orphaned organisation logos behind."""
 
     def test_saving_over_an_existing_name_keeps_the_name(self, tmp_path) -> None:
-        storage = OverwritingFileSystemStorage(location=str(tmp_path))
+        storage = FileSystemStorage(location=str(tmp_path), allow_overwrite=True)
         storage.save("logo.png", ContentFile(b"first"))
 
         name = storage.save("logo.png", ContentFile(b"second"))
@@ -191,7 +174,7 @@ class TestOverwritingFileSystemStorage:
         assert name == "logo.png"
 
     def test_saving_over_an_existing_name_replaces_the_bytes(self, tmp_path) -> None:
-        storage = OverwritingFileSystemStorage(location=str(tmp_path))
+        storage = FileSystemStorage(location=str(tmp_path), allow_overwrite=True)
         storage.save("logo.png", ContentFile(b"first"))
 
         storage.save("logo.png", ContentFile(b"second"))
@@ -200,9 +183,36 @@ class TestOverwritingFileSystemStorage:
         assert sorted(path.name for path in tmp_path.iterdir()) == ["logo.png"]
 
     def test_a_free_name_is_used_unchanged(self, tmp_path) -> None:
-        storage = OverwritingFileSystemStorage(location=str(tmp_path))
+        storage = FileSystemStorage(location=str(tmp_path), allow_overwrite=True)
 
         assert storage.save("logo.png", ContentFile(b"only")) == "logo.png"
+
+    def test_asking_for_an_available_name_deletes_nothing(self, tmp_path) -> None:
+        """get_available_name is a query, and has to stay one. Answering it by
+        deleting first destroyed the old logo before the replacement was written,
+        so a write that then failed left the organisation pointing at a key with
+        nothing behind it."""
+        storage = FileSystemStorage(location=str(tmp_path), allow_overwrite=True)
+        storage.save("logo.png", ContentFile(b"first"))
+
+        assert storage.get_available_name("logo.png") == "logo.png"
+        assert (tmp_path / "logo.png").read_bytes() == b"first"
+
+    def test_a_failed_write_leaves_the_key_in_place(self, tmp_path) -> None:
+        """Overwriting truncates rather than unlinks, so a write that fails partway
+        leaves an object at the key. The organisation row keeps pointing at
+        something that exists, which is the difference that matters."""
+        storage = FileSystemStorage(location=str(tmp_path), allow_overwrite=True)
+        storage.save("logo.png", ContentFile(b"first"))
+
+        class _FailingFile(ContentFile):
+            def chunks(self, chunk_size: int | None = None) -> Iterator[bytes]:
+                raise OSError("no space left on device")
+
+        with pytest.raises(OSError, match="no space left on device"):
+            storage.save("logo.png", _FailingFile(b"second"))
+
+        assert storage.exists("logo.png")
 
 
 def _options_of(entry: dict[str, object]) -> dict[str, object]:
@@ -213,7 +223,8 @@ def _options_of(entry: dict[str, object]) -> dict[str, object]:
 
 FILESYSTEM_ENTRY = {"BACKEND": "django.core.files.storage.FileSystemStorage"}
 OVERWRITING_FILESYSTEM_ENTRY = {
-    "BACKEND": "freedom_ls.deployment.storage.OverwritingFileSystemStorage"
+    "BACKEND": "django.core.files.storage.FileSystemStorage",
+    "OPTIONS": {"allow_overwrite": True},
 }
 
 
@@ -233,7 +244,7 @@ OVERWRITING_FILESYSTEM_ENTRY = {
 def test_every_alias_key_is_always_present(
     env: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _set_env(monkeypatch, env)
+    set_env(monkeypatch, env)
 
     result = build_storages(staticfiles={"BACKEND": "some.backend"})
 
@@ -300,8 +311,14 @@ def test_per_bucket_credentials_and_endpoint_override_independently(
 ) -> None:
     monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
     monkeypatch.setenv("AWS_S3_ACCESS_KEY_ID", "shared-key")
+    monkeypatch.setenv(
+        "AWS_S3_SECRET_ACCESS_KEY", "shared-secret"
+    )  # pragma: allowlist secret
     monkeypatch.setenv("AWS_S3_ENDPOINT_URL", "https://shared.example.test")
     monkeypatch.setenv("AWS_S3_PUBLIC_ACCESS_KEY_ID", "public-only-key")
+    monkeypatch.setenv(
+        "AWS_S3_PUBLIC_SECRET_ACCESS_KEY", "public-only-secret"
+    )  # pragma: allowlist secret
     monkeypatch.setenv("AWS_S3_PUBLIC_ENDPOINT_URL", "https://public.example.test")
 
     options = _options_of(
@@ -461,13 +478,20 @@ def test_per_bucket_access_key_reaches_only_its_own_alias(
 ) -> None:
     monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
     monkeypatch.setenv("AWS_S3_ACCESS_KEY_ID", "shared-key")
+    monkeypatch.setenv(
+        "AWS_S3_SECRET_ACCESS_KEY", "shared-secret"
+    )  # pragma: allowlist secret
     monkeypatch.setenv("AWS_S3_PUBLIC_ACCESS_KEY_ID", "public-only-key")
+    monkeypatch.setenv(
+        "AWS_S3_PUBLIC_SECRET_ACCESS_KEY", "public-only-secret"
+    )  # pragma: allowlist secret
 
     options = _options_of(
         build_storages(staticfiles={"BACKEND": "some.backend"})["public"]
     )
 
     assert options["access_key"] == "public-only-key"
+    assert options["secret_key"] == "public-only-secret"  # noqa: S105  # pragma: allowlist secret
 
 
 @pytest.mark.parametrize(
@@ -478,13 +502,20 @@ def test_per_bucket_access_key_does_not_leak_to_other_aliases(
 ) -> None:
     monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
     monkeypatch.setenv("AWS_S3_ACCESS_KEY_ID", "shared-key")
+    monkeypatch.setenv(
+        "AWS_S3_SECRET_ACCESS_KEY", "shared-secret"
+    )  # pragma: allowlist secret
     monkeypatch.setenv("AWS_S3_PUBLIC_ACCESS_KEY_ID", "public-only-key")
+    monkeypatch.setenv(
+        "AWS_S3_PUBLIC_SECRET_ACCESS_KEY", "public-only-secret"
+    )  # pragma: allowlist secret
 
     options = _options_of(
         build_storages(staticfiles={"BACKEND": "some.backend"})[alias]
     )
 
     assert options["access_key"] == "shared-key"
+    assert options["secret_key"] == "shared-secret"  # noqa: S105  # pragma: allowlist secret
 
 
 # Case 11: a non-default reports_alias emits that key, and no "reports" key.
@@ -501,3 +532,129 @@ def test_custom_reports_alias_emits_under_its_own_name(
 
     assert "generated_reports" in result
     assert "reports" not in result
+
+
+# Case 12: an access key and its secret always come from the same source. A
+# per-purpose key id paired with the shared secret signs every request with a
+# key the secret does not match, and nothing downstream can see the mismatch.
+
+
+def test_unset_per_purpose_credentials_take_both_halves_of_the_shared_pair(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+    monkeypatch.setenv("AWS_S3_ACCESS_KEY_ID", "shared-key")
+    monkeypatch.setenv(
+        "AWS_S3_SECRET_ACCESS_KEY", "shared-secret"
+    )  # pragma: allowlist secret
+
+    options = _options_of(
+        build_storages(staticfiles={"BACKEND": "some.backend"})["public"]
+    )
+
+    assert options["access_key"] == "shared-key"
+    assert options["secret_key"] == "shared-secret"  # noqa: S105  # pragma: allowlist secret
+
+
+def test_per_purpose_key_id_without_its_secret_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+    monkeypatch.setenv("AWS_S3_ACCESS_KEY_ID", "shared-key")
+    monkeypatch.setenv(
+        "AWS_S3_SECRET_ACCESS_KEY", "shared-secret"
+    )  # pragma: allowlist secret
+    monkeypatch.setenv("AWS_S3_USER_UPLOADS_ACCESS_KEY_ID", "user-data-key")
+
+    with pytest.raises(ImproperlyConfigured) as excinfo:
+        build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    message = str(excinfo.value)
+    assert "AWS_S3_USER_UPLOADS_ACCESS_KEY_ID" in message
+    assert "AWS_S3_USER_UPLOADS_SECRET_ACCESS_KEY" in message
+
+
+def test_per_purpose_secret_without_its_key_id_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+    monkeypatch.setenv(
+        "AWS_S3_USER_UPLOADS_SECRET_ACCESS_KEY", "user-data-secret"
+    )  # pragma: allowlist secret
+
+    with pytest.raises(ImproperlyConfigured) as excinfo:
+        build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    message = str(excinfo.value)
+    assert "AWS_S3_USER_UPLOADS_SECRET_ACCESS_KEY" in message
+    assert "AWS_S3_USER_UPLOADS_ACCESS_KEY_ID" in message
+
+
+# Case 13: which variable a bucket name came from. E003 needs to tell an alias
+# that named its own bucket from one that inherited the shared name.
+
+
+def test_bucket_name_for_reports_its_own_variable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+    monkeypatch.setenv("AWS_S3_GENERATED_BUCKET_NAME", "fls-user-data")
+
+    assert bucket_name_for("GENERATED") == ("fls-user-data", False)
+
+
+def test_bucket_name_for_reports_the_shared_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+
+    assert bucket_name_for("GENERATED") == ("fls-shared", True)
+
+
+def test_bucket_name_for_reports_no_bucket_at_all() -> None:
+    assert bucket_name_for("GENERATED") == (None, True)
+
+
+# Case 14: the local-disk stand-in for the public alias overwrites through
+# Django's own allow_overwrite rather than a subclass that deletes first.
+
+
+def test_overwriting_filesystem_entry_uses_the_stock_backend() -> None:
+    result = build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    assert result["public"]["BACKEND"] == FILESYSTEM_ENTRY["BACKEND"]
+    assert _options_of(result["public"]) == {"allow_overwrite": True}
+
+
+# Case 15: all three configurable alias names reach the emitted keys.
+
+
+def test_custom_logo_and_content_media_aliases_emit_under_their_own_names(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+
+    result = build_storages(
+        staticfiles={"BACKEND": "some.backend"},
+        logo_alias="branding",
+        content_media_alias="courseware",
+        reports_alias="generated_reports",
+    )
+
+    assert {"branding", "courseware", "generated_reports"} <= set(result)
+    assert {"public", "course_media", "reports"}.isdisjoint(result)
+
+
+def test_renamed_logo_alias_keeps_the_public_purpose_and_its_overwrite_rule(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_S3_PUBLIC_BUCKET_NAME", "fls-prod-public")
+
+    result = build_storages(
+        staticfiles={"BACKEND": "some.backend"}, logo_alias="branding"
+    )
+    options = _options_of(result["branding"])
+
+    assert options["bucket_name"] == "fls-prod-public"
+    assert options["file_overwrite"] is True
+    assert options["object_parameters"] == {"CacheControl": "public, max-age=86400"}
