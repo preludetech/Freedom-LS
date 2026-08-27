@@ -17,7 +17,16 @@ POSITIONAL `SITE_NAME` (`@click.argument("site_name")`):
 `qa_create_rich_dashboard_learner` (default DemoDev),
 `qa_create_course_player_learner` (default DemoDev),
 `qa_create_course_detail_variants` (default DemoDev),
-`qa_add_course_items_for_pagination` (required).
+`qa_add_course_items_for_pagination` (required),
+`qa_create_organisations` (default DemoDev),
+`qa_create_report_brand_organisations` (default DemoDev).
+
+**`qa_create_organisations` is the one QA plans get wrong most often.** Its own
+module docstring shows `--site-name DemoDev`, but the signature is
+`@click.argument("site_name", default="DemoDev")`, so the documented form exits
+with `Error: No such option: --site-name`. Its sibling
+`qa_create_report_brand_organisations` is positional too, while
+`qa_create_report_fixtures` / `_cohort` / `_course` all use `--site-name`.
 
 `--site-name` OPTION (no positional accepted):
 `qa_create_organisation_scenarios`, `qa_create_password_reset_learner`.

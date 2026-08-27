@@ -35,6 +35,7 @@
 - [reference_proving_allauth_login_works.md](reference_proving_allauth_login_works.md) — Proving a QA user can log in: force_login/check_password are false positives; rolled-back real login POST + verified=False negative control (locmem email backend)
 - [reference_report_brand_organisations_command.md](reference_report_brand_organisations_command.md) — qa_create_report_brand_organisations: the 6 extra orgs for report cover/footer branding QA; empty-slug trap for a punctuation-only name; how to attach a deliberately-invalid logo
 - [reference_form_engine_app_move_db_repair.md](reference_form_engine_app_move_db_repair.md) — carrying form data across the content_engine -> form_engine app move on a populated dev DB, and the dangling ContentType that breaks every course with a quiz
+- [reference_report_org_branding_qa_setup.md](reference_report_org_branding_qa_setup.md) — Per-organisation report-branding seed: the org-slug drift (Northside is `northside-2`), Cohort has no slug field, the flat non-grouped report dropdown, and the legacy learners that inflate fixture cohorts to 18
 - [reference_qa_complete_form_now_recalculates.md](reference_qa_complete_form_now_recalculates.md) — qa_complete_form DOES fire a recalculation now (complete() sends form_attempt_completed); a 0-score failed quiz still moves no percentage, so use CourseProgress.last_accessed_time to detect the write
 - [reference_org_course_registration.md](reference_org_course_registration.md) — Course has NO organisation FK (nor uuid); the learner's registration carries the org; qa_register_org_course; the co-branding TOC header lives in the PLAYER sidebar only
 - [reference_background_tasks_dev.md](reference_background_tasks_dev.md) — Dev needs NO db_worker: TASKS is pinned to ImmediateBackend, so report PDFs render inline
@@ -116,3 +117,11 @@ N "QA Report Standard Cohort" rows, not just the last. Same for
 `assign_object_role(org_staff, organisation, ...)`: `qa-report-orgstaff@email.com` ends up
 organisation_staff on every organisation the command was ever pointed at. Check and say so before
 a permission-scoping QA pass — "cohort B" has to be a cohort with a *different* fixture key.
+
+The **per-organisation report-branding seed** (one `standard-cohort-medium-course`
+cohort in each of a dozen organisations) was set up once, Aug 2026, for the
+`report-rendered-with-org-name` branch. Full recipe and the four traps in
+[[reference_report_org_branding_qa_setup]]. If it is asked again, the loop over
+`--organisation-slug` is worth wrapping in one command — but always dump
+`(name, slug)` from the DB first, because renamed orgs keep their original slug
+and `Northside` is `northside-2`.
