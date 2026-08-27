@@ -5,9 +5,8 @@ from __future__ import annotations
 from django.contrib.sites.models import Site
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils.text import slugify
 
-from freedom_ls.site_aware_models.slugs import get_unique_slug
+from freedom_ls.site_aware_models.slugs import get_unique_slug, slug_base_for
 
 from .models import Organisation
 
@@ -37,7 +36,7 @@ def _ensure_default_organisation(site: Site) -> None:
         is_default=True,
         defaults={
             "name": site.name,
-            "slug": get_unique_slug(Organisation, site, slugify(site.name)),
+            "slug": get_unique_slug(Organisation, site, slug_base_for(site.name)),
         },
     )
 

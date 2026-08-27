@@ -51,7 +51,9 @@ def get_organisation_logo_storage() -> Storage:
 
 class Organisation(SiteAwareModel):
     name = models.CharField(_("name"), max_length=150)
-    slug = models.SlugField(max_length=150)
+    # Unicode so a wholly non-Latin name keeps its own script in the URL
+    # rather than reducing to nothing. Derived on save, never typed.
+    slug = models.SlugField(max_length=150, allow_unicode=True)
     # Two variants rather than one file scaled to fit every surface: a mark
     # drawn for paper disappears against a panel painted in the deployment's
     # primary colour, and the reverse. Which one a surface reaches for is the

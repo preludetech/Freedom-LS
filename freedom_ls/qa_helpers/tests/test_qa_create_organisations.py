@@ -33,10 +33,10 @@ def _seed(site: Site) -> None:
 def test_every_seeded_organisation_slug_reverses_an_educator_interface_url(qa_site):
     """The real contract, through the real URLconf.
 
-    educator_interface matches organisation_slug against an ASCII-only
-    character class, and views.interface reverses that URL with the cohort's
-    organisation slug. A slug it cannot express is a NoReverseMatch 500 for
-    every educator in that organisation, not a cosmetic problem.
+    views.interface reverses an educator URL from the cohort's organisation
+    slug, so a slug that route cannot express is a NoReverseMatch 500 for every
+    educator in that organisation, not a cosmetic problem. The route takes
+    unicode, so what is left to get wrong is an empty slug.
     """
     _seed(qa_site)
 
@@ -47,14 +47,18 @@ def test_every_seeded_organisation_slug_reverses_an_educator_interface_url(qa_si
         )
 
 
-def test_a_name_that_slugifies_to_nothing_without_a_slug_base_is_refused(qa_site):
-    """Failing loudly beats minting an unaddressable slug.
+def test_a_non_latin_name_derives_a_slug_in_its_own_script(qa_site):
+    organisation, _ = _ensure_organisation(qa_site, "Восточно-Европейская Академия")
 
-    An empty slug is falsy, so --organisation-slug would silently fall back to
-    the site's default organisation and QA would test the wrong data.
-    """
-    with pytest.raises(Exception, match="slug"):
-        _ensure_organisation(qa_site, "Восточно-Европейская Академия")
+    assert organisation.slug == "восточно-европейская-академия"
+
+
+def test_a_name_that_slugifies_to_nothing_still_gets_a_slug(qa_site):
+    """An empty slug is falsy, so --organisation-slug would silently fall back
+    to the site's default organisation and QA would test the wrong data."""
+    organisation, _ = _ensure_organisation(qa_site, "---")
+
+    assert organisation.slug
 
 
 def test_an_explicit_slug_base_is_used_verbatim(qa_site):

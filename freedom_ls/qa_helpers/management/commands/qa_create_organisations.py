@@ -29,10 +29,9 @@ import djclick as click
 
 from django.contrib.sites.models import Site
 from django.core.files import File
-from django.utils.text import slugify
 
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.site_aware_models.slugs import get_unique_slug
+from freedom_ls.site_aware_models.slugs import get_unique_slug, slug_base_for
 
 _FIXTURES = Path(__file__).resolve().parent.parent.parent / "fixtures"
 
@@ -50,8 +49,6 @@ LONG_NAME = (
     "and Vocational Training Academies for Professional and Continuing Education"
 )
 NON_LATIN_NAME = "Восточно-Европейская Академия Непрерывного Образования"
-# ASCII slugify drops Cyrillic entirely, so this name has no derivable slug.
-NON_LATIN_SLUG_BASE = "qa-non-latin-academy"
 
 
 def _ensure_organisation(
@@ -59,24 +56,11 @@ def _ensure_organisation(
 ) -> tuple[Organisation, bool]:
     """Get-or-create an Organisation on ``site``, slugged from its name.
 
-    ``slug_base`` overrides the derived base slug. It is required for any name
-    that slugifies to the empty string -- a punctuation-only name such as
-    "---", or a name in a script ASCII slugify drops entirely -- because an
-    empty slug is falsy, so the ``--organisation-slug`` options the other QA
-    commands take would silently fall back to the default organisation.
+    ``slug_base`` overrides the derived base slug, for a fixture that wants a
+    stable, memorable slug to pass to the other QA commands'
+    ``--organisation-slug`` rather than whatever its name derives.
     """
-    # ASCII, deliberately: educator_interface routes on
-    # (?P<organisation_slug>[-a-zA-Z0-9_]+), and views.interface reverses that
-    # URL from a cohort's organisation slug. A unicode slug is a NoReverseMatch
-    # 500 for every educator in that organisation, and SlugField's own
-    # validator would reject it too -- get_or_create only lets it through
-    # because it skips full_clean().
-    base = slug_base if slug_base is not None else slugify(name)
-    if not base:
-        raise click.ClickException(
-            f"'{name}' slugifies to nothing. Pass slug_base to give it an "
-            f"addressable ASCII slug."
-        )
+    base = slug_base if slug_base is not None else slug_base_for(name)
     organisation, created = Organisation.objects.get_or_create(
         site=site,
         name=name,
@@ -119,9 +103,7 @@ def command(site_name: str) -> None:
         fg="green",
     )
 
-    _, created = _ensure_organisation(
-        site, NON_LATIN_NAME, slug_base=NON_LATIN_SLUG_BASE
-    )
+    _, created = _ensure_organisation(site, NON_LATIN_NAME)
     verb = "Created" if created else "Reused"
     click.secho(
         f"{verb} organisation '{NON_LATIN_NAME}' (non-Latin name — unicode download filename)",

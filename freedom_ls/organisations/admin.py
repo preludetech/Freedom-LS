@@ -1,11 +1,10 @@
 from django.contrib import admin
 from django.contrib.sites.models import Site
 from django.http import HttpRequest
-from django.utils.text import slugify
 
 from freedom_ls.site_aware_models.admin import GuardedSiteAwareModelAdmin
 from freedom_ls.site_aware_models.models import get_cached_site
-from freedom_ls.site_aware_models.slugs import get_unique_slug
+from freedom_ls.site_aware_models.slugs import get_unique_slug, slug_base_for
 
 from .forms import OrganisationAdminForm
 from .models import Organisation
@@ -35,7 +34,7 @@ class OrganisationAdmin(GuardedSiteAwareModelAdmin):
                 obj.slug = get_unique_slug(
                     Organisation,
                     site,
-                    slugify(obj.name),
+                    slug_base_for(obj.name),
                     existing_uuid=str(obj.pk),
                 )
         super().save_model(request, obj, form, change)

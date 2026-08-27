@@ -1,4 +1,4 @@
-"""Slug uniqueness helper shared by site-aware content models."""
+"""Slug helpers shared by site-aware content models."""
 
 from __future__ import annotations
 
@@ -7,6 +7,26 @@ import uuid
 
 from django.contrib.sites.models import Site
 from django.db.models import Model
+from django.utils.text import slugify
+
+# What a name is called when nothing in it can be slugified. A name of nothing
+# but punctuation reduces to the empty string in every script, and an empty
+# slug is not merely ugly: no URL pattern matches it, so the object becomes
+# unreachable and any page that reverses a link to it raises NoReverseMatch.
+UNSLUGGABLE_NAME_PREFIX = "organisation"
+
+
+def slug_base_for(name: str) -> str:
+    """A non-empty slug base for ``name``, in ``name``'s own script.
+
+    Unicode-preserving, because the ASCII form drops a wholly Cyrillic, Greek
+    or CJK name to nothing -- losing the name from the URL for exactly the
+    tenants whose name is least guessable from anything else.
+    """
+    base = slugify(name, allow_unicode=True)
+    if base:
+        return base
+    return f"{UNSLUGGABLE_NAME_PREFIX}-{uuid.uuid4().hex[:8]}"
 
 
 def get_unique_slug(

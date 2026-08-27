@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from urllib.parse import unquote
 
 import pytest
 from PIL import Image
@@ -113,6 +114,46 @@ class TestOrganisationAdminSave:
         response = staff_client.post(url, {"name": "Westbrook"})
 
         assert response.status_code == 302
+
+
+@pytest.mark.django_db
+class TestOrganisationSlugsStayRoutable:
+    """Every organisation gets a slug the educator interface can reverse.
+
+    The switcher lists every organisation a user can reach, so one unroutable
+    slug does not degrade that organisation alone -- it takes the whole
+    educator interface down with a NoReverseMatch.
+    """
+
+    def test_a_non_latin_name_keeps_its_own_script(self, staff_client):
+        staff_client.post(reverse(ADD_URL_NAME), {"name": "Восточно-Европейская"})
+
+        organisation = Organisation.objects.get(name="Восточно-Европейская")
+        assert organisation.slug == "восточно-европейская"
+
+    def test_a_name_of_only_punctuation_still_gets_a_slug(self, staff_client):
+        """Nothing survives slugify here, in any script, so a slug is invented."""
+        staff_client.post(reverse(ADD_URL_NAME), {"name": "---"})
+
+        organisation = Organisation.objects.get(name="---")
+        assert organisation.slug
+
+    @pytest.mark.parametrize(
+        "name",
+        ["Восточно-Европейская", "Θεσσαλονίκη", "東京アカデミー", "---", "Acme Corp"],
+    )
+    def test_the_educator_url_reverses_for_the_resulting_slug(self, staff_client, name):
+        staff_client.post(reverse(ADD_URL_NAME), {"name": name})
+        organisation = Organisation.objects.get(name=name)
+
+        url = reverse(
+            "educator_interface:interface",
+            kwargs={"organisation_slug": organisation.slug, "path_string": "cohorts"},
+        )
+
+        # Percent-encoded on the wire, which is what a non-ASCII slug in a path
+        # is supposed to look like; decoded is where the slug is legible again.
+        assert organisation.slug in unquote(url)
 
 
 @pytest.mark.django_db
