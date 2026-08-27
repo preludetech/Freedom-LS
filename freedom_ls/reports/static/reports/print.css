@@ -187,6 +187,12 @@ body {
   font-size: 9.5pt;
   line-height: 1.5;
   color: var(--color-on-surface);
+  /* WeasyPrint's user-agent stylesheet gives body an 8px margin. Every page
+     but the cover hides it inside the page margin; the cover sets its own
+     margin to zero, so there the 8px shows as a white frame around a band
+     drawn to bleed off all three edges -- and it pushes the full-sheet cover
+     past the bottom of the sheet, clipping that band. */
+  margin: 0;
   background: var(--color-surface);
 }
 
@@ -551,14 +557,16 @@ h3.confusion-heading {
 /* The organisation's own identity, top left: the primary brand owns the most
    prominent corner, and the platform is reduced to the mark on the band below.
    Unlike the site brand this replaced, the slot always has content -- an
-   organisation always has a name, and the wordmark fills the slot whenever
-   there is no logo -- so it may reserve space. It reserves space for the brand
-   alone: there is no descriptor or strapline line on an Organisation to set
-   under it. */
+   organisation always has a name, and the name is set here whether or not
+   there is a logo above it. It reserves space for the brand alone: there is no
+   descriptor or strapline line on an Organisation to set under it. */
 .title-page .cover-brand {
   text-align: left;
 }
 .title-page .cover-logo {
+  /* On its own line: the name is set beneath the mark, not beside it, so
+     neither a wide banner logo nor a long name has to share 70mm. */
+  display: block;
   /* Contained, never cropped or distorted: a clipped wordmark or a clipped
      badge ring reads as broken rather than styled. max-height plus max-width,
      with no width/height attributes on the element, is what preserves the
@@ -589,6 +597,14 @@ h3.confusion-heading {
 }
 .title-page .cover-wordmark--condensed {
   font-size: 13pt;
+}
+/* The name under a logo, rather than in place of one. Smaller than either size
+   class above: with a mark present the name restates it rather than carrying
+   the slot, and the mark should stay the larger of the two. Three classes deep
+   so it outranks both size classes. */
+.title-page .cover-brand--with-logo .cover-wordmark {
+  font-size: 12pt;
+  margin-top: 5pt;
 }
 .title-page .cover-accent {
   height: 2.5pt;
@@ -670,9 +686,15 @@ h3.confusion-heading {
   height: 18mm;
   background: var(--color-primary);
   color: var(--color-on-primary);
-  /* 5mm rather than 6: the mark beside the text is 8mm tall, and at 6mm of
-     top padding it sets hard against the bottom edge of an 18mm band. */
-  padding: 5mm 20mm 0;
+  padding: 0 20mm;
+  /* The lockup is the only thing on the band, so it is centred in it rather
+     than aligned to a text column it shares with nothing. Vertically by a line
+     box the height of the band itself: one line of inline content, so the
+     half-leading above and below it is what centres it, whatever the mark's
+     height. The mark's own vertical-align: middle then sets it on the text's
+     midline. */
+  line-height: 18mm;
+  text-align: center;
 }
 /* The brand kit's 8mm print minimum for a mark used on its own, which this one
    is -- the cover is the report's one prominent statement of who generated it,
@@ -684,9 +706,11 @@ h3.confusion-heading {
   margin-right: 6pt;
 }
 /* Two tiers, not one uniform size: set at a single size the mark reads as the
-   brand above it under a different label, rather than as subordinate to it. */
+   brand above it under a different label, rather than as subordinate to it.
+   The tiers are size, weight and opacity in one typeface -- a second face
+   inside a four-word lockup reads as a mistake rather than as hierarchy. */
 .title-page .band-powered-by {
-  font-family: var(--report-font-body);
+  font-family: var(--report-font-display);
   font-size: 7.5pt;
   opacity: 0.75;
   margin-right: 4pt;

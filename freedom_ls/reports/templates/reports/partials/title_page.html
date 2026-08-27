@@ -5,21 +5,23 @@ organisation's record of its learners rather than the platform's record about
 them; the platform is reduced to the mark on the band at the foot of the page.
 
 The brand slot always has content and never collapses: an organisation always
-has a name, and the wordmark fills the slot whenever there is no logo. Logo or
-wordmark, never both — an uploaded logo usually contains the organisation's own
-wordmark, so setting the name beside it states the same thing twice, and the
-name is on the cover regardless in the metadata list below.
+has a name, and the name is set here whether or not there is a logo to sit
+above it. A logo carrying its own wordmark does restate the name, but a report
+leaves the organisation's hands and the cover has to name whose record it is in
+type — a mark alone asks the reader to recognise it.
 {% endcomment %}
 <section class="title-page">
-  <div class="cover-brand">
+  <div class="cover-brand{% if data.organisation.logo_data_uri %} cover-brand--with-logo{% endif %}">
     {% if data.organisation.logo_data_uri %}
-    {% comment %}Decorative: the name is real text further down this page. The
-    empty alt is correct HTML and nothing more — these PDFs are untagged, so no
+    {% comment %}Decorative: the name is real text on the line below. The empty
+    alt is correct HTML and nothing more — these PDFs are untagged, so no
     reader's accessibility tooling has anywhere to attach it.{% endcomment %}
     <img class="cover-logo" src="{{ data.organisation.logo_data_uri }}" alt="">
-    {% else %}
-    <span class="cover-wordmark cover-wordmark--{{ data.organisation.wordmark_size_class }}">{{ data.organisation.wordmark_name }}</span>
     {% endif %}
+    {% comment %}The length-bounded form, not the full name: the slot is 70mm
+    wide whether or not a logo shares it, and the metadata list below is where
+    a long name is stated whole.{% endcomment %}
+    <span class="cover-wordmark cover-wordmark--{{ data.organisation.wordmark_size_class }}">{{ data.organisation.wordmark_name }}</span>
   </div>
   <div class="cover-accent"></div>
 

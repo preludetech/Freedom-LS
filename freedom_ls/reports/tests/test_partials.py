@@ -1277,7 +1277,20 @@ class TestCoverBranding:
         html = render_to_string("reports/partials/title_page.html", {"data": data})
 
         assert 'src="data:image/png;base64,aGVsbG8="' in html
-        assert "cover-wordmark" not in html
+
+    def test_the_organisation_name_is_set_beneath_its_logo(self) -> None:
+        data = cohort_report_data(
+            organisation=organisation_brand(
+                logo_data_uri="data:image/png;base64,aGVsbG8=",
+                wordmark_name="Northside College",
+            )
+        )
+
+        html = render_to_string("reports/partials/title_page.html", {"data": data})
+        brand_slot = html.split('class="cover-brand')[1].split("</div>")[0]
+
+        assert "cover-brand--with-logo" in html
+        assert brand_slot.index("cover-logo") < brand_slot.index("Northside College")
 
     def test_the_band_carries_the_platform_mark(self) -> None:
         data = cohort_report_data(site_name="Bright Academy", show_powered_by=True)

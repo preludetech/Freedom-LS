@@ -367,14 +367,19 @@ class TestBrandingOnTheCover:
 
         assert f'<img class="cover-logo" src="{A_LOGO_DATA_URI}"' in html
 
-    def test_a_logo_replaces_the_wordmark_rather_than_joining_it(self) -> None:
+    def test_a_logo_is_joined_by_the_organisation_name(self) -> None:
         data = cohort_report_data(
-            organisation=organisation_brand(logo_data_uri=A_LOGO_DATA_URI)
+            organisation=organisation_brand(
+                logo_data_uri=A_LOGO_DATA_URI, wordmark_name="Northside College"
+            )
         )
 
         html = build_report_html(data)
+        body = _body_of(html)
 
-        assert "cover-wordmark" not in _body_of(html)
+        assert "cover-brand--with-logo" in body
+        assert '<img class="cover-logo"' in body
+        assert "Northside College" in body.split('class="cover-brand')[1]
 
     def test_an_organisation_without_a_logo_gets_a_wordmark(self) -> None:
         data = cohort_report_data(
@@ -418,7 +423,8 @@ class TestBrandingOnTheCover:
         footer = _footer_identity_of(html)
 
         assert "Northside College" in footer
-        assert "Cohort A · Cohort progress report" in footer
+        assert "Cohort A" in footer
+        assert "Cohort progress report" not in footer
 
     def test_the_footer_identity_line_stacks_the_cohort_under_the_organisation(
         self,

@@ -265,10 +265,8 @@ class TestFooterIdentityBudgets:
     def test_the_organisation_line_fits_the_margin_box(self) -> None:
         assert FOOTER_ORGANISATION_MAX_CHARS <= FOOTER_LINE_MAX_CHARS
 
-    def test_the_cohort_line_fits_the_margin_box_alongside_its_label(self) -> None:
-        second_line = FOOTER_COHORT_MAX_CHARS + len(" · Cohort progress report")
-
-        assert second_line <= FOOTER_LINE_MAX_CHARS
+    def test_the_cohort_line_fits_the_margin_box(self) -> None:
+        assert FOOTER_COHORT_MAX_CHARS <= FOOTER_LINE_MAX_CHARS
 
 
 class TestChunkQuizColumns:

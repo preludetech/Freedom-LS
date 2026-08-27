@@ -801,7 +801,8 @@ class TestOrganisationBranding:
         # order but with the line break between them rendered as whitespace it
         # is not worth pinning.
         assert data.organisation.footer_name in interior_text
-        assert f"{data.footer_cohort_name} · Cohort progress report" in interior_text
+        assert data.footer_cohort_name in interior_text
+        assert "Cohort progress report" not in interior_text
 
     def test_the_house_organisation_gets_no_powered_by_mark_anywhere(
         self, mock_site_context
