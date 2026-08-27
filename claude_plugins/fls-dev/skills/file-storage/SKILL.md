@@ -67,6 +67,25 @@ land in the same bucket. Give every `upload_to` a prefix scoped to its own alias
 (`organisation_logo_upload_to` returning `organisations/{pk}{ext}` is the existing pattern to
 follow), and never write a bare prefix that another alias could also produce.
 
+## Overwrite at a stable key
+
+`public` is the only alias that replaces the object at an existing key. Its one consumer,
+`Organisation.logo`, keys on the pk (`organisations/{pk}{ext}`), so re-uploading a logo has to land
+on the old object rather than beside it — and that mutability is why the alias carries
+`max-age=86400` rather than an immutable cache header. Every other alias refuses to overwrite: keys
+there are uuid-derived and already unique, so a write at an existing key means something has gone
+wrong and renaming is safer than clobbering.
+
+The setting is `file_overwrite`, declared per alias in `_OVERWRITE_ALIASES`
+(`freedom_ls/deployment/storage.py`) and always written into the S3 options rather than left to the
+django-storages default. On local disk the same alias uses `OverwritingFileSystemStorage`, because
+stock `FileSystemStorage` suffixes a colliding name instead of replacing it — which would make
+development disagree with production about where a replaced logo lives.
+
+A new field wanting overwrite semantics needs a stable key *and* an entry in `_OVERWRITE_ALIASES`
+for its alias. Do not add an existing alias to that set to suit one field: it changes the guarantee
+for every other field on that alias.
+
 ## Mechanical rules for `storage=`
 
 - Name a module-level callable, never an instance and never a lambda: `storage=get_course_media_storage`, not `storage=SomeStorage()`.
@@ -74,8 +93,8 @@ follow), and never write a bare prefix that another alias could also produce.
   arguments into the migration file. An instance built with explicit credentials would write them
   into git history. A callable resolved at call time never does.
 - The alias must already exist in both places before a field can name it: `build_storages()` for
-  production, and the `FileSystemStorage` dict in the base settings module for development, test,
-  and every other non-production settings module. Django resolves a callable `storage=` once, at
+  production, and the `STORAGES` dict in the base settings module for development, test, and every
+  other non-production settings module. Django resolves a callable `storage=` once, at
   model import. A field naming an alias that neither place declares fails to import the model
   rather than degrading at first write.
 

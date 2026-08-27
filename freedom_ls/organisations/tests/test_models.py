@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
+from django.core.files.base import ContentFile
 from django.db import IntegrityError
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
@@ -49,6 +52,43 @@ class TestLogoUploadPath:
         path = organisation_logo_upload_to(organisation, "../../../etc/passwd.png")
 
         assert path == f"organisations/{organisation.pk}.png"
+
+
+@pytest.mark.django_db
+class TestLogoReplacement:
+    """A re-uploaded logo replaces the object at the stable key.
+
+    That mutability is what lets the public alias keep a guessable
+    organisations/{pk} key and a one-day cache header instead of an immutable
+    one, so it has to hold in development as well as on S3.
+    """
+
+    def test_replacing_a_logo_keeps_the_stable_key(self, mock_site_context) -> None:
+        organisation = OrganisationFactory()
+        organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
+
+        organisation.logo.save("second.png", ContentFile(b"second-logo"), save=True)
+
+        assert organisation.logo.name == f"organisations/{organisation.pk}.png"
+
+    def test_replacing_a_logo_leaves_one_file_on_disk(self, mock_site_context) -> None:
+        organisation = OrganisationFactory()
+        organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
+
+        organisation.logo.save("second.png", ContentFile(b"second-logo"), save=True)
+
+        directory = Path(organisation.logo.path).parent
+        assert sorted(path.name for path in directory.iterdir()) == [
+            f"{organisation.pk}.png"
+        ]
+
+    def test_replacing_a_logo_serves_the_new_bytes(self, mock_site_context) -> None:
+        organisation = OrganisationFactory()
+        organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
+
+        organisation.logo.save("second.png", ContentFile(b"second-logo"), save=True)
+
+        assert Path(organisation.logo.path).read_bytes() == b"second-logo"
 
 
 @pytest.mark.django_db

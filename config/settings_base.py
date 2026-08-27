@@ -265,10 +265,15 @@ MEDIA_ROOT = BASE_DIR / "media"
 # below carries an OPTIONS key: FileSystemStorage falls back to MEDIA_ROOT only
 # when it has no explicit location, which is what lets the test suite's tmp-dir
 # isolation of MEDIA_ROOT cover every alias here for free.
+#
+# `public` is the one alias that does not use the stock backend. Its keys are
+# stable (organisations/{pk}{ext}), so a replaced logo has to land on the old
+# object rather than beside it — which is what S3Storage does in production and
+# what OverwritingFileSystemStorage makes true here.
 STORAGES: dict[str, dict[str, object]] = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
-    "public": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "public": {"BACKEND": "freedom_ls.deployment.storage.OverwritingFileSystemStorage"},
     "course_media": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "user_uploads": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "reports": {"BACKEND": "django.core.files.storage.FileSystemStorage"},

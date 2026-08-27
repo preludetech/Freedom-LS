@@ -5,7 +5,13 @@ import os
 import pytest
 from botocore.config import Config
 
-from freedom_ls.deployment.storage import build_s3_media_storage, build_storages
+from django.core.files.base import ContentFile
+
+from freedom_ls.deployment.storage import (
+    OverwritingFileSystemStorage,
+    build_s3_media_storage,
+    build_storages,
+)
 from freedom_ls.deployment.tests.conftest import PRODUCTION_ENV
 
 EXPECTED_ALIASES = {
@@ -96,6 +102,44 @@ def test_client_config_disables_checksum_headers_r2_rejects() -> None:
     assert client_config.response_checksum_validation == "when_required"
 
 
+@pytest.mark.parametrize("file_overwrite", [True, False])
+def test_file_overwrite_is_always_written_explicitly(file_overwrite: bool) -> None:
+    # Never left to the django-storages default: whether a write at an existing
+    # key replaces or renames is a decision this project makes per alias.
+    result = build_s3_media_storage(
+        bucket_name="fls-media",
+        access_key="AKIA_TEST",
+        secret_key="secret",  # pragma: allowlist secret
+        endpoint_url="https://accountid.r2.cloudflarestorage.com",
+        region_name=None,
+        custom_domain=None,
+        querystring_auth=True,
+        querystring_expire=3600,
+        file_overwrite=file_overwrite,
+    )
+
+    options = result["OPTIONS"]
+    assert isinstance(options, dict)
+    assert options["file_overwrite"] is file_overwrite
+
+
+def test_omitted_file_overwrite_defaults_to_not_overwriting() -> None:
+    result = build_s3_media_storage(
+        bucket_name="fls-media",
+        access_key="AKIA_TEST",
+        secret_key="secret",  # pragma: allowlist secret
+        endpoint_url="https://accountid.r2.cloudflarestorage.com",
+        region_name=None,
+        custom_domain=None,
+        querystring_auth=True,
+        querystring_expire=3600,
+    )
+
+    options = result["OPTIONS"]
+    assert isinstance(options, dict)
+    assert options["file_overwrite"] is False
+
+
 def test_no_object_parameters_argument_omits_the_key() -> None:
     result = build_s3_media_storage(
         bucket_name="fls-media",
@@ -133,6 +177,34 @@ def test_given_object_parameters_land_in_options_unchanged() -> None:
     assert options["object_parameters"] == object_parameters
 
 
+class TestOverwritingFileSystemStorage:
+    """The local-disk stand-in for S3Storage's replace-at-an-existing-key
+    behaviour. Stock FileSystemStorage suffixes instead, which is what left
+    orphaned organisation logos behind."""
+
+    def test_saving_over_an_existing_name_keeps_the_name(self, tmp_path) -> None:
+        storage = OverwritingFileSystemStorage(location=str(tmp_path))
+        storage.save("logo.png", ContentFile(b"first"))
+
+        name = storage.save("logo.png", ContentFile(b"second"))
+
+        assert name == "logo.png"
+
+    def test_saving_over_an_existing_name_replaces_the_bytes(self, tmp_path) -> None:
+        storage = OverwritingFileSystemStorage(location=str(tmp_path))
+        storage.save("logo.png", ContentFile(b"first"))
+
+        storage.save("logo.png", ContentFile(b"second"))
+
+        assert (tmp_path / "logo.png").read_bytes() == b"second"
+        assert sorted(path.name for path in tmp_path.iterdir()) == ["logo.png"]
+
+    def test_a_free_name_is_used_unchanged(self, tmp_path) -> None:
+        storage = OverwritingFileSystemStorage(location=str(tmp_path))
+
+        assert storage.save("logo.png", ContentFile(b"only")) == "logo.png"
+
+
 def _options_of(entry: dict[str, object]) -> dict[str, object]:
     options = entry["OPTIONS"]
     assert isinstance(options, dict)
@@ -140,6 +212,9 @@ def _options_of(entry: dict[str, object]) -> dict[str, object]:
 
 
 FILESYSTEM_ENTRY = {"BACKEND": "django.core.files.storage.FileSystemStorage"}
+OVERWRITING_FILESYSTEM_ENTRY = {
+    "BACKEND": "freedom_ls.deployment.storage.OverwritingFileSystemStorage"
+}
 
 
 # Case 1: every alias key is present, in every configuration.
@@ -198,10 +273,22 @@ def test_unset_per_bucket_name_falls_back_to_shared_and_matches_default(
 # Case 4: neither the per-bucket nor the shared name is set.
 
 
-def test_no_bucket_name_set_falls_back_to_filesystem_storage() -> None:
+@pytest.mark.parametrize(
+    "alias", ["default", "course_media", "user_uploads", "reports", "certificates"]
+)
+def test_no_bucket_name_set_falls_back_to_filesystem_storage(alias: str) -> None:
     result = build_storages(staticfiles={"BACKEND": "some.backend"})
 
-    assert result["public"] == FILESYSTEM_ENTRY
+    assert result[alias] == FILESYSTEM_ENTRY
+
+
+def test_public_falls_back_to_the_overwriting_filesystem_storage() -> None:
+    # The alias keeps S3's replace-at-an-existing-key behaviour when it drops to
+    # local disk, so a replaced organisation logo does not accumulate suffixed
+    # copies in development.
+    result = build_storages(staticfiles={"BACKEND": "some.backend"})
+
+    assert result["public"] == OVERWRITING_FILESYSTEM_ENTRY
 
 
 # Case 5: per-bucket credentials and endpoint override independently of the
@@ -266,6 +353,38 @@ def test_other_media_aliases_carry_no_object_parameters(
     )
 
     assert "object_parameters" not in options
+
+
+# Case 6b: overwrite-at-a-stable-key, on the public alias only. It pairs with
+# the cache header above — max-age=86400 rather than immutable is only correct
+# for an object that can change at its key.
+
+
+def test_public_alias_overwrites_at_an_existing_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+
+    options = _options_of(
+        build_storages(staticfiles={"BACKEND": "some.backend"})["public"]
+    )
+
+    assert options["file_overwrite"] is True
+
+
+@pytest.mark.parametrize(
+    "alias", ["default", "course_media", "user_uploads", "reports", "certificates"]
+)
+def test_other_aliases_never_overwrite_at_an_existing_key(
+    alias: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AWS_STORAGE_BUCKET_NAME", "fls-shared")
+
+    options = _options_of(
+        build_storages(staticfiles={"BACKEND": "some.backend"})[alias]
+    )
+
+    assert options["file_overwrite"] is False
 
 
 # Case 8: default resolves from its own purpose variable when set, and from
