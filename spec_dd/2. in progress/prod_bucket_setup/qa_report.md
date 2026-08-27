@@ -107,23 +107,47 @@ S3; the two identities differ, and `check --deploy` reports "no issues". Cohort 
 learner names and quiz answers would be written to the container's local disk in production with
 nothing flagging it. E001 does fire correctly for the two collision cases (shared fallback set; or both
 bucket names absent), so the check itself is not broken — the `env_example` comment claims coverage the
-check does not provide. Fixing this is a design call: either broaden the check to flag any media alias
-sitting on `FileSystemStorage` when `DEBUG` is `False`, or correct the comment.
+check does not provide.
+
+**Resolution.** Fixed by widening the check rather than by softening the comment. Reading the spec
+settled which side was wrong: §5.3 states the guarantee the `env_example` comment repeats, and §7.4's
+decision table — which the code implements faithfully — cannot deliver it, because §13 requires
+`AWS_S3_DEFAULT_BUCKET_NAME` always be set, which guarantees a typo'd alias is never *identical* to
+`default`. The two halves of the spec contradicted each other.
+
+`freedom_ls_deployment.E001` now reports a second condition: a media alias resolving to local
+filesystem storage while `DEBUG` is `False`, whatever `default` points at. Both arms stay gated on
+`DEBUG` so dev, test and a deliberately-local staging environment are unaffected, and an alias
+identical to `default` is still reported once, as a collision, not twice.
+
+Verified against a live `check --deploy`: the configuration that previously reported "no issues" now
+exits non-zero with `Storage alias 'reports' resolves to local filesystem storage while DEBUG is
+False`, hinting `AWS_S3_GENERATED_BUCKET_NAME`; the full intended production configuration still
+exits clean. The `env_example` comment needed no edit — it is true as written now.
+
+One pre-existing test, `test_multiple_offending_aliases_each_produce_their_own_error`, had encoded
+the bug: its fixture put `user_uploads` and `reports` on local disk with an S3 `default` under
+`DEBUG=False` and asserted only 2 errors. It now asserts all 4, each naming its own variable. The
+check function was renamed `check_media_aliases_resolve_to_their_own_bucket`, since it no longer
+only compares against `default`. Spec §7.4, the deployment checklist and the product security doc
+were updated to match. Full suite green at 2651 passed.
 
 ## Bug status
 
-Both bugs were triaged to the red lane, so no automated fix was attempted and no code was changed by
-this run.
+Both bugs were triaged to the red lane during the QA run itself, so neither was auto-fixed. B2 was
+then fixed by hand afterwards, TDD, once reading the spec showed it was a code gap rather than a
+wording problem.
 
 - **UNRESOLVED** — Replacing an organisation logo does not overwrite the stable key; files accumulate
   under `media/organisations/` (reason: not a regression introduced by this branch — the stable-key
   `upload_to` pre-dates it and S3 would overwrite — and the fix is a storage-semantics decision:
   override `get_available_name`, delete the previous object on replace, or set `file_overwrite`
   explicitly rather than leaning on the django-storages default).
-- **UNRESOLVED** — `env_example` overstates what `freedom_ls_deployment.E001` catches: a per-alias
-  bucket-name typo drops learner data to local disk silently (reason: security-adjacent — it concerns
-  where personal data lands in production — and the fix is a design call between broadening the check
-  and correcting the comment).
+- **FIXED** — `freedom_ls_deployment.E001` did not catch a media alias that fell back to local disk
+  while `default` kept its own bucket, so a per-alias bucket-name typo could silently put learner
+  report PDFs on a container's local disk in production. The check now reports that as a second
+  condition under `DEBUG=False`. See the Resolution note in the section above for what changed and
+  how it was verified.
 
 ## General notes
 
@@ -147,4 +171,4 @@ this run.
   required viewports where the plan calls for them.
 
 status: ok
-reason: 2 bugs — 0 fixed, 2 unresolved (both triaged to the red lane, no auto-fix attempted); report rendered, screenshots verified
+reason: 2 bugs — 1 fixed (B2, E001 local-disk coverage), 1 unresolved (B1, logo overwrite); report rendered, screenshots verified

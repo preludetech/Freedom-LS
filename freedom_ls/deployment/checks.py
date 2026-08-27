@@ -5,10 +5,11 @@ E = Error, W = Warning. Checks run automatically on runserver, migrate, test, an
 ``manage.py check``, except a check registered with ``deploy=True``, which runs
 only under ``manage.py check --deploy``.
 
-E001 — A sensitive media alias resolves to the same bucket as `default`, so a
-       misconfigured or missing per-bucket variable would serve learner
-       uploads or reports out of the general-purpose default bucket. Runs
-       only under ``manage.py check --deploy``.
+E001 — A media alias does not resolve to a bucket of its own: either it
+       resolves where `default` resolves, so a misconfigured or missing
+       per-bucket variable would serve learner uploads or reports out of the
+       general-purpose default bucket, or it fell back to local disk under
+       DEBUG=False. Runs only under ``manage.py check --deploy``.
 W001 — SENTRY_DSN is set but SENTRY_RELEASE is blank, so Sentry events would
        ship untagged.
 """
@@ -74,17 +75,31 @@ def _storage_identity(storage: Storage) -> tuple[str | None, ...] | None:
 
 
 @register(Tags.security, deploy=True)
-def check_sensitive_aliases_not_shared_with_default(
+def check_media_aliases_resolve_to_their_own_bucket(
     **kwargs: object,
 ) -> list[CheckMessage]:
-    """E001: Error when a media alias resolves to the same bucket as 'default'.
+    """E001: Error when a media alias does not resolve to a bucket of its own.
 
-    Each media alias is compared against 'default' only, never against
-    another media alias, so two media aliases sharing a bucket on purpose
-    (public and certificates, say) is never flagged. Registered with
-    deploy=True, so this only runs under `manage.py check --deploy` — a fresh
-    checkout with no AWS_* variables set, where every alias falls through to
-    'default', never fails runserver, migrate, plain check, or the test suite.
+    Two ways that happens, and both are configuration errors:
+
+    1. The alias resolves where 'default' resolves, because its per-bucket
+       variable is missing and it fell through to the shared one.
+    2. The alias resolves to local disk while 'default' does not. Nothing fell
+       through, so a comparison against 'default' alone finds a difference and
+       lets it past — but a misspelled per-bucket variable with no shared
+       fallback lands the alias on the server's own disk, which is exactly the
+       failure leaving the shared variable unset is meant to expose.
+
+    Each media alias is compared against 'default' only, never against another
+    media alias, so two media aliases sharing a bucket on purpose (public and
+    certificates, say) is never flagged.
+
+    Both arms are gated on DEBUG for the filesystem case: local disk is the
+    normal dev and test configuration, and a staging environment may use it
+    deliberately. Registered with deploy=True, so this only runs under
+    `manage.py check --deploy` — a fresh checkout with no AWS_* variables set,
+    where every alias falls through to 'default', never fails runserver,
+    migrate, plain check, or the test suite.
     """
     from django.conf import settings
 
@@ -123,13 +138,26 @@ def check_sensitive_aliases_not_shared_with_default(
             continue
         if identity[0] == "fs" and settings.DEBUG:
             continue
+        hint = f"Set AWS_S3_{purpose}_BUCKET_NAME to a bucket dedicated to {alias!r}."
         if identity == default_identity:
             errors.append(
                 Error(
                     f"Storage alias {alias!r} resolves to the same bucket as "
                     f"'default'. Files meant for {alias!r} would be served "
                     f"from the general-purpose default bucket.",
-                    hint=f"Set AWS_S3_{purpose}_BUCKET_NAME to a bucket dedicated to {alias!r}.",
+                    hint=hint,
+                    id="freedom_ls_deployment.E001",
+                )
+            )
+        elif identity[0] == "fs":
+            errors.append(
+                Error(
+                    f"Storage alias {alias!r} resolves to local filesystem "
+                    f"storage while DEBUG is False. Files meant for {alias!r} "
+                    f"would be written to the server's own disk instead of "
+                    f"object storage, where they are neither backed up nor "
+                    f"shared between instances.",
+                    hint=hint,
                     id="freedom_ls_deployment.E001",
                 )
             )

@@ -52,7 +52,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
 - [ ] (user + cmd) Fix QA bug: organisation logo replacement does not overwrite the stable organisations/{pk}{ext} key, leaving orphaned files (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: env_example claims freedom_ls_deployment.E001 catches a media alias that fell back to local disk, but it only catches collisions with the default bucket (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: env_example claims freedom_ls_deployment.E001 catches a media alias that fell back to local disk, but it only catches collisions with the default bucket (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
