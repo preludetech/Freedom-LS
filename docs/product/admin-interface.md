@@ -8,6 +8,7 @@ _Last updated: 2026-08-27_
 - Administrators grant educators access to specific cohorts through per-object permissions.
 - Organisations are created, renamed, and given a logo — optionally a second, reversed one for a dark background — entirely through the admin, with no delete and no merge. Assigning someone a staff role on an organisation grants access to every cohort inside it, including ones added later.
 - An organisation's learners are curated in the admin and only there: an administrator associates a user with an organisation before or independently of any enrolment, and marks a learner removed. Removal is soft — it suspends that person's access to the organisation's courses without touching their memberships, registrations, or progress — and a learner cannot be deleted outright.
+- A course registration that has recorded progress cannot be deleted, and nor can a cohort or course whose registrations have. Deactivating a registration or removing a cohort member withdraws access without touching the progress.
 - A staff user generates a cohort's progress report from the admin by picking a cohort and triggering generation; the choice is limited to cohorts that user is allowed to see, generation runs in the background, and the finished PDF downloads through a permission-checked link rather than a public URL.
 - The admin path is configurable via `DJANGO_ADMIN_URL`, so production can move it off the default location.
 - Legal consent records are fully read-only — they cannot be added, changed, or deleted.
@@ -38,6 +39,8 @@ Logo uploads accept PNG, JPEG, and WebP; SVG is rejected deliberately. A maximum
 An organisation's roster — who belongs to it, independently of any enrolment — is curated in the Django admin, and only there; the educator interface's [Learners section](./educator-interface.md#learners) is read-only. An administrator associates an existing user with an organisation as one of its learners, and the same person can be a learner of more than one organisation on a site. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations) for what an organisation is.
 
 Removing a learner is soft: it suspends their access to courses held through that organisation, but never deletes or alters their cohort memberships, course registrations, or progress history, and leaves their standing in any other organisation untouched. Reactivating them restores access with nothing to rebuild. A learner cannot be deleted outright.
+
+The same restraint extends to course registrations: once a registration has recorded [progress](./learner-tracking.md), the admin refuses to delete it and lists the progress standing in the way. Deleting a cohort or a course cascades to their registrations, so those deletes are blocked too. Deactivating a registration, removing a cohort member, or marking a learner removed all stay available and leave the recorded progress intact.
 
 There is no bulk add or remove, no CSV import, and no view showing one person's associations across every organisation at once.
 

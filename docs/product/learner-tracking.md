@@ -1,26 +1,27 @@
 # Learner Tracking
 
-_Last updated: 2026-08-21_
+_Last updated: 2026-08-27_
 
 ## Summary
 
 - FLS records per-item completion for every topic and form a learner interacts with, plus a per-course progress percentage and a resume pointer. This is the closest built-in equivalent to an activity log.
 - Quiz attempts store per-question answers, scores, and pass/fail. Attempts are unlimited and every attempt is kept as a separate record.
+- Progress is scoped to the registration that granted access, so a learner registered for the same course through two organisations accumulates two independent sets of progress rather than one shared set.
 - Course progress percentage recalculates automatically when an item is completed. A quiz only counts toward it once the learner has passed — a failed attempt does not complete the item. See [progress percentage](#progress-percentage).
 - Administrators see all progress data in the Django admin. Educators see completion and quiz data for their cohorts in the [educator interface](./educator-interface.md).
 - **Not built:** time-on-task duration and xAPI. There is still no CSV or API export of scores or grades, though a staff user can generate a per-cohort PDF report holding completion, quiz scores, and per-question answers — see [cohort reports](./reports.md). See [roadmap](./roadmap.md).
 
 ## What Is Recorded
 
-**Per topic** — one record per learner per topic, created when they first open it. It holds when they started, when they last opened it, and when they marked it done.
+**Per topic** — one record per position the topic occupies in a learner's pass through a course, created when they first open it. The same topic placed twice in one course, or reused in another course, is tracked separately at each position. It holds when they started, when they last opened it, and when they marked it done.
 
-**Per form or quiz attempt** — one record per attempt. It holds when the attempt started, when it was last saved (forms can span multiple pages and be resumed), when it was submitted, and the raw score data the course's scoring strategy uses to produce a score and a pass/fail result. Because each attempt is its own record, a learner's full attempt history is retained.
+**Per form or quiz attempt** — one record per attempt, scoped the same way: a quiz reused at another position, or in another course, keeps its own attempt history there. It holds when the attempt started, when it was last saved (forms can span multiple pages and be resumed), when it was submitted, and the raw score data the course's scoring strategy uses to produce a score and a pass/fail result. Because each attempt is its own record, a learner's full attempt history is retained.
 
 **Per question** — the learner's selected options or free-text answer, stored against the attempt it belongs to.
 
-**Per course** — one record per learner per course, created when they register. It holds start time, last-accessed time, completion time, the progress percentage, and a pointer to the item they last viewed, which is what the course player uses to resume them. Last-accessed time is a read timestamp: opening an item stamps it, while submitting a quiz answer does not. Browsing a course without registering leaves no tracking record.
+**Per course** — one record per registration that granted the learner access, created when the registration is made. It holds start time, last-accessed time, completion time, the progress percentage, and a pointer to the item they last viewed, which is what the course player uses to resume them. Last-accessed time is a read timestamp: opening an item stamps it, while submitting a quiz answer does not. Browsing a course without registering leaves no tracking record.
 
-None of this is scoped by organisation. A learner can hold a separate registration for the same course through more than one organisation — see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations) — but progress tracks the learner and the course, not the registration: they still have one record per topic, one course record, and one shared quiz-attempt history, however many organisations they are registered through.
+A learner can hold more than one registration for the same course — most often through more than one organisation, but also by holding a cohort registration and an individual one at once. Each grants its own progress record, with its own percentage, completion time, resume pointer, and quiz-attempt history; completing the course under one leaves the other exactly as it stands. The learner interface shows one registration's progress at a time and offers no organisation switch, so the two are never seen side by side. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 
 ## Progress Percentage
 

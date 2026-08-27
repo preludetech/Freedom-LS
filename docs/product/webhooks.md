@@ -1,6 +1,6 @@
 # Webhooks
 
-_Last updated: 2026-08-23_
+_Last updated: 2026-08-27_
 
 ## Summary
 
@@ -18,10 +18,12 @@ Webhooks are an outbound data flow to third-party systems. Three event types shi
 | Event type | Trigger | Payload fields |
 |---|---|---|
 | `user.registered` | New user completes email verification | `user_id`, `user_email`, `first_name`, `last_name` |
-| `course.registered` | Learner self-registers or is registered for a course | `user_id`, `user_email`, `course_id`, `course_title`, `registered_at` |
-| `course.completed` | Learner completes every item in a course | `user_id`, `user_email`, `course_id`, `course_title`, `completed_time` |
+| `course.registered` | Learner self-registers or is registered for a course | `user_id`, `user_email`, `course_id`, `course_title`, `registered_at`, `organisation_id`, `course_progress_id` |
+| `course.completed` | Learner completes every item in a course | `user_id`, `user_email`, `course_id`, `course_title`, `completed_time`, `organisation_id`, `course_progress_id` |
 
 Every payload is wrapped in an envelope carrying the event's unique id, its type, an ISO 8601 UTC timestamp, and the event-specific fields above. Receivers should key on the envelope id for their own idempotency.
+
+On the two course events, `organisation_id` names the [organisation](./multi-tenancy-and-isolation.md#organisations) the learner is studying through and `course_progress_id` identifies the progress record the event concerns, so a receiver can pair a registration event with the completion event for the same pass through a course. A learner registered for one course through two organisations produces two independent pairs.
 
 The event list is a registry a deployment can extend, not a fixed set.
 

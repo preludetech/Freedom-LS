@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-08-23_
+_Last updated: 2026-08-27_
 
 ## Summary
 
@@ -20,7 +20,7 @@ The educator interface is a single-page application, scoped to one organisation 
 ### Cohorts
 
 - **List view** — each cohort in the current organisation the educator has access to, with its learner count and registered courses.
-- **Detail view** — cohort name (editable inline), learner members, and registered courses. Cohorts can be created and deleted. Only a cohort the educator has access to can be opened — see [Access Control](#access-control).
+- **Detail view** — cohort name (editable inline), learner members, and registered courses. Cohorts can be created and deleted, though deletion is refused — with a plain message naming what still depends on it — once the cohort has course progress recorded against it. Only a cohort the educator has access to can be opened — see [Access Control](#access-control).
 - **Course Progress tab** — the [progress matrix](#course-progress-matrix).
 
 ### Learners
@@ -62,6 +62,8 @@ The Courses section is the exception: it is not organisation-scoped, and the swi
 ![Cohort progress matrix](screenshots/educator_cohort_progress_matrix.png)
 
 The Course Progress tab on a cohort detail page shows a paginated matrix of learners (rows) against course items (columns). Each cell shows completion status (complete / in progress / not started), the quiz score and pass/fail outcome for form items, and the item's deadline with an overdue indicator where the deadline has passed and the item is not complete. Both cohort-level deadlines and per-learner overrides are visible.
+
+The matrix shows the selected cohort registration's progress and only that — the percentage column and the item cells always read the same registration, so the two halves cannot disagree. A cohort member who also holds their own registration for the same course did that work under the other registration and reads as 0% here; the panel carries an on-screen note saying so, and there is no way to reach the other registration's progress from this view. See [learner tracking](./learner-tracking.md) for how progress is scoped.
 
 This view is on-screen only, and shows one course at a time. For a printable, filable record covering every course the cohort is registered for, a [cohort progress report](./reports.md) can be produced from the Django admin by anyone with cohort access under either route in [access control](#access-control).
 

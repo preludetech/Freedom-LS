@@ -71,7 +71,7 @@ See [admin interface](./admin-interface.md#cohort-progress-reports) for the admi
 
 **Activities and free-text answers are excluded** from completion figures and from the quiz analyses, because FLS records no completion data for activities and no correctness concept for free-text answers.
 
-**Individually registered courses are not covered.** Only the cohort's own course registrations appear; a course a learner joined on their own is absent from the report.
+**Individually registered courses are not covered.** Only the cohort's own course registrations appear; a course a learner joined on their own is absent from the report. Within a covered course, the completion figures, quiz attempts and at-risk flags reflect only the work done under the cohort's own registration — the same learner's activity through a registration of their own, or through another organisation, is not folded in.
 
 **Deadlines are not shown.** Deadlines are a live-tracking concept and a point-in-time PDF is deliberately not where they belong.
 
