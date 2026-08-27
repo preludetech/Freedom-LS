@@ -42,6 +42,9 @@
 - [reference_legacy_report_prefix_staging.md](reference_legacy_report_prefix_staging.md) — Staging a pre-rename `reports/`-prefix GeneratedReport row; in dev ALL storage aliases share MEDIA_ROOT, so only the key prefix separates them
 - [reference_storage_qa_dataset.md](reference_storage_qa_dataset.md) — The whole prod_bucket_setup storage-QA dataset in one recipe; --num-flagged undercounts on a quiz-less course; generate_cohort_report() repairs a row in place
 - [reference_paginated_progress_matrix_command.md](reference_paginated_progress_matrix_command.md) — qa_create_paginated_progress_matrix; org-owned "QA Pagination Cohort" (32 learners / 26 items) WITH a progress spread; already-complete TopicProgress rows never recalculate progress_percentage; educator URLs are organisation-scoped
+- [reference_dual_grant_course_progress_fixture.md](reference_dual_grant_course_progress_fixture.md) — Two grants (cohort + individual) on one course for grant fall-through QA; SiteAwareFactory needs explicit site= outside a request; cohort registration fans out to the WHOLE cohort
+- [reference_seeding_form_attempts_around_the_site_bug.md](reference_seeding_form_attempts_around_the_site_bug.md) — `form_progress__site=site` workaround for the CourseFormAttemptFactory NULL-site bug; how to build a real answered/scored cohort-granted sitting; recalculate surfaces unrelated denominator drift
+- [reference_organisation_educator_access.md](reference_organisation_educator_access.md) — Getting a persona into the organisation-scoped educator interface: the two independent access paths, why a missing ObjectRoleAssignment does NOT prove a blocked step, and where cohort reports live
 
 ## Recurring requests
 
@@ -132,3 +135,26 @@ cohort in each of a dozen organisations) was set up once, Aug 2026, for the
 `--organisation-slug` is worth wrapping in one command — but always dump
 `(name, slug)` from the DB first, because renamed orgs keep their original slug
 and `Northside` is `northside-2`.
+
+The **better_course_progress_tracking branch** introduces per-grant `CourseProgress`: two
+nullable grant FKs (`learner_registration` / `cohort_registration`), one record per grant, minted
+only by the registration `post_save` signals. Expect repeat asks for "give persona X a second
+grant of a different kind". Never hand-create the progress rows; create the registration and let
+the signal mint it. See [[reference_dual_grant_course_progress_fixture]].
+
+The **"qa_complete_form is blocked by the NULL-site bug, seed the data another way"** request
+arrived once (seam QA S9, better_course_progress_tracking). The fix is a single
+`form_progress__site=site` kwarg at the call site — no product change needed. If the bug is still
+unfixed next time this is asked, promote the scratchpad script to
+`qa_helpers/management/commands/qa_complete_form_for_grant.py` (cohort-granted CourseProgress
+selected by registration pk, real QuestionAnswers, a pass/fail score spread, and members left
+deliberately un-sat). See [[reference_seeding_form_attempts_around_the_site_bug]].
+
+**"Persona X has no role on org Y, the educator step is blocked" arrived once**
+(better_course_progress_tracking, Olive/DemoDev). It was a **false diagnosis**: a bare
+guardian `view_cohort` grant already opened the cohort page. Always run the rolled-back
+counterfactual (delete the grant, hit the URL, roll back) before claiming credit for
+unblocking anything — and check the persona's real password, which is usually their own
+email rather than whatever the plan quotes. The standalone grant command written that day
+has been deleted; grant inline if a persona genuinely needs it. See
+[[reference_organisation_educator_access]].
