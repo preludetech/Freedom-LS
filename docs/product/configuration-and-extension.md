@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-08-23_
+_Last updated: 2026-08-27_
 
 ## Summary
 
@@ -134,6 +134,8 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `TRUSTED_PROXY_IP_HEADER` | Header to trust for the client IP behind a reverse proxy. |
 | `DJANGO_ADMIN_URL` | Path the Django admin is mounted at. See [admin interface](./admin-interface.md). |
 | `REPORTS_STORAGE_ALIAS` | Storage the cohort report PDF is written to. See [security and data handling](./security-and-data-handling.md). |
+| `CONTENT_MEDIA_STORAGE_ALIAS` | Storage course file assets are written to. See [deployment](./deployment.md). |
+| `ORGANISATION_LOGO_STORAGE_ALIAS` | Storage an organisation's logo is written to. See [deployment](./deployment.md). |
 | `REPORTS_MAX_LEARNERS` | Caps the cohort size a report will generate for, bounding render time and memory. |
 | `REPORTS_MAX_QUIZ_COLUMNS` | Caps how many quiz columns a course's landscape summary table carries before splitting into a continued table. |
 | `REPORTS_FONT_FACES` | The font files embedded in the report PDF. |
