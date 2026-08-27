@@ -129,9 +129,11 @@ Run `/update_claude_plugin_fls_content`. The command runs a single `git diff mai
 
 ## Step 10: Ship it
 
-1. Open a pull request.
+1. Run `/make_pr_quickly` to open the pull request. It builds the title and body from the first 80 lines of the spec plus the `todo.md` checkboxes, so the PR states plainly which SDD steps have run and which have not, then pushes and calls `gh pr create`. It reads nothing else — no plan, no research files, no diff — which is what keeps it fast.
 2. Run `/address_pr_review` to work through review feedback.
 3. Once merged, run `/finish_worktree` to clean up the worktree.
+
+`/commit_quickly` is the fast commit path for use during implementation: it stages the already-staged index if there is one, otherwise `mine` (the files Claude touched this conversation) or `all`, and commits without running the test suite. Use `/ds:commit` instead when the commit is a checkpoint you have not verified — that one runs pytest first.
 
 ---
 
