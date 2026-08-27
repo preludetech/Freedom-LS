@@ -19,6 +19,7 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.utils import get_default_organisation
 
 
 def _logo_upload(name: str = "logo.png") -> SimpleUploadedFile:
@@ -122,3 +123,18 @@ class TestCourseOrganisationChip:
         chip = _chip(player_response(organisation))
 
         assert 'aria-hidden="true"' in chip
+
+    def test_no_chip_for_the_sites_default_organisation(
+        self, mock_site_context, player_response
+    ):
+        """The default organisation stands for the site itself, which the
+        surrounding chrome already brands — co-branding it would repeat that."""
+        organisation = get_default_organisation(mock_site_context)
+        organisation.name = "Renamed Away From The Site"
+        organisation.save()
+
+        response = player_response(organisation)
+
+        document = lxml.html.fromstring(response.content)
+        assert not document.cssselect("#course-organisation-chip")
+        assert "Renamed Away From The Site" not in response.content.decode()

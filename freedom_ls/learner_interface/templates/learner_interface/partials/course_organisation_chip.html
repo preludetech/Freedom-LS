@@ -12,10 +12,15 @@ The name is rendered as text beneath the mark, which makes the mark itself
 decorative — hence the empty alt and the aria-hidden monogram. Labelling both
 would announce the organisation twice.
 
+Nothing renders for a Site's own default organisation: co-branding names a
+third party the learner studies through, and the default stands for the site
+itself, which the surrounding chrome already brands.
+
 Params:
-  course_organisation — the organisation to brand with; nothing renders without it
+  course_organisation — the organisation to brand with; nothing renders without
+    it, nor for the Site's default organisation
 {% endcomment %}
-{% if course_organisation %}
+{% if course_organisation and not course_organisation.is_default %}
     <div id="course-organisation-chip"
          class="mt-1 pb-4 mb-6 flex flex-col items-center gap-2 border-b border-border">
         {% if course_organisation.logo %}
