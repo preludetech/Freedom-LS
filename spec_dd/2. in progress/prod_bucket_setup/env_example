@@ -95,9 +95,12 @@ SENTRY_SEND_DEFAULT_PII=False
 # Bucket names. Leave AWS_STORAGE_BUCKET_NAME unset in production: with no
 # shared fallback, a misspelled per-bucket name drops that alias to local disk,
 # which freedom_ls_deployment.E002 catches under `manage.py check --deploy`,
-# instead of silently writing to the wrong bucket. Its sibling
-# freedom_ls_deployment.E001 catches the other half — an alias that fell
-# through to the same bucket as AWS_S3_DEFAULT_BUCKET_NAME.
+# instead of silently writing to the wrong bucket. Its siblings catch the other
+# halves — freedom_ls_deployment.E001 an alias that fell through to the same
+# bucket as AWS_S3_DEFAULT_BUCKET_NAME, and freedom_ls_deployment.E003 an alias
+# that took the shared name below while a bucket of its own was named for
+# default. Set the shared name anyway and E003 is what tells you which alias
+# inherited it.
 # config, optional — shared fallback for every alias that names no bucket of its own
 AWS_STORAGE_BUCKET_NAME=
 # config — organisation logos and branding, anonymously readable
@@ -118,6 +121,10 @@ AWS_S3_DEFAULT_BUCKET_NAME=fls-prod-default
 # Credentials. Two token scopes: one that reaches only the user-data bucket,
 # and a shared one for everything else. Splitting them is what keeps a leaked
 # course-media token away from learner reports and uploads.
+# Each key id and its secret must be set together or left blank together. Set
+# only one half and startup fails with ImproperlyConfigured naming the missing
+# variable, rather than pairing your key with the shared secret and failing on
+# the first write with SignatureDoesNotMatch.
 # secret — shared scope: public, certificates and course media
 AWS_S3_ACCESS_KEY_ID=
 # secret
@@ -139,6 +146,8 @@ AWS_S3_REGION_NAME=auto
 # Public serving. Set the custom domain and QUERYSTRING_AUTH=false per alias,
 # never through the shared form: the shared form reaches all five media
 # aliases, including the two holding personal data.
+# freedom_ls_deployment.E004 catches that under `manage.py check --deploy`,
+# reporting every private alias left serving unsigned URLs.
 # config, optional — CDN domain in front of the public bucket
 AWS_S3_PUBLIC_CUSTOM_DOMAIN=
 # config, optional — same domain; certificates share the public bucket

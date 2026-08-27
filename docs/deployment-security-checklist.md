@@ -200,21 +200,37 @@ as an error outside `DEBUG`, so it is a development convenience rather than a pr
 | Querystring auth | `AWS_QUERYSTRING_AUTH` | `AWS_S3_<PURPOSE>_QUERYSTRING_AUTH` |
 | Querystring expire | `AWS_QUERYSTRING_EXPIRE` | `AWS_S3_<PURPOSE>_QUERYSTRING_EXPIRE` |
 
-| Variable | Description |
+An access key and its secret must be set together or not at all. A per-bucket key id paired with
+the shared secret signs every request with a key the secret does not match, and nothing downstream
+can see that; a half-set pair therefore raises `ImproperlyConfigured` at startup rather than
+falling back.
+
+These three Django settings (not `AWS_*` environment variables) are read through `AppSettings` and
+name which `STORAGES` key each kind of file writes to. Renaming one means rebuilding `STORAGES`
+with the matching argument to `build_storages()`, or the key the setting names will not exist.
+
+| Setting | Names the alias for | Default |
+|---|---|---|
+| `REPORTS_STORAGE_ALIAS` | Cohort report PDFs | `"reports"` |
+| `ORGANISATION_LOGO_STORAGE_ALIAS` | Organisation logos | `"public"` |
+| `CONTENT_MEDIA_STORAGE_ALIAS` | Course images, PDFs and video | `"course_media"` |
+
+Four checks between them require every media alias to reach a bucket of its own and to serve its
+files the way its contents need.
+
+| Check | Reports |
 |---|---|
-| `REPORTS_STORAGE_ALIAS` | Django setting (not an `AWS_*` environment variable), read through `AppSettings`. Names which `STORAGES` key cohort reports write to. Defaults to `"reports"`. |
+| `freedom_ls_deployment.E001` | An alias that resolves to the same bucket as `default`. |
+| `freedom_ls_deployment.E002` | An alias that reached no bucket at all and fell back to local disk while `DEBUG` is off — what a misspelled per-bucket variable produces once the shared `AWS_STORAGE_BUCKET_NAME` is left unset. |
+| `freedom_ls_deployment.E003` | An alias that took its bucket from the shared `AWS_STORAGE_BUCKET_NAME` because its own variable is unset. E001 cannot see this one: with `AWS_S3_DEFAULT_BUCKET_NAME` naming a bucket of its own, an alias that fell through matches nothing it compares against. |
+| `freedom_ls_deployment.E004` | An alias holding private files — course media, user uploads, cohort reports — resolving with querystring auth off, so its URLs are unsigned and never expire. The shared `AWS_QUERYSTRING_AUTH` reaches every media alias, which is how a project upgrading from the single-bucket layout carries public serving forward onto learner data. |
 
-Two checks between them require every media alias to reach a bucket of its own.
-`freedom_ls_deployment.E001` reports an alias that resolves to the same bucket as `default`.
-`freedom_ls_deployment.E002` reports an alias that reached no bucket at all and fell back to local
-disk while `DEBUG` is off — what a misspelled per-bucket variable produces once the shared
-`AWS_STORAGE_BUCKET_NAME` is left unset. They carry separate ids so that a deployment serving media
-from local disk deliberately can silence E002 through `SILENCED_SYSTEM_CHECKS` without also giving
-up the collision check.
+They carry separate ids so that a deployment serving media from local disk deliberately can silence
+E002 through `SILENCED_SYSTEM_CHECKS` without also giving up the other three.
 
-Both run only under `manage.py check --deploy`, not under plain `check`, `runserver` or `migrate`,
-so a deploy pipeline has to actually run `check --deploy` for either to catch a misconfigured
-bucket.
+All four run only under `manage.py check --deploy`, not under plain `check`, `runserver` or
+`migrate`, so a deploy pipeline has to actually run `check --deploy` for any of them to catch a
+misconfigured bucket.
 
 ## 11. Legal Documents
 

@@ -77,6 +77,13 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 - [x] (user) Open a pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
+- [x] (user + cmd) Fix review finding: E001 misses a media alias that took the shared AWS_STORAGE_BUCKET_NAME while `default` named a bucket of its own — added freedom_ls_deployment.E003 (TDD)
+- [x] (user + cmd) Fix review finding: an access key and its secret resolved independently, pairing a per-purpose key id with the shared secret — they now resolve together and a half-set pair raises (TDD)
+- [x] (user + cmd) Fix review finding: `build_storages()` hardcoded the three alias names a setting owns, so renaming one crashed at model import — the settings now key both the dict and the builder (TDD)
+- [x] (user + cmd) Fix review finding: E001's undeclared-alias branch is unreachable for a bound FileField — added `storage_for_alias()` so the import-time failure names the alias and its setting, and corrected the check's docstring (TDD)
+- [x] (user + cmd) Fix review finding: replacing a logo at a different extension orphaned the old object in the public bucket — `Organisation.save()` deletes the superseded key (TDD)
+- [x] (user + cmd) Fix review finding: `OverwritingFileSystemStorage.get_available_name` deleted before writing — replaced with Django's own `allow_overwrite` (TDD)
+- [x] (user + cmd) Fix review finding: nothing caught a private alias resolving with querystring auth off — added freedom_ls_deployment.E004 (TDD)
 - [ ] (user) Merge the PR once approved
 
 ## 15. Cleanup

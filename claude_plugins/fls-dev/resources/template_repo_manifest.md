@@ -131,7 +131,7 @@ The template's `settings_base.py` begins with `from .customisation import *` (se
 - [ ] `AXES_FAILURE_LIMIT`, `AXES_COOLOFF_TIME`, `AXES_LOCKOUT_PARAMETERS`, `AXES_RESET_ON_SUCCESS`
 - [ ] `TRUSTED_PROXY_IP_HEADER: str | None = None`
 - [ ] `LEGAL_DOCS_MANIFEST_PATH: str | None = None`
-- [ ] `STORAGES` declares all seven keys (`default`, `staticfiles`, `public`, `course_media`, `user_uploads`, `reports`, `certificates`) as `FileSystemStorage` — except `staticfiles`, which is `StaticFilesStorage`, and `public`, which is `freedom_ls.deployment.storage.OverwritingFileSystemStorage` so that a replaced organisation logo lands on the old key locally as it does on S3. None carries an `OPTIONS` key. A project's dev and test settings must declare every alias, or its models stop importing the moment a field names one.
+- [ ] `STORAGES` declares all seven keys (`default`, `staticfiles`, `public`, `course_media`, `user_uploads`, `reports`, `certificates`) as `FileSystemStorage` — except `staticfiles`, which is `StaticFilesStorage`, and `public`, which adds `OPTIONS: {"allow_overwrite": True}` so that a replaced organisation logo lands on the old key locally as it does on S3. No entry pins an `OPTIONS` location. The three keys a setting names (`ORGANISATION_LOGO_STORAGE_ALIAS`, `CONTENT_MEDIA_STORAGE_ALIAS`, `REPORTS_STORAGE_ALIAS`) are keyed off that setting rather than written out, so renaming one moves the key with it. A project's dev and test settings must declare every alias, or its models stop importing the moment a field names one.
 - [ ] Branding stubs, admonitions, signup, and the role mapping live in `customisation.py` — see the [`customisation.py`](#configcustomisationpy) subsection below
 
 **Template loader chain (required order):**

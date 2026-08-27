@@ -76,15 +76,20 @@ on the old object rather than beside it — and that mutability is why the alias
 there are uuid-derived and already unique, so a write at an existing key means something has gone
 wrong and renaming is safer than clobbering.
 
-The setting is `file_overwrite`, declared per alias in `_OVERWRITE_ALIASES`
+The setting is `file_overwrite`, declared per purpose in `_OVERWRITE_PURPOSES`
 (`freedom_ls/deployment/storage.py`) and always written into the S3 options rather than left to the
-django-storages default. On local disk the same alias uses `OverwritingFileSystemStorage`, because
-stock `FileSystemStorage` suffixes a colliding name instead of replacing it — which would make
+django-storages default. On local disk the same alias gets `allow_overwrite=True`, because stock
+`FileSystemStorage` suffixes a colliding name instead of replacing it — which would make
 development disagree with production about where a replaced logo lives.
 
-A new field wanting overwrite semantics needs a stable key *and* an entry in `_OVERWRITE_ALIASES`
-for its alias. Do not add an existing alias to that set to suit one field: it changes the guarantee
-for every other field on that alias.
+Overwriting only covers a replacement at the *same* key. `organisation_logo_upload_to` keys on the
+uploaded extension and four are allowed, so replacing a PNG logo with a JPEG writes a second object.
+`Organisation.save()` deletes the one it superseded — a field with a stable key whose extension can
+change needs the same, or the old object stays in the bucket, anonymously readable, for good.
+
+A new field wanting overwrite semantics needs a stable key *and* an entry in `_OVERWRITE_PURPOSES`
+for its purpose. Do not add an existing purpose to that set to suit one field: it changes the
+guarantee for every other field on that alias.
 
 ## Mechanical rules for `storage=`
 
@@ -92,11 +97,15 @@ for every other field on that alias.
 - A `Storage` instance is `@deconstructible`, which means Django serialises its constructor
   arguments into the migration file. An instance built with explicit credentials would write them
   into git history. A callable resolved at call time never does.
+- Resolve the alias through `storage_for_alias(alias, setting_name)`
+  (`freedom_ls/base/storage.py`), never through `storages[alias]` directly. Django resolves a
+  callable `storage=` once, at model import, so an undeclared alias stops the process before it
+  starts; the helper is what makes that failure name the alias and the setting that chose it.
 - The alias must already exist in both places before a field can name it: `build_storages()` for
   production, and the `STORAGES` dict in the base settings module for development, test, and every
-  other non-production settings module. Django resolves a callable `storage=` once, at
-  model import. A field naming an alias that neither place declares fails to import the model
-  rather than degrading at first write.
+  other non-production settings module. An alias whose name is a setting is passed to
+  `build_storages()` as an argument and keys the base dict off the same constant, so renaming the
+  setting moves both.
 
 ## Forward-looking constraints
 
