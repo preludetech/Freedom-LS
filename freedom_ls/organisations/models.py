@@ -5,11 +5,12 @@ from __future__ import annotations
 import unicodedata
 from pathlib import Path
 
-from django.core.files.storage import Storage, storages
+from django.core.files.storage import Storage
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.base.initials import two_or_one
+from freedom_ls.base.storage import storage_for_alias
 from freedom_ls.site_aware_models.models import SiteAwareModel
 
 from .config import config
@@ -28,8 +29,10 @@ def organisation_logo_upload_to(instance: Organisation, filename: str) -> str:
 
 
 def get_organisation_logo_storage() -> Storage:
-    """The alias named by ORGANISATION_LOGO_STORAGE_ALIAS. The settings layer guarantees it exists."""
-    return storages[config.ORGANISATION_LOGO_STORAGE_ALIAS]
+    """The alias named by ORGANISATION_LOGO_STORAGE_ALIAS."""
+    return storage_for_alias(
+        config.ORGANISATION_LOGO_STORAGE_ALIAS, "ORGANISATION_LOGO_STORAGE_ALIAS"
+    )
 
 
 class Organisation(SiteAwareModel):
@@ -66,6 +69,39 @@ class Organisation(SiteAwareModel):
 
     def __str__(self) -> str:
         return self.name
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        """Save, then remove the logo object this save superseded.
+
+        Overwriting only replaces an object at the same key, and the key carries
+        the uploaded file's extension. Four extensions are allowed, so replacing a
+        PNG logo with a JPEG writes a second object and abandons the first — in a
+        bucket whose whole purpose is anonymous read, which would leave the old
+        logo publicly fetchable indefinitely. Deleting is the fix rather than
+        normalising the extension away, because the key's extension is what gives
+        the object its Content-Type.
+        """
+        superseded = self._stored_logo_name()
+        super().save(*args, **kwargs)
+        if superseded and superseded != self.logo.name:
+            self.logo.storage.delete(superseded)
+
+    def _stored_logo_name(self) -> str:
+        """The logo name the database currently holds, or '' for an unsaved row.
+
+        Read through the base manager, because `objects` filters to the current
+        request's Site and this has to see the row whatever Site it belongs to.
+        Read from the database rather than tracked on the instance, because
+        `logo.save()` mutates and saves an instance that was never loaded.
+        """
+        if self._state.adding:
+            return ""
+        return (
+            Organisation._base_manager.filter(pk=self.pk)
+            .values_list("logo", flat=True)
+            .first()
+            or ""
+        )
 
     @property
     def initials(self) -> str | None:

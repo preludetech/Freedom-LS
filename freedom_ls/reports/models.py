@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from django.conf import settings
-from django.core.files.storage import Storage, storages
+from django.core.files.storage import Storage
 from django.db import models
 from django.db.models import Q, UniqueConstraint
 
+from freedom_ls.base.storage import storage_for_alias
 from freedom_ls.reports.config import config
 from freedom_ls.site_aware_models.models import SiteAwareModel
 
@@ -34,8 +35,8 @@ def report_upload_path(instance: GeneratedReport, filename: str) -> str:
 
 
 def get_reports_storage() -> Storage:
-    """The alias named by REPORTS_STORAGE_ALIAS. The settings layer guarantees it exists."""
-    return storages[config.REPORTS_STORAGE_ALIAS]
+    """The alias named by REPORTS_STORAGE_ALIAS."""
+    return storage_for_alias(config.REPORTS_STORAGE_ALIAS, "REPORTS_STORAGE_ALIAS")
 
 
 class GeneratedReport(SiteAwareModel):

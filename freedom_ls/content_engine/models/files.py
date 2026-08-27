@@ -1,9 +1,10 @@
 from pathlib import Path
 
-from django.core.files.storage import Storage, storages
+from django.core.files.storage import Storage
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from freedom_ls.base.storage import storage_for_alias
 from freedom_ls.site_aware_models.models import SiteAwareModel
 
 from ..config import config
@@ -20,8 +21,10 @@ def file_upload_handler(instance, filepath):
 
 
 def get_content_media_storage() -> Storage:
-    """The alias named by CONTENT_MEDIA_STORAGE_ALIAS. The settings layer guarantees it exists."""
-    return storages[config.CONTENT_MEDIA_STORAGE_ALIAS]
+    """The alias named by CONTENT_MEDIA_STORAGE_ALIAS."""
+    return storage_for_alias(
+        config.CONTENT_MEDIA_STORAGE_ALIAS, "CONTENT_MEDIA_STORAGE_ALIAS"
+    )
 
 
 class File(SiteAwareModel):

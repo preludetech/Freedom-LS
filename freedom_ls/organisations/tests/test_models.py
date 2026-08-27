@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
+from django.forms import modelform_factory
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -16,6 +20,14 @@ from freedom_ls.organisations.models import (
     organisation_logo_upload_to,
 )
 from freedom_ls.role_based_permissions.utils import assign_object_role
+
+
+def _jpeg_upload(name: str) -> SimpleUploadedFile:
+    """A real JPEG, since the logo validators decode the bytes rather than trust
+    the extension."""
+    buffer = io.BytesIO()
+    Image.new("RGB", (200, 100)).save(buffer, format="JPEG")
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/jpeg")
 
 
 class TestInitials:
@@ -89,6 +101,90 @@ class TestLogoReplacement:
         organisation.logo.save("second.png", ContentFile(b"second-logo"), save=True)
 
         assert Path(organisation.logo.path).read_bytes() == b"second-logo"
+
+    def test_replacing_a_logo_with_another_extension_moves_the_key(
+        self, mock_site_context
+    ) -> None:
+        organisation = OrganisationFactory()
+        organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
+
+        organisation.logo.save("second.jpg", ContentFile(b"second-logo"), save=True)
+
+        assert organisation.logo.name == f"organisations/{organisation.pk}.jpg"
+
+    def test_replacing_a_logo_with_another_extension_leaves_one_file(
+        self, mock_site_context
+    ) -> None:
+        """Overwriting only covers a replacement at the same key. Four extensions
+        are allowed, so a PNG replaced by a JPEG writes a second object — and this
+        bucket is anonymously readable, which would leave the superseded logo
+        publicly fetchable for good."""
+        organisation = OrganisationFactory()
+        organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
+
+        organisation.logo.save("second.jpg", ContentFile(b"second-logo"), save=True)
+
+        directory = Path(organisation.logo.path).parent
+        assert sorted(path.name for path in directory.iterdir()) == [
+            f"{organisation.pk}.jpg"
+        ]
+
+    def test_clearing_a_logo_removes_the_object(self, mock_site_context) -> None:
+        organisation = OrganisationFactory()
+        organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
+        directory = Path(organisation.logo.path).parent
+
+        organisation.logo = ""
+        organisation.save()
+
+        assert list(directory.iterdir()) == []
+
+    def test_saving_without_touching_the_logo_keeps_it(self, mock_site_context) -> None:
+        organisation = OrganisationFactory()
+        organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
+
+        organisation.name = "Renamed"
+        organisation.save()
+
+        assert Path(organisation.logo.path).read_bytes() == b"first-logo"
+
+    def test_an_admin_form_upload_replaces_its_logo_cleanly(
+        self, mock_site_context
+    ) -> None:
+        """The path an admin actually takes. A form assigns the upload and lets
+        FileField.pre_save write it during save(), so the new key only exists
+        partway through — later than logo.save() sets it, and the previous name
+        has to still be readable at that point."""
+        organisation = OrganisationFactory()
+        organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
+        directory = Path(organisation.logo.path).parent
+        form_class = modelform_factory(Organisation, fields=["name", "slug", "logo"])
+
+        form = form_class(
+            data={"name": organisation.name, "slug": organisation.slug},
+            files={"logo": _jpeg_upload("second.jpg")},
+            instance=Organisation.objects.get(pk=organisation.pk),
+        )
+        assert form.is_valid(), form.errors
+        form.save()
+
+        assert sorted(path.name for path in directory.iterdir()) == [
+            f"{organisation.pk}.jpg"
+        ]
+
+    def test_a_reloaded_instance_replaces_its_logo_cleanly(
+        self, mock_site_context
+    ) -> None:
+        organisation = OrganisationFactory()
+        organisation.logo.save("first.png", ContentFile(b"first-logo"), save=True)
+
+        reloaded = Organisation.objects.get(pk=organisation.pk)
+        reloaded.logo.save("second.webp", ContentFile(b"second-logo"), save=True)
+
+        directory = Path(reloaded.logo.path).parent
+        assert sorted(path.name for path in directory.iterdir()) == [
+            f"{organisation.pk}.webp"
+        ]
 
 
 @pytest.mark.django_db
