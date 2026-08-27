@@ -37,6 +37,7 @@
 - [reference_org_course_registration.md](reference_org_course_registration.md) — Course has NO organisation FK (nor uuid); the learner's registration carries the org; qa_register_org_course; the co-branding TOC header lives in the PLAYER sidebar only
 - [reference_background_tasks_dev.md](reference_background_tasks_dev.md) — Dev needs NO db_worker: TASKS is pinned to ImmediateBackend, so report PDFs render inline
 - [reference_legacy_report_prefix_staging.md](reference_legacy_report_prefix_staging.md) — Staging a pre-rename `reports/`-prefix GeneratedReport row; in dev ALL storage aliases share MEDIA_ROOT, so only the key prefix separates them
+- [reference_storage_qa_dataset.md](reference_storage_qa_dataset.md) — The whole prod_bucket_setup storage-QA dataset in one recipe; --num-flagged undercounts on a quiz-less course; generate_cohort_report() repairs a row in place
 
 ## Recurring requests
 
@@ -72,12 +73,12 @@ NO qa_ command output contains the word "student" as of this branch.
 `CohortDeadline` / `UserCohortDeadlineOverride` / `LearnerDeadline` is wanted, and state in
 the report which model you wrote. `qa_create_deadline_overrides` writes only the middle one.
 
-The **prod bucket / file-storage QA run** (Aug 2026) needed: `content_save` of
-`functionality_demo_content_widgets` + `functionality_demo_end_with_topic`,
-`qa_create_organisations DemoDev` (RPAS Training w/ logo, Northside w/o),
-`qa_register_org_course` x2 for demodev@email.com, and two `qa_create_report_cohort`
-runs (one WITH `--educator-email`, one without) to get a permitted/forbidden cohort pair.
-If that combination is asked for again, wrap it in one command.
+The **prod bucket / file-storage QA run** (Aug 2026) has now been set up TWICE. Full
+recipe in [[reference_storage_qa_dataset]]. The second pass was almost entirely
+verification — the fixtures survive between runs — so ALWAYS inspect first and only
+repair the deltas: a report row left staged on the legacy `reports/` prefix, and a
+flag count short because `--num-flagged`'s `failing` flavour needs a pass-marked quiz.
+If it is asked for a third time, wrap the recipe in one command.
 
 **Never pad `functionality-demo-course-parts` for pagination QA.** It is the shared
 course-player / resume / TOC fixture. `qa_add_course_items_for_pagination` DEFAULTS to it;
