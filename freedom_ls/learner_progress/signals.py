@@ -192,8 +192,10 @@ def ensure_course_progress_on_learner_registration(
         # loaddata: deriving records from a fixture would invent data the
         # fixture author did not ask for.
         return
-    if not (created or instance.is_active):
-        # A deactivating save must not create anything.
+    if not instance.is_active:
+        # A withdrawn registration grants nothing: not on a deactivating save,
+        # and not on a creation either -- an import of a past enrolment would
+        # otherwise announce one that was never active.
         return
     transaction.on_commit(lambda: _ensure_and_announce(instance, announce=created))
 
@@ -202,12 +204,11 @@ def ensure_course_progress_on_learner_registration(
 def ensure_course_progress_on_cohort_registration(
     sender: type[CohortCourseRegistration],
     instance: CohortCourseRegistration,
-    created: bool,
     raw: bool = False,
     **kwargs: object,
 ) -> None:
     """Fan a cohort registration out to a record per active member."""
-    if raw or not (created or instance.is_active):
+    if raw or not instance.is_active:
         return
     transaction.on_commit(
         lambda: ensure_course_progress_records_for_cohort_registration(instance)

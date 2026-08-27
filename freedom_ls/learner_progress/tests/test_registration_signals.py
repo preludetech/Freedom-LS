@@ -90,6 +90,46 @@ class TestRegistrationMintsARecord:
 
         assert not CourseProgress.objects.exists()
 
+    def test_registering_a_learner_inactive_creates_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        """An import of a past enrolment grants nothing, and announces nothing."""
+        with (
+            patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire,
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            LearnerCourseRegistrationFactory(is_active=False)
+
+        assert not CourseProgress.objects.exists()
+        mock_fire.assert_not_called()
+
+    def test_registering_a_cohort_inactive_creates_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        """The same rule on the cohort side, members already in place or not."""
+        cohort = CohortFactory()
+        CohortMembershipFactory(cohort=cohort)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            CohortCourseRegistrationFactory(cohort=cohort, is_active=False)
+
+        assert not CourseProgress.objects.exists()
+
+    def test_activating_an_inactive_registration_creates_the_record(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        """The record is withheld until the registration grants access, not for good."""
+        registration = LearnerCourseRegistrationFactory(is_active=False)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            registration.is_active = True
+            registration.save()
+
+        assert (
+            CourseProgress.objects.filter(learner_registration=registration).count()
+            == 1
+        )
+
 
 @pytest.mark.django_db
 class TestReRegistrationChangesNothing:

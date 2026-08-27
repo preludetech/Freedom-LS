@@ -7,15 +7,17 @@ begun under one must never be resumed under the other -- so the course asks
 "which attempt at this placement is open in this record", which only a
 `CourseFormAttempt` can answer.
 
-Every course-side caller goes through here rather than through
-`FormProgress.get_or_create_incomplete()`, which would happily hand back an
-attempt belonging to another record or to no course at all.
+Every course-side caller goes through here, so an attempt is only ever resolved
+against the record it was begun in. Nothing outside this module may resolve one
+from `(user, form)`: that question cannot tell two records of the same course
+apart, and it cannot tell a course attempt from a standalone one.
 """
 
 from __future__ import annotations
 
 from typing import cast
 
+from django.db import transaction
 from django.db.models import QuerySet
 
 from freedom_ls.content_engine.models import ContentCollectionItem
@@ -86,17 +88,18 @@ def get_or_create_incomplete(
     if incomplete:
         return incomplete
 
-    attempt: FormProgress = FormProgress.objects.create(
-        site_id=course_progress.site_id,
-        user=course_progress.learner.user,
-        form=collection_item.child,
-    )
-    CourseFormAttempt.objects.create(
-        site_id=course_progress.site_id,
-        course_progress=course_progress,
-        collection_item=collection_item,
-        form_progress=attempt,
-    )
+    with transaction.atomic():
+        attempt: FormProgress = FormProgress.objects.create(
+            site_id=course_progress.site_id,
+            user=course_progress.learner.user,
+            form=collection_item.child,
+        )
+        CourseFormAttempt.objects.create(
+            site_id=course_progress.site_id,
+            course_progress=course_progress,
+            collection_item=collection_item,
+            form_progress=attempt,
+        )
     return attempt
 
 
