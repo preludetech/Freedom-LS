@@ -34,6 +34,9 @@
 - [reference_form_engine_branch_qa_baseline.md](reference_form_engine_branch_qa_baseline.md) — The whole-DB "documented starting state" recipe for the form_engine-extraction QA pass; reset-then-recalculate ordering; CourseProgress.course (not .collection)
 - [reference_proving_allauth_login_works.md](reference_proving_allauth_login_works.md) — Proving a QA user can log in: force_login/check_password are false positives; rolled-back real login POST + verified=False negative control (locmem email backend)
 - [reference_qa_complete_form_now_recalculates.md](reference_qa_complete_form_now_recalculates.md) — qa_complete_form DOES fire a recalculation now (complete() sends form_attempt_completed); a 0-score failed quiz still moves no percentage, so use CourseProgress.last_accessed_time to detect the write
+- [reference_org_course_registration.md](reference_org_course_registration.md) — Course has NO organisation FK (nor uuid); the learner's registration carries the org; qa_register_org_course; the co-branding TOC header lives in the PLAYER sidebar only
+- [reference_background_tasks_dev.md](reference_background_tasks_dev.md) — Dev needs NO db_worker: TASKS is pinned to ImmediateBackend, so report PDFs render inline
+- [reference_legacy_report_prefix_staging.md](reference_legacy_report_prefix_staging.md) — Staging a pre-rename `reports/`-prefix GeneratedReport row; in dev ALL storage aliases share MEDIA_ROOT, so only the key prefix separates them
 
 ## Recurring requests
 
@@ -68,6 +71,13 @@ NO qa_ command output contains the word "student" as of this branch.
 **"Seed deadlines" is ambiguous and has now bitten twice.** Always ask/confirm WHICH of
 `CohortDeadline` / `UserCohortDeadlineOverride` / `LearnerDeadline` is wanted, and state in
 the report which model you wrote. `qa_create_deadline_overrides` writes only the middle one.
+
+The **prod bucket / file-storage QA run** (Aug 2026) needed: `content_save` of
+`functionality_demo_content_widgets` + `functionality_demo_end_with_topic`,
+`qa_create_organisations DemoDev` (RPAS Training w/ logo, Northside w/o),
+`qa_register_org_course` x2 for demodev@email.com, and two `qa_create_report_cohort`
+runs (one WITH `--educator-email`, one without) to get a permitted/forbidden cohort pair.
+If that combination is asked for again, wrap it in one command.
 
 **Never pad `functionality-demo-course-parts` for pagination QA.** It is the shared
 course-player / resume / TOC fixture. `qa_add_course_items_for_pagination` DEFAULTS to it;
