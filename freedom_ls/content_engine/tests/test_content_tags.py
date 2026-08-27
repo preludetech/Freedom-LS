@@ -4,6 +4,7 @@ Covers:
 - admonition_config: type→registry entry resolution
 - admonition_icon: renders SVG from a config dict
 - c-admonition component: renders label, icon, body via markdown pipeline
+- get_content_by_path: path→Topic, falling back to path→Form
 """
 
 from __future__ import annotations
@@ -13,10 +14,14 @@ import pytest
 from django.test import override_settings
 from django.utils.safestring import SafeString
 
+from freedom_ls.content_engine.factories import TopicFactory
 from freedom_ls.content_engine.templatetags.content_tags import (
     admonition_config,
     admonition_icon,
+    get_content_by_path,
 )
+from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.models import Form
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 
 # ---------------------------------------------------------------------------
@@ -255,3 +260,48 @@ class TestAdmonitionComponent:
         )
 
         assert "aria-labelledby" in result
+
+
+# ---------------------------------------------------------------------------
+# get_content_by_path
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestGetContentByPath:
+    """get_content_by_path resolves a path to a Topic, then falls back to a Form."""
+
+    def test_empty_path_returns_none(self, mock_site_context) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+
+        assert get_content_by_path("", source) is None
+
+    def test_matching_topic_is_returned(self, mock_site_context) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+        target = TopicFactory(file_path="4. topic/content.md")
+
+        assert get_content_by_path("../4. topic/content.md", source) == target
+
+    def test_matching_form_is_returned_when_no_topic_matches(
+        self, mock_site_context
+    ) -> None:
+        """The Form fallback: no Topic carries the path, so the Form is found."""
+        source = TopicFactory(file_path="2. topic/content.md")
+        target = FormFactory(file_path="3. quiz/form.md")
+
+        assert get_content_by_path("../3. quiz/form.md", source) == target
+
+    def test_unknown_path_returns_none(self, mock_site_context) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+
+        assert get_content_by_path("01-what-is-git-for.md", source) is None
+
+    def test_duplicate_forms_return_the_first(self, mock_site_context) -> None:
+        """file_path is not unique, so a duplicated Form resolves to the first match."""
+        source = TopicFactory(file_path="2. topic/content.md")
+        FormFactory(file_path="3. quiz/form.md")
+        FormFactory(file_path="3. quiz/form.md")
+
+        expected = Form.objects.filter(file_path="3. quiz/form.md").first()
+
+        assert get_content_by_path("../3. quiz/form.md", source) == expected

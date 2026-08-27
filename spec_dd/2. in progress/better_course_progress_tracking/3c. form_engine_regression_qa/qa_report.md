@@ -208,10 +208,16 @@ traps documented in the plan were observed and respected: `qa_create_learner_dea
   rendered, no 500s and no traceback in the HTML. Console carried only the known report-only CSP lines
   plus the web-share and YouTube adapter warnings.
   ![](screenshots/page-2026-08-27T11-49-33-447Z.png)
-- **R6.3** (desktop) — **skip**. Recorded as untested by design, per the plan: the Form branch of
-  `content_tags.get_content_by_path` has no fixture. No demo content links to a Form by path, so nothing
-  in the seeded data reaches that branch. Reported as untested rather than as a pass.
-  ![](screenshots/page-2026-08-27T11-49-48-947Z.png)
+- **R6.3** (desktop) — **pass, on a re-run after the original skip.** The first run recorded this as
+  untested by design, because no demo content linked to a Form by path. A fixture now exists:
+  `demo_content/functionality_demo_end_with_quiz/2. topic/content.md` carries
+  `<c-content-link path="../3. quiz/form.md">the Mid course Quiz</c-content-link>`, which resolves past
+  the Topic lookup to the Form "Mid course Quiz". On item 1 of `functionality-demo-show-end-with-quiz`
+  that link renders as `<a>the Mid course Quiz</a>` rather than a `<span class="text-error">` — a flip
+  only the Form branch can produce. Page 200, no traceback in the HTML, nothing in the server log.
+  Its `href` is empty, because `Form` has no `preview_url`; that is the pre-existing component gap
+  recorded in §0.4 and filed under `## 9. QA` in the parent `todo.md`, not a finding of this run.
+  ![](screenshots/r6-3-form-content-link.png)
 
 ### R7 — Failure and adversarial branches
 
@@ -370,8 +376,13 @@ explanatory paragraph and left every sticky and z-index class byte-identical to 
 ## General notes
 
 **Not tested, and why.**
-- The Form branch of `content_tags.get_content_by_path` (R6.3): no demo content links to a Form by
-  path, so no fixture reaches that branch.
+- ~~The Form branch of `content_tags.get_content_by_path` (R6.3): no demo content links to a Form by
+  path, so no fixture reaches that branch.~~ **Closed on 2026-08-27.** A Form link was authored into
+  `demo_content/functionality_demo_end_with_quiz/2. topic/content.md` and R6 was re-walked; R6.3 now
+  records a pass. The branch also gained unit coverage in
+  `freedom_ls/content_engine/tests/test_content_tags.py`, and
+  `freedom_ls/content_engine/tests/test_demo_content_form_link.py` guards the fixture against the silent
+  rot that produced this gap in the first place.
 - Submit-on-exit (R7.6): owned by `3b. progress_gaps_qa` section G6; the plan for this run says
   explicitly not to repeat it here.
 - The positive direction of admin site scoping (R5.7): unreachable because `settings_dev.py` pins

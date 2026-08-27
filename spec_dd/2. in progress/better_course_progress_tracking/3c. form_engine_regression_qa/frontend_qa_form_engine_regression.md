@@ -185,6 +185,11 @@ out as:
   pre-existing, belongs to its own ticket.
 - **The "last chapter" content link renders as not-found.** No Topic anywhere has file path
   `01-what-is-git-for.md`. A demo-content authoring gap, not a regression.
+- **A content link to a Form renders with an empty `href`.** `Form` has no `preview_url`, so
+  `content-link.html` emits `<a href="">`. Filed under `## 9. QA` in the parent `todo.md`, together with
+  the sibling defect that `Topic.preview_url()` reverses a URL name no URLconf defines. Both belong to
+  the content-link spec the `TODO. - non-preview link` in that template already names. Record the anchor
+  as the R6.3 pass; do not re-file the href.
 
 ---
 
@@ -348,15 +353,20 @@ thirteenth model — the join row — is new on this branch.
 `<c-content-link>`. It is the call site most easily forgotten, because everyone remembers the loader.
 
 1. As `demodev@email.com`, open the topic at item 1 of `functionality-demo-show-end-with-quiz`, which
-   contains a `<c-content-link>`.
+   contains two `<c-content-link>`s.
    **Expect:** the page renders with no 500, and no `TemplateSyntaxError` or `ImportError` in the terminal.
-   The link itself renders as the not-found fallback rather than an anchor — see §0.4; that is a content
-   gap, not a regression.
+   The "last chapter" link renders as the not-found fallback rather than an anchor — see §0.4; that is a
+   content gap, not a regression.
 2. Open the `content-widgets-demo-reference` course, the widest exercise of the markdown and cotton
    pipeline.
    **Expect:** every widget renders and no page 500s.
-3. Note in the report that the **Form branch** of `get_content_by_path` stays untested: no demo content
-   links to a Form by path, so no fixture reaches it. Say so plainly rather than recording a pass.
+3. On that same topic page, find the **"the Mid course Quiz"** link, which points at
+   `../3. quiz/form.md`. This is the fixture for the **Form branch** of `get_content_by_path` — the Topic
+   lookup misses, the Form lookup hits.
+   **Expect:** it renders as an `<a>` element, **not** a `<span class="text-error">`. That flip from span
+   to anchor is the whole check: only the Form branch can produce it.
+   Its `href` is empty, because `Form` carries no `preview_url`. Known and already filed — see §0.4; do
+   not re-file it.
 
 ---
 

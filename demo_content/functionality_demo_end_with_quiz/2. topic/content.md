@@ -49,6 +49,12 @@ And a video.
 <c-content-link path="01-what-is-git-for.md">last chapter</c-content-link>
 
 
+A link to a form, rather than a topic:
+
+
+<c-content-link path="../3. quiz/form.md">the Mid course Quiz</c-content-link>
+
+
 
 
 <c-admonition type="note" title="Callout">
