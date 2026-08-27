@@ -91,6 +91,21 @@ diff to `organisations/models.py` only adds `storage=get_organisation_logo_stora
 `build_s3_media_storage` never sets `file_overwrite` explicitly, so that production guarantee rests
 entirely on a django-storages default.
 
+**Resolution.** Fixed at the alias level rather than in the model, because the overwrite is a
+property of the alias: it is what `public, max-age=86400` and the guessable `organisations/{pk}` key
+both rest on, so it now gets declared rather than assumed. `_OVERWRITE_ALIASES` in
+`freedom_ls/deployment/storage.py` names the aliases that replace at a stable key — `public` alone;
+`certificates` is deliberately excluded, since a uuid-keyed certificate is written once.
+`build_s3_media_storage` always writes `file_overwrite` into the S3 options, never inheriting the
+django-storages default. On local disk the same alias uses `OverwritingFileSystemStorage`, whose
+`get_available_name` replaces rather than suffixes, so development and production agree.
+
+Verified by the tests that reproduce the bug — a second `logo.save()` keeps
+`organisations/{pk}.png`, leaves one file in the directory and serves the new bytes — plus per-alias
+assertions on `file_overwrite` and on which backend each alias falls back to. The two orphaned
+Northside files were removed from the dev working tree; that organisation's `logo` was already
+cleared by test C2-step4, so no row pointed at either.
+
 ## env_example overstates what freedom_ls_deployment.E001 catches: a per-alias bucket-name typo drops learner data to local disk silently
 
 **Manifestations:** A1-E001-coverage (desktop)
@@ -115,39 +130,43 @@ decision table — which the code implements faithfully — cannot deliver it, b
 `AWS_S3_DEFAULT_BUCKET_NAME` always be set, which guarantees a typo'd alias is never *identical* to
 `default`. The two halves of the spec contradicted each other.
 
-`freedom_ls_deployment.E001` now reports a second condition: a media alias resolving to local
-filesystem storage while `DEBUG` is `False`, whatever `default` points at. Both arms stay gated on
-`DEBUG` so dev, test and a deliberately-local staging environment are unaffected, and an alias
-identical to `default` is still reported once, as a collision, not twice.
+The new rule is a check of its own, `freedom_ls_deployment.E002`: a media alias resolving to local
+filesystem storage while `DEBUG` is `False`, whatever `default` points at. It gets its own id
+because `SILENCED_SYSTEM_CHECKS` is per-id, and a deployment that serves media off local disk
+deliberately must be able to silence that rule without also giving up `E001`'s bucket-collision
+protection. `E001` therefore skips every filesystem identity and `E002` owns the whole class, so one
+misconfiguration still produces exactly one error.
 
 Verified against a live `check --deploy`: the configuration that previously reported "no issues" now
 exits non-zero with `Storage alias 'reports' resolves to local filesystem storage while DEBUG is
 False`, hinting `AWS_S3_GENERATED_BUCKET_NAME`; the full intended production configuration still
-exits clean. The `env_example` comment needed no edit — it is true as written now.
+exits clean.
 
 One pre-existing test, `test_multiple_offending_aliases_each_produce_their_own_error`, had encoded
 the bug: its fixture put `user_uploads` and `reports` on local disk with an S3 `default` under
-`DEBUG=False` and asserted only 2 errors. It now asserts all 4, each naming its own variable. The
-check function was renamed `check_media_aliases_resolve_to_their_own_bucket`, since it no longer
-only compares against `default`. Spec §7.4, the deployment checklist and the product security doc
-were updated to match. Full suite green at 2651 passed.
+`DEBUG=False` and asserted only 2 errors. It now asserts all 4, two from each check. The `E001`
+function was renamed `check_media_aliases_not_shared_with_default`. The `env_example` comment, spec
+§5.3 and §7.4, the deployment checklist and the product security doc were updated to name the check
+that actually delivers the guarantee.
 
 ## Bug status
 
-Both bugs were triaged to the red lane during the QA run itself, so neither was auto-fixed. B2 was
-then fixed by hand afterwards, TDD, once reading the spec showed it was a code gap rather than a
-wording problem.
+Both bugs were triaged to the red lane during the QA run itself, so neither was auto-fixed. Both
+were fixed by hand afterwards, TDD, once reading the spec showed each was a code gap rather than a
+matter of correcting a comment.
 
-- **UNRESOLVED** — Replacing an organisation logo does not overwrite the stable key; files accumulate
-  under `media/organisations/` (reason: not a regression introduced by this branch — the stable-key
-  `upload_to` pre-dates it and S3 would overwrite — and the fix is a storage-semantics decision:
-  override `get_available_name`, delete the previous object on replace, or set `file_overwrite`
-  explicitly rather than leaning on the django-storages default).
+- **FIXED** — Replacing an organisation logo did not overwrite the stable key, so files accumulated
+  under `media/organisations/`. The overwrite the spec relies on was never declared: it held in
+  production only because `S3Storage` defaults `file_overwrite=True`, and was simply false on local
+  disk. `_OVERWRITE_ALIASES` now names the aliases that replace at a stable key — `public` only —
+  `build_s3_media_storage` always writes `file_overwrite` rather than inheriting a third-party
+  default, and the non-production `public` entry uses `OverwritingFileSystemStorage` so development
+  and production agree about where a replaced logo lives.
 - **FIXED** — `freedom_ls_deployment.E001` did not catch a media alias that fell back to local disk
   while `default` kept its own bucket, so a per-alias bucket-name typo could silently put learner
-  report PDFs on a container's local disk in production. The check now reports that as a second
-  condition under `DEBUG=False`. See the Resolution note in the section above for what changed and
-  how it was verified.
+  report PDFs on a container's local disk in production. That case is now `freedom_ls_deployment.E002`,
+  a separate deploy check under `DEBUG=False`. See the Resolution note in the section above for what
+  changed and how it was verified.
 
 ## General notes
 
@@ -171,4 +190,4 @@ wording problem.
   required viewports where the plan calls for them.
 
 status: ok
-reason: 2 bugs — 1 fixed (B2, E001 local-disk coverage), 1 unresolved (B1, logo overwrite); report rendered, screenshots verified
+reason: 2 bugs — 2 fixed (B1 logo overwrite-at-a-stable-key, B2 local-disk coverage now E002); report rendered, screenshots verified

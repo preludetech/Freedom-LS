@@ -186,7 +186,8 @@ All required environment variables must be set in production. Never hardcode cre
 FLS resolves storage per bucket purpose, not per project. `PURPOSE` is one of `PUBLIC`,
 `COURSE_MEDIA`, `USER_UPLOADS`, `GENERATED`, `CERTIFICATES`, `DEFAULT`, one per `STORAGES` alias.
 Every variable below is optional. An unset per-bucket variable falls through to the shared column,
-and an unset bucket name falls through to local filesystem storage.
+and an unset bucket name falls through to local filesystem storage — which `check --deploy` reports
+as an error outside `DEBUG`, so it is a development convenience rather than a production mode.
 
 | Property | Shared variable | Per-bucket override |
 |---|---|---|
@@ -203,12 +204,17 @@ and an unset bucket name falls through to local filesystem storage.
 |---|---|
 | `REPORTS_STORAGE_ALIAS` | Django setting (not an `AWS_*` environment variable), read through `AppSettings`. Names which `STORAGES` key cohort reports write to. Defaults to `"reports"`. |
 
-`freedom_ls_deployment.E001` checks that every media alias reaches a bucket of its own. It reports
-an alias that resolves to the same bucket as `default`, and — when `DEBUG` is off — an alias that
-reached no bucket at all and fell back to local disk, which is what a misspelled per-bucket variable
-produces once the shared `AWS_STORAGE_BUCKET_NAME` is left unset. It only runs under
-`manage.py check --deploy`, not under plain `check`, `runserver` or `migrate`, so a deploy pipeline
-has to actually run `check --deploy` for it to catch a misconfigured bucket.
+Two checks between them require every media alias to reach a bucket of its own.
+`freedom_ls_deployment.E001` reports an alias that resolves to the same bucket as `default`.
+`freedom_ls_deployment.E002` reports an alias that reached no bucket at all and fell back to local
+disk while `DEBUG` is off — what a misspelled per-bucket variable produces once the shared
+`AWS_STORAGE_BUCKET_NAME` is left unset. They carry separate ids so that a deployment serving media
+from local disk deliberately can silence E002 through `SILENCED_SYSTEM_CHECKS` without also giving
+up the collision check.
+
+Both run only under `manage.py check --deploy`, not under plain `check`, `runserver` or `migrate`,
+so a deploy pipeline has to actually run `check --deploy` for either to catch a misconfigured
+bucket.
 
 ## 11. Legal Documents
 

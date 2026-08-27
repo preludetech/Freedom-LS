@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from django.core.checks import registry
+from django.core.checks import CheckMessage, registry
 from django.test import override_settings
 
 from freedom_ls.deployment.checks import (
-    check_media_aliases_resolve_to_their_own_bucket,
+    check_media_aliases_not_on_local_disk,
+    check_media_aliases_not_shared_with_default,
     check_sentry_release_set_when_dsn_set,
 )
 from freedom_ls.deployment.storage import build_storages
@@ -83,12 +84,25 @@ _UNCOMPARABLE_ENTRY: dict[str, object] = {
 }
 
 
+def _hints_by_alias(
+    errors: list[CheckMessage], aliases: tuple[str, ...]
+) -> dict[str, str]:
+    """Each alias named in an error message, mapped to that error's hint."""
+    found: dict[str, str] = {}
+    for error in errors:
+        assert error.hint is not None
+        for alias in aliases:
+            if alias in error.msg:
+                found[alias] = error.hint
+    return found
+
+
 def test_sensitive_alias_check_is_registered_via_app_ready() -> None:
     # deploy=True checks land in registry.registry.deployment_checks rather
     # than registered_checks, so this guards against DeploymentAppConfig.ready()
     # dropping the checks import specifically for --deploy runs.
     assert (
-        check_media_aliases_resolve_to_their_own_bucket
+        check_media_aliases_not_shared_with_default
         in registry.registry.deployment_checks
     )
 
@@ -105,7 +119,7 @@ def test_sensitive_alias_check_is_registered_via_app_ready() -> None:
     DEBUG=True,
 )
 def test_media_alias_matching_default_s3_identity_returns_error() -> None:
-    errors = check_media_aliases_resolve_to_their_own_bucket()
+    errors = check_media_aliases_not_shared_with_default()
 
     assert len(errors) == 1
     assert errors[0].id == "freedom_ls_deployment.E001"
@@ -125,11 +139,16 @@ def test_media_alias_matching_default_s3_identity_returns_error() -> None:
     },
     DEBUG=False,
 )
-def test_fs_alias_matching_default_with_debug_false_returns_error() -> None:
-    errors = check_media_aliases_resolve_to_their_own_bucket()
+def test_fs_alias_matching_default_is_reported_once_as_local_disk() -> None:
+    # An alias on local disk is E002's, whatever 'default' points at, so this
+    # configuration produces one error rather than a collision and a local-disk
+    # report for the same alias.
+    assert check_media_aliases_not_shared_with_default() == []
+
+    errors = check_media_aliases_not_on_local_disk()
 
     assert len(errors) == 1
-    assert errors[0].id == "freedom_ls_deployment.E001"
+    assert errors[0].id == "freedom_ls_deployment.E002"
     assert "user_uploads" in errors[0].msg
     assert errors[0].hint is not None
     assert "AWS_S3_USER_UPLOADS_BUCKET_NAME" in errors[0].hint
@@ -147,9 +166,8 @@ def test_fs_alias_matching_default_with_debug_false_returns_error() -> None:
     DEBUG=True,
 )
 def test_fs_alias_matching_default_with_debug_true_returns_no_errors() -> None:
-    errors = check_media_aliases_resolve_to_their_own_bucket()
-
-    assert errors == []
+    assert check_media_aliases_not_shared_with_default() == []
+    assert check_media_aliases_not_on_local_disk() == []
 
 
 @override_settings(
@@ -164,7 +182,7 @@ def test_fs_alias_matching_default_with_debug_true_returns_no_errors() -> None:
     DEBUG=False,
 )
 def test_media_aliases_with_distinct_buckets_return_no_errors() -> None:
-    errors = check_media_aliases_resolve_to_their_own_bucket()
+    errors = check_media_aliases_not_shared_with_default()
 
     assert errors == []
 
@@ -181,7 +199,7 @@ def test_media_aliases_with_distinct_buckets_return_no_errors() -> None:
     DEBUG=False,
 )
 def test_media_alias_on_uncomparable_backend_returns_no_errors() -> None:
-    errors = check_media_aliases_resolve_to_their_own_bucket()
+    errors = check_media_aliases_not_shared_with_default()
 
     assert errors == []
 
@@ -200,7 +218,7 @@ def test_undeclared_media_alias_returns_error_instead_of_raising() -> None:
     # "public" is intentionally missing from STORAGES: storages["public"] would
     # raise InvalidStorageError, and the check must turn that into an E001
     # rather than letting it escape.
-    errors = check_media_aliases_resolve_to_their_own_bucket()
+    errors = check_media_aliases_not_shared_with_default()
 
     assert len(errors) == 1
     assert errors[0].id == "freedom_ls_deployment.E001"
@@ -219,19 +237,17 @@ def test_undeclared_media_alias_returns_error_instead_of_raising() -> None:
     DEBUG=False,
 )
 def test_multiple_offending_aliases_each_produce_their_own_error() -> None:
-    # Both failure arms at once: 'public' and 'certificates' collide with
+    # Both failure modes at once: 'public' and 'certificates' collide with
     # 'default', while 'user_uploads' and 'reports' fell back to local disk with
-    # 'default' on S3. All four are reported, each naming its own per-bucket
-    # variable, so an operator's first --deploy lists the whole job.
-    errors = check_media_aliases_resolve_to_their_own_bucket()
+    # 'default' on S3. Every offending alias is reported once, by whichever
+    # check owns its failure, each naming its own per-bucket variable — so an
+    # operator's first --deploy lists the whole job.
+    errors = check_media_aliases_not_shared_with_default()
+    errors += check_media_aliases_not_on_local_disk()
 
-    assert {error.id for error in errors} == {"freedom_ls_deployment.E001"}
-    reported: dict[str, str] = {}
-    for error in errors:
-        assert error.hint is not None
-        for alias in ("public", "certificates", "user_uploads", "reports"):
-            if alias in error.msg:
-                reported[alias] = error.hint
+    reported = _hints_by_alias(
+        errors, ("public", "certificates", "user_uploads", "reports")
+    )
     assert len(errors) == 4
     assert set(reported) == {"public", "certificates", "user_uploads", "reports"}
     assert "AWS_S3_PUBLIC_BUCKET_NAME" in reported["public"]
@@ -250,7 +266,7 @@ def test_intended_production_configuration_returns_no_errors(
     )
 
     with override_settings(STORAGES=storages_dict, DEBUG=False):
-        errors = check_media_aliases_resolve_to_their_own_bucket()
+        errors = check_media_aliases_not_shared_with_default()
 
     assert errors == []
 
@@ -272,10 +288,12 @@ def test_fs_alias_with_s3_default_and_debug_false_returns_error() -> None:
     # misspelled, so 'reports' drops to local disk while 'default' keeps its own
     # bucket. Comparing against 'default' alone finds a difference and lets it
     # through, which is how learner report PDFs reach a container's local disk.
-    errors = check_media_aliases_resolve_to_their_own_bucket()
+    assert check_media_aliases_not_shared_with_default() == []
+
+    errors = check_media_aliases_not_on_local_disk()
 
     assert len(errors) == 1
-    assert errors[0].id == "freedom_ls_deployment.E001"
+    assert errors[0].id == "freedom_ls_deployment.E002"
     assert "reports" in errors[0].msg
     assert errors[0].hint is not None
     assert "AWS_S3_GENERATED_BUCKET_NAME" in errors[0].hint
@@ -293,11 +311,10 @@ def test_fs_alias_with_s3_default_and_debug_false_returns_error() -> None:
     DEBUG=True,
 )
 def test_fs_alias_with_s3_default_and_debug_true_returns_no_errors() -> None:
-    # Same configuration under DEBUG=True. A developer running --deploy locally,
-    # or a staging environment deliberately on local disk, must not be flagged.
-    errors = check_media_aliases_resolve_to_their_own_bucket()
-
-    assert errors == []
+    # Same configuration under DEBUG=True. A developer running --deploy locally
+    # must not be flagged. A staging environment deliberately on local disk sets
+    # DEBUG=False, and silences E002 without giving up the collision check.
+    assert check_media_aliases_not_on_local_disk() == []
 
 
 @override_settings(
@@ -315,9 +332,49 @@ def test_every_alias_on_local_disk_reports_each_alias_once() -> None:
     # A downstream project's first --deploy with no AWS_* variable set. Each of
     # the five media aliases is reported once, and no alias is reported twice
     # for being both local disk and identical to 'default'.
-    errors = check_media_aliases_resolve_to_their_own_bucket()
+    assert check_media_aliases_not_shared_with_default() == []
+
+    errors = check_media_aliases_not_on_local_disk()
 
     assert len(errors) == 5
-    assert {error.id for error in errors} == {"freedom_ls_deployment.E001"}
+    assert {error.id for error in errors} == {"freedom_ls_deployment.E002"}
     for alias in ("public", "course_media", "user_uploads", "certificates", "reports"):
         assert sum(alias in error.msg for error in errors) == 1
+
+
+def test_local_disk_check_is_registered_via_app_ready() -> None:
+    assert check_media_aliases_not_on_local_disk in registry.registry.deployment_checks
+
+
+@override_settings(
+    STORAGES={
+        "default": _s3_entry("fls-default", "https://s3.example.com"),
+        "course_media": _fs_entry(),
+        "user_uploads": _fs_entry(),
+        "certificates": _fs_entry(),
+        "reports": _fs_entry(),
+    },
+    DEBUG=False,
+)
+def test_local_disk_check_skips_an_undeclared_alias() -> None:
+    # "public" is missing from STORAGES. E001 owns that report; E002 must skip
+    # the alias rather than let InvalidStorageError escape or duplicate it.
+    errors = check_media_aliases_not_on_local_disk()
+
+    assert len(errors) == 4
+    assert all("public" not in error.msg for error in errors)
+
+
+def test_intended_production_configuration_is_not_on_local_disk(
+    production_env: None,
+) -> None:
+    storages_dict = build_storages(
+        staticfiles={
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        },
+    )
+
+    with override_settings(STORAGES=storages_dict, DEBUG=False):
+        errors = check_media_aliases_not_on_local_disk()
+
+    assert errors == []

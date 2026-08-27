@@ -94,8 +94,10 @@ SENTRY_SEND_DEFAULT_PII=False
 
 # Bucket names. Leave AWS_STORAGE_BUCKET_NAME unset in production: with no
 # shared fallback, a misspelled per-bucket name drops that alias to local disk,
-# which freedom_ls_deployment.E001 catches under `manage.py check --deploy`,
-# instead of silently writing to the wrong bucket.
+# which freedom_ls_deployment.E002 catches under `manage.py check --deploy`,
+# instead of silently writing to the wrong bucket. Its sibling
+# freedom_ls_deployment.E001 catches the other half — an alias that fell
+# through to the same bucket as AWS_S3_DEFAULT_BUCKET_NAME.
 # config, optional — shared fallback for every alias that names no bucket of its own
 AWS_STORAGE_BUCKET_NAME=
 # config — organisation logos and branding, anonymously readable

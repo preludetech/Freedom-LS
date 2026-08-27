@@ -5,11 +5,16 @@ E = Error, W = Warning. Checks run automatically on runserver, migrate, test, an
 ``manage.py check``, except a check registered with ``deploy=True``, which runs
 only under ``manage.py check --deploy``.
 
-E001 — A media alias does not resolve to a bucket of its own: either it
-       resolves where `default` resolves, so a misconfigured or missing
-       per-bucket variable would serve learner uploads or reports out of the
-       general-purpose default bucket, or it fell back to local disk under
-       DEBUG=False. Runs only under ``manage.py check --deploy``.
+E001 — A media alias resolves where `default` resolves, so a misconfigured or
+       missing per-bucket variable would serve learner uploads or reports out
+       of the general-purpose default bucket. Runs only under
+       ``manage.py check --deploy``.
+E002 — A media alias resolves to local filesystem storage while DEBUG is
+       False, so learner data would be written to the server's own disk. A
+       separate id from E001 on purpose: a deployment that serves media from
+       local disk deliberately can silence this without also giving up E001's
+       bucket-collision protection. Runs only under
+       ``manage.py check --deploy``.
 W001 — SENTRY_DSN is set but SENTRY_RELEASE is blank, so Sentry events would
        ship untagged.
 """
@@ -74,35 +79,31 @@ def _storage_identity(storage: Storage) -> tuple[str | None, ...] | None:
     return None
 
 
+def _bucket_hint(alias: str, purpose: str) -> str:
+    """The one-line fix for an alias that is not on a bucket of its own."""
+    return f"Set AWS_S3_{purpose}_BUCKET_NAME to a bucket dedicated to {alias!r}."
+
+
 @register(Tags.security, deploy=True)
-def check_media_aliases_resolve_to_their_own_bucket(
+def check_media_aliases_not_shared_with_default(
     **kwargs: object,
 ) -> list[CheckMessage]:
-    """E001: Error when a media alias does not resolve to a bucket of its own.
+    """E001: Error when a media alias resolves where 'default' resolves.
 
-    Two ways that happens, and both are configuration errors:
+    That happens when the alias's per-bucket variable is missing and it fell
+    through to the shared one. Each media alias is compared against 'default'
+    only, never against another media alias, so two media aliases sharing a
+    bucket on purpose (public and certificates, say) is never flagged.
 
-    1. The alias resolves where 'default' resolves, because its per-bucket
-       variable is missing and it fell through to the shared one.
-    2. The alias resolves to local disk while 'default' does not. Nothing fell
-       through, so a comparison against 'default' alone finds a difference and
-       lets it past — but a misspelled per-bucket variable with no shared
-       fallback lands the alias on the server's own disk, which is exactly the
-       failure leaving the shared variable unset is meant to expose.
+    An alias on local disk is skipped here whatever 'default' points at: that
+    whole class belongs to E002, which reports it once rather than leaving one
+    misconfiguration to produce two errors.
 
-    Each media alias is compared against 'default' only, never against another
-    media alias, so two media aliases sharing a bucket on purpose (public and
-    certificates, say) is never flagged.
-
-    Both arms are gated on DEBUG for the filesystem case: local disk is the
-    normal dev and test configuration, and a staging environment may use it
-    deliberately. Registered with deploy=True, so this only runs under
-    `manage.py check --deploy` — a fresh checkout with no AWS_* variables set,
-    where every alias falls through to 'default', never fails runserver,
-    migrate, plain check, or the test suite.
+    Registered with deploy=True, so this only runs under `manage.py check
+    --deploy` — a fresh checkout with no AWS_* variables set, where every alias
+    falls through to 'default', never fails runserver, migrate, plain check, or
+    the test suite.
     """
-    from django.conf import settings
-
     from freedom_ls.deployment.storage import media_alias_purposes
     from freedom_ls.reports.config import config as reports_config
 
@@ -134,31 +135,64 @@ def check_media_aliases_resolve_to_their_own_bucket(
                 )
             )
             continue
-        if identity is None:
+        if identity is None or identity[0] == "fs":
             continue
-        if identity[0] == "fs" and settings.DEBUG:
-            continue
-        hint = f"Set AWS_S3_{purpose}_BUCKET_NAME to a bucket dedicated to {alias!r}."
         if identity == default_identity:
             errors.append(
                 Error(
                     f"Storage alias {alias!r} resolves to the same bucket as "
                     f"'default'. Files meant for {alias!r} would be served "
                     f"from the general-purpose default bucket.",
-                    hint=hint,
+                    hint=_bucket_hint(alias, purpose),
                     id="freedom_ls_deployment.E001",
                 )
             )
-        elif identity[0] == "fs":
-            errors.append(
-                Error(
-                    f"Storage alias {alias!r} resolves to local filesystem "
-                    f"storage while DEBUG is False. Files meant for {alias!r} "
-                    f"would be written to the server's own disk instead of "
-                    f"object storage, where they are neither backed up nor "
-                    f"shared between instances.",
-                    hint=hint,
-                    id="freedom_ls_deployment.E001",
-                )
+    return errors
+
+
+@register(Tags.security, deploy=True)
+def check_media_aliases_not_on_local_disk(
+    **kwargs: object,
+) -> list[CheckMessage]:
+    """E002: Error when a media alias resolves to local disk outside DEBUG.
+
+    E001 compares each alias against 'default' and so cannot see this one: with
+    AWS_S3_DEFAULT_BUCKET_NAME set to its own bucket, as the production
+    configuration requires, a misspelled per-bucket variable drops that alias
+    to FileSystemStorage while 'default' stays on S3. The two identities differ,
+    E001 finds nothing, and cohort report PDFs naming learners land on the
+    container's disk.
+
+    Gated on DEBUG, because local disk is the normal development and test
+    configuration. An undeclared alias is skipped rather than reported: E001
+    already names it, and one missing key should not produce two errors.
+    """
+    from django.conf import settings
+
+    from freedom_ls.deployment.storage import media_alias_purposes
+    from freedom_ls.reports.config import config as reports_config
+
+    if settings.DEBUG:
+        return []
+
+    errors: list[CheckMessage] = []
+    for alias, purpose in media_alias_purposes(
+        reports_config.REPORTS_STORAGE_ALIAS
+    ).items():
+        try:
+            identity = _storage_identity(storages[alias])
+        except InvalidStorageError:
+            continue
+        if identity is None or identity[0] != "fs":
+            continue
+        errors.append(
+            Error(
+                f"Storage alias {alias!r} resolves to local filesystem storage "
+                f"while DEBUG is False. Files meant for {alias!r} would be "
+                f"written to the server's own disk instead of object storage, "
+                f"where they are neither backed up nor shared between instances.",
+                hint=_bucket_hint(alias, purpose),
+                id="freedom_ls_deployment.E002",
             )
+        )
     return errors
