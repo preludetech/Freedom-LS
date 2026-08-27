@@ -4,9 +4,6 @@ E001 — A required reports setting the project must supply is unset. Currently
        none of the settings this app declares are required, so this returns
        nothing today; it costs one line and keeps the app honest if a
        required setting is added later.
-W001 — Retired. Do not reuse the id: a project may still be silencing it.
-       Replaced by freedom_ls_deployment.E001, which compares resolved bucket
-       names rather than alias presence.
 W002 — The compiled Tailwind bundle can't be resolved through the staticfiles
        finders, so a report render will fail. The other half of this "fail
        loudly" pair is the render-time exception raised when the bundle is

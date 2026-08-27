@@ -8,7 +8,7 @@ changed_settings:
   - REPORTS_STORAGE_ALIAS             # hard: the silent fallback to 'default' is gone
   - CONTENT_MEDIA_STORAGE_ALIAS       # optional: new, defaults to "course_media"
   - ORGANISATION_LOGO_STORAGE_ALIAS   # optional: new, defaults to "public"
-  - SILENCED_SYSTEM_CHECKS            # optional: freedom_ls_reports.W001 is retired, freedom_ls_deployment.E002 is silenceable
+  - SILENCED_SYSTEM_CHECKS            # optional: drop any freedom_ls_reports.W001 entry, freedom_ls_deployment.E002 is silenceable
 requires_package_upgrade: false
 changed_packages: []
 requires_npm_install: false
@@ -60,9 +60,10 @@ expiry rule attaches to. Rows written before the upgrade keep their stored `repo
 still download; only new reports use the new prefix. If you are also repointing the `reports` alias
 at a different bucket, those older files stop resolving unless you copy them across.
 
-**`freedom_ls_reports.W001` is retired.** It warned that `REPORTS_STORAGE_ALIAS` named no key in
-`STORAGES`, which is now a boot failure rather than a warning. The id is documented as retired and
-will not be reused, so a project silencing it can drop the entry.
+**`freedom_ls_reports.W001` is gone.** It warned that `REPORTS_STORAGE_ALIAS` named no key in
+`STORAGES`, which is now a boot failure rather than a warning. The check is deleted outright and the
+id is not held in reserve, so a later reports check may take the number. Remove the entry from
+`SILENCED_SYSTEM_CHECKS` (manual step 4).
 
 ## Manual steps
 
@@ -91,7 +92,11 @@ will not be reused, so a project silencing it can drop the entry.
    replaced organisation logo overwrites its stable `organisations/{pk}{ext}` key locally the way it
    does on S3.
 
-4. Create the buckets and set the environment variables. Each property resolves from
+4. Drop `"freedom_ls_reports.W001"` from `SILENCED_SYSTEM_CHECKS` if your project silences it.
+   Django ignores an id no check emits, so a stale entry costs nothing today, but the id is free to
+   be reused and a leftover entry would silence whatever check claims it next.
+
+5. Create the buckets and set the environment variables. Each property resolves from
    `AWS_S3_<PURPOSE>_<PROPERTY>` first, then the shared `AWS_*` variable. `PURPOSE` is one of
    `PUBLIC`, `COURSE_MEDIA`, `USER_UPLOADS`, `GENERATED`, `CERTIFICATES`, `DEFAULT`. Set all six
    bucket-name variables, `AWS_S3_DEFAULT_BUCKET_NAME` included, and leave the shared
@@ -99,13 +104,13 @@ will not be reused, so a project silencing it can drop the entry.
    drops that alias to local disk where E002 catches it, rather than quietly writing to the wrong
    bucket. A full annotated template is in `spec_dd/2. in progress/prod_bucket_setup/env_example`.
 
-5. Set `AWS_S3_PUBLIC_QUERYSTRING_AUTH=false` and `AWS_S3_CERTIFICATES_QUERYSTRING_AUTH=false` per
+6. Set `AWS_S3_PUBLIC_QUERYSTRING_AUTH=false` and `AWS_S3_CERTIFICATES_QUERYSTRING_AUTH=false` per
    alias if you serve branding publicly. Never use the shared `AWS_QUERYSTRING_AUTH` form for this:
    it reaches all five media aliases, two of which hold personal data.
 
-6. Add `manage.py check --deploy` to your deploy pipeline if it is not there already. Nothing else
+7. Add `manage.py check --deploy` to your deploy pipeline if it is not there already. Nothing else
    runs E001 or E002.
 
-7. Audit your own `FileField` and `ImageField` definitions. Any field without an explicit `storage=`
+8. Audit your own `FileField` and `ImageField` definitions. Any field without an explicit `storage=`
    still writes to `default`, which under this layout is a bucket nothing should ever write to. The
    `fls-dev:file-storage` skill covers which alias a new file field belongs in.
