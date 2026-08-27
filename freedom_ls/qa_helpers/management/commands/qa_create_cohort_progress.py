@@ -9,6 +9,7 @@ educator interface.
 from typing import cast
 
 import djclick as click
+from allauth.account.models import EmailAddress
 from guardian.shortcuts import assign_perm
 
 from django.contrib.sites.models import Site
@@ -96,12 +97,34 @@ def _set_course_progress(user: User, course: Course, percentage: int) -> None:
     record.save(update_fields=["progress_percentage"])
 
 
+def _ensure_verified_email(user: User) -> None:
+    """Ensure a verified, primary EmailAddress exists (allauth login requires it).
+
+    `ACCOUNT_EMAIL_VERIFICATION` is "mandatory", so a persona without this row
+    authenticates fine and is then bounced straight to /accounts/confirm-email/
+    instead of the dashboard -- the credentials look correct and the login still
+    fails. `update_or_create`, not `get_or_create`: a persona who has already
+    tried to log in owns an *unverified*, non-primary row that allauth wrote for
+    her, and that row has to be flipped rather than duplicated.
+    """
+    EmailAddress.objects.update_or_create(
+        user=user,
+        email=user.email,
+        defaults={"verified": True, "primary": True},
+    )
+
+
 def _create_learner(site: Site, first_name: str, last_name: str, email: str) -> User:
-    """Create a learner user, or return existing one."""
+    """Create a learner user, or return existing one.
+
+    The password is only set on creation: a persona that survived an earlier run
+    keeps whatever password it already had, so never quote this command's
+    printed password for a pre-existing user without probing it first.
+    """
     try:
-        return cast(User, User.objects.get(email=email))
+        user = cast(User, User.objects.get(email=email))
     except User.DoesNotExist:
-        return cast(
+        user = cast(
             User,
             UserFactory(
                 email=email,
@@ -111,6 +134,8 @@ def _create_learner(site: Site, first_name: str, last_name: str, email: str) -> 
                 site=site,
             ),
         )
+    _ensure_verified_email(user)
+    return user
 
 
 @click.command()

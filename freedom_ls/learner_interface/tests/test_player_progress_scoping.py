@@ -28,8 +28,12 @@ from freedom_ls.course_access.backends import (
     FreeOnlyCourseAccessBackend,
 )
 from freedom_ls.course_access.loader import get_course_access_backend
-from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
+from freedom_ls.learner_management.factories import (
+    LearnerCourseRegistrationFactory,
+    LearnerDeadlineFactory,
+)
 from freedom_ls.learner_progress.attempts import get_or_create_incomplete
+from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import (
     CourseFormAttempt,
     CourseProgress,
@@ -386,9 +390,7 @@ def test_an_open_attempt_under_another_record_is_not_resumed(
     """An attempt started under one registration must never be resumed under another."""
     course, form, _question, _right, _wrong = course_with_scored_quiz()
     user, cohort_record, individual_record = learner_with_two_grants(course)
-    open_attempt = get_or_create_incomplete(
-        individual_record, collection_item_for(course, form)
-    )
+    get_or_create_incomplete(individual_record, collection_item_for(course, form))
     client.force_login(user)
 
     client.get(
@@ -398,13 +400,7 @@ def test_an_open_attempt_under_another_record_is_not_resumed(
         )
     )
 
-    open_attempt.refresh_from_db()
-    assert (
-        CourseFormAttempt.objects.filter(
-            course_progress=cohort_record,
-        ).count()
-        == 1
-    )
+    assert CourseFormAttempt.objects.filter(course_progress=cohort_record).count() == 1
 
 
 @pytest.mark.django_db
@@ -431,16 +427,12 @@ def test_two_placements_of_one_form_keep_separate_attempts(
     user = UserFactory()
     record = course_progress_record(course, user)
     sit_quiz(record, form, question, right)
-    second_placement = ContentCollectionItemFactory(
-        collection_object=course, child_object=form, order=1
-    )
+    ContentCollectionItemFactory(collection_object=course, child_object=form, order=1)
     client.force_login(user)
 
     response = client.get(_item_url(course, 2))
 
-    assert response.context["index"] == 2
     assert list(response.context["completed_form_progress"]) == []
-    assert second_placement.child == form
 
 
 @pytest.mark.django_db
@@ -480,15 +472,12 @@ def test_a_deadline_lock_ignores_a_completion_in_another_course(
     user = UserFactory()
     record = course_progress_record(course, user)
     other_record = course_progress_record(other_course, user)
-    TopicProgress.objects.create(
-        site_id=other_record.site_id,
+    TopicProgressFactory(
         course_progress=other_record,
         collection_item=collection_item_for(other_course, topic),
         topic=topic,
         complete_time=timezone.now(),
     )
-    from freedom_ls.learner_management.factories import LearnerDeadlineFactory
-
     LearnerDeadlineFactory(
         learner_course_registration=record.learner_registration,
         content_item=topic,

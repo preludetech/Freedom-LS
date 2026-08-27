@@ -7,6 +7,12 @@ metadata:
 
 ## The bug (better_course_progress_tracking branch, Aug 2026)
 
+> **FIXED as of commit 2c2b5e35** — `CourseFormAttemptFactory.form_progress` /
+> `.collection_item` and `TopicProgressFactory.collection_item` now carry
+> `site=factory.SelfAttribute("..site")`, so an explicit `site=` reaches the nested rows.
+> Re-verified from a management command (site 2 / Demo) in Aug 2026. The workaround below
+> still works and does no harm, but is no longer required on this branch.
+
 `qa_complete_form` and `qa_create_report_cohort` both die with
 
 ```

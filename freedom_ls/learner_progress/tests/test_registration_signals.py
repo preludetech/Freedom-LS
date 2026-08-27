@@ -320,7 +320,7 @@ class TestCourseRegisteredWebhook:
         assert payload["course_progress_id"] == str(record.id)
 
     def test_the_record_is_still_created_with_no_ambient_request(
-        self, mock_site_context, django_capture_on_commit_callbacks
+        self, mock_site_context, django_capture_on_commit_callbacks, monkeypatch
     ) -> None:
         """A management command has no request for the site-aware manager to read."""
         from freedom_ls.site_aware_models.models import _thread_locals
@@ -329,14 +329,12 @@ class TestCourseRegisteredWebhook:
         course = CourseFactory()
         registration = LearnerCourseRegistration(learner=learner, collection=course)
         registration.site = mock_site_context
+        # monkeypatch, not del: it puts the ambient request back at teardown, so
+        # a failure here cannot leak a request-less thread into the next test.
+        monkeypatch.delattr(_thread_locals, "request")
 
-        request = _thread_locals.request
-        del _thread_locals.request
-        try:
-            with django_capture_on_commit_callbacks(execute=True):
-                registration.save()
-        finally:
-            _thread_locals.request = request
+        with django_capture_on_commit_callbacks(execute=True):
+            registration.save()
 
         assert CourseProgress._base_manager.filter(
             learner_registration=registration

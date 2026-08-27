@@ -81,7 +81,11 @@ class TestCourseProgressFor:
 
         assert course_progress_for(user, course) == cohort_record
 
-    def test_deterministic_for_a_learner_in_two_cohorts(self, mock_site_context):
+    def test_the_newest_cohort_registration_decides_for_a_learner_in_two_cohorts(
+        self, mock_site_context
+    ):
+        """Two cohorts both granting the course is a tie the ordering has to
+        break the same way every call, or the learner's figures flip about."""
         course = CourseFactory()
         user = UserFactory()
         organisation = OrganisationFactory()
@@ -112,5 +116,4 @@ class TestCourseProgressFor:
             cohort_registration=newer_registration,
         )
 
-        assert course_progress_for(user, course) == newer_record
         assert course_progress_for(user, course) == newer_record

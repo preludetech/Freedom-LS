@@ -58,26 +58,43 @@ def test_quiz_verdict_returns_none_for_non_quiz_shaped_scores(mock_site_context)
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    ("strategy", "pass_percentage", "scores"),
+    ("strategy", "pass_percentage", "scores", "expected_verdict", "expected_complete"),
     [
-        (FormStrategy.QUIZ, 80, {"score": 5, "max_score": 5}),  # a pass
-        (FormStrategy.QUIZ, 80, {"score": 1, "max_score": 5}),  # a fail
-        (FormStrategy.QUIZ, None, {"score": 1, "max_score": 5}),  # no bar to clear
-        (FormStrategy.CATEGORY_VALUE_SUM, None, NON_QUIZ_SCORES),  # a survey
-        (FormStrategy.QUIZ, 80, NON_QUIZ_SCORES),  # no percentage to read
-        (FormStrategy.QUIZ, 80, None),  # never scored
+        (FormStrategy.QUIZ, 80, {"score": 5, "max_score": 5}, True, True),
+        (FormStrategy.QUIZ, 80, {"score": 1, "max_score": 5}, False, False),
+        (FormStrategy.QUIZ, None, {"score": 1, "max_score": 5}, None, True),
+        (FormStrategy.CATEGORY_VALUE_SUM, None, NON_QUIZ_SCORES, None, True),
+        (FormStrategy.QUIZ, 80, NON_QUIZ_SCORES, None, True),
+        (FormStrategy.QUIZ, 80, None, None, True),
+    ],
+    ids=[
+        "a pass",
+        "a fail",
+        "no bar to clear",
+        "a survey",
+        "no percentage to read",
+        "never scored",
     ],
 )
-def test_attempt_completes_form_is_the_positive_spelling_of_quiz_verdict(
-    mock_site_context, strategy, pass_percentage, scores
+def test_only_a_failed_quiz_leaves_its_form_unfinished(
+    mock_site_context,
+    strategy,
+    pass_percentage,
+    scores,
+    expected_verdict,
+    expected_complete,
 ):
-    """One rule, two spellings: the finished question and the may-move-on question
-    must never reach different answers about the same sitting."""
+    """One rule, two spellings. `quiz_verdict` answers "did they clear the bar",
+    `attempt_completes_form` answers "may they move on", and the only sitting
+    that stops a learner is an outright fail -- an unmarkable score is not one.
+
+    Both answers are written out here rather than derived from each other, so a
+    change that moved the two in step would still fail.
+    """
     form = FormFactory(strategy=strategy, quiz_pass_percentage=pass_percentage)
     attempt: FormProgress = FormProgressFactory(
         user=UserFactory(), form=form, completed_time=timezone.now(), scores=scores
     )
 
-    assert attempt_completes_form(attempt) is (
-        quiz_verdict(attempt.form, attempt) is not False
-    )
+    assert quiz_verdict(attempt.form, attempt) is expected_verdict
+    assert attempt_completes_form(attempt) is expected_complete

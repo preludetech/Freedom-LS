@@ -38,3 +38,24 @@ for cand in ["testpass123", u.email]:
 
 Same trap applies to any `get_or_create`-style QA persona helper. If none match, say so
 instead of guessing - and only rotate the password if you were actually asked to.
+
+## `qa_create_cohort_progress` did not seed EmailAddress rows at all (fixed Aug 2026)
+
+Its `_create_learner()` built the `User` and stopped there, so all nine `QA Progress Demo
+Cohort` personas (`qa-alice.zero@` ... `qa-ivy.done@example.com`) authenticated fine and
+were then bounced to `/accounts/confirm-email/`. Symptom to recognise: **"the password is
+right but I land on Verify Your Email Address"** -> missing/unverified `EmailAddress`,
+never a password problem. `_create_learner()` now calls a local `_ensure_verified_email()`
+on BOTH branches (found and created), so the backfill is automatic on the next run.
+
+**Use `update_or_create`, not `get_or_create`.** A persona who has already *tried* to log in
+owns an `EmailAddress` row that allauth wrote for her with `verified=False, primary=False`
+(this is exactly what had happened to `qa-eve.middle@`). `get_or_create` finds that row and
+leaves it broken; only `update_or_create(user=..., email=user.email, defaults={"verified":
+True, "primary": True})` flips it. The other eight had no row at all.
+
+`allauth.account.models.EmailAddress` has fields `(id, user, email, verified, primary)` and
+**no site FK** -- it is not a `SiteAwareModel`, so "match the user's site" has nothing to set.
+
+Password note: on this run all nine already hashed to `testpass123`, so nothing was rotated.
+That does not repeal the warning above -- probe, never assume, in either direction.

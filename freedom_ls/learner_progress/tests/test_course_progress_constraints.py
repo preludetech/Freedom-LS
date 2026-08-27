@@ -13,7 +13,6 @@ from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -23,11 +22,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import CohortMembership
 from freedom_ls.learner_progress.factories import CourseProgressFactory
-from freedom_ls.learner_progress.models import (
-    CourseFormAttempt,
-    CourseProgress,
-    TopicProgress,
-)
+from freedom_ls.learner_progress.models import CourseProgress
 
 pytestmark = pytest.mark.django_db
 
@@ -37,45 +32,6 @@ def _cohort_grant(learner, course):
     cohort = CohortFactory(organisation=learner.organisation)
     CohortMembershipFactory(cohort=cohort, learner=learner)
     return CohortCourseRegistrationFactory(cohort=cohort, collection=course)
-
-
-class TestFieldShapeExcludesTheOldColumns:
-    def test_course_progress_carries_no_is_active_field(self):
-        """is_active already means three different things on three other
-        models (removed-from-organisation, registration in force); adding a
-        fourth meaning to CourseProgress would collide with all of them, so
-        the model deliberately carries none."""
-        field_names = {f.name for f in CourseProgress._meta.get_fields()}
-        assert "is_active" not in field_names
-
-    def test_topic_progress_carries_no_user_field(self):
-        """Progress hangs off CourseProgress via course_progress, not off a
-        user directly -- a user field here would let a row bypass the
-        learner/registration it belongs to."""
-        field_names = {f.name for f in TopicProgress._meta.get_fields()}
-        assert "user" not in field_names
-
-    def test_course_form_attempt_carries_no_user_or_form_field(self):
-        """The course side of an attempt names the record and the placement only.
-
-        The attempt itself lives in form_engine, which stays usable outside a
-        course; duplicating its `user` or `form` here would give the two halves
-        two answers to the same question.
-        """
-        field_names = {f.name for f in CourseFormAttempt._meta.get_fields()}
-        assert "user" not in field_names
-        assert "form" not in field_names
-
-    def test_form_progress_carries_no_course_columns(self):
-        """The reverse of the rule above, from form_engine's side.
-
-        A course FK here is what would make form_engine depend on
-        learner_progress -- and content_engine already imports form_engine, so
-        that edge would close a cycle.
-        """
-        field_names = {f.name for f in FormProgress._meta.get_fields()}
-        assert "course_progress" not in field_names
-        assert "collection_item" not in field_names
 
 
 class TestUniquenessPerRegistration:

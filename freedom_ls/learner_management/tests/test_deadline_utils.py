@@ -174,54 +174,72 @@ def test_two_cohorts_in_the_same_organisation_show_both_deadlines(mock_site_cont
     assert deadlines == {dt_a, dt_b}
 
 
+def _two_organisation_deadlines(user, course, topic, *, active_organisation: str):
+    """One person, two organisations, one course, a deadline in each.
+
+    `active_organisation` names which of the two registrations is in force, so
+    each test states the situation it is asking about rather than mutating its
+    way there. Returns (deadline_a, deadline_b).
+    """
+    deadline_a = timezone.now() + timedelta(days=5)
+    deadline_b = timezone.now() + timedelta(days=10)
+    registration_a = LearnerCourseRegistrationFactory(
+        learner__user=user,
+        learner__organisation=OrganisationFactory(),
+        collection=course,
+        is_active=active_organisation == "a",
+    )
+    registration_b = LearnerCourseRegistrationFactory(
+        learner__user=user,
+        learner__organisation=OrganisationFactory(),
+        collection=course,
+        is_active=active_organisation == "b",
+    )
+    LearnerDeadlineFactory(
+        learner_course_registration=registration_a,
+        content_item=topic,
+        deadline=deadline_a,
+    )
+    LearnerDeadlineFactory(
+        learner_course_registration=registration_b,
+        content_item=topic,
+        deadline=deadline_b,
+    )
+    return deadline_a, deadline_b
+
+
 @pytest.mark.django_db
-def test_two_organisations_see_deadlines_separately_not_a_union(mock_site_context):
-    """A person holding an individual registration for the same course in two
-    different organisations sees only the deadline for whichever Learner
-    learner_for_course resolves to -- not a union of both -- and sees the
-    other organisation's deadline once that is the one being studied
-    through instead."""
+def test_only_the_studied_organisations_deadline_is_returned(mock_site_context):
+    """A person holding an individual registration for one course in two
+    different organisations sees the deadline for whichever Learner
+    learner_for_course resolves to -- never a union of both."""
     user = UserFactory()
     course = CourseFactory()
     topic = TopicFactory()
-
-    reg_a = LearnerCourseRegistrationFactory(
-        learner__user=user,
-        learner__organisation=OrganisationFactory(),
-        collection=course,
-        is_active=True,
-    )
-    reg_b = LearnerCourseRegistrationFactory(
-        learner__user=user,
-        learner__organisation=OrganisationFactory(),
-        collection=course,
-        is_active=False,
-    )
-
-    dt_a = timezone.now() + timedelta(days=5)
-    dt_b = timezone.now() + timedelta(days=10)
-    LearnerDeadlineFactory(
-        learner_course_registration=reg_a, content_item=topic, deadline=dt_a
-    )
-    LearnerDeadlineFactory(
-        learner_course_registration=reg_b, content_item=topic, deadline=dt_b
+    deadline_a, _deadline_b = _two_organisation_deadlines(
+        user, course, topic, active_organisation="a"
     )
 
     result = get_effective_deadlines(user, course, content_item=topic)
-    assert len(result) == 1
-    assert result[0].deadline == dt_a
 
-    # Switch which organisation is being studied through: the other
-    # organisation's deadline is what should now come back, not a merge
-    # of the two.
-    reg_a.is_active = False
-    reg_a.save(update_fields=["is_active"])
-    reg_b.is_active = True
-    reg_b.save(update_fields=["is_active"])
+    assert [entry.deadline for entry in result] == [deadline_a]
+
+
+@pytest.mark.django_db
+def test_the_other_organisations_deadline_is_returned_when_it_is_the_live_one(
+    mock_site_context,
+):
+    """The mirror of the test above: neither organisation is the privileged one."""
+    user = UserFactory()
+    course = CourseFactory()
+    topic = TopicFactory()
+    _deadline_a, deadline_b = _two_organisation_deadlines(
+        user, course, topic, active_organisation="b"
+    )
 
     result = get_effective_deadlines(user, course, content_item=topic)
-    assert len(result) == 1
-    assert result[0].deadline == dt_b
+
+    assert [entry.deadline for entry in result] == [deadline_b]
 
 
 @pytest.mark.django_db

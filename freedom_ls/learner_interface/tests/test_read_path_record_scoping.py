@@ -29,7 +29,7 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.form_engine.models import Form, FormStrategy
 from freedom_ls.learner_interface.utils import (
     CourseListingStatus,
     get_completed_courses,
@@ -70,9 +70,9 @@ def _course_with_topics(
     return course, topics
 
 
-def _quiz(title: str, slug: str) -> object:
+def _quiz(title: str, slug: str) -> Form:
     """A one-question quiz with a pass mark, so a wrong answer is a real fail."""
-    quiz = FormFactory(
+    quiz: Form = FormFactory(
         title=title,
         slug=slug,
         strategy=FormStrategy.QUIZ,

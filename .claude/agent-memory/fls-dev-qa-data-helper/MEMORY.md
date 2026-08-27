@@ -1,6 +1,6 @@
 # Memory Index
 
-- [reference_verified_learner_setup.md](reference_verified_learner_setup.md) — Three records needed for a login-ready QA learner (User, verified EmailAddress, UserCourseRegistration)
+- [reference_verified_learner_setup.md](reference_verified_learner_setup.md) — Three records needed for a login-ready QA learner (User, verified EmailAddress, UserCourseRegistration); "right password but lands on Verify Your Email Address" = missing/unverified EmailAddress; use update_or_create
 - [reference_course_progress_pagination.md](reference_course_progress_pagination.md) — Educator course-progress panel: rows = CohortMembership@20/page, columns = Topic+Form (CourseParts excluded)@15/page
 - [reference_completing_a_course.md](reference_completing_a_course.md) — How to mark a course Completed for a user; the save-hook and missing-site gotchas to avoid
 - [reference_course_player_learner_command.md](reference_course_player_learner_command.md) — qa_create_course_player_learner command: login-ready learner for the 3 course-player redirect/resume cases
@@ -30,7 +30,7 @@
 - [reference_demodev_s1_fixture_collisions.md](reference_demodev_s1_fixture_collisions.md) — demodev_s1@email.com is shared by 4 commands that overwrite each other; run order and how to repair
 - [reference_learner_deadline_admin_fixtures.md](reference_learner_deadline_admin_fixtures.md) — qa_create_learner_deadlines; the three deadline models are not interchangeable; LearnerDeadlineAdmin.search_fields has no email
 - [reference_column_pagination_scenario.md](reference_column_pagination_scenario.md) — qa_create_column_pagination_scenario; both course-progress paginators live at once WITHOUT padding functionality-demo-course-parts
-- [reference_second_site_form_engine_fixture.md](reference_second_site_form_engine_fixture.md) — qa_create_site_scoping_form: tiny form_engine tree on a 2nd Site for admin site-scoping QA; explicit site= on every factory call, _base_manager lookups, FORCE_SITE_NAME=DemoDev pins every request
+- [reference_second_site_form_engine_fixture.md](reference_second_site_form_engine_fixture.md) — qa_create_site_scoping_form: form_engine + learner_progress tree on a 2nd Site (default Demo) for admin site-scoping QA; explicit site= on every factory call, Learner site comes from its Organisation, _base_manager lookups, FORCE_SITE_NAME=DemoDev pins every request
 - [reference_form_engine_branch_qa_baseline.md](reference_form_engine_branch_qa_baseline.md) — The whole-DB "documented starting state" recipe for the form_engine-extraction QA pass; reset-then-recalculate ordering; CourseProgress.course (not .collection)
 - [reference_proving_allauth_login_works.md](reference_proving_allauth_login_works.md) — Proving a QA user can log in: force_login/check_password are false positives; rolled-back real login POST + verified=False negative control (locmem email backend)
 - [reference_report_brand_organisations_command.md](reference_report_brand_organisations_command.md) — qa_create_report_brand_organisations: the 6 extra orgs for report cover/footer branding QA; empty-slug trap for a punctuation-only name; how to attach a deliberately-invalid logo
@@ -93,14 +93,27 @@ cohort, then `qa_create_column_pagination_scenario`, then the org-scoped
 default-org + 0% (column scenario) vs named organisation + real percentage spread
 (progress matrix). See [[reference_paginated_progress_matrix_command]].
 
+**"Persona X's password works but login bounces to /accounts/confirm-email/" has now been
+reported once** (Eve, better_course_progress_tracking). It is never a password bug: it is a
+missing or unverified allauth `EmailAddress`. Fix the seeding command's user helper (so the
+next run self-heals) AND backfill the existing rows with a targeted script — do NOT re-run a
+whole `qa_create_*` command to fix a login, because it rewrites the progress rows the tester
+is mid-assertion on. Prove the fix with the rolled-back POST + negative control from
+[[reference_proving_allauth_login_works]]; the negative control reproduces the tester's exact
+symptom, which is what confirms the diagnosis. See [[reference_verified_learner_setup]].
+
 **Never pad `functionality-demo-course-parts` for pagination QA.** It is the shared
 course-player / resume / TOC fixture. `qa_add_course_items_for_pagination` DEFAULTS to it;
 always pass an explicit `--course-slug`, or use `qa_create_column_pagination_scenario`.
 
-**Site-scoping / multi-tenant demos need data on a SECOND site.** The dev DB is almost entirely
-DemoDev, so "prove the admin filters per site" always means seeding a small tree on Bloom (id 4).
-See [[reference_second_site_form_engine_fixture]] for the pattern; it generalises to any app whose
-models subclass SiteAwareModel.
+**Site-scoping / multi-tenant demos need data on a SECOND site. Asked TWICE now** (Bloom form
+tree, then a Demo/site-2 Form + FormProgress + CourseFormAttempt tree for the form_engine app
+split). The dev DB is almost entirely DemoDev, so "prove the admin filters per site" always means
+seeding a small tree on another Site. `qa_create_site_scoping_form` now covers the whole chain down
+to the attempt join row and defaults to `Demo`; extend that command rather than writing a new one.
+See [[reference_second_site_form_engine_fixture]]; the pattern generalises to any app whose models
+subclass SiteAwareModel. Expect the ask to be phrased as "the check is vacuous" — the deliverable is
+per-site counts showing a non-zero row on BOTH sites.
 
 The **"put the dev DB into the documented QA starting state" whole-run request** (as opposed to
 "seed me one fixture") has now been made for the form_engine-extraction branch. It is a fixed
@@ -141,6 +154,13 @@ nullable grant FKs (`learner_registration` / `cohort_registration`), one record 
 only by the registration `post_save` signals. Expect repeat asks for "give persona X a second
 grant of a different kind". Never hand-create the progress rows; create the registration and let
 the signal mint it. See [[reference_dual_grant_course_progress_fixture]].
+
+The `CourseFormAttemptFactory` **NULL-site sub-factory bug is FIXED** by commit 2c2b5e35
+(`site=factory.SelfAttribute("..site")` on `form_progress` / `collection_item` in both
+`CourseFormAttemptFactory` and `TopicProgressFactory`). Re-verified from a management command in
+Aug 2026: an explicit `site=` now reaches the nested rows, so the `form_progress__site=site`
+workaround below is belt-and-braces only. Check `git log freedom_ls/learner_progress/factories.py`
+before assuming a QA plan's description of the bug is current.
 
 The **"qa_complete_form is blocked by the NULL-site bug, seed the data another way"** request
 arrived once (seam QA S9, better_course_progress_tracking). The fix is a single
