@@ -92,7 +92,7 @@ uv run python manage.py qa_create_cohort_progress DemoDev
 uv run python manage.py qa_create_report_cohort \
     --cohort-name "QA Report Cohort" \
     --course-slug functionality-demo-course-parts \
-    --educator-email org.educator@example.com   # currently crashes -- see 0.1b
+    --educator-email org.educator@example.com
 uv run python manage.py recalculate_progress_percentages
 ```
 
@@ -104,31 +104,27 @@ found for this cohort". That is the command behaving as designed.
 A click usage error from any command means this plan has drifted. Fix the plan; do not log it as a product
 regression. A **traceback** is a real failure — record it.
 
-### 0.1b Known blocker — two seed commands crash
+### 0.1b Former blocker — two seed commands used to crash. Fixed on 2026-08-27
 
-Verified on this branch on 2026-08-25, against a freshly rebuilt database. **Do not spend budget
-rediscovering this.**
+`qa_create_report_cohort` and `qa_complete_form` both run clean now; the whole of §0.1 was re-run against
+a wiped database on 2026-08-27 and seeded without a traceback. Nothing here is blocked any more. The
+history is kept only so a re-appearance is recognised rather than re-diagnosed.
 
-`qa_create_report_cohort` and `qa_complete_form` both die with:
+Both commands used to die with:
 
 ```
 django.db.utils.IntegrityError: null value in column "site_id"
 of relation "freedom_ls_form_engine_formprogress" violates not-null constraint
 ```
 
-One root cause. `CourseFormAttemptFactory` (`freedom_ls/learner_progress/factories.py:70`) takes an
-explicit `site=` for the join row but does not pass it down to its `FormProgressFactory` sub-factory.
-`SiteAwareFactory.site` is a `LazyFunction` reading the thread-local request context, which is unset
-inside a management command, so the `form_engine` row is built with `site=None`. Callers:
-`qa_create_report_cohort.py:354` (`_complete_attempt`) and `qa_complete_form.py`.
+One root cause. `CourseFormAttemptFactory` took an explicit `site=` for the join row but did not pass it
+down to its `FormProgressFactory` sub-factory. `SiteAwareFactory.site` is a `LazyFunction` reading the
+thread-local request context, which is unset inside a management command, so the `form_engine` row was
+built with `site=None`. Fixed in `2c2b5e35`, which makes the site-aware factories forward `site` to their
+nested sub-factories.
 
-This is a genuine regression from this branch, not plan drift — `FormProgress` only became a
-`form_engine` `SiteAwareModel` with a NOT NULL `site` after the split, and this branch's factory is what
-now builds it.
-
-**Until it is fixed**, everything that depends on those two commands is blocked. Mark those steps
-`BLOCKED` with this cause rather than `FAIL`, and run the rest of the plan. Once it is fixed, re-run the
-seed and pick the blocked steps back up.
+If this signature ever comes back, it is a factory problem and not plan drift — mark the dependent steps
+`BLOCKED` with this cause rather than `FAIL`, run the rest of the plan, then re-seed and pick them up.
 
 ### 0.2 Credentials
 
