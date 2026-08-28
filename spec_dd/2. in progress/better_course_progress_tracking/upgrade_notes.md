@@ -36,7 +36,8 @@ cannot migrate forward; it has to drop the app's tables and its `django_migratio
 again (see Manual steps). This is a pre-production change and assumes no production progress data.
 
 Existing registrations are untouched and are not backfilled with records. A registration saved
-before the upgrade gets its record the first time the learner opens the course.
+before the upgrade gets its record the first time the learner opens the course, or its finish page —
+both go through the same self-healing mint.
 
 ### Model changes
 
@@ -71,7 +72,7 @@ first with `manage.py danger_clear_all_course_progress`.
 
 `panel_framework.DeleteAction` catches `ProtectedError` on both the render and the submit path and
 shows a message instead of a 500. Override `get_blocked_reason(instance, error)` to word it for your
-own models.
+own models. `danger_content_delete` clears progress before it clears content, for the same reason.
 
 ### Records are minted by signals, so bulk writes need an explicit call
 
@@ -114,6 +115,10 @@ course progress record instead of a user.
   complete — and firing `course.completed`. It now does.
 - The progress percentage counts placements, not distinct content. A course that places the same
   topic or quiz twice has two items to complete, which is what the course outline already showed.
+- A course part's status in the outline reads what its children can still do, not only what they
+  have done. A part with finished work behind it and nothing left that can be opened — an expired
+  hard deadline, say — now reads "blocked" rather than "in progress", and a part holding both
+  finished and ready children reads "in progress" rather than "ready".
 
 ### Webhook payloads
 
@@ -132,6 +137,14 @@ Context names changed in the templates listed in the frontmatter:
   (nullable) rather than `course_progress.start_time`.
 - `course_topic.html` — the completion form is gated on a new `can_record_progress` flag, for a
   learner viewing a course no registration grants them.
+- `partials/course_list.html` — the empty state now branches on `completed_courses` to distinguish
+  "nothing signed up for" from "everything finished".
+- `partials/course_progress_panel.html` — gained a line of copy saying the matrix shows one
+  registration's progress only.
+- `panel_framework/partials/delete_confirmation.html` — takes two new context values,
+  `blocked_reason` (renders in place of the confirmation and swaps the Delete button for a Close
+  one) and `modal_open`, and the delete form now carries `hx-target="closest div[x-data]"` with
+  `hx-swap="outerHTML"` so a blocked submit can replace the dialog.
 - Report partials — the learner anchor id is built from `learner.learner_id`, not `learner.user_id`.
 
 ## Manual steps
