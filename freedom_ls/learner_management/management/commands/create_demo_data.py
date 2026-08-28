@@ -11,8 +11,6 @@ from freedom_ls.learner_management.models import Cohort, CohortMembership
 from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.organisations.utils import get_default_organisation
 
-# from app_authentication.models import Client
-
 client_api_key = "W8tuA0ReonfZsAKywAZz9-IMGNCIq3TVGDiiar0LJqRoLEMceqgYjllfXU7iz6s7"
 client_name = "Learner Interface"
 

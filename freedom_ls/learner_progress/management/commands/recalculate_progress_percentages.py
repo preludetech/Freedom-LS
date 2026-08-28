@@ -3,7 +3,6 @@ from uuid import UUID
 
 import djclick as click
 
-from freedom_ls.learner_management.utils import calculate_course_progress_percentage
 from freedom_ls.learner_progress.models import (
     CourseProgress,
     TopicProgress,
@@ -11,6 +10,7 @@ from freedom_ls.learner_progress.models import (
 from freedom_ls.learner_progress.queries import (
     completed_form_item_ids_by_course_progress,
 )
+from freedom_ls.learner_progress.utils import calculate_course_progress_percentage
 
 # Course progress records per batch. The command walks every record in the
 # installation, and the completed-item lookups it needs are model instances, not

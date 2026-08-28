@@ -9,7 +9,7 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.content_engine.models import Course, CoursePart, Topic
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import Form
-from freedom_ls.learner_management.utils import calculate_course_progress_percentage
+from freedom_ls.learner_progress.utils import calculate_course_progress_percentage
 
 
 @pytest.mark.django_db

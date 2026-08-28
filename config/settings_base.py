@@ -96,7 +96,6 @@ INSTALLED_APPS = [
     "guardian",
     "health_check",
     # CUSTOM APPS
-    # "app_authentication",
     # xapi_learning_record_store
     "freedom_ls.base",
     "freedom_ls.deployment",

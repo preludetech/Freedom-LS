@@ -1,10 +1,12 @@
-"""The sync service: mints CourseProgress records from a registration.
+"""The sync service, plus the percentage it feeds off of.
 
 Home for these mirrors ensure_learner's home in learner_management/utils.py --
 there is no services.py convention in this codebase.
 """
 
 from __future__ import annotations
+
+from uuid import UUID
 
 from freedom_ls.content_engine.models import Course
 from freedom_ls.learner_management.models import (
@@ -13,6 +15,34 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_progress.models import CourseProgress
+
+
+def calculate_course_progress_percentage(
+    course: Course, completed_collection_item_ids: set[UUID]
+) -> int:
+    """The share of a course's completable placements one record has finished.
+
+    Counts placements, not content: a topic placed twice in one course is two
+    items to complete, and finishing one of them is worth one. Reads the same
+    accessor the course outline reads, so the percentage and the outline can
+    never disagree about what is done.
+
+    viewable_collection_items() already flattens CourseParts in order and drops
+    the part sentinels; the TOPIC/FORM filter drops Activities, which are
+    placeable but have no completion to record.
+    """
+    completable = [
+        item
+        for item in course.viewable_collection_items()
+        if item.child is not None and item.child.content_type in ("TOPIC", "FORM")
+    ]
+    if not completable:
+        return 0
+
+    completed = sum(
+        1 for item in completable if item.id in completed_collection_item_ids
+    )
+    return round((completed / len(completable)) * 100)
 
 
 def _registration_kwargs(

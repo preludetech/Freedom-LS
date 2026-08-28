@@ -103,11 +103,6 @@ PERMISSIONS: dict[str, str] = {
     # "freedom_ls_form_engine.add_questionanswer": "Can add question answer",
     # "freedom_ls_form_engine.change_questionanswer": "Can change question answer",
     # "freedom_ls_form_engine.delete_questionanswer": "Can delete question answer",
-    # --- app_authentication app (label: freedom_ls_app_authentication) ---
-    # "freedom_ls_app_authentication.view_client": "Can view client",
-    # "freedom_ls_app_authentication.add_client": "Can add client",
-    # "freedom_ls_app_authentication.change_client": "Can change client",
-    # "freedom_ls_app_authentication.delete_client": "Can delete client",
     # =========================================================================
     # Custom permissions (FUTURE — add via model Meta.permissions when needed)
     # These are for capabilities that don't map to standard CRUD operations.

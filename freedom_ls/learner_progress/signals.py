@@ -26,7 +26,6 @@ from freedom_ls.learner_management.models import (
     Learner,
     LearnerCourseRegistration,
 )
-from freedom_ls.learner_management.utils import calculate_course_progress_percentage
 from freedom_ls.learner_progress.models import (
     CourseFormAttempt,
     CourseItemProgress,
@@ -37,6 +36,7 @@ from freedom_ls.learner_progress.queries import (
     completed_collection_item_ids,
 )
 from freedom_ls.learner_progress.utils import (
+    calculate_course_progress_percentage,
     ensure_course_progress_record,
     ensure_course_progress_records_for_cohort_registration,
 )

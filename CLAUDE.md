@@ -52,7 +52,6 @@ If you are told not to implement a feature immediately then that does not mean t
 ## App Structure (`freedom_ls/`)
 
 - `accounts` — Custom site-aware user model with email-based login
-- `app_authentication` — API client authentication and key management
 - `base` — Base app configuration
 - `content_base` — Abstract content model bases, pydantic schema bases and the content-type registry
 - `content_engine` — Course content models (topics, activities) with markdown rendering

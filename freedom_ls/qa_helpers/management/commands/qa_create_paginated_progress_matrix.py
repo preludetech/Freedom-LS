@@ -58,9 +58,9 @@ from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortMembership,
 )
-from freedom_ls.learner_management.utils import calculate_course_progress_percentage
 from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
+from freedom_ls.learner_progress.utils import calculate_course_progress_percentage
 from freedom_ls.organisations.models import Organisation
 
 COURSE_SLUG = "qa-pagination-matrix-course"

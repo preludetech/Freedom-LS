@@ -36,13 +36,13 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
     RecommendedCourse,
 )
-from freedom_ls.learner_management.utils import calculate_course_progress_percentage
 from freedom_ls.learner_progress.attempts import ensure_attempt
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.learner_progress.queries import (
     completed_form_item_ids_by_course_progress,
     course_progress_for,
 )
+from freedom_ls.learner_progress.utils import calculate_course_progress_percentage
 from freedom_ls.organisations.utils import get_default_organisation
 
 LEARNER_EMAIL = "demodev_s1@email.com"
