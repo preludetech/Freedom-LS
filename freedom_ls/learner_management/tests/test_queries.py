@@ -71,7 +71,7 @@ def _make_registration(
     return cast(
         LearnerCourseRegistration,
         LearnerCourseRegistrationFactory(
-            learner=learner, collection=course, is_active=is_active
+            learner=learner, course=course, is_active=is_active
         ),
     )
 
@@ -564,7 +564,7 @@ class TestLearnerForCourse:
         cohort_learner = LearnerFactory(user=user, organisation=cohort_organisation)
         CohortMembershipFactory(learner=cohort_learner, cohort=cohort)
         cohort_registration = CohortCourseRegistrationFactory(
-            cohort=cohort, collection=course
+            cohort=cohort, course=course
         )
         _make_registration(user, course, organisation=OrganisationFactory())
 
@@ -587,13 +587,13 @@ class TestLearnerForCourse:
         CohortMembershipFactory(learner=learner, cohort=older_cohort)
         CohortMembershipFactory(learner=learner, cohort=newer_cohort)
         older_registration = CohortCourseRegistrationFactory(
-            cohort=older_cohort, collection=course
+            cohort=older_cohort, course=course
         )
         _backdate_cohort_registration(
             older_registration, timezone.now() - timedelta(days=7)
         )
         newer_registration = CohortCourseRegistrationFactory(
-            cohort=newer_cohort, collection=course
+            cohort=newer_cohort, course=course
         )
 
         first_call = learner_for_course(user, course)
@@ -617,7 +617,7 @@ class TestLearnerForCourse:
         outsider_learner = LearnerFactory(user=user, organisation=outsider_organisation)
         cohort = _make_cohort(organisation=OrganisationFactory())
         CohortMembershipFactory(learner=outsider_learner, cohort=cohort)
-        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
         individual_registration = _make_registration(user, course)
 
         resolved = learner_for_course(user, course)
@@ -647,7 +647,7 @@ class TestOrganisationForLearnerCourse:
         cohort = _make_cohort(organisation=cohort_organisation)
         cohort_learner = LearnerFactory(user=user, organisation=cohort_organisation)
         CohortMembershipFactory(learner=cohort_learner, cohort=cohort)
-        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
         _make_registration(user, course, organisation=individual_organisation)
 
         assert organisation_for_learner_course(user, course) == cohort_organisation
@@ -678,7 +678,7 @@ class TestOrganisationForLearnerCourse:
         )
         cohort = _make_cohort(organisation=organisation)
         CohortMembershipFactory(learner=removed_learner, cohort=cohort)
-        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
         other_learner = LearnerFactory(user=UserFactory(), organisation=organisation)
         CohortMembershipFactory(learner=other_learner, cohort=cohort)
 
@@ -701,7 +701,7 @@ class TestOrganisationForLearnerCourseQueryCount:
         cohort = _make_cohort(organisation=organisation)
         cohort_learner = LearnerFactory(user=user, organisation=organisation)
         CohortMembershipFactory(learner=cohort_learner, cohort=cohort)
-        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
         for _ in range(duplicates):
             _make_registration(user, course)
 

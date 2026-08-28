@@ -89,9 +89,7 @@ def gated_course(mock_site_context) -> dict:
 @pytest.fixture
 def learner(mock_site_context, gated_course, client):
     user = UserFactory()
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=gated_course["course"]
-    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=gated_course["course"])
     client.force_login(user)
     return user
 
@@ -528,9 +526,7 @@ def parted_course(mock_site_context) -> dict:
 @pytest.fixture
 def parted_learner(mock_site_context, parted_course, client):
     user = UserFactory()
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=parted_course["course"]
-    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=parted_course["course"])
     client.force_login(user)
     return user
 
@@ -591,7 +587,7 @@ def near_miss_course(mock_site_context, client) -> dict:
     course.items.create(child=topic_after, order=2)
 
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     client.force_login(user)
 
     _complete_topic(course, user, topic_intro)

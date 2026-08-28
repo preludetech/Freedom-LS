@@ -152,9 +152,9 @@ def _ensure_cohort(site: Site, course: Course, num_learners: int) -> Cohort:
     click.secho(f"Cohort members added this run: {added}", fg="green")
 
     if not CohortCourseRegistration.objects.filter(
-        cohort=cohort, collection=course, site=site
+        cohort=cohort, course=course, site=site
     ).exists():
-        CohortCourseRegistrationFactory(cohort=cohort, collection=course, site=site)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course, site=site)
         click.secho(f"Registered cohort for '{course.title}'", fg="green")
     else:
         click.secho(f"Cohort already registered for '{course.title}'", fg="yellow")

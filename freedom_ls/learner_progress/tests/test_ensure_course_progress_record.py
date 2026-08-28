@@ -31,9 +31,7 @@ class TestEnsureCourseProgressRecord:
     def test_calling_twice_creates_one_record(self, mock_site_context):
         course = CourseFactory()
         learner = LearnerFactory()
-        registration = LearnerCourseRegistrationFactory(
-            learner=learner, collection=course
-        )
+        registration = LearnerCourseRegistrationFactory(learner=learner, course=course)
 
         ensure_course_progress_record(learner, course, registration)
         ensure_course_progress_record(learner, course, registration)
@@ -48,9 +46,7 @@ class TestEnsureCourseProgressRecord:
     def test_calling_twice_returns_the_same_row(self, mock_site_context):
         course = CourseFactory()
         learner = LearnerFactory()
-        registration = LearnerCourseRegistrationFactory(
-            learner=learner, collection=course
-        )
+        registration = LearnerCourseRegistrationFactory(learner=learner, course=course)
 
         first = ensure_course_progress_record(learner, course, registration)
         second = ensure_course_progress_record(learner, course, registration)
@@ -62,9 +58,7 @@ class TestEnsureCourseProgressRecord:
         is "leave it alone", so get_or_create and not update_or_create."""
         course = CourseFactory()
         learner = LearnerFactory()
-        registration = LearnerCourseRegistrationFactory(
-            learner=learner, collection=course
-        )
+        registration = LearnerCourseRegistrationFactory(learner=learner, course=course)
         existing = ensure_course_progress_record(learner, course, registration)
         existing.progress_percentage = 42
         existing.save(update_fields=["progress_percentage"])
@@ -85,10 +79,10 @@ class TestEnsureCourseProgressRecord:
         learner = LearnerFactory(organisation=organisation)
         CohortMembershipFactory(learner=learner, cohort=cohort)
         cohort_registration = CohortCourseRegistrationFactory(
-            cohort=cohort, collection=course
+            cohort=cohort, course=course
         )
         individual_registration = LearnerCourseRegistrationFactory(
-            learner=learner, collection=course
+            learner=learner, course=course
         )
 
         ensure_course_progress_record(learner, course, cohort_registration)
@@ -103,7 +97,7 @@ class TestEnsureCourseProgressRecord:
         other_course = CourseFactory()
         learner = LearnerFactory()
         registration = LearnerCourseRegistrationFactory(
-            learner=learner, collection=other_course
+            learner=learner, course=other_course
         )
 
         with pytest.raises(ValueError, match="must be for the course"):
@@ -116,9 +110,7 @@ class TestEnsureCourseProgressRecord:
         foreign ambient site has no request to read the site from."""
         course = CourseFactory()
         learner = LearnerFactory()
-        registration = LearnerCourseRegistrationFactory(
-            learner=learner, collection=course
-        )
+        registration = LearnerCourseRegistrationFactory(learner=learner, course=course)
 
         del _thread_locals.request
         record = ensure_course_progress_record(learner, course, registration)
@@ -136,9 +128,7 @@ class TestEnsureCourseProgressRecord:
         organisation = OrganisationFactory(site=SiteFactory())
         learner = LearnerFactory(organisation=organisation)
         course = CourseFactory()
-        registration = LearnerCourseRegistrationFactory(
-            learner=learner, collection=course
-        )
+        registration = LearnerCourseRegistrationFactory(learner=learner, course=course)
 
         first = ensure_course_progress_record(learner, course, registration)
         second = ensure_course_progress_record(learner, course, registration)
@@ -164,7 +154,7 @@ class TestEnsureCourseProgressRecordsForCohortRegistration:
         removed_learner = LearnerFactory(organisation=organisation, is_active=False)
         CohortMembershipFactory(learner=active_learner, cohort=cohort)
         CohortMembershipFactory(learner=removed_learner, cohort=cohort)
-        registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
         ensure_course_progress_records_for_cohort_registration(registration)
 
@@ -182,7 +172,7 @@ class TestEnsureCourseProgressRecordsForCohortRegistration:
         cohort = CohortFactory(organisation=organisation)
         learner = LearnerFactory(organisation=organisation)
         CohortMembershipFactory(learner=learner, cohort=cohort)
-        registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
         ensure_course_progress_records_for_cohort_registration(registration)
 
@@ -198,7 +188,7 @@ class TestEnsureCourseProgressRecordsForCohortRegistration:
         cohort = CohortFactory(organisation=organisation)
         first_learner = LearnerFactory(organisation=organisation)
         CohortMembershipFactory(learner=first_learner, cohort=cohort)
-        registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
         ensure_course_progress_records_for_cohort_registration(registration)
 
         second_learner = LearnerFactory(organisation=organisation)

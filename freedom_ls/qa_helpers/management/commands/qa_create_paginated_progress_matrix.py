@@ -208,7 +208,7 @@ def _ensure_registration(
     """
     registration: CohortCourseRegistration | None = (
         CohortCourseRegistration.objects.filter(
-            cohort=cohort, collection=course, site=site
+            cohort=cohort, course=course, site=site
         ).first()
     )
     if registration is not None:
@@ -223,7 +223,7 @@ def _ensure_registration(
     registration = cast(
         CohortCourseRegistration,
         CohortCourseRegistrationFactory(
-            cohort=cohort, collection=course, site=site, is_active=True
+            cohort=cohort, course=course, site=site, is_active=True
         ),
     )
     click.secho(f"Registered cohort for '{course.title}'", fg="green")

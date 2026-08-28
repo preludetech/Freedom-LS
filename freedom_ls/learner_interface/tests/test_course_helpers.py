@@ -66,7 +66,7 @@ def test_get_completed_courses_no_completed(mock_site_context):
     """get_completed_courses returns empty list when no courses are completed."""
     user = UserFactory()
     course = CourseFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     result = get_completed_courses(user)
     assert result == []
 
@@ -77,8 +77,8 @@ def test_get_completed_courses_returns_completed(mock_site_context):
     user = UserFactory()
     course_a = CourseFactory()
     course_b = CourseFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_a)
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_b)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_a)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_b)
 
     # Complete course_a only
     course_progress_record(course_a, user, completed_time=timezone.now())
@@ -114,7 +114,7 @@ def test_get_current_courses_returns_non_completed_registered(mock_site_context)
     course: Course = CourseFactory()
     topic = TopicFactory(content="content")
     course.items.create(child=topic, order=0)
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
 
     result = get_current_courses(user)
     assert len(result) == 1
@@ -128,7 +128,7 @@ def test_get_current_courses_excludes_completed(mock_site_context):
     course: Course = CourseFactory()
     topic = TopicFactory(content="content")
     course.items.create(child=topic, order=0)
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     course_progress_record(course, user, completed_time=timezone.now())
 
     result = get_current_courses(user)
@@ -142,7 +142,7 @@ def test_get_current_courses_have_progress_percentage(mock_site_context):
     course: Course = CourseFactory()
     topic = TopicFactory(content="content")
     course.items.create(child=topic, order=0)
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
 
     result = get_current_courses(user)
     assert len(result) == 1
@@ -172,14 +172,14 @@ def test_get_recommended_courses_returns_recommendations(mock_site_context):
     """get_recommended_courses returns recommendations for the user."""
     user = UserFactory()
     courses = CourseFactory.create_batch(2)
-    RecommendedCourseFactory(user=user, collection=courses[0])
-    RecommendedCourseFactory(user=user, collection=courses[1])
+    RecommendedCourseFactory(user=user, course=courses[0])
+    RecommendedCourseFactory(user=user, course=courses[1])
 
     result = get_recommended_courses(user)
     assert len(result) == 2
-    collections = [r.collection for r in result]
-    assert courses[0] in collections
-    assert courses[1] in collections
+    recommended = [r.course for r in result]
+    assert courses[0] in recommended
+    assert courses[1] in recommended
 
 
 @pytest.mark.django_db
@@ -188,9 +188,9 @@ def test_get_recommended_courses_only_for_given_user(mock_site_context):
     user = UserFactory()
     other_user = UserFactory()
     courses = CourseFactory.create_batch(2)
-    RecommendedCourseFactory(user=user, collection=courses[0])
-    RecommendedCourseFactory(user=other_user, collection=courses[1])
+    RecommendedCourseFactory(user=user, course=courses[0])
+    RecommendedCourseFactory(user=other_user, course=courses[1])
 
     result = get_recommended_courses(user)
     assert len(result) == 1
-    assert result[0].collection == courses[0]
+    assert result[0].course == courses[0]

@@ -265,7 +265,7 @@ def _build_course_progress(
     """
     registration: LearnerCourseRegistration | None = (
         LearnerCourseRegistration._base_manager.filter(
-            site=site, learner=learner, collection=course
+            site=site, learner=learner, course=course
         ).first()
     )
     created = registration is None
@@ -273,7 +273,7 @@ def _build_course_progress(
         registration = cast(
             LearnerCourseRegistration,
             LearnerCourseRegistrationFactory(
-                site=site, learner=learner, collection=course, is_active=True
+                site=site, learner=learner, course=course, is_active=True
             ),
         )
 

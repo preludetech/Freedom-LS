@@ -256,12 +256,12 @@ def _build_no_pct_form(site: Site) -> Form:
 
 def _register(learner: User, course: Course, site: Site) -> None:
     if not LearnerCourseRegistration.objects.filter(
-        learner__user=learner, collection=course, site=site
+        learner__user=learner, course=course, site=site
     ).exists():
         LearnerCourseRegistrationFactory(
             learner__user=learner,
             learner__organisation=get_default_organisation(site),
-            collection=course,
+            course=course,
             site=site,
         )
 
@@ -348,9 +348,9 @@ def _get_or_create_cohort(site: Site) -> Cohort:
 
 def _register_cohort(cohort: Cohort, course: Course, site: Site) -> None:
     if not CohortCourseRegistration.objects.filter(
-        cohort=cohort, collection=course, site=site
+        cohort=cohort, course=course, site=site
     ).exists():
-        CohortCourseRegistrationFactory(cohort=cohort, collection=course, site=site)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course, site=site)
 
 
 def _add_member(user: User, cohort: Cohort, site: Site) -> None:
@@ -499,7 +499,7 @@ def command(site_name: str) -> None:
             sorted(
                 CohortCourseRegistration.objects.filter(
                     cohort=cohort, site=site
-                ).values_list("collection__slug", flat=True)
+                ).values_list("course__slug", flat=True)
             )
         )
     )

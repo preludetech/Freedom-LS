@@ -87,7 +87,7 @@ def authenticated_client(mock_site_context, course_with_nested_structure):
     """Create an authenticated test client with a user registered for the test course."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course_with_nested_structure["course"]
+        learner__user=user, course=course_with_nested_structure["course"]
     )
     client = Client()
     client.force_login(user)

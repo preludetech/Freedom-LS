@@ -39,7 +39,7 @@ class TestRegistrationMintsARecord:
 
         with django_capture_on_commit_callbacks(execute=True):
             registration = LearnerCourseRegistrationFactory(
-                learner=learner, collection=course
+                learner=learner, course=course
             )
 
         records = CourseProgress.objects.filter(learner=learner, course=course)
@@ -58,9 +58,7 @@ class TestRegistrationMintsARecord:
         )
 
         with django_capture_on_commit_callbacks(execute=True):
-            registration = CohortCourseRegistrationFactory(
-                cohort=cohort, collection=course
-            )
+            registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
         records = CourseProgress.objects.filter(cohort_registration=registration)
         assert [record.learner_id for record in records] == [member.learner_id]
@@ -327,7 +325,7 @@ class TestCourseRegisteredWebhook:
 
         learner = LearnerFactory()
         course = CourseFactory()
-        registration = LearnerCourseRegistration(learner=learner, collection=course)
+        registration = LearnerCourseRegistration(learner=learner, course=course)
         registration.site = mock_site_context
         # monkeypatch, not del: it puts the ambient request back at teardown, so
         # a failure here cannot leak a request-less thread into the next test.

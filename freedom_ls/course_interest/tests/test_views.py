@@ -126,7 +126,7 @@ class TestExpressInterestOnHiddenCourse:
         user = UserFactory()
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
         LearnerCourseRegistrationFactory(
-            learner__user=user, collection=course, is_active=True
+            learner__user=user, course=course, is_active=True
         )
         client.force_login(user)
 
@@ -220,7 +220,7 @@ class TestRemoveInterestOnHiddenCourse:
         user = UserFactory()
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
         LearnerCourseRegistrationFactory(
-            learner__user=user, collection=course, is_active=True
+            learner__user=user, course=course, is_active=True
         )
         client.force_login(user)
 

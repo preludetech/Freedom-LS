@@ -42,7 +42,7 @@ def _register_via_cohort(learner: Learner, course: Course) -> Cohort:
         CohortFactory(organisation=learner.organisation, name=f"Cohort {uuid.uuid4()}"),
     )
     CohortMembershipFactory(learner=learner, cohort=cohort)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course, is_active=True)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=True)
     return cohort
 
 
@@ -68,9 +68,7 @@ class TestDirectRegistration:
     ):
         course = CourseFactory()
         learner = LearnerFactory()
-        LearnerCourseRegistrationFactory(
-            learner=learner, collection=course, is_active=True
-        )
+        LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
 
         _assert_both_agree(learner.user, course, expected=True)
 
@@ -78,7 +76,7 @@ class TestDirectRegistration:
         course = CourseFactory()
         learner = LearnerFactory()
         LearnerCourseRegistrationFactory(
-            learner=learner, collection=course, is_active=False
+            learner=learner, course=course, is_active=False
         )
 
         _assert_both_agree(learner.user, course, expected=False)
@@ -90,18 +88,14 @@ class TestDirectRegistration:
         records are preserved, but access is suspended."""
         course = CourseFactory()
         learner = LearnerFactory(is_active=False)
-        LearnerCourseRegistrationFactory(
-            learner=learner, collection=course, is_active=True
-        )
+        LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
 
         _assert_both_agree(learner.user, course, expected=False)
 
     def test_reactivating_a_removed_learner_restores_access(self, mock_site_context):
         course = CourseFactory()
         learner = LearnerFactory(is_active=False)
-        LearnerCourseRegistrationFactory(
-            learner=learner, collection=course, is_active=True
-        )
+        LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
 
         learner.is_active = True
         learner.save()
@@ -160,7 +154,7 @@ class TestNoRegistration:
         other_course = CourseFactory()
         learner = LearnerFactory()
         LearnerCourseRegistrationFactory(
-            learner=learner, collection=other_course, is_active=True
+            learner=learner, course=other_course, is_active=True
         )
 
         _assert_both_agree(learner.user, course, expected=False)

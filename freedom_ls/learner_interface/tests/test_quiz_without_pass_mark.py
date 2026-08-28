@@ -33,9 +33,7 @@ def completed_quiz_no_pass_mark(mock_site_context):
         form, title="No Pass Mark Course", slug="no-pass-mark-course"
     )
     user = UserFactory()
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course, is_active=True
-    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
     form_attempt(
         course,
         user,

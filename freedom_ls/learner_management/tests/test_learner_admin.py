@@ -25,7 +25,7 @@ from freedom_ls.learner_management.admin import (
     SCOPE_TO_ORGANISATION_OF_COHORT,
     CohortMembershipInline,
     LearnerAdmin,
-    UserCohortDeadlineOverrideInline,
+    LearnerCohortDeadlineOverrideInline,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -38,8 +38,8 @@ from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortMembership,
     Learner,
+    LearnerCohortDeadlineOverride,
     LearnerCourseRegistration,
-    UserCohortDeadlineOverride,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 
@@ -387,18 +387,18 @@ def _override_learner_field(
     request: HttpRequest,
 ) -> ModelChoiceField[Learner]:
     """The deadline-override inline's learner form field on ``request``."""
-    inline = UserCohortDeadlineOverrideInline(CohortCourseRegistration, admin.site)
+    inline = LearnerCohortDeadlineOverrideInline(CohortCourseRegistration, admin.site)
     return cast(
         "ModelChoiceField[Learner]",
         inline.formfield_for_foreignkey(
-            UserCohortDeadlineOverride._meta.get_field("learner"), request
+            LearnerCohortDeadlineOverride._meta.get_field("learner"), request
         ),
     )
 
 
 @pytest.mark.django_db
 class TestDeadlineOverrideLearnerDropdown:
-    """UserCohortDeadlineOverride.clean() requires the learner to be a member of
+    """LearnerCohortDeadlineOverride.clean() requires the learner to be a member of
     the registration's cohort, so the dropdown offers exactly those."""
 
     def test_it_omits_a_learner_who_is_not_in_the_cohort(self, staff_client) -> None:
@@ -411,7 +411,7 @@ class TestDeadlineOverrideLearnerDropdown:
             _override_learner_field(
                 _request_for_cohort_course_registration(registration)
             ),
-            UserCohortDeadlineOverride,
+            LearnerCohortDeadlineOverride,
         )
 
         offered = _offered_ids(staff_client, url, params)
@@ -478,7 +478,7 @@ def _registration_change_payload(
     ``learner``."""
     return {
         "cohort": str(registration.cohort_id),
-        "collection": str(registration.collection_id),
+        "course": str(registration.course_id),
         "is_active": "on",
         "cohortdeadline_set-TOTAL_FORMS": "0",
         "cohortdeadline_set-INITIAL_FORMS": "0",
@@ -548,6 +548,6 @@ class TestDeadlineOverrideChangePageWithAnOutOfCohortLearner:
         )
 
         assert response.status_code == 200
-        assert not UserCohortDeadlineOverride.objects.filter(
+        assert not LearnerCohortDeadlineOverride.objects.filter(
             learner=non_member
         ).exists()

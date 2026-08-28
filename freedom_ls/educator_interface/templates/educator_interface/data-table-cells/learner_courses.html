@@ -1,5 +1,5 @@
 {% for reg in object.learnercourseregistration_set.all %}
-    {{ reg.collection.title }}
+    {{ reg.course.title }}
     {% if not forloop.last %}
         ,
     {% endif %}

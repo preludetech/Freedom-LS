@@ -378,12 +378,12 @@ def test_finishing_the_course_in_one_organisation_leaves_the_others_completed_ti
     user = UserFactory()
     other_registration = LearnerCourseRegistrationFactory(
         learner__user=user,
-        collection=course,
+        course=course,
         learner__organisation=OrganisationFactory(),
     )
     resolved_registration = LearnerCourseRegistrationFactory(
         learner__user=user,
-        collection=course,
+        course=course,
         learner__organisation=OrganisationFactory(),
     )
     other_record = ensure_course_progress_record(

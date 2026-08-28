@@ -118,7 +118,7 @@ def test_a_topic_placed_twice_shows_independent_status_at_each_position(
     course.items.create(child=topic, order=0)
     course.items.create(child=topic, order=1)
     user: User = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     first_placement, _second_placement = course.viewable_collection_items()
     TopicProgressFactory(
         course_progress=course_progress_record(course, user),
@@ -144,7 +144,7 @@ def test_a_topic_placed_twice_inside_a_part_shows_independent_status(
     part.items.create(child=topic, order=0)
     part.items.create(child=topic, order=1)
     user: User = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     first_placement, _second_placement = course.viewable_collection_items()
     TopicProgressFactory(
         course_progress=course_progress_record(course, user),
@@ -192,8 +192,8 @@ def test_a_quiz_failed_in_another_course_does_not_withhold_this_completion(
     other_course: Course = CourseFactory(title="Other", slug="other-course")
     other_course.items.create(child=quiz, order=0)
     user: User = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=this_course)
-    LearnerCourseRegistrationFactory(learner__user=user, collection=other_course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=this_course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=other_course)
 
     form_attempt(
         other_course,
@@ -254,7 +254,7 @@ def test_passing_one_placement_of_a_twice_placed_quiz_leaves_the_other_unpassed(
     first_placement = course.items.create(child=quiz, order=0)
     second_placement = course.items.create(child=quiz, order=1)
     user: User = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     record = course_progress_record(course, user)
 
     CourseFormAttemptFactory(
@@ -287,7 +287,7 @@ def test_a_never_sat_placement_of_a_twice_placed_quiz_is_outstanding(mock_site_c
     first_placement = course.items.create(child=quiz, order=0)
     course.items.create(child=quiz, order=1)
     user: User = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     record = course_progress_record(course, user)
 
     CourseFormAttemptFactory(
@@ -310,7 +310,7 @@ def test_a_retry_is_only_offered_where_there_is_a_sitting_to_retry(mock_site_con
     failed_placement = course.items.create(child=failed, order=0)
     course.items.create(child=untouched, order=1)
     user: User = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     record = course_progress_record(course, user)
 
     CourseFormAttemptFactory(
@@ -340,7 +340,7 @@ def test_an_unread_topic_is_outstanding_alongside_the_quizzes(mock_site_context)
     course.items.create(child=topic, order=0)
     quiz_placement = course.items.create(child=quiz, order=1)
     user: User = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     record = course_progress_record(course, user)
 
     CourseFormAttemptFactory(
@@ -435,7 +435,7 @@ def test_a_registered_learner_who_never_opened_the_course_is_offered_start(
     """The record exists from registration, so row-existence cannot mean "started"."""
     course, _topics = _course_with_topics("CTA", "cta-start", 1)
     user: User = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     record = course_progress_record(course, user)
 
     assert record.progress_percentage == 0
@@ -469,7 +469,7 @@ def test_course_finish_dates_the_start_from_content_access_not_registration(
     """
     course, _topics = _course_with_topics("Finish", "finish-started", 1)
     user: User = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     record = course_progress_record(course, user)
     registered_at = timezone.now() - timezone.timedelta(days=400)
     CourseProgress.objects.filter(pk=record.pk).update(created_at=registered_at)
@@ -495,7 +495,7 @@ def test_course_finish_omits_the_started_row_when_nothing_was_recorded(
     """A null start renders no row at all, never a labelled blank."""
     course, _topics = _course_with_topics("Finish", "finish-no-start", 1)
     user: User = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     record = course_progress_record(course, user)
     assert record.started_at is None
 
@@ -547,7 +547,7 @@ def test_a_registered_learner_is_offered_the_mark_complete_button(mock_site_cont
     """The positive control -- otherwise the absence test above proves nothing."""
     course, _topics = _course_with_topics("Recorded", "recorded-topic", 2)
     user: User = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
 
     client = Client()
     client.force_login(user)

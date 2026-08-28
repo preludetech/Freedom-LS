@@ -49,9 +49,7 @@ def test_hidden_course_registered_user_gets_200(
 ):
     course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
     user = UserFactory()
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course, is_active=True
-    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
     client = logged_in_client(user)
 
     response = client.get(_detail_url(course))
@@ -67,7 +65,7 @@ def test_hidden_course_removed_learner_gets_404(
     course 404s again, exactly as it would for an unregistered user."""
     course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
     learner = LearnerFactory(is_active=False)
-    LearnerCourseRegistrationFactory(learner=learner, collection=course, is_active=True)
+    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
     client = logged_in_client(learner.user)
 
     response = client.get(_detail_url(course))
@@ -85,13 +83,13 @@ def test_hidden_course_registered_through_two_organisations_gets_200(
     user = UserFactory()
     LearnerCourseRegistrationFactory(
         learner__user=user,
-        collection=course,
+        course=course,
         is_active=True,
         learner__organisation=OrganisationFactory(),
     )
     LearnerCourseRegistrationFactory(
         learner__user=user,
-        collection=course,
+        course=course,
         is_active=True,
         learner__organisation=OrganisationFactory(),
     )
@@ -167,9 +165,7 @@ def test_coming_soon_registered_user_gets_generic_cta_not_express_interest(
         visibility=CourseVisibility.COMING_SOON, slug="coming-soon-course"
     )
     user = UserFactory()
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course, is_active=True
-    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
     client = logged_in_client(user)
 
     response = client.get(_detail_url(course))

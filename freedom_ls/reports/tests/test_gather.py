@@ -87,7 +87,7 @@ def _one_learner_cohort(
     member = user if user is not None else UserFactory()
     CohortMembershipFactory(cohort=cohort, learner__user=member)
     registration = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course, is_active=is_active
+        cohort=cohort, course=course, is_active=is_active
     )
     return cohort, cohort_progress_record(registration, member)
 
@@ -97,7 +97,7 @@ def _build_cohort_with_quiz(*, learner_count: int, question_count: int) -> str:
     question correctly in a single completed attempt."""
     cohort = CohortFactory()
     course = CourseFactory()
-    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
     quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
     _attach(course, quiz)
     page = FormPageFactory(form=quiz, order=0)
@@ -503,7 +503,7 @@ def test_learner_with_activity_on_one_course_still_appears_in_other_course(
 
     active_course = CourseFactory()
     active_registration = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=active_course
+        cohort=cohort, course=active_course
     )
     topic_done = TopicFactory()
     _attach(active_course, topic_done)
@@ -515,7 +515,7 @@ def test_learner_with_activity_on_one_course_still_appears_in_other_course(
 
     quiet_course = CourseFactory(title="Untouched Course")
     quiet_registration = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=quiet_course
+        cohort=cohort, course=quiet_course
     )
     _attach(quiet_course, TopicFactory())
     cohort_progress_record(quiet_registration, user)
@@ -579,7 +579,7 @@ def _build_quiz_with_wrong_answers(
     wrong, the rest answer correctly. Returns (cohort_id, quiz_id)."""
     cohort = CohortFactory()
     course = CourseFactory()
-    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
     quiz = FormFactory(strategy=FormStrategy.QUIZ)
     _attach(course, quiz)
     page = FormPageFactory(form=quiz, order=0)
@@ -659,7 +659,7 @@ def test_gathering_one_site_excludes_data_from_another_site(mock_site_context):
     CohortMembershipFactory(cohort=cohort_b, learner__user=learner_b, site=other_site)
     course_b = CourseFactory(title="Site B Course", site=other_site)
     registration_b = CohortCourseRegistrationFactory(
-        cohort=cohort_b, collection=course_b, site=other_site
+        cohort=cohort_b, course=course_b, site=other_site
     )
     topic_b = TopicFactory(title="Site B Topic", site=other_site)
     placement_b = ContentCollectionItemFactory(
@@ -758,7 +758,7 @@ class TestLearnerOrdering:
     def _build_cohort_with_surnames(self, surnames: list[str]) -> str:
         cohort = CohortFactory()
         course = CourseFactory()
-        registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
         _attach(course, TopicFactory())
         for surname in surnames:
             user = UserFactory(first_name="Sam", last_name=surname)
@@ -1192,11 +1192,9 @@ def _two_records_for_one_course(course):
     """
     cohort = CohortFactory()
     membership = CohortMembershipFactory(cohort=cohort, learner__user=UserFactory())
-    cohort_registration = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
     individual_registration = LearnerCourseRegistrationFactory(
-        learner=membership.learner, collection=course
+        learner=membership.learner, course=course
     )
     return (
         cohort,
@@ -1321,7 +1319,7 @@ class TestScopedToOneCourseProgressRecord:
         user = UserFactory()
         CohortMembershipFactory(cohort=cohort, learner__user=user)
         course = CourseFactory()
-        registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
         _attach(course, TopicFactory())
         cohort_progress_record(registration, user)
 

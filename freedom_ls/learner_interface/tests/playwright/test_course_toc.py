@@ -45,7 +45,7 @@ def test_toc_course_part_expands_and_collapses_on_course_detail_page(
     """
     course = CourseFactory(title="Test Course", slug="test-course")
     LearnerCourseRegistrationFactory(
-        learner__user=logged_in_user, collection=course, is_active=True
+        learner__user=logged_in_user, course=course, is_active=True
     )
     landing_topic = TopicFactory(
         title="Landing Topic",
@@ -106,7 +106,7 @@ def test_toc_course_part_expand_state_persists_across_navigation(
     """Expanding a course part writes to localStorage and persists across navigation."""
     course = CourseFactory(title="Test Course", slug="test-course")
     LearnerCourseRegistrationFactory(
-        learner__user=logged_in_user, collection=course, is_active=True
+        learner__user=logged_in_user, course=course, is_active=True
     )
     landing_topic = TopicFactory(
         title="Landing Topic",
@@ -191,7 +191,7 @@ def test_back_button_closes_mobile_bottom_sheet(
     """
     course = CourseFactory(title="Test Course", slug="test-course")
     LearnerCourseRegistrationFactory(
-        learner__user=logged_in_user, collection=course, is_active=True
+        learner__user=logged_in_user, course=course, is_active=True
     )
     landing_topic = TopicFactory(
         title="Landing Topic",
@@ -263,7 +263,7 @@ def test_mobile_outline_sheet_stays_within_the_viewport(
     LearnerCourseRegistrationFactory(
         learner__user=logged_in_user,
         learner__organisation=organisation,
-        collection=course,
+        course=course,
         is_active=True,
     )
     # Comfortably past 85vh at this viewport, so the clamp has to engage.
@@ -326,7 +326,7 @@ def test_course_part_toggle_does_not_announce_chevron_state(
     """
     course = CourseFactory(title="Test Course", slug="test-course")
     LearnerCourseRegistrationFactory(
-        learner__user=logged_in_user, collection=course, is_active=True
+        learner__user=logged_in_user, course=course, is_active=True
     )
     landing_topic = TopicFactory(
         title="Landing Topic",
@@ -383,7 +383,7 @@ def test_part_row_announces_in_progress_over_completed_children(
     """
     course = CourseFactory(title="Test Course", slug="test-course")
     LearnerCourseRegistrationFactory(
-        learner__user=logged_in_user, collection=course, is_active=True
+        learner__user=logged_in_user, course=course, is_active=True
     )
     landing_topic = TopicFactory(
         title="Landing Topic", slug="landing-topic", content="Welcome"

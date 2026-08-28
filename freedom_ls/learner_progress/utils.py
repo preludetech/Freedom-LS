@@ -49,7 +49,7 @@ def ensure_course_progress_record(
     idempotent call into a unique-constraint violation. ensure_learner
     documents the same trap.
     """
-    if registration.collection_id != course.id:
+    if registration.course_id != course.id:
         raise ValueError(
             "The registration must be for the course passed to "
             "ensure_course_progress_record."
@@ -83,7 +83,7 @@ def ensure_course_progress_records_for_cohort_registration(
             CourseProgress(
                 site_id=learner.site_id,
                 learner=learner,
-                course_id=cohort_registration.collection_id,
+                course_id=cohort_registration.course_id,
                 **_registration_kwargs(cohort_registration),
             )
             for learner in learners

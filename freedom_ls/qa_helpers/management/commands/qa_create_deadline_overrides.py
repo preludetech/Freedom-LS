@@ -9,11 +9,11 @@ from django.utils import timezone
 
 from freedom_ls.content_engine.models import Topic
 from freedom_ls.form_engine.models import Form
-from freedom_ls.learner_management.factories import UserCohortDeadlineOverrideFactory
+from freedom_ls.learner_management.factories import LearnerCohortDeadlineOverrideFactory
 from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortMembership,
-    UserCohortDeadlineOverride,
+    LearnerCohortDeadlineOverride,
 )
 
 
@@ -59,10 +59,10 @@ def command(
 
     try:
         registration = CohortCourseRegistration.objects.select_related(
-            "cohort", "collection"
+            "cohort", "course"
         ).get(
             cohort__name=cohort_name,
-            collection__slug=course_slug,
+            course__slug=course_slug,
             site=site,
         )
     except CohortCourseRegistration.DoesNotExist as e:
@@ -118,13 +118,13 @@ def command(
         lookup["object_id"] = content_item.pk
 
     try:
-        override = UserCohortDeadlineOverride.objects.get(**lookup)
+        override = LearnerCohortDeadlineOverride.objects.get(**lookup)
         click.secho(
             f"Override already exists for '{learner_email}' on {item_name}. "
             f"Current deadline: {override.deadline.strftime('%Y-%m-%d %H:%M')}",
             fg="yellow",
         )
-    except UserCohortDeadlineOverride.DoesNotExist:
+    except LearnerCohortDeadlineOverride.DoesNotExist:
         factory_kwargs = {
             "cohort_course_registration": registration,
             "learner": learner,
@@ -134,7 +134,7 @@ def command(
         }
         if content_item:
             factory_kwargs["content_item"] = content_item
-        UserCohortDeadlineOverrideFactory(**factory_kwargs)
+        LearnerCohortDeadlineOverrideFactory(**factory_kwargs)
 
         deadline_type = "hard" if is_hard else "soft"
         click.secho(

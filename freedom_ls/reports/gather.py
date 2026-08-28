@@ -601,8 +601,8 @@ def _build_course_section(
     confusions_by_quiz: dict[UUID, ConfusionBlock],
     max_quiz_columns: int,
 ) -> CourseSection:
-    course = reg.collection
-    items = catalogue.course_items[reg.collection_id]
+    course = reg.course
+    items = catalogue.course_items[reg.course_id]
     quiz_columns = _build_quiz_columns(items)
     learner_rows = [
         _build_learner_row(learner_id, items, quiz_columns, roster, catalogue, progress)

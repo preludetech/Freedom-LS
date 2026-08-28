@@ -51,7 +51,7 @@ def test_course_part_children_have_status_and_url(mock_site_context):
 
     # Create a user and register them for the course
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
 
     # Get the course index
     children = get_course_index(user=user, course=course, can_access_content=True)
@@ -93,7 +93,7 @@ def test_course_part_status_based_on_children(mock_site_context):
 
     # Create a user and register them
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
 
     # Get the course index
     children = get_course_index(user=user, course=course, can_access_content=True)
@@ -123,7 +123,7 @@ def test_course_part_row_url_resolves_to_first_viewable_child_index(mock_site_co
     p2.items.create(child=p2a, order=0)
 
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     # Complete all viewable items so every item has a non-BLOCKED status (and thus a URL).
     now = timezone.now()
     for topic in (p1a, p1b, p2a):
@@ -171,7 +171,7 @@ def test_consecutive_viewable_items_have_dense_indices(mock_site_context):
     p2.items.create(child=p2a, order=0)
 
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     # Complete all viewable items so every viewable row has a URL we can compare.
     now = timezone.now()
     for topic in (p1a, p1b, p2a, direct):
@@ -209,7 +209,7 @@ def test_course_part_url_resumes_at_in_progress_child(mock_site_context):
     part.items.create(child=third, order=2)
 
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     # First item completed; second item started but not complete.
     topic_completion(course, user, first, complete_time=timezone.now())
     topic_completion(course, user, second, complete_time=None)
@@ -243,7 +243,7 @@ def test_course_part_url_skips_completed_first_child_to_first_ready(mock_site_co
     part.items.create(child=second, order=1)
 
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     # Complete first item; second item has no progress (becomes READY).
     topic_completion(course, user, first, complete_time=timezone.now())
 
@@ -297,9 +297,7 @@ def test_a_part_whose_remaining_child_is_locked_reads_as_blocked(mock_site_conte
     part.items.create(child=locked, order=1)
 
     user = UserFactory()
-    registration = LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course
-    )
+    registration = LearnerCourseRegistrationFactory(learner__user=user, course=course)
     topic_completion(course, user, done, complete_time=timezone.now())
     LearnerDeadlineFactory(
         learner_course_registration=registration,
@@ -335,7 +333,7 @@ def test_course_part_partly_complete_reads_as_in_progress(mock_site_context):
         part.items.create(child=topic, order=order)
 
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     for topic in done:
         topic_completion(course, user, topic, complete_time=timezone.now())
 
@@ -370,7 +368,7 @@ def test_course_part_with_a_later_completion_reads_as_in_progress(mock_site_cont
     part.items.create(child=second, order=1)
 
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     topic_completion(course, user, second, complete_time=timezone.now())
 
     children = get_course_index(user=user, course=course, can_access_content=True)
@@ -387,7 +385,7 @@ def test_empty_course_part_row_has_no_url(mock_site_context):
     course.items.create(child=empty_part, order=0)
 
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
 
     children = get_course_index(user=user, course=course, can_access_content=True)
 
@@ -418,7 +416,7 @@ def test_course_part_holding_a_failed_quiz_reads_as_needing_a_retry(mock_site_co
     part.items.create(child=after, order=2)
 
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     topic_completion(course, user, first, complete_time=timezone.now())
     form_attempt(
         course,

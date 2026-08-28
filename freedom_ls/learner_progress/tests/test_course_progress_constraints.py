@@ -31,7 +31,7 @@ def _cohort_grant(learner, course):
     """An active cohort registration for `course` with `learner` a member."""
     cohort = CohortFactory(organisation=learner.organisation)
     CohortMembershipFactory(cohort=cohort, learner=learner)
-    return CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    return CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
 
 class TestUniquenessPerRegistration:
@@ -41,14 +41,14 @@ class TestUniquenessPerRegistration:
         registration = LearnerCourseRegistrationFactory()
         CourseProgressFactory(
             learner=registration.learner,
-            course=registration.collection,
+            course=registration.course,
             learner_registration=registration,
         )
 
         with pytest.raises(IntegrityError), transaction.atomic():
             CourseProgressFactory(
                 learner=registration.learner,
-                course=registration.collection,
+                course=registration.course,
                 learner_registration=registration,
             )
 
@@ -83,13 +83,13 @@ class TestUniquenessPerRegistration:
 
         CourseProgressFactory(
             learner=learner,
-            course=first.collection,
+            course=first.course,
             learner_registration=None,
             cohort_registration=first,
         )
         CourseProgressFactory(
             learner=learner,
-            course=second.collection,
+            course=second.course,
             learner_registration=None,
             cohort_registration=second,
         )
@@ -105,10 +105,10 @@ class TestUniquenessPerRegistration:
         second = LearnerCourseRegistrationFactory(learner=learner)
 
         CourseProgressFactory(
-            learner=learner, course=first.collection, learner_registration=first
+            learner=learner, course=first.course, learner_registration=first
         )
         CourseProgressFactory(
-            learner=learner, course=second.collection, learner_registration=second
+            learner=learner, course=second.course, learner_registration=second
         )
 
         assert CourseProgress.objects.filter(learner=learner).count() == 2
@@ -120,7 +120,7 @@ class TestUniquenessPerRegistration:
         course = CourseFactory()
         cohort_registration = _cohort_grant(learner, course)
         learner_registration = LearnerCourseRegistrationFactory(
-            learner=learner, collection=course
+            learner=learner, course=course
         )
 
         CourseProgressFactory(
@@ -144,7 +144,7 @@ class TestExactlyOneGrant:
         course = CourseFactory()
         cohort_registration = _cohort_grant(learner, course)
         learner_registration = LearnerCourseRegistrationFactory(
-            learner=learner, collection=course
+            learner=learner, course=course
         )
 
         with pytest.raises(IntegrityError), transaction.atomic():
@@ -210,7 +210,7 @@ class TestCleanGuardsThePairing:
         self, mock_site_context
     ):
         record = CourseProgressFactory()
-        other = LearnerCourseRegistrationFactory(collection=record.course)
+        other = LearnerCourseRegistrationFactory(course=record.course)
         record.learner_registration = other
 
         with pytest.raises(ValidationError, match="belong to this learner"):
@@ -241,7 +241,7 @@ class TestCleanGuardsThePairing:
         learner = LearnerFactory()
         course = CourseFactory()
         cohort = CohortFactory(organisation=learner.organisation)
-        registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
         record = CourseProgress(
             site=course.site,
             learner=learner,
@@ -256,7 +256,7 @@ class TestCleanGuardsThePairing:
         learner = LearnerFactory()
         course = CourseFactory()
         cohort = CohortFactory()
-        registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
         record = CourseProgress(
             site=course.site,
             learner=learner,

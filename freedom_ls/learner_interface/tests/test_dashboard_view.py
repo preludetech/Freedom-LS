@@ -44,7 +44,7 @@ def test_dashboard_authenticated_returns_200_with_user_label(
 def test_dashboard_current_courses(mock_site_context, courses, logged_in_client):
     """Registered non-completed courses appear under registered_courses."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -64,12 +64,12 @@ def test_dashboard_dedupes_a_course_registered_through_two_organisations(
     user = UserFactory()
     LearnerCourseRegistrationFactory(
         learner__user=user,
-        collection=courses[0],
+        course=courses[0],
         learner__organisation=OrganisationFactory(),
     )
     LearnerCourseRegistrationFactory(
         learner__user=user,
-        collection=courses[0],
+        course=courses[0],
         learner__organisation=OrganisationFactory(),
     )
     client = logged_in_client(user)
@@ -88,7 +88,7 @@ def test_dashboard_current_courses_have_progress_percentage(
 ):
     """In-progress courses show progress_percentage attribute for progress bars."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -101,7 +101,7 @@ def test_dashboard_current_courses_have_progress_percentage(
 def test_dashboard_completed_courses(mock_site_context, courses, logged_in_client):
     """Completed courses surface in completed_courses, not registered_courses."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     course_progress_record(courses[0], user, completed_time=timezone.now())
     client = logged_in_client(user)
 
@@ -119,7 +119,7 @@ def test_dashboard_removed_learner_lists_course_in_neither_section(
     """A removed learner's active registration grants nothing, so the course
     must not surface as either current or completed."""
     learner = LearnerFactory(is_active=False)
-    LearnerCourseRegistrationFactory(learner=learner, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner=learner, course=courses[0])
     client = logged_in_client(learner.user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -133,14 +133,14 @@ def test_dashboard_removed_learner_lists_course_in_neither_section(
 def test_dashboard_recommended_courses(mock_site_context, courses, logged_in_client):
     """Recommended courses appear in recommended_courses context list."""
     user = UserFactory()
-    RecommendedCourseFactory(user=user, collection=courses[0])
+    RecommendedCourseFactory(user=user, course=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     recommended = list(response.context["recommended_courses"])
     assert len(recommended) == 1
-    assert recommended[0].collection == courses[0]
+    assert recommended[0].course == courses[0]
     assert courses[0].title in response.content.decode()
 
 
@@ -150,10 +150,10 @@ def test_dashboard_annotates_accent_on_every_course(
 ):
     """Every current/completed/recommended course gets an accent_slot_key."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[1])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[1])
     course_progress_record(courses[1], user, completed_time=timezone.now())
-    RecommendedCourseFactory(user=user, collection=courses[2])
+    RecommendedCourseFactory(user=user, course=courses[2])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -164,7 +164,7 @@ def test_dashboard_annotates_accent_on_every_course(
     for course in response.context["completed_courses"]:
         assert hasattr(course, "accent_slot_key")
     for rec in response.context["recommended_courses"]:
-        assert hasattr(rec.collection, "accent_slot_key")
+        assert hasattr(rec.course, "accent_slot_key")
 
 
 # --- dashboard available_courses ---
@@ -176,8 +176,8 @@ def test_dashboard_available_excludes_registered_and_completed(
 ):
     """Available list omits both in-progress and completed registrations."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[1])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[1])
     course_progress_record(courses[1], user, completed_time=timezone.now())
     client = logged_in_client(user)
 
@@ -194,7 +194,7 @@ def test_dashboard_available_excludes_recommended(
 ):
     """Recommended courses do not also appear in the available list."""
     user = UserFactory()
-    RecommendedCourseFactory(user=user, collection=courses[0])
+    RecommendedCourseFactory(user=user, course=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -283,9 +283,9 @@ def test_dashboard_available_section_hidden_when_empty(
     """With no eligible courses, the whole section (heading + link) disappears."""
     user = UserFactory()
     # Register two and recommend the third -> nothing left to surface.
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[1])
-    RecommendedCourseFactory(user=user, collection=courses[2])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[1])
+    RecommendedCourseFactory(user=user, course=courses[2])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -330,7 +330,7 @@ def test_dashboard_completed_course_in_history_not_available(
 ):
     """A completed course shows under Learning History, never under Available."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     course_progress_record(courses[0], user, completed_time=timezone.now())
     client = logged_in_client(user)
 
@@ -353,7 +353,7 @@ def test_dashboard_empty_in_progress_reads_differently_once_there_is_history(
     plainly untrue for them.
     """
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     course_progress_record(courses[0], user, completed_time=timezone.now())
     client = logged_in_client(user)
 

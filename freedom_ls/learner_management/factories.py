@@ -18,10 +18,10 @@ from freedom_ls.learner_management.models import (
     CohortDeadline,
     CohortMembership,
     Learner,
+    LearnerCohortDeadlineOverride,
     LearnerCourseRegistration,
     LearnerDeadline,
     RecommendedCourse,
-    UserCohortDeadlineOverride,
 )
 from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -96,7 +96,7 @@ class LearnerCourseRegistrationFactory(SiteAwareFactory):
         model = LearnerCourseRegistration
 
     learner = factory.SubFactory(LearnerFactory)
-    collection = factory.SubFactory(CourseFactory)
+    course = factory.SubFactory(CourseFactory)
     is_active = True
 
 
@@ -107,7 +107,7 @@ class CohortCourseRegistrationFactory(SiteAwareFactory):
         model = CohortCourseRegistration
 
     cohort = factory.SubFactory(CohortFactory)
-    collection = factory.SubFactory(CourseFactory)
+    course = factory.SubFactory(CourseFactory)
     is_active = True
 
 
@@ -171,15 +171,15 @@ class LearnerDeadlineFactory(SiteAwareFactory):
     )
 
 
-class UserCohortDeadlineOverrideFactory(SiteAwareFactory):
-    """Factory for creating UserCohortDeadlineOverride instances.
+class LearnerCohortDeadlineOverrideFactory(SiteAwareFactory):
+    """Factory for creating LearnerCohortDeadlineOverride instances.
 
     Pass ``content_item=<model instance>`` to set the GenericFK fields.
     When omitted, content_type and object_id default to None (course-level override).
     """
 
     class Meta:
-        model = UserCohortDeadlineOverride
+        model = LearnerCohortDeadlineOverride
         exclude = ["content_item"]
 
     class Params:
@@ -209,4 +209,4 @@ class RecommendedCourseFactory(SiteAwareFactory):
         model = RecommendedCourse
 
     user = factory.SubFactory(UserFactory)
-    collection = factory.SubFactory(CourseFactory)
+    course = factory.SubFactory(CourseFactory)

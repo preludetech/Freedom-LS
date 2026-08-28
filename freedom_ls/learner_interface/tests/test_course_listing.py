@@ -51,7 +51,7 @@ def test_registered_zero_percent_course_has_registered_status(mock_site_context)
     """A registered course with a 0% CourseProgress row is classified as REGISTERED."""
     user = UserFactory()
     course = CourseFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     course_progress_record(course, user, progress_percentage=0)
 
     entries = get_course_listing(user)
@@ -68,7 +68,7 @@ def test_registered_missing_progress_row_has_registered_status(mock_site_context
     """A registered course with no CourseProgress row is treated as 0% → REGISTERED."""
     user = UserFactory()
     course = CourseFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     # Deliberately no CourseProgressFactory call — row is absent.
 
     entries = get_course_listing(user)
@@ -85,7 +85,7 @@ def test_in_progress_course_has_in_progress_status(mock_site_context):
     """A registered course with >0% progress and no completed_time is IN_PROGRESS."""
     user = UserFactory()
     course = CourseFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     course_progress_record(course, user, progress_percentage=50, completed_time=None)
 
     entries = get_course_listing(user)
@@ -102,7 +102,7 @@ def test_completed_course_has_complete_status(mock_site_context):
     """A registered course with completed_time set is classified as COMPLETE."""
     user = UserFactory()
     course = CourseFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     course_progress_record(
         course, user, progress_percentage=100, completed_time=timezone.now()
     )
@@ -171,10 +171,10 @@ def test_multiple_courses_all_classified_independently(mock_site_context):
     not_registered_course = CourseFactory()
 
     registered_course = CourseFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=registered_course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=registered_course)
 
     complete_course = CourseFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=complete_course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=complete_course)
     course_progress_record(
         complete_course, user, progress_percentage=100, completed_time=timezone.now()
     )

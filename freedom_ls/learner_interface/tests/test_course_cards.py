@@ -55,7 +55,7 @@ def test_registered_card_for_zero_progress(
     Registered card variant, not the In progress one. The old ambiguous
     "Not started" label (shared with unregistered courses) is retired."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
     # No progress => percentage stays 0.
     client = logged_in_client(user)
     response = client.get(reverse("learner_interface:dashboard"))
@@ -72,7 +72,7 @@ def test_registered_card_shows_empty_progress_bar(
     """The Registered card always renders an empty (0%) progress bar so it
     visually anchors next to in-progress cards in a mixed grid row."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
     client = logged_in_client(user)
     response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
@@ -88,7 +88,7 @@ def test_in_progress_card_when_progress_above_zero(
     """A course whose first topic is complete (>0 progress) renders the
     In progress card with the Next up line."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
     # Mark first topic complete to push progress >0%.
     first_topic = course_with_topics.children()[0]
     topic_completion(
@@ -109,7 +109,7 @@ def test_complete_card_for_completed_course(
 ):
     """A completed course renders the Completed eyebrow."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
     course_progress_record(course_with_topics, user, completed_time=timezone.now())
     client = logged_in_client(user)
     response = client.get(reverse("learner_interface:dashboard"))
@@ -125,7 +125,7 @@ def test_not_registered_card_shows_not_registered_label(
     "Not registered" status — distinct from a registered-but-unstarted
     course — instead of the old ambiguous "Not started"."""
     user = UserFactory()
-    RecommendedCourseFactory(user=user, collection=course_with_topics)
+    RecommendedCourseFactory(user=user, course=course_with_topics)
     client = logged_in_client(user)
     response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
@@ -218,7 +218,7 @@ def test_course_detail_has_start_button_when_registered_zero_progress(
     """A registered learner with 0 progress lands on the detail page
     and sees a Start course button pointing to the first item."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
     client = logged_in_client(user)
     response = client.get(
         reverse(
@@ -242,7 +242,7 @@ def test_course_detail_shows_continue_when_registered_with_progress(
     """A registered learner with partial (>0) progress and no completion
     sees a 'Continue' CTA."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
     course_progress_record(
         course_with_topics, user, progress_percentage=50, completed_time=None
     )
@@ -265,7 +265,7 @@ def test_course_detail_shows_review_course_when_completed(
     """A registered learner who has completed the course sees a
     'Review course' CTA."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
     course_progress_record(course_with_topics, user, completed_time=timezone.now())
 
     client = logged_in_client(user)
@@ -381,7 +381,7 @@ def test_registered_card_does_not_link_to_register_url(
     registering again would be a no-op redirect. Registered courses render
     the progress card (no preview modal), so the register link is absent."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -402,7 +402,7 @@ def test_registered_zero_progress_card_links_title_to_first_item(
     the "Registered" eyebrow, a 0% progress bar, and a title that links
     straight to the first course item via the "Next up" target."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -423,7 +423,7 @@ def test_not_registered_card_links_to_course_detail(
 ):
     """A not-registered course card links to the course_detail URL (not a modal)."""
     user = UserFactory()
-    RecommendedCourseFactory(user=user, collection=course_with_topics)
+    RecommendedCourseFactory(user=user, course=course_with_topics)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -446,7 +446,7 @@ def test_registered_zero_progress_card_shows_details_link(
     """The Registered (0%) card includes an explicit "Details" link to
     course_detail, distinct from the progress-aware title link."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -467,7 +467,7 @@ def test_in_progress_card_shows_details_link(
     """The In-progress card includes an explicit "Details" link to
     course_detail."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
     first_topic = course_with_topics.children()[0]
     topic_completion(
         course_with_topics, user, first_topic, complete_time=timezone.now()
@@ -493,7 +493,7 @@ def test_complete_card_shows_details_link(
     """The Completed card includes an explicit "Details" link to
     course_detail."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course_with_topics)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
     course_progress_record(
         course_with_topics, user, progress_percentage=100, completed_time=timezone.now()
     )
@@ -518,7 +518,7 @@ def test_not_registered_card_shows_explicit_details_link(
     course_detail; an explicit "Details" affordance is also present and
     resolves to the identical URL (two occurrences of the same href)."""
     user = UserFactory()
-    RecommendedCourseFactory(user=user, collection=course_with_topics)
+    RecommendedCourseFactory(user=user, course=course_with_topics)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))

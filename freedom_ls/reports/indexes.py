@@ -170,12 +170,12 @@ def load_cohort(cohort_id: str, site_id: int) -> Cohort:
 
 
 def load_registrations(cohort: Cohort, site_id: int) -> list[CohortCourseRegistration]:
-    # select_related("collection") feeds the course title and id on every
+    # select_related("course") feeds the course title and id on every
     # section; without it each registration would re-query for its course.
     return list(
         CohortCourseRegistration.objects.filter(cohort=cohort, site_id=site_id)
-        .select_related("collection")
-        .order_by("-is_active", "collection__title")
+        .select_related("course")
+        .order_by("-is_active", "course__title")
     )
 
 
@@ -235,10 +235,10 @@ def build_course_catalogue(
     for reg in registrations:
         items = [
             item
-            for item in reg.collection.viewable_items()
+            for item in reg.course.viewable_items()
             if isinstance(item, Topic | Form)
         ]
-        course_items[reg.collection_id] = items
+        course_items[reg.course_id] = items
         for item in items:
             if isinstance(item, Topic):
                 topic_ids.add(item.id)

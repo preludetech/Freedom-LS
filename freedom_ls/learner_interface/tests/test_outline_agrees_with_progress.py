@@ -66,9 +66,7 @@ def retry_course(mock_site_context) -> dict:
 @pytest.fixture
 def learner(mock_site_context, retry_course, client):
     user = UserFactory()
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=retry_course["course"]
-    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=retry_course["course"])
     client.force_login(user)
     return user
 
@@ -229,7 +227,7 @@ def test_an_abandoned_retry_of_a_form_with_no_pass_mark_still_reads_complete(
     course.items.create(child=survey, order=0)
     course.items.create(child=topic_after, order=1)
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     form_attempt(course, user, survey, completed_time=timezone.now())
 
     # Act

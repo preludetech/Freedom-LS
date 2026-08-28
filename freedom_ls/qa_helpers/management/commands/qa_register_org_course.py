@@ -85,11 +85,11 @@ def command(
     learner = LearnerFactory(user=user, organisation=organisation, site=site)
 
     registration = LearnerCourseRegistration.objects.filter(
-        learner=learner, collection=course
+        learner=learner, course=course
     ).first()
     if registration is None:
         LearnerCourseRegistrationFactory(
-            learner=learner, collection=course, site=site, is_active=True
+            learner=learner, course=course, site=site, is_active=True
         )
         verb = "Registered"
     else:

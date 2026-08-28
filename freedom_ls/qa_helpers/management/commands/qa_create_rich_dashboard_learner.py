@@ -98,12 +98,12 @@ def _ensure_verified_email(user: User) -> None:
 
 def _register(user: User, course: Course, site: Site) -> None:
     if not LearnerCourseRegistration.objects.filter(
-        learner__user=user, collection=course, site=site
+        learner__user=user, course=course, site=site
     ).exists():
         LearnerCourseRegistrationFactory(
             learner__user=user,
             learner__organisation=get_default_organisation(site),
-            collection=course,
+            course=course,
             site=site,
         )
 
@@ -320,9 +320,9 @@ def command(site_name: str) -> None:
 
     # --- Recommended course ---
     if not RecommendedCourse.objects.filter(
-        user=learner, collection=recommended_course, site=site
+        user=learner, course=recommended_course, site=site
     ).exists():
-        RecommendedCourseFactory(user=learner, collection=recommended_course, site=site)
+        RecommendedCourseFactory(user=learner, course=recommended_course, site=site)
     click.secho(f"Recommended: {recommended_course.slug}", fg="green")
 
     click.secho("\n--- Summary ---", fg="cyan", bold=True)

@@ -183,13 +183,13 @@ def course_progress_by_course_for(
 
     # learner_for_course's order, restated in bulk: a cohort registration beats
     # an individual one, and within each kind the first row seen per course
-    # wins under (-is_active, -registered_at). Sorting by collection_id first
+    # wins under (-is_active, -registered_at). Sorting by course_id first
     # only groups the rows; it does not change which one comes first per course.
     winning_grant: dict[UUID, tuple[str, UUID, UUID]] = {}
 
     cohort_rows = (
         CohortCourseRegistration.objects.filter(
-            collection_id__in=course_ids,
+            course_id__in=course_ids,
             cohort__cohortmembership__learner__user=user,
             cohort__cohortmembership__learner__is_active=True,
             is_active=True,
@@ -206,8 +206,8 @@ def course_progress_by_course_for(
         # any path that calls full_clean() can't produce it. Assuming clean
         # data here matches every other bulk resolver in this module.
         .annotate(member_learner_id=F("cohort__cohortmembership__learner_id"))
-        .order_by("collection_id", "-is_active", "-registered_at")
-        .values_list("collection_id", "id", "member_learner_id")
+        .order_by("course_id", "-is_active", "-registered_at")
+        .values_list("course_id", "id", "member_learner_id")
     )
     for course_id, registration_id, learner_id in cohort_rows:
         winning_grant.setdefault(
@@ -216,10 +216,10 @@ def course_progress_by_course_for(
 
     individual_rows = (
         LearnerCourseRegistration.objects.filter(
-            learner__user=user, collection_id__in=course_ids
+            learner__user=user, course_id__in=course_ids
         )
-        .order_by("collection_id", "-is_active", "-registered_at")
-        .values_list("collection_id", "id", "learner_id")
+        .order_by("course_id", "-is_active", "-registered_at")
+        .values_list("course_id", "id", "learner_id")
     )
     for course_id, registration_id, learner_id in individual_rows:
         winning_grant.setdefault(

@@ -47,7 +47,7 @@ class TestCourseProgressFor:
         course = CourseFactory()
         user = UserFactory()
         LearnerCourseRegistrationFactory(
-            learner=LearnerFactory(user=user), collection=course
+            learner=LearnerFactory(user=user), course=course
         )
 
         assert course_progress_for(user, course) is None
@@ -62,10 +62,10 @@ class TestCourseProgressFor:
         cohort = CohortFactory(organisation=organisation)
         CohortMembershipFactory(learner=learner, cohort=cohort)
         cohort_registration = CohortCourseRegistrationFactory(
-            cohort=cohort, collection=course
+            cohort=cohort, course=course
         )
         individual_registration = LearnerCourseRegistrationFactory(
-            learner=learner, collection=course
+            learner=learner, course=course
         )
         cohort_record = CourseProgressFactory(
             learner=learner,
@@ -95,13 +95,13 @@ class TestCourseProgressFor:
         CohortMembershipFactory(learner=learner, cohort=older_cohort)
         CohortMembershipFactory(learner=learner, cohort=newer_cohort)
         older_registration = CohortCourseRegistrationFactory(
-            cohort=older_cohort, collection=course
+            cohort=older_cohort, course=course
         )
         _backdate_cohort_registration(
             older_registration, timezone.now() - timedelta(days=7)
         )
         newer_registration = CohortCourseRegistrationFactory(
-            cohort=newer_cohort, collection=course
+            cohort=newer_cohort, course=course
         )
         CourseProgressFactory(
             learner=learner,

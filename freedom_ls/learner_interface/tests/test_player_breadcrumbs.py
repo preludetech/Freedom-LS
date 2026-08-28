@@ -25,7 +25,7 @@ def test_first_crumb_links_to_course_detail_not_item_one(mock_site_context):
     topic = TopicFactory(title="Only Topic", slug="only-topic", content="x")
     course.items.create(child=topic, order=0)
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
 
     client = Client()
     client.force_login(user)

@@ -53,9 +53,9 @@ def command(
             continue
 
         if not CohortCourseRegistration.objects.filter(
-            collection=course, cohort=cohort, site=site
+            course=course, cohort=cohort, site=site
         ).exists():
-            CohortCourseRegistrationFactory(collection=course, cohort=cohort, site=site)
+            CohortCourseRegistrationFactory(course=course, cohort=cohort, site=site)
             click.secho(f"Registered cohort for course '{course.title}'", fg="green")
         else:
             click.secho(f"Already registered for '{course.title}'", fg="yellow")

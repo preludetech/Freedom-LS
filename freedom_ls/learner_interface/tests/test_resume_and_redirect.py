@@ -65,7 +65,7 @@ def course_structure(mock_site_context):
 def enrolled_user(mock_site_context, course_structure):
     user = UserFactory()
     LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course_structure["course"]
+        learner__user=user, course=course_structure["course"]
     )
     return user
 
@@ -307,7 +307,7 @@ def test_viewing_form_does_not_create_form_progress(mock_site_context):
     FormPageFactory(form=form, title="Page 1", slug="page-1", order=0)
     course.items.create(child=form, order=0)
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
 
     client = Client()
     client.force_login(user)
@@ -494,7 +494,7 @@ def test_player_page_query_count_does_not_grow_with_items(
     docstring for why the budget is the cold 45 rather than the warm 42.
     """
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=big_course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=big_course)
     client = Client()
     client.force_login(user)
     url = reverse(
@@ -517,7 +517,7 @@ def test_get_course_index_status_semantics_preserved(mock_site_context):
     """
     course = CourseFactory(title="Status Course", slug="status-course")
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     now = timezone.now()
 
     topic_complete = TopicFactory(title="T complete", slug="t-complete", content="x")
@@ -593,7 +593,7 @@ def test_checkbox_quiz_ticking_every_option_blocks_navigation_as_failed(
     FAILED and block progression via `next_status`."""
     course = CourseFactory(title="Checkbox Course", slug="checkbox-course")
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
 
     quiz = FormFactory(
         title="Checkbox quiz",

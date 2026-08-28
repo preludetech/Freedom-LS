@@ -21,7 +21,7 @@
             {% for reg in registrations %}
                 <option value="{{ reg.pk }}"
                         {% if reg.pk == selected_reg.pk %}selected{% endif %}>
-                    {{ reg.collection.title }}
+                    {{ reg.course.title }}
                     {% if not reg.is_active %}
                         (inactive)
                     {% endif %}

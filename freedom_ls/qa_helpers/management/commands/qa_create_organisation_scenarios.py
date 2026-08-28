@@ -278,22 +278,22 @@ def _ensure_membership(site: Site, cohort: Cohort, user: User) -> None:
 
 def _ensure_cohort_registration(site: Site, cohort: Cohort, course: Course) -> None:
     if not CohortCourseRegistration.objects.filter(
-        cohort=cohort, collection=course
+        cohort=cohort, course=course
     ).exists():
-        CohortCourseRegistrationFactory(site=site, cohort=cohort, collection=course)
+        CohortCourseRegistrationFactory(site=site, cohort=cohort, course=course)
 
 
 def _ensure_user_registration(
     site: Site, organisation: Organisation, user: User, course: Course
 ) -> None:
     if not LearnerCourseRegistration.objects.filter(
-        learner__organisation=organisation, learner__user=user, collection=course
+        learner__organisation=organisation, learner__user=user, course=course
     ).exists():
         LearnerCourseRegistrationFactory(
             site=site,
             learner__organisation=organisation,
             learner__user=user,
-            collection=course,
+            course=course,
         )
 
 
@@ -324,10 +324,10 @@ def _ensure_active_registration_for_learner(
     as a side effect of registering them.
     """
     if not LearnerCourseRegistration.objects.filter(
-        learner=learner, collection=course
+        learner=learner, course=course
     ).exists():
         LearnerCourseRegistrationFactory(
-            learner=learner, collection=course, site=site, is_active=True
+            learner=learner, course=course, site=site, is_active=True
         )
 
 

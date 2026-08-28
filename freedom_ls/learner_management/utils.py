@@ -59,7 +59,7 @@ def is_registered_for_course(user: RequestUser, course: Course) -> bool:
     if not user.is_authenticated:
         return False
     direct = LearnerCourseRegistration.objects.filter(
-        learner__user=user, learner__is_active=True, collection=course, is_active=True
+        learner__user=user, learner__is_active=True, course=course, is_active=True
     ).exists()
     if direct:
         return True
@@ -71,7 +71,7 @@ def is_registered_for_course(user: RequestUser, course: Course) -> bool:
     cohort = CohortCourseRegistration.objects.filter(
         cohort__cohortmembership__learner__user=user,
         cohort__cohortmembership__learner__is_active=True,
-        collection=course,
+        course=course,
         is_active=True,
     ).exists()
     return cohort

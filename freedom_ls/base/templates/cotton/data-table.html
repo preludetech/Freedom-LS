@@ -151,7 +151,7 @@ Custom templates for complex cells:
 
   # educator_interface/cells/cohort_courses.html
   {% for registration in object.course_registrations.all %}
-      {{ registration.collection.title }}{% if not forloop.last %}, {% endif %}
+      {{ registration.course.title }}{% if not forloop.last %}, {% endif %}
   {% empty %}
       -
   {% endfor %}

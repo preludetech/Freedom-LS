@@ -131,12 +131,12 @@ def _ensure_verified_email(user: User) -> None:
 def _ensure_course_registration(user: User, course: Course, site: Site) -> None:
     """Ensure user is registered for the course (so they can browse it)."""
     if not LearnerCourseRegistration.objects.filter(
-        learner__user=user, collection=course, site=site
+        learner__user=user, course=course, site=site
     ).exists():
         LearnerCourseRegistrationFactory(
             learner__user=user,
             learner__organisation=get_default_organisation(site),
-            collection=course,
+            course=course,
             site=site,
         )
 

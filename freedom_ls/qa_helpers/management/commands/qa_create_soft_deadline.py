@@ -52,10 +52,10 @@ def command(
 
     try:
         registration = CohortCourseRegistration.objects.select_related(
-            "cohort", "collection"
+            "cohort", "course"
         ).get(
             cohort__name=cohort_name,
-            collection__slug=course_slug,
+            course__slug=course_slug,
             site=site,
         )
     except CohortCourseRegistration.DoesNotExist as e:

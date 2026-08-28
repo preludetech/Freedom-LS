@@ -136,7 +136,7 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
         course = CourseFactory(access_config={"access_type": "free"})
         user = UserFactory()
         LearnerCourseRegistrationFactory(
-            learner__user=user, collection=course, is_active=True
+            learner__user=user, course=course, is_active=True
         )
         backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=user, course=course)
@@ -208,7 +208,7 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
         course = CourseFactory(access_config={"access_type": "free"})
         user = UserFactory()
         LearnerCourseRegistrationFactory(
-            learner__user=user, collection=course, is_active=True
+            learner__user=user, course=course, is_active=True
         )
         backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=user, course=course)
@@ -227,7 +227,7 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
         course = CourseFactory(slug="my-course", access_config={"access_type": "free"})
         user = UserFactory()
         LearnerCourseRegistrationFactory(
-            learner__user=user, collection=course, is_active=True
+            learner__user=user, course=course, is_active=True
         )
         backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=user, course=course)
@@ -245,9 +245,7 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
         user = UserFactory()
         cohort = CohortFactory()
         CohortMembershipFactory(learner__user=user, cohort=cohort)
-        CohortCourseRegistrationFactory(
-            cohort=cohort, collection=course, is_active=True
-        )
+        CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=True)
         backend = FreeOnlyCourseAccessBackend()
         decision = backend.get_access(user=user, course=course)
 

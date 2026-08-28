@@ -108,7 +108,7 @@ class CohortMembership(SiteAwareModel):
 class LearnerCourseRegistration(SiteAwareModel):
     """Individual learner registration for a course."""
 
-    collection = models.ForeignKey(
+    course = models.ForeignKey(
         "freedom_ls_content_engine.Course",
         on_delete=models.CASCADE,
         related_name="learner_registrations",
@@ -120,19 +120,19 @@ class LearnerCourseRegistration(SiteAwareModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["site_id", "learner", "collection"],
+                fields=["site_id", "learner", "course"],
                 name="unique_learner_course_registration",
             )
         ]
 
     def __str__(self):
-        return f"{self.learner} - {self.collection}"
+        return f"{self.learner} - {self.course}"
 
 
 class CohortCourseRegistration(SiteAwareModel):
     """Cohort-wide registration for a course."""
 
-    collection = models.ForeignKey(
+    course = models.ForeignKey(
         "freedom_ls_content_engine.Course",
         on_delete=models.CASCADE,
         related_name="cohort_registrations",
@@ -146,13 +146,13 @@ class CohortCourseRegistration(SiteAwareModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["site_id", "collection", "cohort"],
+                fields=["site_id", "course", "cohort"],
                 name="unique_cohort_course_registration",
             )
         ]
 
     def __str__(self):
-        return f"{self.cohort} - {self.collection}"
+        return f"{self.cohort} - {self.course}"
 
 
 class CohortDeadline(SiteAwareModel):
@@ -199,7 +199,7 @@ class CohortDeadline(SiteAwareModel):
     def __str__(self) -> str:
         reg = self.cohort_course_registration
         item_label = str(self.content_item) if self.content_item else "Whole course"
-        return f"{reg.cohort} - {reg.collection} - {item_label}"
+        return f"{reg.cohort} - {reg.course} - {item_label}"
 
 
 class LearnerDeadline(SiteAwareModel):
@@ -246,10 +246,10 @@ class LearnerDeadline(SiteAwareModel):
     def __str__(self) -> str:
         reg = self.learner_course_registration
         item_label = str(self.content_item) if self.content_item else "Whole course"
-        return f"{reg.learner.user} - {reg.collection} - {item_label}"
+        return f"{reg.learner.user} - {reg.course} - {item_label}"
 
 
-class UserCohortDeadlineOverride(SiteAwareModel):
+class LearnerCohortDeadlineOverride(SiteAwareModel):
     """Override deadline for a specific learner within a cohort."""
 
     cohort_course_registration = models.ForeignKey(
@@ -278,7 +278,7 @@ class UserCohortDeadlineOverride(SiteAwareModel):
                     "content_type",
                     "object_id",
                 ],
-                name="unique_user_cohort_override_per_item",
+                name="unique_learner_cohort_override_per_item",
                 condition=models.Q(content_type__isnull=False, object_id__isnull=False),
             ),
         ]
@@ -299,7 +299,7 @@ class UserCohortDeadlineOverride(SiteAwareModel):
 
         # Validate uniqueness for course-level overrides (null content)
         if self.content_type is None and self.object_id is None:
-            existing = UserCohortDeadlineOverride.objects.filter(
+            existing = LearnerCohortDeadlineOverride.objects.filter(
                 cohort_course_registration=self.cohort_course_registration,
                 learner=self.learner,
                 content_type__isnull=True,
@@ -313,7 +313,7 @@ class UserCohortDeadlineOverride(SiteAwareModel):
     def __str__(self) -> str:
         reg = self.cohort_course_registration
         item_label = str(self.content_item) if self.content_item else "Whole course"
-        return f"{self.learner} - {reg.cohort} - {reg.collection} - {item_label}"
+        return f"{self.learner} - {reg.cohort} - {reg.course} - {item_label}"
 
 
 class RecommendedCourse(SiteAwareModel):
@@ -327,7 +327,7 @@ class RecommendedCourse(SiteAwareModel):
         on_delete=models.CASCADE,
         related_name="recommended_courses",
     )
-    collection = models.ForeignKey(
+    course = models.ForeignKey(
         "freedom_ls_content_engine.Course",
         on_delete=models.CASCADE,
         related_name="recommendations",
@@ -342,4 +342,4 @@ class RecommendedCourse(SiteAwareModel):
         verbose_name_plural = "Recommended courses"
 
     def __str__(self):
-        return f"Course recommendation for {self.user.email}: {self.collection.title}"
+        return f"Course recommendation for {self.user.email}: {self.course.title}"

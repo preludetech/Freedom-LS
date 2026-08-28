@@ -44,9 +44,9 @@ def test_all_courses_renders_four_distinct_status_labels(
     user = UserFactory()
     # courses[0] -> Not registered (left unregistered)
     # courses[1] -> Registered (enrolled, 0% progress)
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[1])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[1])
     # courses[2] -> In progress (enrolled, >0% progress)
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[2])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[2])
     course_progress_record(
         courses[2], user, progress_percentage=40, completed_time=None
     )
@@ -54,7 +54,7 @@ def test_all_courses_renders_four_distinct_status_labels(
     completed = CourseFactory(title="Course D", slug="course-d")
     completed_topic = TopicFactory(title="Topic D", slug="topic-d", content="content")
     completed.items.create(child=completed_topic, order=0)
-    LearnerCourseRegistrationFactory(learner__user=user, collection=completed)
+    LearnerCourseRegistrationFactory(learner__user=user, course=completed)
     course_progress_record(
         completed, user, progress_percentage=100, completed_time=timezone.now()
     )
@@ -116,7 +116,7 @@ def test_all_courses_registered_zero_percent_row_links_to_first_item(
 ):
     """A registered-0% row links to view_course_item at index=1."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
@@ -141,7 +141,7 @@ def test_all_courses_registered_zero_percent_row_has_progress_value_zero(
     role) rather than an explicit aria-valuenow.
     """
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
@@ -158,7 +158,7 @@ def test_all_courses_in_progress_row_links_to_first_item(
 ):
     """An in-progress row links to view_course_item at index=1."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     course_progress_record(
         courses[0], user, progress_percentage=55, completed_time=None
     )
@@ -185,7 +185,7 @@ def test_all_courses_in_progress_row_has_progress_value_above_zero(
     attribute carries the percentage to assistive tech.
     """
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     course_progress_record(
         courses[0], user, progress_percentage=55, completed_time=None
     )
@@ -205,7 +205,7 @@ def test_all_courses_complete_row_links_to_course_finish(
 ):
     """A completed-course row links to the course_finish URL."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     course_progress_record(
         courses[0], user, progress_percentage=100, completed_time=timezone.now()
     )
@@ -228,7 +228,7 @@ def test_all_courses_complete_row_has_no_progress_bar(
 ):
     """A completed-course row does not render a progress bar."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     course_progress_record(
         courses[0], user, progress_percentage=100, completed_time=timezone.now()
     )
@@ -254,11 +254,11 @@ def test_all_courses_status_icons_are_decorative(
     """
     user = UserFactory()
     # In-progress and complete rows exercise the in_progress/complete icons.
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     course_progress_record(
         courses[0], user, progress_percentage=40, completed_time=None
     )
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[1])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[1])
     course_progress_record(
         courses[1], user, progress_percentage=100, completed_time=timezone.now()
     )
@@ -285,7 +285,7 @@ def test_all_courses_registered_row_has_details_link(
     """A registered (0%) row renders an explicit "Details" link to course_detail,
     in addition to the progress-linked title."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
@@ -307,7 +307,7 @@ def test_all_courses_complete_row_has_details_link(
     """A completed-course row renders an explicit "Details" link to course_detail,
     in addition to the finish-page title link."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     course_progress_record(
         courses[0], user, progress_percentage=100, completed_time=timezone.now()
     )

@@ -2,14 +2,14 @@
 
 ``LearnerDeadline`` hangs off an individual ``LearnerCourseRegistration`` (the
 ``learner_course_registration`` FK), which is what makes it distinct from
-``CohortDeadline`` (cohort registration) and ``UserCohortDeadlineOverride``
+``CohortDeadline`` (cohort registration) and ``LearnerCohortDeadlineOverride``
 (per-user override inside a cohort). ``qa_create_deadline_overrides`` seeds the
 last of those three, so before this command the ``LearnerDeadline`` changelist
 was always empty and its ``list_select_related`` / ``search_fields`` /
 ``autocomplete_fields`` traversals were never executed.
 
 The seeded set deliberately spans two users and three courses with a mix of
-hard and soft deadlines so the "By collection" and "By is hard deadline"
+hard and soft deadlines so the "By course" and "By is hard deadline"
 list filters both narrow the changelist.
 
 Every deadline is placed in the FUTURE on purpose: an expired *hard* deadline
@@ -81,7 +81,7 @@ def _ensure_registration(
     """
     existing: LearnerCourseRegistration | None = (
         LearnerCourseRegistration.objects.filter(
-            learner__user=user, collection=course, site=site
+            learner__user=user, course=course, site=site
         ).first()
     )
     if existing is not None:
@@ -91,7 +91,7 @@ def _ensure_registration(
         LearnerCourseRegistrationFactory(
             learner__user=user,
             learner__organisation=get_default_organisation(site),
-            collection=course,
+            course=course,
             site=site,
             is_active=True,
         ),
@@ -201,16 +201,16 @@ def command(site_name: str) -> None:
         verb = "created" if was_created else "exists"
         click.secho(
             f"  {verb:8} {registration.learner.user.email:32} "
-            f"{registration.collection.slug:40} {target:28} {kind:4} "
+            f"{registration.course.slug:40} {target:28} {kind:4} "
             f"{deadline.deadline:%Y-%m-%d}",
             fg="green" if was_created else "yellow",
         )
 
     total = LearnerDeadline.objects.filter(site=site).count()
-    collections = sorted(
+    course_slugs = sorted(
         set(
             LearnerDeadline.objects.filter(site=site).values_list(
-                "learner_course_registration__collection__slug", flat=True
+                "learner_course_registration__course__slug", flat=True
             )
         )
     )
@@ -227,7 +227,7 @@ def command(site_name: str) -> None:
     click.secho(f"Rows created:      {created}", fg="cyan")
     click.secho(f"LearnerDeadlines:  {total} on this site", fg="cyan")
     click.secho(f"Learners involved: {learners}", fg="cyan")
-    click.secho(f"Courses involved:  {collections}", fg="cyan")
+    click.secho(f"Courses involved:  {course_slugs}", fg="cyan")
     click.secho(
         "Changelist:        /admin/freedom_ls_learner_management/learnerdeadline/",
         fg="cyan",

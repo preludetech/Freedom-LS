@@ -51,9 +51,7 @@ def _checkbox_quiz(**form_kwargs):
 
 def _registered_learner(course):
     user = UserFactory()
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course, is_active=True
-    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
     return user
 
 

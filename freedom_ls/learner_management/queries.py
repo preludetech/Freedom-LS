@@ -60,7 +60,7 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
 
     return Exists(
         LearnerCourseRegistration.objects.filter(
-            collection=OuterRef("pk"),
+            course=OuterRef("pk"),
             learner__user=user,
             learner__is_active=True,
             is_active=True,
@@ -71,7 +71,7 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
         # access through a cohort holding both a removed and an active
         # Learner for this user.
         CohortCourseRegistration.objects.filter(
-            collection=OuterRef("pk"),
+            course=OuterRef("pk"),
             cohort__cohortmembership__learner__user=user,
             cohort__cohortmembership__learner__is_active=True,
             is_active=True,
@@ -101,7 +101,7 @@ def latest_registration(user: User, course: Course) -> LearnerCourseRegistration
     from freedom_ls.learner_management.models import LearnerCourseRegistration
 
     return (
-        LearnerCourseRegistration.objects.filter(learner__user=user, collection=course)
+        LearnerCourseRegistration.objects.filter(learner__user=user, course=course)
         .select_related("learner__organisation")
         .order_by("-is_active", "-learner__is_active", "-registered_at")
         .first()
@@ -122,7 +122,7 @@ def learner_for_course(user: User, course: Course) -> ResolvedRegistration | Non
 
     cohort_registration = (
         CohortCourseRegistration.objects.filter(
-            collection=course,
+            course=course,
             cohort__cohortmembership__learner__user=user,
             cohort__cohortmembership__learner__is_active=True,
             is_active=True,

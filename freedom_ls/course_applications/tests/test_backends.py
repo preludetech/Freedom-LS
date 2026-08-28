@@ -176,7 +176,7 @@ class TestGetAccess:
         course.access_config = {"access_type": "application_gated"}
         course.save()
         LearnerCourseRegistrationFactory(
-            learner__user=user, collection=course, is_active=True
+            learner__user=user, course=course, is_active=True
         )
 
         backend = ApplicationCourseAccessBackend()

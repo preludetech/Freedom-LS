@@ -49,7 +49,7 @@ def player_response(mock_site_context, course_with_topic, logged_in_client):
         course = course_with_topic()
         user = UserFactory()
         LearnerCourseRegistrationFactory(
-            learner__user=user, collection=course, learner__organisation=organisation
+            learner__user=user, course=course, learner__organisation=organisation
         )
         response = logged_in_client(user).get(
             reverse(

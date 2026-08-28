@@ -112,9 +112,9 @@ def _add_registrations(course: Course, organisation: Organisation, count: int) -
     for _ in range(count):
         cohort = CohortFactory(organisation=organisation, name=f"Cohort {uuid.uuid4()}")
         CohortMembershipFactory(cohort=cohort, learner__organisation=organisation)
-        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
         LearnerCourseRegistrationFactory(
-            learner__organisation=organisation, collection=course, is_active=True
+            learner__organisation=organisation, course=course, is_active=True
         )
 
 

@@ -68,7 +68,7 @@ class CourseProgressAdmin(SiteAwareModelAdmin):
     list_select_related = (
         "learner__user",
         "course",
-        "learner_registration__collection",
+        "learner_registration__course",
         "cohort_registration__cohort",
     )
 

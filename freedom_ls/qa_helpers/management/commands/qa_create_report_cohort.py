@@ -670,13 +670,13 @@ def build_report_cohort(
         course = _get_course(site, slug)
         is_active = slug in course_slugs
         registration = CohortCourseRegistration.objects.filter(
-            cohort=cohort, collection=course, site=site
+            cohort=cohort, course=course, site=site
         ).first()
         if registration is None:
             registration = cast(
                 CohortCourseRegistration,
                 CohortCourseRegistrationFactory(
-                    cohort=cohort, collection=course, site=site, is_active=is_active
+                    cohort=cohort, course=course, site=site, is_active=is_active
                 ),
             )
         elif registration.is_active != is_active:
@@ -840,7 +840,7 @@ def command(
     registrations = list(
         CohortCourseRegistration.objects.filter(
             cohort=cohort, site=site
-        ).select_related("collection")
+        ).select_related("course")
     )
     member_count = CohortMembership.objects.filter(cohort=cohort, site=site).count()
 
@@ -859,8 +859,8 @@ def command(
     for registration in registrations:
         state = "active" if registration.is_active else "INACTIVE"
         click.secho(
-            f"  course: {registration.collection.title} "
-            f"[{registration.collection.slug}] ({state})",
+            f"  course: {registration.course.title} "
+            f"[{registration.course.slug}] ({state})",
             fg="green",
         )
     if educator_email:

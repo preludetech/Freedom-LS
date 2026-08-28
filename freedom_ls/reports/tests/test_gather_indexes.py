@@ -117,7 +117,7 @@ def _cohort_registered_for(
     """
     cohort = CohortFactory()
     registration: CohortCourseRegistration = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
+        cohort=cohort, course=course
     )
     records = []
     for _ in range(learner_count):
@@ -130,9 +130,7 @@ def _cohort_registered_for(
 def _second_record_for(record: CourseProgress) -> CourseProgress:
     """The same learner's own registration for the same course, and its record."""
     return individual_progress_record(
-        LearnerCourseRegistrationFactory(
-            learner=record.learner, collection=record.course
-        )
+        LearnerCourseRegistrationFactory(learner=record.learner, course=record.course)
     )
 
 
@@ -140,15 +138,15 @@ class TestLoadRegistrations:
     def test_active_registrations_come_before_inactive_ones(self, mock_site_context):
         cohort = CohortFactory()
         CohortCourseRegistrationFactory(
-            cohort=cohort, collection=CourseFactory(title="A Retired"), is_active=False
+            cohort=cohort, course=CourseFactory(title="A Retired"), is_active=False
         )
         CohortCourseRegistrationFactory(
-            cohort=cohort, collection=CourseFactory(title="Z Running"), is_active=True
+            cohort=cohort, course=CourseFactory(title="Z Running"), is_active=True
         )
 
         registrations = load_registrations(cohort, mock_site_context.pk)
 
-        assert [reg.collection.title for reg in registrations] == [
+        assert [reg.course.title for reg in registrations] == [
             "Z Running",
             "A Retired",
         ]
@@ -158,19 +156,19 @@ class TestLoadRegistrations:
     ):
         cohort = CohortFactory()
         CohortCourseRegistrationFactory(
-            cohort=cohort, collection=CourseFactory(title="Beta")
+            cohort=cohort, course=CourseFactory(title="Beta")
         )
         CohortCourseRegistrationFactory(
-            cohort=cohort, collection=CourseFactory(title="Alpha")
+            cohort=cohort, course=CourseFactory(title="Alpha")
         )
 
         registrations = load_registrations(cohort, mock_site_context.pk)
 
-        assert [reg.collection.title for reg in registrations] == ["Alpha", "Beta"]
+        assert [reg.course.title for reg in registrations] == ["Alpha", "Beta"]
 
     def test_a_registration_on_another_site_is_excluded(self, mock_site_context):
         cohort = CohortFactory()
-        CohortCourseRegistrationFactory(cohort=cohort, collection=CourseFactory())
+        CohortCourseRegistrationFactory(cohort=cohort, course=CourseFactory())
         other_site = SiteFactory(name="Other", domain="other.test")
 
         assert load_registrations(cohort, other_site.pk) == []
@@ -179,13 +177,13 @@ class TestLoadRegistrations:
         self, mock_site_context, django_assert_num_queries
     ):
         cohort = CohortFactory()
-        CohortCourseRegistrationFactory(cohort=cohort, collection=CourseFactory())
-        CohortCourseRegistrationFactory(cohort=cohort, collection=CourseFactory())
+        CohortCourseRegistrationFactory(cohort=cohort, course=CourseFactory())
+        CohortCourseRegistrationFactory(cohort=cohort, course=CourseFactory())
 
         with django_assert_num_queries(1):
             registrations = load_registrations(cohort, mock_site_context.pk)
             # select_related, so reading the course title adds nothing.
-            [reg.collection.title for reg in registrations]
+            [reg.course.title for reg in registrations]
 
 
 class TestLoadRoster:
@@ -260,7 +258,7 @@ class TestBuildCourseCatalogue:
     def test_an_activity_is_excluded_from_the_item_list(self, mock_site_context):
         cohort = CohortFactory()
         course = CourseFactory()
-        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
         topic = TopicFactory()
         _attach(course, topic, order=0)
         _attach(course, ActivityFactory(), order=1)
@@ -274,7 +272,7 @@ class TestBuildCourseCatalogue:
     def test_a_survey_is_a_form_but_not_a_quiz(self, mock_site_context):
         cohort = CohortFactory()
         course = CourseFactory()
-        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
         survey = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
         _attach(course, survey)
 
@@ -290,7 +288,7 @@ class TestBuildCourseCatalogue:
     ):
         cohort = CohortFactory()
         course = CourseFactory()
-        CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
         first = FormFactory(title="First", strategy=FormStrategy.QUIZ)
         second = FormFactory(title="Second", strategy=FormStrategy.QUIZ)
         _attach(course, first, order=0)
@@ -520,7 +518,7 @@ class TestLoadFirstAttemptIds:
 
         registration, (record,) = _cohort_registered_for(first_course)
         second_registration: CohortCourseRegistration = CohortCourseRegistrationFactory(
-            cohort=registration.cohort, collection=second_course
+            cohort=registration.cohort, course=second_course
         )
         second_record = cohort_progress_record(second_registration, record.learner.user)
 

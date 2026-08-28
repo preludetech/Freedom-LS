@@ -31,9 +31,7 @@ def test_bulk_returns_course_level_deadline(mock_site_context):
     course: Course = CourseFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(learner__user=user, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     course_dt = timezone.now() + timedelta(days=7)
     CohortDeadlineFactory(
@@ -55,9 +53,7 @@ def test_bulk_returns_item_level_deadlines(mock_site_context):
     course: Course = CourseFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(learner__user=user, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     topic1: Topic = TopicFactory(title="T1")
     topic2: Topic = TopicFactory(title="T2")
@@ -96,9 +92,7 @@ def test_bulk_matches_per_item_resolution(mock_site_context):
     course: Course = CourseFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(learner__user=user, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     topic: Topic = TopicFactory(title="Match Topic")
     course.items.create(child=topic, order=0)
@@ -132,12 +126,12 @@ def test_bulk_resolves_only_the_resolved_learners_row_not_a_union(mock_site_cont
 
     reg_a = LearnerCourseRegistrationFactory(
         learner__user=user,
-        collection=course,
+        course=course,
         learner__organisation=OrganisationFactory(),
     )
     reg_b = LearnerCourseRegistrationFactory(
         learner__user=user,
-        collection=course,
+        course=course,
         learner__organisation=OrganisationFactory(),
     )
 
@@ -165,7 +159,7 @@ def test_bulk_empty_when_no_deadlines(mock_site_context):
     course = CourseFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(learner__user=user, cohort=cohort)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     result = get_course_deadlines(user, course)
 
@@ -189,7 +183,7 @@ def test_bulk_drops_a_removed_learners_own_cohort_deadline(mock_site_context):
     CohortMembershipFactory(cohort=cohort, learner=removed)
     CohortDeadlineFactory(
         cohort_course_registration=CohortCourseRegistrationFactory(
-            cohort=cohort, collection=course
+            cohort=cohort, course=course
         ),
         content_item=topic,
         deadline=timezone.now() + timedelta(days=7),
@@ -198,7 +192,7 @@ def test_bulk_drops_a_removed_learners_own_cohort_deadline(mock_site_context):
     individual_dt = timezone.now() - timedelta(days=1)
     LearnerDeadlineFactory(
         learner_course_registration=LearnerCourseRegistrationFactory(
-            learner=removed, collection=course
+            learner=removed, course=course
         ),
         content_item=topic,
         deadline=individual_dt,

@@ -119,7 +119,7 @@ class TestAccessOverrideOnGatedCourse:
         course = CourseFactory(access_config={"access_type": "application_gated"})
         user = UserFactory()
         LearnerCourseRegistrationFactory(
-            learner__user=user, collection=course, is_active=True
+            learner__user=user, course=course, is_active=True
         )
         with override_settings(
             COURSE_ACCESS_BACKEND=APPLICATION_BACKEND,
@@ -243,7 +243,7 @@ class TestFreeOnlyGetAccessExtractionUnaffectedByOverride:
         course = CourseFactory(access_config={"access_type": "free"})
         user = UserFactory()
         LearnerCourseRegistrationFactory(
-            learner__user=user, collection=course, is_active=True
+            learner__user=user, course=course, is_active=True
         )
         with override_settings(OVERRIDE_COURSE_ACCESS_TO_FREE=True):
             decision = FreeOnlyCourseAccessBackend().get_access(

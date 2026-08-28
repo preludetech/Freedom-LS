@@ -58,7 +58,7 @@ class TestAgreesWithCourseProgressFor:
         course: Course = CourseFactory()
         user = UserFactory()
         LearnerCourseRegistrationFactory(
-            learner=LearnerFactory(user=user), collection=course
+            learner=LearnerFactory(user=user), course=course
         )
 
         assert course_progress_by_course_for(user, [course]) == {}
@@ -67,9 +67,7 @@ class TestAgreesWithCourseProgressFor:
         course: Course = CourseFactory()
         user = UserFactory()
         learner = LearnerFactory(user=user)
-        registration = LearnerCourseRegistrationFactory(
-            learner=learner, collection=course
-        )
+        registration = LearnerCourseRegistrationFactory(learner=learner, course=course)
         record = ensure_course_progress_record(learner, course, registration)
 
         assert course_progress_by_course_for(user, [course]) == {course.id: record}
@@ -94,24 +92,22 @@ class TestAgreesWithCourseProgressFor:
         ensure_course_progress_record(
             learner,
             cohort_only,
-            CohortCourseRegistrationFactory(cohort=cohort, collection=cohort_only),
+            CohortCourseRegistrationFactory(cohort=cohort, course=cohort_only),
         )
         ensure_course_progress_record(
             learner,
             individual_only,
-            LearnerCourseRegistrationFactory(
-                learner=learner, collection=individual_only
-            ),
+            LearnerCourseRegistrationFactory(learner=learner, course=individual_only),
         )
         ensure_course_progress_record(
             learner,
             both_grants,
-            CohortCourseRegistrationFactory(cohort=cohort, collection=both_grants),
+            CohortCourseRegistrationFactory(cohort=cohort, course=both_grants),
         )
         ensure_course_progress_record(
             learner,
             both_grants,
-            LearnerCourseRegistrationFactory(learner=learner, collection=both_grants),
+            LearnerCourseRegistrationFactory(learner=learner, course=both_grants),
         )
 
         courses = [cohort_only, individual_only, both_grants, unregistered]
@@ -133,12 +129,12 @@ class TestAgreesWithCourseProgressFor:
         cohort_record = ensure_course_progress_record(
             learner,
             course,
-            CohortCourseRegistrationFactory(cohort=cohort, collection=course),
+            CohortCourseRegistrationFactory(cohort=cohort, course=course),
         )
         ensure_course_progress_record(
             learner,
             course,
-            LearnerCourseRegistrationFactory(learner=learner, collection=course),
+            LearnerCourseRegistrationFactory(learner=learner, course=course),
         )
 
         assert course_progress_by_course_for(user, [course]) == {
@@ -155,11 +151,11 @@ class TestAgreesWithCourseProgressFor:
         CohortMembershipFactory(learner=learner, cohort=older_cohort)
         CohortMembershipFactory(learner=learner, cohort=newer_cohort)
         older_registration = CohortCourseRegistrationFactory(
-            cohort=older_cohort, collection=course
+            cohort=older_cohort, course=course
         )
         _backdate(older_registration, timezone.now() - timedelta(days=7))
         newer_registration = CohortCourseRegistrationFactory(
-            cohort=newer_cohort, collection=course
+            cohort=newer_cohort, course=course
         )
         ensure_course_progress_record(learner, course, older_registration)
         newer_record = ensure_course_progress_record(
@@ -183,11 +179,11 @@ class TestAgreesWithCourseProgressFor:
         lapsed_learner = LearnerFactory(user=user, organisation=OrganisationFactory())
         current_learner = LearnerFactory(user=user, organisation=OrganisationFactory())
         lapsed = LearnerCourseRegistrationFactory(
-            learner=lapsed_learner, collection=course, is_active=False
+            learner=lapsed_learner, course=course, is_active=False
         )
         ensure_course_progress_record(lapsed_learner, course, lapsed)
         current = LearnerCourseRegistrationFactory(
-            learner=current_learner, collection=course, is_active=True
+            learner=current_learner, course=course, is_active=True
         )
         _backdate(current, timezone.now() - timedelta(days=30))
         current_record = ensure_course_progress_record(current_learner, course, current)
@@ -204,9 +200,7 @@ class TestAgreesWithCourseProgressFor:
         ensure_course_progress_record(
             stranger_learner,
             course,
-            LearnerCourseRegistrationFactory(
-                learner=stranger_learner, collection=course
-            ),
+            LearnerCourseRegistrationFactory(learner=stranger_learner, course=course),
         )
 
         assert course_progress_by_course_for(UserFactory(), [course]) == {}
@@ -235,9 +229,9 @@ class TestCourseProgressByCourseForQueryCount:
             ensure_course_progress_record(
                 learner,
                 course,
-                CohortCourseRegistrationFactory(cohort=cohort, collection=course),
+                CohortCourseRegistrationFactory(cohort=cohort, course=course),
             )
-            LearnerCourseRegistrationFactory(learner=learner, collection=course)
+            LearnerCourseRegistrationFactory(learner=learner, course=course)
             courses.append(course)
 
         with django_assert_max_num_queries(3):
@@ -254,7 +248,7 @@ class TestCourseProgressByCourseForQueryCount:
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation)
         course: Course = CourseFactory()
-        registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
         user = UserFactory()
         learner = LearnerFactory(user=user, organisation=organisation)

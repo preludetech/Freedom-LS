@@ -213,12 +213,12 @@ def _attach_to_course(course: Course, form: Form, site: Site) -> None:
 
 def _register(learner: User, course: Course, site: Site) -> None:
     if not LearnerCourseRegistration.objects.filter(
-        learner__user=learner, collection=course, site=site
+        learner__user=learner, course=course, site=site
     ).exists():
         LearnerCourseRegistrationFactory(
             learner__user=learner,
             learner__organisation=get_default_organisation(site),
-            collection=course,
+            course=course,
             site=site,
         )
 

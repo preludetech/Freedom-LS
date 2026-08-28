@@ -31,7 +31,7 @@ def cohort_with_granted_progress(mock_site_context, course_with_topic):
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
     course = course_with_topic()
-    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
     learner = LearnerFactory(organisation=organisation)
     CohortMembershipFactory(cohort=cohort, learner=learner)
     # The receivers that would mint this defer to transaction.on_commit, which a

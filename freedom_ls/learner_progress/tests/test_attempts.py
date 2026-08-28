@@ -130,7 +130,7 @@ class TestGetOrCreateIncomplete:
             course=record.course,
             learner_registration=None,
             cohort_registration=CohortCourseRegistrationFactory(
-                cohort=cohort, collection=record.course
+                cohort=cohort, course=record.course
             ),
         )
         theirs = CourseFormAttemptFactory(

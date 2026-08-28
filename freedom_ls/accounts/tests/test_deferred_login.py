@@ -108,7 +108,7 @@ def test_deferred_login_free_course_enrolls_and_redirects(
     # redirects into the first item — we only need to verify the first hop.
     assert response.status_code == 302
     assert LearnerCourseRegistration.objects.filter(
-        learner__user=user, collection=course
+        learner__user=user, course=course
     ).exists()
 
 

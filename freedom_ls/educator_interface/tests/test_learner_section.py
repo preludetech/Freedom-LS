@@ -136,7 +136,7 @@ def test_learners_list_renders_a_registered_course_through_the_renamed_cell_temp
     organisation = OrganisationFactory()
     LearnerCourseRegistrationFactory(
         learner=_make_learner(organisation=organisation),
-        collection=CourseFactory(title="Intro to Freedom"),
+        course=CourseFactory(title="Intro to Freedom"),
         is_active=True,
     )
 
@@ -196,7 +196,7 @@ class TestLearnerDataTableQueryCost:
                 learner=learner, cohort=_make_cohort(organisation=organisation)
             )
             LearnerCourseRegistrationFactory(
-                learner=learner, collection=CourseFactory(), is_active=True
+                learner=learner, course=CourseFactory(), is_active=True
             )
 
     def _render_query_count(self, site_aware_request, learner_count: int) -> int:

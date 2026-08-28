@@ -60,7 +60,7 @@ def cohort_progress_record(
     learner = Learner._base_manager.get(
         user=user, organisation=registration.cohort.organisation
     )
-    return ensure_course_progress_record(learner, registration.collection, registration)
+    return ensure_course_progress_record(learner, registration.course, registration)
 
 
 def individual_progress_record(
@@ -68,7 +68,7 @@ def individual_progress_record(
 ) -> CourseProgress:
     """The record an individual registration grants its own learner."""
     return ensure_course_progress_record(
-        registration.learner, registration.collection, registration
+        registration.learner, registration.course, registration
     )
 
 

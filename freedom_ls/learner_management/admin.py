@@ -22,10 +22,10 @@ from .models import (
     CohortDeadline,
     CohortMembership,
     Learner,
+    LearnerCohortDeadlineOverride,
     LearnerCourseRegistration,
     LearnerDeadline,
     RecommendedCourse,
-    UserCohortDeadlineOverride,
 )
 
 SCOPE_TO_ORGANISATION_OF_COHORT = "organisation_of_cohort"
@@ -190,8 +190,8 @@ class CohortMembershipInline(TabularInline):
 class CohortCourseRegistrationInline(TabularInline):
     model = CohortCourseRegistration
     extra = 0
-    autocomplete_fields = ["collection"]
-    fields = ["collection", "is_active", "registered_at"]
+    autocomplete_fields = ["course"]
+    fields = ["course", "is_active", "registered_at"]
     readonly_fields = ["registered_at"]
 
     verbose_name = "Course Registration"
@@ -223,21 +223,21 @@ class LearnerDeadlineInline(TabularInline):
 
 @admin.register(LearnerCourseRegistration)
 class LearnerCourseRegistrationAdmin(SiteAwareModelAdmin):
-    list_display = ["get_user_name", "collection", "is_active", "registered_at"]
-    list_select_related = ["learner__user", "collection"]
+    list_display = ["get_user_name", "course", "is_active", "registered_at"]
+    list_select_related = ["learner__user", "course"]
     list_filter = ["is_active", "registered_at"]
     search_fields = [
         "learner__user__email",
         "learner__user__first_name",
         "learner__user__last_name",
-        "collection__title",
+        "course__title",
     ]
-    autocomplete_fields = ["learner", "collection"]
+    autocomplete_fields = ["learner", "course"]
     readonly_fields = ["registered_at"]
     inlines = [LearnerDeadlineInline]
 
     fieldsets = (
-        (None, {"fields": ("learner", "collection", "is_active")}),
+        (None, {"fields": ("learner", "course", "is_active")}),
         ("Timestamps", {"fields": ("registered_at",), "classes": ("collapse",)}),
     )
 
@@ -259,8 +259,8 @@ class CohortDeadlineInline(TabularInline):
     verbose_name_plural = "Deadlines"
 
 
-class UserCohortDeadlineOverrideInline(TabularInline):
-    model = UserCohortDeadlineOverride
+class LearnerCohortDeadlineOverrideInline(TabularInline):
+    model = LearnerCohortDeadlineOverride
     extra = 0
     autocomplete_fields = ["learner"]
     fields = ["learner", "content_type", "object_id", "deadline", "is_hard_deadline"]
@@ -298,16 +298,16 @@ class UserCohortDeadlineOverrideInline(TabularInline):
 
 @admin.register(CohortCourseRegistration)
 class CohortCourseRegistrationAdmin(SiteAwareModelAdmin):
-    list_display = ["cohort", "collection", "is_active", "registered_at"]
-    list_select_related = ["cohort", "collection"]
+    list_display = ["cohort", "course", "is_active", "registered_at"]
+    list_select_related = ["cohort", "course"]
     list_filter = ["is_active", "registered_at"]
-    search_fields = ["cohort__name", "collection__title"]
-    autocomplete_fields = ["cohort", "collection"]
+    search_fields = ["cohort__name", "course__title"]
+    autocomplete_fields = ["cohort", "course"]
     readonly_fields = ["registered_at"]
-    inlines = [CohortDeadlineInline, UserCohortDeadlineOverrideInline]
+    inlines = [CohortDeadlineInline, LearnerCohortDeadlineOverrideInline]
 
     fieldsets = (
-        (None, {"fields": ("cohort", "collection", "is_active")}),
+        (None, {"fields": ("cohort", "course", "is_active")}),
         ("Timestamps", {"fields": ("registered_at",), "classes": ("collapse",)}),
     )
 
@@ -323,16 +323,16 @@ class CohortDeadlineAdmin(SiteAwareModelAdmin):
     ]
     list_select_related = [
         "cohort_course_registration__cohort",
-        "cohort_course_registration__collection",
+        "cohort_course_registration__course",
     ]
     list_filter = [
         "cohort_course_registration__cohort",
-        "cohort_course_registration__collection",
+        "cohort_course_registration__course",
         "is_hard_deadline",
     ]
     search_fields = [
         "cohort_course_registration__cohort__name",
-        "cohort_course_registration__collection__title",
+        "cohort_course_registration__course__title",
     ]
     autocomplete_fields = ["cohort_course_registration"]
 
@@ -343,10 +343,10 @@ class CohortDeadlineAdmin(SiteAwareModelAdmin):
         return obj.cohort_course_registration.cohort.name
 
     @admin.display(
-        description="Course", ordering="cohort_course_registration__collection__title"
+        description="Course", ordering="cohort_course_registration__course__title"
     )
     def get_course_name(self, obj: CohortDeadline) -> str:
-        return obj.cohort_course_registration.collection.title
+        return obj.cohort_course_registration.course.title
 
     @admin.display(description="Content Item")
     def get_content_item(self, obj: CohortDeadline) -> str:
@@ -364,16 +364,16 @@ class LearnerDeadlineAdmin(SiteAwareModelAdmin):
     ]
     list_select_related = [
         "learner_course_registration__learner__user",
-        "learner_course_registration__collection",
+        "learner_course_registration__course",
     ]
     list_filter = [
-        "learner_course_registration__collection",
+        "learner_course_registration__course",
         "is_hard_deadline",
     ]
     search_fields = [
         "learner_course_registration__learner__user__first_name",
         "learner_course_registration__learner__user__last_name",
-        "learner_course_registration__collection__title",
+        "learner_course_registration__course__title",
     ]
     autocomplete_fields = ["learner_course_registration"]
 
@@ -383,15 +383,15 @@ class LearnerDeadlineAdmin(SiteAwareModelAdmin):
 
     @admin.display(description="Course")
     def get_course_name(self, obj: LearnerDeadline) -> str:
-        return obj.learner_course_registration.collection.title
+        return obj.learner_course_registration.course.title
 
     @admin.display(description="Content Item")
     def get_content_item(self, obj: LearnerDeadline) -> str:
         return str(obj.content_item) if obj.content_item else "Whole course"
 
 
-@admin.register(UserCohortDeadlineOverride)
-class UserCohortDeadlineOverrideAdmin(SiteAwareModelAdmin):
+@admin.register(LearnerCohortDeadlineOverride)
+class LearnerCohortDeadlineOverrideAdmin(SiteAwareModelAdmin):
     list_display = [
         "get_user_name",
         "get_cohort_name",
@@ -403,42 +403,42 @@ class UserCohortDeadlineOverrideAdmin(SiteAwareModelAdmin):
     list_select_related = [
         "learner__user",
         "cohort_course_registration__cohort",
-        "cohort_course_registration__collection",
+        "cohort_course_registration__course",
     ]
     list_filter = [
         "cohort_course_registration__cohort",
-        "cohort_course_registration__collection",
+        "cohort_course_registration__course",
         "is_hard_deadline",
     ]
     search_fields = [
         "learner__user__first_name",
         "learner__user__last_name",
         "cohort_course_registration__cohort__name",
-        "cohort_course_registration__collection__title",
+        "cohort_course_registration__course__title",
     ]
     autocomplete_fields = ["cohort_course_registration", "learner"]
 
     @admin.display(description="User")
-    def get_user_name(self, obj: UserCohortDeadlineOverride) -> str:
+    def get_user_name(self, obj: LearnerCohortDeadlineOverride) -> str:
         return str(obj.learner.user)
 
     @admin.display(description="Cohort")
-    def get_cohort_name(self, obj: UserCohortDeadlineOverride) -> str:
+    def get_cohort_name(self, obj: LearnerCohortDeadlineOverride) -> str:
         return obj.cohort_course_registration.cohort.name
 
     @admin.display(description="Course")
-    def get_course_name(self, obj: UserCohortDeadlineOverride) -> str:
-        return obj.cohort_course_registration.collection.title
+    def get_course_name(self, obj: LearnerCohortDeadlineOverride) -> str:
+        return obj.cohort_course_registration.course.title
 
     @admin.display(description="Content Item")
-    def get_content_item(self, obj: UserCohortDeadlineOverride) -> str:
+    def get_content_item(self, obj: LearnerCohortDeadlineOverride) -> str:
         return str(obj.content_item) if obj.content_item else "Whole course"
 
 
 @admin.register(RecommendedCourse)
 class RecommendedCourseAdmin(SiteAwareModelAdmin):
-    list_display = ["user", "collection", "created_at"]
-    search_fields = ["user__email", "collection__title"]
+    list_display = ["user", "course", "created_at"]
+    search_fields = ["user__email", "course__title"]
     list_filter = ["created_at"]
     readonly_fields = ["created_at"]
     exclude = ["site"]

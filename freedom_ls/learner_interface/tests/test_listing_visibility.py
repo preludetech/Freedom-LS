@@ -99,7 +99,7 @@ def test_all_courses_hidden_course_absent_for_removed_learner(
         visibility=CourseVisibility.HIDDEN, slug="hid", title="Hidden Course"
     )
     learner = LearnerFactory(is_active=False)
-    LearnerCourseRegistrationFactory(learner=learner, collection=course, is_active=True)
+    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
     client = logged_in_client(learner.user)
 
     response = client.get(reverse("learner_interface:courses"))
@@ -117,9 +117,7 @@ def test_all_courses_coming_soon_registered_keeps_registered_status(
         visibility=CourseVisibility.COMING_SOON, slug="cs", title="Coming Soon Course"
     )
     user = UserFactory()
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course, is_active=True
-    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
@@ -186,7 +184,7 @@ def test_dashboard_recommended_coming_soon_is_plain_detail_link_no_cta(
         visibility=CourseVisibility.COMING_SOON, slug="cs", title="Coming Soon Course"
     )
     user = UserFactory()
-    RecommendedCourseFactory(user=user, collection=course)
+    RecommendedCourseFactory(user=user, course=course)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -211,7 +209,7 @@ def test_dashboard_hidden_recommended_absent_for_unregistered(
         visibility=CourseVisibility.HIDDEN, slug="hid", title="Hidden Recommended"
     )
     user = UserFactory()
-    RecommendedCourseFactory(user=user, collection=course)
+    RecommendedCourseFactory(user=user, course=course)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -229,10 +227,8 @@ def test_dashboard_hidden_recommended_present_for_registered(
         visibility=CourseVisibility.HIDDEN, slug="hid", title="Hidden Recommended"
     )
     user = UserFactory()
-    RecommendedCourseFactory(user=user, collection=course)
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course, is_active=True
-    )
+    RecommendedCourseFactory(user=user, course=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -262,9 +258,7 @@ def test_dashboard_hidden_present_for_registered_user(
         visibility=CourseVisibility.HIDDEN, slug="hid", title="Hidden Course"
     )
     user = UserFactory()
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course, is_active=True
-    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
@@ -402,7 +396,7 @@ def test_dashboard_recommended_coming_soon_shows_no_chip_with_override(
         title="Preview Launch Course",
     )
     user = UserFactory()
-    RecommendedCourseFactory(user=user, collection=course)
+    RecommendedCourseFactory(user=user, course=course)
     client = logged_in_client(user)
 
     with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True):

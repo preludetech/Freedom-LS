@@ -257,7 +257,7 @@ def _enroll_in_progress(
     learner = ensure_learner(user, get_default_organisation(site))
     registration, _ = LearnerCourseRegistration.objects.get_or_create(
         learner=learner,
-        collection=course,
+        course=course,
         site=site,
         defaults={"is_active": True},
     )
@@ -315,7 +315,7 @@ def command(site_name: str) -> None:
         learner__user=learner, course=gated_course, site=site
     ).delete()
     LearnerCourseRegistration.objects.filter(
-        learner__user=learner, collection=gated_course, site=site
+        learner__user=learner, course=gated_course, site=site
     ).delete()
     application, _ = CourseApplication.objects.get_or_create(
         user=learner, course=gated_course, site=site
@@ -336,7 +336,7 @@ def command(site_name: str) -> None:
     )
 
     gated_reg = LearnerCourseRegistration.objects.filter(
-        learner__user=learner, collection=gated_course, site=site
+        learner__user=learner, course=gated_course, site=site
     ).count()
     app_count = CourseApplication.objects.filter(
         user=learner, course=gated_course, site=site

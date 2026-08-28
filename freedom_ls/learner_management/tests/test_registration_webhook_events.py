@@ -24,8 +24,8 @@ class TestCourseRegisteredWebhookEvent:
             {
                 "user_id": registration.learner.user_id,
                 "user_email": registration.learner.user.email,
-                "course_id": str(registration.collection_id),
-                "course_title": registration.collection.title,
+                "course_id": str(registration.course_id),
+                "course_title": registration.course.title,
                 "registered_at": registration.registered_at.isoformat(),
                 "organisation_id": str(registration.learner.organisation_id),
                 "course_progress_id": str(record.id),

@@ -35,7 +35,7 @@ def test_all_courses_started_course_has_progress_percentage(
 ):
     """Started courses in the all_courses view should have progress_percentage for progress bars."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
@@ -91,7 +91,7 @@ def test_all_courses_registered_zero_percent_has_registered_status(
 ):
     """A registered-but-not-started course has listing_status=REGISTERED and 0% progress."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:courses"))
@@ -109,7 +109,7 @@ def test_all_courses_in_progress_has_in_progress_status(
 ):
     """A started course has listing_status=IN_PROGRESS and progress_percentage > 0."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     course_progress_record(
         courses[0], user, progress_percentage=40, completed_time=None
     )
@@ -130,7 +130,7 @@ def test_all_courses_complete_has_complete_status(
 ):
     """A completed course has listing_status=COMPLETE."""
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=courses[0])
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     course_progress_record(
         courses[0], user, progress_percentage=100, completed_time=timezone.now()
     )

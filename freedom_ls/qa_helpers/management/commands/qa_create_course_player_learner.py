@@ -92,12 +92,12 @@ def _ensure_verified_email(user: User) -> None:
 def _register(user: User, course: Course, site: Site) -> None:
     """Register the user for the course (idempotent)."""
     if not LearnerCourseRegistration.objects.filter(
-        learner__user=user, collection=course, site=site
+        learner__user=user, course=course, site=site
     ).exists():
         LearnerCourseRegistrationFactory(
             learner__user=user,
             learner__organisation=get_default_organisation(site),
-            collection=course,
+            course=course,
             site=site,
         )
 
@@ -245,7 +245,7 @@ def command(site_name: str) -> None:
         learner__user=learner, course=not_enrolled_course, site=site
     ).delete()
     LearnerCourseRegistration.objects.filter(
-        learner__user=learner, collection=not_enrolled_course, site=site
+        learner__user=learner, course=not_enrolled_course, site=site
     ).delete()
     click.secho(
         f"NOT enrolled: {not_enrolled_course.slug} "

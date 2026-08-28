@@ -131,9 +131,9 @@ def command(site_name: str) -> None:
     course = Course.objects.filter(site=site).order_by("title").first()
     if course is not None:
         if not CohortCourseRegistration.objects.filter(
-            cohort=cohort, collection=course, site=site
+            cohort=cohort, course=course, site=site
         ).exists():
-            CohortCourseRegistrationFactory(cohort=cohort, collection=course, site=site)
+            CohortCourseRegistrationFactory(cohort=cohort, course=course, site=site)
             click.secho(f"Registered cohort for '{course.title}'", fg="green")
         else:
             click.secho(f"Already registered for '{course.title}'", fg="yellow")

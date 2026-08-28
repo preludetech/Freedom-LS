@@ -19,8 +19,8 @@ from freedom_ls.learner_management.factories import (
     CohortDeadlineFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCohortDeadlineOverrideFactory,
     LearnerCourseRegistrationFactory,
-    UserCohortDeadlineOverrideFactory,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -67,11 +67,11 @@ def test_panel_defaults_to_first_active_registration(
     cohort = CohortFactory()
     course = CourseFactory(title="Test Course")
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     # Create a second inactive registration
     course2 = CourseFactory(title="Inactive Course")
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course2, is_active=False)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course2, is_active=False)
 
     panel = CohortCourseProgressPanel(cohort)
     request = site_aware_request.get("/")
@@ -89,11 +89,11 @@ def test_panel_selects_specific_registration_via_get_param(
     cohort = CohortFactory()
     course = CourseFactory(title="Test Course")
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     course2 = CourseFactory(title="Second Course")
     reg2: CohortCourseRegistration = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course2
+        cohort=cohort, course=course2
     )
 
     panel = CohortCourseProgressPanel(cohort)
@@ -111,7 +111,7 @@ def test_panel_includes_inactive_registrations_in_dropdown(
     cohort = CohortFactory()
     course = CourseFactory(title="Test Course")
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course, is_active=False)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=False)
 
     panel = CohortCourseProgressPanel(cohort)
     request = site_aware_request.get("/")
@@ -126,7 +126,7 @@ def test_learners_sorted_by_progress_ascending(mock_site_context, site_aware_req
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     topic = TopicFactory(title="Topic 1")
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
@@ -156,7 +156,7 @@ def test_learners_without_course_progress_appear_first(
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     topic = TopicFactory(title="Topic 1")
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
@@ -182,7 +182,7 @@ def test_column_pagination_slices_items(mock_site_context, site_aware_request):
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     # Create 20 topics (more than page size of 15)
     for i in range(20):
@@ -218,7 +218,7 @@ def test_cell_data_fetched_only_for_visible_window(
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     topics = []
     for i in range(20):
@@ -257,7 +257,7 @@ def test_displayed_percentage_matches_actual_completion(
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     topic1 = TopicFactory(title="Topic 1")
     topic2 = TopicFactory(title="Topic 2")
@@ -288,7 +288,7 @@ def test_panel_internal_htmx_swap_returns_content_only(
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     _make_user("learner@example.com", cohort)
 
@@ -316,7 +316,7 @@ def test_tab_level_htmx_request_keeps_chrome(mock_site_context, site_aware_reque
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     _make_user("learner@example.com", cohort)
 
@@ -340,7 +340,7 @@ def test_pagination_comment_does_not_leak_into_rendered_html(
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     topic = TopicFactory(title="Topic 1")
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
@@ -364,7 +364,7 @@ def test_column_pagination_links_preserve_learner_page(
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     # Enough columns for >1 page
     for i in range(20):
@@ -395,7 +395,7 @@ def test_learner_pagination_links_preserve_column_page(
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     for i in range(20):
         topic = TopicFactory(title=f"Topic {i:02d}")
@@ -421,9 +421,7 @@ def test_item_deadlines_shown_in_column_headers(mock_site_context, site_aware_re
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     topic1 = TopicFactory(title="Topic Hard")
     topic2 = TopicFactory(title="Topic Soft")
@@ -490,10 +488,10 @@ def test_percentage_is_the_selected_cohorts_figure_for_a_learner_in_two_organisa
     cohort_here = CohortFactory(organisation=OrganisationFactory())
     cohort_elsewhere = CohortFactory(organisation=OrganisationFactory())
     registration_here = CohortCourseRegistrationFactory(
-        cohort=cohort_here, collection=course
+        cohort=cohort_here, course=course
     )
     registration_elsewhere = CohortCourseRegistrationFactory(
-        cohort=cohort_elsewhere, collection=course
+        cohort=cohort_elsewhere, course=course
     )
 
     user: User = UserFactory(email="two_organisations@example.com")
@@ -523,10 +521,10 @@ def test_the_other_organisations_panel_shows_its_own_figure(
     cohort_here = CohortFactory(organisation=OrganisationFactory())
     cohort_elsewhere = CohortFactory(organisation=OrganisationFactory())
     registration_here = CohortCourseRegistrationFactory(
-        cohort=cohort_here, collection=course
+        cohort=cohort_here, course=course
     )
     registration_elsewhere = CohortCourseRegistrationFactory(
-        cohort=cohort_elsewhere, collection=course
+        cohort=cohort_elsewhere, course=course
     )
 
     user: User = UserFactory(email="two_organisations@example.com")
@@ -554,14 +552,14 @@ def test_work_done_under_an_individual_registration_is_not_shown_in_the_cohort_m
     course, topics = _course_with_topics(4)
     educator_user = UserFactory(staff=True)
     cohort = CohortFactory()
-    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     user = _make_user("also_registered_alone@example.com", cohort)
     learner = cohort_progress_record(registration, user).learner
     individual_record = ensure_course_progress_record(
         learner,
         course,
-        LearnerCourseRegistrationFactory(learner=learner, collection=course),
+        LearnerCourseRegistrationFactory(learner=learner, course=course),
     )
     complete_topic_in_record(individual_record, topics[0])
     complete_topic_in_record(individual_record, topics[1])
@@ -585,16 +583,14 @@ def test_the_percentage_column_and_the_cells_come_from_the_same_record(
     course, topics = _course_with_topics(4)
     educator_user = UserFactory(staff=True)
     cohort = CohortFactory()
-    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     user = _make_user("both_registrations@example.com", cohort)
     cohort_record = cohort_progress_record(registration, user)
     individual_record = ensure_course_progress_record(
         cohort_record.learner,
         course,
-        LearnerCourseRegistrationFactory(
-            learner=cohort_record.learner, collection=course
-        ),
+        LearnerCourseRegistrationFactory(learner=cohort_record.learner, course=course),
     )
     complete_topic_in_record(cohort_record, topics[0])
     complete_topic_in_record(individual_record, topics[1])
@@ -620,14 +616,14 @@ def test_a_learner_deadline_override_reaches_only_that_learners_cell(
     course, topics = _course_with_topics(2)
     educator_user = UserFactory(staff=True)
     cohort = CohortFactory()
-    registration = CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     user = _make_user("extended@example.com", cohort)
     _make_user("on_time@example.com", cohort)
     learner = cohort_progress_record(registration, user).learner
 
     override_deadline = timezone.now() + timedelta(days=97)
-    UserCohortDeadlineOverrideFactory(
+    LearnerCohortDeadlineOverrideFactory(
         cohort_course_registration=registration,
         learner=learner,
         content_item=topics[0],
@@ -653,7 +649,7 @@ def test_panel_says_a_separate_registration_tracks_its_own_progress(
     cohort = CohortFactory()
     course = CourseFactory()
     educator_user = UserFactory(staff=True)
-    CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     _make_user("learner@example.com", cohort)
 

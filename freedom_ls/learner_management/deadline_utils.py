@@ -15,9 +15,9 @@ from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortDeadline,
     CohortMembership,
+    LearnerCohortDeadlineOverride,
     LearnerCourseRegistration,
     LearnerDeadline,
-    UserCohortDeadlineOverride,
 )
 from freedom_ls.learner_management.queries import learner_for_course
 
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
     from freedom_ls.learner_management.models import Learner
 
-type _DeadlineType = CohortDeadline | LearnerDeadline | UserCohortDeadlineOverride
+type _DeadlineType = CohortDeadline | LearnerDeadline | LearnerCohortDeadlineOverride
 type _IndexKey = tuple[uuid.UUID, int | None, uuid.UUID | None]
 
 
@@ -80,7 +80,7 @@ def get_effective_deadlines(
 
     cohort_regs = CohortCourseRegistration.objects.filter(
         cohort_id__in=cohort_ids,
-        collection=course,
+        course=course,
         is_active=True,
     ).select_related("cohort")
 
@@ -95,7 +95,7 @@ def get_effective_deadlines(
     # keep resolving.
     learner_regs = LearnerCourseRegistration.objects.filter(
         learner=learner,
-        collection=course,
+        course=course,
         is_active=True,
     )
 
@@ -115,11 +115,11 @@ def _resolve_cohort_deadline(
 ) -> EffectiveDeadline | None:
     """Resolve the effective deadline for a single cohort registration.
 
-    Priority: UserCohortDeadlineOverride > CohortDeadline > course-level fallback.
+    Priority: LearnerCohortDeadlineOverride > CohortDeadline > course-level fallback.
     """
     # 1. Check for learner-specific override for this item
     if content_type_id is not None:
-        override = UserCohortDeadlineOverride.objects.filter(
+        override = LearnerCohortDeadlineOverride.objects.filter(
             cohort_course_registration=reg,
             learner=learner,
             content_type_id=content_type_id,
@@ -146,7 +146,7 @@ def _resolve_cohort_deadline(
             )
 
     # 3. Fall back to course-level override
-    course_override = UserCohortDeadlineOverride.objects.filter(
+    course_override = LearnerCohortDeadlineOverride.objects.filter(
         cohort_course_registration=reg,
         learner=learner,
         content_type__isnull=True,
@@ -246,14 +246,14 @@ def get_course_deadlines(
 
     cohort_regs = list(
         CohortCourseRegistration.objects.filter(
-            cohort_id__in=cohort_ids, collection=course, is_active=True
+            cohort_id__in=cohort_ids, course=course, is_active=True
         ).select_related("cohort")
     )
 
     learner_regs = list(
         LearnerCourseRegistration.objects.filter(
             learner=learner,
-            collection=course,
+            course=course,
             is_active=True,
         )
     )
@@ -269,7 +269,7 @@ def get_course_deadlines(
         CohortDeadline.objects.filter(cohort_course_registration_id__in=cohort_reg_ids)
     )
     all_overrides = list(
-        UserCohortDeadlineOverride.objects.filter(
+        LearnerCohortDeadlineOverride.objects.filter(
             cohort_course_registration_id__in=cohort_reg_ids, learner=learner
         )
     )

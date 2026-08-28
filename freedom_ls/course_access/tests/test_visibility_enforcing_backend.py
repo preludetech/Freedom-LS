@@ -130,7 +130,7 @@ class TestVisibilityEnforcingBackendGetAccess:
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
         user = UserFactory()
         LearnerCourseRegistrationFactory(
-            learner__user=user, collection=course, is_active=True
+            learner__user=user, course=course, is_active=True
         )
         decision = _decision_for(backend_path, user=user, course=course)
 
@@ -147,7 +147,7 @@ class TestVisibilityEnforcingBackendGetAccess:
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
         user = UserFactory()
         LearnerCourseRegistrationFactory(
-            learner__user=user, collection=course, is_active=True
+            learner__user=user, course=course, is_active=True
         )
         decision = _decision_for(backend_path, user=user, course=course)
 
@@ -202,7 +202,7 @@ class TestVisibilityEnforcingBackendFilterVisible:
         course = CourseFactory(visibility=CourseVisibility.HIDDEN)
         user = UserFactory()
         LearnerCourseRegistrationFactory(
-            learner__user=user, collection=course, is_active=True
+            learner__user=user, course=course, is_active=True
         )
         result = _filter_visible_for(
             backend_path, user=user, courses=Course.objects.all()
@@ -238,9 +238,7 @@ class TestVisibilityEnforcingBackendFilterVisible:
         user = UserFactory()
         cohort = CohortFactory()
         CohortMembershipFactory(learner__user=user, cohort=cohort)
-        CohortCourseRegistrationFactory(
-            cohort=cohort, collection=course, is_active=True
-        )
+        CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=True)
         result = list(
             _filter_visible_for(backend_path, user=user, courses=Course.objects.all())
         )

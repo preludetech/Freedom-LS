@@ -41,7 +41,7 @@ class CourseProgressFactory(SiteAwareFactory):
     learner_registration = factory.SubFactory(
         LearnerCourseRegistrationFactory,
         learner=factory.SelfAttribute("..learner"),
-        collection=factory.SelfAttribute("..course"),
+        course=factory.SelfAttribute("..course"),
     )
 
 

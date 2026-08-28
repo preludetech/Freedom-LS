@@ -58,9 +58,7 @@ def cohort_progress_record(
     learner = Learner.objects.get(
         user=user, organisation=registration.cohort.organisation
     )
-    record = ensure_course_progress_record(
-        learner, registration.collection, registration
-    )
+    record = ensure_course_progress_record(learner, registration.course, registration)
     if fields:
         for name, value in fields.items():
             setattr(record, name, value)

@@ -80,8 +80,8 @@ class TestCrossOrganisationIsolation:
         CohortMembershipFactory(cohort=cohort_b, learner=shared_in_b)
         course_a = CourseFactory(title="Course A Only")
         course_b = CourseFactory(title="Course B Only")
-        LearnerCourseRegistrationFactory(learner=shared_in_a, collection=course_a)
-        LearnerCourseRegistrationFactory(learner=shared_in_b, collection=course_b)
+        LearnerCourseRegistrationFactory(learner=shared_in_a, course=course_a)
+        LearnerCourseRegistrationFactory(learner=shared_in_b, course=course_b)
 
         return SimpleNamespace(
             organisation_a=organisation_a,

@@ -278,12 +278,12 @@ def _attach(course: Course, child: Form | Topic, order: int, site: Site) -> None
 
 def _register(user: User, course: Course, site: Site) -> None:
     if not LearnerCourseRegistration.objects.filter(
-        learner__user=user, collection=course, site=site
+        learner__user=user, course=course, site=site
     ).exists():
         LearnerCourseRegistrationFactory(
             learner__user=user,
             learner__organisation=get_default_organisation(site),
-            collection=course,
+            course=course,
             site=site,
         )
 
@@ -455,9 +455,9 @@ def _get_or_create_cohort(site: Site) -> Cohort:
 
 def _register_cohort(cohort: Cohort, course: Course, site: Site) -> None:
     if not CohortCourseRegistration.objects.filter(
-        cohort=cohort, collection=course, site=site
+        cohort=cohort, course=course, site=site
     ).exists():
-        CohortCourseRegistrationFactory(cohort=cohort, collection=course, site=site)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course, site=site)
 
 
 def _add_member(user: User, cohort: Cohort, site: Site) -> None:

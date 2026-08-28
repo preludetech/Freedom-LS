@@ -15,10 +15,10 @@ from freedom_ls.learner_management.factories import (
     CohortDeadlineFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCohortDeadlineOverrideFactory,
     LearnerCourseRegistrationFactory,
     LearnerDeadlineFactory,
     LearnerFactory,
-    UserCohortDeadlineOverrideFactory,
 )
 from freedom_ls.learner_management.models import CohortMembership
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -34,9 +34,7 @@ def test_single_cohort_deadline_resolves(mock_site_context):
     topic = TopicFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(learner__user=user, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     deadline_dt = timezone.now() + timedelta(days=7)
     CohortDeadlineFactory(
@@ -55,7 +53,7 @@ def test_single_cohort_deadline_resolves(mock_site_context):
 
 @pytest.mark.django_db
 def test_override_beats_cohort_deadline(mock_site_context):
-    """UserCohortDeadlineOverride takes precedence over CohortDeadline for that user."""
+    """LearnerCohortDeadlineOverride takes precedence over CohortDeadline for that user."""
     user = UserFactory()
     course = CourseFactory()
     topic = TopicFactory()
@@ -63,9 +61,7 @@ def test_override_beats_cohort_deadline(mock_site_context):
     membership: CohortMembership = CohortMembershipFactory(
         learner__user=user, cohort=cohort
     )
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     cohort_dt = timezone.now() + timedelta(days=7)
     override_dt = timezone.now() + timedelta(days=14)
@@ -75,7 +71,7 @@ def test_override_beats_cohort_deadline(mock_site_context):
         content_item=topic,
         deadline=cohort_dt,
     )
-    UserCohortDeadlineOverrideFactory(
+    LearnerCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         learner=membership.learner,
         content_item=topic,
@@ -100,10 +96,8 @@ def test_override_source_string_renders_the_person_not_learner_str(mock_site_con
     membership: CohortMembership = CohortMembershipFactory(
         learner__user=user, cohort=cohort
     )
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
-    UserCohortDeadlineOverrideFactory(
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    LearnerCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         learner=membership.learner,
         content_item=topic,
@@ -150,8 +144,8 @@ def test_two_cohorts_in_the_same_organisation_show_both_deadlines(mock_site_cont
         learner__user=user, learner__organisation=organisation, cohort=cohort_b
     )
 
-    reg_a = CohortCourseRegistrationFactory(cohort=cohort_a, collection=course)
-    reg_b = CohortCourseRegistrationFactory(cohort=cohort_b, collection=course)
+    reg_a = CohortCourseRegistrationFactory(cohort=cohort_a, course=course)
+    reg_b = CohortCourseRegistrationFactory(cohort=cohort_b, course=course)
 
     dt_a = timezone.now() + timedelta(days=5)
     dt_b = timezone.now() + timedelta(days=10)
@@ -186,13 +180,13 @@ def _two_organisation_deadlines(user, course, topic, *, active_organisation: str
     registration_a = LearnerCourseRegistrationFactory(
         learner__user=user,
         learner__organisation=OrganisationFactory(),
-        collection=course,
+        course=course,
         is_active=active_organisation == "a",
     )
     registration_b = LearnerCourseRegistrationFactory(
         learner__user=user,
         learner__organisation=OrganisationFactory(),
-        collection=course,
+        course=course,
         is_active=active_organisation == "b",
     )
     LearnerDeadlineFactory(
@@ -252,11 +246,9 @@ def test_cohort_plus_individual_registration_shows_both(mock_site_context):
     topic = TopicFactory()
     cohort = CohortFactory()
     membership = CohortMembershipFactory(learner__user=user, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
     learner_course_reg = LearnerCourseRegistrationFactory(
-        learner=membership.learner, collection=course
+        learner=membership.learner, course=course
     )
 
     cohort_dt = timezone.now() + timedelta(days=5)
@@ -294,12 +286,12 @@ def test_two_individual_registrations_through_different_organisations_show_only_
     topic = TopicFactory()
     reg_a = LearnerCourseRegistrationFactory(
         learner__user=user,
-        collection=course,
+        course=course,
         learner__organisation=OrganisationFactory(),
     )
     reg_b = LearnerCourseRegistrationFactory(
         learner__user=user,
-        collection=course,
+        course=course,
         learner__organisation=OrganisationFactory(),
     )
 
@@ -329,9 +321,7 @@ def test_item_level_deadline_beats_course_level(mock_site_context):
     topic = TopicFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(learner__user=user, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     course_dt = timezone.now() + timedelta(days=14)
     item_dt = timezone.now() + timedelta(days=7)
@@ -360,9 +350,7 @@ def test_course_level_deadline_falls_through_when_no_item_level(mock_site_contex
     topic = TopicFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(learner__user=user, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     course_dt = timezone.now() + timedelta(days=14)
 
@@ -386,7 +374,7 @@ def test_inactive_registrations_ignored(mock_site_context):
     cohort = CohortFactory()
     CohortMembershipFactory(learner__user=user, cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course, is_active=False
+        cohort=cohort, course=course, is_active=False
     )
 
     CohortDeadlineFactory(
@@ -407,9 +395,7 @@ def test_course_level_deadline_resolves_for_course(mock_site_context):
     course = CourseFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(learner__user=user, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     course_dt = timezone.now() + timedelta(days=7)
     CohortDeadlineFactory(
@@ -434,9 +420,7 @@ def test_expired_hard_deadline_incomplete_locks_item(mock_site_context):
     topic = TopicFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(learner__user=user, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
@@ -456,9 +440,7 @@ def test_expired_hard_deadline_completed_not_locked(mock_site_context):
     topic = TopicFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(learner__user=user, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
@@ -478,9 +460,7 @@ def test_soft_deadline_never_locks(mock_site_context):
     topic = TopicFactory()
     cohort = CohortFactory()
     CohortMembershipFactory(learner__user=user, cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
     CohortDeadlineFactory(
         cohort_course_registration=cohort_course_reg,
@@ -511,8 +491,8 @@ def test_most_permissive_deadline_governs_access(mock_site_context):
         learner__user=user, learner__organisation=organisation, cohort=cohort_b
     )
 
-    reg_a = CohortCourseRegistrationFactory(cohort=cohort_a, collection=course)
-    reg_b = CohortCourseRegistrationFactory(cohort=cohort_b, collection=course)
+    reg_a = CohortCourseRegistrationFactory(cohort=cohort_a, course=course)
+    reg_b = CohortCourseRegistrationFactory(cohort=cohort_b, course=course)
 
     # Cohort A: expired
     CohortDeadlineFactory(
@@ -565,7 +545,7 @@ def test_removed_learners_cohort_deadline_does_not_unlock_the_item(mock_site_con
     )
     CohortDeadlineFactory(
         cohort_course_registration=CohortCourseRegistrationFactory(
-            cohort=cohort_a, collection=course
+            cohort=cohort_a, course=course
         ),
         content_item=topic,
         deadline=timezone.now() + timedelta(days=7),
@@ -573,7 +553,7 @@ def test_removed_learners_cohort_deadline_does_not_unlock_the_item(mock_site_con
     )
     CohortDeadlineFactory(
         cohort_course_registration=CohortCourseRegistrationFactory(
-            cohort=cohort_b, collection=course
+            cohort=cohort_b, course=course
         ),
         content_item=topic,
         deadline=timezone.now() - timedelta(days=1),
@@ -596,7 +576,7 @@ def test_a_removed_learners_cohort_contributes_no_deadline(mock_site_context):
     )
     CohortDeadlineFactory(
         cohort_course_registration=CohortCourseRegistrationFactory(
-            cohort=cohort, collection=course
+            cohort=cohort, course=course
         ),
         content_item=topic,
         deadline=timezone.now() + timedelta(days=7),
@@ -623,7 +603,7 @@ def test_a_removed_learners_own_registration_still_reaches_their_own_deadlines(
     deadline_dt = timezone.now() + timedelta(days=7)
     LearnerDeadlineFactory(
         learner_course_registration=LearnerCourseRegistrationFactory(
-            learner=removed, collection=course
+            learner=removed, course=course
         ),
         content_item=topic,
         deadline=deadline_dt,
@@ -653,7 +633,7 @@ def test_a_removed_learners_own_cohort_deadline_cannot_unlock_the_item(
     CohortMembershipFactory(cohort=cohort, learner=removed)
     CohortDeadlineFactory(
         cohort_course_registration=CohortCourseRegistrationFactory(
-            cohort=cohort, collection=course
+            cohort=cohort, course=course
         ),
         content_item=topic,
         deadline=timezone.now() + timedelta(days=7),
@@ -661,7 +641,7 @@ def test_a_removed_learners_own_cohort_deadline_cannot_unlock_the_item(
     )
     LearnerDeadlineFactory(
         learner_course_registration=LearnerCourseRegistrationFactory(
-            learner=removed, collection=course
+            learner=removed, course=course
         ),
         content_item=topic,
         deadline=timezone.now() - timedelta(days=1),

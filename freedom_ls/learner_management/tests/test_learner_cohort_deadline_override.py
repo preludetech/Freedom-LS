@@ -9,12 +9,12 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCohortDeadlineOverrideFactory,
     LearnerFactory,
-    UserCohortDeadlineOverrideFactory,
 )
 from freedom_ls.learner_management.models import (
     CohortMembership,
-    UserCohortDeadlineOverride,
+    LearnerCohortDeadlineOverride,
 )
 
 
@@ -28,7 +28,7 @@ def test_create_override_with_content_item(mock_site_context):
 
     deadline_dt = timezone.now() + timezone.timedelta(days=7)
 
-    override: UserCohortDeadlineOverride = UserCohortDeadlineOverrideFactory(
+    override: LearnerCohortDeadlineOverride = LearnerCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         learner=membership.learner,
         content_item=topic,
@@ -49,7 +49,7 @@ def test_create_override_for_whole_course(mock_site_context):
     membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
-    override: UserCohortDeadlineOverride = UserCohortDeadlineOverrideFactory(
+    override: LearnerCohortDeadlineOverride = LearnerCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         learner=membership.learner,
     )
@@ -65,7 +65,7 @@ def test_str_with_content_item(mock_site_context):
     membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
-    override = UserCohortDeadlineOverrideFactory(
+    override = LearnerCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         learner=membership.learner,
         content_item=topic,
@@ -83,7 +83,7 @@ def test_str_without_content_item(mock_site_context):
     membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
-    override = UserCohortDeadlineOverrideFactory(
+    override = LearnerCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         learner=membership.learner,
     )
@@ -99,7 +99,7 @@ def test_unique_constraint_prevents_duplicate_item_override(mock_site_context):
     membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
-    UserCohortDeadlineOverrideFactory(
+    LearnerCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         learner=membership.learner,
         content_item=topic,
@@ -107,7 +107,7 @@ def test_unique_constraint_prevents_duplicate_item_override(mock_site_context):
     )
 
     with pytest.raises(IntegrityError):
-        UserCohortDeadlineOverrideFactory(
+        LearnerCohortDeadlineOverrideFactory(
             cohort_course_registration=cohort_course_reg,
             learner=membership.learner,
             content_item=topic,
@@ -122,12 +122,12 @@ def test_clean_prevents_duplicate_course_level_override(mock_site_context):
     membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
-    UserCohortDeadlineOverrideFactory(
+    LearnerCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         learner=membership.learner,
     )
 
-    duplicate = UserCohortDeadlineOverride(
+    duplicate = LearnerCohortDeadlineOverride(
         cohort_course_registration=cohort_course_reg,
         learner=membership.learner,
         deadline=timezone.now() + timezone.timedelta(days=14),
@@ -144,7 +144,7 @@ def test_clean_validates_learner_in_cohort(mock_site_context):
     learner = LearnerFactory(organisation=cohort_course_reg.cohort.organisation)
 
     # learner is NOT in the cohort (no membership created)
-    override = UserCohortDeadlineOverride(
+    override = LearnerCohortDeadlineOverride(
         cohort_course_registration=cohort_course_reg,
         learner=learner,
         deadline=timezone.now() + timezone.timedelta(days=7),
@@ -159,7 +159,7 @@ def test_clean_does_not_raise_when_learner_is_unset(mock_site_context):
     """An unset learner means a field-level error already exists (an invalid
     choice in the admin inline); clean() must let that surface rather than
     crashing on the missing relation."""
-    override = UserCohortDeadlineOverride(
+    override = LearnerCohortDeadlineOverride(
         cohort_course_registration=CohortCourseRegistrationFactory(),
         deadline=timezone.now() + timezone.timedelta(days=7),
     )
@@ -169,7 +169,7 @@ def test_clean_does_not_raise_when_learner_is_unset(mock_site_context):
 
 @pytest.mark.django_db
 def test_clean_does_not_raise_when_the_registration_is_unset(mock_site_context):
-    override = UserCohortDeadlineOverride(
+    override = LearnerCohortDeadlineOverride(
         learner=LearnerFactory(),
         deadline=timezone.now() + timezone.timedelta(days=7),
     )

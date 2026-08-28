@@ -136,9 +136,7 @@ def _ensure_and_announce(
     learner = Learner._base_manager.select_related("user").get(
         pk=registration.learner_id
     )
-    record = ensure_course_progress_record(
-        learner, registration.collection, registration
-    )
+    record = ensure_course_progress_record(learner, registration.course, registration)
     if not announce:
         return
 
@@ -147,8 +145,8 @@ def _ensure_and_announce(
         {
             "user_id": learner.user_id,
             "user_email": learner.user.email,
-            "course_id": str(registration.collection_id),
-            "course_title": registration.collection.title,
+            "course_id": str(registration.course_id),
+            "course_title": registration.course.title,
             "registered_at": registration.registered_at.isoformat(),
             "organisation_id": str(learner.organisation_id),
             "course_progress_id": str(record.id),
@@ -163,9 +161,9 @@ def _ensure_for_membership(membership: CohortMembership) -> None:
         return
     registrations = CohortCourseRegistration._base_manager.filter(
         cohort_id=membership.cohort_id, is_active=True
-    ).select_related("collection")
+    ).select_related("course")
     for registration in registrations:
-        ensure_course_progress_record(learner, registration.collection, registration)
+        ensure_course_progress_record(learner, registration.course, registration)
 
 
 # Registration is what grants a record, so these three receivers are the only

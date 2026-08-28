@@ -199,7 +199,7 @@ class CourseProgress(SiteAwareModel):
 
         learner_registration = self.learner_registration
         if learner_registration is not None:
-            if learner_registration.collection_id != self.course_id:
+            if learner_registration.course_id != self.course_id:
                 raise ValidationError(
                     "The learner registration must be for this course."
                 )
@@ -210,7 +210,7 @@ class CourseProgress(SiteAwareModel):
 
         cohort_registration = self.cohort_registration
         if cohort_registration is not None:
-            if cohort_registration.collection_id != self.course_id:
+            if cohort_registration.course_id != self.course_id:
                 raise ValidationError(
                     "The cohort registration must be for this course."
                 )

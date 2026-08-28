@@ -99,10 +99,10 @@ class TestLearnerCourseRegistrationUniqueness:
     ):
         course = CourseFactory()
         learner = LearnerFactory()
-        LearnerCourseRegistrationFactory(learner=learner, collection=course)
+        LearnerCourseRegistrationFactory(learner=learner, course=course)
 
         with pytest.raises(IntegrityError):
-            LearnerCourseRegistrationFactory(learner=learner, collection=course)
+            LearnerCourseRegistrationFactory(learner=learner, course=course)
 
     def test_one_user_may_register_for_one_course_through_two_organisations(
         self, mock_site_context
@@ -111,12 +111,12 @@ class TestLearnerCourseRegistrationUniqueness:
         course = CourseFactory()
         learner_a = LearnerFactory(user=user, organisation=OrganisationFactory())
         learner_b = LearnerFactory(user=user, organisation=OrganisationFactory())
-        LearnerCourseRegistrationFactory(learner=learner_a, collection=course)
-        LearnerCourseRegistrationFactory(learner=learner_b, collection=course)
+        LearnerCourseRegistrationFactory(learner=learner_a, course=course)
+        LearnerCourseRegistrationFactory(learner=learner_b, course=course)
 
         assert (
             LearnerCourseRegistration.objects.filter(
-                learner__user=user, collection=course
+                learner__user=user, course=course
             ).count()
             == 2
         )
@@ -152,7 +152,7 @@ class TestDeactivatingALearnerPreservesRecords:
     def test_access_to_the_registered_course_is_suspended(self, mock_site_context):
         course = CourseFactory()
         learner = LearnerFactory()
-        LearnerCourseRegistrationFactory(learner=learner, collection=course)
+        LearnerCourseRegistrationFactory(learner=learner, course=course)
 
         learner.is_active = False
         learner.save()

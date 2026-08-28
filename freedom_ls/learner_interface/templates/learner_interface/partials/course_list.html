@@ -55,7 +55,7 @@ course.listing_status. No per-status dispatch or leaf templates here.
             {% endwith %}
             <div class="grid gap-6 md:gap-8 lg:gap-10 md:grid-cols-2 lg:grid-cols-3">
                 {% for recommendation in recommended_courses %}
-                    {% with course=recommendation.collection %}
+                    {% with course=recommendation.course %}
                         {% include "learner_interface/partials/course_card.html" %}
                     {% endwith %}
                 {% endfor %}

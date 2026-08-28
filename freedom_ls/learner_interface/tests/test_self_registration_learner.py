@@ -43,7 +43,7 @@ class TestInitiateCourseAccessSelfRegistration:
         learner = Learner.objects.get(user=user, organisation=default_organisation)
         assert learner.is_active is True
         assert LearnerCourseRegistration.objects.filter(
-            learner=learner, collection=course, is_active=True
+            learner=learner, course=course, is_active=True
         ).exists()
 
     def test_self_registering_twice_creates_one_learner_and_one_registration(
@@ -67,7 +67,7 @@ class TestInitiateCourseAccessSelfRegistration:
         )
         assert (
             LearnerCourseRegistration.objects.filter(
-                learner__user=user, collection=course
+                learner__user=user, course=course
             ).count()
             == 1
         )
@@ -103,7 +103,7 @@ class TestInitiateCourseAccessSelfRegistration:
         user = UserFactory()
         learner = LearnerFactory(user=user, organisation=get_default_organisation(site))
         LearnerCourseRegistrationFactory(
-            learner=learner, collection=course, is_active=False
+            learner=learner, course=course, is_active=False
         )
         client = logged_in_client(user)
         assert is_registered_for_course(user, course) is False

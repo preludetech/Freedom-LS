@@ -80,7 +80,7 @@ def test_initiate_access_gated_course_creates_no_registration(
     client.post(url)
 
     assert not LearnerCourseRegistration.objects.filter(
-        learner__user=user, collection=course
+        learner__user=user, course=course
     ).exists()
 
 
@@ -120,7 +120,7 @@ def test_initiate_access_free_course_creates_registration(
     client.post(url)
 
     assert LearnerCourseRegistration.objects.filter(
-        learner__user=user, collection=course
+        learner__user=user, course=course
     ).exists()
 
 
@@ -238,7 +238,7 @@ def test_course_detail_registered_shows_start_course_label(
     """course_detail for a registered learner with 0 progress shows 'Start course'."""
     course = course_with_topic(access_type="free")
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     client = logged_in_client(user)
 
     url = reverse(
@@ -350,7 +350,7 @@ def test_view_course_item_registered_renders_content(
     """view_course_item for a registered learner renders the content (not a redirect)."""
     course = course_with_topic(access_type="free")
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     client = logged_in_client(user)
 
     url = reverse(
@@ -370,7 +370,7 @@ def test_view_course_item_removed_learner_redirects_to_course_detail(
     redirects to course_detail exactly as it would for an unregistered user."""
     course = course_with_topic(access_type="free")
     learner = LearnerFactory(is_active=False)
-    LearnerCourseRegistrationFactory(learner=learner, collection=course)
+    LearnerCourseRegistrationFactory(learner=learner, course=course)
     client = logged_in_client(learner.user)
 
     url = reverse(
@@ -414,7 +414,7 @@ def test_course_detail_registered_toc_items_not_all_blocked(
 
     course = course_with_topic(access_type="free")
     user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, collection=course)
+    LearnerCourseRegistrationFactory(learner__user=user, course=course)
     client = logged_in_client(user)
 
     url = reverse(
@@ -455,7 +455,7 @@ def test_course_home_removed_learner_redirects_to_course_detail(
     redirects to course_detail exactly as it would for an unregistered user."""
     course = course_with_topic(access_type="free")
     learner = LearnerFactory(is_active=False)
-    LearnerCourseRegistrationFactory(learner=learner, collection=course)
+    LearnerCourseRegistrationFactory(learner=learner, course=course)
     client = logged_in_client(learner.user)
 
     url = reverse("learner_interface:course_home", kwargs={"course_slug": course.slug})
@@ -598,9 +598,7 @@ def test_course_home_hidden_registered_still_resolves(
     """A registered learner still reaches course_home for a hidden course (redirects into player)."""
     course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
     user = UserFactory()
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course, is_active=True
-    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
     client = logged_in_client(user)
 
     url = reverse("learner_interface:course_home", kwargs={"course_slug": course.slug})
@@ -633,9 +631,7 @@ def test_view_course_item_hidden_registered_renders_content(
     """A registered learner still views content of a hidden course."""
     course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
     user = UserFactory()
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course, is_active=True
-    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
     client = logged_in_client(user)
 
     url = reverse(
@@ -690,7 +686,7 @@ def test_initiate_access_coming_soon_creates_no_registration(
     client.post(url)
 
     assert not LearnerCourseRegistration.objects.filter(
-        learner__user=user, collection=course
+        learner__user=user, course=course
     ).exists()
 
 
@@ -735,5 +731,5 @@ def test_initiate_access_coming_soon_self_registers_with_visibility_override(
         "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
     assert LearnerCourseRegistration.objects.filter(
-        learner__user=user, collection=course
+        learner__user=user, course=course
     ).exists()

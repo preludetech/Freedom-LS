@@ -167,17 +167,17 @@ def _visible_recommendations(
     re-implementing the hidden rule here: filter_visible drops hidden courses the
     user is not registered for (and keeps coming-soon), so a hidden course can
     never leak as a clickable recommendation card and this path cannot drift from
-    the wrapper's rule. Only pks are queried; the already-fetched rec.collection
+    the wrapper's rule. Only pks are queried; the already-fetched rec.course
     instances are reused for rendering.
     """
     recs = list(get_recommended_courses(user))
     visible_rec_ids = set(
         backend.filter_visible(
             user=user,
-            courses=Course.objects.filter(pk__in=[rec.collection_id for rec in recs]),
+            courses=Course.objects.filter(pk__in=[rec.course_id for rec in recs]),
         ).values_list("pk", flat=True)
     )
-    return [rec for rec in recs if rec.collection_id in visible_rec_ids]
+    return [rec for rec in recs if rec.course_id in visible_rec_ids]
 
 
 def _annotate_registered_courses(
@@ -240,13 +240,13 @@ def _annotate_recommendations(recommendations: list[RecommendedCourse]) -> None:
     express-interest CTA, so no per-course interest lookup is needed here.
     """
     for rec in recommendations:
-        setattr(rec.collection, "is_registered", False)  # noqa: B010
+        setattr(rec.course, "is_registered", False)  # noqa: B010
         setattr(  # noqa: B010
-            rec.collection,
+            rec.course,
             "listing_status",
             derive_listing_status(
                 is_registered=False,
-                is_coming_soon=is_coming_soon_for_display(rec.collection),
+                is_coming_soon=is_coming_soon_for_display(rec.course),
                 is_complete=False,
                 progress_percentage=0,
             ),
@@ -309,7 +309,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 
     excluded_ids = (
         {c.id for c in get_course_registrations(request.user)} if is_auth else set()
-    ) | {rec.collection_id for rec in recommended_courses}
+    ) | {rec.course_id for rec in recommended_courses}
     available_courses = _available_courses(
         request.user, backend, excluded_ids=excluded_ids
     )
@@ -579,12 +579,12 @@ def initiate_course_access(request, course_slug):
     # would be bounced back out of the course they just asked to enter.
     LearnerCourseRegistration.objects.update_or_create(
         learner=learner,
-        collection=course,
+        course=course,
         defaults={"is_active": True},
     )
 
     # Delete any existing RecommendedCourse for this user and course
-    RecommendedCourse.objects.filter(user=request.user, collection=course).delete()
+    RecommendedCourse.objects.filter(user=request.user, course=course).delete()
 
     # Redirect into the player. course_home is now a resume redirector, so a
     # freshly registered (0-progress) learner lands on the first course item.

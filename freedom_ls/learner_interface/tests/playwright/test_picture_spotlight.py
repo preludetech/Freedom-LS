@@ -54,9 +54,7 @@ def _build_picture_page(
         content=f"{picture}\n\n{content_after}",
     )
     ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
-    LearnerCourseRegistrationFactory(
-        learner__user=user, collection=course, is_active=True
-    )
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
     # str() because the shared reverse_url helper is untyped (returns Any).
     return str(
         reverse_url(

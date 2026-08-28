@@ -22,7 +22,7 @@ def _setup_cohort_registration(user, course):
     """Set up user in a cohort registered for a course. Returns the registration."""
     cohort = CohortFactory(name="Test Cohort")
     CohortMembershipFactory(learner__user=user, cohort=cohort)
-    return CohortCourseRegistrationFactory(cohort=cohort, collection=course)
+    return CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
 
 @pytest.mark.django_db

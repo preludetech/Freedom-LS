@@ -94,7 +94,7 @@ def register_user_for_course(course: Course, user: User | None = None) -> User:
     """Register a user (creating one if not given) for `course`; return the user."""
     resolved_user: User = UserFactory() if user is None else user
     learner = LearnerFactory(user=resolved_user)
-    LearnerCourseRegistrationFactory(learner=learner, collection=course, is_active=True)
+    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
     return resolved_user
 
 
@@ -173,11 +173,9 @@ def learner_with_two_grants(
     learner = LearnerFactory(user=user, organisation=organisation)
     cohort = CohortFactory(organisation=organisation)
     CohortMembershipFactory(learner=learner, cohort=cohort)
-    cohort_registration = CohortCourseRegistrationFactory(
-        cohort=cohort, collection=course
-    )
+    cohort_registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
     individual_registration = LearnerCourseRegistrationFactory(
-        learner=learner, collection=course
+        learner=learner, course=course
     )
     cohort_record = ensure_course_progress_record(learner, course, cohort_registration)
     individual_record = ensure_course_progress_record(

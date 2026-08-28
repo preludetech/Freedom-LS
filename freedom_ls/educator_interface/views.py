@@ -43,8 +43,8 @@ from freedom_ls.learner_management.models import (
     CohortDeadline,
     CohortMembership,
     Learner,
+    LearnerCohortDeadlineOverride,
     LearnerCourseRegistration,
-    UserCohortDeadlineOverride,
 )
 from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
@@ -126,7 +126,7 @@ class CohortDataTable(DataTable):
             .annotate(
                 learner_count=Count("cohortmembership", distinct=True),
             )
-            .prefetch_related("course_registrations__collection")
+            .prefetch_related("course_registrations__course")
             .order_by("name")
         )
 
@@ -176,7 +176,7 @@ class LearnerDataTable(DataTable):
                         cohort__in=cohorts_visible_to(request.user, organisation)
                     ).select_related("cohort"),
                 ),
-                "learnercourseregistration_set__collection",
+                "learnercourseregistration_set__course",
             )
             .order_by("user__first_name", "user__last_name")
         )
@@ -254,8 +254,8 @@ class CohortDetailsPanel(InstanceDetailsPanel):
 class CohortCourseRegistrationDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        return CohortCourseRegistration.objects.select_related("collection").order_by(
-            "collection__title"
+        return CohortCourseRegistration.objects.select_related("course").order_by(
+            "course__title"
         )
 
     @staticmethod
@@ -264,9 +264,9 @@ class CohortCourseRegistrationDataTable(DataTable):
             {
                 "header": "Course",
                 "template": "cotton/data-table-cells/link.html",
-                "text_attr": "collection.title",
+                "text_attr": "course.title",
                 "url_name": "educator_interface:interface",
-                "url_path_template": "courses/{collection.pk}",
+                "url_path_template": "courses/{course.pk}",
                 "htmx_nav": True,
             },
             {
@@ -474,7 +474,7 @@ class CohortCourseProgressPanel(Panel):
     ) -> tuple[
         CohortDeadline | None,
         dict[tuple[int, UUID | None], CohortDeadline],
-        dict[tuple[UUID, int | None, UUID | None], UserCohortDeadlineOverride],
+        dict[tuple[UUID, int | None, UUID | None], LearnerCohortDeadlineOverride],
         DjangoContentType,
         DjangoContentType,
     ]:
@@ -508,11 +508,11 @@ class CohortCourseProgressPanel(Panel):
                 deadline_map[(dl.content_type_id, dl.object_id)] = dl
 
         learner_override_map: dict[
-            tuple[UUID, int | None, UUID | None], UserCohortDeadlineOverride
+            tuple[UUID, int | None, UUID | None], LearnerCohortDeadlineOverride
         ] = {}
         learner_ids = [m.learner_id for m in learner_page.object_list]
         if learner_ids:
-            overrides = UserCohortDeadlineOverride.objects.filter(
+            overrides = LearnerCohortDeadlineOverride.objects.filter(
                 cohort_course_registration=selected_reg,
                 learner_id__in=learner_ids,
             ).filter(deadline_q)
@@ -588,7 +588,7 @@ class CohortCourseProgressPanel(Panel):
         form_progress_map: dict[tuple[UUID, UUID], FormProgressData],
         deadline_map: dict[tuple[int, UUID | None], CohortDeadline],
         learner_override_map: dict[
-            tuple[UUID, int | None, UUID | None], UserCohortDeadlineOverride
+            tuple[UUID, int | None, UUID | None], LearnerCohortDeadlineOverride
         ],
         now: datetime,
     ) -> dict[str, object]:
@@ -649,7 +649,7 @@ class CohortCourseProgressPanel(Panel):
         form_progress_map: dict[tuple[UUID, UUID], FormProgressData],
         deadline_map: dict[tuple[int, UUID | None], CohortDeadline],
         learner_override_map: dict[
-            tuple[UUID, int | None, UUID | None], UserCohortDeadlineOverride
+            tuple[UUID, int | None, UUID | None], LearnerCohortDeadlineOverride
         ],
         organisation_slug: str,
     ) -> list[dict[str, object]]:
@@ -721,8 +721,8 @@ class CohortCourseProgressPanel(Panel):
 
         registrations = list(
             CohortCourseRegistration.objects.filter(cohort=cohort)
-            .select_related("collection")
-            .order_by("-is_active", "collection__title")
+            .select_related("course")
+            .order_by("-is_active", "course__title")
         )
 
         if not registrations:
@@ -736,7 +736,7 @@ class CohortCourseProgressPanel(Panel):
             registrations,
             request.GET.get("registration"),
         )
-        course: Course = selected_reg.collection
+        course: Course = selected_reg.course
 
         visible_collection_items, visible_parts, has_parts, col_page = (
             self._paginate_course_items(
@@ -1037,7 +1037,7 @@ class CourseCohortRegistrationDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         return CohortCourseRegistration.objects.select_related(
-            "cohort", "collection"
+            "cohort", "course"
         ).order_by("cohort__name")
 
     @staticmethod
@@ -1069,7 +1069,7 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
     data_table = CourseCohortRegistrationDataTable
 
     def get_filters(self) -> dict:
-        return {"collection": self.instance}
+        return {"course": self.instance}
 
 
 class CourseLearnerRegistrationDataTable(DataTable):
@@ -1080,9 +1080,7 @@ class CourseLearnerRegistrationDataTable(DataTable):
         # one organisation each and must not leak across them.
         organisation = cast(_OrganisationScopedRequest, request).organisation
         return (
-            LearnerCourseRegistration.objects.select_related(
-                "learner__user", "collection"
-            )
+            LearnerCourseRegistration.objects.select_related("learner__user", "course")
             .filter(learner__organisation=organisation)
             .order_by("learner__user__first_name", "learner__user__last_name")
         )
@@ -1129,7 +1127,7 @@ class CourseLearnerRegistrationsPanel(DataTablePanel):
     data_table = CourseLearnerRegistrationDataTable
 
     def get_filters(self) -> dict:
-        return {"collection": self.instance}
+        return {"course": self.instance}
 
 
 class CourseInstanceView(InstanceView):
