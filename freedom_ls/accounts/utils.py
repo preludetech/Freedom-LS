@@ -46,8 +46,12 @@ def get_signup_policy_for_request(
     if not isinstance(site, Site):
         return None
 
+    # _base_manager, not the site-aware `objects`: site is already resolved from
+    # this request, and the site-aware manager would AND a second site read from
+    # the ambient thread-local request. A mismatch there returns None rather than
+    # erroring, which drops the signup form back to the global defaults.
     try:
-        policy: SiteSignupPolicy = SiteSignupPolicy.objects.get(site=site)
+        policy: SiteSignupPolicy = SiteSignupPolicy._base_manager.get(site=site)
     except SiteSignupPolicy.DoesNotExist:
         return None
     return policy

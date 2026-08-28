@@ -7,7 +7,7 @@ from django.test import RequestFactory, override_settings
 from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 from freedom_ls.accounts.factories import SiteFactory, SiteSignupPolicyFactory
 from freedom_ls.accounts.models import SiteSignupPolicy
-from freedom_ls.site_aware_models.models import _CACHED_SITE_ATTR
+from freedom_ls.site_aware_models.models import _CACHED_SITE_ATTR, _thread_locals
 
 
 @pytest.mark.django_db
@@ -64,3 +64,28 @@ def test_is_open_for_signup_respects_force_site_name(settings):
         result = AccountAdapter().is_open_for_signup(request)
 
     assert result is False  # Should use ForcedSite's policy (disallow), not DomainSite
+
+
+@pytest.mark.django_db
+def test_is_open_for_signup_uses_the_request_site_when_another_site_is_ambient(
+    settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The request's own site decides, not whatever site the thread is holding.
+
+    The lookup already knows which site it wants, so a leftover thread-local
+    request pointing somewhere else must not be able to hide the policy row and
+    quietly demote the answer to the global default.
+    """
+    policy_site = SiteFactory(name="PolicySite", domain="policy.example.com")
+    ambient_site = SiteFactory(name="AmbientSite", domain="ambient.example.com")
+    SiteSignupPolicyFactory(site=policy_site, allow_signups=False)
+    settings.ALLOW_SIGN_UPS = True
+
+    ambient_request = RequestFactory().get("/")
+    setattr(ambient_request, _CACHED_SITE_ATTR, ambient_site)
+    monkeypatch.setattr(_thread_locals, "request", ambient_request, raising=False)
+
+    request = RequestFactory().get("/")
+    setattr(request, _CACHED_SITE_ATTR, policy_site)
+
+    assert AccountAdapter().is_open_for_signup(request) is False

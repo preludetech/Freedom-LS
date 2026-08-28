@@ -6,11 +6,13 @@ import pytest
 
 from django.test import RequestFactory
 
+from freedom_ls.accounts.factories import SiteFactory, SiteSignupPolicyFactory
 from freedom_ls.accounts.models import SiteSignupPolicy
 from freedom_ls.accounts.utils import (
     get_client_ip,
     get_signup_policy_for_request,
 )
+from freedom_ls.site_aware_models.models import _CACHED_SITE_ATTR, _thread_locals
 
 
 def _request_with_meta(**meta: str):
@@ -74,3 +76,27 @@ def test_get_signup_policy_for_request_returns_policy_when_one_exists(
 
 def test_get_signup_policy_for_request_handles_none_request():
     assert get_signup_policy_for_request(None) is None
+
+
+@pytest.mark.django_db
+def test_get_signup_policy_for_request_uses_the_request_site_when_another_site_is_ambient(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A leftover ambient site must not hide the policy the request asked for.
+
+    A policy that reads as missing is not cosmetic here: the signup form falls
+    back to the global defaults, stops asking for terms acceptance, and records
+    no LegalConsent.
+    """
+    policy_site = SiteFactory(name="PolicySite", domain="policy.example.com")
+    ambient_site = SiteFactory(name="AmbientSite", domain="ambient.example.com")
+    policy = SiteSignupPolicyFactory(site=policy_site, allow_signups=False)
+
+    ambient_request = RequestFactory().get("/")
+    setattr(ambient_request, _CACHED_SITE_ATTR, ambient_site)
+    monkeypatch.setattr(_thread_locals, "request", ambient_request, raising=False)
+
+    request = RequestFactory().get("/")
+    setattr(request, _CACHED_SITE_ATTR, policy_site)
+
+    assert get_signup_policy_for_request(request) == policy
