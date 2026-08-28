@@ -8,16 +8,14 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import Course
+from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
+from freedom_ls.course_recommendations.queries import get_recommended_courses
 from freedom_ls.learner_interface.utils import (
     get_all_courses,
     get_completed_courses,
     get_current_courses,
-    get_recommended_courses,
 )
-from freedom_ls.learner_management.factories import (
-    LearnerCourseRegistrationFactory,
-    RecommendedCourseFactory,
-)
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
 from .conftest import course_progress_record
 

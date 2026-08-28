@@ -119,6 +119,7 @@ INSTALLED_APPS = [
     "freedom_ls.course_access",
     "freedom_ls.course_applications",
     "freedom_ls.course_interest",
+    "freedom_ls.course_recommendations",
     #########
     # LEARNER INTERFACE
     "freedom_ls.learner_interface",

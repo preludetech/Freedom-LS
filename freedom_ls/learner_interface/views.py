@@ -32,15 +32,14 @@ from freedom_ls.course_access.overrides import (
 )
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.queries import stamp_interest
+from freedom_ls.course_recommendations.models import RecommendedCourse
+from freedom_ls.course_recommendations.queries import get_recommended_courses
 from freedom_ls.form_engine.models import Form, FormProgress, FormQuestion, FormStrategy
 from freedom_ls.form_engine.queries import count_form_questions, page_questions
 from freedom_ls.form_engine.submissions import has_submitted_answer
 from freedom_ls.learner_management.config import config
 from freedom_ls.learner_management.deadline_utils import is_item_locked_by_deadline
-from freedom_ls.learner_management.models import (
-    LearnerCourseRegistration,
-    RecommendedCourse,
-)
+from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_management.queries import (
     learner_for_course,
 )
@@ -75,7 +74,6 @@ from .utils import (
     get_form_collection_item_for_index,
     get_is_registered,
     get_item_part,
-    get_recommended_courses,
     get_resume_index,
     outstanding_items,
     stamp_course_access_badge,

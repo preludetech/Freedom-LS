@@ -59,7 +59,7 @@ If you are told not to implement a feature immediately then that does not mean t
 - `form_engine` — Form definition, attempt and marking models with scoring strategies
 - `site_aware_models` — Base models and manager for multi-site support with automatic site filtering
 - `learner_interface` — Learner views for browsing courses, tracking progress, completing content
-- `learner_management` — Learner profiles, cohorts, course registrations, recommendations
+- `learner_management` — Learner profiles, cohorts, course registrations
 - `learner_progress` — Progress tracking for topics and courses
 
 ## Conventions

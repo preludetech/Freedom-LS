@@ -21,7 +21,6 @@ from freedom_ls.learner_management.models import (
     LearnerCohortDeadlineOverride,
     LearnerCourseRegistration,
     LearnerDeadline,
-    RecommendedCourse,
 )
 from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -200,13 +199,3 @@ class LearnerCohortDeadlineOverrideFactory(SiteAwareFactory):
     object_id = factory.LazyAttribute(
         lambda obj: obj.content_item.pk if obj.content_item else None
     )
-
-
-class RecommendedCourseFactory(SiteAwareFactory):
-    """Factory for creating RecommendedCourse instances."""
-
-    class Meta:
-        model = RecommendedCourse
-
-    user = factory.SubFactory(UserFactory)
-    course = factory.SubFactory(CourseFactory)

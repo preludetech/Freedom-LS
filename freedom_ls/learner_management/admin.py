@@ -31,7 +31,6 @@ from .models import (
     LearnerCohortDeadlineOverride,
     LearnerCourseRegistration,
     LearnerDeadline,
-    RecommendedCourse,
 )
 
 SCOPE_TO_ORGANISATION_OF_COHORT = "organisation_of_cohort"
@@ -443,12 +442,3 @@ class LearnerCohortDeadlineOverrideAdmin(SiteAwareModelAdmin):
     @admin.display(description="Content Item")
     def get_content_item(self, obj: LearnerCohortDeadlineOverride) -> str:
         return str(obj.content_item) if obj.content_item else "Whole course"
-
-
-@admin.register(RecommendedCourse)
-class RecommendedCourseAdmin(SiteAwareModelAdmin):
-    list_display = ["user", "course", "created_at"]
-    search_fields = ["user__email", "course__title"]
-    list_filter = ["created_at"]
-    readonly_fields = ["created_at"]
-    exclude = ["site"]

@@ -23,10 +23,10 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
+from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
-    RecommendedCourseFactory,
 )
 
 # --- all_courses ---

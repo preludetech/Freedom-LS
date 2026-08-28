@@ -82,10 +82,11 @@ PERMISSIONS: dict[str, str] = {
     # "freedom_ls_learner_management.add_learnercohortdeadlineoverride": "Can add learner cohort deadline override",
     # "freedom_ls_learner_management.change_learnercohortdeadlineoverride": "Can change learner cohort deadline override",
     # "freedom_ls_learner_management.delete_learnercohortdeadlineoverride": "Can delete learner cohort deadline override",
-    # "freedom_ls_learner_management.view_recommendedcourse": "Can view recommended course",
-    # "freedom_ls_learner_management.add_recommendedcourse": "Can add recommended course",
-    # "freedom_ls_learner_management.change_recommendedcourse": "Can change recommended course",
-    # "freedom_ls_learner_management.delete_recommendedcourse": "Can delete recommended course",
+    # --- course_recommendations app (label: freedom_ls_course_recommendations) ---
+    # "freedom_ls_course_recommendations.view_recommendedcourse": "Can view recommended course",
+    # "freedom_ls_course_recommendations.add_recommendedcourse": "Can add recommended course",
+    # "freedom_ls_course_recommendations.change_recommendedcourse": "Can change recommended course",
+    # "freedom_ls_course_recommendations.delete_recommendedcourse": "Can delete recommended course",
     # --- learner_progress app (label: freedom_ls_learner_progress) ---
     # "freedom_ls_form_engine.view_formprogress": "Can view form progress",
     # "freedom_ls_form_engine.add_formprogress": "Can add form progress",

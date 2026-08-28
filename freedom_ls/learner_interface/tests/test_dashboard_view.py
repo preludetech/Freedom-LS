@@ -16,10 +16,10 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
-    RecommendedCourseFactory,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 

@@ -312,32 +312,3 @@ class LearnerCohortDeadlineOverride(SiteAwareModel, TimestampedModel):
         reg = self.cohort_course_registration
         item_label = str(self.content_item) if self.content_item else "Whole course"
         return f"{self.learner} - {reg.cohort} - {reg.course} - {item_label}"
-
-
-class RecommendedCourse(SiteAwareModel):
-    """
-    Course recommendations for users.
-    Created when a parent fills out a form.
-    """
-
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="recommended_courses",
-    )
-    course = models.ForeignKey(
-        "freedom_ls_content_engine.Course",
-        on_delete=models.CASCADE,
-        related_name="recommendations",
-    )
-    # form_progress = models.ForeignKey(
-    #     FormProgress, on_delete=models.CASCADE, null=True, blank=True
-    # )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-created_at"]
-        verbose_name_plural = "Recommended courses"
-
-    def __str__(self):
-        return f"Course recommendation for {self.user.email}: {self.course.title}"

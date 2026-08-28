@@ -24,7 +24,6 @@ from freedom_ls.learner_management.deadline_utils import (
     EffectiveDeadline,
     get_course_deadlines,
 )
-from freedom_ls.learner_management.models import RecommendedCourse
 from freedom_ls.learner_management.queries import is_registered_for_course_expression
 from freedom_ls.learner_progress.models import (
     CourseFormAttempt,
@@ -852,13 +851,6 @@ def get_current_courses(user: RequestUser) -> list[Course]:
         current.append(course)
 
     return current
-
-
-def get_recommended_courses(user: RequestUser) -> QuerySet[RecommendedCourse]:
-    """Get recommended courses for a user. Returns empty queryset for anonymous users."""
-    if not user.is_authenticated:
-        return RecommendedCourse.objects.none()
-    return RecommendedCourse.objects.filter(user=user).select_related("course")
 
 
 def get_form_for_index(
