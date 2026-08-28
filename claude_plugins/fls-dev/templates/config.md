@@ -16,7 +16,7 @@ that rung and falls through to the next. Every command must be non-interactive, 
 
 Seeding is not configured here. The seed list comes from the test plan's own `§0`.
 
-- Content reset: uv run python manage.py danger_content_delete --yes
+- Content reset:
 - DB drop: .claude/fls-dev/scripts/dev_db_delete.sh
 - DB create: .claude/fls-dev/scripts/dev_db_init.sh
 - Migrate: uv run python manage.py migrate
