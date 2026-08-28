@@ -177,6 +177,8 @@ The codebase has caught up. `learner-terminology-rename` moved the three apps to
 
 ## Where else to look
 
+- `freedom_ls/*/models.py` — the canonical nouns. Model class names and field names are a document's
+  nouns, and the vocabulary of last resort.
 - `docs/product/README.md` — the index, and one-paragraph definitions of every concept.
   `docs/product/learner-tracking.md` is the progress vocabulary; `learner-experience.md` the player's.
 - `docs/app_structure.md` — the canonical app names and the authoritative dependency graph.

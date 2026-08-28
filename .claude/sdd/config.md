@@ -12,18 +12,10 @@ Paths are relative to the project root. Leave a value blank if this project has 
 
 ## Vocabulary Sources
 
-Where this project's domain vocabulary is defined, most authoritative first. Ideas, research notes,
-specs and plans use these words rather than coining new ones.
+Where this project's domain vocabulary is defined, most authoritative first.
 
-- `.claude/skills/domain-glossary/SKILL.md` — **start here.** The FLS domain nouns, the words that are
-  already taken, and where each one is defined.
-- `freedom_ls/*/models.py` — the canonical nouns. Model class names and field names are a spec's
-  nouns.
-- `docs/product/` — concept-level prose. Start at `docs/product/README.md`;
-  `docs/product/learner-tracking.md` carries the progress vocabulary.
-- `.claude/skills/brand-guidelines/SKILL.md` §Terminology — the Use/Not table (learners not students,
-  content not curriculum, extend not customise). **Copy-scoped**: it governs UI text, docs and prose,
-  not Python identifiers. **"Learner" is the settled word in code too** — the `student_*` app
-  namespace is legacy naming being migrated, so never introduce a new `student_*` name.
+- `.claude/skills/domain-glossary/SKILL.md` — the index over every domain noun, where each one is
+  defined, and the words that are already taken.
+- `freedom_ls/*/models.py` — the canonical nouns; the vocabulary of last resort.
+- `docs/product/` — concept-level prose.
 - `docs/app_structure.md` — the canonical app names.
-- `claude_plugins/fls-content/skills/` — the author-facing content vocabulary.
