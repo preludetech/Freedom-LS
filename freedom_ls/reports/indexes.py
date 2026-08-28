@@ -48,7 +48,7 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_progress.models import TopicProgress
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.organisations.validators import check_logo_safety
+from freedom_ls.organisations.validators import MAX_BYTES, check_logo_safety
 from freedom_ls.reports.config import config
 from freedom_ls.reports.report_data import ReportTooLargeError
 from freedom_ls.site_aware_models.config import config as site_config
@@ -600,13 +600,24 @@ def load_organisation_logo_data_uri(organisation: Organisation) -> str | None:
     if not logo_name:
         return None
 
+    storage = organisation.logo.storage
     try:
+        # Sized before opening rather than measured after reading: S3Storage
+        # downloads the whole object the moment the handle is touched, so a
+        # byte count taken afterwards has already paid for the transfer the
+        # cap exists to avoid. size() is one HEAD, and a missing object raises
+        # FileNotFoundError here exactly as open() would.
+        if storage.size(logo_name) > MAX_BYTES:
+            return None
         # storage.open(), not organisation.logo.open(): FieldFile.open() caches
         # the handle on the live model instance, and this pipeline holds a
         # shared cohort.organisation that nothing else should observe mutating
         # mid-render.
-        with organisation.logo.storage.open(logo_name, "rb") as handle:
-            raw = handle.read()
+        with storage.open(logo_name, "rb") as handle:
+            # Bounded like the upload validator, so a backend whose size()
+            # disagrees with the object -- or one replaced between the two
+            # calls -- still cannot be read unboundedly.
+            raw = handle.read(MAX_BYTES + 1)
     except OSError:
         # Covers both backends: S3Storage normalises a missing object to a
         # plain FileNotFoundError and re-raises any other ClientError

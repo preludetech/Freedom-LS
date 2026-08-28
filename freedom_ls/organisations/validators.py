@@ -90,7 +90,14 @@ def check_logo_safety(raw: bytes) -> SafeLogo:
             image_format = img.format
         except (Image.DecompressionBombWarning, Image.DecompressionBombError) as err:
             raise ValidationError("Image is too large to process safely.") from err
-        except (OSError, Image.UnidentifiedImageError) as err:
+        except (OSError, Image.UnidentifiedImageError, SyntaxError, ValueError) as err:
+            # Pillow's plugins report a malformed structure with whatever
+            # exception the parser reached for, not one family: a PNG whose
+            # chunk checksum fails raises SyntaxError, one whose IHDR is too
+            # short raises ValueError, and only an unrecognisable or truncated
+            # body raises OSError. Catching OSError alone leaves the first two
+            # to escape as a 500 -- an admin upload rejected with a crash, and
+            # a stored logo that takes the whole report render down with it.
             raise ValidationError("File is not a readable image.") from err
 
     mime_type = LOGO_MIME_TYPES.get(image_format or "")

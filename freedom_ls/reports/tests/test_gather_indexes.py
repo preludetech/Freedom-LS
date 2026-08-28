@@ -68,6 +68,7 @@ from freedom_ls.reports.indexes import (
     load_topic_progress_rows,
     resolve_site_name,
 )
+from freedom_ls.tests.images import break_png_chunk_crc
 
 pytestmark = pytest.mark.django_db
 
@@ -823,6 +824,40 @@ class TestLoadOrganisationLogoDataUri:
 
         assert data_uri is not None
         assert data_uri.startswith("data:image/jpeg;base64,")
+
+    def test_a_png_with_a_corrupt_chunk_returns_none(self, mock_site_context):
+        """A checksum failure degrades to the wordmark rather than killing the render.
+
+        Pillow reports it as a SyntaxError, which is not one of the families
+        `check_logo_safety` would otherwise convert -- so an unvalidated object
+        that reached storage would take the whole report down with it.
+        """
+        organisation = OrganisationFactory()
+        organisation.logo.save(
+            "logo.png", ContentFile(break_png_chunk_crc(_png_bytes(64, 32)))
+        )
+
+        assert load_organisation_logo_data_uri(organisation) is None
+
+    def test_an_oversized_object_is_never_opened(
+        self, mock_site_context, pathless_logo_storage, monkeypatch
+    ):
+        """The stored size is what rejects it, before any bytes are fetched.
+
+        S3Storage downloads the whole object the moment the handle is touched,
+        so a byte count taken after reading has already paid for the transfer
+        -- which is the entire cost the cap exists to avoid.
+        """
+        organisation = OrganisationFactory()
+        organisation.logo.save("logo.png", ContentFile(_png_bytes(64, 32)))
+        monkeypatch.setattr(pathless_logo_storage, "size", lambda name: MAX_BYTES + 1)
+        monkeypatch.setattr(
+            pathless_logo_storage,
+            "open",
+            lambda *args, **kwargs: pytest.fail("the oversized object was fetched"),
+        )
+
+        assert load_organisation_logo_data_uri(organisation) is None
 
     def test_a_truncated_image_body_returns_none(self, mock_site_context):
         organisation = OrganisationFactory()

@@ -17,14 +17,19 @@ from freedom_ls.organisations.validators import (
     validate_organisation_logo,
     validate_organisation_logo_extension,
 )
+from freedom_ls.tests.images import break_png_chunk_crc, shorten_png_ihdr
 
 FIXTURE_LOGO = Path(__file__).parent / "fixtures" / "RT-logo.webp"
 
 
-def _png_upload(width: int, height: int, name: str = "logo.png") -> SimpleUploadedFile:
+def _png_bytes(width: int, height: int) -> bytes:
     buf = io.BytesIO()
     Image.new("RGB", (width, height)).save(buf, format="PNG")
-    return SimpleUploadedFile(name, buf.getvalue(), content_type="image/png")
+    return buf.getvalue()
+
+
+def _png_upload(width: int, height: int, name: str = "logo.png") -> SimpleUploadedFile:
+    return SimpleUploadedFile(name, _png_bytes(width, height), content_type="image/png")
 
 
 def test_reference_logo_is_accepted():
@@ -81,6 +86,28 @@ def test_oversized_file_is_rejected():
 def test_corrupt_bytes_are_rejected():
     """Bytes that are not a decodable image are rejected."""
     upload = SimpleUploadedFile("logo.png", b"not an image", content_type="image/png")
+    with pytest.raises(ValidationError):
+        validate_organisation_logo(upload)
+
+
+def test_a_png_with_a_corrupt_chunk_is_rejected():
+    """A chunk whose checksum fails is not a readable image, however it is reported.
+
+    Pillow raises SyntaxError here rather than an OSError, so this is the case
+    that tells an admin their upload is broken instead of returning a 500.
+    """
+    upload = SimpleUploadedFile(
+        "logo.png", break_png_chunk_crc(_png_bytes(64, 32)), content_type="image/png"
+    )
+    with pytest.raises(ValidationError):
+        validate_organisation_logo(upload)
+
+
+def test_a_png_with_a_short_header_chunk_is_rejected():
+    """An IHDR too short to describe an image is rejected, not raised through."""
+    upload = SimpleUploadedFile(
+        "logo.png", shorten_png_ihdr(_png_bytes(64, 32)), content_type="image/png"
+    )
     with pytest.raises(ValidationError):
         validate_organisation_logo(upload)
 
