@@ -13,7 +13,7 @@ from django.core.checks import Warning as ChecksWarning
 
 from freedom_ls.accounts import legal_docs
 from freedom_ls.accounts.checks import check_legal_docs_present_when_required
-from freedom_ls.accounts.factories import SiteSignupPolicyFactory
+from freedom_ls.accounts.factories import SiteFactory, SiteSignupPolicyFactory
 
 from ._git_helpers import commit_all as _commit
 from ._git_helpers import init_repo as _init_repo
@@ -252,3 +252,22 @@ def test_system_check_silent_when_policy_overrides_settings_default(
     warnings = check_legal_docs_present_when_required(app_configs=None)
 
     assert all(mock_site_context.domain not in w.msg for w in warnings)
+
+
+@pytest.mark.django_db
+def test_system_check_reads_every_sites_policy_when_another_site_is_ambient(
+    mock_legal_blobs, mock_site_context, settings
+):
+    """A second site's own policy decides its warning, not the ambient site's.
+
+    The check reports on every Site, so a policy row must not be hidden by
+    whatever site the thread happens to be holding a request for.
+    """
+    settings.REQUIRE_TERMS_ACCEPTANCE = True
+    other_domain = "other.example.com"
+    other_site = SiteFactory(name="OtherSite", domain=other_domain)
+    SiteSignupPolicyFactory(site=other_site, require_terms_acceptance=False)
+
+    warnings = check_legal_docs_present_when_required(app_configs=None)
+
+    assert all(other_domain not in w.msg for w in warnings)

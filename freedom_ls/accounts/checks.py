@@ -83,8 +83,13 @@ def check_legal_docs_present_when_required(
 
     try:
         sites = list(Site.objects.all())
+        # _base_manager, not the site-aware `objects`: this check reports on
+        # every Site, so it needs every policy row. The site-aware manager would
+        # narrow the map to whatever site an ambient thread-local request points
+        # at, and every other site would then be judged against the global
+        # default instead of its own policy.
         policies_by_site_id = {
-            p.site_id: p for p in SiteSignupPolicy.objects.select_related("site")
+            p.site_id: p for p in SiteSignupPolicy._base_manager.select_related("site")
         }
     except (DatabaseError, OperationalError, ProgrammingError):
         # The DB may not be ready (initial migrate, etc.). Stay silent.
