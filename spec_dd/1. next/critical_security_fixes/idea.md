@@ -77,8 +77,32 @@ One correction to the original write-up: it is no longer literally first.
 `app_directories.Loader` in the loader chain (`settings_base.py:176-182`), so
 `/tmp/lms_templates` shadows every app template the active theme does not already override.
 A world-writable directory in that position still means any local user on the host can get
-code execution in the Django process. The suppression comments suggest a dev convenience
-that leaked into `settings_base`; worth confirming rather than assuming.
+code execution in the Django process.
+
+**Resolved 2026-08-25: the directory is not required, and the fix is to delete the entry.**
+The path appears exactly once in the codebase — that one settings line. Nothing creates it,
+writes to it, or reads from it; no test, doc, script, or management command mentions it, and
+the directory does not exist on a working checkout. Its only other appearance anywhere is
+`spec_dd/3. done/2026-05-30_themable-implementations-.../research_django_template_overrides.md:29`,
+which calls it a placeholder for the override mechanism FLS was then "half-set-up for". That
+research became the theming system, which supersedes it: `configure_theme` inserts the
+active theme's `templates/` at `DIRS[0]`, resolved through `FLS_THEMES_DIRS` against real
+directories inside the project. Filesystem template overrides are a shipped, supported
+feature; `/tmp/lms_templates` is the earlier crude version of the same idea and does nothing
+the theme directory does not do better. The commented-out `# "DIRS": []` and
+`# "APP_DIRS": True` lines around it read as scratch config, and it entered in an unrelated
+commit (`9a1108d2 upgraded to psql. browser reload broke`) rather than as a deliberate
+feature.
+
+So: set `"DIRS": []` and drop the `# noqa: S108  # nosec B108` suppressions with it — they
+exist only because the line itself is the problem. No replacement path is needed; a
+downstream project wanting filesystem overrides uses a theme directory. Nothing depends on
+`DIRS` being non-empty: `configure_theme` uses `setdefault("DIRS", [])`, and
+`freedom_ls/base/tests/test_theming.py` already covers both the empty-list and missing-key
+cases.
+
+Leave the loader ordering alone. `filesystem.Loader` running ahead of
+`app_directories.Loader` is what makes theme overrides work; only the `/tmp` entry goes.
 
 ## What is NOT broken
 
