@@ -29,8 +29,14 @@ outer edge and content against Next's 8px, which is part of why Previous reads b
 
 Three changes to the shared button contract.
 
-Take `.btn.btn-sm` to `px-3 py-2`. That also lifts these controls from roughly 32px tall to nearer
-40px. 32px already clears WCAG 2.2 SC 2.5.8's 24px floor, so this is comfort rather than compliance,
+Restore `.btn-sm` to a single class, ordered after `.btn`, and take it to `px-3 py-2`. The compound
+form was never a design decision: it arrived as working-tree drift in `c56766b8`, and before that the
+rule was `.btn-sm { @apply px-4 py-1.5 text-sm }`. Restoring the single class hands small-button
+padding back to the theming contract, which carries a consequence. At equal specificity the active
+theme wins on source order, so a theme reopening `.btn` padding now swamps `.btn-sm` unless it
+reopens that too. `first_class` must therefore declare `.btn-sm` alongside its `.btn`, and the Tier 2
+section of `docs/how tos/theme-fls.md` must state that rule. `px-3 py-2` also lifts these controls
+from roughly 32px tall to nearer 40px. 32px already clears WCAG 2.2 SC 2.5.8's 24px floor, so this is comfort rather than compliance,
 and it stops short of the 44px Apple HIG figure. A hard 44px floor for every small button in the
 codebase is a much larger visual change and should be decided on its own.
 
@@ -45,9 +51,10 @@ The margin removal and the `gap` have to land in the same change, since removing
 leaves icon and label touching. Two of the three occurrences sit inside `.btn`, which is already
 `inline-flex`, so a container `gap` covers them: `:47` is the loading state and `:50` the ordinary
 path. The third, `:32`, is the dropdown variant, and its container is `block w-full text-left ...`
-rather than a flex box, so a `gap` there would silently do nothing. Either give the dropdown item
-`inline-flex items-center` alongside the gap, or leave that variant's icon margins as they are and
-change only the `.btn` path.
+rather than a flex box, so a `gap` there would silently do nothing. That variant keeps its icon
+margins; only the `.btn` path moves to `gap`. Converting the dropdown item to flex would change
+menu-item layout for no gain here. The template ends up carrying two spacing idioms, so it needs a
+comment saying why.
 
 Leave `.btn-secondary`'s `border-2` alone. The 2px is real but not worth separate action.
 

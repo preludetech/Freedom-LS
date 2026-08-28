@@ -25,13 +25,16 @@ This is `:focus-visible` rather than bare `:focus`. Browsers paint it on purpose
 programmatically into a dialog (w3c/csswg-drafts#7214), so it is not a spurious ring to switch off.
 
 One useful detail for whoever fixes this: `--color-focus-ring` is declared at
-`themes/default/static/themes/default/theme.css:134` and has no consumer anywhere in the codebase.
+`themes/default/static/themes/default/theme.css:134` and already has four consumers, at
+`partials/header_bar_user_menu.html:2`, `cotton/table.html:17`, `cotton/code-block.html:23` and
+`cotton/equation.html:21`. There is an established way this codebase draws a focus ring; the side
+panel should match it.
 
 ## Expected fix
 
 Restyle the indicator rather than removing it. Give `.side-panel-dialog` a focus style of its own
-drawn from `--color-focus-ring`, a slim inset ring instead of the UA outline around the full column,
-making that token its first real consumer.
+drawn from `--color-focus-ring`, a slim inset ring instead of the UA outline around the full
+column.
 
 Whatever ships must still satisfy WCAG 2.2 SC 2.4.7 Focus Visible, and the 2px-perimeter area and 3:1
 contrast bars of SC 2.4.13 Focus Appearance. Subtle here means a smaller footprint and an on-brand
@@ -56,8 +59,10 @@ a dismissible overlay.
   dialog element and its classes.
 - `freedom_ls/base/static/base/js/alpine-components.js:552`, the `dialog.show()` call. `:575` is the
   mobile `showModal()` counterpart, and the reasoning for the split is in the comments at `:391-399`.
-- `freedom_ls/themes/default/static/themes/default/theme.css:134`, the unused `--color-focus-ring`
-  token.
+- `freedom_ls/themes/default/static/themes/default/theme.css:134`, the `--color-focus-ring` token,
+  and its existing consumers in `freedom_ls/base/templates/partials/header_bar_user_menu.html:2`,
+  `freedom_ls/content_engine/templates/cotton/table.html:17`, `.../cotton/code-block.html:23` and
+  `.../cotton/equation.html:21`.
 - WHATWG HTML Standard, the dialog element and its focusing steps. whatwg/html#4184 for why the
   dialog itself takes focus, w3c/csswg-drafts#7214 for why `:focus-visible` matches.
 - W3C WAI, Understanding SC 2.4.7 Focus Visible and SC 2.4.13 Focus Appearance.
