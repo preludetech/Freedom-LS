@@ -1,12 +1,12 @@
 # Admin Interface
 
-_Last updated: 2026-08-23_
+_Last updated: 2026-08-27_
 
 ## Summary
 
 - The Django admin is enhanced with the Unfold UI framework, preserving all standard Django admin behaviour.
 - Administrators grant educators access to specific cohorts through per-object permissions.
-- Organisations are created, renamed, and given a logo entirely through the admin, with no delete and no merge. Assigning someone a staff role on an organisation grants access to every cohort inside it, including ones added later.
+- Organisations are created, renamed, and given a logo — optionally a second, reversed one for a dark background — entirely through the admin, with no delete and no merge. Assigning someone a staff role on an organisation grants access to every cohort inside it, including ones added later.
 - An organisation's learners are curated in the admin and only there: an administrator associates a user with an organisation before or independently of any enrolment, and marks a learner removed. Removal is soft — it suspends that person's access to the organisation's courses without touching their memberships, registrations, or progress — and a learner cannot be deleted outright.
 - A staff user generates a cohort's progress report from the admin by picking a cohort and triggering generation; the choice is limited to cohorts that user is allowed to see, generation runs in the background, and the finished PDF downloads through a permission-checked link rather than a public URL.
 - The admin path is configurable via `DJANGO_ADMIN_URL`, so production can move it off the default location.
@@ -25,7 +25,7 @@ Each cohort's admin detail page carries a permissions tab, where an administrato
 
 ## Organisation Management
 
-Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, uploads a logo, and assigns staff to it. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
+Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, uploads a logo, and assigns staff to it. An organisation can also supply a second, reversed logo for use on a strong colour fill; both are optional, and today only the first is drawn anywhere. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 
 There is no delete and no merge — both are refused outright. This is a deliberate limit for this release, not an oversight. There is also no bulk import, and no way to manage organisations outside the admin.
 

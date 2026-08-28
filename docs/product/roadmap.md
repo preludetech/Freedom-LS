@@ -1,6 +1,6 @@
 # Roadmap
 
-_Last updated: 2026-08-23_
+_Last updated: 2026-08-27_
 
 ## Summary
 
@@ -146,8 +146,12 @@ Completing a course produces a finish page but no certificate or downloadable co
 
 **Status: Not built — deliberate deferrals.**
 
-The [cohort report](./reports.md) itself is built and shipped. Two capabilities around it were deliberately left out of this release rather than overlooked.
+The [cohort report](./reports.md) itself is built and shipped. Several capabilities around it were deliberately left out of this release rather than overlooked.
 
 **No scheduled or emailed delivery.** A report is only ever produced on demand, by a staff member triggering it in the admin, and whoever wants it must return there to download it. There is no recurring generation and no notification when one finishes. The feature is built so that adding delivery later is a small addition — the same generation runs regardless of what starts it — but that addition is not here.
+
+**No control over the platform's attribution mark.** A report carries a small "Powered by" mark naming the site on its cover and in every footer, alongside the organisation's own brand, and there is no setting to remove it. A deployment cannot produce a fully white-labelled report today.
+
+**No organisation descriptor or strapline field.** An organisation's identity on the report is its name and logo only. There is no field for a second line such as an accreditation number or tagline, which a regulated training provider would want; a project needing one must fork.
 
 **At-risk rules are not configurable.** The rules the report flags learners against are a fixed list in code, with no setting to add, remove, reorder, or retune a threshold. A project needing its own rule must fork. A future release moves rule selection and thresholds into the database, replacing the fixed list; until then this is the extension point to ask about. See [configuration and extension](./configuration-and-extension.md).
