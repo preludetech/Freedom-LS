@@ -116,5 +116,5 @@ syncs the template.
 
 ## 15. Cleanup
 
-- [ ] (cmd) Run `/sdd:finish_worktree` to clean up the worktree
+- [x] (cmd) Run `/sdd:finish_worktree` to clean up the worktree
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved
