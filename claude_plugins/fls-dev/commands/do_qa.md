@@ -23,7 +23,10 @@ contain spaces (e.g. `spec_dd/2. in progress/make-qa-more-efficient`).
 
 **Base URL** — `http://127.0.0.1:<PORT>/`, where `<PORT>` is chosen in Step 3.
 
-Admin credentials are in `.claude/fls-dev/config.md`.
+**Project config** — `.claude/fls-dev/config.md`. It holds the admin credentials Step 5 uses
+and, under `## QA Dev Data`, the commands this project runs to reset development data (Rule 2).
+This command file names no project-specific command of its own. Everything it runs against the
+database comes from that section.
 
 ---
 
@@ -54,21 +57,25 @@ shape you need: entity counts, relationships, which Site, which fixtures. It own
 conventions — do not hand-roll ORM scripts. Wait for it to confirm, then re-attempt the test.
 
 **Blocking data** — a past hard deadline, an orphaned join row, a stray role grant, a password an
-earlier run changed. Clear it, cheapest option first:
+earlier run changed. Clear it, cheapest option first. Rungs 2 and 3 run the commands configured under
+`## QA Dev Data` in `.claude/fls-dev/config.md`. Read that section before you need it and substitute
+the literal values it gives.
 
 1. Delegate the delete to `fls-dev:qa-data-helper`, naming the records by pk.
-2. `uv run python manage.py danger_content_delete --yes`, then the plan's seed list. Keeps users,
+2. Run `Content reset`, then the test plan's seed list. It clears content and leaves users,
    organisations and role grants intact.
-3. Full wipe — the plan's own `§0`: `.claude/fls-dev/scripts/dev_db_delete.sh`,
-   `.claude/fls-dev/scripts/dev_db_init.sh`, `uv run python manage.py migrate`, then the seed list.
-   Both scripts match the allow-listed `Bash(.claude/fls-dev/scripts/*.sh:*)` wildcard.
+3. Full wipe. Run `DB drop`, `DB create`, `Migrate`, then the test plan's own `§0` seed list.
+
+A rung whose config value is blank does not exist for this project. Skip it and try the next. If no
+rung past 1 is configured and rung 1 cannot clear the blockage, treat the scenario as impossible to
+set up: mark the test PARTIAL and file the Step 15 category-2 item naming the missing config key.
 
 **If a command is refused**, use the allow-listed wrappers in `.claude/fls-dev/scripts/` and
 `.claude/ds/scripts/`. File a `(user)` item only when a command is refused *and* has no allow-listed
 equivalent — naming the command and why you could not issue it.
 
-**Only** mark a test PARTIAL / skipped if `fls-dev:qa-data-helper` reports the scenario is impossible
-to set up.
+**Only** mark a test PARTIAL / skipped for one of two reasons: `fls-dev:qa-data-helper` reports the
+scenario is impossible to set up, or the ladder above ran out of configured rungs.
 
 ## Rule 3 — Batching safety rules
 
@@ -95,11 +102,12 @@ prose; never write the literal flag string into a file.
 
 **3f. `git revert` (Step 13) is not allow-listed as a solo-safe batch member** — issue it alone.
 
-**3g. Never run a management command that prompts.** A `click.confirm` command — `danger_content_delete`
-is the one QA plans reach for — blocks forever on stdin nobody will type into; pass `--yes` / `-y`.
-Wiping and re-seeding the dev database is an ordinary step you run yourself (Rule 2): never a human
-errand, never a `SKIP` for want of a confirmation. If a plan marks such a step human-run, run it
-anyway and correct the plan.
+**3g. Every command must be non-interactive.** Nothing can type into this session's stdin, so a
+command that waits for confirmation hangs until it is killed. Pass whichever non-interactive flag the
+command documents. `--yes`, `-y` and `--noinput` are the usual spellings, and the flag belongs in the
+`## QA Dev Data` value so it can never be omitted. Wiping and re-seeding the dev database is ordinary
+work you run yourself (Rule 2), never a human errand and never a `SKIP` for want of a confirmation.
+If a test plan marks such a step human-run, run it anyway and correct the plan.
 
 ## Rule 4 — Pass paths, never payloads
 

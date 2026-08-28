@@ -297,7 +297,8 @@ of in-place edits.
 ## Step 8: Validate the setup
 
 1. `fls-dev` is in `enabledPlugins`, and `.claude/settings.json` is valid JSON.
-2. `.claude/fls-dev/config.md` exists and contains the dev email, password, and base URL keys.
+2. `.claude/fls-dev/config.md` exists and contains the dev email, password, and base URL keys,
+   plus the `## QA Dev Data` section and its keys.
 3. Every wrapper under `.claude/fls-dev/scripts/` is executable and passes `bash -n`.
 4. `.claude/fls/` is either gone, or every surviving path is listed in the outstanding actions with a
    per-file reason. For every surviving `.sh` under `.claude/fls/scripts/`, additionally check whether
