@@ -16,6 +16,10 @@ from freedom_ls.accounts.factories import UserFactory
 # Re-export Playwright fixtures (logged_in_page, reset_local_storage) so
 # tests can consume them without importing the fixtures module directly.
 from freedom_ls.tests.playwright_fixtures import *  # noqa: F403
+from freedom_ls.tests.storages import (
+    PathlessFileSystemStorage,
+    bind_pathless_logo_storage,
+)
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
@@ -42,21 +46,14 @@ def _isolate_media_root(settings, tmp_path):
 
 
 @pytest.fixture
-def pathless_default_storage(tmp_path, settings) -> None:
-    """Point STORAGES["default"] at a storage double whose `.path()` raises.
+def pathless_logo_storage(tmp_path, monkeypatch) -> PathlessFileSystemStorage:
+    """Put a storage double whose `.path()` raises behind the logo fields.
 
-    Not autouse: most tests need the ordinary default storage. This one
-    exists to prove that a specific code path never calls `.path()`, whatever
-    backend is configured -- so it is opted into only by the tests that make
-    that claim.
+    Not autouse: most tests want the ordinary storage. This one exists to
+    prove that a specific code path never calls `.path()`, whatever backend
+    is configured -- so it is opted into only by the tests making that claim.
     """
-    settings.STORAGES = {
-        **settings.STORAGES,
-        "default": {
-            "BACKEND": "freedom_ls.tests.storages.PathlessFileSystemStorage",
-            "OPTIONS": {"location": str(tmp_path)},
-        },
-    }
+    return bind_pathless_logo_storage(monkeypatch, tmp_path)
 
 
 @pytest.fixture(autouse=True)

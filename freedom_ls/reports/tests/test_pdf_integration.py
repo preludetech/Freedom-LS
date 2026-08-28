@@ -739,7 +739,7 @@ class TestOrganisationBranding:
     """
 
     def test_an_organisation_logo_embeds_in_the_rendered_pdf(
-        self, mock_site_context, pathless_default_storage
+        self, mock_site_context, pathless_logo_storage
     ) -> None:
         organisation = OrganisationFactory()
         organisation.logo.save("logo.png", ContentFile(_png_bytes()))

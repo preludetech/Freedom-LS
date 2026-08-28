@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import contextlib
 import os
+from pathlib import Path
+
+import pytest
 
 from django.core.files.base import File
 from django.core.files.storage import FileSystemStorage
@@ -58,3 +61,26 @@ class PathlessFileSystemStorage(FileSystemStorage):
 
     def size(self, name: str) -> int:
         return os.path.getsize(self._real_path(name))
+
+
+def bind_pathless_logo_storage(
+    monkeypatch: pytest.MonkeyPatch, location: str | Path
+) -> PathlessFileSystemStorage:
+    """Put a `.path()`-refusing storage behind both Organisation logo fields.
+
+    Overriding `settings.STORAGES` cannot do this. `FileField.__init__` calls a
+    callable `storage=` once, at model import, and keeps the instance it
+    returned, so a later settings change clears the `storages` cache but never
+    reaches a field already holding a concrete Storage. Swapping the bound
+    instance is what actually puts the double in the read path.
+
+    Returns the storage so a test can assert against the double itself.
+    """
+    from freedom_ls.organisations.models import Organisation
+
+    storage = PathlessFileSystemStorage(location=str(location))
+    for field_name in ("logo", "logo_on_dark"):
+        monkeypatch.setattr(
+            Organisation._meta.get_field(field_name), "storage", storage
+        )
+    return storage

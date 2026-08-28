@@ -16,7 +16,6 @@ import time_machine
 from PIL import Image
 
 from django.core.files.base import ContentFile
-from django.core.files.storage import storages
 from django.test import override_settings
 from django.utils import timezone
 
@@ -704,7 +703,7 @@ class TestTheAssemblyStageIssuesNoQueriesOnRealRows:
         assert [detail.quiz_results[0].attempt_count for detail in details] == [1, 1]
 
 
-def test_pathless_storage_raises_on_path_access(pathless_default_storage):
+def test_pathless_storage_raises_on_path_access(pathless_logo_storage):
     """The storage double itself raises, proven independently of the loader.
 
     Without this, a later change that quietly stops PathlessFileSystemStorage
@@ -712,12 +711,26 @@ def test_pathless_storage_raises_on_path_access(pathless_default_storage):
     S3 break -- the double is only as good as this test says it still is.
     """
     with pytest.raises(NotImplementedError):
-        storages["default"].path("whatever.png")
+        pathless_logo_storage.path("whatever.png")
+
+
+def test_the_logo_field_reads_through_the_pathless_double(
+    mock_site_context, pathless_logo_storage
+):
+    """The double is bound to the field, not merely configured in settings.
+
+    A FileField keeps the Storage its `storage=` callable returned at import,
+    so an override that only reassigns settings.STORAGES leaves the field on
+    the real backend and every `.path()` claim below silently proves nothing.
+    """
+    organisation = OrganisationFactory()
+
+    assert organisation.logo.storage is pathless_logo_storage
 
 
 class TestLoadOrganisationLogoDataUri:
     def test_reads_a_logo_without_calling_storage_path(
-        self, mock_site_context, pathless_default_storage
+        self, mock_site_context, pathless_logo_storage
     ):
         organisation = OrganisationFactory()
         organisation.logo.save("logo.png", ContentFile(_png_bytes()))
@@ -728,7 +741,7 @@ class TestLoadOrganisationLogoDataUri:
         assert data_uri.startswith("data:image/png;base64,")
 
     def test_an_organisation_with_no_logo_returns_none(
-        self, mock_site_context, pathless_default_storage
+        self, mock_site_context, pathless_logo_storage
     ):
         organisation = OrganisationFactory()
 

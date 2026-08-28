@@ -15,27 +15,22 @@ from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.qa_helpers.management.commands.qa_create_report_brand_organisations import (
     describe_logo_location,
 )
+from freedom_ls.tests.storages import bind_pathless_logo_storage
 
 pytestmark = [pytest.mark.fls_internal, pytest.mark.django_db]
 
 
 @pytest.fixture
-def detached_pathless_storage(tmp_path, settings) -> None:
-    """A pathless default storage that does NOT live under MEDIA_ROOT.
+def detached_pathless_storage(tmp_path, monkeypatch) -> None:
+    """A pathless logo storage that does NOT live under MEDIA_ROOT.
 
-    The shared pathless_default_storage fixture roots itself at the same
-    tmp_path MEDIA_ROOT is isolated to, so a MEDIA_ROOT-relative path resolves
-    to the right file there by coincidence. On S3 there is no such coincidence:
+    The shared pathless_logo_storage fixture roots itself at the same tmp_path
+    MEDIA_ROOT is isolated to, so a MEDIA_ROOT-relative path resolves to the
+    right file there by coincidence. On S3 there is no such coincidence:
     MEDIA_ROOT names nothing the storage knows about. Rooting the storage
     somewhere else is what reproduces that.
     """
-    settings.STORAGES = {
-        **settings.STORAGES,
-        "default": {
-            "BACKEND": "freedom_ls.tests.storages.PathlessFileSystemStorage",
-            "OPTIONS": {"location": str(tmp_path / "objectstore")},
-        },
-    }
+    bind_pathless_logo_storage(monkeypatch, tmp_path / "objectstore")
 
 
 def test_a_present_logo_is_reported_as_existing_under_pathless_storage(
