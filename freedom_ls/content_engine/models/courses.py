@@ -289,10 +289,6 @@ class ContentCollectionItem(SiteAwareModel, TimestampedModel):
     collection_id = models.UUIDField()
     collection = GenericForeignKey("collection_type", "collection_id")
 
-    # collection_old = models.ForeignKey(
-    #     Course, on_delete=models.CASCADE, related_name="items"
-    # )
-
     # Generic foreign key to any content type
     child_type = models.ForeignKey(
         DjangoContentType, on_delete=models.CASCADE, related_name="child_items"

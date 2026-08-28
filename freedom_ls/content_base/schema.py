@@ -24,7 +24,7 @@ class BaseBaseContentModel(BaseModel):
     meta: dict[str, Any] | None = Field(
         None, description="Optional metadata as key-value pairs"
     )
-    tags: list[str] | None = Field(None, description="Optional list of tags")
+    tags: list[str] = Field(default_factory=list, description="Optional list of tags")
     content_type: ContentType = Field(..., description="Type of content")
     file_path: Path = Field(..., description="Path to the content file")
     uuid: str | None = Field(None, description="Optional unique identifier")

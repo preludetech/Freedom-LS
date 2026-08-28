@@ -66,6 +66,9 @@ class UserManager(BaseUserManager["User"]):
 
 
 class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMixin):
+    # Deliberately an integer pk, not a UUID: User is the one object whose identity
+    # appears in a URL as a small sequential number. Permission checks are keyed on
+    # email, the actual auth identifier, not on this pk.
     email = models.EmailField(unique=True)
 
     first_name = models.CharField(blank=True, default="", max_length=200)

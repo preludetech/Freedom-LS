@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -19,7 +20,12 @@ class BaseContent(SiteAwareModel, TimestampedModel):
     meta = models.JSONField(
         null=True, blank=True, help_text=_("Optional metadata as key-value pairs")
     )
-    tags = models.JSONField(null=True, blank=True, help_text=_("Optional list of tags"))
+    tags = ArrayField(
+        models.CharField(max_length=255),
+        blank=True,
+        default=list,
+        help_text=_("Optional list of tags"),
+    )
 
     class Meta:
         abstract = True
