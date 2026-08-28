@@ -40,7 +40,7 @@ Investigate existing code to find relevant files and functionality. Make sure th
 
 Write the plan document.
 
-The spec's **Terminology** section is the plan's vocabulary: the same nouns for the same concepts, and those same nouns in every identifier the plan proposes — class, function, field, `related_name`, constraint, template, URL name. The plan is where a spec's words become code, so a word that survives to here survives to the schema. If planning turns up a concept the spec never named, add it to the spec's Terminology section rather than inventing a name for it in the plan.
+The spec's vocabulary is the plan's vocabulary: its **Terminology** section where it has one, its prose and the codebase otherwise. The same nouns for the same concepts, and those same nouns in every identifier the plan proposes — class, function, field, `related_name`, constraint, template, URL name. The plan is where a spec's words become code, so a word that survives to here survives to the schema. If planning turns up a concept the spec never named, name it in the spec rather than inventing a name for it in the plan.
 
 # Step 4: Skills/MCP scan (fan-out)
 
@@ -82,7 +82,7 @@ The review dimensions below become **one `sdd:sdd-worker` per dimension**, each 
 - No step in the plan contradicts any skill
 - No step will result in junk files that need to be manually cleaned up
 - All suggested code changes are clean and simple
-- Every noun, and every identifier the plan proposes, matches the spec's Terminology section and the vocabulary already in the codebase
+- Every noun, and every identifier the plan proposes, matches the spec's vocabulary and the codebase's
 
 ### IMPORTANT
 The plan.md file MUST NOT say that the frontend_qa should be run. We will run that separately.

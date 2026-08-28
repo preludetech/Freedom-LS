@@ -50,9 +50,9 @@ overflow goes, and the two finishing passes. What follows is what is specific to
 Before writing any of it, read the sources listed under `## Vocabulary Sources` in
 `.claude/sdd/config.md` and `Grep` the codebase for every noun you intend to use. Use the word the
 project already has; make the model class and field names the spec's nouns, in the proposed
-identifiers as much as in the prose; never reuse an existing word with a different meaning. If a
-concept genuinely has no existing name, coin one — and list it in the Terminology section as
-`coined`, with its justification, rather than slipping it into the prose.
+identifiers as much as in the prose; never reuse an existing word with a different meaning. Coining
+a word, or using an existing one in a narrower sense, is what earns the spec a Terminology section.
+A spec whose nouns all come from the code does not need one.
 
 ## Read the whole directory first
 
@@ -73,8 +73,8 @@ step does that, and it re-reads the codebase when it does.
 Use these sections. Omit one when it would be empty; do not invent others.
 
 1. **Purpose.** The problem, in a few sentences.
-2. **Terminology.** The domain nouns this spec uses, per
-   `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`.
+2. **Terminology.** Only the terms this spec coins or narrows, per
+   `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`. Usually there are none.
 3. **Scope.** In and out.
 4. **Decisions.** Only the ones an implementer could otherwise relitigate, one line of reasoning
    each.
