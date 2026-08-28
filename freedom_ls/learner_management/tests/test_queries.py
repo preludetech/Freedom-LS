@@ -148,6 +148,44 @@ class TestLatestRegistration:
 
         assert latest_registration(user, course) == active
 
+    def test_a_live_learners_registration_beats_a_removed_learners_newer_one(
+        self, mock_site_context
+    ):
+        """The row that actually grants access sorts ahead of the one that does not.
+
+        Both registrations are active, so recency alone would hand over the
+        more recent one -- and with it the Learner keying the course progress
+        record -- even though its Learner has been removed and every access
+        check is satisfied by the other one.
+        """
+        user = UserFactory()
+        course = CourseFactory()
+        live = _make_registration(
+            user, course, organisation=OrganisationFactory(), is_active=True
+        )
+        _backdate(live, timezone.now() - timedelta(days=7))
+        removed = _make_registration(
+            user, course, organisation=OrganisationFactory(), is_active=True
+        )
+        removed.learner.is_active = False
+        removed.learner.save(update_fields=["is_active"])
+
+        assert latest_registration(user, course) == live
+
+    def test_a_removed_learners_registration_is_still_returned_on_its_own(
+        self, mock_site_context
+    ):
+        """is_active is a tiebreak, not a filter: a removed learner still
+        resolves to their own registration, which is what keeps their own
+        deadlines reachable."""
+        user = UserFactory()
+        course = CourseFactory()
+        registration = _make_registration(user, course, is_active=True)
+        registration.learner.is_active = False
+        registration.learner.save(update_fields=["is_active"])
+
+        assert latest_registration(user, course) == registration
+
     def test_falls_back_to_most_recent_inactive_when_none_are_active(
         self, mock_site_context
     ):

@@ -46,6 +46,7 @@ from .conftest import (
     collection_item_for,
     course_progress_record,
     learner_with_two_grants,
+    register_user_for_course,
 )
 
 BACKEND_PATH = (
@@ -330,6 +331,33 @@ def test_the_completion_is_recorded_against_the_resolved_record(
 
     completions = TopicProgress.objects.filter(complete_time__isnull=False)
     assert [c.course_progress_id for c in completions] == [cohort_record.id]
+
+
+@pytest.mark.django_db
+def test_the_finish_page_mints_the_record_a_bare_registration_never_had(
+    mock_site_context, client
+):
+    """Every player entry point self-heals, the finish page included.
+
+    A registration made before course progress records existed has no record
+    until the learner opens the course. Reaching the finish page directly --
+    a bookmark, or the back button after the completion redirect -- has to
+    mint it too, or the page 404s on a registration that plainly grants the
+    course.
+    """
+    course = _course_with_topics("Only Topic")
+    user = UserFactory()
+    register_user_for_course(course, user)
+    CourseProgress.objects.all().delete()
+    assert not CourseProgress.objects.exists()
+    client.force_login(user)
+
+    response = client.get(
+        reverse("learner_interface:course_finish", kwargs={"course_slug": course.slug})
+    )
+
+    assert response.status_code == 200
+    assert CourseProgress.objects.filter(learner__user=user, course=course).count() == 1
 
 
 # ---------------------------------------------------------------------------

@@ -1362,10 +1362,12 @@ def course_finish(request, course_slug):
 
     course = get_object_or_404(Course, slug=course_slug)
 
-    # The record the learner's registration granted. Missing means nothing
-    # grants them this course, so there is no pass to finish -- 404 rather than
-    # dereferencing None.
-    course_progress = course_progress_for(request.user, course)
+    # The record the learner's registration granted, minted here if it is
+    # missing -- the same self-healing path the rest of the player takes, so a
+    # registration made before course progress records existed does not turn a
+    # bookmarked finish URL into a 404. None means nothing grants them this
+    # course, so there is no pass to finish -- 404 rather than dereferencing None.
+    course_progress = _ensure_player_course_progress(request.user, course)
     if course_progress is None:
         raise Http404("No course progress record for this learner and course.")
 

@@ -10,8 +10,9 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.learner_progress.factories import CourseProgressFactory
-from freedom_ls.learner_progress.models import CourseProgress
+from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
 
 
 def _finish(client, user, course):
@@ -170,7 +171,11 @@ def test_finish_page_does_not_complete_a_course_with_an_unread_topic(
 def test_finish_page_names_a_never_sat_quiz_and_offers_to_start_it(
     mock_site_context, client, course_with_scored_quiz
 ):
-    """A quiz never sat is offered as a start, not as a retry of nothing."""
+    """A quiz never sat is offered as a start, not as a retry of nothing.
+
+    It is offered through the read-only start screen rather than form_start,
+    which mints an attempt on GET -- see the test below.
+    """
     user = UserFactory()
     course, form, _question, _right, _wrong = course_with_scored_quiz(
         slug="finish-start-quiz"
@@ -185,11 +190,36 @@ def test_finish_page_names_a_never_sat_quiz_and_offers_to_start_it(
     assert "Retry quiz" not in content
     assert (
         reverse(
-            "learner_interface:form_start",
+            "learner_interface:view_course_item",
             kwargs={"course_slug": course.slug, "index": 1},
         )
         in content
     )
+
+
+@pytest.mark.django_db
+def test_the_offer_to_start_a_quiz_does_not_go_through_a_writing_view(
+    mock_site_context, client, course_with_scored_quiz
+):
+    """Following the offer must not sit the quiz on the learner's behalf.
+
+    form_start mints a FormProgress and a CourseFormAttempt on GET, so
+    offering it for a quiz never sat would let merely following the link and
+    backing out leave an empty attempt behind -- which a submit-on-exit form
+    later finalises into a zero-score sitting the learner never took.
+    """
+    user = UserFactory()
+    course, form, _question, _right, _wrong = course_with_scored_quiz(
+        slug="finish-start-quiz-no-write"
+    )
+    CourseProgressFactory(learner__user=user, course=course, completed_time=None)
+
+    response = _finish(client, user, course)
+    offered = response.context["outstanding_items"][0].url
+    client.get(offered)
+
+    assert not FormProgress.objects.filter(form=form).exists()
+    assert not CourseFormAttempt.objects.exists()
 
 
 @pytest.mark.django_db

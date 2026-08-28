@@ -84,16 +84,26 @@ def latest_registration(user: User, course: Course) -> LearnerCourseRegistration
 
     A learner can hold more than one registration for the same course, one
     per organisation. Callers that need a single row rather than the full
-    set order by ``(-is_active, -registered_at)`` in one query: a descending
-    boolean sorts every active row ahead of every inactive one, so recency
-    only breaks ties within whichever group is present.
+    set order by ``(-is_active, -learner__is_active, -registered_at)`` in one
+    query: a descending boolean sorts every active row ahead of every
+    inactive one, so recency only breaks ties within whichever group is
+    present.
+
+    ``learner__is_active`` sits second rather than being filtered on. The
+    access checks require both flags, so sorting on both in that order puts
+    an access-granting row first whenever one exists -- without it, a user
+    holding an active registration through a live Learner and another
+    through a removed one would resolve to whichever was registered later,
+    and the record keying their work could land under the removed Learner.
+    Filtering instead would cut a removed learner off from their own
+    deadlines, which the individual branch deliberately still reaches.
     """
     from freedom_ls.learner_management.models import LearnerCourseRegistration
 
     return (
         LearnerCourseRegistration.objects.filter(learner__user=user, collection=course)
         .select_related("learner__organisation")
-        .order_by("-is_active", "-registered_at")
+        .order_by("-is_active", "-learner__is_active", "-registered_at")
         .first()
     )
 

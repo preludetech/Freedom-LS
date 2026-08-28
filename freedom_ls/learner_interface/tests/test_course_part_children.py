@@ -1,7 +1,9 @@
 import itertools
+from datetime import timedelta
 
 import pytest
 
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -25,6 +27,7 @@ from freedom_ls.learner_interface.utils import (
 )
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
+    LearnerDeadlineFactory,
 )
 
 from .conftest import form_attempt, topic_completion
@@ -265,7 +268,7 @@ def test_course_part_url_skips_completed_first_child_to_first_ready(mock_site_co
         ([READY, COMPLETE], IN_PROGRESS),
         ([COMPLETE, IN_PROGRESS, BLOCKED], IN_PROGRESS),
         ([COMPLETE, FAILED, BLOCKED], FAILED),
-        ([COMPLETE, BLOCKED], IN_PROGRESS),
+        ([COMPLETE, BLOCKED], BLOCKED),
         ([READY, BLOCKED], READY),
         ([BLOCKED, BLOCKED], BLOCKED),
     ],
@@ -273,6 +276,43 @@ def test_course_part_url_skips_completed_first_child_to_first_ready(mock_site_co
 def test_derive_part_status_precedence(child_statuses, expected):
     """The whole precedence table, without the cost of building a course."""
     assert derive_part_status(child_statuses) == expected
+
+
+@pytest.mark.django_db
+@override_settings(DEADLINES_ACTIVE=True)
+def test_a_part_whose_remaining_child_is_locked_reads_as_blocked(mock_site_context):
+    """A part with nothing left to open cannot report work in flight.
+
+    The completed child would otherwise carry the part to "In progress" while
+    the routing chain found no child to link to, leaving a row labelled as
+    under way with no way into it.
+    """
+    course: Course = CourseFactory(title="Locked Tail", slug="locked-tail")
+    part: CoursePart = CoursePartFactory(title="Chapter", slug="locked-chapter")
+    done = TopicFactory(title="Done", slug="locked-done", content="x")
+    locked = TopicFactory(title="Locked", slug="locked-locked", content="x")
+
+    course.items.create(child=part, order=0)
+    part.items.create(child=done, order=0)
+    part.items.create(child=locked, order=1)
+
+    user = UserFactory()
+    registration = LearnerCourseRegistrationFactory(
+        learner__user=user, collection=course
+    )
+    topic_completion(course, user, done, complete_time=timezone.now())
+    LearnerDeadlineFactory(
+        learner_course_registration=registration,
+        content_item=locked,
+        deadline=timezone.now() - timedelta(days=1),
+        is_hard_deadline=True,
+    )
+
+    part_dict = get_course_index(user=user, course=course, can_access_content=True)[0]
+
+    assert [child["status"] for child in part_dict["children"]] == [COMPLETE, BLOCKED]
+    assert part_dict["status"] == BLOCKED
+    assert part_dict["url"] is None
 
 
 @pytest.mark.django_db

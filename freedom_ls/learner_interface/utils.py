@@ -70,15 +70,21 @@ def derive_part_status(child_statuses: list[str]) -> str:
 
     Single source of the status-precedence rule for a part row, shared by the
     table of contents (``create_child_dict_with_flattened_index``) and
-    ``get_content_status``. A part says what its own children say: once any one
-    of them is finished the part is under way, so a part can never read "not
-    started" over rows that read "completed".
+    ``get_content_status``. A part says what its own children say: while any
+    one of them is open, a part with finished work behind it is under way, so
+    a part can never read "not started" over rows that read "completed".
 
     A re-sit outranks that, because "needs retry" names the thing to do next
     where "in progress" only says work remains.
 
-    This answers what state the part is in, not where its row should link --
-    the caller routes to the first open child whatever the label here.
+    "Under way" needs a child that can actually be opened. Once everything
+    left is blocked -- a hard deadline that has expired, say -- the part is
+    blocked too, however much of it is already finished: a part cannot report
+    work in flight over rows the learner has no way back into.
+
+    Which child the row links to is a separate question the caller answers.
+    Every status but COMPLETE and BLOCKED guarantees an open child for it to
+    route to, so the two can no longer contradict each other.
     """
     if not child_statuses:
         return BLOCKED
@@ -88,10 +94,8 @@ def derive_part_status(child_statuses: list[str]) -> str:
         return IN_PROGRESS
     if FAILED in child_statuses:
         return FAILED
-    if COMPLETE in child_statuses:
-        return IN_PROGRESS
     if READY in child_statuses:
-        return READY
+        return IN_PROGRESS if COMPLETE in child_statuses else READY
     return BLOCKED
 
 
@@ -238,11 +242,16 @@ def outstanding_items(
         OutstandingItem(
             index=index,
             content=cast("Topic | Form", item.child),
-            # form_start rather than the player URL for a form: it is the page
-            # that sits or re-sits the quiz, and the player only redirects there.
+            # form_start only for a re-sit, where the learner has already
+            # committed to sitting the quiz once. It is a writing view -- it
+            # mints an attempt on GET -- so offering it for a form never
+            # started would let merely following the link and backing out
+            # leave an empty attempt behind, which a submit-on-exit form later
+            # finalises into a sitting the learner never took. Everything else
+            # goes to the read-only start screen.
             url=reverse(
                 "learner_interface:form_start"
-                if isinstance(item.child, Form)
+                if item.id in sat_item_ids
                 else "learner_interface:view_course_item",
                 kwargs={"course_slug": course.slug, "index": index},
             ),
@@ -669,7 +678,9 @@ def create_child_dict_with_flattened_index(
         # separate questions -- a part is labelled by everything its children
         # say, but routed to the one child the learner should open next -- so
         # taking the label off the routing branch would let a part row
-        # contradict the rows beneath it.
+        # contradict the rows beneath it. They stay in step all the same:
+        # derive_part_status only reads "open" while some child is, which is
+        # exactly when the chain below finds a url.
         status = derive_part_status([c["status"] for c in part_children_dicts])
         url = ""
 
