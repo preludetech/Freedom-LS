@@ -28,6 +28,7 @@ class SystemRoleAssignment(models.Model):
         related_name="+",
     )
     assigned_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [
@@ -61,6 +62,7 @@ class SiteRoleAssignment(SiteAwareModel):
         related_name="+",
     )
     assigned_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [
@@ -101,6 +103,7 @@ class ObjectRoleAssignment(SiteAwareModel):
         related_name="+",
     )
     assigned_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [

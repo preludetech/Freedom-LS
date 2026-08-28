@@ -11,7 +11,7 @@ from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.base.initials import two_or_one
 from freedom_ls.base.storage import storage_for_alias
-from freedom_ls.site_aware_models.models import SiteAwareModel
+from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 from .config import config
 from .validators import validate_organisation_logo, validate_organisation_logo_extension
@@ -55,7 +55,7 @@ def get_organisation_logo_storage() -> Storage:
     )
 
 
-class Organisation(SiteAwareModel):
+class Organisation(SiteAwareModel, TimestampedModel):
     name = models.CharField(_("name"), max_length=150)
     # Unicode so a wholly non-Latin name keeps its own script in the URL
     # rather than reducing to nothing. Derived on save, never typed.

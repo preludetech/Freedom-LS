@@ -13,7 +13,7 @@ from freedom_ls.learner_management.models import (
     Learner,
     LearnerCourseRegistration,
 )
-from freedom_ls.site_aware_models.models import SiteAwareModel
+from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 
 class CourseItemProgress(SiteAwareModel):
@@ -239,7 +239,7 @@ class CourseProgress(SiteAwareModel):
         return f"{self.learner} - {self.course.title}"
 
 
-class CourseFormAttempt(SiteAwareModel):
+class CourseFormAttempt(SiteAwareModel, TimestampedModel):
     """One form attempt, sat at one placement, inside one course progress record.
 
     The attempt itself -- its answers, its score, when it was completed -- is a

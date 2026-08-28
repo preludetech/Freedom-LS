@@ -6,7 +6,10 @@ previously given answer must take its row with it.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
+import time_machine
 
 from django.http import QueryDict
 
@@ -149,3 +152,28 @@ def test_changing_a_choice_answer_replaces_the_previous_selection(
 
     answer = form_progress.answers.get(question=choice_question)
     assert list(answer.selected_options.all()) == [second]
+
+
+@pytest.mark.django_db
+def test_answer_created_at_survives_a_revisit_that_changes_it(
+    mock_site_context, text_question
+):
+    """A revisit rewrites the answer in place -- it must not reset created_at."""
+    form_progress = FormProgressFactory(
+        user=UserFactory(), form=text_question.form_page.form
+    )
+    field_name = f"question_{text_question.id}"
+
+    with time_machine.travel(datetime(2026, 1, 1, tzinfo=UTC), tick=False):
+        form_progress.save_answers([text_question], _post_data({field_name: ["first"]}))
+    original_created_at = form_progress.answers.get(question=text_question).created_at
+
+    with time_machine.travel(datetime(2026, 1, 2, tzinfo=UTC), tick=False):
+        form_progress.save_answers(
+            [text_question], _post_data({field_name: ["second"]})
+        )
+
+    answer = form_progress.answers.get(question=text_question)
+    assert answer.text_answer == "second"
+    assert answer.created_at == original_created_at
+    assert answer.updated_at == datetime(2026, 1, 2, tzinfo=UTC)

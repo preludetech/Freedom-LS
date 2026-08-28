@@ -1,8 +1,10 @@
 """Tests for role_based_permissions utility functions."""
 
 from collections.abc import Generator
+from datetime import UTC, datetime
 
 import pytest
+import time_machine
 from guardian.shortcuts import get_objects_for_user, get_perms
 from pytest_mock import MockerFixture
 
@@ -193,6 +195,23 @@ class TestRemoveObjectRole:
         perms = get_perms(user, cohort)
         assert "view_cohort" in perms
 
+    @pytest.mark.django_db
+    def test_removing_role_advances_updated_at(self) -> None:
+        """QuerySet.update() skips auto_now, so removal must stamp it by hand."""
+        user = UserFactory()
+        cohort = CohortFactory()
+        with time_machine.travel(datetime(2026, 1, 1, tzinfo=UTC), tick=False):
+            assign_object_role(user, cohort, "instructor")
+
+        with time_machine.travel(datetime(2026, 2, 1, tzinfo=UTC), tick=False):
+            remove_object_role(user, cohort, "instructor")
+
+        ct = ContentType.objects.get_for_model(cohort)
+        assignment = ObjectRoleAssignment.objects.get(
+            user=user, content_type=ct, object_id=str(cohort.pk), role="instructor"
+        )
+        assert assignment.updated_at == datetime(2026, 2, 1, tzinfo=UTC)
+
 
 class TestSyncUserObjectPermissions:
     """Tests for sync_user_object_permissions."""
@@ -314,6 +333,21 @@ class TestSiteRoleFunctions:
         ).exists()
 
     @pytest.mark.django_db
+    def test_removing_site_role_advances_updated_at(
+        self, mock_site_context: Site
+    ) -> None:
+        """QuerySet.update() skips auto_now, so removal must stamp it by hand."""
+        user = UserFactory()
+        with time_machine.travel(datetime(2026, 1, 1, tzinfo=UTC), tick=False):
+            assign_site_role(user, "site_admin")
+
+        with time_machine.travel(datetime(2026, 2, 1, tzinfo=UTC), tick=False):
+            remove_site_role(user, "site_admin")
+
+        assignment = SiteRoleAssignment.objects.get(user=user, role="site_admin")
+        assert assignment.updated_at == datetime(2026, 2, 1, tzinfo=UTC)
+
+    @pytest.mark.django_db
     def test_reassigning_active_site_role_updates_assigned_by(
         self, mock_site_context: Site
     ) -> None:
@@ -393,6 +427,19 @@ class TestSystemRoleFunctions:
         ).exists()
         assignment = SystemRoleAssignment.objects.get(user=user, role="system_admin")
         assert assignment.is_active is False
+
+    @pytest.mark.django_db
+    def test_removing_system_role_advances_updated_at(self) -> None:
+        """QuerySet.update() skips auto_now, so removal must stamp it by hand."""
+        user = UserFactory()
+        with time_machine.travel(datetime(2026, 1, 1, tzinfo=UTC), tick=False):
+            assign_system_role(user, "system_admin")
+
+        with time_machine.travel(datetime(2026, 2, 1, tzinfo=UTC), tick=False):
+            remove_system_role(user, "system_admin")
+
+        assignment = SystemRoleAssignment.objects.get(user=user, role="system_admin")
+        assert assignment.updated_at == datetime(2026, 2, 1, tzinfo=UTC)
 
 
 class TestGetObjectRoles:

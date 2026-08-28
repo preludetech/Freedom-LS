@@ -16,6 +16,7 @@ from freedom_ls.base.initials import two_or_one
 from freedom_ls.site_aware_models.models import (
     SiteAwareModel,
     SiteAwareModelBase,
+    TimestampedModel,
     _thread_locals,
     get_cached_site,
 )
@@ -64,7 +65,7 @@ class UserManager(BaseUserManager["User"]):
         return user
 
 
-class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
+class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
 
     first_name = models.CharField(blank=True, default="", max_length=200)
@@ -134,7 +135,7 @@ class User(SiteAwareModelBase, AbstractBaseUser, PermissionsMixin):
         return two_or_one(alphas[0], alphas[1] if len(alphas) > 1 else "")
 
 
-class SiteSignupPolicy(SiteAwareModel):
+class SiteSignupPolicy(SiteAwareModel, TimestampedModel):
     """
     Per-site signup policy — controls whether signups are allowed and what
     information is collected from the user at signup / post-verification.

@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.content_base.models import MarkdownContent, TitledContent
 from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
-from freedom_ls.site_aware_models.models import SiteAwareModel
+from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 from ..course_accent import PALETTE
 
@@ -267,7 +267,7 @@ class CoursePart(TitledContent):
         return self.title
 
 
-class ContentCollectionItem(SiteAwareModel):
+class ContentCollectionItem(SiteAwareModel, TimestampedModel):
     """Through model for Course/CoursePart children with order and overrides."""
 
     # Generic foreign key to Course or CoursePart

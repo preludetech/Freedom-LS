@@ -5,7 +5,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.base.storage import storage_for_alias
-from freedom_ls.site_aware_models.models import SiteAwareModel
+from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 from ..config import config
 
@@ -27,7 +27,7 @@ def get_content_media_storage() -> Storage:
     )
 
 
-class File(SiteAwareModel):
+class File(SiteAwareModel, TimestampedModel):
     """Stores files (images, documents, etc.) referenced in content."""
 
     class FileType(models.TextChoices):

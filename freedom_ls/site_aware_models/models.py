@@ -81,3 +81,18 @@ class SiteAwareModel(SiteAwareModelBase):
 
     class Meta:
         abstract = True
+
+
+class TimestampedModel(models.Model):
+    """Adds creation and modification timestamps.
+
+    Composed alongside whichever base a model already uses, rather than folded
+    into SiteAwareModel, so it also reaches accounts.User (SiteAwareModelBase
+    only) and models that are deliberately not site-aware.
+    """
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True

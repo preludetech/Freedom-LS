@@ -13,6 +13,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.db import transaction
 from django.db.models import Model
+from django.utils import timezone
 
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.types import AssignmentScope
@@ -243,7 +244,7 @@ def remove_object_role(
         content_type=ct,
         object_id=str(target.pk),
         role=role,
-    ).update(is_active=False)
+    ).update(is_active=False, updated_at=timezone.now())
     sync_user_object_permissions(user, target)
     # TODO: AuditLog entry for role removal (use removed_by)
 
@@ -311,7 +312,7 @@ def remove_site_role(
         user=user,
         site=site,
         role=role,
-    ).update(is_active=False)
+    ).update(is_active=False, updated_at=timezone.now())
     sync_user_object_permissions(user, site)
     # TODO: AuditLog entry for site role removal (use removed_by)
 
@@ -362,7 +363,7 @@ def remove_system_role(
     SystemRoleAssignment.objects.filter(
         user=user,
         role=role,
-    ).update(is_active=False)
+    ).update(is_active=False, updated_at=timezone.now())
     # TODO: AuditLog entry for system role removal (use removed_by)
 
 

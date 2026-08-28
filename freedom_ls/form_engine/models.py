@@ -11,7 +11,7 @@ from django.utils.translation import gettext_lazy as _
 from freedom_ls.content_base.models import BaseContent, MarkdownContent, TitledContent
 from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
-from freedom_ls.site_aware_models.models import SiteAwareModel
+from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 from .enums import FREE_TEXT_QUESTION_TYPES, FormStrategy, QuestionType
 from .scoring import is_quiz_answer_correct
@@ -169,7 +169,7 @@ class FormQuestion(BaseContent):
         return self.question[:50]
 
 
-class QuestionOption(SiteAwareModel):
+class QuestionOption(SiteAwareModel, TimestampedModel):
     """An option for a form question."""
 
     question = models.ForeignKey(
@@ -565,7 +565,7 @@ class FormProgress(SiteAwareModel):
         return incorrect_answers
 
 
-class QuestionAnswer(SiteAwareModel):
+class QuestionAnswer(SiteAwareModel, TimestampedModel):
     """Stores answers to form questions."""
 
     form_progress = models.ForeignKey(
@@ -576,7 +576,6 @@ class QuestionAnswer(SiteAwareModel):
         QuestionOption, blank=True
     )  # For checkbox/multiple choice questions
     text_answer = models.TextField(blank=True, default="")  # For text questions
-    last_updated_time = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ["form_progress", "question"]

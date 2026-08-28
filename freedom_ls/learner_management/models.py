@@ -8,7 +8,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from freedom_ls.site_aware_models.models import SiteAwareModel
+from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 User = get_user_model()
 
@@ -29,7 +29,7 @@ def _relations_are_set(instance: models.Model, *field_names: str) -> bool:
     return True
 
 
-class Cohort(SiteAwareModel):
+class Cohort(SiteAwareModel, TimestampedModel):
     organisation = models.ForeignKey(
         "freedom_ls_organisations.Organisation",
         on_delete=models.PROTECT,
@@ -80,7 +80,7 @@ class Learner(SiteAwareModel):
         return f"{self.user} - {self.organisation}"
 
 
-class CohortMembership(SiteAwareModel):
+class CohortMembership(SiteAwareModel, TimestampedModel):
     cohort = models.ForeignKey(Cohort, on_delete=models.CASCADE)
     learner = models.ForeignKey(Learner, on_delete=models.CASCADE)
 
@@ -155,7 +155,7 @@ class CohortCourseRegistration(SiteAwareModel):
         return f"{self.cohort} - {self.course}"
 
 
-class CohortDeadline(SiteAwareModel):
+class CohortDeadline(SiteAwareModel, TimestampedModel):
     """Deadline applied to all learners in a cohort for a specific course registration."""
 
     cohort_course_registration = models.ForeignKey(
@@ -202,7 +202,7 @@ class CohortDeadline(SiteAwareModel):
         return f"{reg.cohort} - {reg.course} - {item_label}"
 
 
-class LearnerDeadline(SiteAwareModel):
+class LearnerDeadline(SiteAwareModel, TimestampedModel):
     """Deadline for a learner registered individually for a course."""
 
     learner_course_registration = models.ForeignKey(
@@ -249,7 +249,7 @@ class LearnerDeadline(SiteAwareModel):
         return f"{reg.learner.user} - {reg.course} - {item_label}"
 
 
-class LearnerCohortDeadlineOverride(SiteAwareModel):
+class LearnerCohortDeadlineOverride(SiteAwareModel, TimestampedModel):
     """Override deadline for a specific learner within a cohort."""
 
     cohort_course_registration = models.ForeignKey(

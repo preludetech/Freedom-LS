@@ -153,8 +153,8 @@ class QuestionAnswerInline(admin.TabularInline):
 
     model = QuestionAnswer
     extra = 0
-    fields = ("question", "selected_options", "text_answer", "last_updated_time")
-    readonly_fields = ("last_updated_time",)
+    fields = ("question", "selected_options", "text_answer", "updated_at")
+    readonly_fields = ("updated_at",)
 
 
 @admin.register(FormProgress)
@@ -203,21 +203,21 @@ class QuestionAnswerAdmin(SiteAwareModelAdmin):
         "form_progress",
         "question",
         "answer_preview",
-        "last_updated_time",
+        "updated_at",
     ]
-    list_filter = ("question__form_page__form", "last_updated_time")
+    list_filter = ("question__form_page__form", "updated_at")
     search_fields = (
         "form_progress__user__email",
         "question__question",
         "text_answer",
     )
-    ordering = ("-last_updated_time",)
-    readonly_fields = ("last_updated_time",)
+    ordering = ("-updated_at",)
+    readonly_fields = ("updated_at",)
 
     fieldsets = (
         (None, {"fields": ("form_progress", "question")}),
         ("Answer", {"fields": ("selected_options", "text_answer")}),
-        ("Metadata", {"fields": ("last_updated_time",)}),
+        ("Metadata", {"fields": ("updated_at",)}),
     )
 
     @admin.display(description="Answer")
